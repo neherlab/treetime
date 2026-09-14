@@ -26,7 +26,7 @@ mod tests {
   use std::path::{Path, PathBuf};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_path, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
+  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
   #[rstest]
   #[case::simple_4taxa("simple_4taxa")]
@@ -141,12 +141,10 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -168,12 +166,10 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;

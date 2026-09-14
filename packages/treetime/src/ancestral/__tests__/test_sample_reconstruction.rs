@@ -69,7 +69,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
 
     pub const ROOT_NAME: &str = "root";
 
@@ -95,12 +95,10 @@ mod tests {
         &Alphabet::default(),
       )?;
 
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(TREE)?;
+      let nwk_parsed = nwk_read_str(TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
 
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;

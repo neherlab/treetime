@@ -18,7 +18,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 
 /// Per-node clock output as a value.
 ///
@@ -124,16 +124,14 @@ pub fn run_clock(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let NwkParse {
-    graph,
-    names,
-    branch_lengths,
-    ..
-  } = if let Some(tree) = &clock_args.tree {
+  let nwk_parsed = if let Some(tree) = &clock_args.tree {
     nwk_read_file(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
   }?;
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
   let input_order = leaf_order(&graph, &names)?;
 
   let dates = read_dates(

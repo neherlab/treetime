@@ -7,18 +7,16 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // OnlyLeaves(false) - all nodes
   #[test]
   fn test_all_nodes() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(false), &branch_lengths, &names)?;
@@ -41,12 +39,10 @@ mod tests {
   // OnlyLeaves(true) - leaves only
   #[test]
   fn test_only_leaves() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
@@ -66,12 +62,10 @@ mod tests {
   // Unnamed internal nodes get auto-generated names
   #[test]
   fn test_unnamed_internals() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
@@ -91,12 +85,10 @@ mod tests {
   // Single node tree
   #[test]
   fn test_single_node() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("A:0.5;")?;
+    let nwk_parsed = nwk_read_str("A:0.5;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
@@ -110,12 +102,10 @@ mod tests {
   // Linear chain (no branching)
   #[test]
   fn test_linear_chain() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
@@ -138,12 +128,10 @@ mod tests {
     }
     nwk.push(';');
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(&nwk)?;
+    let nwk_parsed = nwk_read_str(&nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
@@ -159,12 +147,10 @@ mod tests {
   // Zero branch lengths
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;

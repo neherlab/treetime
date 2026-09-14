@@ -22,7 +22,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -122,12 +122,10 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
@@ -143,12 +141,10 @@ mod tests {
   #[test]
   fn test_dense_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
@@ -164,12 +160,10 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
@@ -186,12 +180,10 @@ mod tests {
   #[test]
   fn test_dense_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
@@ -208,12 +200,10 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_one_leaf_gapped() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
@@ -234,12 +224,10 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
@@ -262,12 +250,10 @@ mod tests {
   #[test]
   fn test_initial_guess_sparse_gap_adjusted_rate() -> Result<(), Report> {
     let aln_clean = gap_free_alignment()?;
-    let NwkParse {
-      graph: graph_clean,
-      names: graph_clean_names,
-      branch_lengths: mut branch_lengths_clean,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_clean_names = nwk_parsed.names();
+    let graph_clean = nwk_parsed.graph;
+    let mut branch_lengths_clean = nwk_parsed.branch_lengths;
     let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
     {
       let total_length = total_sequence_length(&[], &partitions_clean);
@@ -288,12 +274,10 @@ mod tests {
     let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
-    let NwkParse {
-      graph: graph_gappy,
-      names: graph_gappy_names,
-      branch_lengths: mut branch_lengths_gappy,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_gappy_names = nwk_parsed.names();
+    let graph_gappy = nwk_parsed.graph;
+    let mut branch_lengths_gappy = nwk_parsed.branch_lengths;
     let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
     {
       let total_length = total_sequence_length(&[], &partitions_gappy);

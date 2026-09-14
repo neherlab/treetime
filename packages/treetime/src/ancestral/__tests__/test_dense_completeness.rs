@@ -14,7 +14,7 @@ mod tests {
   use pretty_assertions::assert_eq;
 
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   fn setup_dense_with_unknowns() -> Result<(Graph, DenseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -28,12 +28,10 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -58,12 +56,10 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -161,12 +157,10 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -238,12 +232,10 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;

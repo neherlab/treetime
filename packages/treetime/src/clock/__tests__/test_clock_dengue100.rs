@@ -20,7 +20,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::read_dates;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
 
@@ -36,12 +36,10 @@ mod tests {
     Report,
   > {
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
@@ -270,12 +268,10 @@ mod tests {
     assert_ne!(default_outliers, expected_outliers);
 
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
@@ -320,12 +316,10 @@ mod tests {
   #[test]
   fn test_dengue100_clock_pipeline_keep_root_allows_negative_rate() -> Result<(), Report> {
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),

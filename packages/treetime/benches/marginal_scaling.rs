@@ -12,7 +12,7 @@ use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta_path;
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 use treetime_utils::init::global::global_init;
 
 #[ctor]
@@ -57,12 +57,10 @@ fn setup() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>)
 fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-  let NwkParse {
-    graph,
-    names,
-    branch_lengths,
-    ..
-  } = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
+  let nwk_parsed = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
   let alignment = read_many_fasta_path(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();

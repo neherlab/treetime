@@ -17,7 +17,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::read_dates;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
   use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -131,7 +131,9 @@ mod tests {
     snapshot: &Snapshot,
   ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
     let fixtures_dir = Path::new(FIXTURES_DIR);
-    let NwkParse { graph, names, .. } = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
+    let nwk_parsed = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let dates = read_dates(
       fixtures_dir.join(&snapshot.inputs.metadata_path),
       &[',', '\t', ';'],

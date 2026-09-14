@@ -28,7 +28,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
   /// At s=0, the first derivative is zero (chain rule factor 2s = 0) and
@@ -257,7 +257,10 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -291,7 +294,10 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -333,7 +339,10 @@ mod tests {
   #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_optimize_method_stationarity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 2)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -372,7 +381,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph: graph_brent, names: graph_brent_names, branch_lengths: mut bl_brent, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_brent_names = nwk_parsed.names();
+    let graph_brent = nwk_parsed.graph;
+    let mut bl_brent = nwk_parsed.branch_lengths;
     let (dense_partitions_brent, sparse_partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, &mut bl_brent, n_indels)?;
     let total_length_brent = total_sequence_length(&dense_partitions_brent, &sparse_partitions_brent);
     let contributions_brent = gather_edge_contributions(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent)?;
@@ -381,7 +393,10 @@ mod tests {
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent, rate_brent, bl_brent)?;
 
-    let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, branch_lengths: mut bl_sqrt, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sqrt_names = nwk_parsed.names();
+    let graph_sqrt = nwk_parsed.graph;
+    let mut bl_sqrt = nwk_parsed.branch_lengths;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
     let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
     let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt)?;
@@ -409,7 +424,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement_newton_log(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph: graph_brent, names: graph_brent_names, branch_lengths: mut bl_brent, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_brent_names = nwk_parsed.names();
+    let graph_brent = nwk_parsed.graph;
+    let mut bl_brent = nwk_parsed.branch_lengths;
     let (dense_partitions_brent, sparse_partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, &mut bl_brent, n_indels)?;
     let total_length_brent = total_sequence_length(&dense_partitions_brent, &sparse_partitions_brent);
     let contributions_brent = gather_edge_contributions(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent)?;
@@ -418,7 +436,10 @@ mod tests {
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent, rate_brent, bl_brent)?;
 
-    let NwkParse { graph: graph_log, names: graph_log_names, branch_lengths: mut bl_log, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_log_names = nwk_parsed.names();
+    let graph_log = nwk_parsed.graph;
+    let mut bl_log = nwk_parsed.branch_lengths;
     let (dense_partitions_log, sparse_partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
     let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
     let contributions_log = gather_edge_contributions(&graph_log, &dense_partitions_log, &sparse_partitions_log)?;
@@ -471,7 +492,10 @@ mod tests {
     // Reference: run BrentSqrt (the v0-matching default) on a fresh graph
     // and capture its post-optimization log-likelihood at the first edge.
     let lh_ref = {
-      let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut bl_ref, .. } = nwk_read_str(TREE_NEWICK)?;
+      let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+      let graph_ref_names = nwk_parsed.names();
+      let graph_ref = nwk_parsed.graph;
+      let mut bl_ref = nwk_parsed.branch_lengths;
       let (dense_partitions_ref, sparse_partitions_ref, rate_ref) = setup_with_indels(&graph_ref, &graph_ref_names, &mut bl_ref, n_indels)?;
       let total_length_ref = total_sequence_length(&dense_partitions_ref, &sparse_partitions_ref);
       let contributions_ref = gather_edge_contributions(&graph_ref, &dense_partitions_ref, &sparse_partitions_ref)?;
@@ -481,7 +505,10 @@ mod tests {
       eval_combined_first_edge(&graph_ref, &dense_partitions_ref, &sparse_partitions_ref, rate_ref, bl_ref)?
     };
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions, rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
@@ -505,12 +532,10 @@ mod tests {
   /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_log_improves_over_newton() -> Result<(), Report> {
-    let NwkParse {
-      graph: graph_newton,
-      names: graph_newton_names,
-      branch_lengths: mut bl_newton,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_newton_names = nwk_parsed.names();
+    let graph_newton = nwk_parsed.graph;
+    let mut bl_newton = nwk_parsed.branch_lengths;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) =
       setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, 4)?;
     let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
@@ -535,12 +560,10 @@ mod tests {
       bl_newton,
     )?;
 
-    let NwkParse {
-      graph: graph_log,
-      names: graph_log_names,
-      branch_lengths: mut bl_log,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_log_names = nwk_parsed.names();
+    let graph_log = nwk_parsed.graph;
+    let mut bl_log = nwk_parsed.branch_lengths;
     let (dense_partitions_log, sparse_partitions_log, rate_log) =
       setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, 4)?;
     let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
@@ -579,12 +602,10 @@ mod tests {
   /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_sqrt_improves_over_newton() -> Result<(), Report> {
-    let NwkParse {
-      graph: graph_newton,
-      names: graph_newton_names,
-      branch_lengths: mut bl_newton,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_newton_names = nwk_parsed.names();
+    let graph_newton = nwk_parsed.graph;
+    let mut bl_newton = nwk_parsed.branch_lengths;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) =
       setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, 4)?;
     let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
@@ -609,12 +630,10 @@ mod tests {
       bl_newton,
     )?;
 
-    let NwkParse {
-      graph: graph_sqrt,
-      names: graph_sqrt_names,
-      branch_lengths: mut bl_sqrt,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sqrt_names = nwk_parsed.names();
+    let graph_sqrt = nwk_parsed.graph;
+    let mut bl_sqrt = nwk_parsed.branch_lengths;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) =
       setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, 4)?;
     let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
@@ -664,7 +683,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_cross_conditioning_ordering(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph: graph_newton, names: graph_newton_names, branch_lengths: mut bl_newton, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_newton_names = nwk_parsed.names();
+    let graph_newton = nwk_parsed.graph;
+    let mut bl_newton = nwk_parsed.branch_lengths;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) = setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, n_indels)?;
     let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
     let contributions_newton = gather_edge_contributions(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton)?;
@@ -673,7 +695,10 @@ mod tests {
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton, rate_newton, bl_newton)?;
 
-    let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, branch_lengths: mut bl_sqrt, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sqrt_names = nwk_parsed.names();
+    let graph_sqrt = nwk_parsed.graph;
+    let mut bl_sqrt = nwk_parsed.branch_lengths;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
     let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
     let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt)?;
@@ -682,7 +707,10 @@ mod tests {
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let NwkParse { graph: graph_log, names: graph_log_names, branch_lengths: mut bl_log, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_log_names = nwk_parsed.names();
+    let graph_log = nwk_parsed.graph;
+    let mut bl_log = nwk_parsed.branch_lengths;
     let (dense_partitions_log, sparse_partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
     let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
     let contributions_log = gather_edge_contributions(&graph_log, &dense_partitions_log, &sparse_partitions_log)?;
@@ -724,7 +752,10 @@ mod tests {
     #[case] method: BranchOptMethod,
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -747,7 +778,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_log_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -770,7 +804,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -793,7 +830,10 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -813,12 +853,10 @@ mod tests {
   fn test_optimize_method_brent_cross_parameterization_lh_agreement() -> Result<(), Report> {
     let n_indels = 3;
 
-    let NwkParse {
-      graph: graph_t,
-      names: graph_t_names,
-      branch_lengths: mut bl_t,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_t_names = nwk_parsed.names();
+    let graph_t = nwk_parsed.graph;
+    let mut bl_t = nwk_parsed.branch_lengths;
     let (dense_parts_t, sparse_parts_t, rate_t) = setup_with_indels(&graph_t, &graph_t_names, &mut bl_t, n_indels)?;
     let total_length_t = total_sequence_length(&dense_parts_t, &sparse_parts_t);
     let contributions_t = gather_edge_contributions(&graph_t, &dense_parts_t, &sparse_parts_t)?;
@@ -834,12 +872,10 @@ mod tests {
     let bl_t = first_edge_bl(&graph_t, &bl_t);
     let lh_t = eval_combined_first_edge(&graph_t, &dense_parts_t, &sparse_parts_t, rate_t, bl_t)?;
 
-    let NwkParse {
-      graph: graph_sqrt,
-      names: graph_sqrt_names,
-      branch_lengths: mut bl_sqrt,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sqrt_names = nwk_parsed.names();
+    let graph_sqrt = nwk_parsed.graph;
+    let mut bl_sqrt = nwk_parsed.branch_lengths;
     let (dense_parts_sqrt, sparse_parts_sqrt, rate_sqrt) =
       setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
     let total_length_sqrt = total_sequence_length(&dense_parts_sqrt, &sparse_parts_sqrt);
@@ -856,12 +892,10 @@ mod tests {
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &dense_parts_sqrt, &sparse_parts_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let NwkParse {
-      graph: graph_log,
-      names: graph_log_names,
-      branch_lengths: mut bl_log,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_log_names = nwk_parsed.names();
+    let graph_log = nwk_parsed.graph;
+    let mut bl_log = nwk_parsed.branch_lengths;
     let (dense_parts_log, sparse_parts_log, rate_log) =
       setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
     let total_length_log = total_sequence_length(&dense_parts_log, &sparse_parts_log);
@@ -897,12 +931,10 @@ mod tests {
   /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
@@ -957,12 +989,10 @@ mod tests {
   /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
@@ -1020,7 +1050,10 @@ mod tests {
   #[case::brent_log( BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);

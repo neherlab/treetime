@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::{NwkParse, nwk_read_str};
+use treetime_io::nwk::nwk_read_str;
 use treetime_primitives::Seq;
 
 #[test]
@@ -95,17 +95,23 @@ mod helpers {
   use super::*;
 
   pub fn two_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     (graph, names)
   }
 
   pub fn three_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     (graph, names)
   }
 
   pub fn four_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap();
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     (graph, names)
   }
 

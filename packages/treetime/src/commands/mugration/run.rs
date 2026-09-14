@@ -28,9 +28,9 @@ pub fn run_mugration(
     .as_ref()
     .ok_or_else(|| make_report!("Tree file is required"))?;
   let parse = nwk_read_file(tree_path)?;
+  let confidences = parse.confidences();
+  let names = parse.names();
   let graph: Graph = parse.graph;
-  let confidences = parse.confidences;
-  let names = parse.names;
   let branch_lengths = parse.branch_lengths;
 
   let resolved = mugration_args.resolve_outputs()?;

@@ -6,7 +6,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_convergence_support::tests::{compute_total_lh, setup_partitions, simple_alignment};
 
@@ -23,7 +23,10 @@ mod tests {
     // Tree with zero branch length on edge to A
     let tree_newick = "((A:0.0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
+    let nwk_parsed = nwk_read_str(tree_newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -67,7 +70,10 @@ mod tests {
     // Tree with very short branch lengths (all 0.0001)
     let tree_newick = "((A:0.0001,B:0.0001)AB:0.0001,(C:0.0001,D:0.0001)CD:0.0001)root:0.0001;";
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
+    let nwk_parsed = nwk_read_str(tree_newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -111,7 +117,10 @@ mod tests {
     // Tree with longer branch lengths (some > 1 sub/site)
     let tree_newick = "((A:1.0,B:2.0)AB:1.0,(C:2.0,D:1.2)CD:0.5)root:0.1;";
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
+    let nwk_parsed = nwk_read_str(tree_newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;

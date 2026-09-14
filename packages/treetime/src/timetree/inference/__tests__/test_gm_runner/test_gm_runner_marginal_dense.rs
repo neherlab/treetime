@@ -21,7 +21,7 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use rstest::rstest;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Marginal dense tests ---
@@ -45,7 +45,10 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;

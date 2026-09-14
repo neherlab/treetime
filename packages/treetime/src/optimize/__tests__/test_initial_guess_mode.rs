@@ -28,7 +28,7 @@ pub mod tests {
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
@@ -44,12 +44,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
+    let nwk_parsed = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -57,12 +55,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_explicit_nan() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let nan_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
@@ -72,12 +68,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     set_first_branch_length(&graph, &mut branch_lengths, -0.1);
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
@@ -86,12 +80,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "A", -0.1);
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "C", f64::INFINITY);
@@ -110,12 +102,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     assert!(invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -543,12 +533,10 @@ pub mod tests {
     > {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = test_alignment()?;
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read_str(newick)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?);

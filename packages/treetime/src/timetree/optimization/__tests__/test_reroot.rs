@@ -32,7 +32,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::RerootChanges;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq, seq};
   use treetime_utils::make_report;
 
@@ -88,12 +88,10 @@ mod tests {
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
     // Test that reroot works correctly with sparse partitions when edge split is enabled
     let aln = gap_free_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let constraints = date_constraints(&names, &graph);
 
@@ -192,7 +190,9 @@ mod tests {
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     // Tree: (A:0.1,B:0.2)root;
     // After reroot to A, edge direction inverts
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -278,7 +278,9 @@ mod tests {
     // marginal update pass (process_node_backward + process_node_forward).
     //
     // Tree: (A:0.1,B:0.2)root;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -366,7 +368,9 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -428,7 +432,9 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -509,12 +515,10 @@ mod tests {
     // Regression test: verify reroot_tree completes without panicking
     // when keep_root=false (reroot enabled) with sparse partitions
     let aln = gap_free_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let constraints = date_constraints(&names, &graph);
 

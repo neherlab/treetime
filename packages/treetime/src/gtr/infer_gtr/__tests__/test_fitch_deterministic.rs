@@ -10,7 +10,7 @@ mod tests {
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
@@ -37,14 +37,20 @@ mod tests {
     let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr_a = {
-      let NwkParse { graph, names, branch_lengths, .. } = nwk_read_file(&tree_path)?;
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 
     let gtr_b = {
-      let NwkParse { graph, names, branch_lengths, .. } = nwk_read_file(&tree_path)?;
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?

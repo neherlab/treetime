@@ -10,7 +10,7 @@ mod tests {
   use maplit::btreemap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);
 
@@ -18,7 +18,9 @@ mod tests {
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read_str(nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let mut partition = PartitionFitch {
       index: 0,

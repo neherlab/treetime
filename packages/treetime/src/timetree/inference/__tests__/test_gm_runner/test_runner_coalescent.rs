@@ -29,7 +29,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   /// Verifies the full timetree pipeline completes without panic when coalescent
   /// is enabled. Before the Formula discretization fixes, this would panic on
@@ -95,12 +95,10 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     dataset: &str,
     case: &super::super::test_gm_runner_support::support::DatasetOutputs,
   ) -> Result<TimetreeSetup, Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;

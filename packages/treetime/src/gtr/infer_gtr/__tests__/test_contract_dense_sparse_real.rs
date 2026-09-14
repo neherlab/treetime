@@ -52,7 +52,7 @@ mod tests {
 
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   #[rustfmt::skip]
   #[rstest]
@@ -120,12 +120,10 @@ mod tests {
     let aln = read_many_fasta_path(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_file(&tree_path)?;
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let partition = PartitionMarginalDense::new(
         0,
@@ -157,12 +155,10 @@ mod tests {
     };
 
     let sparse = {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_file(&tree_path)?;
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?

@@ -108,7 +108,7 @@ mod tests {
     use itertools::Itertools;
     use maplit::btreemap;
     use treetime_graph::edge::GraphEdgeKey;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
 
     fn c(b: u8) -> AsciiChar {
@@ -156,12 +156,10 @@ mod tests {
       let child_names: Vec<String> = (0..n_children).map(|i| format!("C{i}")).collect();
       let inner = child_names.iter().map(|name| format!("{name}:0.1")).join(",");
       let newick = format!("((({inner})V:0.2)U:0.1)root:0.0;");
-      let NwkParse {
-        graph,
-        names: node_names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(&newick).unwrap();
+      let nwk_parsed = nwk_read_str(&newick).unwrap();
+      let node_names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
       // M_v: k substitutions A->C at positions 0..k.
@@ -219,12 +217,10 @@ mod tests {
         .map(|name| format!("{name}:0.1"))
         .join(",");
       let newick = format!("(({children})V:0.1,S:0.1)root:0.0;");
-      let NwkParse {
-        graph,
-        names: node_names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(&newick).unwrap();
+      let nwk_parsed = nwk_read_str(&newick).unwrap();
+      let node_names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(

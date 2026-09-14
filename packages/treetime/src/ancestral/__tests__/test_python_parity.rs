@@ -23,7 +23,7 @@ mod tests {
   use std::path::PathBuf;
   use std::sync::LazyLock;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_path, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
+  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
   use treetime_utils::make_report;
 
@@ -84,12 +84,10 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_path(&[aln_path], &alphabet)?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
 
@@ -201,12 +199,10 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:249-250
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
@@ -245,12 +241,10 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:245
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
@@ -285,12 +279,10 @@ mod tests {
   /// does not.
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
@@ -326,12 +318,10 @@ mod tests {
   /// distributions everywhere in the tree, not just at spot-checked nodes.
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
@@ -366,12 +356,10 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:252-274
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
@@ -422,12 +410,10 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:273-274
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
@@ -475,12 +461,10 @@ mod tests {
     // Use simple alignment without gaps or ambiguous characters
     let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;

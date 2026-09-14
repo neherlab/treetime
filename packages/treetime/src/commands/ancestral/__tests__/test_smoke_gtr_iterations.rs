@@ -10,7 +10,7 @@ mod tests {
   use lazy_static::lazy_static;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   lazy_static! {
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -23,12 +23,10 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
@@ -65,12 +63,10 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_dense() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {

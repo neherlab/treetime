@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   // Regression: run_optimize_mixed must not produce -inf/NaN when entering
   // with branch_length=0 and mismatched certain states. Before the fix,
@@ -26,12 +26,10 @@ mod tests {
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
     // Tree with zero-length branches to force the edge case
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Alignment with mismatches: leaf A differs from leaf B at multiple positions,

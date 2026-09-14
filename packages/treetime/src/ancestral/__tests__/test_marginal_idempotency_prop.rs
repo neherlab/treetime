@@ -9,7 +9,7 @@ mod tests {
   use proptest::prelude::*;
   use rand::SeedableRng;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlphabetLike;
   use treetime_utils::prop_assert_abs_diff_eq;
 
@@ -44,7 +44,9 @@ mod tests {
     /// Companion example test: `test_marginal_idempotency_example_dense`.
     #[test]
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
-      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let (_, recon) = run_dense_marginal(&input).unwrap();
 
@@ -77,7 +79,9 @@ mod tests {
     /// Companion example test: `test_marginal_idempotency_example_sparse`.
     #[test]
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
-      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let (_, recon) = run_sparse_marginal(&input).unwrap();
 
@@ -94,7 +98,9 @@ mod tests {
     /// pairing, so an output pass must not rewrite either.
     #[test]
     fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
-      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let (_, mut recon) = run_sparse_marginal(&input).unwrap();
       let mut rng = rand::rngs::StdRng::seed_from_u64(0);

@@ -23,27 +23,23 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph: mut graph_with,
-      names: graph_with_names,
-      branch_lengths: mut branch_lengths_with,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_with_names = nwk_parsed.names();
+    let mut graph_with = nwk_parsed.graph;
+    let mut branch_lengths_with = nwk_parsed.branch_lengths;
     let (dense_with, mut sparse_with) =
       setup_partitions(&graph_with, &graph_with_names, &aln, &mut branch_lengths_with)?;
 
-    let NwkParse {
-      graph: mut graph_without,
-      names: graph_without_names,
-      branch_lengths: mut branch_lengths_without,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_without_names = nwk_parsed.names();
+    let mut graph_without = nwk_parsed.graph;
+    let mut branch_lengths_without = nwk_parsed.branch_lengths;
     let (dense_without, mut sparse_without) =
       setup_partitions(&graph_without, &graph_without_names, &aln, &mut branch_lengths_without)?;
 
@@ -111,12 +107,10 @@ mod tests {
   #[test]
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -155,20 +149,16 @@ mod tests {
   #[test]
   fn test_no_indels_matches_no_indel_data() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph: mut graph_no_flag,
-      names: graph_no_flag_names,
-      branch_lengths: mut branch_lengths_nf,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_no_flag_names = nwk_parsed.names();
+    let mut graph_no_flag = nwk_parsed.graph;
+    let mut branch_lengths_nf = nwk_parsed.branch_lengths;
     let (dense_nf, sparse_nf) = setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
 
-    let NwkParse {
-      graph: mut graph_flag,
-      names: graph_flag_names,
-      branch_lengths: mut branch_lengths_f,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_flag_names = nwk_parsed.names();
+    let mut graph_flag = nwk_parsed.graph;
+    let mut branch_lengths_f = nwk_parsed.branch_lengths;
     let (dense_f, sparse_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln, &mut branch_lengths_f)?;
 
     let names_tt_2 = graph_no_flag_names.clone();
@@ -254,7 +244,10 @@ mod tests {
   #[trace]
   fn test_no_indels_initial_guess_ignores_indel_counts(#[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
-    let NwkParse { graph: graph_with_indel, names: graph_with_indel_names, branch_lengths: mut branch_lengths_with_indel, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_with_indel_names = nwk_parsed.names();
+    let graph_with_indel = nwk_parsed.graph;
+    let mut branch_lengths_with_indel = nwk_parsed.branch_lengths;
     let (mut dense_with_indel, mut sparse_with_indel) = setup_identical_partitions(&graph_with_indel, &graph_with_indel_names, &mut branch_lengths_with_indel)?;
     let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)?];
     inject_indels_on_first_edge(
@@ -262,7 +255,10 @@ mod tests {
       &mut dense_with_indel,      &mut sparse_with_indel,      &indels,
     );
 
-    let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, branch_lengths: mut branch_lengths_without_indel, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_without_indel_names = nwk_parsed.names();
+    let graph_without_indel = nwk_parsed.graph;
+    let mut branch_lengths_without_indel = nwk_parsed.branch_lengths;
     let (dense_without_indel, sparse_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
     let total_length_with_indel = total_sequence_length(&dense_with_indel, &sparse_with_indel);

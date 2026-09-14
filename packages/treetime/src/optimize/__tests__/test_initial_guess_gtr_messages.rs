@@ -20,7 +20,7 @@ mod tests {
   use ndarray::array;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -80,12 +80,10 @@ mod tests {
 
     // Scenario 1: stale JC69 messages (the bug)
     // Replace GTR but do NOT re-run marginal_update.
-    let NwkParse {
-      graph: graph_stale,
-      names: graph_stale_names,
-      branch_lengths: mut branch_lengths_stale,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_stale_names = nwk_parsed.names();
+    let graph_stale = nwk_parsed.graph;
+    let mut branch_lengths_stale = nwk_parsed.branch_lengths;
     let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
     let (mut partitions_stale, _) = marginal_update_dense(
       &graph_stale,
@@ -113,12 +111,10 @@ mod tests {
 
     // Scenario 2: fresh F81 messages (the fix)
     // Replace GTR AND re-run marginal_update.
-    let NwkParse {
-      graph: graph_fresh,
-      names: graph_fresh_names,
-      branch_lengths: mut branch_lengths_fresh,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_fresh_names = nwk_parsed.names();
+    let graph_fresh = nwk_parsed.graph;
+    let mut branch_lengths_fresh = nwk_parsed.branch_lengths;
     let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
     let (mut partitions_fresh, _) = marginal_update_dense(
       &graph_fresh,
@@ -169,12 +165,10 @@ mod tests {
     })?;
 
     // Run full initialization with the fix: JC69, update, replace, update, guess
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
     let (mut partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
@@ -204,12 +198,10 @@ mod tests {
     // initial guess may differ from bl_first (new transition matrices).
     // But running the SAME sequence twice from identical state must
     // produce the same result.
-    let NwkParse {
-      graph: graph2,
-      names: graph2_names,
-      branch_lengths: mut branch_lengths2,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph2_names = nwk_parsed.names();
+    let graph2 = nwk_parsed.graph;
+    let mut branch_lengths2 = nwk_parsed.branch_lengths;
     let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
     let (mut partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
     *partitions2[0].partition.gtr_mut() = f81_gtr;

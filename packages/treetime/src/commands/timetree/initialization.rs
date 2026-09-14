@@ -12,7 +12,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 
 pub struct InputData {
   pub graph: Graph,
@@ -42,12 +42,11 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     BTreeMap<GraphNodeKey, Option<String>>,
     BTreeMap<GraphEdgeKey, Option<f64>>,
   ) = if let Some(tree_path) = &args.tree {
-    let NwkParse {
-      graph,
-      confidences,
-      names,
-      branch_lengths,
-    } = nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?;
+    let nwk_parsed = nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?;
+    let confidences = nwk_parsed.confidences();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     (graph, confidences, names, branch_lengths)
   } else {
     todo!("Tree inference from alignment not yet implemented")

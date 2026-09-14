@@ -13,7 +13,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   fn load() -> Result<
     (
@@ -30,12 +30,10 @@ mod tests {
       .and_then(Path::parent)
       .expect("workspace root");
     let alphabet = Alphabet::default();
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let nwk_parsed = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let sequences = read_many_fasta_path(&[aln.to_str().expect("utf-8 path")], &alphabet)?;

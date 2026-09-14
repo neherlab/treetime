@@ -1,7 +1,9 @@
+use crate::fasta::FastaRecord;
 use eyre::{Report, WrapErr};
 use log::warn;
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
@@ -9,6 +11,7 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::Seq;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
@@ -19,26 +22,141 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
-/// A parsed Newick tree: the graph together with the per-node input-tree branch support and names.
+/// Per-node metadata parsed from the Newick tree, before any alignment is attached.
 ///
-/// `confidences` is keyed by the graph's own node keys and holds each node's Newick branch support
-/// (bootstrap or posterior), with `None` where a node carried no confidence annotation. It lets a
-/// consumer read each node's input branch support as a value threaded from the parse rather than off
-/// the node payload.
+/// `name` is the node's name: the parsed name for named nodes and the synthetic `NODE_xxxxx` name
+/// that `assign_node_names` assigns to internals, `None` where a node has no name. `confidence` is
+/// the node's Newick branch support (bootstrap or posterior), `None` where a node carried no
+/// confidence annotation.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NwkNodeMeta {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+}
+
+/// One node's reconstruction input: its tree metadata merged with its attached alignment sequence.
 ///
-/// `names` is keyed by the graph's own node keys and holds each node's name: the parsed name for
-/// named nodes and the synthetic `NODE_xxxxx` name that `assign_node_names` assigns to internals,
-/// with `None` where a node has no name. It lets a consumer read each node's name as a value
-/// threaded from the parse rather than off the node payload.
+/// `name` and `confidence` come from the Newick parse; `aln` and `desc` come from the alignment.
+/// `aln` and `desc` are `None` for internal nodes, which carry no input sequence.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct NwkFastaNodeInput {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+  pub aln: Option<Seq>,
+  pub desc: Option<String>,
+}
+
+/// One edge's reconstruction input: the raw input-tree branch length, `None` where the edge carried
+/// no `:length`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NwkFastaEdgeInput {
+  pub branch_length: Option<f64>,
+}
+
+/// The merged tree-and-alignment input passed through the reconstruction pipeline: the graph, the
+/// per-node input keyed by the graph's own node keys, and the per-edge input keyed by its edge keys.
+#[derive(Debug)]
+pub struct NwkFastaInput {
+  pub graph: Graph,
+  pub nodes: BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  pub edges: BTreeMap<GraphEdgeKey, NwkFastaEdgeInput>,
+}
+
+impl NwkFastaInput {
+  /// Merge a parsed Newick tree with alignment records, matching each leaf to its record by name and
+  /// moving the matched sequence and description into the node's input.
+  ///
+  /// Leaves with no matching record get `aln = None`; a later completion step may fill them. Internal
+  /// nodes always get `aln = None`. On duplicate record names the first record wins, matching the
+  /// attachment order. Extra records that match no leaf are ignored.
+  pub fn from_parse_and_aln(parse: NwkParse, aln: Vec<FastaRecord>) -> Self {
+    let NwkParse {
+      graph,
+      nodes: metas,
+      branch_lengths,
+    } = parse;
+
+    let mut records_by_name: BTreeMap<String, FastaRecord> = BTreeMap::new();
+    for record in aln {
+      records_by_name.entry(record.seq_name.clone()).or_insert(record);
+    }
+
+    let leaf_keys: BTreeSet<GraphNodeKey> = graph.get_leaves().iter().map(|leaf| leaf.read_arc().key()).collect();
+
+    let nodes = metas
+      .into_iter()
+      .map(|(key, meta)| {
+        let record = if leaf_keys.contains(&key) {
+          meta.name.as_deref().and_then(|name| records_by_name.remove(name))
+        } else {
+          None
+        };
+        let (aln, desc) = match record {
+          Some(record) => (Some(record.seq), record.desc),
+          None => (None, None),
+        };
+        (
+          key,
+          NwkFastaNodeInput {
+            name: meta.name,
+            confidence: meta.confidence,
+            aln,
+            desc,
+          },
+        )
+      })
+      .collect();
+
+    let edges = branch_lengths
+      .into_iter()
+      .map(|(key, branch_length)| (key, NwkFastaEdgeInput { branch_length }))
+      .collect();
+
+    Self { graph, nodes, edges }
+  }
+
+  /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
+  /// output writers consume it.
+  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
+    self.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect()
+  }
+
+  /// The per-edge branch-length map, keyed by edge id, as the reconstruction and output writers
+  /// consume it.
+  pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    self
+      .edges
+      .iter()
+      .map(|(key, edge)| (*key, edge.branch_length))
+      .collect()
+  }
+}
+
+/// A parsed Newick tree: the graph together with the per-node metadata and per-edge branch lengths.
+///
+/// `nodes` is keyed by the graph's own node keys and holds each node's name and branch support as
+/// values propagated from the parse rather than off the node payload.
+///
+/// `branch_lengths` is keyed by the graph's own edge keys and holds each edge's raw input-tree branch
+/// length, `None` where an edge carried no `:length`, as a value rather than off the edge payload.
 #[derive(Debug)]
 pub struct NwkParse {
   pub graph: Graph,
-  pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  /// Each edge's raw input-tree branch length, keyed by the graph's own edge keys, with `None`
-  /// where an edge carried no `:length`. Threaded from the parse so a consumer reads each branch
-  /// length as a value rather than off the edge payload.
+  pub nodes: BTreeMap<GraphNodeKey, NwkNodeMeta>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+impl NwkParse {
+  /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
+  /// output writers consume it.
+  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
+    self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
+  }
+
+  /// The per-node branch-support map, keyed by node id, as the output writers consume it.
+  pub fn confidences(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    self.nodes.iter().map(|(key, meta)| (*key, meta.confidence)).collect()
+  }
 }
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
@@ -69,15 +187,19 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
   let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
-  let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
-  let mut names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
+  let mut nodes: BTreeMap<GraphNodeKey, NwkNodeMeta> = BTreeMap::new();
   let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
   for nwk_node in &nwk_graph.nodes {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
     let key = graph.add_node();
-    confidences.insert(key, nwk_node.confidence);
-    names.insert(key, name.map(ToOwned::to_owned));
+    nodes.insert(
+      key,
+      NwkNodeMeta {
+        name: name.map(ToOwned::to_owned),
+        confidence: nwk_node.confidence,
+      },
+    );
     node_keys.push(key);
   }
 
@@ -102,12 +224,19 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
 
   graph.build()?;
 
+  // `assign_node_names` fills synthetic `NODE_xxxxx` names for unnamed internals. It operates on a
+  // name-only map, so extract names, assign, then merge the assigned names back into the metadata.
+  let names = nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect();
   let names = assign_node_names(names, &graph)?;
+  for (key, name) in names {
+    if let Some(meta) = nodes.get_mut(&key) {
+      meta.name = name;
+    }
+  }
 
   Ok(NwkParse {
     graph,
-    confidences,
-    names,
+    nodes,
     branch_lengths,
   })
 }

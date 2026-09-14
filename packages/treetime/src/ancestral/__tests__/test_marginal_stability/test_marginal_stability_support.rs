@@ -16,7 +16,7 @@ pub mod tests {
 
   use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -61,12 +61,10 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -85,12 +83,10 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;

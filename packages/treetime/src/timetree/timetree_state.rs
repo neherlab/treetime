@@ -304,13 +304,15 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_distribution::Distribution;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   /// A topology change clears the value-resident branch-length distribution and backward message on
   /// every edge, so the next branch-distribution build starts each surviving edge from scratch.
   #[test]
   fn test_timetree_state_reset_date_edges_clears_distribution_and_message() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let mut state = TimetreeState::new(&graph);
     for edge_ref in graph.get_edges() {
       let key = edge_ref.read_arc().key();
@@ -335,7 +337,9 @@ mod tests {
   /// edges already in the state, so they carry across passes.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let mut state = TimetreeState::new(&graph);
     let key = graph
       .get_edges()

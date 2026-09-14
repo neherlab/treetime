@@ -6,7 +6,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     NUC_ALPHABET, TREE_NEWICK, setup_dense_only, setup_sparse_only,
@@ -17,12 +17,10 @@ mod tests {
     let aln = super::super::test_dense_sparse_equivalence_support::tests::gap_free_alignment()?;
 
     // Initialize dense
-    let NwkParse {
-      graph: graph_dense,
-      names: graph_dense_names,
-      branch_lengths: branch_lengths_dense,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let branch_lengths_dense = nwk_parsed.branch_lengths;
     let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let (dense_partitions, log_lh_dense) = marginal_update_dense(
       &graph_dense,
@@ -32,12 +30,10 @@ mod tests {
     let log_lh_dense = log_lh_dense.value();
 
     // Initialize sparse
-    let NwkParse {
-      graph: graph_sparse,
-      names: graph_sparse_names,
-      branch_lengths: branch_lengths_sparse,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let branch_lengths_sparse = nwk_parsed.branch_lengths;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
       &graph_sparse,
@@ -70,12 +66,10 @@ mod tests {
     )?;
 
     // Initialize dense
-    let NwkParse {
-      graph: graph_dense,
-      names: graph_dense_names,
-      branch_lengths: branch_lengths_dense,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let branch_lengths_dense = nwk_parsed.branch_lengths;
     let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let (dense_partitions, log_lh_dense) = marginal_update_dense(
       &graph_dense,
@@ -85,12 +79,10 @@ mod tests {
     let log_lh_dense = log_lh_dense.value();
 
     // Initialize sparse
-    let NwkParse {
-      graph: graph_sparse,
-      names: graph_sparse_names,
-      branch_lengths: branch_lengths_sparse,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let branch_lengths_sparse = nwk_parsed.branch_lengths;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
       &graph_sparse,

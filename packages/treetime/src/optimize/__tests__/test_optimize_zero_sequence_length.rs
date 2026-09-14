@@ -11,7 +11,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
 
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   fn zero_length_partitions(_graph: &Graph) -> (Vec<DenseReconstruction>, Vec<SparseReconstruction>) {
@@ -31,11 +31,9 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_error() {
-    let NwkParse {
-      graph,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
     let total_length = total_sequence_length(&dense, &sparse);
@@ -55,11 +53,9 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_initial_guess_error() {
-    let NwkParse {
-      graph,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
     let total_length = total_sequence_length(&dense, &sparse);
@@ -81,11 +77,9 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_with_fixed_rate_error() {
-    let NwkParse {
-      graph,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
     let total_length = total_sequence_length(&dense, &sparse);

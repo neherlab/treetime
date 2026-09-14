@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::graph::Graph;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
-  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_utils::assert_error;
 
   use helpers::{setup_reroot_test_graph, setup_reroot_test_graph_with_dates};
@@ -25,12 +25,10 @@ mod tests {
     //      mid  B
     //      /
     //     A
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").expect("Expected node named 'mid'");
@@ -384,7 +382,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
 
     pub fn leaf_times(
       graph: &Graph,
@@ -415,12 +413,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let times = leaf_times(&graph, &names, dates);
 

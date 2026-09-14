@@ -14,7 +14,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -62,12 +62,10 @@ mod tests {
     // Tree with dates that fit the clock model well (linear relationship)
     // Clock model: div = 0.01 * date - 20.0 (rate=0.01, intercept=-20.0)
     // For a node at date 2010 with div 0.1: expected_div = 0.01 * 2010 - 20.0 = 0.1
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Set dates that match the branch lengths well
@@ -100,12 +98,10 @@ mod tests {
   #[test]
   fn test_clock_filter_detects_outlier() -> Result<(), Report> {
     // Tree with one leaf having a date that deviates strongly from the clock model
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Set dates where one sample (A) has an extreme deviation
@@ -153,12 +149,10 @@ mod tests {
   #[test]
   fn test_clock_filter_iqd_calculation() -> Result<(), Report> {
     // Verify IQD is computed and returned correctly
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Dates with some spread to create non-zero IQD
@@ -185,12 +179,10 @@ mod tests {
   #[test]
   fn test_clock_filter_respects_threshold() -> Result<(), Report> {
     // Test that higher threshold allows more deviation
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let dates = btreemap! {
@@ -231,7 +223,9 @@ mod tests {
 
   #[test]
   fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for node in graph.get_leaves() {

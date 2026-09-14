@@ -17,7 +17,7 @@ mod tests {
 
   use std::path::Path;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
@@ -37,12 +37,10 @@ mod tests {
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
     let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let NwkParse {
-      mut graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let names = nwk_parsed.names();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
@@ -108,12 +106,10 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let NwkParse {
-      mut graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let names = nwk_parsed.names();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;

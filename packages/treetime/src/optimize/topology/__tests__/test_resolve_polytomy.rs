@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
 
   use helpers::{reversion_present, sub, total_subs};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   // root -> U -> V -> {C1, C2, C3}. V is the polytomy under test.
   const NWK: &str = "(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;";
@@ -22,12 +22,10 @@ mod tests {
     // M_v = {A0T (p), C5G (q)}; C1 and C2 both revert p, C3 keeps it. The routine merges
     // C1+C2, hoists the reverting group, and retires the helper, reaching the parsimony
     // optimum of two mutations (q above, p only on the C3 lineage).
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read_str(NWK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,
@@ -72,12 +70,10 @@ mod tests {
     // C1 reverts p1, C2 reverts p2 (different positions): the two required splits are
     // incompatible. One hoist takes the total from 5 to 4; the residual reversion is
     // irreducible homoplasy, and the routine stops there.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read_str(NWK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,
@@ -127,12 +123,10 @@ mod tests {
     // analytical parsimony minimum, the same value the routine reaches on any rooting of this
     // tree (compare test_resolve_polytomy_merge_hoist_retire_worked_example, where the same
     // reversion sits on a genuine internal edge).
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,
@@ -179,12 +173,10 @@ mod tests {
   fn test_resolve_polytomy_retirement_preserves_preexisting_internal_node() -> Result<(), Report> {
     // W is a pre-existing internal node reached by a mutation-free edge from V. Helper
     // retirement must dissolve only nodes it created, never W, even though V->W is empty.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,
@@ -230,12 +222,10 @@ mod tests {
   fn test_resolve_polytomy_root_polytomy_skipped() -> Result<(), Report> {
     // A polytomy at the root has no parent edge to revert, so no hoist fires. With no
     // shared substitutions there is nothing to do; the routine leaves the tree untouched.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,
@@ -270,12 +260,10 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_no_change_without_reversions() -> Result<(), Report> {
     // Distinct, non-shared, non-reverting child substitutions: nothing to merge or hoist.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read_str(NWK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (partition, node_states) = helpers::make_partition(
       &graph,

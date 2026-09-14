@@ -35,9 +35,9 @@ pub fn run_prune(
   progress.report("Reading input", 0.0, "");
 
   let parse = nwk_read_file(args.tree())?;
+  let confidences = parse.confidences();
+  let names = parse.names();
   let graph: Graph = parse.graph;
-  let confidences = parse.confidences;
-  let names = parse.names;
   let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph, &names)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;

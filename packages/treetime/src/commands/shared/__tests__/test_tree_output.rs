@@ -27,7 +27,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::graph::TreeWriteKind;
-  use treetime_io::nwk::{CommentProviders, NwkParse, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_primitives::{AsciiChar, LogLh, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
 
@@ -412,12 +412,10 @@ mod tests {
       .into_iter()
       .zip(documents)
     {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(&document.newick)?;
+      let nwk_parsed = nwk_read_str(&document.newick)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       assert_eq!(
         None,
@@ -565,12 +563,10 @@ mod tests {
     );
 
     pub fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str("(A:0.5,B:0)root;")?;
+      let nwk_parsed = nwk_read_str("(A:0.5,B:0)root;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let root_key = node_key(&graph, &names, "root");
       let a_key = node_key(&graph, &names, "A");
@@ -687,12 +683,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
     }
 
@@ -940,12 +934,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
     }
 
@@ -979,12 +971,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
     }
 
@@ -996,12 +986,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
     }
 
@@ -1062,12 +1050,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
       let gtr = GTR::new(GTRParams {
@@ -1117,12 +1103,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
     }
 

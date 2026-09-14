@@ -201,7 +201,7 @@ mod tests {
     use tempfile::tempdir;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use treetime_utils::o;
@@ -222,7 +222,9 @@ mod tests {
     /// Two-leaf tree where leaf A differs from the root at one position.
     /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
     pub fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
-      let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
       let graph: Graph = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };

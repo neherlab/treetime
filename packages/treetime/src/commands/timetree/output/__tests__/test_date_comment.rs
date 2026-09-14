@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
-  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkParse, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
   use treetime_primitives::AsciiChar;
 
   fn c(b: u8) -> AsciiChar {
@@ -99,7 +99,9 @@ mod tests {
 
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,
@@ -122,7 +124,9 @@ mod tests {
 
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,

@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
@@ -201,12 +201,10 @@ mod tests {
   #[test]
   fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
     // Every child shares the same mutation. One group = all children.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
@@ -243,12 +241,10 @@ mod tests {
   fn test_merge_overlapping_groups_greedy_selection() -> Result<(), Report> {
     // A,B share {sub0}. B,C share {sub1}. B in both groups.
     // Greedy picks one, second group excluded for this round.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
@@ -273,12 +269,10 @@ mod tests {
   #[test]
   fn test_merge_polytomy_reduced_to_binary_stops() -> Result<(), Report> {
     // 3 children, 2 share. After merge: binary tree, loop stops.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
@@ -307,12 +301,10 @@ mod tests {
   fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
     // Two independent polytomies: root has {I, D, E, F}, I has {A, B, C}.
     // A,B share sub0 under I. D,E share sub1 under root.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
@@ -341,12 +333,10 @@ mod tests {
   fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
     // A,B share a sub. C,D share an indel. No overlap between groups.
     // Both groups should merge (possibly in one round).
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let mut partition = helpers::make_partition_from_static(
       &graph,
@@ -383,12 +373,10 @@ mod tests {
     // Partition 1: A,B share sub at pos 0. Partition 2: A,C share sub at pos 50.
     // Total shared(A,B) = 1 (from p1). Total shared(A,C) = 1 (from p2).
     // Both groups have equal score. Greedy picks one.
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let p1 = helpers::make_partition_from_static(
@@ -453,12 +441,10 @@ mod tests {
       let names: Vec<String> = (0..n_children).map(|i| format!("N{i}")).collect();
       let newick_children = names.iter().map(|n| format!("{n}:0.1")).join(",");
       let newick = format!("({newick_children})root;");
-      let NwkParse {
-        graph,
-        names: node_names,
-        branch_lengths,
-        ..
-      } = nwk_read_str(&newick).unwrap();
+      let nwk_parsed = nwk_read_str(&newick).unwrap();
+      let node_names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
       let mut pos_counter = 0_usize;

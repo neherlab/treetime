@@ -161,7 +161,7 @@ mod tests {
     use std::fmt::Write;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
 
     pub fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -180,7 +180,9 @@ mod tests {
     }
 
     pub fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
-      let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
       (graph, names)
     }
 

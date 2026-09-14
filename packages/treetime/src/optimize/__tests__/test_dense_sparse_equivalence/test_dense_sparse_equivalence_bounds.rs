@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     TREE_NEWICK, gap_free_alignment, get_branch_lengths, setup_dense_only, setup_sparse_only,
@@ -26,7 +26,10 @@ mod tests {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
-    let NwkParse { graph: graph_dense, names: graph_dense_names, branch_lengths: mut bl_dense, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let mut bl_dense = nwk_parsed.branch_lengths;
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
@@ -41,7 +44,10 @@ mod tests {
     let log_lh_dense = log_lh_dense.value();
 
     // Run sparse-only optimization
-    let NwkParse { graph: graph_sparse, names: graph_sparse_names, branch_lengths: mut bl_sparse, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let mut bl_sparse = nwk_parsed.branch_lengths;
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
@@ -90,7 +96,10 @@ mod tests {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
-    let NwkParse { graph: graph_dense, names: graph_dense_names, branch_lengths: mut bl_dense, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let mut bl_dense = nwk_parsed.branch_lengths;
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
@@ -104,7 +113,10 @@ mod tests {
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
 
     // Run sparse-only optimization
-    let NwkParse { graph: graph_sparse, names: graph_sparse_names, branch_lengths: mut bl_sparse, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let mut bl_sparse = nwk_parsed.branch_lengths;
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {

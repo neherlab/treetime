@@ -32,7 +32,7 @@ mod tests {
 
   use rstest::rstest;
 
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   fn extract_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
@@ -54,7 +54,10 @@ mod tests {
   fn test_gm_runner_pre_optimize_changes_branch_lengths(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let aln = load_alignment_for_dataset(dataset)?;
@@ -109,7 +112,10 @@ mod tests {
   fn test_gm_runner_pre_optimize_pipeline_succeeds(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;

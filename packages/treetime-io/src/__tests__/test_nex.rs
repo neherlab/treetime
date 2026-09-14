@@ -53,12 +53,11 @@ mod tests {
   )]
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
+    let parse = nwk_read_str(nwk)?;
+    let names = parse.names();
     let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(nwk)?;
+      graph, branch_lengths, ..
+    } = parse;
     let actual = nex_write_str(&graph, &names, &branch_lengths, &NexWriteOptions::default())?;
     assert_eq!(expected, actual);
     Ok(())

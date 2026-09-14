@@ -30,7 +30,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta, read_many_fasta_path};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -256,12 +256,11 @@ fn read_nwk_fasta(args: &TreetimeAncestralArgs, progress: &dyn ProgressSink) -> 
 
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
-  let NwkParse {
-    graph,
-    confidences,
-    names,
-    branch_lengths,
-  } = nwk_read_file(args.tree())?;
+  let nwk_parsed = nwk_read_file(args.tree())?;
+  let confidences = nwk_parsed.confidences();
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
 
   Ok(ParsedNwkFasta {
     graph,

@@ -7,17 +7,16 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_io::nex::NexWriteOptions;
-  use treetime_io::nwk::{CommentProviders, NwkParse, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
 
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      confidences,
-      names,
-      branch_lengths,
-    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let confidences = nwk_parsed.confidences();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),

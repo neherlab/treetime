@@ -31,7 +31,7 @@ mod tests {
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   /// 4-taxon tree with positive initial branch lengths on every edge.
   ///
@@ -130,7 +130,10 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -181,7 +184,10 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero(#[case] model: GtrModelName,
   ) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, model, &mut branch_lengths)?;
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -229,12 +235,10 @@ mod tests {
   /// models: a change in which path fires must not affect the result.
   #[test]
   fn test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) =
       setup_identical_partitions(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
@@ -502,7 +506,10 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);

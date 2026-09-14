@@ -38,7 +38,7 @@ mod tests {
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::random::get_random_number_generator;
@@ -230,12 +230,10 @@ mod tests {
   );
 
   fn create_polytomy_state() -> Result<PolytomyStateSetup, Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(

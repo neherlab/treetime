@@ -8,16 +8,14 @@ mod tests {
   use treetime_graph::reroot::{
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
-  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.6,B:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.6,B:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -57,12 +55,10 @@ mod tests {
 
   #[test]
   fn test_reroot_split_edge_at_midpoint() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:1.0,B:2.0)root;")?;
+    let nwk_parsed = nwk_read_str("(A:1.0,B:2.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -91,7 +87,9 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_inverts_path() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -115,7 +113,9 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_multi_hop() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -135,7 +135,9 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_preserves_leaf_count() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let mut graph: Graph = graph;
 
     let initial_leaves = graph.get_leaves().len();
@@ -157,12 +159,10 @@ mod tests {
     //    mid   B
     //    /
     //   A
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
@@ -191,12 +191,10 @@ mod tests {
 
   #[test]
   fn test_reroot_remove_node_if_trivial_non_trivial_returns_none() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     // AB has two children, not trivial
@@ -216,12 +214,10 @@ mod tests {
 
   #[test]
   fn test_reroot_full_reroot_and_cleanup_preserves_topology() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -262,12 +258,10 @@ mod tests {
   #[test]
   fn test_reroot_remove_trivial_with_partial_branch_lengths() -> Result<(), Report> {
     // One edge has a branch length, the other does not -> merged gets the existing one
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.5)mid,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.5)mid,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
@@ -285,12 +279,10 @@ mod tests {
 
   #[test]
   fn test_reroot_full_cycle_branch_length_conservation() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     // Compute total branch length before reroot

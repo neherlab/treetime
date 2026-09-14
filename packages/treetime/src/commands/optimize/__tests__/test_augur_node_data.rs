@@ -131,16 +131,15 @@ mod tests {
     use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use crate::progress::NoopProgress;
     use treetime_io::fasta::read_many_fasta_path;
-    use treetime_io::nwk::{NwkParse, nwk_read_file};
+    use treetime_io::nwk::nwk_read_file;
 
     let root = helpers::project_root();
     let alphabet = Alphabet::default();
-    let NwkParse {
-      graph,
-      confidences,
-      names,
-      branch_lengths,
-    } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let nwk_parsed = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let confidences = nwk_parsed.confidences();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let sequences = read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = OptimizeParams {
@@ -218,9 +217,9 @@ mod tests {
 
     pub fn write_json(nwk: &str) -> String {
       let parse = nwk_read_str(nwk).unwrap();
+      let names = parse.names();
+      let confidences = parse.confidences();
       let graph: Graph = parse.graph;
-      let names = parse.names;
-      let confidences = parse.confidences;
       let branch_lengths = parse.branch_lengths;
       let data = build_augur_node_data_json(
         &graph,
@@ -240,9 +239,9 @@ mod tests {
 
     pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read_str(nwk).unwrap();
+      let names = parse.names();
+      let confidences = parse.confidences();
       let graph: Graph = parse.graph;
-      let names = parse.names;
-      let confidences = parse.confidences;
       let branch_lengths = parse.branch_lengths;
       let edges = graph.get_edges();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts

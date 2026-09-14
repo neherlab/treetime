@@ -10,19 +10,17 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
   /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
   /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
   fn polytomy_graph() -> Result<(Graph, GraphNodeKey, Vec<ChildRef>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;

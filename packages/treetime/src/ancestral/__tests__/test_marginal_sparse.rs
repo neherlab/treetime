@@ -25,7 +25,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlphabetLike, Seq};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -136,12 +136,10 @@ mod tests {
   /// under different rootings of the same unrooted topology. Returns only the scalar
   /// log-likelihood, discarding the partition data.
   fn run_sparse_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read_str(newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (log_lh, _) = run_sparse_marginal(&graph, &branch_lengths, &names, aln, gtr)?;
     Ok(log_lh)
@@ -189,12 +187,10 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
 
@@ -285,12 +281,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
@@ -335,12 +329,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
@@ -439,12 +431,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let gtr = make_nonuniform_gtr()?;
@@ -507,12 +497,10 @@ mod tests {
       mu,
     })?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let nwk_parsed = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     // Generate all possible triplets (4^3 = 64 combinations)
@@ -563,12 +551,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
@@ -657,12 +643,10 @@ mod tests {
         &*NUC_ALPHABET,
       )?;
       ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
-        let NwkParse {
-          graph,
-          names,
-          branch_lengths,
-          ..
-        } = nwk_read_str(newick)?;
+        let nwk_parsed = nwk_read_str(newick)?;
+        let names = nwk_parsed.names();
+        let graph = nwk_parsed.graph;
+        let branch_lengths = nwk_parsed.branch_lengths;
         let (_, recon) = run_sparse_marginal(
           &graph,
           &branch_lengths,

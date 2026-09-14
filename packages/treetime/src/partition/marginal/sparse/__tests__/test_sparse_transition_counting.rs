@@ -13,7 +13,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
 
   lazy_static! {
@@ -26,12 +26,10 @@ mod tests {
   ) -> Result<(Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = NUC_ALPHABET.clone();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let gtr = jc69(JC69Params {

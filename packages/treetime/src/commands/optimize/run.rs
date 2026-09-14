@@ -21,7 +21,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::Seq;
 
 pub fn run_optimize(
@@ -37,12 +37,11 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let NwkParse {
-    graph,
-    confidences,
-    names,
-    branch_lengths,
-  } = nwk_read_file(args.tree())?;
+  let nwk_parsed = nwk_read_file(args.tree())?;
+  let confidences = nwk_parsed.confidences();
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
 
   let resolved = args.resolve_outputs()?;
 

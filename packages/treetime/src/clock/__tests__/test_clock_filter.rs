@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   type OutlierGraphSetup = (
@@ -27,12 +27,10 @@ mod tests {
   /// root-to-tip distances ~2.02 and ~3.02, far above the clock-expected ~0.15.
   fn setup_outlier_graph() -> Result<OutlierGraphSetup, Report> {
     let tree = "(((A:0.1,B:0.2):0.01,(C:0.15,D:0.25):0.01):0.01,((E:0.12,F:0.18):0.01,(G:2.0,H:3.0):0.01):0.01)root;";
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(tree)?;
+    let nwk_parsed = nwk_read_str(tree)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Good clock: rate=0.01/year, base=2000 → date = div/0.01 + 2000
@@ -157,7 +155,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::{NwkParse, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
 
     pub fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
@@ -169,12 +167,10 @@ mod tests {
       ),
       Report,
     > {
-      let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+      let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
       let times = graph

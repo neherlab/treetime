@@ -16,7 +16,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
   /// C3: a tip that is Fitch-equal to its parent must keep its own observed nucleotide.
@@ -32,12 +32,10 @@ mod tests {
       >B
       GCGT
     "#})?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
@@ -63,12 +61,10 @@ mod tests {
       >C
       ATGTC
     "#})?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
@@ -108,12 +104,10 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     // Without imputation the tip echoes its observed input (`N` and `R` preserved).
@@ -145,12 +139,10 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;

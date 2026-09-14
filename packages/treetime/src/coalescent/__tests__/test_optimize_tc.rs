@@ -8,11 +8,13 @@ mod tests {
   use maplit::btreemap;
   use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::o;
 
   fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read_str(nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(dates, &graph, &names)?;
     Ok((graph, constraints))
   }

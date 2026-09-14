@@ -23,7 +23,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -33,12 +33,10 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
@@ -82,12 +80,10 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
@@ -130,18 +126,14 @@ mod tests {
   fn test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
 
-    let NwkParse {
-      graph: graph_dense,
-      names: graph_dense_names,
-      branch_lengths: mut branch_lengths_dense,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
-    let NwkParse {
-      graph: graph_sparse,
-      names: graph_sparse_names,
-      branch_lengths: mut branch_lengths_sparse,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let mut branch_lengths_dense = nwk_parsed.branch_lengths;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let mut branch_lengths_sparse = nwk_parsed.branch_lengths;
 
     let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
@@ -191,18 +183,14 @@ mod tests {
   fn test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
 
-    let NwkParse {
-      graph: graph_dense,
-      names: graph_dense_names,
-      branch_lengths: branch_lengths_dense,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
-    let NwkParse {
-      graph: graph_sparse,
-      names: graph_sparse_names,
-      branch_lengths: branch_lengths_sparse,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense_names = nwk_parsed.names();
+    let graph_dense = nwk_parsed.graph;
+    let branch_lengths_dense = nwk_parsed.branch_lengths;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse = nwk_parsed.graph;
+    let branch_lengths_sparse = nwk_parsed.branch_lengths;
 
     let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;

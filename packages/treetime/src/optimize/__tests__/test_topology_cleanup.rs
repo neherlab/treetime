@@ -34,7 +34,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -95,12 +95,10 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let sparse: Vec<SparseReconstruction> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
@@ -111,12 +109,10 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
     // A has bl=0.0 but is a leaf: should NOT be collected
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.0,B:0.2)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.0,B:0.2)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let sparse: Vec<SparseReconstruction> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
@@ -127,12 +123,10 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
     // I has bl=0.0 and is internal: should be collected
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let sparse: Vec<SparseReconstruction> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
@@ -150,12 +144,10 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
     // Both internal nodes have bl=0.0
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let sparse: Vec<SparseReconstruction> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
@@ -165,12 +157,10 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let sparse: Vec<SparseReconstruction> = vec![];
     let dense: Vec<DenseReconstruction> = vec![];
@@ -201,12 +191,10 @@ mod tests {
     //
     // After collapse of I: root has 4 children (A, B, C, D) - polytomy
     // A, B, C share sub A0T -> merge creates new internal node
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -303,7 +291,10 @@ mod tests {
     )?;
 
     // A and B are identical: the internal edge AB should be optimized to zero
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
@@ -391,7 +382,10 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
 
@@ -468,12 +462,10 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
 
@@ -532,12 +524,10 @@ mod tests {
     // it: merge C1+C2 (shared reversion), hoist the reverting group, retire the helper.
     // Tree: root -> U -> V -> {C1, C2, C3}. U->V carries {A0T, C5G}; C1 and C2 revert A0T,
     // C3 keeps it. Parsimony optimum is 2 mutations.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
@@ -607,12 +597,10 @@ mod tests {
     //
     // Both I1 and I2 should be collapsed. The guard for already-removed edges
     // must handle the case where collapsing I1 removes I2's inbound edge.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
@@ -675,7 +663,10 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
 
@@ -739,12 +730,10 @@ mod tests {
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
     // Collapse zero-length I, then merge A+B+C (shared sub A0T) under a new
     // internal node. The new node must receive a NODE_NNNNNNN name.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -815,12 +804,10 @@ mod tests {
     // Same setup as the collapse+merge test, but with merge-siblings disabled. Collapsing the
     // zero-length internal edge still forms the polytomy; without merge, the shared-mutation
     // siblings A, B, C stay as direct children of root rather than being grouped under a node.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -889,12 +876,10 @@ mod tests {
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
     // Reversion polytomy. With flip-parent-child disabled, merge still groups the two reverting
     // children, but the reverting mutation is not hoisted away, so it remains in the tree.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
@@ -958,12 +943,10 @@ mod tests {
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
     // With every topology step disabled, the reversion polytomy is left untouched: no collapse,
     // no merge, no hoist. The tree shape and its mutation content are unchanged.
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
@@ -1047,7 +1030,10 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
 
@@ -1116,12 +1102,10 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let mut graph: Graph = graph;
 

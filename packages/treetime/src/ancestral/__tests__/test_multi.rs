@@ -4,7 +4,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use pretty_assertions::assert_eq;
 use treetime_graph::graph::Graph;
-use treetime_io::nwk::{NwkParse, nwk_read_str};
+use treetime_io::nwk::nwk_read_str;
 use treetime_utils::sync::random::get_random_number_generator;
 
 /// Two amino-acid partitions of different lengths reconstruct independently on one shared tree, one
@@ -13,12 +13,10 @@ use treetime_utils::sync::random::get_random_number_generator;
 /// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
-  let NwkParse {
-    graph,
-    names,
-    branch_lengths,
-    ..
-  } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+  let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
   let graph: Graph = graph;
   let aa = Alphabet::new(AlphabetName::Aa).unwrap();
 

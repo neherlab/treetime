@@ -16,7 +16,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
   // The floor ensures the old-value weight never drops below DAMPING_FLOOR.
@@ -30,7 +30,10 @@ mod tests {
     #[case] expected_old_weight: f64,
   ) -> Result<(), Report> {
     let damping = 0.75;
-    let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let old_bls = branch_lengths;
 
@@ -54,12 +57,10 @@ mod tests {
     let expected_old_weight = pow(damping, iteration + 1);
     assert!(expected_old_weight > DAMPING_FLOOR);
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let nwk_parsed = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let old_bls = branch_lengths;
@@ -79,12 +80,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_converged_reason() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -118,12 +117,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_reverts_to_best() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -177,12 +174,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -227,12 +222,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_oscillation_detection() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -270,12 +263,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_exhausts_max_iter() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -310,12 +301,10 @@ mod tests {
   #[test]
   fn test_convergence_conditions_dense_only_converges() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     // Use the setup but only dense partitions (sparse empty)

@@ -16,12 +16,13 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NodeCommentProvider, NwkParse, nwk_read_str};
+  use treetime_io::nwk::{NodeCommentProvider, nwk_read_str};
   use treetime_primitives::{AsciiChar, Seq};
 
   #[test]
   fn test_mutation_comment_provider_formats_1_based_substitutions_and_indels() -> Result<(), Report> {
-    let NwkParse { graph, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let mut partition = make_test_partition(
       &graph,
@@ -50,7 +51,8 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_root_has_no_comments() -> Result<(), Report> {
-    let NwkParse { graph, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])])?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
@@ -63,7 +65,8 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_no_mutations_returns_empty() -> Result<(), Report> {
-    let NwkParse { graph, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = make_test_partition(&graph, 100, &[(0, vec![])])?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
@@ -75,7 +78,8 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_sorts_by_position() -> Result<(), Report> {
-    let NwkParse { graph, .. } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,

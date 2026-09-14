@@ -9,7 +9,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
@@ -26,7 +26,10 @@ mod tests {
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -89,7 +92,10 @@ mod tests {
     let aln = simple_alignment()?;
 
     // Run optimization on first graph
-    let NwkParse { graph: graph1, names: graph1_names, branch_lengths: mut branch_lengths1, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph1_names = nwk_parsed.names();
+    let graph1 = nwk_parsed.graph;
+    let mut branch_lengths1 = nwk_parsed.branch_lengths;
     let (mut dense_partitions1, mut sparse_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
 
     for _ in 0..10 {
@@ -104,7 +110,10 @@ mod tests {
     let (dense_partitions1, sparse_partitions1, lh1) = compute_total_lh(&graph1, dense_partitions1, sparse_partitions1, &branch_lengths1)?;
 
     // Run optimization on second independent graph
-    let NwkParse { graph: graph2, names: graph2_names, branch_lengths: mut branch_lengths2, .. } = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let graph2_names = nwk_parsed.names();
+    let graph2 = nwk_parsed.graph;
+    let mut branch_lengths2 = nwk_parsed.branch_lengths;
     let (mut dense_partitions2, mut sparse_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
 
     for _ in 0..10 {

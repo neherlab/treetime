@@ -15,14 +15,16 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   fn create_graph_with_dates(
     tree_nwk: &str,
     dates: &DatesMap,
   ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(dates, &graph, &names)?;
     Ok((graph, names, constraints))
   }

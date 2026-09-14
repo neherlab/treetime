@@ -15,7 +15,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::{make_error, make_report};
 
@@ -874,11 +874,9 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
-        let NwkParse {
-          graph: ref_graph,
-          names: ref_names,
-          ..
-        } = nwk_read_file(path).wrap_err("When reading target reference topology")?;
+        let nwk_parsed = nwk_read_file(path).wrap_err("When reading target reference topology")?;
+        let ref_names = nwk_parsed.names();
+        let ref_graph = nwk_parsed.graph;
         leaf_order(&ref_graph, &ref_names)
       },
       TopologyOrderTargetSourceArg::List => {

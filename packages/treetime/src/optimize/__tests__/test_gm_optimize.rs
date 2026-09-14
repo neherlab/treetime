@@ -202,7 +202,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_path;
-    use treetime_io::nwk::{NwkParse, nwk_read_file};
+    use treetime_io::nwk::nwk_read_file;
     use treetime_primitives::LogLh;
 
     #[derive(Clone, Deserialize)]
@@ -252,12 +252,10 @@ mod tests {
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
       let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
-      let NwkParse {
-        graph,
-        names,
-        mut branch_lengths,
-        ..
-      } = nwk_read_file(&tree_path)?;
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut graph: Graph = graph;
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;

@@ -11,7 +11,7 @@ pub mod tests {
 
   use treetime_graph::graph::Graph;
 
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   /// Run marginal ancestral reconstruction using dense representation.
   ///
@@ -36,12 +36,10 @@ pub mod tests {
   ///
   /// Used by property tests to verify invariants of marginal ancestral reconstruction.
   pub fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
@@ -73,12 +71,10 @@ pub mod tests {
   /// Returns the log-likelihood and the populated partition. Used by property tests
   /// to verify that the sparse path produces results consistent with the dense path.
   pub fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
     let _ = get_common_length(&input.alignment)?;

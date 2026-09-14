@@ -8,7 +8,7 @@ mod tests {
   use eyre::Report;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
 
   /// Build a fixed 4-taxon test input for marginal idempotency verification.
   ///
@@ -76,12 +76,10 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_dense() -> Result<(), Report> {
     let input = example_input()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (_, recon) = run_dense_marginal(&input)?;
 
@@ -111,12 +109,10 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let (_, recon) = run_sparse_marginal(&input)?;
 

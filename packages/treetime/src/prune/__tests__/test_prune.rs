@@ -22,7 +22,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
   use treetime_utils::make_report;
@@ -59,12 +59,10 @@ mod tests {
     ),
     Report,
   > {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read_str(nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let partitions = if edge_mutations.is_empty() {
@@ -118,12 +116,10 @@ mod tests {
     ),
     Report,
   > {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read_str(nwk)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
     let partitions = if edge_mutations.is_empty() {
@@ -528,12 +524,10 @@ mod tests {
     // Tree structure: root -> internal1 -> internal2 -> A (the path to prune)
     //                      -> B (to keep)
     //                      -> C (to keep)
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
@@ -566,12 +560,10 @@ mod tests {
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
     // Tree structure: root -> internal1 -> A (to prune)
     //                               -> B (to keep)
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
@@ -601,12 +593,10 @@ mod tests {
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
     // Tree: root -> A (only child)
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let mut partitions = vec![];
 
@@ -822,12 +812,10 @@ mod tests {
   fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
     // Non-overlapping positions: all subs kept from both edges
     // Tree: root -> internal (subs at pos 0,1) -> A (subs at pos 2,3), B
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
@@ -912,12 +900,10 @@ mod tests {
   fn test_collapse_edge_compose_chain() -> Result<(), Report> {
     // Chain composition: parent A->G + child G->T = net A->T at same position
     // Tree: root -> internal -> A, B
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
@@ -983,12 +969,10 @@ mod tests {
   fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
     // Cancellation: parent A->G + child G->A = no net change at same position
     // Tree: root -> internal -> A, B
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
@@ -1052,12 +1036,10 @@ mod tests {
   fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
     // Substitutions composed independently per partition
     // Tree: root -> internal -> A, B
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
@@ -1147,12 +1129,10 @@ mod tests {
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
     // When both edges have branch lengths, they should be summed
     // Tree: root -> internal:0.3 -> A:0.2, B:0.1
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions = vec![];
@@ -1193,12 +1173,10 @@ mod tests {
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
     // Verify precision is preserved when summing small branch lengths
     // Tree: ((A:2e-10,B:3e-10)internal:1e-10)root;
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
+    let nwk_parsed = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions = vec![];
@@ -1405,12 +1383,10 @@ mod tests {
   ///   P → D (subs: A5T)
   #[test]
   fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
@@ -1493,12 +1469,10 @@ mod tests {
   #[test]
   fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
     // Indels from both removed (parent) and retained (child) edges must be preserved
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();

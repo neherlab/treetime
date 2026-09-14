@@ -16,7 +16,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::{NwkParse, nwk_read_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::LogLh;
 
   /// Regression test: uniform outgroup message must not create false substitutions.
@@ -30,7 +30,9 @@ mod tests {
   /// substitutions.
   #[test]
   fn test_dense_edge_subs_no_false_mutation_from_uniform_outgroup() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_ref = &graph.get_edges()[0];
     let edge_key = edge_ref.read_arc().key();
@@ -71,7 +73,9 @@ mod tests {
   /// substitutions, missing the real A->C change visible in the node posteriors.
   #[test]
   fn test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_ref = &graph.get_edges()[0];
     let edge_key = edge_ref.read_arc().key();
@@ -122,12 +126,10 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(
       0,
@@ -183,7 +185,9 @@ mod tests {
   /// these positions from appearing as substitutions.
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions_with_posteriors() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_ref = &graph.get_edges()[0];
     let edge_key = edge_ref.read_arc().key();
@@ -240,12 +244,10 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_is_canonical_filter_present() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(
       0,

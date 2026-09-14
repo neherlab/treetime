@@ -204,12 +204,11 @@ mod tests {
 
   #[test]
   fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
+    let parse = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+    let names = parse.names();
     let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+      graph, branch_lengths, ..
+    } = parse;
 
     let actual = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
@@ -246,12 +245,11 @@ mod tests {
       ),
       Report,
     > {
+      let parse = nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")?;
+      let names = parse.names();
       let NwkParse {
-        graph,
-        names,
-        branch_lengths,
-        ..
-      } = nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")?;
+        graph, branch_lengths, ..
+      } = parse;
       Ok((graph, names, branch_lengths))
     }
 

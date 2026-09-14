@@ -11,16 +11,14 @@ mod tests {
   use std::collections::BTreeMap;
   use std::io::Cursor;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001; // 0.001 subs/site/year
 
     let mut state = TimetreeState::new(&graph);
@@ -45,12 +43,10 @@ mod tests {
 
   #[test]
   fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -104,12 +100,10 @@ mod tests {
   /// time = branch_length / (clock_rate * gamma)
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.006)I:0.003)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.006)I:0.003)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -163,12 +157,10 @@ mod tests {
   /// pre-gamma behavior: time = branch_length / clock_rate.
   #[test]
   fn test_input_mode_gamma_default_matches_no_gamma() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
     // All edges have default gamma=1.0
@@ -191,12 +183,10 @@ mod tests {
 
   #[test]
   fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
-    let NwkParse {
-      graph,
-      names,
-      mut branch_lengths,
-      ..
-    } = nwk_read_str("(A)root;")?;
+    let nwk_parsed = nwk_read_str("(A)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
     let edge = graph.get_edges().pop().expect("tree must contain one edge");
     let edge_key = edge.read_arc().key();
     branch_lengths.insert(edge_key, None);

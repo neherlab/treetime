@@ -11,7 +11,7 @@ mod tests {
   use std::path::Path;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkParse, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
 
   // `optimize --gtr=infer` must serialize the GTR after rate normalization.
   // `normalize_partition_rates` rescales `mu` so the average substitution rate
@@ -31,12 +31,10 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
 
-    let NwkParse {
-      graph,
-      names,
-      branch_lengths,
-      ..
-    } = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
     let sequences = read_many_fasta_path(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;

@@ -9,7 +9,7 @@ use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::{NwkParse, nwk_read_str};
+use treetime_io::nwk::nwk_read_str;
 
 /// Generate valid nucleotide equilibrium frequencies: positive, sum to 1.
 fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
@@ -184,7 +184,9 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
-      let NwkParse { graph, names, .. } = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
       let graph: Graph = graph;
 
       let mut leaf_names = Vec::new();
