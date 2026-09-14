@@ -5,7 +5,6 @@ mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal::shared::update::PartitionMarginalOps;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

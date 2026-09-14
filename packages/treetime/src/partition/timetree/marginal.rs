@@ -1,5 +1,4 @@
 use crate::ancestral::sample::SampleMode;
-use crate::partition::marginal::shared::update::PartitionMarginalOps;
 use crate::partition::timetree::partition::PartitionTimetree;
 use eyre::Report;
 use rayon::prelude::*;

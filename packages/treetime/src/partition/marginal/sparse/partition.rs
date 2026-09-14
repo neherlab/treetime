@@ -3,9 +3,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
-use crate::partition::marginal::shared::update::{
-  MarginalBackward, MarginalEdges, MarginalForward, PartitionMarginalOps,
-};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalUpdate};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
 use crate::partition::marginal::sparse::{backward, forward};
@@ -22,7 +20,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
@@ -203,13 +201,14 @@ impl PartitionMarginalSparse {
   }
 }
 
-impl PartitionMarginalOps for PartitionMarginalSparse {
-  type Node = SparseNodeState;
-  type Backward = SparseEdgeBackward;
-  type Forward = SparseEdgeForward;
-  type Estimate = Vec<Sub>;
-
-  fn marginal_backward(
+/// The marginal passes and the update built from them, over the sparse role-typed per-node and
+/// per-edge element types. The two passes and the transition counts are the representation-specific
+/// operations; the full update and the log-likelihood reads and reset are the same four-step skeleton
+/// every representation runs. Stable inputs (`graph`, `branch_lengths`) are borrowed and every pass
+/// returns new owned maps, so a failed pass leaves its inputs intact.
+impl PartitionMarginalSparse {
+  /// Run the marginal backward pass (children before parent).
+  pub fn marginal_backward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -218,7 +217,8 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
     backward::process_backward_indexed(self, graph, branch_lengths, node_states)
   }
 
-  fn marginal_forward(
+  /// Run the marginal forward pass (parent before children) over the backward messages.
+  pub fn marginal_forward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -228,7 +228,8 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
     forward::process_forward_indexed(self, graph, branch_lengths, node_states, backward)
   }
 
-  fn count_transitions(
+  /// Count posterior-weighted state transitions over the tree, the input GTR inference reads.
+  pub fn count_transitions(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -245,6 +246,66 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
       backward,
       forward,
     )
+  }
+
+  /// Run a full marginal update (backward, then forward) over the given node states.
+  ///
+  /// The substitution log likelihood is read at the root between the two passes: after the backward
+  /// pass the root profile holds the likelihood of the observed data under the model, while the forward
+  /// pass overwrites every node profile with its posterior.
+  pub fn marginal_update(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  ) -> Result<MarginalUpdate<SparseNodeState, SparseEdgeBackward, SparseEdgeForward, Vec<Sub>>, Report> {
+    let MarginalBackward { node_states, backward } = self.marginal_backward(graph, branch_lengths, &node_states)?;
+    let log_lh = self.root_log_lh(graph, &node_states)?;
+    let MarginalForward {
+      node_states,
+      forward,
+      estimates,
+    } = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
+    Ok(MarginalUpdate {
+      node_states,
+      edges: MarginalEdges {
+        backward,
+        forward,
+        estimates,
+      },
+      log_lh,
+    })
+  }
+
+  /// The profile log likelihood recorded for one node, or zero when the node has no state.
+  pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, SparseNodeState>, node_key: GraphNodeKey) -> LogLh {
+    node_states
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
+  }
+
+  /// The profile log likelihood recorded at the tree root, or zero when the root has no state.
+  pub fn root_log_lh(
+    &self,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+  ) -> Result<LogLh, Report> {
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    Ok(self.get_log_lh(node_states, root_key))
+  }
+
+  /// Zero every node's profile log likelihood before a backward pass whose result is read as a
+  /// likelihood.
+  ///
+  /// The backward pass reads a leaf's profile log likelihood as its message to the parent and folds it
+  /// up the tree into the root log likelihood. A leaf profile carried over from an earlier forward pass
+  /// holds that pass's posterior log likelihood, which adds a large model-independent constant to the
+  /// result. That constant does not move the optimum of a rate search in exact arithmetic, but its
+  /// magnitude erodes precision in Brent's parabolic interpolation and shifts the selected rate.
+  pub fn reset_node_log_lh(&self, node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>) {
+    for node in node_states.values_mut() {
+      node.profile.log_lh = LogLh::ZERO;
+    }
   }
 }
 

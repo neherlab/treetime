@@ -6,7 +6,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
-use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;

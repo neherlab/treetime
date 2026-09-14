@@ -2,9 +2,7 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::o;
-  use crate::partition::marginal::shared::update::{
-    MarginalBackward, MarginalForward, MarginalUpdate, PartitionMarginalOps,
-  };
+  use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalUpdate};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;

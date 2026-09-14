@@ -3,7 +3,7 @@ use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use std::sync::LazyLock;
