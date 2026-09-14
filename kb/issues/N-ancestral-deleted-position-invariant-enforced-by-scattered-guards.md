@@ -49,6 +49,5 @@ Introduced by neherlab/treetime PR #890 "fix: the fitch/parsimony sequence recon
 
 ## Related issues
 
-- [M-partition-compressed-exposes-fitch-storage.md](M-partition-compressed-exposes-fitch-storage.md)
 - [H-gtr-model-state-can-break-invariants.md](H-gtr-model-state-can-break-invariants.md)
 - [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md)

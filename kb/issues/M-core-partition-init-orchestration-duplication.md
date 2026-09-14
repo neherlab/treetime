@@ -22,7 +22,6 @@ Delete the unused `initialize_partitions()` path as part of consolidation.
 ## Related issues
 
 - [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
-- [M-partition-compressed-exposes-fitch-storage.md](M-partition-compressed-exposes-fitch-storage.md)
 - [N-optimize-multi-alignment-input.md](N-optimize-multi-alignment-input.md)
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)

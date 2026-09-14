@@ -11,7 +11,7 @@ Is a mixed dense and sparse run intended to become reachable?
 - Keep the capability: define what a mixed run means for the quantities the combined view sums, and give it a construction path and a test. Until then the summing code is unverifiable.
 - Drop the capability: one run holds one representation, the two vectors collapse to one, and the combined-view indirection disappears.
 
-The answer decides the shape of the value maps that replace the read-accessor traits (see [N-partition-read-views-are-pull-accessors.md](N-partition-read-views-are-pull-accessors.md)), so it is worth settling before that work starts.
+Settling this question defines whether the dense-first-then-sparse combined-view summation must support a real mixed run or can collapse to a single-representation vector.
 
 ## Validation
 
