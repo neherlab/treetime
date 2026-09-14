@@ -47,7 +47,7 @@ mod tests {
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, |_, _| Ok(()), &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(
@@ -83,7 +83,7 @@ mod tests {
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, |_, _| Ok(()), &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(

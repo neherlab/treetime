@@ -395,9 +395,11 @@ pub struct AncestralOutput {
   pub model_name: GtrModelName,
   #[serde(skip)]
   pub mask: Vec<bool>,
-  /// Reconstructed sequences keyed by node id, captured from the serial reconstruction walk.
+  /// Node ids in the order the reconstruction walk emits them (depth-first preorder, suppressed tips
+  /// excluded). The reconstructed-FASTA writer replays this order and reads each sequence back off the
+  /// partition, so the streamed records match the walk without holding every sequence in memory.
   #[serde(skip)]
-  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
+  pub emitted_nodes: Vec<GraphNodeKey>,
 }
 
 pub struct AncestralOutputFull {
@@ -405,17 +407,13 @@ pub struct AncestralOutputFull {
   pub partition: Option<AncestralPartition>,
 }
 
-pub fn run<F>(
+pub fn run(
   params: &AncestralParams,
   input: &NwkFastaInput,
   alphabet: Alphabet,
   mask: Vec<bool>,
-  mut on_sequence: F,
   progress: &dyn ProgressSink,
-) -> Result<AncestralOutputFull, Report>
-where
-  F: FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
-{
+) -> Result<AncestralOutputFull, Report> {
   let branch_lengths = input.branch_lengths();
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   if params.site_specific_gtr {
@@ -455,10 +453,7 @@ where
         );
       }
 
-      let node_sequences =
-        ancestral_reconstruction_fitch(graph, params.include_leaves, &mut partitions_parsimony, |node, seq| {
-          on_sequence(node.key, seq)
-        })?;
+      let emitted_nodes = ancestral_reconstruction_fitch(graph, params.include_leaves, &mut partitions_parsimony)?;
 
       let partition = partitions_parsimony
         .into_iter()
@@ -470,7 +465,7 @@ where
           gtr: None,
           model_name: params.model,
           mask,
-          node_sequences,
+          emitted_nodes,
         },
         partition: Some(AncestralPartition::Fitch(partition)),
       })
@@ -517,21 +512,17 @@ where
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let node_sequences = ancestral_reconstruction(
-            graph,
-            |node| {
-              partition.reconstruct_node_sequence(
-                &mut node_states,
-                &edges.forward,
-                node,
-                params.include_leaves,
-                params.impute_missing_data,
-                params.sample_from_profile,
-                &mut rng,
-              )
-            },
-            |key, seq| on_sequence(key, seq),
-          )?;
+          let emitted_nodes = ancestral_reconstruction(graph, |node| {
+            partition.advance_node_state(
+              &mut node_states,
+              &edges.forward,
+              node,
+              params.include_leaves,
+              params.impute_missing_data,
+              params.sample_from_profile,
+              &mut rng,
+            )
+          })?;
 
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
@@ -539,7 +530,7 @@ where
               gtr: Some(gtr.clone()),
               model_name,
               mask,
-              node_sequences,
+              emitted_nodes,
             },
             partition: Some(AncestralPartition::Sparse(SparseReconstruction {
               partition,
@@ -580,10 +571,12 @@ where
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let node_sequences = ancestral_reconstruction(
-            graph,
-            |node| {
-              partition.reconstruct_node_sequence(
+          // Dense reconstruction persists each node's flag-aware sequence into `seq.sequence` (read
+          // back by the augur node-data path), so the walk still materializes it and only discards the
+          // returned value; the emitted-node order is all the FASTA writer needs.
+          let emitted_nodes = ancestral_reconstruction(graph, |node| {
+            partition
+              .reconstruct_node_sequence(
                 &mut node_states,
                 node,
                 params.include_leaves,
@@ -591,9 +584,8 @@ where
                 params.sample_from_profile,
                 &mut rng,
               )
-            },
-            |key, seq| on_sequence(key, seq),
-          )?;
+              .map(|_| ())
+          })?;
 
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
@@ -601,7 +593,7 @@ where
               gtr: Some(gtr.clone()),
               model_name,
               mask,
-              node_sequences,
+              emitted_nodes,
             },
             partition: Some(AncestralPartition::Dense(DenseReconstruction {
               partition,

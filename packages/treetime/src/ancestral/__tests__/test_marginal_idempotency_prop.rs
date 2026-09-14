@@ -113,11 +113,11 @@ mod tests {
           ..
 
         } = &mut recon;
-        ancestral_reconstruction(
-          &graph,
-          |node| partition.reconstruct_node_sequence(node_states, &edges.forward, node, true, false, SampleMode::Argmax, &mut rng),
-          |_, _| Ok(()),
-        )
+        ancestral_reconstruction(&graph, |node| {
+          partition
+            .reconstruct_node_sequence(node_states, &edges.forward, node, true, false, SampleMode::Argmax, &mut rng)
+            .map(|_| ())
+        })
         .unwrap();
       }
 

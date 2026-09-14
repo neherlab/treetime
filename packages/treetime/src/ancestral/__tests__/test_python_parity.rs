@@ -105,16 +105,13 @@ mod tests {
         partition, node_states, ..
       } = &mut recon;
       let mut rng = rand::thread_rng();
-      ancestral_reconstruction(
-        &graph,
-        |node| partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng),
-        |key, seq| {
-          if names[&key].as_deref() == Some("NODE_0000000") {
-            root_seq = seq.to_string();
-          }
-          Ok(())
-        },
-      )?;
+      ancestral_reconstruction(&graph, |node| {
+        let seq = partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng)?;
+        if names[&node.key].as_deref() == Some("NODE_0000000") {
+          root_seq = seq.to_string();
+        }
+        Some(())
+      })?;
     }
 
     // Expected root sequence from Python v0 (packages/legacy/treetime/test/test_treetime.py:134)

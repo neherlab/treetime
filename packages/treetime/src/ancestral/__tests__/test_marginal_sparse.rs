@@ -214,24 +214,19 @@ mod tests {
         ..
       } = &mut recon;
       let mut rng = rand::thread_rng();
-      ancestral_reconstruction(
-        &graph,
-        |node| {
-          partition.reconstruct_node_sequence(
-            node_states,
-            &edges.forward,
-            node,
-            false,
-            false,
-            SampleMode::Argmax,
-            &mut rng,
-          )
-        },
-        |key, seq| {
-          actual.insert(names[&key].clone(), seq.to_string());
-          Ok(())
-        },
-      )?;
+      ancestral_reconstruction(&graph, |node| {
+        let seq = partition.reconstruct_node_sequence(
+          node_states,
+          &edges.forward,
+          node,
+          false,
+          false,
+          SampleMode::Argmax,
+          &mut rng,
+        )?;
+        actual.insert(names[&node.key].clone(), seq.to_string());
+        Some(())
+      })?;
     }
 
     assert_eq!(
@@ -596,27 +591,19 @@ mod tests {
         ..
       } = &mut recon;
       let mut rng = rand::thread_rng();
-      ancestral_reconstruction(
-        &graph,
-        |node| {
-          partition.reconstruct_node_sequence(
-            node_states,
-            &edges.forward,
-            node,
-            true,
-            false,
-            SampleMode::Argmax,
-            &mut rng,
-          )
-        },
-        |key, seq| {
-          seqs_by_name.insert(
-            names[&key].clone().expect("all test nodes should have names"),
-            seq.clone(),
-          );
-          Ok(())
-        },
-      )?;
+      ancestral_reconstruction(&graph, |node| {
+        let seq = partition.reconstruct_node_sequence(
+          node_states,
+          &edges.forward,
+          node,
+          true,
+          false,
+          SampleMode::Argmax,
+          &mut rng,
+        )?;
+        seqs_by_name.insert(names[&node.key].clone().expect("all test nodes should have names"), seq);
+        Some(())
+      })?;
     }
 
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;

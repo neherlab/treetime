@@ -97,21 +97,17 @@ pub fn reconstruct_marginal_partition(
       let MarginalUpdate {
         mut node_states, edges, ..
       } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
-      ancestral_reconstruction(
-        graph,
-        |node| {
-          partition.reconstruct_node_sequence(
-            &mut node_states,
-            &edges.forward,
-            node,
-            params.include_leaves,
-            params.impute_missing_data,
-            params.sample_from_profile,
-            rng,
-          )
-        },
-        |_key: GraphNodeKey, _seq: &Seq| Ok(()),
-      )?;
+      ancestral_reconstruction(graph, |node| {
+        partition.advance_node_state(
+          &mut node_states,
+          &edges.forward,
+          node,
+          params.include_leaves,
+          params.impute_missing_data,
+          params.sample_from_profile,
+          rng,
+        )
+      })?;
       AncestralPartition::Sparse(SparseReconstruction {
         partition,
         gtr,
@@ -124,10 +120,11 @@ pub fn reconstruct_marginal_partition(
       let MarginalUpdate {
         mut node_states, edges, ..
       } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
-      ancestral_reconstruction(
-        graph,
-        |node| {
-          partition.reconstruct_node_sequence(
+      // Dense reconstruction persists each node's flag-aware sequence into `seq.sequence` for the augur
+      // gather to read, so the walk materializes it and discards only the returned value.
+      ancestral_reconstruction(graph, |node| {
+        partition
+          .reconstruct_node_sequence(
             &mut node_states,
             node,
             params.include_leaves,
@@ -135,9 +132,8 @@ pub fn reconstruct_marginal_partition(
             params.sample_from_profile,
             rng,
           )
-        },
-        |_key: GraphNodeKey, _seq: &Seq| Ok(()),
-      )?;
+          .map(|_| ())
+      })?;
       AncestralPartition::Dense(DenseReconstruction {
         partition,
         gtr,

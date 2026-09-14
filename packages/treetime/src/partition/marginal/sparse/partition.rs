@@ -131,7 +131,12 @@ impl PartitionMarginalSparse {
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  pub fn reconstruct_node_sequence(
+  /// Advance one node's reconstruction state during the preorder walk, recording only what the output
+  /// accessors cannot derive again: a posterior draw, or a tip whose observed ambiguity and optional
+  /// imputation are not a function of the parsimony chain and the posterior. A MAP internal node stays
+  /// derivable from the chain, so nothing is materialized for it here; [`Self::node_sequence`] rebuilds
+  /// it on demand. Returns `Some(())` when the node emits a sequence, `None` for a suppressed tip.
+  pub fn advance_node_state(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
@@ -140,7 +145,7 @@ impl PartitionMarginalSparse {
     impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Option<Seq> {
+  ) -> Option<()> {
     let (parent_state, msg_from_parent) = if node.is_root {
       (None, None)
     } else {
@@ -154,33 +159,47 @@ impl PartitionMarginalSparse {
     let node_obs = self.obs_nodes.get(&node.key)?;
     let node_data = node_states.get(&node.key)?;
     let sample = sample_mode.samples_node(node.is_root);
-    let seq = if node.is_leaf {
-      reconstruct_leaf_sequence(
+    if node.is_leaf {
+      let seq = reconstruct_leaf_sequence(
         node_data,
         node_obs,
         msg_from_parent.as_ref(),
         parent_state.as_ref(),
         impute,
         &self.alphabet,
-      )
-    } else {
-      map_seq_sampled(node_data, &self.alphabet, sample, rng)
-    };
-
-    // Record the result only where the accessors cannot derive it again: a posterior draw, or a tip,
-    // whose observed ambiguity and optional imputation are not a function of the parsimony chain and
-    // the posterior. Everything else stays derivable, keeping one source of truth.
-    if sample || node.is_leaf {
-      node_states.get_mut(&node.key)?.emitted = Some(seq.clone());
+      );
+      node_states.get_mut(&node.key)?.emitted = Some(seq);
+    } else if sample {
+      let seq = map_seq_sampled(node_data, &self.alphabet, true, rng);
+      node_states.get_mut(&node.key)?.emitted = Some(seq);
     }
 
     // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
-    // sequence), but is not emitted to the reconstructed-FASTA visitor.
+    // sequence), but is not emitted to the reconstructed FASTA.
     if !include_leaves && node.is_leaf {
       return None;
     }
 
-    Some(seq)
+    Some(())
+  }
+
+  /// Reconstruct one node's sequence, advancing its state and reading the result back off the partition.
+  ///
+  /// This is [`Self::advance_node_state`] composed with [`Self::node_sequence`]: sampled draws and tips
+  /// are read from the recorded `emitted` sequence, MAP internal nodes from the parsimony chain. Returns
+  /// `None` for a suppressed tip.
+  pub fn reconstruct_node_sequence(
+    &self,
+    node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    node: &GraphNodeForward,
+    include_leaves: bool,
+    impute: bool,
+    sample_mode: SampleMode,
+    rng: &mut dyn rand::RngCore,
+  ) -> Option<Seq> {
+    self.advance_node_state(node_states, forward, node, include_leaves, impute, sample_mode, rng)?;
+    Some(self.node_sequence(node_states, node.key))
   }
 }
 

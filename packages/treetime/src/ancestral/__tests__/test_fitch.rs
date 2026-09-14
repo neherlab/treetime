@@ -240,10 +240,13 @@ mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony, |node, seq| {
-      actual.insert(names[&node.key].clone(), seq.to_string());
-      Ok(())
-    })?;
+    let emitted = ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony)?;
+    for key in emitted {
+      actual.insert(
+        names[&key].clone(),
+        partitions_parsimony[0].node_sequence(key).to_string(),
+      );
+    }
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -316,10 +319,13 @@ mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony, |node, seq| {
-      actual.insert(names[&node.key].clone(), seq.to_string());
-      Ok(())
-    })?;
+    let emitted = ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony)?;
+    for key in emitted {
+      actual.insert(
+        names[&key].clone(),
+        partitions_parsimony[0].node_sequence(key).to_string(),
+      );
+    }
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,

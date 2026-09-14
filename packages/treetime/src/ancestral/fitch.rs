@@ -19,7 +19,7 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_io::nwk::NwkFastaNodeInput;
-use treetime_primitives::{AlphabetLike, Seq, seq};
+use treetime_primitives::{AlphabetLike, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
@@ -305,28 +305,33 @@ pub fn compress_sequences(
 /// reconstruction result as a value the command captures; each sequence also stays written into the
 /// partition (read by the node-data serializer until the tree writers read the map directly).
 /// Optionally reconstructs leaf sequences.
+/// Walk the tree in depth-first preorder, writing each node's reconstructed sequence into its partition
+/// state (the parent-to-child propagation store the child reads), and return the node ids that emit a
+/// sequence, in walk order.
 pub fn ancestral_reconstruction_fitch(
   graph: &Graph,
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
-  mut visitor: impl FnMut(&GraphNodeForward, &Seq) -> Result<(), Report>,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
-  let mut node_sequences = BTreeMap::new();
+) -> Result<Vec<GraphNodeKey>, Report> {
+  let mut emitted_nodes = Vec::new();
   graph.iter_depth_first_preorder_forward(|node| {
-    run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &mut node_sequences, &node)
+    if run_fitch_reconstruction(include_leaves, partitions, &node)? {
+      emitted_nodes.push(node.key);
+    }
+    Ok(())
   })?;
-  Ok(node_sequences)
+  Ok(emitted_nodes)
 }
 
+/// Reconstruct one node's sequence into its partition state. Returns `true` when the node emits a
+/// sequence, `false` for a suppressed tip.
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
-  mut visitor: impl FnMut(&GraphNodeForward, &Seq) -> Result<(), Report>,
-  node_sequences: &mut BTreeMap<GraphNodeKey, Seq>,
   node: &GraphNodeForward,
-) -> Result<(), Report> {
+) -> Result<bool, Report> {
   if !include_leaves && node.is_leaf {
-    return Ok(());
+    return Ok(false);
   }
 
   for partition in partitions.iter_mut() {
@@ -365,9 +370,6 @@ fn run_fitch_reconstruction(
     }
 
     seq.sequence = sequence;
-
-    visitor(node, &seq.sequence)?;
-    node_sequences.insert(node.key, seq.sequence.clone());
   }
-  Ok(())
+  Ok(true)
 }

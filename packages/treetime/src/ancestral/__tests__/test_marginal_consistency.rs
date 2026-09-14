@@ -355,14 +355,14 @@ mod tests {
       partition, node_states, ..
     } = recon;
     let mut rng = rand::thread_rng();
-    ancestral_reconstruction(
-      graph,
-      |node| partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng),
-      |key, seq| {
-        actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
-        Ok(())
-      },
-    )?;
+    ancestral_reconstruction(graph, |node| {
+      let seq = partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng)?;
+      actual.insert(
+        names[&node.key].clone().expect("all test nodes are named"),
+        seq.to_string(),
+      );
+      Some(())
+    })?;
     Ok(actual)
   }
 
@@ -379,24 +379,22 @@ mod tests {
       ..
     } = recon;
     let mut rng = rand::thread_rng();
-    ancestral_reconstruction(
-      graph,
-      |node| {
-        partition.reconstruct_node_sequence(
-          node_states,
-          &edges.forward,
-          node,
-          false,
-          false,
-          SampleMode::Argmax,
-          &mut rng,
-        )
-      },
-      |key, seq| {
-        actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
-        Ok(())
-      },
-    )?;
+    ancestral_reconstruction(graph, |node| {
+      let seq = partition.reconstruct_node_sequence(
+        node_states,
+        &edges.forward,
+        node,
+        false,
+        false,
+        SampleMode::Argmax,
+        &mut rng,
+      )?;
+      actual.insert(
+        names[&node.key].clone().expect("all test nodes are named"),
+        seq.to_string(),
+      );
+      Some(())
+    })?;
     Ok(actual)
   }
 

@@ -122,14 +122,12 @@ mod tests {
           edges,
           ..
         } = &mut recon;
-        ancestral_reconstruction(
-          &graph,
-          |node| partition.reconstruct_node_sequence(node_states, &edges.forward, node, false, false, mode, &mut rng),
-          |key, seq| {
-            out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
-            Ok(())
-          },
-        )?;
+        ancestral_reconstruction(&graph, |node| {
+          let seq =
+            partition.reconstruct_node_sequence(node_states, &edges.forward, node, false, false, mode, &mut rng)?;
+          out.insert(names[&node.key].clone().unwrap_or_default(), seq.to_string());
+          Some(())
+        })?;
       }
       Ok(out)
     }

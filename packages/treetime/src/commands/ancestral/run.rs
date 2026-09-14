@@ -54,7 +54,7 @@ pub fn run_ancestral_reconstruction(
   let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
 
   let resolved = args.resolve_outputs()?;
-  let mut output_fasta = if resolved
+  let output_fasta = if resolved
     .non_tree_outputs
     .contains_key(&OutputSelection::ReconstructedNucFasta)
   {
@@ -66,19 +66,7 @@ pub fn run_ancestral_reconstruction(
 
   let params = AncestralParams::new(args);
 
-  let result = pipeline::run(
-    &params,
-    &input,
-    alphabet,
-    mask,
-    |key, seq| {
-      output_fasta.as_mut().map_or(Ok(()), |writer| {
-        let node = &input.nodes[&key];
-        writer.write(node.name.as_deref().unwrap_or(""), &node.desc, seq)
-      })
-    },
-    progress,
-  )?;
+  let result = pipeline::run(&params, &input, alphabet, mask, progress)?;
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs
@@ -109,8 +97,28 @@ pub fn run_ancestral_reconstruction(
 
   let pipeline::AncestralOutputFull { output, partition } = result;
   let pipeline::AncestralOutput {
-    gtr, model_name, mask, ..
+    gtr,
+    model_name,
+    mask,
+    emitted_nodes,
   } = output;
+
+  // Stream the reconstructed nucleotide FASTA one record at a time, reading each sequence back off the
+  // partition in the walk's emission order. `augur_node_sequence` returns the same flag-aware sequence
+  // the reconstruction produced (a posterior draw, a tip echo or imputation, or the MAP state), so the
+  // FASTA matches the augur node-data JSON and never holds every sequence in memory at once.
+  if let Some(mut writer) = output_fasta {
+    if let Some(partition) = partition.as_ref() {
+      for &key in &emitted_nodes {
+        let node = &input.nodes[&key];
+        writer.write(
+          node.name.as_deref().unwrap_or(""),
+          &node.desc,
+          &partition.augur_node_sequence(key),
+        )?;
+      }
+    }
+  }
 
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
   // plain value maps the output writers consume. This is the only place that reads sequences and
