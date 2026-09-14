@@ -17,7 +17,7 @@ mod tests {
       .iter()
       .map(|t| {
         let newick = format!("(A:{t},B:{t})root;");
-        run_dense_marginal_with_newick(&newick, aln, gtr.clone())
+        run_dense_marginal_with_newick(&newick, aln, &gtr)
       })
       .collect::<Result<Vec<_>, _>>()?;
 
@@ -54,7 +54,7 @@ mod tests {
       .map(|t| {
         let newick = format!("(A:{t},B:{t})root;");
         let aln = ">A\nA\n>B\nA\n";
-        run_dense_marginal_with_newick(&newick, aln, gtr.clone())
+        run_dense_marginal_with_newick(&newick, aln, &gtr)
       })
       .collect::<Result<Vec<_>, _>>()?;
 
@@ -84,7 +84,7 @@ mod tests {
       .map(|t| {
         let newick = format!("(A:{t},B:{t})root;");
         let aln = ">A\nACGT\n>B\nTGCA\n";
-        let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr.clone())?;
+        let log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
         Ok::<_, Report>((*t, log_lh))
       })
       .collect::<Result<Vec<_>, _>>()?;
@@ -111,7 +111,7 @@ mod tests {
       .map(|t| {
         let newick = format!("((A:{t},B:{t})AB:{t},C:{t})root;");
         let aln = ">A\nAAAA\n>B\nAAAA\n>C\nAAAA\n";
-        run_dense_marginal_with_newick(&newick, aln, gtr.clone())
+        run_dense_marginal_with_newick(&newick, aln, &gtr)
       })
       .collect::<Result<Vec<_>, _>>()?;
 
@@ -141,7 +141,7 @@ mod tests {
       .map(|t| {
         let newick = format!("(A:{t},B:{t})root;");
         let aln = ">A\nGGGG\n>B\nGGGG\n";
-        run_sparse_marginal_with_newick(&newick, aln, gtr.clone())
+        run_sparse_marginal_with_newick(&newick, aln, &gtr)
       })
       .collect::<Result<Vec<_>, _>>()?;
 

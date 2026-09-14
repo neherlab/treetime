@@ -1,5 +1,5 @@
-use crate::gtr::gtr::GTR;
 use crate::ancestral::pipeline::DenseReconstruction;
+use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::storage::dense::DenseNodeState;
 use std::collections::BTreeMap;

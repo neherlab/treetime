@@ -153,9 +153,9 @@ mod tests {
     let mut out = BTreeMap::new();
     let SparseReconstruction {
       partition,
-      gtr: _,
       node_states,
       edges,
+      ..
     } = &mut recon;
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(

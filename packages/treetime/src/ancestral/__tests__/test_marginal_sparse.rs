@@ -209,9 +209,9 @@ mod tests {
     {
       let SparseReconstruction {
         partition,
-        gtr: _,
         node_states,
         edges,
+        ..
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(
@@ -592,9 +592,9 @@ mod tests {
     {
       let SparseReconstruction {
         partition,
-        gtr: _,
         node_states,
         edges,
+        ..
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(

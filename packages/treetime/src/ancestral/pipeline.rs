@@ -558,7 +558,8 @@ where
           // after attachment (its `initialize_marginal` attached and updated once, then a separate
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
-          let MarginalStates { node_states, .. } = partition.marginal_states(&gtr, graph, &profile_lengths, node_states)?;
+          let MarginalStates { node_states, .. } =
+            partition.marginal_states(&gtr, graph, &profile_lengths, node_states)?;
           let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
 
           let (gtr, update) = if refine {

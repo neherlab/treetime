@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+
   use crate::o;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::prune::prune::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};

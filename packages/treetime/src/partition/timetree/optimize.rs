@@ -43,7 +43,12 @@ impl PartitionTimetree {
   pub fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.gtr, family.node_states, changes)),
-      Self::Sparse(family) => Self::Sparse(reroot_sparse(family.partition, family.gtr, family.node_states, changes)?),
+      Self::Sparse(family) => Self::Sparse(reroot_sparse(
+        family.partition,
+        family.gtr,
+        family.node_states,
+        changes,
+      )?),
     })
   }
 

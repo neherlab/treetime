@@ -92,7 +92,12 @@ impl PartitionMarginalSparse {
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
     edge_key: GraphEdgeKey,
   ) -> Result<OptimizationContribution, Report> {
-    OptimizationContribution::from_sparse(gtr, &backward[&edge_key], &forward[&edge_key], &self.obs_edges[&edge_key])
+    OptimizationContribution::from_sparse(
+      gtr,
+      &backward[&edge_key],
+      &forward[&edge_key],
+      &self.obs_edges[&edge_key],
+    )
   }
 
   pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {

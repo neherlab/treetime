@@ -299,7 +299,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-    use crate::gtr::get_gtr::{JC69Params, jc69};
+
     use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
     use maplit::btreemap;

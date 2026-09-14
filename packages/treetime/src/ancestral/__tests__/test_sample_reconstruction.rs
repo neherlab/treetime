@@ -118,9 +118,9 @@ mod tests {
       {
         let SparseReconstruction {
           partition,
-          gtr: _,
           node_states,
           edges,
+          ..
         } = &mut recon;
         ancestral_reconstruction(
           &graph,

@@ -146,7 +146,14 @@ fn optimize_gtr_rate<P: MarginalPasses>(
   nodes: &BTreeMap<GraphNodeKey, P::Node>,
   graph: &Graph,
   profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(GTR, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>), Report>
+) -> Result<
+  (
+    GTR,
+    BTreeMap<GraphNodeKey, P::Node>,
+    BTreeMap<GraphEdgeKey, P::Backward>,
+  ),
+  Report,
+>
 where
   P::Node: Clone,
 {
@@ -181,12 +188,18 @@ where
           }),
         ),
         Err(e) => {
-          warn!("GTR rate optimization: root likelihood failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+          warn!(
+            "GTR rate optimization: root likelihood failed at mu={:.6}: {e}",
+            sqrt_mu * sqrt_mu
+          );
           (f64::INFINITY, None)
         },
       },
       Err(e) => {
-        warn!("GTR rate optimization: backward pass failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+        warn!(
+          "GTR rate optimization: backward pass failed at mu={:.6}: {e}",
+          sqrt_mu * sqrt_mu
+        );
         (f64::INFINITY, None)
       },
     }
@@ -221,23 +234,23 @@ where
     let (_, at_opt) = evaluate(optimal_sqrt_mu);
     let GtrRateCandidate { gtr, nodes, backward } =
       at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
-    debug!("GTR rate optimization: optimized mu = {:.6} (from {:.6})", gtr.mu, old_mu);
+    debug!(
+      "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
+      gtr.mu, old_mu
+    );
     Ok((gtr, nodes, backward))
   } else {
     // No interior bracket: keep the node states and backward messages from the last (`hi`) evaluation
     // but restore the rate, exactly as before. A failed `hi` evaluation leaves the input observations
     // untouched, so fall back to the input node states with the rate restored.
-    let (mut restored_gtr, restored_nodes, restored_backward) = if let Some(GtrRateCandidate {
-      gtr,
-      nodes,
-      backward,
-    }) = at_hi
-    {
-      (gtr, nodes, backward)
-    } else {
-      let MarginalBackward { node_states, backward } = partition.marginal_backward(&gtr, graph, profile_lengths, nodes)?;
-      (gtr, node_states, backward)
-    };
+    let (mut restored_gtr, restored_nodes, restored_backward) =
+      if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_hi {
+        (gtr, nodes, backward)
+      } else {
+        let MarginalBackward { node_states, backward } =
+          partition.marginal_backward(&gtr, graph, profile_lengths, nodes)?;
+        (gtr, node_states, backward)
+      };
     restored_gtr.mu = old_mu;
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
     Ok((restored_gtr, restored_nodes, restored_backward))

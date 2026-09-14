@@ -726,7 +726,12 @@ mod tests {
         &mugration_graph,
         &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
         &mugration_bl,
-        &mugration_maps(&mugration_graph, &mugration_partition, &mugration_gtr, &mugration_node_states),
+        &mugration_maps(
+          &mugration_graph,
+          &mugration_partition,
+          &mugration_gtr,
+          &mugration_node_states,
+        ),
         "country",
         "2026-07-19",
       )?;
@@ -779,13 +784,24 @@ mod tests {
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_names, &clock_graph), &clock_bl)?
         },
         {
-          let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_gtr, mugration_node_states) =
-            mugration_graph()?;
+          let (
+            mugration_graph,
+            mugration_names,
+            mugration_bl,
+            mugration_partition,
+            mugration_gtr,
+            mugration_node_states,
+          ) = mugration_graph()?;
           mugration_to_phyloxml(
             &mugration_graph,
             &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
             &mugration_bl,
-            &mugration_maps(&mugration_graph, &mugration_partition, &mugration_gtr, &mugration_node_states),
+            &mugration_maps(
+              &mugration_graph,
+              &mugration_partition,
+              &mugration_gtr,
+              &mugration_node_states,
+            ),
             "country",
           )?
         },

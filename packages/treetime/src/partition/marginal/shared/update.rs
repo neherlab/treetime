@@ -140,7 +140,8 @@ pub trait MarginalPasses {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: BTreeMap<GraphNodeKey, Self::Node>,
   ) -> Result<MarginalUpdate<Self::Node, Self::Backward, Self::Forward, Self::Estimate>, Report> {
-    let MarginalBackward { node_states, backward } = self.marginal_backward(gtr, graph, branch_lengths, &node_states)?;
+    let MarginalBackward { node_states, backward } =
+      self.marginal_backward(gtr, graph, branch_lengths, &node_states)?;
     let log_lh = self.root_log_lh(graph, &node_states)?;
     let MarginalForward {
       node_states,

@@ -131,7 +131,11 @@ mod tests {
 
       let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
       let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-      let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states)];
+      let partitions = vec![DenseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+        node_states,
+      )];
 
       let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 

@@ -17,7 +17,7 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::shared::update::MarginalPasses;
+
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;
@@ -71,7 +71,11 @@ mod tests {
     let dense_partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let dense_node_states =
       dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, get_gtr_by_name(model)?, dense_node_states)];
+    let dense_partitions = vec![DenseReconstruction::seeded(
+      dense_partition,
+      get_gtr_by_name(model)?,
+      dense_node_states,
+    )];
 
     let fitch = create_fitch_partition(
       graph,
@@ -80,7 +84,11 @@ mod tests {
       &nwk_fasta_node_inputs(graph, names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, get_gtr_by_name(model)?, sparse_node_states)];
+    let sparse_partitions = vec![SparseReconstruction::seeded(
+      sparse_partition,
+      get_gtr_by_name(model)?,
+      sparse_node_states,
+    )];
 
     let (dense_partitions, _) =
       marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;

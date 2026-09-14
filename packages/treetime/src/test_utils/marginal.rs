@@ -14,7 +14,7 @@ use treetime_io::nwk::nwk_read_str;
 
 pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
+pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read_str(newick)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
@@ -27,11 +27,11 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
 
   let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(&gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
   Ok(log_lh.value())
 }
 
-pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
+pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read_str(newick)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
@@ -44,6 +44,6 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(&gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
   Ok(log_lh.value())
 }

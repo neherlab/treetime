@@ -155,7 +155,8 @@ pub fn execute_mugration(
     pi,
   })?;
 
-  let partition = PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, filter_uninformative_root);
+  let partition =
+    PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, filter_uninformative_root);
   let node_states = partition.attach_traits(&graph, traits, names)?;
 
   let update = partition.marginal_update(&gtr, &graph, &profile_branch_lengths(branch_lengths), node_states)?;

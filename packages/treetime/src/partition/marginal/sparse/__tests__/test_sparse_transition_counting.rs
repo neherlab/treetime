@@ -59,7 +59,8 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -89,7 +90,8 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -118,7 +120,8 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -152,7 +155,8 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,

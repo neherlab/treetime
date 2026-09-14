@@ -45,7 +45,8 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -75,7 +76,8 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, recon, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = recon.partition.count_transitions(&recon.gtr, 
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
       &graph,
       &branch_lengths,
       &recon.node_states,

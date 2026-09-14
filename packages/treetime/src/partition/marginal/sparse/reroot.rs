@@ -1,6 +1,6 @@
-use crate::gtr::gtr::GTR;
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::pipeline::SparseReconstruction;
+use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};

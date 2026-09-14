@@ -1,6 +1,5 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::discrete::DiscreteStates;
 use indexmap::IndexMap;
