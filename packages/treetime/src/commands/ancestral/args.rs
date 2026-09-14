@@ -1,4 +1,5 @@
 use crate::ancestral::params::MethodAncestral;
+use crate::ancestral::pipeline::AncestralParams;
 use crate::ancestral::sample::SampleMode;
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
@@ -273,6 +274,23 @@ impl TreetimeAncestralArgs {
   /// Input tree path.
   pub fn tree(&self) -> &Path {
     &self.tree
+  }
+}
+
+impl AncestralParams {
+  pub fn new(args: &TreetimeAncestralArgs) -> Self {
+    Self {
+      method: args.method_anc,
+      model: args.model_args.model,
+      dense: args.dense,
+      include_leaves: args.include_leaves || args.reconstruct_tip_states,
+      impute_missing_data: args.impute_missing_data || args.reconstruct_tip_states,
+      gtr_iterations: args.gtr_iterations,
+      site_specific_gtr: args.site_specific_gtr,
+      seed: args.seed,
+      sample_from_profile: args.sample_from_profile,
+      ignore_missing_alns: args.ignore_missing_alns,
+    }
   }
 }
 
