@@ -72,12 +72,10 @@ pub fn run_ancestral_reconstruction(
     alphabet,
     mask,
     |key, seq| {
-      if let Some(ref mut writer) = output_fasta {
+      output_fasta.as_mut().map_or(Ok(()), |writer| {
         let node = &input.nodes[&key];
         writer.write(node.name.as_deref().unwrap_or(""), &node.desc, seq)
-      } else {
-        Ok(())
-      }
+      })
     },
     progress,
   )?;
