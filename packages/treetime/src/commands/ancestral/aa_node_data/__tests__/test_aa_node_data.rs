@@ -5,7 +5,6 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::edge::GraphEdgeKey;
   use treetime_utils::o;
 
   #[test]
@@ -127,15 +126,10 @@ mod tests {
   fn test_collect_aa_cds_node_data_keeps_inferred_root_sequence() {
     let (graph, names) = helpers::named_tree();
     let name_to_key = helpers::node_name_to_key(&names, &graph);
-    let partition = helpers::StubAugurPartition::new(
-      &graph,
-      &names,
-      &btreemap! {
-        o!("A") => o!("AD"),
-        o!("B") => o!("AC"),
-        o!("root") => o!("AC"),
-      },
-    );
+    // Both leaves carry the same sequence, so Fitch places `AC` at every node and every edge carries no
+    // substitutions. The inferred root `AC` differs from the supplied reference `AA`, so only the root
+    // gets a mutation (the reference-to-root diff); the leaf edges stay empty.
+    let partition = helpers::fitch_partition(&graph, &names, &["AC", "AC"]);
     let reference = Seq::try_from_str("AA").unwrap();
 
     let actual = collect_aa_cds_node_data(&graph, &partition, "S", &names, Some(&reference)).unwrap();
@@ -161,7 +155,11 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::alphabet::alphabet::Alphabet;
+    use crate::ancestral::fitch::create_fitch_partition;
+    use crate::ancestral::pipeline::AncestralPartition;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
 
     pub fn node_name_to_key(
@@ -185,53 +183,26 @@ mod tests {
       (graph, names)
     }
 
-    pub struct StubAugurPartition {
-      sequences: BTreeMap<GraphNodeKey, Seq>,
-      unknown: AsciiChar,
-    }
-
-    impl StubAugurPartition {
-      pub fn new(
-        graph: &Graph,
-        names: &BTreeMap<GraphNodeKey, Option<String>>,
-        sequences_by_name: &BTreeMap<String, String>,
-      ) -> Self {
-        let sequences = graph
-          .get_nodes()
-          .into_iter()
-          .map(|node| {
-            let node = node.read_arc();
-            let name = names[&node.key()].clone().unwrap();
-            (node.key(), Seq::try_from_str(&sequences_by_name[&name]).unwrap())
-          })
-          .collect();
-        Self {
-          sequences,
-          unknown: AsciiChar::from_byte_unchecked(b'X'),
-        }
-      }
-    }
-
-    impl AugurNodeDataJsonAncestralPartition for StubAugurPartition {
-      fn sequence_length(&self) -> usize {
-        self.sequences.values().next().unwrap().len()
-      }
-
-      fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-        self.sequences[&node_key].clone()
-      }
-
-      fn edge_subs(&self, _graph: &Graph, _edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-        Ok(vec![])
-      }
-
-      fn edge_indels(&self, _edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-        vec![]
-      }
-
-      fn ambiguous_char(&self) -> AsciiChar {
-        self.unknown
-      }
+    /// Build a Fitch reconstruction whose leaves carry the given sequences (in the leaf order of the
+    /// tree), for exercising the amino-acid node-data gather over a concrete partition.
+    pub fn fitch_partition(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      leaf_sequences: &[&str],
+    ) -> AncestralPartition {
+      let alphabet = Alphabet::default();
+      let fasta: String = graph
+        .get_leaves()
+        .into_iter()
+        .zip(leaf_sequences)
+        .map(|(leaf, seq)| {
+          let name = names[&leaf.read_arc().key()].clone().unwrap();
+          format!(">{name}\n{seq}\n")
+        })
+        .collect();
+      let sequences = read_many_fasta_str(&fasta, &alphabet).unwrap();
+      let partition = create_fitch_partition(graph, 0, alphabet, &sequences, names).unwrap();
+      AncestralPartition::Fitch(partition)
     }
   }
 }

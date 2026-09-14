@@ -183,6 +183,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::params::MethodAncestral;
+    use crate::ancestral::pipeline::AncestralPartition;
     use crate::commands::ancestral::aa_node_data::{AaCdsNodeData, AaNodeData};
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
@@ -289,7 +290,7 @@ mod tests {
       partition: &PartitionFitch,
       mask: &[bool],
     ) -> String {
-      let maps = gather_augur_output_maps(graph, partition).unwrap();
+      let maps = gather_augur_output_maps(graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
       let data = build_augur_node_data_json(graph, &maps, mask, names, None).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
@@ -396,7 +397,7 @@ mod tests {
         }),
       );
 
-      let maps = gather_augur_output_maps(&graph, &partition).unwrap();
+      let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
       build_augur_node_data_json(
         &graph,
         &maps,

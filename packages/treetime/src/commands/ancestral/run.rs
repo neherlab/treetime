@@ -17,8 +17,6 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
-use crate::partition::traits::PartitionBranchOps;
 use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
@@ -359,14 +357,6 @@ pub(crate) fn gather_ancestral_output_maps(
   let Some(partition) = partition else {
     return Ok(AncestralOutputMaps::default());
   };
-  match partition {
-    AncestralPartition::Fitch(partition) => gather_tree_output_maps(graph, partition),
-    AncestralPartition::Sparse(partition) => gather_tree_output_maps(graph, &partition.readout()),
-    AncestralPartition::Dense(partition) => gather_tree_output_maps(graph, &partition.readout()),
-  }
-}
-
-fn gather_tree_output_maps(graph: &Graph, partition: &dyn PartitionBranchOps) -> Result<AncestralOutputMaps, Report> {
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()
@@ -400,28 +390,23 @@ fn gather_augur_output_maps_opt(
   let Some(partition) = partition else {
     return Ok(None);
   };
-  let maps = match partition {
-    AncestralPartition::Fitch(partition) => gather_augur_output_maps(graph, partition)?,
-    AncestralPartition::Sparse(partition) => gather_augur_output_maps(graph, partition)?,
-    AncestralPartition::Dense(partition) => gather_augur_output_maps(graph, partition)?,
-  };
-  Ok(Some(maps))
+  Ok(Some(gather_augur_output_maps(graph, partition)?))
 }
 
 /// Gather the augur node-data sequences and substitutions from one partition.
 pub(crate) fn gather_augur_output_maps(
   graph: &Graph,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  partition: &AncestralPartition,
 ) -> Result<AugurOutputMaps, Report> {
   let sequence_length = partition.sequence_length();
   let ambiguous_char = partition.ambiguous_char();
-  let root_sequence = partition.root_sequence(graph)?;
+  let root_sequence = partition.augur_root_sequence(graph)?;
   let node_sequences = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let key = node.read_arc().key();
-      (key, partition.node_sequence(key))
+      (key, partition.augur_node_sequence(key))
     })
     .collect();
   let edge_subs = graph
@@ -525,7 +510,7 @@ fn run_aa_reconstructions(
     };
 
     let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, names, branch_lengths, &mut rng)?;
-    let guard = reconstructed.partition.as_ref();
+    let guard = &reconstructed.partition;
 
     if let Some(annotation) = &reconstructed.annotation
       && let Some(cds_len) = annotation_cds_nuc_length(annotation)
@@ -560,7 +545,7 @@ fn run_aa_reconstructions(
 
 fn write_aa_partition_sequences(
   graph: &Graph,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  partition: &AncestralPartition,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   name: &str,
   template: &str,
@@ -574,7 +559,7 @@ fn write_aa_partition_sequences(
     let node_name = names[&node_key]
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
-    let seq = partition.node_sequence(node_key);
+    let seq = partition.augur_node_sequence(node_key);
     writer.write(&node_name, &None, &seq)?;
   }
 

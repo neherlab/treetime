@@ -1,11 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
-use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::marginal::shared::update::MarginalUpdate;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -88,9 +87,10 @@ pub fn reconstruct_marginal_partition(
   let profile_lengths = profile_branch_lengths(branch_lengths);
 
   // Each partition runs its own marginal passes and node reconstruction over its own role-typed result
-  // maps, then is boxed as the augur read view. The two representations reconstruct differently (sparse
-  // tip imputation reads the forward down-message), so each branch owns its reconstruction closure.
-  let partition: Box<dyn AugurNodeDataJsonAncestralPartition> = match created.partition {
+  // maps, then becomes the reconstruction the augur gather reads. The two representations reconstruct
+  // differently (sparse tip imputation reads the forward down-message), so each branch owns its
+  // reconstruction closure.
+  let partition: AncestralPartition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate {
         mut node_states, edges, ..
@@ -110,7 +110,7 @@ pub fn reconstruct_marginal_partition(
         },
         |_key: GraphNodeKey, _seq: &Seq| Ok(()),
       )?;
-      Box::new(SparseReconstruction {
+      AncestralPartition::Sparse(SparseReconstruction {
         partition,
         node_states,
         edges,
@@ -135,7 +135,7 @@ pub fn reconstruct_marginal_partition(
         },
         |_key: GraphNodeKey, _seq: &Seq| Ok(()),
       )?;
-      Box::new(DenseReconstruction {
+      AncestralPartition::Dense(DenseReconstruction {
         partition,
         node_states,
         edges,
@@ -156,7 +156,7 @@ pub fn reconstruct_marginal_partition(
 /// A reconstructed partition and the metadata needed to serialize it into augur node data.
 pub struct ReconstructedPartition {
   pub name: String,
-  pub partition: Box<dyn AugurNodeDataJsonAncestralPartition>,
+  pub partition: AncestralPartition,
   pub alphabet: Alphabet,
   pub model_name: GtrModelName,
   pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,

@@ -18,7 +18,8 @@ use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
-use crate::seq::mutation::Sub;
+use crate::seq::indel::InDel;
+use crate::seq::mutation::{Mutation, MutationTrack, Sub};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -27,6 +28,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
+use treetime_primitives::AsciiChar;
 use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
 use treetime_utils::make_error;
@@ -109,6 +111,33 @@ impl SparseReconstruction {
   /// The number of indel events on one edge.
   pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(edge_key)
+  }
+
+  /// The reconstructed sequence for one node, resolved against the posterior (MAP or sampled draw).
+  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.partition.node_sequence(&self.node_states, node_key)
+  }
+
+  /// The reconstructed root sequence.
+  pub fn root_sequence(&self, _graph: &Graph) -> Result<Seq, Report> {
+    Ok(self.partition.root_sequence())
+  }
+
+  /// Grouped aligned insertions and deletions for one edge.
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    self.partition.edge_indels(edge_key)
+  }
+
+  /// The node sequence written into the augur node-data JSON. For the sparse representation this equals
+  /// [`Self::node_sequence`]: both resolve the parsimony chain against the posterior, so the JSON and
+  /// the reconstructed FASTA carry the same MAP states.
+  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.node_sequence(node_key)
+  }
+
+  /// The alphabet's ambiguous (unknown) character, used to fill masked positions in output sequences.
+  pub fn ambiguous_char(&self) -> AsciiChar {
+    self.partition.alphabet.unknown()
   }
 
   /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge
@@ -196,6 +225,34 @@ impl DenseReconstruction {
     self.partition.edge_indel_count(&self.edges.estimates, edge_key)
   }
 
+  /// The reconstructed most-likely-state sequence for one node (deterministic MAP).
+  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.partition.node_sequence(&self.node_states, node_key)
+  }
+
+  /// The reconstructed root sequence (deterministic MAP).
+  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+    self.partition.root_sequence(&self.node_states, graph)
+  }
+
+  /// Grouped aligned insertions and deletions for one edge.
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    self.partition.edge_indels(&self.edges.estimates, edge_key)
+  }
+
+  /// The node sequence written into the augur node-data JSON. Unlike [`Self::node_sequence`] (which
+  /// re-derives the MAP state from the profile), this reads back the flag-aware sequence the marginal
+  /// reconstruction pass stored in `seq.sequence` (observed echo or imputation), keeping the JSON
+  /// consistent with the reconstructed FASTA and with the sparse backend.
+  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.node_states[&node_key].seq.sequence.clone()
+  }
+
+  /// The alphabet's ambiguous (unknown) character, used to fill masked positions in output sequences.
+  pub fn ambiguous_char(&self) -> AsciiChar {
+    self.partition.alphabet.unknown()
+  }
+
   /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge
   /// results together with the substitution log likelihood.
   ///
@@ -231,6 +288,102 @@ pub enum AncestralPartition {
   Fitch(PartitionFitch),
   Sparse(SparseReconstruction),
   Dense(DenseReconstruction),
+}
+
+/// Output-side read access over a completed reconstruction, dispatching each operation to the concrete
+/// representation. The tree writers read `node_sequence`/`root_sequence`/`edge_mutations`; the augur
+/// node-data writer reads `augur_node_sequence`/`augur_root_sequence`/`edge_subs` and the alphabet's
+/// ambiguous character. The tree and augur node/root sequences differ for the dense representation (MAP
+/// states versus the stored flag-aware reconstruction) and are kept as distinct accessors.
+impl AncestralPartition {
+  /// The alignment length (number of sites).
+  pub fn sequence_length(&self) -> usize {
+    match self {
+      Self::Fitch(partition) => partition.sequence_length(),
+      Self::Sparse(partition) => partition.sequence_length(),
+      Self::Dense(partition) => partition.sequence_length(),
+    }
+  }
+
+  /// The alphabet's ambiguous (unknown) character.
+  pub fn ambiguous_char(&self) -> AsciiChar {
+    match self {
+      Self::Fitch(partition) => partition.ambiguous_char(),
+      Self::Sparse(partition) => partition.ambiguous_char(),
+      Self::Dense(partition) => partition.ambiguous_char(),
+    }
+  }
+
+  /// The reconstructed sequence for one node, as read by the tree writers.
+  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    match self {
+      Self::Fitch(partition) => partition.node_sequence(node_key),
+      Self::Sparse(partition) => partition.node_sequence(node_key),
+      Self::Dense(partition) => partition.node_sequence(node_key),
+    }
+  }
+
+  /// The reconstructed sequence for one node, as written into the augur node-data JSON.
+  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    match self {
+      Self::Fitch(partition) => partition.node_sequence(node_key),
+      Self::Sparse(partition) => partition.augur_node_sequence(node_key),
+      Self::Dense(partition) => partition.augur_node_sequence(node_key),
+    }
+  }
+
+  /// The reconstructed root sequence, as read by the tree writers.
+  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+    match self {
+      Self::Fitch(partition) => partition.root_sequence(graph),
+      Self::Sparse(partition) => partition.root_sequence(graph),
+      Self::Dense(partition) => partition.root_sequence(graph),
+    }
+  }
+
+  /// The reconstructed root sequence used as the augur JSON reference, matching the root node's augur
+  /// sequence.
+  pub fn augur_root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+    Ok(self.augur_node_sequence(graph.root_key()?))
+  }
+
+  /// MAP-derived nucleotide substitutions on one edge (parent -> child).
+  pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    match self {
+      Self::Fitch(partition) => partition.edge_subs(graph, edge_key),
+      Self::Sparse(partition) => partition.edge_subs(edge_key),
+      Self::Dense(partition) => partition.edge_subs(graph, edge_key),
+    }
+  }
+
+  /// Grouped aligned insertions and deletions for one edge.
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    match self {
+      Self::Fitch(partition) => partition.edge_indels(edge_key),
+      Self::Sparse(partition) => partition.edge_indels(edge_key),
+      Self::Dense(partition) => partition.edge_indels(edge_key),
+    }
+  }
+
+  /// The substitutions and indels on one edge as one mutation list on the given track.
+  pub fn edge_mutations(
+    &self,
+    graph: &Graph,
+    edge_key: GraphEdgeKey,
+    track: MutationTrack,
+  ) -> Result<Vec<Mutation>, Report> {
+    self
+      .edge_subs(graph, edge_key)?
+      .into_iter()
+      .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
+      .chain(
+        self
+          .edge_indels(edge_key)
+          .iter()
+          .map(|indel| Mutation::indel(track.clone(), indel)),
+      )
+      .collect()
+  }
 }
 
 #[derive(Debug, Serialize)]

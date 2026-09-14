@@ -3,8 +3,8 @@ mod __tests__;
 
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
+use crate::ancestral::pipeline::AncestralPartition;
 use crate::make_error;
-use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use eyre::Report;
 use itertools::Itertools;
@@ -228,13 +228,13 @@ fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotation
 
 pub fn collect_aa_cds_node_data(
   graph: &Graph,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  partition: &AncestralPartition,
   cds: &str,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   reference_override: Option<&Seq>,
 ) -> Result<AaCdsNodeData, Report> {
   let root_key = graph.root_key()?;
-  let inferred_root = partition.root_sequence(graph)?;
+  let inferred_root = partition.augur_root_sequence(graph)?;
   let reference = reference_override.cloned().unwrap_or_else(|| inferred_root.clone());
 
   if reference.len() != inferred_root.len() {

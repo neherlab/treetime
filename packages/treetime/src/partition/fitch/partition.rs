@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{AsciiChar, Seq, seq};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionFitch {
@@ -108,6 +108,11 @@ impl PartitionFitch {
         .filter(|(parent, child)| self.alphabet.is_canonical(**parent) && self.alphabet.is_canonical(**child))
         .count(),
     )
+  }
+
+  /// The alphabet's ambiguous (unknown) character, used to fill masked positions in output sequences.
+  pub fn ambiguous_char(&self) -> AsciiChar {
+    self.alphabet.unknown()
   }
 }
 
