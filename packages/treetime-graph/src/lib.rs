@@ -12,6 +12,9 @@ pub mod reroot;
 pub mod topology_order;
 
 #[cfg(test)]
+mod __tests__;
+
+#[cfg(test)]
 mod tests {
   use ctor::ctor;
   use treetime_utils::init::global::global_init;
