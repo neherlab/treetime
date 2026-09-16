@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
   use crate::seq::gap_fill::{GapFill, apply_gap_fill};
-  use clap::Parser;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::{AsciiChar, Seq};
@@ -118,50 +116,5 @@ mod tests {
     let mut s = seq("--A-C-G-T--");
     apply_gap_fill(&mut s, GapFill::OnlyTerminal, c(GAP), c(UNK));
     assert_eq!("NNA-C-G-TNN", s.as_str());
-  }
-
-  // --- CLI arg resolution ---
-
-  fn base_args() -> Vec<&'static str> {
-    vec!["ancestral", "--tree=t.nwk", "--output-all=out"]
-  }
-
-  #[test]
-  fn test_gap_fill_cli_default_is_only_terminal() {
-    let args = TreetimeAncestralArgsRaw::try_parse_from(base_args()).unwrap();
-    assert_eq!(GapFill::OnlyTerminal, args.gap_fill_args.effective_gap_fill());
-  }
-
-  #[test]
-  fn test_gap_fill_cli_explicit_none() {
-    let mut a = base_args();
-    a.push("--gap-fill=none");
-    let args = TreetimeAncestralArgsRaw::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::None, args.gap_fill_args.effective_gap_fill());
-  }
-
-  #[test]
-  fn test_gap_fill_cli_explicit_all() {
-    let mut a = base_args();
-    a.push("--gap-fill=all");
-    let args = TreetimeAncestralArgsRaw::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::All, args.gap_fill_args.effective_gap_fill());
-  }
-
-  #[test]
-  fn test_gap_fill_cli_keep_overhangs_resolves_to_none() {
-    let mut a = base_args();
-    a.push("--keep-overhangs");
-    let args = TreetimeAncestralArgsRaw::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::None, args.gap_fill_args.effective_gap_fill());
-  }
-
-  #[test]
-  fn test_gap_fill_cli_both_flags_is_error() {
-    let mut a = base_args();
-    a.push("--keep-overhangs");
-    a.push("--gap-fill=all");
-    let result = TreetimeAncestralArgsRaw::try_parse_from(a);
-    result.unwrap_err();
   }
 }

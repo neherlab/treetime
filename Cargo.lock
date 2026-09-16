@@ -130,11 +130,14 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 name = "app-api"
 version = "1.0.0"
 dependencies = [
+ "approx",
  "chrono",
  "clap",
  "ctor 0.5.0",
  "eyre",
+ "indoc",
  "itertools 0.14.0",
+ "jsonschema",
  "log",
  "maplit",
  "ndarray",
@@ -147,6 +150,7 @@ dependencies = [
  "smart-default",
  "strum 0.27.2",
  "strum_macros 0.27.2",
+ "tempfile",
  "treetime",
  "treetime-distribution",
  "treetime-graph",
@@ -4832,6 +4836,7 @@ dependencies = [
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "tempfile",
+ "treetime",
  "treetime-distribution",
  "treetime-graph",
  "treetime-grid",

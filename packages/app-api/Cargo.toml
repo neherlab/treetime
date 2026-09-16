@@ -38,10 +38,14 @@ strum_macros = { workspace = true }
 clap = ["dep:clap", "treetime/clap"]
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
+indoc = { workspace = true }
+jsonschema = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+tempfile = { workspace = true }
 treetime-distribution = { workspace = true }
 
 [lints]

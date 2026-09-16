@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
-  use treetime::alphabet::alphabet::Alphabet;
-  use treetime::ancestral::attach::complete_alignment_for_leaves;
-  use treetime::ancestral::mask::create_mask;
-  use treetime::ancestral::params::MethodAncestral;
-  use treetime::ancestral::pipeline::AncestralParams;
-  use treetime::ancestral::sample::SampleMode;
-  use treetime::gtr::get_gtr::GtrModelName;
-  use treetime::progress::NoopProgress;
-  use treetime::seq::alignment::get_common_length;
+  use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::attach::complete_alignment_for_leaves;
+  use crate::ancestral::mask::create_mask;
+  use crate::ancestral::params::MethodAncestral;
+  use crate::ancestral::pipeline::AncestralParams;
+  use crate::ancestral::sample::SampleMode;
+  use crate::gtr::get_gtr::GtrModelName;
+  use crate::progress::NoopProgress;
+  use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
   use std::path::PathBuf;
@@ -47,7 +47,7 @@ mod tests {
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = treetime::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(
@@ -83,7 +83,7 @@ mod tests {
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = treetime::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use treetime::ancestral::marginal::branch_lengths_or_zero;
-  use treetime::o;
-  use treetime::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
+  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::o;
+  use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -151,13 +151,13 @@ mod tests {
   }
 
   mod helpers {
-    use treetime::constants::MIN_BRANCH_LENGTH_FRACTION;
-    use treetime::gtr::gtr::{GTR, GTRParams};
-    use treetime::o;
-    use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-    use treetime::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
-    use treetime::partition::storage::discrete::DiscreteStates;
-    use treetime::test_utils::{find_edge_key, find_node_key_by_name};
+    use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
+    use crate::gtr::gtr::{GTR, GTRParams};
+    use crate::o;
+    use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+    use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
+    use crate::partition::storage::discrete::DiscreteStates;
+    use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;
     use ndarray::Array1;

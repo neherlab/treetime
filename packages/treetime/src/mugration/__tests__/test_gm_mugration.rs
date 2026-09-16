@@ -137,8 +137,8 @@ mod tests {
   }
 
   mod helpers {
-    use treetime::mugration::mugration::execute_mugration;
-    use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
+    use crate::mugration::mugration::execute_mugration;
+    use crate::mugration::result::{MugrationOutputMaps, MugrationResult};
     use eyre::Report;
     use indexmap::IndexMap;
     use serde::Deserialize;
@@ -181,7 +181,7 @@ mod tests {
 
     pub fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {
       let path = format!(
-        "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
+        "{}/src/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
       json_read_file(&path).unwrap()
@@ -189,7 +189,7 @@ mod tests {
 
     pub fn load_gm_mugration_outputs() -> IndexMap<String, GmMugrationOutput> {
       let path = format!(
-        "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
+        "{}/src/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
       json_read_file(&path).unwrap()

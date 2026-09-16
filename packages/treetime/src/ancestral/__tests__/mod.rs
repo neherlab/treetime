@@ -27,3 +27,5 @@ mod test_multi;
 mod test_python_parity;
 mod test_sample;
 mod test_sample_reconstruction;
+mod test_smoke_gtr_iterations;
+mod test_smoke_sample_from_profile;

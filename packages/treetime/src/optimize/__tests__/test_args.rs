@@ -1,14 +1,22 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
   use crate::optimize::params::BranchOptMethod;
   use clap::Parser;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
-  /// Each kebab-case label on `--opt-method` parses to the corresponding
-  /// `BranchOptMethod` variant. Pins the `clap::ValueEnum` `rename_all = "kebab-case"`
-  /// mapping so a future variant rename or deletion fails this test.
+  /// Minimal parser exercising the `clap::ValueEnum` derive on `BranchOptMethod`. The derive lives on
+  /// the core enum behind the `clap` feature; the CLI adapter reuses it verbatim, so pinning the
+  /// mapping here pins it for every consumer.
+  #[derive(Parser)]
+  struct OptMethodArgs {
+    #[arg(long, value_enum, default_value_t = BranchOptMethod::default())]
+    opt_method: BranchOptMethod,
+  }
+
+  /// Each kebab-case label on `--opt-method` parses to the corresponding `BranchOptMethod` variant.
+  /// Pins the `#[serde(rename_all = "kebab-case")]`-derived `ValueEnum` mapping so a future variant
+  /// rename or deletion fails this test.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent(     "brent",      BranchOptMethod::Brent)]
@@ -19,37 +27,24 @@ mod tests {
   #[case::newton_log("newton-log", BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_args_opt_method_kebab_case_parses(#[case] flag: &str, #[case] expected: BranchOptMethod) {
-    let args = TreetimeOptimizeArgsRaw::try_parse_from([
-      "treetime",
-      "--tree=/dev/null",
-      "--output-all=/dev/null",
-      &format!("--opt-method={flag}"),
-    ])
-    .unwrap();
+    let args = OptMethodArgs::try_parse_from(["treetime", &format!("--opt-method={flag}")]).unwrap();
     assert_eq!(expected, args.opt_method);
   }
 
-  /// Omitting `--opt-method` selects `BrentSqrt`. This is the v0-matching
-  /// default; a regression that moved the `#[default]` annotation or changed
-  /// the `default_value_t` would silently route CLI runs to the wrong optimizer.
+  /// Omitting `--opt-method` selects `BrentSqrt`. This is the v0-matching default carried by the
+  /// enum's `#[default]` annotation; a regression that moved it would silently route runs to the
+  /// wrong optimizer.
   #[test]
   fn test_args_opt_method_default_is_brent_sqrt() {
-    let args =
-      TreetimeOptimizeArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/dev/null"]).unwrap();
+    let args = OptMethodArgs::try_parse_from(["treetime"]).unwrap();
     assert_eq!(BranchOptMethod::BrentSqrt, args.opt_method);
   }
 
-  /// An unknown `--opt-method` value is rejected at parse time. Pins the
-  /// `value_enum` constraint and prevents a typo from silently routing to a
-  /// fallback variant.
+  /// An unknown `--opt-method` value is rejected at parse time. Pins the `value_enum` constraint and
+  /// prevents a typo from silently routing to a fallback variant.
   #[test]
   fn test_args_opt_method_rejects_unknown() {
-    let result = TreetimeOptimizeArgsRaw::try_parse_from([
-      "treetime",
-      "--tree=/dev/null",
-      "--output-all=/dev/null",
-      "--opt-method=brent-foo",
-    ]);
+    let result = OptMethodArgs::try_parse_from(["treetime", "--opt-method=brent-foo"]);
     assert!(result.is_err(), "expected parse error for unknown --opt-method value");
   }
 }

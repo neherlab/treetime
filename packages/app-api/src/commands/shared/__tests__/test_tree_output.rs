@@ -1,8 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-  use treetime::ancestral::pipeline::AncestralPartition;
-  use crate::commands::ancestral::aa_node_data::AaNodeData;
   use crate::commands::ancestral::result::AncestralNodeOut;
   use crate::commands::ancestral::tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
   use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat};
@@ -11,10 +8,6 @@ mod tests {
   use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat};
   use crate::commands::shared::tree_output::{format_number, group_mutations, mat_mutation};
   use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat};
-  use treetime::partition::fitch::partition::PartitionFitch;
-  use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
-  use treetime::seq::indel::InDel;
-  use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -22,6 +15,13 @@ mod tests {
   use rstest::rstest;
   use serde_json::Value;
   use tempfile::TempDir;
+  use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
+  use treetime::ancestral::aa::AaNodeData;
+  use treetime::ancestral::pipeline::AncestralPartition;
+  use treetime::partition::fitch::partition::PartitionFitch;
+  use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
+  use treetime::seq::indel::InDel;
+  use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::graph::TreeWriteKind;
@@ -439,18 +439,17 @@ mod tests {
     use crate::commands::prune::run::gather_prune_output_maps;
     use crate::commands::timetree::result::{TimetreeNodeOut, TimetreeOutputMaps};
     use crate::commands::timetree::run::gather_timetree_output_maps;
-    use treetime::gtr::gtr::{GTR, GTRParams};
-    use treetime::mugration::result::gather_mugration_output_maps;
-    use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps, MugrationResult};
-    use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-    use treetime::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
-    use treetime::partition::storage::discrete::DiscreteStates;
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
     use serde::Serialize;
     use std::collections::BTreeMap;
     use std::error::Error as StdError;
     use std::io;
+    use treetime::gtr::gtr::{GTR, GTRParams};
+    use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps, MugrationResult};
+    use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+    use treetime::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
+    use treetime::partition::storage::discrete::DiscreteStates;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
@@ -488,13 +487,36 @@ mod tests {
       gather_timetree_output_maps(graph, &[]).unwrap()
     }
 
+    /// Build the mugration output maps the auspice and MAT encoders read, from the partition's public
+    /// accessors. Mirrors what the core gather produces from the same reads, keeping the maps
+    /// constructible from public API without reaching the crate-internal gather.
     pub fn mugration_maps(
       graph: &Graph,
       partition: &PartitionMarginalDiscrete,
       gtr: &GTR,
       node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     ) -> MugrationOutputMaps {
-      gather_mugration_output_maps(graph, partition, gtr, node_states)
+      let reconstructed_traits = graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (key, partition.get_reconstructed_trait(node_states, key))
+        })
+        .collect();
+      let confidences = graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (key, partition.get_confidence(node_states, key))
+        })
+        .collect();
+      MugrationOutputMaps {
+        reconstructed_traits,
+        confidences,
+        states: partition.states.clone(),
+        gtr: gtr.clone(),
+        n_states: partition.n_states(),
+      }
     }
 
     type AncestralGraphSetup = (

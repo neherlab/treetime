@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use treetime::mugration::mugration::{
+  use crate::mugration::mugration::{
     apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, execute_mugration, validate_weight_coverage,
   };
-  use treetime::partition::storage::discrete::DiscreteStates;
+  use crate::partition::storage::discrete::DiscreteStates;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::IndexSet;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use treetime::mugration::mugration::execute_mugration;
-  use treetime::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
+  use crate::mugration::mugration::execute_mugration;
+  use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

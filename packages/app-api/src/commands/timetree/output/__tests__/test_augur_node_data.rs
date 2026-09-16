@@ -155,13 +155,13 @@ mod tests {
   }
 
   mod helpers {
-    use treetime::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
-    use treetime::timetree::confidence::NodeConfidenceInterval;
-    use ndarray::array;
+    use indoc::indoc;
     use std::collections::BTreeMap;
     use std::path::Path;
+    use treetime::clock::clock_model::{ClockModel, ClockRegression};
+    use treetime::timetree::confidence::NodeConfidenceInterval;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
@@ -248,14 +248,7 @@ mod tests {
         edge_b_key => Some(0.010),
       };
 
-      // Regression covariance over [rate, intercept]: cov[0,0] is the rate variance.
-      let stats = ClockModelStats::Estimated(RegressionStats {
-        chisq: 0.0,
-        r_val: 0.99,
-        hessian: array![[0.0, 0.0], [0.0, 0.0]],
-        cov: array![[1e-8, 0.0], [0.0, 0.5]],
-      });
-      let clock_model = ClockModel::for_testing_with_stats(0.002, -4.0, stats);
+      let clock_model = sample_clock_model();
 
       let dates: DatesMap = maplit::btreemap! {
         "leaf_a".to_owned() => Some(DateConstraint::exact(2005.0)),
@@ -291,6 +284,23 @@ mod tests {
         intervals,
         branch_lengths,
       }
+    }
+
+    /// Estimated-regression clock model (rate 0.002, intercept -4.0, rate variance cov[0,0] = 1e-8),
+    /// built from the public `ClockRegression` deserialize form and `ClockModel::from_regression`, so
+    /// the app-api test constructs its fixture from public API rather than a crate-internal test
+    /// constructor.
+    fn sample_clock_model() -> ClockModel {
+      let regression: ClockRegression = json_read_str(indoc! {r#"{
+        "clock_rate": 0.002,
+        "intercept": -4.0,
+        "chisq": 0.0,
+        "r_val": 0.99,
+        "hessian": [[0.0, 0.0], [0.0, 0.0]],
+        "cov": [[1e-8, 0.0], [0.0, 0.5]]
+      }"#})
+      .unwrap();
+      ClockModel::from_regression(&regression).unwrap()
     }
 
     fn timetree_nodes(

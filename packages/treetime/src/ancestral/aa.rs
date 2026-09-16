@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::AncestralPartition;
 use crate::make_error;

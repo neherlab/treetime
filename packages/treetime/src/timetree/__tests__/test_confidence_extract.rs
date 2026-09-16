@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use treetime::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
+  use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
   use approx::assert_relative_eq;
   use helpers::add_named;
   use maplit::btreemap;
@@ -278,7 +278,7 @@ mod tests {
   }
 
   mod helpers {
-    use treetime::timetree::timetree_state::TimetreeState;
+    use crate::timetree::timetree_state::TimetreeState;
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
