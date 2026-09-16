@@ -13,7 +13,6 @@ pub use crate::commands::optimize::result::OptimizeResult;
 pub use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 pub use crate::commands::prune::result::PruneResult;
 pub use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
-pub use crate::commands::timetree::result::TimetreeResult;
 pub use treetime::mugration::result::MugrationResult;
 
 #[cfg(test)]

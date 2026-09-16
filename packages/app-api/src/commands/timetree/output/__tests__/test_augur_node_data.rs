@@ -155,8 +155,8 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
-    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
+    use app_output::augur_node_data::build_augur_node_data_json;
+    use app_output::{TimetreeEdgeOut, TimetreeNodeOut};
     use indoc::indoc;
     use std::collections::BTreeMap;
     use std::path::Path;

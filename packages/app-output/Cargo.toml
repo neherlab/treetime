@@ -15,12 +15,15 @@ version.workspace = true
 treetime = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
+treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
+util-augur-node-data-json = { workspace = true }
 
 # [external]
 eyre = { workspace = true }
 itertools = { workspace = true }
 maplit = { workspace = true }
+serde = { workspace = true }
 
 [lints]
 workspace = true

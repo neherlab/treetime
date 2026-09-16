@@ -1,4 +1,4 @@
-use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
+use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;

@@ -236,10 +236,13 @@ dependencies = [
  "eyre",
  "itertools 0.14.0",
  "maplit",
+ "serde",
  "treetime",
  "treetime-graph",
  "treetime-io",
+ "treetime-primitives",
  "treetime-utils",
+ "util-augur-node-data-json",
 ]
 
 [[package]]

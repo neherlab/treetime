@@ -3,7 +3,7 @@ use crate::commands::shared::tree_output::{
   ensure_finite, finite_number, format_number, generation_date, group_mutations, mat_from_graph, node_name_value,
   write_tree_outputs,
 };
-use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
+use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;

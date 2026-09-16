@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::result::TimetreeEdgeOut;
+  use app_output::TimetreeEdgeOut;
   use pretty_assertions::assert_eq;
 
   #[test]

@@ -437,7 +437,7 @@ mod tests {
     use crate::commands::optimize::run::gather_optimize_output_maps;
     use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
     use crate::commands::prune::run::gather_prune_output_maps;
-    use crate::commands::timetree::result::{TimetreeNodeOut, TimetreeOutputMaps};
+    use app_output::{TimetreeNodeOut, TimetreeOutputMaps};
     use crate::commands::timetree::run::gather_timetree_output_maps;
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
