@@ -1,8 +1,8 @@
-use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
 };
+use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;

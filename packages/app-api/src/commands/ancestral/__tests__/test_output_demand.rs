@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use app_output::ancestral_result::AncestralOutputMaps;
   use crate::commands::ancestral::run::{collect_ancestral_tree_maps, tree_outputs_need_sequences};
+  use app_output::ancestral_result::AncestralOutputMaps;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;

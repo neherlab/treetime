@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use app_output::EdgeMutationCommentProvider;
   use app_output::DateCommentProvider;
+  use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
