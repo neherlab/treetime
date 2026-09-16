@@ -3,6 +3,7 @@ pub mod alphabet;
 pub mod config;
 pub mod gap_fill;
 pub mod metadata;
+pub mod method_anc;
 pub mod model;
 pub mod output;
 pub mod required;

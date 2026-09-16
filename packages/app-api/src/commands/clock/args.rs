@@ -1,6 +1,7 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
+use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -68,8 +69,8 @@ pub struct TreetimeClockArgsRaw {
   pub branch_length_mode: BranchLengthMode,
 
   /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
-  pub method_anc: MethodAncestral,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default()))]
+  pub method_anc: MethodAncestralCli,
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
   #[cfg_attr(feature = "clap", clap(long, default_value = "3.0"))]
@@ -218,7 +219,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       sequence_length: raw.sequence_length,
       model_args: raw.model_args,
       branch_length_mode: raw.branch_length_mode,
-      method_anc: raw.method_anc,
+      method_anc: raw.method_anc.into(),
       clock_filter: raw.clock_filter,
       reroot: raw.reroot,
       keep_root: raw.keep_root,

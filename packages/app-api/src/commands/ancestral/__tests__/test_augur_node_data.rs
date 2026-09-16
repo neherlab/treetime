@@ -132,25 +132,25 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_parsimony_end_to_end() {
-    use treetime::ancestral::params::MethodAncestral;
+    use crate::commands::shared::method_anc::MethodAncestralCli;
     use treetime::gtr::get_gtr::GtrModelName;
-    let actual = helpers::reconstruct_json(MethodAncestral::Parsimony, None, GtrModelName::Infer);
+    let actual = helpers::reconstruct_json(MethodAncestralCli::Parsimony, None, GtrModelName::Infer);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
   #[test]
   fn test_augur_node_data_ancestral_marginal_sparse_end_to_end() {
-    use treetime::ancestral::params::MethodAncestral;
+    use crate::commands::shared::method_anc::MethodAncestralCli;
     use treetime::gtr::get_gtr::GtrModelName;
-    let actual = helpers::reconstruct_json(MethodAncestral::Marginal, Some(false), GtrModelName::JC69);
+    let actual = helpers::reconstruct_json(MethodAncestralCli::Marginal, Some(false), GtrModelName::JC69);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
   #[test]
   fn test_augur_node_data_ancestral_marginal_dense_end_to_end() {
-    use treetime::ancestral::params::MethodAncestral;
+    use crate::commands::shared::method_anc::MethodAncestralCli;
     use treetime::gtr::get_gtr::GtrModelName;
-    let actual = helpers::reconstruct_json(MethodAncestral::Marginal, Some(true), GtrModelName::JC69);
+    let actual = helpers::reconstruct_json(MethodAncestralCli::Marginal, Some(true), GtrModelName::JC69);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
@@ -185,6 +185,7 @@ mod tests {
     use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
     use crate::commands::ancestral::run::{gather_augur_output_maps, run_ancestral_reconstruction};
     use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output::OutputCoreArgs;
     use maplit::btreemap;
@@ -192,7 +193,6 @@ mod tests {
     use tempfile::tempdir;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
-    use treetime::ancestral::params::MethodAncestral;
     use treetime::ancestral::pipeline::AncestralPartition;
     use treetime::gtr::get_gtr::GtrModelName;
     use treetime::partition::fitch::partition::PartitionFitch;
@@ -295,7 +295,7 @@ mod tests {
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
-    pub fn reconstruct_json(method: MethodAncestral, dense: Option<bool>, model: GtrModelName) -> String {
+    pub fn reconstruct_json(method: MethodAncestralCli, dense: Option<bool>, model: GtrModelName) -> String {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
@@ -349,7 +349,7 @@ mod tests {
           alignment: vec![fasta_path],
         },
         tree: Some(tree_path),
-        method_anc: MethodAncestral::Marginal,
+        method_anc: MethodAncestralCli::Marginal,
         dense: Some(false),
         model_args: ModelArgs {
           model: GtrModelName::JC69,

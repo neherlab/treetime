@@ -3,6 +3,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
+use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
 use crate::commands::shared::reroot::RerootArgs;
@@ -242,8 +243,8 @@ pub struct TreetimeTimetreeArgsRaw {
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
-  pub method_anc: MethodAncestral,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default()))]
+  pub method_anc: MethodAncestralCli,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
@@ -535,7 +536,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       tip_slack: raw.tip_slack,
       covariation: raw.covariation,
       model_args: raw.model_args,
-      method_anc: raw.method_anc,
+      method_anc: raw.method_anc.into(),
       alphabet_args: raw.alphabet_args,
       dense: raw.dense,
       gap_fill_args: raw.gap_fill_args,

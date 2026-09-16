@@ -3,13 +3,13 @@ mod tests {
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::method_anc::MethodAncestralCli;
   use crate::commands::shared::model::ModelArgs;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use tempfile::tempdir;
   use treetime::alphabet::alphabet::Alphabet;
-  use treetime::ancestral::params::MethodAncestral;
   use treetime::gtr::get_gtr::GtrModelName;
   use treetime::progress::NoopProgress;
   use treetime_io::fasta::read_many_fasta_path;
@@ -18,7 +18,7 @@ mod tests {
   /// description keyed by sequence name. Leaf `A` carries a FASTA description, `B` does not, and the
   /// internal `root` is not a leaf record.
   fn reconstructed_descriptions(
-    method: MethodAncestral,
+    method: MethodAncestralCli,
     dense: Option<bool>,
   ) -> Result<BTreeMap<String, Option<String>>, Report> {
     let dir = tempdir()?;
@@ -56,7 +56,7 @@ mod tests {
 
   #[test]
   fn test_reconstructed_fasta_descriptions_parsimony() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(MethodAncestral::Parsimony, None)?;
+    let descriptions = reconstructed_descriptions(MethodAncestralCli::Parsimony, None)?;
     assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
     assert_eq!(Some(&None), descriptions.get("B"));
     assert_eq!(Some(&None), descriptions.get("root"));
@@ -65,7 +65,7 @@ mod tests {
 
   #[test]
   fn test_reconstructed_fasta_descriptions_marginal() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(MethodAncestral::Marginal, Some(false))?;
+    let descriptions = reconstructed_descriptions(MethodAncestralCli::Marginal, Some(false))?;
     assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
     assert_eq!(Some(&None), descriptions.get("B"));
     assert_eq!(Some(&None), descriptions.get("root"));
