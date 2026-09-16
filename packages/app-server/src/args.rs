@@ -1,5 +1,6 @@
 use app_api::commands::ancestral::aa_model::AaModelName;
 use app_api::commands::optimize::args::OptimizeRerootMethod;
+use app_api::commands::shared::gap_fill::GapFillCli;
 use app_api::commands::shared::reroot::RerootArgs;
 use app_api::commands::timetree::args::TimeMarginalMode;
 use serde::Deserialize;
@@ -11,7 +12,6 @@ use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
-use treetime::seq::gap_fill::GapFill;
 
 use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
@@ -33,8 +33,8 @@ pub struct ServerAncestralArgs {
   pub method_anc: MethodAncestral,
   pub dense: Option<bool>,
   pub aa: bool,
-  #[default(GapFill::default())]
-  pub gap_fill: GapFill,
+  #[default(GapFillCli::default())]
+  pub gap_fill: GapFillCli,
   pub keep_overhangs: bool,
   pub zero_based: bool,
   pub include_leaves: bool,
@@ -246,8 +246,8 @@ pub struct ServerTimetreeArgs {
   pub alphabet: AlphabetName,
   pub dense: Option<bool>,
   pub aa: bool,
-  #[default(GapFill::default())]
-  pub gap_fill: GapFill,
+  #[default(GapFillCli::default())]
+  pub gap_fill: GapFillCli,
   pub keep_overhangs: bool,
   pub zero_based: bool,
   pub include_leaves: bool,
@@ -445,8 +445,8 @@ pub struct ServerOptimizeArgs {
   pub reroot: Option<OptimizeRerootMethod>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
-  #[default(GapFill::default())]
-  pub gap_fill: GapFill,
+  #[default(GapFillCli::default())]
+  pub gap_fill: GapFillCli,
   pub keep_overhangs: bool,
 }
 

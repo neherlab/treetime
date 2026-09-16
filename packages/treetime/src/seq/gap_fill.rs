@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use treetime_primitives::{AsciiChar, Seq};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum GapFill {
   #[default]
