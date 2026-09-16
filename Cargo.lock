@@ -239,6 +239,7 @@ dependencies = [
  "treetime",
  "treetime-graph",
  "treetime-io",
+ "treetime-utils",
 ]
 
 [[package]]

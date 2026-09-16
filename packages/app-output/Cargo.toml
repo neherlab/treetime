@@ -15,6 +15,7 @@ version.workspace = true
 treetime = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
+treetime-utils = { workspace = true }
 
 # [external]
 eyre = { workspace = true }

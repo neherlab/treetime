@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use app_output::EdgeMutationCommentProvider;
-  use crate::commands::timetree::output::date_comment::DateCommentProvider;
+  use app_output::DateCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

@@ -5,7 +5,7 @@ use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::coalescent::{write_coalescent_delimited, write_coalescent_json};
-use crate::commands::timetree::output::date_comment::DateCommentProvider;
+use app_output::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use crate::commands::timetree::tree_output::write_timetree_tree_outputs;
 use eyre::{Report, WrapErr};
