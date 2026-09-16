@@ -159,6 +159,7 @@ quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 xml = "=1.0.0"
 
 app-api = { path = "packages/app-api" }
+app-output = { path = "packages/app-output" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-distribution = { path = "packages/treetime-distribution" }

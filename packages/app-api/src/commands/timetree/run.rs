@@ -1,4 +1,4 @@
-use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
+use app_output::EdgeMutationCommentProvider;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;

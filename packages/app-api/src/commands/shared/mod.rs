@@ -4,7 +4,6 @@ pub mod config;
 pub mod gap_fill;
 pub mod metadata;
 pub mod model;
-pub mod mutation_comment;
 pub mod output;
 pub mod required;
 pub mod reroot;

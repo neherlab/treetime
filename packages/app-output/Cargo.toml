@@ -10,5 +10,16 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+[dependencies]
+# [internal]
+treetime = { workspace = true }
+treetime-graph = { workspace = true }
+treetime-io = { workspace = true }
+
+# [external]
+eyre = { workspace = true }
+itertools = { workspace = true }
+maplit = { workspace = true }
+
 [lints]
 workspace = true

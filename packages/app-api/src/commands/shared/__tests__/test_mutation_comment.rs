@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
+  use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

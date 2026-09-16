@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
+  use app_output::EdgeMutationCommentProvider;
   use crate::commands::timetree::output::date_comment::DateCommentProvider;
   use eyre::Report;
   use indoc::indoc;

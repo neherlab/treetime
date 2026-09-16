@@ -7,7 +7,7 @@ use crate::commands::ancestral::result::{
   AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut,
 };
 use crate::commands::ancestral::tree_output::write_ancestral_tree_outputs;
-use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
+use app_output::EdgeMutationCommentProvider;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use eyre::Report;

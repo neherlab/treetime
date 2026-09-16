@@ -130,6 +130,7 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 name = "app-api"
 version = "1.0.0"
 dependencies = [
+ "app-output",
  "approx",
  "chrono",
  "clap",
@@ -231,6 +232,14 @@ dependencies = [
 [[package]]
 name = "app-output"
 version = "1.0.0"
+dependencies = [
+ "eyre",
+ "itertools 0.14.0",
+ "maplit",
+ "treetime",
+ "treetime-graph",
+ "treetime-io",
+]
 
 [[package]]
 name = "app-server"
