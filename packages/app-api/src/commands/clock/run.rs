@@ -2,8 +2,8 @@ use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::commands::clock::tree_output::write_clock_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::clock_result::{ClockNodeOut, EdgeOut};
 use eyre::{Report, WrapErr};
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
@@ -19,27 +19,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::nwk_read_file;
-
-/// Per-node clock output as a value.
-///
-/// Holds the durable per-node results the clock output writers consume: the estimated `time`
-/// (numerical date), the cumulative divergence `div`, and the two exclusion flags. `name` is carried
-/// for writers that key by name. The values are gathered from the tree after clock estimation and
-/// rerooting complete, so the map is keyed by the final (post-reroot) node set.
-#[derive(Debug, Clone, Serialize)]
-pub struct ClockNodeOut {
-  pub name: Option<String>,
-  pub div: f64,
-  pub time: Option<f64>,
-  pub is_outlier: bool,
-  pub bad_branch: bool,
-}
-
-/// Per-edge output as a value: the branch length the output writers read.
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct EdgeOut {
-  pub branch_length: Option<f64>,
-}
 
 #[derive(serde::Serialize)]
 pub struct ClockResult {

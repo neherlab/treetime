@@ -8,6 +8,7 @@
 
 pub mod ancestral_result;
 pub mod augur_node_data;
+pub mod clock_result;
 pub mod coalescent;
 pub mod date_comment;
 pub mod mutation_comment;

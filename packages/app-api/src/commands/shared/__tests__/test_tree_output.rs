@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use app_output::ancestral_result::AncestralNodeOut;
   use crate::commands::ancestral::tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
   use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat};
   use crate::commands::mugration::tree_output::{mugration_to_auspice, mugration_to_mat};
@@ -8,6 +7,7 @@ mod tests {
   use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat};
   use crate::commands::shared::tree_output::{format_number, group_mutations, mat_mutation};
   use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat};
+  use app_output::ancestral_result::AncestralNodeOut;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -430,15 +430,15 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use app_output::ancestral_result::AncestralOutputMaps;
     use crate::commands::ancestral::run::gather_ancestral_output_maps;
-    use crate::commands::clock::run::ClockNodeOut;
-    use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
     use crate::commands::optimize::run::gather_optimize_output_maps;
-    use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
     use crate::commands::prune::run::gather_prune_output_maps;
-    use app_output::{TimetreeNodeOut, TimetreeOutputMaps};
     use crate::commands::timetree::run::gather_timetree_output_maps;
+    use app_output::ancestral_result::AncestralOutputMaps;
+    use app_output::clock_result::ClockNodeOut;
+    use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
+    use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
+    use app_output::{TimetreeNodeOut, TimetreeOutputMaps};
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
     use serde::Serialize;
