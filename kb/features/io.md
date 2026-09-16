@@ -35,7 +35,7 @@
 
 ## v1-Only Formats
 
-- [x] PhyloXML
+- [/] PhyloXML (format type model, reader, and writer in `treetime-io` and `util-phyloxml`; not wired into any analysis command output)
 - [/] UShER MAT (output validates global reference nucleotides; input converts missing branch lengths to zero: [kb/issues/M-io-usher-missing-branch-length-becomes-zero.md](../issues/M-io-usher-missing-branch-length-becomes-zero.md))
 - [x] YAML serialization
 - [x] Compressed FASTA output
