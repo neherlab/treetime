@@ -6,6 +6,7 @@
 //! output policy through it. `app-cli` is the first consumer; the deferred clients adopt it when
 //! they are re-wired.
 
+pub mod coalescent;
 pub mod date_comment;
 pub mod mutation_comment;
 

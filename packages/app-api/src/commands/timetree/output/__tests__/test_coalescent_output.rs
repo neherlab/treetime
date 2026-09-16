@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::output::coalescent::{coalescent_delimited_str, coalescent_json_str};
+  use app_output::coalescent::{coalescent_delimited_str, coalescent_json_str};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
