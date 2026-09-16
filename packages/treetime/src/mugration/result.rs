@@ -115,7 +115,7 @@ impl MugrationTraitsOutput {
 /// Discrete traits and confidence profiles gathered from the mugration partition for the output writers.
 ///
 /// Gathered once, serially, from the discrete partition while it is in scope in the command, so the
-/// auspice, phyloxml, Newick-comment, augur, and GTR writers read plain value maps instead of reading
+/// auspice, Newick-comment, augur, and GTR writers read plain value maps instead of reading
 /// the partition during serialization. The maps are keyed by node key over every node and carry the raw
 /// per-key profile, so `build_confidence_map`/`compute_entropy` reproduce the current output exactly.
 #[derive(Debug)]

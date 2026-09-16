@@ -2,11 +2,10 @@ use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::commands::ancestral::result::{AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
-  node_name_value, phyloxml_from_graph, sequence_auspice_node, sequence_phyloxml_clade, write_tree_outputs,
+  node_name_value, sequence_auspice_node, write_tree_outputs,
 };
 use crate::seq::mutation::{Mutation, MutationTrack};
 use eyre::{Report, WrapErr};
-use maplit::btreemap;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -18,7 +17,6 @@ use treetime_io::auspice_types::{
 };
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::phyloxml::Phyloxml;
 use treetime_io::usher_mat::UsherTree;
 use treetime_utils::{make_error, make_report};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -44,7 +42,6 @@ pub fn write_ancestral_tree_outputs(
     providers,
     "ancestral",
     || ancestral_to_auspice(graph, nodes, branch_lengths, maps, aa_node_data, &updated),
-    || ancestral_to_phyloxml(graph, nodes, branch_lengths, maps, aa_node_data),
     || ancestral_to_mat(graph, &names, branch_lengths, maps, aa_node_data),
   )
 }
@@ -78,31 +75,6 @@ pub(crate) fn ancestral_to_auspice(
   })
 }
 
-pub(crate) fn ancestral_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime ancestral analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
-    let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key, aa_node_data);
-    sequence_phyloxml_clade(
-      &name,
-      out.name.clone(),
-      div,
-      branch_length,
-      out.confidence,
-      mutations,
-      &ancestral_node_sequences(graph, maps, context.node_key, aa_node_data),
-    )
-  })
-}
-
 pub(crate) fn ancestral_to_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -128,25 +100,6 @@ fn ancestral_root_sequences(maps: &AncestralOutputMaps, aa_node_data: Option<&Aa
     sequences.insert(NUC_TRACK.to_owned(), sequence.to_string());
   }
   if let Some(aa) = aa_node_data {
-    sequences.extend(aa.root_aa_sequences.clone());
-  }
-  sequences
-}
-
-fn ancestral_node_sequences(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  node_key: GraphNodeKey,
-  aa_node_data: Option<&AaNodeData>,
-) -> BTreeMap<String, String> {
-  let mut sequences = maps
-    .node_sequences
-    .get(&node_key)
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default();
-  if graph.is_root(node_key)
-    && let Some(aa) = aa_node_data
-  {
     sequences.extend(aa.root_aa_sequences.clone());
   }
   sequences

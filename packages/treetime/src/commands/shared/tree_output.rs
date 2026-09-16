@@ -2,9 +2,8 @@ use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_even
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
-use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -19,10 +18,6 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::{NexWriteOptions, nex_write_file_with};
 use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_write_file_with, nwk_write_str};
-use treetime_io::phyloxml::{
-  Phyloxml, PhyloxmlClade, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlJsonOptions, PhyloxmlMolSeq, PhyloxmlPhylogeny,
-  PhyloxmlProperty, PhyloxmlSequence, phyloxml_json_write_file, phyloxml_write_file,
-};
 use treetime_io::usher_mat::{
   UsherMatJsonOptions, UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode,
   usher_mat_json_write_file, usher_mat_pb_write_file,
@@ -31,38 +26,21 @@ use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::{make_error, make_internal_report};
 
-pub(crate) const APPLIES_BRANCH: &str = "parent_branch";
-pub(crate) const APPLIES_NODE: &str = "node";
-const BRANCH_LENGTH_UNIT: &str = "subs/site";
 pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
 pub(crate) const COLORING_NUM_DATE: &str = "num_date";
-pub(crate) const DT_BOOLEAN: &str = "xsd:boolean";
-pub(crate) const DT_DOUBLE: &str = "xsd:double";
-pub(crate) const DT_STRING: &str = "xsd:string";
 pub(crate) const NUC_TRACK: &str = "nuc";
-pub(crate) const REF_BAD_BRANCH: &str = "treetime:bad_branch";
-pub(crate) const REF_DATE_INFERRED: &str = "treetime:date_inferred";
-pub(crate) const REF_DIV: &str = "treetime:divergence";
-pub(crate) const REF_GAMMA: &str = "treetime:gamma";
-pub(crate) const REF_MUTATION: &str = "treetime:mutation";
-const REF_TRAIT_CONFIDENCE_PREFIX: &str = "treetime:trait_confidence:";
-const REF_TRAIT_ENTROPY_PREFIX: &str = "treetime:trait_entropy:";
-const REF_TRAIT_PREFIX: &str = "treetime:trait:";
-pub(crate) const REF_TRAIT_TRANSITION_PREFIX: &str = "treetime:trait_transition:";
-const TYPE_INPUT_BRANCH_SUPPORT: &str = "treetime:input_branch_support";
-const PROPERTY_TOKEN_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
 
 /// Write every requested tree output for one command.
 ///
 /// The per-command entry points build the node-name and edge-weight maps and supply closures that
-/// convert the graph into the three structured document types. This function owns the file-format
+/// convert the graph into the structured document types. This function owns the file-format
 /// dispatch shared by all commands.
 ///
 /// R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length for
 /// timetree, while the Graphviz weight stays the substitution branch length. The two writer paths
 /// therefore take distinct edge-weight maps.
-pub(crate) fn write_tree_outputs<A, P, M>(
+pub(crate) fn write_tree_outputs<A, M>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -71,12 +49,10 @@ pub(crate) fn write_tree_outputs<A, P, M>(
   providers: &CommentProviders,
   command: &str,
   to_auspice: A,
-  to_phyloxml: P,
   to_mat: M,
 ) -> Result<(), Report>
 where
   A: Fn() -> Result<AuspiceTree, Report>,
-  P: Fn() -> Result<Phyloxml, Report>,
   M: Fn() -> Result<UsherTree, Report>,
 {
   for (kind, path) in outputs {
@@ -114,10 +90,6 @@ where
         )?;
       },
       TreeWriteKind::Auspice => auspice_write_file(path, &to_auspice()?)?,
-      TreeWriteKind::Phyloxml => phyloxml_write_file(path, &to_phyloxml()?)?,
-      TreeWriteKind::PhyloxmlJson => {
-        phyloxml_json_write_file(path, &to_phyloxml()?, &PhyloxmlJsonOptions::default())?;
-      },
       TreeWriteKind::MatPb => usher_mat_pb_write_file(path, &to_mat()?)?,
       TreeWriteKind::MatJson => {
         usher_mat_json_write_file(path, &to_mat()?, &UsherMatJsonOptions::default())?;
@@ -311,111 +283,6 @@ fn attach_auspice_children(
   Ok(())
 }
 
-/// PhyloXML clade for the sequence-reconstruction commands (ancestral, optimize, prune): divergence
-/// property, mutation properties, input-branch support, and node sequences.
-pub(crate) fn sequence_phyloxml_clade(
-  name: &str,
-  clade_name: Option<String>,
-  divergence: Option<f64>,
-  branch_length: Option<f64>,
-  confidence: Option<f64>,
-  mutations: Vec<Mutation>,
-  sequences: &BTreeMap<String, String>,
-) -> Result<PhyloxmlClade, Report> {
-  ensure_optional_finite(divergence, "tree output", name, "divergence")?;
-  let mut properties = divergence
-    .map(|divergence| vec![property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &divergence.to_string())])
-    .unwrap_or_default();
-  properties.extend(
-    mutations
-      .into_iter()
-      .map(|mutation| mutation_property(&mutation))
-      .collect::<Result<Vec<_>, _>>()?,
-  );
-  let mut clade = empty_phyloxml_clade(clade_name, branch_length);
-  clade.confidence = input_branch_confidence(confidence, "tree output", name)?;
-  clade.property = properties;
-  clade.sequence = phyloxml_sequences(sequences);
-  Ok(clade)
-}
-
-pub(crate) fn phyloxml_from_graph<F>(graph: &Graph, title: &str, mut convert: F) -> Result<Phyloxml, Report>
-where
-  F: FnMut(&GraphNodeContext) -> Result<PhyloxmlClade, Report>,
-{
-  let root_key = graph
-    .get_exactly_one_root()
-    .wrap_err("When converting graph to PhyloXML")?
-    .key();
-  let mut node_map = btreemap! {};
-  let mut queue = VecDeque::from([(root_key, None)]);
-  while let Some((node_key, edge_key)) = queue.pop_front() {
-    node_map.insert(node_key, convert(&GraphNodeContext { node_key, edge_key })?);
-    let node = graph
-      .get_node(node_key)
-      .ok_or_else(|| make_internal_report!("Node {node_key} not found in graph"))?;
-    for (child_key, child_edge_key) in graph.children_keys_of(node) {
-      queue.push_back((child_key, Some(child_edge_key)));
-    }
-  }
-  attach_phyloxml_children(graph, root_key, &mut node_map)?;
-  let clade = node_map
-    .remove(&root_key)
-    .ok_or_else(|| make_internal_report!("PhyloXML root node {root_key} was not converted"))?;
-  Ok(Phyloxml {
-    phylogeny: vec![PhyloxmlPhylogeny {
-      rooted: true,
-      rerootable: None,
-      branch_length_unit: Some(BRANCH_LENGTH_UNIT.to_owned()),
-      phylogeny_type: None,
-      name: Some(title.to_owned()),
-      id: None,
-      description: None,
-      date: None,
-      confidence: vec![],
-      clade: Some(clade),
-      clade_relation: vec![],
-      sequence_relation: vec![],
-      property: vec![],
-      other: BTreeMap::new(),
-    }],
-    other: BTreeMap::new(),
-  })
-}
-
-fn attach_phyloxml_children(
-  graph: &Graph,
-  root_key: GraphNodeKey,
-  node_map: &mut BTreeMap<GraphNodeKey, PhyloxmlClade>,
-) -> Result<(), Report> {
-  let mut visited = BTreeSet::new();
-  let mut stack = vec![root_key];
-  while let Some(key) = stack.pop() {
-    let node = graph
-      .get_node(key)
-      .ok_or_else(|| make_internal_report!("Node {key} not found in graph"))?;
-    if visited.contains(&key) {
-      let children = graph
-        .children_keys_of(node)
-        .map(|(child_key, _)| {
-          node_map
-            .remove(&child_key)
-            .ok_or_else(|| make_internal_report!("PhyloXML child node {child_key} was not converted"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-      node_map
-        .get_mut(&key)
-        .ok_or_else(|| make_internal_report!("PhyloXML parent node {key} was not converted"))?
-        .clade = children;
-    } else {
-      visited.insert(key);
-      stack.push(key);
-      stack.extend(graph.children_keys_of(node).map(|(child_key, _)| child_key));
-    }
-  }
-  Ok(())
-}
-
 /// Build a UShER MAT with no per-node mutations, for commands that do not reconstruct sequences.
 pub(crate) fn mutation_free_mat(
   graph: &Graph,
@@ -551,158 +418,6 @@ pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<Strin
       .extend(mutation_event_strings(&mutation.event)?);
   }
   Ok(grouped)
-}
-
-pub(crate) fn mutation_property(mutation: &Mutation) -> Result<PhyloxmlProperty, Report> {
-  let track = match &mutation.track {
-    MutationTrack::Nucleotide => NUC_TRACK.to_owned(),
-    MutationTrack::AminoAcid(track) => format!("aa:{}", encode_property_token(track)),
-  };
-  let value = match &mutation.event {
-    MutationEvent::Substitution(substitution) => {
-      let position = substitution
-        .pos()
-        .checked_add(1)
-        .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at {}", substitution.pos()))?;
-      format!("{track}:sub:{}{position}{}", substitution.reff(), substitution.qry())
-    },
-    MutationEvent::Insertion(segment) => {
-      let (start, end) = segment.one_based_inclusive_range()?;
-      format!("{track}:ins:{start}-{end}:{}", segment.sequence)
-    },
-    MutationEvent::Deletion(segment) => {
-      let (start, end) = segment.one_based_inclusive_range()?;
-      format!("{track}:del:{start}-{end}:{}", segment.sequence)
-    },
-  };
-  Ok(property(REF_MUTATION, DT_STRING, APPLIES_BRANCH, &value))
-}
-
-pub(crate) fn trait_properties(
-  traits: &BTreeMap<String, TraitValue>,
-  node_name: &str,
-) -> Result<Vec<PhyloxmlProperty>, Report> {
-  let mut properties = vec![];
-  for (attribute, value) in traits {
-    let attribute = encode_property_token(attribute);
-    properties.push(property(
-      &format!("{REF_TRAIT_PREFIX}{attribute}"),
-      DT_STRING,
-      APPLIES_NODE,
-      &value.value,
-    ));
-    for (state, probability) in &value.confidence {
-      ensure_finite(
-        *probability,
-        "mugration",
-        node_name,
-        &format!("trait confidence '{state}'"),
-      )?;
-      properties.push(property(
-        &format!(
-          "{REF_TRAIT_CONFIDENCE_PREFIX}{attribute}:{}",
-          encode_property_token(state)
-        ),
-        DT_DOUBLE,
-        APPLIES_NODE,
-        &probability.to_string(),
-      ));
-    }
-    if let Some(entropy) = value.entropy {
-      ensure_finite(entropy, "mugration", node_name, "trait entropy")?;
-      properties.push(property(
-        &format!("{REF_TRAIT_ENTROPY_PREFIX}{attribute}"),
-        DT_DOUBLE,
-        APPLIES_NODE,
-        &entropy.to_string(),
-      ));
-    }
-  }
-  Ok(properties)
-}
-
-pub(crate) fn empty_phyloxml_clade(name: Option<String>, branch_length: Option<f64>) -> PhyloxmlClade {
-  PhyloxmlClade {
-    name,
-    branch_length_elem: branch_length,
-    branch_length_attr: None,
-    confidence: vec![],
-    width: None,
-    color: None,
-    node_id: None,
-    taxonomy: vec![],
-    sequence: vec![],
-    events: None,
-    binary_characters: None,
-    distribution: vec![],
-    date: None,
-    reference: vec![],
-    property: vec![],
-    clade: vec![],
-    other: BTreeMap::new(),
-  }
-}
-
-pub(crate) fn input_branch_confidence(
-  confidence: Option<f64>,
-  command: &str,
-  node_name: &str,
-) -> Result<Vec<PhyloxmlConfidence>, Report> {
-  confidence.map_or_else(
-    || Ok(vec![]),
-    |value| {
-      ensure_finite(value, command, node_name, "input branch support")?;
-      Ok(vec![PhyloxmlConfidence {
-        value,
-        type_: TYPE_INPUT_BRANCH_SUPPORT.to_owned(),
-      }])
-    },
-  )
-}
-
-pub(crate) fn phyloxml_sequences(sequences: &BTreeMap<String, String>) -> Vec<PhyloxmlSequence> {
-  sequences
-    .iter()
-    .map(|(track, sequence)| PhyloxmlSequence {
-      symbol: None,
-      accession: None,
-      name: Some(track.clone()),
-      location: None,
-      mol_seq: Some(PhyloxmlMolSeq {
-        sequence: sequence.clone(),
-        is_aligned: Some(true),
-      }),
-      uri: None,
-      annotation: vec![],
-      domain_architecture: None,
-      other: BTreeMap::new(),
-    })
-    .collect()
-}
-
-pub(crate) fn phyloxml_date(value: f64) -> PhyloxmlDate {
-  PhyloxmlDate {
-    desc: None,
-    value: Some(value),
-    minimum: None,
-    maximum: None,
-    unit: Some("year".to_owned()),
-  }
-}
-
-pub(crate) fn property(ref_: &str, datatype: &str, applies_to: &str, value: &str) -> PhyloxmlProperty {
-  PhyloxmlProperty {
-    value: value.to_owned(),
-    ref_: ref_.to_owned(),
-    unit: None,
-    datatype: datatype.to_owned(),
-    applies_to: applies_to.to_owned(),
-    id_ref: None,
-  }
-}
-
-pub(crate) fn encode_property_token(value: &str) -> String {
-  utf8_percent_encode(value, PROPERTY_TOKEN_ENCODE_SET).to_string()
 }
 
 fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {

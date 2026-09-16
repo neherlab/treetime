@@ -343,7 +343,6 @@ pub fn run_timetree_estimation(
         &maps,
         confidence_intervals.as_deref(),
         mutation_counts.as_ref(),
-        dates.as_ref(),
         &resolved.tree_outputs,
         &providers,
       )?;
@@ -356,7 +355,6 @@ pub fn run_timetree_estimation(
         &maps,
         confidence_intervals.as_deref(),
         mutation_counts.as_ref(),
-        dates.as_ref(),
         &resolved.tree_outputs,
         &providers,
       )?;
@@ -463,8 +461,8 @@ fn gather_timetree_outputs(
   (nodes, edges)
 }
 
-/// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
-/// writers read off the timetree partition.
+/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the timetree
+/// partition.
 pub(crate) fn gather_timetree_output_maps(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -473,13 +471,6 @@ pub(crate) fn gather_timetree_output_maps(
     return Ok(TimetreeOutputMaps::default());
   };
   let root_sequence = Some(partition.root_sequence(graph)?);
-  let node_sequences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, partition.node_sequence(key))
-    })
-    .collect();
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
@@ -489,7 +480,6 @@ pub(crate) fn gather_timetree_output_maps(
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(TimetreeOutputMaps {
     root_sequence,
-    node_sequences,
     edge_mutations,
   })
 }

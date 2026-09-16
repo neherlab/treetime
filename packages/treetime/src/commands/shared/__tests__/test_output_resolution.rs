@@ -185,8 +185,6 @@ mod tests {
       nwk(NwkStyle::Plain),
       nexus(NwkStyle::Plain),
       TreeWriteKind::Auspice,
-      TreeWriteKind::Phyloxml,
-      TreeWriteKind::PhyloxmlJson,
       TreeWriteKind::MatPb,
       TreeWriteKind::MatJson,
       TreeWriteKind::GraphJson,

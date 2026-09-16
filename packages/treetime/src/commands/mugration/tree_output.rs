@@ -1,10 +1,7 @@
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
 use crate::commands::shared::tree_output::{
-  APPLIES_BRANCH, APPLIES_NODE, DT_DOUBLE, DT_STRING, REF_DIV, REF_TRAIT_TRANSITION_PREFIX, TraitValue, auspice_data,
-  auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, empty_phyloxml_clade,
-  encode_property_token, ensure_finite, ensure_optional_finite, finite_number, generation_date,
-  input_branch_confidence, mutation_free_mat, node_name_value, phyloxml_from_graph, property, trait_properties,
-  write_tree_outputs,
+  TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, ensure_finite,
+  finite_number, generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
 };
 use crate::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
 use eyre::Report;
@@ -18,7 +15,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeBranchAttrsLabels};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::phyloxml::Phyloxml;
 use treetime_io::usher_mat::UsherTree;
 
 pub fn write_mugration_tree_outputs(
@@ -42,7 +38,6 @@ pub fn write_mugration_tree_outputs(
     providers,
     "mugration",
     || mugration_to_auspice(graph, nodes, branch_lengths, maps, attribute, &updated),
-    || mugration_to_phyloxml(graph, nodes, branch_lengths, maps, attribute),
     || mugration_to_mat(graph, &names, branch_lengths),
   )
 }
@@ -84,42 +79,6 @@ pub(crate) fn mugration_to_auspice(
       BTreeMap::new(),
       mugration_transition_label(graph, maps, context.node_key, attribute)?,
     ))
-  })
-}
-
-pub(crate) fn mugration_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
-  attribute: &str,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime mugration analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    ensure_optional_finite(div, "mugration", &name, "divergence")?;
-    let traits = mugration_traits(graph, maps, context.node_key, &name, attribute)?;
-    let mut properties = div
-      .map(|div| vec![property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &div.to_string())])
-      .unwrap_or_default();
-    properties.extend(trait_properties(&traits, &name)?);
-    if let Some((parent, child)) = mugration_transition(graph, maps, context.node_key)? {
-      let attribute = encode_property_token(attribute);
-      properties.push(property(
-        &format!("{REF_TRAIT_TRANSITION_PREFIX}{attribute}"),
-        DT_STRING,
-        APPLIES_BRANCH,
-        &format!("{}:{}", encode_property_token(&parent), encode_property_token(&child)),
-      ));
-    }
-    let mut clade = empty_phyloxml_clade(
-      out.name.clone(),
-      context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]),
-    );
-    clade.confidence = input_branch_confidence(out.confidence, "mugration", &name)?;
-    clade.property = properties;
-    Ok(clade)
   })
 }
 

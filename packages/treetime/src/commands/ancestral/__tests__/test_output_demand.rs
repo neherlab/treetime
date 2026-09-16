@@ -58,7 +58,6 @@ mod tests {
     let maps = collect_ancestral_tree_maps(&tree_outputs, || marked_gather(&mut calls))?;
     assert_eq!(0, calls, "topology-only writers never expand the sequences");
     assert!(maps.root_sequence.is_none());
-    assert!(maps.node_sequences.is_empty());
     assert!(maps.edge_mutations.is_empty());
     Ok(())
   }
@@ -81,8 +80,6 @@ mod tests {
       NwkStyle::Plain
     )])));
     assert!(tree_outputs_need_sequences(&outputs(&[TreeWriteKind::Auspice])));
-    assert!(tree_outputs_need_sequences(&outputs(&[TreeWriteKind::Phyloxml])));
-    assert!(tree_outputs_need_sequences(&outputs(&[TreeWriteKind::PhyloxmlJson])));
     assert!(tree_outputs_need_sequences(&outputs(&[TreeWriteKind::MatPb])));
     assert!(tree_outputs_need_sequences(&outputs(&[TreeWriteKind::MatJson])));
 

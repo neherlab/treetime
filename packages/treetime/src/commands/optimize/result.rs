@@ -6,17 +6,15 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-/// Nucleotide sequences and mutations gathered from the optimize partition for the output writers.
+/// Nucleotide root sequence and mutations gathered from the optimize partition for the output writers.
 ///
 /// Gathered once, serially, from the partition while it is in scope in the command, so the auspice,
-/// phyloxml, MAT, Newick-comment, and augur writers read plain value maps instead of reading the
+/// MAT, Newick-comment, and augur writers read plain value maps instead of reading the
 /// partition during serialization.
 #[derive(Debug, Default)]
 pub struct OptimizeOutputMaps {
   /// Reconstructed nucleotide root sequence, or `None` when no partition exists.
   pub root_sequence: Option<Seq>,
-  /// Reconstructed nucleotide sequence per node, for phyloxml clades.
-  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
   /// Nucleotide mutations (substitutions followed by indels) per edge.
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   /// Parent-edge substitutions per edge, feeding the augur divergence-in-mutations counts.

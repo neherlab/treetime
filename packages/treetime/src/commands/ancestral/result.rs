@@ -6,18 +6,16 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 
-/// Nucleotide sequences and mutations gathered from the ancestral partition for the tree writers.
+/// Nucleotide root sequence and mutations gathered from the ancestral partition for the tree writers.
 ///
 /// Gathered once, serially, from the partition while it is in scope in the command, so the auspice,
-/// phyloxml, MAT, and Newick-comment writers read plain value maps instead of reading the partition.
+/// MAT, and Newick-comment writers read plain value maps instead of reading the partition.
 /// The amino-acid tracks are still merged by the writers from the graph data slot; this struct carries
 /// only the nucleotide reads that moved off the partition.
 #[derive(Debug, Default)]
 pub struct AncestralOutputMaps {
   /// Reconstructed nucleotide root sequence (posterior-resolved), or `None` when no partition exists.
   pub root_sequence: Option<Seq>,
-  /// Reconstructed nucleotide sequence per node (posterior-resolved argmax), for phyloxml clades.
-  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
   /// Nucleotide mutations (substitutions followed by indels) per edge.
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
@@ -25,7 +23,7 @@ pub struct AncestralOutputMaps {
 /// Sequences and substitutions gathered from the ancestral partition for the augur node-data writer.
 ///
 /// The augur writer resolves the dense per-node sequence from the written-back `seq.sequence` field,
-/// which differs from the phyloxml posterior argmax at gap and unknown positions, so the augur reads
+/// which differs from the posterior-resolved argmax at gap and unknown positions, so the augur reads
 /// are gathered separately from `AncestralOutputMaps`.
 #[derive(Debug)]
 pub struct AugurOutputMaps {

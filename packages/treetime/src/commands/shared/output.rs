@@ -36,8 +36,6 @@ pub enum OutputSelection {
   Nwk,
   Nexus,
   Auspice,
-  Phyloxml,
-  PhyloxmlJson,
   MatPb,
   MatJson,
   GraphJson,
@@ -63,15 +61,7 @@ impl OutputSelection {
   pub fn is_tree(self) -> bool {
     matches!(
       self,
-      Self::Nwk
-        | Self::Nexus
-        | Self::Auspice
-        | Self::Phyloxml
-        | Self::PhyloxmlJson
-        | Self::MatPb
-        | Self::MatJson
-        | Self::GraphJson
-        | Self::Dot
+      Self::Nwk | Self::Nexus | Self::Auspice | Self::MatPb | Self::MatJson | Self::GraphJson | Self::Dot
     )
   }
 
@@ -90,8 +80,6 @@ impl OutputSelection {
       Self::Nwk => ".nwk",
       Self::Nexus => ".nexus",
       Self::Auspice => ".auspice.json",
-      Self::Phyloxml => ".phylo.xml",
-      Self::PhyloxmlJson => ".phylo.json",
       Self::MatPb => ".mat.pb",
       Self::MatJson => ".mat.json",
       Self::GraphJson => ".graph.json",
@@ -117,8 +105,6 @@ impl OutputSelection {
   pub fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
     match self {
       Self::Auspice => Some(TreeWriteKind::Auspice),
-      Self::Phyloxml => Some(TreeWriteKind::Phyloxml),
-      Self::PhyloxmlJson => Some(TreeWriteKind::PhyloxmlJson),
       Self::MatPb => Some(TreeWriteKind::MatPb),
       Self::MatJson => Some(TreeWriteKind::MatJson),
       Self::GraphJson => Some(TreeWriteKind::GraphJson),
@@ -133,8 +119,6 @@ impl OutputSelection {
       Self::Nwk => "--output-tree-nwk",
       Self::Nexus => "--output-tree-nexus",
       Self::Auspice => "--output-tree-auspice",
-      Self::Phyloxml => "--output-tree-phyloxml",
-      Self::PhyloxmlJson => "--output-tree-phyloxml-json",
       Self::MatPb => "--output-tree-mat-pb",
       Self::MatJson => "--output-tree-mat-json",
       Self::GraphJson => "--output-tree-graph-json",
@@ -161,8 +145,6 @@ impl OutputSelection {
       Self::Nwk => Some(args.output_tree_nwk.as_deref()),
       Self::Nexus => Some(args.output_tree_nexus.as_deref()),
       Self::Auspice => Some(args.output_tree_auspice.as_deref()),
-      Self::Phyloxml => Some(args.output_tree_phyloxml.as_deref()),
-      Self::PhyloxmlJson => Some(args.output_tree_phyloxml_json.as_deref()),
       Self::MatPb => Some(args.output_tree_mat_pb.as_deref()),
       Self::MatJson => Some(args.output_tree_mat_json.as_deref()),
       Self::GraphJson => Some(args.output_tree_graph_json.as_deref()),
@@ -222,8 +204,6 @@ macro_rules! per_command_output_selection {
       Nwk,
       Nexus,
       Auspice,
-      Phyloxml,
-      PhyloxmlJson,
       MatPb,
       MatJson,
       GraphJson,
@@ -238,8 +218,6 @@ macro_rules! per_command_output_selection {
           $name::Nwk => Self::Nwk,
           $name::Nexus => Self::Nexus,
           $name::Auspice => Self::Auspice,
-          $name::Phyloxml => Self::Phyloxml,
-          $name::PhyloxmlJson => Self::PhyloxmlJson,
           $name::MatPb => Self::MatPb,
           $name::MatJson => Self::MatJson,
           $name::GraphJson => Self::GraphJson,
@@ -320,17 +298,7 @@ impl CommandKind {
   #[allow(clippy::enum_glob_use)]
   fn available_tree_outputs() -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
-    btreeset![
-      Nwk,
-      Nexus,
-      Auspice,
-      Phyloxml,
-      PhyloxmlJson,
-      MatPb,
-      MatJson,
-      GraphJson,
-      Dot
-    ]
+    btreeset![Nwk, Nexus, Auspice, MatPb, MatJson, GraphJson, Dot]
   }
 
   #[allow(clippy::enum_glob_use)]
@@ -504,28 +472,6 @@ pub struct OutputCoreArgs {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_auspice: Option<PathBuf>,
 
-  /// Path to output PhyloXML tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  pub output_tree_phyloxml: Option<PathBuf>,
-
-  /// Path to output PhyloXML-JSON tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  pub output_tree_phyloxml_json: Option<PathBuf>,
-
   /// Path to output UShER MAT protobuf tree file.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -607,8 +553,6 @@ fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
     TreeWriteKind::Nwk(_) => OutputSelection::Nwk,
     TreeWriteKind::Nexus(_) => OutputSelection::Nexus,
     TreeWriteKind::Auspice => OutputSelection::Auspice,
-    TreeWriteKind::Phyloxml => OutputSelection::Phyloxml,
-    TreeWriteKind::PhyloxmlJson => OutputSelection::PhyloxmlJson,
     TreeWriteKind::MatPb => OutputSelection::MatPb,
     TreeWriteKind::MatJson => OutputSelection::MatJson,
     TreeWriteKind::GraphJson => OutputSelection::GraphJson,

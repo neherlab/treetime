@@ -215,22 +215,6 @@
       ],
       "default": null
     },
-    "output_tree_phyloxml": {
-      "description": "Path to output PhyloXML tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null
-    },
-    "output_tree_phyloxml_json": {
-      "description": "Path to output PhyloXML-JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null
-    },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": [
@@ -448,8 +432,6 @@
         "Nwk",
         "Nexus",
         "Auspice",
-        "Phyloxml",
-        "PhyloxmlJson",
         "MatPb",
         "MatJson",
         "GraphJson",

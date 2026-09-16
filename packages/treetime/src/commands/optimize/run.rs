@@ -190,7 +190,6 @@ pub(crate) fn gather_optimize_output_maps(
     gather_optimize_partition_maps(
       graph,
       family.root_sequence(graph)?,
-      |key| family.node_sequence(key),
       |key| family.edge_mutations(graph, key, &MutationTrack::Nucleotide),
       |key| family.edge_subs(graph, key),
     )
@@ -198,7 +197,6 @@ pub(crate) fn gather_optimize_output_maps(
     gather_optimize_partition_maps(
       graph,
       family.root_sequence(graph)?,
-      |key| family.node_sequence(key),
       |key| family.edge_mutations(key, &MutationTrack::Nucleotide),
       |key| family.edge_subs(key),
     )
@@ -210,18 +208,10 @@ pub(crate) fn gather_optimize_output_maps(
 fn gather_optimize_partition_maps(
   graph: &Graph,
   root_sequence: Seq,
-  node_sequence: impl Fn(GraphNodeKey) -> Seq,
   edge_mutations: impl Fn(GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
   edge_subs: impl Fn(GraphEdgeKey) -> Result<Vec<Sub>, Report>,
 ) -> Result<OptimizeOutputMaps, Report> {
   let root_sequence = Some(root_sequence);
-  let node_sequences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, node_sequence(key))
-    })
-    .collect();
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
@@ -238,7 +228,6 @@ fn gather_optimize_partition_maps(
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(OptimizeOutputMaps {
     root_sequence,
-    node_sequences,
     edge_mutations,
     edge_subs,
   })

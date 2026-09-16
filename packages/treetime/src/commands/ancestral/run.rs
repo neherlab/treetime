@@ -303,7 +303,7 @@ where
 
 /// Whether any selected tree output reads the reconstructed sequence and mutation maps.
 ///
-/// Newick, Nexus, Auspice, PhyloXML, and UShER MAT writers read the per-node sequences and per-edge
+/// Newick, Nexus, Auspice, and UShER MAT writers read the root sequence and per-edge
 /// mutations. The internal Graph JSON dump and the Graphviz DOT writer read only topology and branch
 /// lengths, so a selection limited to them needs no sequence collection.
 pub(crate) fn tree_outputs_need_sequences(tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>) -> bool {
@@ -312,8 +312,8 @@ pub(crate) fn tree_outputs_need_sequences(tree_outputs: &BTreeMap<TreeWriteKind,
     .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
 }
 
-/// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
-/// writers read off the ancestral partition.
+/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the ancestral
+/// partition.
 pub(crate) fn gather_ancestral_output_maps(
   graph: &Graph,
   partition: Option<&AncestralPartition>,
@@ -322,13 +322,6 @@ pub(crate) fn gather_ancestral_output_maps(
     return Ok(AncestralOutputMaps::default());
   };
   let root_sequence = Some(partition.root_sequence(graph)?);
-  let node_sequences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, partition.node_sequence(key))
-    })
-    .collect();
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
@@ -338,7 +331,6 @@ pub(crate) fn gather_ancestral_output_maps(
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(AncestralOutputMaps {
     root_sequence,
-    node_sequences,
     edge_mutations,
   })
 }

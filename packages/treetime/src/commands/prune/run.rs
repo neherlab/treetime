@@ -84,7 +84,7 @@ pub fn run_prune(
 
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
   // plain value maps the output writers consume, taking the partition read out of the serialization
-  // path. Only the auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus
+  // path. Only the auspice and MAT writers read these maps; prune's default Newick/Nexus
   // outputs carry no mutation comments (empty comment provider), so they never read a mutation. Prune
   // also applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
   // following marginal pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering
@@ -169,21 +169,17 @@ pub fn run_prune(
 
 /// Whether a tree-output kind reads the gathered prune value maps.
 ///
-/// The auspice, phyloxml, and MAT writers build their nodes and edges from the value maps; the Newick,
+/// The auspice and MAT writers build their nodes and edges from the value maps; the Newick,
 /// Nexus, Graphviz, and internal-graph writers do not (prune supplies no mutation comment provider).
 fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   matches!(
     kind,
-    TreeWriteKind::Auspice
-      | TreeWriteKind::Phyloxml
-      | TreeWriteKind::PhyloxmlJson
-      | TreeWriteKind::MatPb
-      | TreeWriteKind::MatJson
+    TreeWriteKind::Auspice | TreeWriteKind::MatPb | TreeWriteKind::MatJson
   )
 }
 
-/// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
-/// writers read off the prune partition.
+/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the prune
+/// partition.
 ///
 /// The per-edge mutation map is keyed by the inbound edge of every node reached on a walk from the
 /// single root, i.e. exactly the output-tree edges the tree, MAT, and Newick-comment writers traverse.
@@ -199,13 +195,6 @@ pub(crate) fn gather_prune_output_maps(
     return Ok(PruneOutputMaps::default());
   };
   let root_sequence = Some(partition.root_sequence(graph)?);
-  let node_sequences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, partition.node_sequence(key))
-    })
-    .collect();
   let mut edge_mutations = BTreeMap::new();
   let root_key = graph
     .get_exactly_one_root()
@@ -224,7 +213,6 @@ pub(crate) fn gather_prune_output_maps(
   }
   Ok(PruneOutputMaps {
     root_sequence,
-    node_sequences,
     edge_mutations,
   })
 }

@@ -6,8 +6,6 @@ pub enum TreeWriteKind {
   Nwk(NwkWriteSpec),
   Nexus(NwkWriteSpec),
   Auspice,
-  Phyloxml,
-  PhyloxmlJson,
   MatPb,
   MatJson,
   GraphJson,

@@ -4,15 +4,13 @@ mod tests {
   use crate::ancestral::pipeline::AncestralPartition;
   use crate::commands::ancestral::aa_node_data::AaNodeData;
   use crate::commands::ancestral::result::AncestralNodeOut;
-  use crate::commands::ancestral::tree_output::{
-    ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, write_ancestral_tree_outputs,
-  };
-  use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat, clock_to_phyloxml};
-  use crate::commands::mugration::tree_output::{mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml};
-  use crate::commands::optimize::tree_output::{optimize_to_auspice, optimize_to_mat, optimize_to_phyloxml};
-  use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat, prune_to_phyloxml};
+  use crate::commands::ancestral::tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
+  use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat};
+  use crate::commands::mugration::tree_output::{mugration_to_auspice, mugration_to_mat};
+  use crate::commands::optimize::tree_output::{optimize_to_auspice, optimize_to_mat};
+  use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat};
   use crate::commands::shared::tree_output::{format_number, group_mutations, mat_mutation};
-  use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml};
+  use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat};
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use crate::seq::indel::InDel;
@@ -51,32 +49,6 @@ mod tests {
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let phyloxml = ancestral_to_phyloxml(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )?;
-    let child = helpers::phyloxml_child(&phyloxml, "A");
-    assert_eq!(Some(0.5), child.branch_length_elem);
-    assert_eq!(Some(0.9), child.confidence.first().map(|confidence| confidence.value));
-    assert!(
-      child
-        .property
-        .iter()
-        .any(|property| { property.ref_ == "treetime:mutation" && property.value == "nuc:sub:A1T" })
-    );
-    assert_eq!(
-      Some("TCG"),
-      child
-        .sequence
-        .iter()
-        .find(|sequence| sequence.name.as_deref() == Some("nuc"))
-        .and_then(|sequence| sequence.mol_seq.as_ref())
-        .map(|sequence| sequence.sequence.as_str())
-    );
-
     let mat = ancestral_to_mat(
       &graph,
       &names,
@@ -99,29 +71,10 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_phyloxml_encodes_aa_track_and_grouped_indel() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) =
-      helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
-
-    let phyloxml = ancestral_to_phyloxml(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )?;
-    let child = helpers::phyloxml_child(&phyloxml, "A");
-    let properties = child
-      .property
-      .iter()
-      .map(|property| property.value.as_str())
-      .collect::<Vec<_>>();
-    assert!(properties.contains(&"nuc:del:2-3:CG"));
-    assert!(properties.contains(&"aa:S%2F1%3Aweird:sub:A2T"));
-
+  fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
     // Nucleotide indels are dropped from the Auspice nuc mutation list, which mirrors the
     // substitution-only augur node-data muts. A branch whose only nucleotide change is a
-    // deletion therefore has no `nuc` entry (phyloxml above still encodes it as `nuc:del:2-3:CG`).
+    // deletion therefore has no `nuc` entry.
     let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
       &graph,
@@ -387,16 +340,6 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_all_phyloxml_models_have_one_rooted_phylogeny() -> Result<(), Report> {
-    let documents = helpers::all_phyloxml_documents()?;
-    assert_eq!(6, documents.len());
-    assert!(documents.iter().all(|document| {
-      document.phylogeny.len() == 1 && document.phylogeny[0].rooted && document.phylogeny[0].clade.is_some()
-    }));
-    Ok(())
-  }
-
-  #[test]
   fn test_tree_output_all_mat_models_preserve_embedded_newick_lengths() -> Result<(), Report> {
     let documents = helpers::all_mat_documents()?;
     assert_eq!(6, documents.len());
@@ -494,7 +437,7 @@ mod tests {
     use crate::commands::optimize::run::gather_optimize_output_maps;
     use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
     use crate::commands::prune::run::gather_prune_output_maps;
-    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
+    use crate::commands::timetree::result::{TimetreeNodeOut, TimetreeOutputMaps};
     use crate::commands::timetree::run::gather_timetree_output_maps;
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::mugration::result::gather_mugration_output_maps;
@@ -511,7 +454,6 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
-    use treetime_io::phyloxml::{Phyloxml, PhyloxmlClade};
     use treetime_io::usher_mat::UsherTree;
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -747,75 +689,6 @@ mod tests {
         .collect()
     }
 
-    pub fn all_phyloxml_documents() -> Result<Vec<Phyloxml>, Report> {
-      let (ancestral_graph, ancestral_names, ancestral_bl) = ancestral_graph_without_partition()?;
-      Ok(vec![
-        ancestral_to_phyloxml(
-          &ancestral_graph,
-          &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
-          &ancestral_bl,
-          &ancestral_maps(&ancestral_graph, None),
-          None,
-        )?,
-        {
-          let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
-          optimize_to_phyloxml(
-            &optimize_graph,
-            &optimize_nodes(&optimize_names, &optimize_graph, &btreemap! {}),
-            &optimize_bl,
-            &optimize_maps(&optimize_graph),
-          )?
-        },
-        {
-          let (prune_graph, prune_names, prune_bl) = prune_graph()?;
-          prune_to_phyloxml(
-            &prune_graph,
-            &prune_nodes(&prune_names, &prune_graph, &btreemap! {}),
-            &prune_bl,
-            &prune_maps(&prune_graph),
-          )?
-        },
-        {
-          let (clock_graph, clock_names, clock_bl) = clock_graph()?;
-          clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_names, &clock_graph), &clock_bl)?
-        },
-        {
-          let (
-            mugration_graph,
-            mugration_names,
-            mugration_bl,
-            mugration_partition,
-            mugration_gtr,
-            mugration_node_states,
-          ) = mugration_graph()?;
-          mugration_to_phyloxml(
-            &mugration_graph,
-            &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
-            &mugration_bl,
-            &mugration_maps(
-              &mugration_graph,
-              &mugration_partition,
-              &mugration_gtr,
-              &mugration_node_states,
-            ),
-            "country",
-          )?
-        },
-        {
-          let (timetree_graph, timetree_names, timetree_bl) = timetree_graph()?;
-          timetree_to_phyloxml(
-            &timetree_graph,
-            &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
-            &timetree_edges(&timetree_graph, &timetree_bl),
-            &timetree_maps(&timetree_graph),
-            None,
-            None,
-            None,
-          )?
-        },
-      ])
-    }
-
     pub fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
       let (ancestral, ancestral_names, mut ancestral_bl) = ancestral_graph_without_partition()?;
       set_mat_branch_lengths(&ancestral, &ancestral_names, &mut ancestral_bl)?;
@@ -874,17 +747,6 @@ mod tests {
         .children
         .iter()
         .find(|child| child.name == name)
-        .expect("fixture child must exist")
-    }
-
-    pub fn phyloxml_child<'a>(tree: &'a Phyloxml, name: &str) -> &'a PhyloxmlClade {
-      tree.phylogeny[0]
-        .clade
-        .as_ref()
-        .expect("PhyloXML fixture must have a root")
-        .clade
-        .iter()
-        .find(|child| child.name.as_deref() == Some(name))
         .expect("fixture child must exist")
     }
 
@@ -1136,29 +998,6 @@ mod tests {
               // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
               // value map; this fixture graph runs no such pass, so production surfaces None here too.
               rate_susceptibility_dates: None,
-            },
-          )
-        })
-        .collect()
-    }
-
-    pub fn timetree_edges(
-      graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
-      graph
-        .get_edges()
-        .map(|edge| {
-          let key = edge.key();
-          (
-            key,
-            TimetreeEdgeOut {
-              branch_length: branch_lengths.get(&key).copied().flatten(),
-              time_length: None,
-              clock_branch_length: None,
-              // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
-              // what production reads from the threaded edge state.
-              gamma: 1.0,
             },
           )
         })
