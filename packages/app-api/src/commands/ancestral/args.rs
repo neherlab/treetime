@@ -18,6 +18,33 @@ use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline::AncestralParams;
 use treetime::ancestral::sample::SampleMode;
 
+// CLI mirror of core `SampleMode` carrying the clap `ValueEnum` derive. Core keeps `SampleMode` as a
+// plain domain enum with no command-line knowledge; this adapter copy owns the `--sample-from-profile`
+// value parsing and converts back with `From`. Variants, serde spellings, and the `schemars(rename)`
+// schema name are kept identical to the core enum so `--help`, config parsing, and the generated JSON
+// schema stay byte-identical. The comment is non-doc on purpose: the core enum carries no doc, so a
+// doc comment here would add a `description` to the schema and break schema parity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "SampleMode")]
+pub enum SampleModeCli {
+  #[default]
+  Argmax,
+  Root,
+  All,
+}
+
+impl From<SampleModeCli> for SampleMode {
+  fn from(mode: SampleModeCli) -> Self {
+    match mode {
+      SampleModeCli::Argmax => SampleMode::Argmax,
+      SampleModeCli::Root => SampleMode::Root,
+      SampleModeCli::All => SampleMode::All,
+    }
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
@@ -225,8 +252,8 @@ pub struct TreetimeAncestralArgsRaw {
   /// 'all': sample from the posterior at every node.
   ///
   /// Only affects marginal reconstruction (`--method-anc=marginal`).
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleMode::default()))]
-  pub sample_from_profile: SampleMode,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default()))]
+  pub sample_from_profile: SampleModeCli,
 }
 
 /// Ancestral reconstruction arguments with required inputs proven present.
@@ -332,7 +359,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       aa: raw.aa,
       marginal: raw.marginal,
       custom_gtr: raw.custom_gtr,
-      sample_from_profile: raw.sample_from_profile,
+      sample_from_profile: raw.sample_from_profile.into(),
     })
   }
 }
