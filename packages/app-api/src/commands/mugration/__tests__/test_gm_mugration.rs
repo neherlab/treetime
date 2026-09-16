@@ -1,0 +1,257 @@
+#[cfg(test)]
+mod tests {
+  use approx::assert_abs_diff_eq;
+  use eyre::Report;
+  use ndarray::Array1;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::BTreeMap;
+
+  use helpers::{load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case};
+
+  // Golden master tests for mugration discrete trait reconstruction.
+  //
+  // Validates Rust v1 implementation against Python v0 reference outputs.
+  // Inputs (gm_mugration_inputs.json) define dataset/attribute combinations and
+  // the exact capture parameters shared by the Python oracle and Rust replay.
+  // Outputs (gm_mugration_outputs.json) were captured from v0 using gm_mugration_capture.
+  //
+  // Both v0 and v1 use iterative GTR inference (5 iterations of rate matrix
+  // re-estimation followed by rate optimization via Brent's method).
+
+  // v0-parity datasets: v1 reproduces v0 trait assignments exactly with the
+  // default (v0) inference policy.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_20_country(          "zika_20_country")]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[trace]
+  fn test_gm_mugration_outputs(#[case] case: &str) -> Result<(), Report> {
+    let inputs = load_gm_mugration_inputs();
+    let outputs = load_gm_mugration_outputs();
+    let input = &inputs[case];
+    let expected = &outputs[case];
+    let (actual, maps) = run_gm_mugration_case(input)?;
+
+    let expected_states = expected.states.clone();
+    let actual_states: Vec<String> = maps.states.iter().map(|s| s.to_owned()).collect();
+    assert_eq!(expected_states, actual_states);
+
+    let expected_n_states = expected.states.len();
+    let actual_n_states = maps.n_states;
+    assert_eq!(expected_n_states, actual_n_states);
+
+    let expected_trait_assignments = expected.trait_assignments.clone();
+    let actual_trait_assignments: BTreeMap<String, String> =
+      actual.trait_assignments().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    assert_eq!(expected_trait_assignments, actual_trait_assignments);
+
+    Ok(())
+  }
+
+  // These datasets still diverge from v0 at a few ambiguous internal nodes.
+  // The cause is the residual ~1e-3 difference in the marginal confidence
+  // profiles (see test_gm_mugration_confidence_*), not the inference-policy
+  // toggles: it persists with the default v0 policy and for unweighted,
+  // informative-root datasets where both toggles are no-ops. The small profile
+  // difference tips the argmax at near-tied nodes. Tracked in
+  // kb/issues/M-mugration-iterative-gtr.md.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[trace]
+  #[ignore = "v0 parity: residual ~1e-3 marginal divergence tips argmax at ambiguous nodes (kb/issues/M-mugration-iterative-gtr.md)"]
+  fn test_gm_mugration_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
+    test_gm_mugration_outputs(case)
+  }
+
+  // Confidence profile comparison against v0 oracle. v1 reproduces v0 trait
+  // assignments for this dataset, but the marginal profiles still differ by
+  // ~1e-3 (e.g. 0.4812 vs 0.4800 at the root). The divergence is in the
+  // marginal/GTR numerics and is independent of the inference-policy toggles
+  // (this case has uniform pi and an informative root, so both are no-ops).
+  // See kb/issues/M-mugration-iterative-gtr.md.
+  #[test]
+  #[ignore = "v0 parity: residual ~1e-3 marginal-confidence divergence (kb/issues/M-mugration-iterative-gtr.md)"]
+  fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
+    let inputs = load_gm_mugration_inputs();
+    let outputs = load_gm_mugration_outputs();
+    let input = &inputs["zika_20_country"];
+    let expected = &outputs["zika_20_country"];
+    let (actual, _maps) = run_gm_mugration_case(input)?;
+
+    assert_eq!(expected.states, actual.confidence.states);
+
+    for (node_name, expected_profile) in &expected.confidence {
+      let actual_profile = actual
+        .confidence
+        .rows
+        .iter()
+        .find(|row| row.node == *node_name)
+        .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
+      let expected_arr = Array1::from_vec(expected_profile.clone());
+      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-6);
+    }
+
+    Ok(())
+  }
+
+  // The same residual marginal-confidence divergence across the remaining
+  // datasets (independent of the inference-policy toggles). Tracked in
+  // kb/issues/M-mugration-iterative-gtr.md.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[trace]
+  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/M-mugration-iterative-gtr.md)"]
+  fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
+    let inputs = load_gm_mugration_inputs();
+    let outputs = load_gm_mugration_outputs();
+    let input = &inputs[case];
+    let expected = &outputs[case];
+    let (actual, _maps) = run_gm_mugration_case(input)?;
+
+    assert_eq!(expected.states, actual.confidence.states);
+
+    for (node_name, expected_profile) in &expected.confidence {
+      let actual_profile = actual
+        .confidence
+        .rows
+        .iter()
+        .find(|row| row.node == *node_name)
+        .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
+      let expected_arr = Array1::from_vec(expected_profile.clone());
+      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-10);
+    }
+
+    Ok(())
+  }
+
+  mod helpers {
+    use treetime::mugration::mugration::execute_mugration;
+    use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
+    use eyre::Report;
+    use indexmap::IndexMap;
+    use serde::Deserialize;
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+    use treetime_io::csv::default_name_candidates;
+    use treetime_io::discrete_states_csv::read_discrete_attrs;
+    use treetime_io::nwk::nwk_read_file;
+    use treetime_utils::io::json::json_read_file;
+
+    #[derive(Debug, Deserialize)]
+    pub struct GmMugrationInput {
+      pub tree_path: String,
+      pub metadata_path: String,
+      pub attribute: String,
+      pub name_column: Option<String>,
+      pub parameters: GmMugrationParameters,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub struct GmMugrationParameters {
+      pub missing_data: String,
+      pub pc: Option<f64>,
+      pub sampling_bias_correction: Option<f64>,
+      pub weights_path: Option<String>,
+      #[allow(dead_code)]
+      pub verbose: usize,
+      pub iterations: usize,
+      #[allow(dead_code)]
+      pub rng_seed: u64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[allow(dead_code)]
+    pub struct GmMugrationOutput {
+      pub states: Vec<String>,
+      pub trait_assignments: BTreeMap<String, String>,
+      pub confidence: BTreeMap<String, Vec<f64>>,
+    }
+
+    pub fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {
+      let path = format!(
+        "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
+        env!("CARGO_MANIFEST_DIR")
+      );
+      json_read_file(&path).unwrap()
+    }
+
+    pub fn load_gm_mugration_outputs() -> IndexMap<String, GmMugrationOutput> {
+      let path = format!(
+        "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
+        env!("CARGO_MANIFEST_DIR")
+      );
+      json_read_file(&path).unwrap()
+    }
+
+    pub fn run_gm_mugration_case(fixture: &GmMugrationInput) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
+      let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+      // Read tree directly
+      let tree_path = project_root.join(&fixture.tree_path);
+      let nwk_parsed = nwk_read_file(&tree_path)?;
+      let confidences = nwk_parsed.confidences();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
+
+      // Read trait values using in-memory parsing
+      let metadata_path = project_root.join(&fixture.metadata_path);
+      let (attr_values, _attr_name) = read_discrete_attrs::<String>(
+        &metadata_path,
+        &[',', '\t', ';'],
+        &default_name_candidates(),
+        &fixture.name_column,
+        &Some(fixture.attribute.clone()),
+        |s| Ok(s.to_owned()),
+      )?;
+      let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
+
+      // Read weights if provided
+      let weights = match &fixture.parameters.weights_path {
+        Some(weights_path) => {
+          let weights_filepath = project_root.join(weights_path);
+          let (map, _) = read_discrete_attrs::<f64>(
+            &weights_filepath,
+            &[',', '\t', ';'],
+            &[],
+            &Some(fixture.attribute.clone()),
+            &Some("weight".to_owned()),
+            |s| Ok(s.parse::<f64>()?),
+          )?;
+          Some(map.into_iter().collect())
+        },
+        None => None,
+      };
+
+      let names_tt_1 = names;
+      execute_mugration(
+        graph,
+        &confidences,
+        &names_tt_1,
+        &branch_lengths,
+        &traits,
+        &fixture.attribute,
+        weights.as_ref(),
+        &fixture.parameters.missing_data,
+        fixture.parameters.pc,
+        0.5,
+        fixture.parameters.iterations,
+        fixture.parameters.sampling_bias_correction,
+        false,
+        false,
+      )
+    }
+  }
+}

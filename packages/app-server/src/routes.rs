@@ -39,25 +39,25 @@ async fn handle_datasets(State(config): State<Arc<ServerConfig>>) -> Result<Json
 }
 
 async fn handle_ancestral(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerAncestralArgs, _, _>(body, &config.out_dir, app_api::commands::ancestral)
+  handle_command::<ServerAncestralArgs, _, _>(body, &config.out_dir, app_api::commands::ancestral::run::run_ancestral_reconstruction)
 }
 
 async fn handle_clock(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerClockArgs, _, _>(body, &config.out_dir, app_api::commands::clock)
+  handle_command::<ServerClockArgs, _, _>(body, &config.out_dir, app_api::commands::clock::run::run_clock)
 }
 
 async fn handle_timetree(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerTimetreeArgs, _, _>(body, &config.out_dir, app_api::commands::timetree)
+  handle_command::<ServerTimetreeArgs, _, _>(body, &config.out_dir, app_api::commands::timetree::run::run_timetree_estimation)
 }
 
 async fn handle_mugration(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerMugrationArgs, _, _>(body, &config.out_dir, app_api::commands::mugration)
+  handle_command::<ServerMugrationArgs, _, _>(body, &config.out_dir, app_api::commands::mugration::run::run_mugration)
 }
 
 async fn handle_optimize(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerOptimizeArgs, _, _>(body, &config.out_dir, app_api::commands::optimize)
+  handle_command::<ServerOptimizeArgs, _, _>(body, &config.out_dir, app_api::commands::optimize::run::run_optimize)
 }
 
 async fn handle_prune(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerPruneArgs, _, _>(body, &config.out_dir, app_api::commands::prune)
+  handle_command::<ServerPruneArgs, _, _>(body, &config.out_dir, app_api::commands::prune::run::run_prune)
 }

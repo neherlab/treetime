@@ -159,13 +159,13 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
-    use treetime::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use treetime::commands::clock::args::TreetimeClockArgsRaw;
-    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use treetime::commands::prune::args::TreetimePruneArgsRaw;
-    use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use app_api::commands::clock::args::TreetimeClockArgsRaw;
+    use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use app_api::commands::prune::args::TreetimePruneArgsRaw;
+    use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
     // Drive the real parse path: full clap parse (which records value sources), then the `--config`
@@ -384,13 +384,13 @@ mod tests {
   // rename cannot desync it.
   mod required_args {
     use pretty_assertions::assert_eq;
-    use treetime::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use treetime::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
-    use treetime::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
-    use treetime::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
-    use treetime::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
-    use treetime::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
-    use treetime::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+    use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use app_api::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+    use app_api::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
+    use app_api::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+    use app_api::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+    use app_api::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
+    use app_api::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use treetime_utils::assert_error;
 
     #[test]
@@ -490,13 +490,13 @@ mod tests {
   mod round_trip {
     use pretty_assertions::assert_eq;
     use serde_json::{Value, from_value, to_value};
-    use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
-    use treetime::commands::clock::args::TreetimeClockArgsRaw;
-    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use treetime::commands::prune::args::TreetimePruneArgsRaw;
-    use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
+    use app_api::commands::clock::args::TreetimeClockArgsRaw;
+    use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use app_api::commands::prune::args::TreetimePruneArgsRaw;
+    use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 
     macro_rules! round_trip {
       ($test:ident, $ty:ty) => {

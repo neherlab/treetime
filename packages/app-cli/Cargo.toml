@@ -17,7 +17,8 @@ ignored = ["approx"]
 
 [dependencies]
 # [internal]
-treetime = { workspace = true, features = ["clap"] }
+app-api = { workspace = true, features = ["clap"] }
+treetime = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
 treetime-schema = { workspace = true, features = ["clap"] }

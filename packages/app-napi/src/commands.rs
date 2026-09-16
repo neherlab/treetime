@@ -30,7 +30,7 @@ pub fn datasets() -> String {
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
   let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
   let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
-  let result = app_api::commands::ancestral(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+  let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
   serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
 }
 
@@ -100,7 +100,7 @@ impl Task for AncestralTaskNoop {
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let result = app_api::commands::ancestral(&self.args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+    let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&self.args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
     serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
   }
 
@@ -127,34 +127,34 @@ define_task!(
   ClockTask,
   TreetimeClockArgsRaw,
   TreetimeClockArgs,
-  app_api::commands::clock,
+  app_api::commands::clock::run::run_clock,
   clock
 );
 define_task!(
   TimetreeTask,
   TreetimeTimetreeArgsRaw,
   TreetimeTimetreeArgs,
-  app_api::commands::timetree,
+  app_api::commands::timetree::run::run_timetree_estimation,
   timetree
 );
 define_task!(
   MugrationTask,
   TreetimeMugrationArgsRaw,
   TreetimeMugrationArgs,
-  app_api::commands::mugration,
+  app_api::commands::mugration::run::run_mugration,
   mugration
 );
 define_task!(
   OptimizeTask,
   TreetimeOptimizeArgsRaw,
   TreetimeOptimizeArgs,
-  app_api::commands::optimize,
+  app_api::commands::optimize::run::run_optimize,
   optimize
 );
 define_task!(
   PruneTask,
   TreetimePruneArgsRaw,
   TreetimePruneArgs,
-  app_api::commands::prune,
+  app_api::commands::prune::run::run_prune,
   prune
 );

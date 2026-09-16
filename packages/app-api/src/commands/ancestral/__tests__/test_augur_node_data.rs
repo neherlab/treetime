@@ -1,0 +1,520 @@
+#[cfg(test)]
+mod tests {
+  use maplit::btreemap;
+  use pretty_assertions::assert_eq;
+  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::o;
+  use util_augur_node_data_json::AugurNodeDataJsonAncestral;
+
+  // --- Full output, hand-built Fitch partition with one mutation ---
+
+  #[test]
+  fn test_augur_node_data_ancestral_full_output() {
+    let (graph, names, partition) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+
+    let expected = format!(
+      r#"{{
+  "generated_by": {{
+    "program": "treetime",
+    "version": "{version}"
+  }},
+  "nodes": {{
+    "A": {{
+      "muts": [
+        "T4A"
+      ],
+      "sequence": "ACGA"
+    }},
+    "B": {{
+      "muts": [],
+      "sequence": "ACGT"
+    }},
+    "root": {{
+      "muts": [],
+      "sequence": "ACGT"
+    }}
+  }},
+  "annotations": {{
+    "nuc": {{
+      "start": 1,
+      "end": 4,
+      "strand": "+",
+      "type": "source"
+    }}
+  }},
+  "reference": {{
+    "nuc": "ACGT"
+  }},
+  "mask": "0000"
+}}"#,
+      version = env!("CARGO_PKG_VERSION")
+    );
+
+    assert_eq!(expected, actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_ancestral_roundtrip() {
+    let (graph, names, partition) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+
+    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let typed: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
+    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+
+    assert_eq!(original, roundtripped);
+  }
+
+  // --- Mask removes mutations at masked positions and masks output sequences,
+  //     while the reference (root) sequence stays unmasked ---
+
+  #[test]
+  fn test_augur_node_data_ancestral_mask_filters_mutations() {
+    let (graph, names, partition) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, true]);
+
+    let expected = format!(
+      r#"{{
+  "generated_by": {{
+    "program": "treetime",
+    "version": "{version}"
+  }},
+  "nodes": {{
+    "A": {{
+      "muts": [],
+      "sequence": "ACGN"
+    }},
+    "B": {{
+      "muts": [],
+      "sequence": "ACGN"
+    }},
+    "root": {{
+      "muts": [],
+      "sequence": "ACGN"
+    }}
+  }},
+  "annotations": {{
+    "nuc": {{
+      "start": 1,
+      "end": 4,
+      "strand": "+",
+      "type": "source"
+    }}
+  }},
+  "reference": {{
+    "nuc": "ACGT"
+  }},
+  "mask": "0001"
+}}"#,
+      version = env!("CARGO_PKG_VERSION")
+    );
+
+    assert_eq!(expected, actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_ancestral_root_has_empty_muts() {
+    let (graph, names, partition) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+    let data: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
+
+    // Root has no parent edge: empty mutations. A non-root node carries the
+    // single mutation, confirming the empty-root assertion is not vacuous.
+    assert_eq!(Vec::<String>::new(), data.nodes["root"].muts);
+    assert_eq!(vec!["T4A".to_owned()], data.nodes["A"].muts);
+  }
+
+  // --- End-to-end through each reconstruction path with identical leaf
+  //     sequences (deterministic: no mutations, root reconstructs to the
+  //     shared sequence). Exercises the partition trait impls and the
+  //     run.rs wiring for parsimony, marginal sparse, and marginal dense. ---
+
+  #[test]
+  fn test_augur_node_data_ancestral_parsimony_end_to_end() {
+    use treetime::ancestral::params::MethodAncestral;
+    use treetime::gtr::get_gtr::GtrModelName;
+    let actual = helpers::reconstruct_json(MethodAncestral::Parsimony, None, GtrModelName::Infer);
+    assert_eq!(helpers::expected_invariant_json(), actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_ancestral_marginal_sparse_end_to_end() {
+    use treetime::ancestral::params::MethodAncestral;
+    use treetime::gtr::get_gtr::GtrModelName;
+    let actual = helpers::reconstruct_json(MethodAncestral::Marginal, Some(false), GtrModelName::JC69);
+    assert_eq!(helpers::expected_invariant_json(), actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_ancestral_marginal_dense_end_to_end() {
+    use treetime::ancestral::params::MethodAncestral;
+    use treetime::gtr::get_gtr::GtrModelName;
+    let actual = helpers::reconstruct_json(MethodAncestral::Marginal, Some(true), GtrModelName::JC69);
+    assert_eq!(helpers::expected_invariant_json(), actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_ancestral_with_aa_reconstruction() {
+    let actual = helpers::build_json_with_aa();
+    let expected = helpers::expected_json_with_aa();
+
+    assert_eq!(expected, actual);
+  }
+
+  // End-to-end through run.rs with two per-CDS translation files. Each CDS partition is reconstructed
+  // and consumed in turn, so this guards the sequential per-CDS wiring: both CDSes must reach the
+  // output (not just the first), with correct per-CDS root sequences. Leaves share sequences within
+  // each CDS, so reconstruction is deterministic with no amino-acid mutations.
+  #[test]
+  fn test_augur_node_data_ancestral_multi_cds_translations_end_to_end() {
+    let data = helpers::reconstruct_json_with_translations();
+
+    assert_eq!(
+      Some(btreemap! { o!("M") => o!("WY"), o!("S") => o!("MKL") }),
+      data.nodes["root"].aa_sequences
+    );
+
+    let no_muts = btreemap! { o!("M") => Vec::<String>::new(), o!("S") => Vec::<String>::new() };
+    assert_eq!(Some(no_muts.clone()), data.nodes["A"].aa_muts);
+    assert_eq!(Some(no_muts), data.nodes["B"].aa_muts);
+  }
+
+  mod helpers {
+    use treetime::alphabet::alphabet::Alphabet;
+    use treetime::ancestral::params::MethodAncestral;
+    use treetime::ancestral::pipeline::AncestralPartition;
+    use crate::commands::ancestral::aa_node_data::{AaCdsNodeData, AaNodeData};
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
+    use crate::commands::ancestral::run::{gather_augur_output_maps, run_ancestral_reconstruction};
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::model::ModelArgs;
+    use crate::commands::shared::output::OutputCoreArgs;
+    use treetime::gtr::get_gtr::GtrModelName;
+    use treetime::partition::fitch::partition::PartitionFitch;
+    use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
+    use treetime::progress::NoopProgress;
+    use treetime::seq::mutation::Sub;
+    use maplit::btreemap;
+    use std::collections::BTreeMap;
+    use tempfile::tempdir;
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::nwk_read_str;
+    use treetime_primitives::{AsciiChar, Seq};
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+    use treetime_utils::o;
+    use util_augur_node_data_json::{
+      AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
+      AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonGeneratedBy,
+    };
+
+    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+      Sub::new(
+        AsciiChar::from_byte_unchecked(reff),
+        pos,
+        AsciiChar::from_byte_unchecked(qry),
+      )
+      .unwrap()
+    }
+
+    /// Two-leaf tree where leaf A differs from the root at one position.
+    /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
+    pub fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
+      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let graph: Graph = graph;
+      let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
+      let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
+      let partition = build_fitch_partition(&graph, &names, &seqs, &edge_subs, 4);
+      (graph, names, partition)
+    }
+
+    pub fn node_name_to_key(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &Graph,
+    ) -> BTreeMap<String, GraphNodeKey> {
+      graph
+        .get_nodes()
+        .into_iter()
+        .map(|node| {
+          let key = node.key();
+          let name = names[&node.key()].clone().unwrap();
+          (name, key)
+        })
+        .collect()
+    }
+
+    pub fn build_fitch_partition(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      seqs: &BTreeMap<String, String>,
+      edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
+      length: usize,
+    ) -> PartitionFitch {
+      let alphabet = Alphabet::default();
+
+      let mut key_to_name = BTreeMap::new();
+      let mut nodes = BTreeMap::new();
+      for node in graph.get_nodes() {
+        let node_guard = node;
+        let key = node_guard.key();
+        let name = names[&key].clone().unwrap();
+        let seq = Seq::try_from_str(&seqs[&name]).unwrap();
+        nodes.insert(key, FitchNodeData::new(&seq, &alphabet).unwrap());
+        key_to_name.insert(key, name);
+      }
+
+      let mut edges = BTreeMap::new();
+      for edge in graph.get_edges() {
+        let edge_guard = edge;
+        let edge_key = edge_guard.key();
+        let child_name = &key_to_name[&edge_guard.target()];
+        let subs = edge_subs_by_child.get(child_name).cloned().unwrap_or_default();
+        edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs));
+      }
+
+      PartitionFitch {
+        index: 0,
+        alphabet,
+        length,
+        nodes,
+        edges,
+      }
+    }
+
+    pub fn write_json(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      partition: &PartitionFitch,
+      mask: &[bool],
+    ) -> String {
+      let maps = gather_augur_output_maps(graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
+      let data = build_augur_node_data_json(graph, &maps, mask, names, None).unwrap();
+      json_write_str(&data, JsonPretty(true)).unwrap()
+    }
+
+    pub fn reconstruct_json(method: MethodAncestral, dense: Option<bool>, model: GtrModelName) -> String {
+      let dir = tempdir().unwrap();
+      let tree_path = dir.path().join("tree.nwk");
+      let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("augur-node-data.json");
+      std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
+      std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n").unwrap();
+
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
+        tree: Some(tree_path),
+        method_anc: method,
+        dense,
+        model_args: ModelArgs {
+          model,
+          ..ModelArgs::default()
+        },
+        output: OutputCoreArgs {
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
+          ..Default::default()
+        },
+        output_augur_node_data: Some(node_data_path.clone()),
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
+
+      run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
+      std::fs::read_to_string(node_data_path).unwrap()
+    }
+
+    /// Run the full ancestral command with two per-CDS amino-acid translation files (`S`, `M`) and
+    /// return the parsed augur node data. Leaves share sequences within each CDS, so reconstruction is
+    /// deterministic with no amino-acid mutations.
+    pub fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {
+      let dir = tempdir().unwrap();
+      let tree_path = dir.path().join("tree.nwk");
+      let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("augur-node-data.json");
+      std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
+      std::fs::write(&fasta_path, ">A\nACGACG\n>B\nACGACG\n").unwrap();
+
+      let translations_dir = dir.path().join("translations");
+      std::fs::create_dir_all(&translations_dir).unwrap();
+      std::fs::write(translations_dir.join("S.fasta"), ">A\nMKL\n>B\nMKL\n").unwrap();
+      std::fs::write(translations_dir.join("M.fasta"), ">A\nWY\n>B\nWY\n").unwrap();
+      let template = format!("{}/{{cds}}.fasta", translations_dir.display());
+
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
+        tree: Some(tree_path),
+        method_anc: MethodAncestral::Marginal,
+        dense: Some(false),
+        model_args: ModelArgs {
+          model: GtrModelName::JC69,
+          ..ModelArgs::default()
+        },
+        translations: Some(template),
+        cdses: vec![o!("S"), o!("M")],
+        output: OutputCoreArgs {
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
+          ..Default::default()
+        },
+        output_augur_node_data: Some(node_data_path.clone()),
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
+
+      run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
+      json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
+    }
+
+    pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
+      let (graph, names, partition) = mutation_case();
+      let name_to_key = node_name_to_key(&names, &graph);
+      let mut aa_node_data = AaNodeData::default();
+
+      aa_node_data.add_cds(
+        "S",
+        AaCdsNodeData {
+          reference: "AC".to_owned(),
+          root_sequence: "AC".to_owned(),
+          node_muts: btreemap! {
+            name_to_key["A"] => vec![o!("C2D")],
+            name_to_key["B"] => vec![],
+            name_to_key["root"] => vec![],
+          },
+          node_mutations: btreemap! {},
+        },
+        Some(AugurNodeDataJsonAnnotationEntry {
+          start: Some(1),
+          end: Some(6),
+          strand: Some("+".to_owned()),
+          entry_type: Some("CDS".to_owned()),
+          segments: None,
+          other: btreemap! {},
+        }),
+      );
+
+      let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition)).unwrap();
+      build_augur_node_data_json(
+        &graph,
+        &maps,
+        &[false, false, false, false],
+        &names,
+        Some(&aa_node_data),
+      )
+      .unwrap()
+    }
+
+    pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {
+      AugurNodeDataJsonAncestral {
+        generated_by: Some(AugurNodeDataJsonGeneratedBy {
+          program: "treetime".to_owned(),
+          version: env!("CARGO_PKG_VERSION").to_owned(),
+        }),
+        metadata: AugurNodeDataJsonAncestralMeta {
+          annotations: Some(AugurNodeDataJsonAnnotations {
+            nuc: Some(AugurNodeDataJsonAnnotationEntry {
+              start: Some(1),
+              end: Some(4),
+              strand: Some("+".to_owned()),
+              entry_type: Some("source".to_owned()),
+              segments: None,
+              other: btreemap! {},
+            }),
+            other: btreemap! {
+              o!("S") => AugurNodeDataJsonAnnotationEntry {
+                start: Some(1),
+                end: Some(6),
+                strand: Some("+".to_owned()),
+                entry_type: Some("CDS".to_owned()),
+                segments: None,
+                other: btreemap! {},
+              },
+            },
+          }),
+          reference: Some(btreemap! {
+            o!("S") => o!("AC"),
+            o!("nuc") => o!("ACGT"),
+          }),
+          mask: Some("0000".to_owned()),
+          other: btreemap! {},
+        },
+        nodes: btreemap! {
+          o!("A") => AugurNodeDataJsonAncestralNode {
+            muts: vec![o!("T4A")],
+            sequence: Some(o!("ACGA")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![o!("C2D")],
+            }),
+            aa_sequences: None,
+            other: btreemap! {},
+          },
+          o!("B") => AugurNodeDataJsonAncestralNode {
+            muts: vec![],
+            sequence: Some(o!("ACGT")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![],
+            }),
+            aa_sequences: None,
+            other: btreemap! {},
+          },
+          o!("root") => AugurNodeDataJsonAncestralNode {
+            muts: vec![],
+            sequence: Some(o!("ACGT")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![],
+            }),
+            aa_sequences: Some(btreemap! {
+              o!("S") => o!("AC"),
+            }),
+            other: btreemap! {},
+          },
+        },
+      }
+    }
+
+    /// Expected JSON when all leaves share the same sequence ACGT: every node
+    /// reconstructs to ACGT, no mutations anywhere, empty mask.
+    pub fn expected_invariant_json() -> String {
+      format!(
+        r#"{{
+  "generated_by": {{
+    "program": "treetime",
+    "version": "{version}"
+  }},
+  "nodes": {{
+    "A": {{
+      "muts": [],
+      "sequence": "ACGT"
+    }},
+    "B": {{
+      "muts": [],
+      "sequence": "ACGT"
+    }},
+    "root": {{
+      "muts": [],
+      "sequence": "ACGT"
+    }}
+  }},
+  "annotations": {{
+    "nuc": {{
+      "start": 1,
+      "end": 4,
+      "strand": "+",
+      "type": "source"
+    }}
+  }},
+  "reference": {{
+    "nuc": "ACGT"
+  }},
+  "mask": "0000"
+}}"#,
+        version = env!("CARGO_PKG_VERSION")
+      )
+    }
+  }
+}

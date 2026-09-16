@@ -5,10 +5,10 @@ use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
-use treetime::commands::ancestral::aa_model::AaModelName;
-use treetime::commands::optimize::args::OptimizeRerootMethod;
-use treetime::commands::shared::reroot::RerootArgs;
-use treetime::commands::timetree::args::TimeMarginalMode;
+use app_api::commands::ancestral::aa_model::AaModelName;
+use app_api::commands::optimize::args::OptimizeRerootMethod;
+use app_api::commands::shared::reroot::RerootArgs;
+use app_api::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime::seq::gap_fill::GapFill;
@@ -49,11 +49,11 @@ pub struct ServerAncestralArgs {
 
 impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
   fn from(s: ServerAncestralArgs) -> Self {
-    use treetime::commands::shared::alignment::AlignmentArgs;
-    use treetime::commands::shared::alphabet::AlphabetArgs;
-    use treetime::commands::shared::gap_fill::GapFillArgs;
-    use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::shared::alignment::AlignmentArgs;
+    use app_api::commands::shared::alphabet::AlphabetArgs;
+    use app_api::commands::shared::gap_fill::GapFillArgs;
+    use app_api::commands::shared::model::ModelArgs;
+    use app_api::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -135,11 +135,11 @@ pub struct ServerClockArgs {
 
 impl From<ServerClockArgs> for TreetimeClockArgs {
   fn from(s: ServerClockArgs) -> Self {
-    use treetime::commands::clock::args::{BranchSplitArgs, ClockRegressionArgs};
-    use treetime::commands::shared::alignment::AlignmentArgs;
-    use treetime::commands::shared::metadata::DateColumnArgs;
-    use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::clock::args::{BranchSplitArgs, ClockRegressionArgs};
+    use app_api::commands::shared::alignment::AlignmentArgs;
+    use app_api::commands::shared::metadata::DateColumnArgs;
+    use app_api::commands::shared::model::ModelArgs;
+    use app_api::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.aln.into_iter().map(PathBuf::from).collect(),
@@ -148,7 +148,7 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
       vcf_reference: s.vcf_reference.map(PathBuf::from),
       metadata: PathBuf::from(s.dates),
       metadata_id: {
-        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        let mut id = app_api::commands::shared::metadata::MetadataIdArgs::default();
         if let Some(name_col) = s.name_column {
           id.metadata_id_columns = vec![name_col];
         }
@@ -262,12 +262,12 @@ pub struct ServerTimetreeArgs {
 
 impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
   fn from(s: ServerTimetreeArgs) -> Self {
-    use treetime::commands::shared::alignment::AlignmentArgs;
-    use treetime::commands::shared::alphabet::AlphabetArgs;
-    use treetime::commands::shared::gap_fill::GapFillArgs;
-    use treetime::commands::shared::metadata::DateColumnArgs;
-    use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::shared::alignment::AlignmentArgs;
+    use app_api::commands::shared::alphabet::AlphabetArgs;
+    use app_api::commands::shared::gap_fill::GapFillArgs;
+    use app_api::commands::shared::metadata::DateColumnArgs;
+    use app_api::commands::shared::model::ModelArgs;
+    use app_api::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -276,7 +276,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       vcf_reference: s.vcf_reference.map(PathBuf::from),
       metadata: s.dates.map(PathBuf::from),
       metadata_id: {
-        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        let mut id = app_api::commands::shared::metadata::MetadataIdArgs::default();
         if let Some(name_col) = s.name_column {
           id.metadata_id_columns = vec![name_col];
         }
@@ -386,14 +386,14 @@ pub struct ServerMugrationArgs {
 
 impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
   fn from(s: ServerMugrationArgs) -> Self {
-    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       tree: s.tree.map(PathBuf::from),
       attribute: s.attribute,
       metadata: PathBuf::from(s.states),
       weights: s.weights.map(PathBuf::from),
       metadata_id: {
-        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        let mut id = app_api::commands::shared::metadata::MetadataIdArgs::default();
         if let Some(name_col) = s.name_column {
           id.metadata_id_columns = vec![name_col];
         }
@@ -452,11 +452,11 @@ pub struct ServerOptimizeArgs {
 
 impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
   fn from(s: ServerOptimizeArgs) -> Self {
-    use treetime::commands::shared::alignment::AlignmentArgs;
-    use treetime::commands::shared::alphabet::AlphabetArgs;
-    use treetime::commands::shared::gap_fill::GapFillArgs;
-    use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::shared::alignment::AlignmentArgs;
+    use app_api::commands::shared::alphabet::AlphabetArgs;
+    use app_api::commands::shared::gap_fill::GapFillArgs;
+    use app_api::commands::shared::model::ModelArgs;
+    use app_api::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -515,9 +515,9 @@ pub struct ServerPruneArgs {
 
 impl From<ServerPruneArgs> for TreetimePruneArgs {
   fn from(s: ServerPruneArgs) -> Self {
-    use treetime::commands::shared::alignment::AlignmentArgs;
-    use treetime::commands::shared::alphabet::AlphabetArgs;
-    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
+    use app_api::commands::shared::alignment::AlignmentArgs;
+    use app_api::commands::shared::alphabet::AlphabetArgs;
+    use app_api::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),

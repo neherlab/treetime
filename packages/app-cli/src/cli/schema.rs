@@ -8,12 +8,12 @@ use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use treetime::commands::clock::args::TreetimeClockArgsRaw;
-use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
-use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use treetime::commands::prune::args::TreetimePruneArgsRaw;
-use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use app_api::commands::clock::args::TreetimeClockArgsRaw;
+use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
+use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use app_api::commands::prune::args::TreetimePruneArgsRaw;
+use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_schema::{TreetimeSchemaFormat, generate_schema as generate_data_schema};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 

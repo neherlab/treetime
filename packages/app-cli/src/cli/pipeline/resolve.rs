@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
-use treetime::commands::shared::output::OutputSelection;
+use app_api::commands::shared::output::OutputSelection;
 use treetime_utils::{make_error, make_report};
 
 /// Top-level keys a pipeline document may carry.

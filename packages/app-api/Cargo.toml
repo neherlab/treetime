@@ -11,17 +11,38 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
+# [internal]
 treetime = { workspace = true }
+treetime-graph = { workspace = true }
+treetime-io = { workspace = true }
+treetime-primitives = { workspace = true }
+treetime-utils = { workspace = true }
+util-augur-node-data-json = { workspace = true }
 
+# [external]
+chrono = { workspace = true }
+clap = { workspace = true, optional = true }
 eyre = { workspace = true }
+itertools = { workspace = true }
+log = { workspace = true }
+maplit = { workspace = true }
+ndarray = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+smart-default = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+
+[features]
+clap = ["dep:clap", "treetime/clap"]
 
 [dev-dependencies]
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
-treetime-utils = { workspace = true }
+treetime-distribution = { workspace = true }
 
 [lints]
 workspace = true
