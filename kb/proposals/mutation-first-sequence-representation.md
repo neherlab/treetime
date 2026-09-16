@@ -12,14 +12,14 @@ The sparse backend exists to avoid `O(N * L)` storage of probability vectors. It
 
 Measured on `data/sc2/4500` (10199 nodes, L = 29903, mean 2.6 substitutions per edge):
 
-| Component | Size |
-| --------- | ---- |
-| Per-node sequences | 305 MB |
-| `emitted` for tips | 153 MB |
-| Root sequence | 0.03 MB |
-| All edge substitutions (26300, 8 B each) | 0.21 MB |
+| Component                                    | Size    |
+| -------------------------------------------- | ------- |
+| Per-node sequences                           | 305 MB  |
+| `emitted` for tips                           | 153 MB  |
+| Root sequence                                | 0.03 MB |
+| All edge substitutions (26300, 8 B each)     | 0.21 MB |
 | All unknown + gap ranges (121980, 16 B each) | 1.95 MB |
-| Tip IUPAC positions (2510, 9 B each) | 0.02 MB |
+| Tip IUPAC positions (2510, 9 B each)         | 0.02 MB |
 
 Roughly 458 MB against 2.2 MB, a factor of ~200. The ratio grows with alignment length at fixed divergence, which is the regime the sparse backend targets.
 
@@ -77,7 +77,7 @@ Tips are half the nodes here (5100 of 10199) and their sequences are the input a
 
 ### Axis 5: two mutation sets
 
-If a sequence is *defined* as root plus path, `parent + mutations == child` becomes a tautology and [`test_marginal_tip_parent_plus_muts_equals_child`](../../packages/treetime/src/ancestral/__tests__/test_marginal_tip_reconstruction.rs) loses its content. The reported set (`subs_ml`, filtered for augur parity) and the reconstruction set are then distinct concepts and should be distinct in the types, or a future reader will reconstruct from the wrong one.
+If a sequence is _defined_ as root plus path, `parent + mutations == child` becomes a tautology and [`test_marginal_tip_parent_plus_muts_equals_child`](../../packages/treetime/src/ancestral/__tests__/test_marginal_tip_reconstruction.rs) loses its content. The reported set (`subs_ml`, filtered for augur parity) and the reconstruction set are then distinct concepts and should be distinct in the types, or a future reader will reconstruct from the wrong one.
 
 ## Expected impact
 
@@ -97,7 +97,7 @@ Each step stands alone and is independently revertable:
 
 ## Validation plan
 
-- Byte-identical reconstructed FASTA, augur node-data JSON, auspice, nexus and PhyloXML against the current implementation on `wrong_reconstruction/subset` (676 tips, 29903 columns) and `data/sc2/4500`.
+- Byte-identical reconstructed FASTA, augur node-data JSON, auspice, and nexus against the current implementation on `wrong_reconstruction/subset` (676 tips, 29903 columns) and `data/sc2/4500`.
 - Byte-identical output under `--impute-missing-data`, `--sample-from-profile root --seed 42` and `--sample-from-profile all --seed 42`.
 - Sparse still byte-identical to dense on the four `wrong_reconstruction` alignments.
 - `optimize` and `timetree` tree and node-data unchanged, except where step 1 deliberately changes the convergence metric, which should be reported as an iteration-count difference rather than an output difference.

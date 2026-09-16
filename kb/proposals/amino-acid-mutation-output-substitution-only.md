@@ -68,9 +68,8 @@ Decision required from the team. The narrow request that motivated this proposal
 ## Non-goals
 
 - No change to the nucleotide track.
-- No change to PhyloXML or UShER MAT indel encoding, which have their own format contracts.
+- No change to UShER MAT indel encoding, which has its own format contract.
 
 ## Related
 
 - [kb/issues/N-amino-acid-mutation-indel-representation-undecided.md](../issues/N-amino-acid-mutation-indel-representation-undecided.md)
-- [phyloxml-treetime-property-namespace.md](phyloxml-treetime-property-namespace.md)

@@ -1,6 +1,6 @@
 # Mutation rendering and format projection are partially inconsistent
 
-Tree output uses a shared zero-based `MutationEvent` representation, canonical substitution rendering, checked UShER MAT coordinate conversion, and shared tree writers. Amino-acid node-data duplicates part of that rendering contract, and two format projections remain undecided.
+Tree output uses a shared zero-based `MutationEvent` representation, canonical substitution rendering, checked UShER MAT coordinate conversion, and shared tree writers. Amino-acid node-data duplicates part of that rendering contract, and its format projection remains undecided.
 
 ## Current contract
 
@@ -12,7 +12,6 @@ Tree output uses a shared zero-based `MutationEvent` representation, canonical s
 
 - Amino-acid node-data has a private second implementation of insertion/deletion string expansion using unchecked arithmetic instead of the canonical helper [`packages/treetime/src/commands/ancestral/aa_node_data.rs#L308`](../../packages/treetime/src/commands/ancestral/aa_node_data.rs#L308).
 - Amino-acid indel representation and coordinate parity with augur remain undecided in [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md).
-- PhyloXML mutation projection remains blocked on its format contract in [N-io-phyloxml-mutation-property-contract-undecided.md](N-io-phyloxml-mutation-property-contract-undecided.md).
 
 ## Required invariant
 
@@ -35,4 +34,3 @@ Every narrowing conversion must prove the target range. Shared spelling uses the
 ## Related issues
 
 - [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md)
-- [N-io-phyloxml-mutation-property-contract-undecided.md](N-io-phyloxml-mutation-property-contract-undecided.md)

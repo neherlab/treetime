@@ -6,7 +6,7 @@ The motivation is interoperability with the phylogenetics tool landscape. TreeTi
 
 - Pandemic surveillance (UShER, PANGOLIN, UCSC) operates on mutation-annotated trees in protobuf, storing millions of SARS-CoV-2 sequences. Reading MAT files lets TreeTime perform molecular clock inference on trees produced by UShER's parsimony placement.
 - Genomic epidemiology (Nextstrain, Auspice) uses a JSON format embedding visualization metadata alongside the tree. TreeTime is already the engine behind `augur refine`; bidirectional Auspice JSON support allows reading back previously exported datasets for re-analysis.
-- Comparative genomics (Archaeopteryx, Forester, ETE) uses PhyloXML for richly annotated trees carrying taxonomy, sequences, evolutionary events, geographic distributions, and protein domain architecture. PhyloXML support enables TreeTime output to carry structured annotations that Newick comment extensions cannot represent.
+- Comparative genomics (Archaeopteryx, Forester, ETE) uses PhyloXML for richly annotated trees carrying taxonomy, sequences, evolutionary events, geographic distributions, and protein domain architecture. Its structured annotation model carries data that Newick comment extensions cannot represent.
 - Bayesian phylogenetics (BEAST, MrBayes, FigTree) uses Nexus and Newick with tool-specific comment conventions. These remain the baseline formats.
 
 v0's format support was sufficient when TreeTime operated within the Nextstrain pipeline alone. v1 targets a broader set of workflows where trees arrive from and depart to different tools. The `convert` subcommand ([packages/treetime-cli/src/convert/convert.rs#L71-L97](../../packages/treetime-cli/src/convert/convert.rs#L71-L97)) is a byproduct: once the format adapters exist, exposing them as a standalone conversion tool costs nothing.
@@ -97,7 +97,7 @@ The `phyloxml` crate ([packages/phyloxml/src/types.rs](../../packages/phyloxml/s
 
 The `treetime-io` crate ([packages/treetime-io/src/phyloxml.rs](../../packages/treetime-io/src/phyloxml.rs)) provides graph integration through `PhyloxmlToGraph` and `PhyloxmlFromGraph` traits, converting between the PhyloXML type model and the generic `Graph` structure.
 
-A **PhyloXML-JSON** variant serializes the same type model as JSON instead of XML, providing a more compact and JavaScript-friendly representation. Both XML and JSON variants are available for input and output in the convert command.
+A **PhyloXML-JSON** variant serializes the same type model as JSON instead of XML, providing a more compact and JavaScript-friendly representation. The type model, reader, and writer remain a reusable library; no analysis command currently reads or writes PhyloXML.
 
 ## Usher MAT protobuf
 
@@ -205,7 +205,6 @@ The `convert` subcommand exposes all eight format adapters as a standalone tool.
 
 - Trees from UShER pandemic surveillance can be imported for molecular clock inference after conversion to Newick
 - Auspice JSON datasets can be read back for re-analysis, not just produced as one-way output
-- PhyloXML's rich annotation structure (taxonomy, sequences, events, distributions) is available for TreeTime output
 - Users can convert between formats without external tools: `treetime convert input.mat.pb -o output.phylo.xml`
 - Future integration of the format adapters into analysis commands will allow direct input from any supported format
 
