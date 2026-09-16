@@ -1,4 +1,3 @@
-use treetime::ancestral::params::MethodAncestral;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
@@ -7,7 +6,6 @@ use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
 use crate::commands::shared::reroot::RerootArgs;
-use treetime::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;
@@ -16,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use treetime::ancestral::params::MethodAncestral;
+use treetime::optimize::params::BranchLengthMode;
 
 #[cfg(feature = "clap")]
 fn parse_skyline_n_points(s: &str) -> Result<usize, String> {

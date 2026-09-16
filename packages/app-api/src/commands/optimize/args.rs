@@ -1,4 +1,3 @@
-use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
@@ -6,7 +5,6 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::commands::shared::required::missing_required_args;
-use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;
@@ -15,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
+use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 
 /// Reroot methods available in the optimize command.
 ///

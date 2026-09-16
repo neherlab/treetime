@@ -238,7 +238,6 @@ mod tests {
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
-        .into_iter()
         .map(|node| {
           let key = node.key();
           let name = names[&node.key()].clone().unwrap();

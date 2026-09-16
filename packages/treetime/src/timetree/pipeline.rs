@@ -14,9 +14,6 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::timetree::coalescent::{
-  CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
-};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
@@ -32,6 +29,9 @@ use crate::partition::timetree::marginal::{
 };
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
+use crate::timetree::coalescent::{
+  CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
+};
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
@@ -193,12 +193,16 @@ pub fn run(
   // name-keyed map before the alignment moves into the partitions, so the tail reconstruction can
   // rebuild a node-keyed description map from the final `names` map.
   let aln_descs: BTreeMap<String, Option<String>> =
-    input.sequences.iter().flatten().fold(BTreeMap::new(), |mut descs, record| {
-      descs
-        .entry(record.seq_name.clone())
-        .or_insert_with(|| record.desc.clone());
-      descs
-    });
+    input
+      .sequences
+      .iter()
+      .flatten()
+      .fold(BTreeMap::new(), |mut descs, record| {
+        descs
+          .entry(record.seq_name.clone())
+          .or_insert_with(|| record.desc.clone());
+        descs
+      });
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
     params.branch_length_mode, params.keep_root

@@ -129,8 +129,8 @@ mod tests {
     let partitions = vec![sparse_partition];
 
     // Record initial state
-    let initial_leaf_count = graph.get_leaves().collect::<Vec<_>>().len();
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_leaf_count = graph.get_leaves().count();
+    let initial_node_count = graph.get_nodes().count();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
     let names_tt_3 = names;
@@ -157,14 +157,14 @@ mod tests {
 
     // Leaf count must be preserved
     assert_eq!(
-      graph.get_leaves().collect::<Vec<_>>().len(),
+      graph.get_leaves().count(),
       initial_leaf_count,
       "Leaf count should be unchanged"
     );
 
     // Node count may increase by 1 if edge was split, but never decrease
     assert!(
-      graph.get_nodes().collect::<Vec<_>>().len() >= initial_node_count,
+      graph.get_nodes().count() >= initial_node_count,
       "Node count should not decrease after reroot"
     );
 
@@ -533,7 +533,7 @@ mod tests {
     let partitions = vec![sparse_partition];
 
     // Record initial state
-    let initial_leaf_count = graph.get_leaves().collect::<Vec<_>>().len();
+    let initial_leaf_count = graph.get_leaves().count();
 
     // Initialize marginal for the sparse partition
     let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
@@ -558,7 +558,7 @@ mod tests {
     // Verify tree validity after first reroot
     drop(graph.get_exactly_one_root()?);
     assert_eq!(
-      graph.get_leaves().collect::<Vec<_>>().len(),
+      graph.get_leaves().count(),
       initial_leaf_count,
       "Leaf count should be unchanged after first reroot"
     );
@@ -588,7 +588,7 @@ mod tests {
     // Verify tree validity after second reroot
     drop(graph.get_exactly_one_root()?);
     assert_eq!(
-      graph.get_leaves().collect::<Vec<_>>().len(),
+      graph.get_leaves().count(),
       initial_leaf_count,
       "Leaf count should be unchanged after second reroot"
     );

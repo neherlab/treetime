@@ -179,7 +179,7 @@ mod tests {
       let mut state = TimetreeState::new(graph);
       state.node_mut(root_key).time = Some(2000.0);
       state.node_mut(child_key).time = Some(2005.0);
-      let edge_key = graph.get_edges().into_iter().next().expect("one edge must exist").key();
+      let edge_key = graph.get_edges().next().expect("one edge must exist").key();
       state.edge_mut(edge_key).branch_length_distribution = Some(Arc::new(Distribution::range((0.0, 10.0), 0.25)));
       state
     }

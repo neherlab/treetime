@@ -261,7 +261,6 @@ fn find_oldest_root(
 ) -> Result<FindRootResult, Report> {
   let Some(oldest_key) = graph
     .get_leaves()
-    .into_iter()
     .filter_map(|node| {
       let key = node.key();
       let time = inputs.likely_time(key)?;

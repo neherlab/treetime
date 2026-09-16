@@ -2,6 +2,13 @@ use crate::cli::config::overlay_config;
 use crate::cli::jobs::Jobs;
 use crate::cli::schema::SchemaTarget;
 use crate::cli::verbosity::Verbosity;
+use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use app_api::commands::clock::args::TreetimeClockArgsRaw;
+use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
+use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use app_api::commands::prune::args::TreetimePruneArgsRaw;
+use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
@@ -13,13 +20,6 @@ use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::sync::LazyLock;
-use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use app_api::commands::clock::args::TreetimeClockArgsRaw;
-use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
-use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use app_api::commands::prune::args::TreetimePruneArgsRaw;
-use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;
@@ -200,11 +200,11 @@ where
 
 #[cfg(test)]
 mod tests {
+  use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use clap::Parser;
   use clap::error::ErrorKind;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use treetime_utils::pretty_assert_ulps_eq;
 
   // Timetree declares no clap-required arguments, so a bare invocation exercises defaults.

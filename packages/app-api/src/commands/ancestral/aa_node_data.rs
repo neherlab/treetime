@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod __tests__;
 
-use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-use treetime::ancestral::attach::sanitize_to_alphabet;
-use treetime::make_error;
 use eyre::Report;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
+use treetime::ancestral::attach::sanitize_to_alphabet;
+use treetime::make_error;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::Seq;

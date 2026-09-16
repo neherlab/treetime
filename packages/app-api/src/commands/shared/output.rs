@@ -945,7 +945,6 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
 fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
-    .into_iter()
     .map(|leaf| {
       let key = leaf.key();
       names[&key]

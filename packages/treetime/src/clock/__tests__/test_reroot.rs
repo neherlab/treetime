@@ -169,7 +169,7 @@ mod tests {
   #[test]
   fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report> {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
-    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
+    let node_count_before = graph.get_nodes().count();
 
     // Both flags false: don't split edges AND don't remove old root
     // This guarantees no new nodes created and no nodes removed
@@ -191,7 +191,7 @@ mod tests {
       &names_tt_6,
     )?;
 
-    let node_count_after = graph.get_nodes().collect::<Vec<_>>().len();
+    let node_count_after = graph.get_nodes().count();
     assert_eq!(
       node_count_before, node_count_after,
       "Node count should be unchanged when edge split is disabled and old root is preserved"
@@ -236,7 +236,7 @@ mod tests {
   #[test]
   fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
-    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
+    let node_count_before = graph.get_nodes().count();
 
     let reroot_params = RerootParams::default();
 
@@ -252,7 +252,7 @@ mod tests {
       &names_tt_4,
     )?;
 
-    let node_count_after = graph.get_nodes().collect::<Vec<_>>().len();
+    let node_count_after = graph.get_nodes().count();
     // With default policy, a new node may be created by edge split (count increases)
     // or old trivial root may be removed (count stays same or decreases by 1 if split created one)
     // The key is it should not crash and should complete successfully

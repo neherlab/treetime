@@ -86,8 +86,8 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2);
 
     let p = &sparse[0];
     for edge in graph.get_edges() {
@@ -397,8 +397,8 @@ mod tests {
     graph.build()?;
 
     assert!(graph.get_node(i_node_key).is_none());
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }

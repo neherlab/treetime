@@ -1,9 +1,9 @@
-use treetime::alphabet::alphabet::AlphabetName;
-use treetime::gtr::get_gtr::GtrModelName;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum_macros::Display;
+use treetime::alphabet::alphabet::AlphabetName;
+use treetime::gtr::get_gtr::GtrModelName;
 
 /// Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
 /// that are sound over an amino-acid alphabet.

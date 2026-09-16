@@ -180,7 +180,7 @@ mod tests {
     let dense = cleanup.dense_partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed);
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4);
+    assert_eq!(graph.get_nodes().count(), 4);
     Ok(())
   }
 
@@ -311,7 +311,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
@@ -342,7 +342,7 @@ mod tests {
 
     // A and B are identical sequences: the AB internal edge should have been
     // collapsed, reducing the node count
-    let final_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let final_node_count = graph.get_nodes().count();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
@@ -403,7 +403,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
@@ -430,7 +430,7 @@ mod tests {
     }
 
     // No edges should have been collapsed - all branches carry genuine signal
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), initial_node_count);
+    assert_eq!(graph.get_nodes().count(), initial_node_count);
 
     Ok(())
   }
@@ -480,7 +480,7 @@ mod tests {
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority). The merge rewrites
     // the durable observations alone, so the reconstructions are split around it.
@@ -493,7 +493,7 @@ mod tests {
     graph.build()?;
 
     assert!(
-      graph.get_nodes().collect::<Vec<_>>().len() > initial_node_count,
+      graph.get_nodes().count() > initial_node_count,
       "merge should have created new internal nodes"
     );
 
@@ -688,7 +688,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
@@ -715,7 +715,7 @@ mod tests {
     }
 
     // A and B are identical: AB edge should have been collapsed
-    let final_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let final_node_count = graph.get_nodes().count();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
@@ -975,7 +975,7 @@ mod tests {
     let sparse = vec![partition];
     let dense: Vec<DenseReconstruction> = vec![];
 
-    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
+    let node_count_before = graph.get_nodes().count();
     let ops = TopologyOps {
       collapse_short_branches: false,
       merge_siblings: false,
@@ -995,7 +995,7 @@ mod tests {
     let dense = cleanup.dense_partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed, "no topology step runs when all are disabled");
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), node_count_before);
+    assert_eq!(graph.get_nodes().count(), node_count_before);
 
     let p = &sparse[0];
     let total_subs: usize = graph
@@ -1050,7 +1050,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     let ops = TopologyOps {
       collapse_short_branches: false,
@@ -1072,7 +1072,7 @@ mod tests {
     )?;
 
     assert_eq!(
-      graph.get_nodes().collect::<Vec<_>>().len(),
+      graph.get_nodes().count(),
       initial_node_count,
       "no collapse when collapse_short_branches is disabled"
     );
@@ -1136,7 +1136,7 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().count();
 
     let names_tt_1 = names;
     let result = run_optimize_loop(
@@ -1157,7 +1157,7 @@ mod tests {
 
     // A and B are identical, so the AB internal edge collapses: topology changed.
     assert!(
-      graph.get_nodes().collect::<Vec<_>>().len() < initial_node_count,
+      graph.get_nodes().count() < initial_node_count,
       "expected a collapse (topology change) with collapse enabled"
     );
 

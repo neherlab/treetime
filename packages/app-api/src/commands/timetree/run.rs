@@ -1,5 +1,3 @@
-use treetime::clock::clock_output::write_clock_model;
-use treetime::clock::clock_state::ClockState;
 use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -7,22 +5,24 @@ use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::coalescent::{write_coalescent_delimited, write_coalescent_json};
-use treetime::timetree::coalescent::CoalescentOutput;
 use crate::commands::timetree::output::date_comment::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use crate::commands::timetree::tree_output::write_timetree_tree_outputs;
+use eyre::{Report, WrapErr};
+use log::{debug, info, warn};
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use treetime::clock::clock_output::write_clock_model;
+use treetime::clock::clock_state::ClockState;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::partition::timetree::partition::PartitionTimetree;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
+use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::write_confidence_intervals_file;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use treetime::timetree::timetree_state::TimetreeState;
-use eyre::{Report, WrapErr};
-use log::{debug, info, warn};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -124,7 +124,9 @@ pub fn run_timetree_estimation(
   let recon_sink: Option<pipeline::ReconstructedSeqSink> = match &reconstructed_nuc_fasta {
     Some(path) => {
       let mut writer = FastaWriter::new(create_file_or_stdout(path)?);
-      Some(Box::new(move |name: &str, desc: &Option<String>, seq: &Seq| writer.write(name, desc, seq)))
+      Some(Box::new(move |name: &str, desc: &Option<String>, seq: &Seq| {
+        writer.write(name, desc, seq)
+      }))
     },
     None => None,
   };

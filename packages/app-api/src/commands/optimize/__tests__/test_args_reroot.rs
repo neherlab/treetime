@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::commands::optimize::args::{OptimizeRerootMethod, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
-  use treetime::o;
   use pretty_assertions::assert_eq;
+  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+  use treetime::o;
 
   fn args_with(
     reroot: Option<OptimizeRerootMethod>,

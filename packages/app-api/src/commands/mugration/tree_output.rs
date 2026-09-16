@@ -3,12 +3,12 @@ use crate::commands::shared::tree_output::{
   TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, ensure_finite,
   finite_number, generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
 };
-use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
 use eyre::Report;
 use maplit::btreemap;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

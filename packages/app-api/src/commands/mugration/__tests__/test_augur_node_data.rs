@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::augur_node_data::build_augur_node_data_json;
-  use treetime::mugration::mugration::execute_mugration;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime::mugration::mugration::execute_mugration;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;

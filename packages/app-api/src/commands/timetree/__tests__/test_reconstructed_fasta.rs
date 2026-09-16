@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use treetime::alphabet::alphabet::Alphabet;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeSet;
+  use treetime::alphabet::alphabet::Alphabet;
   use treetime_primitives::AsciiChar;
 
   // Without a tip-state flag the reconstructed FASTA holds internal nodes only, and every record
@@ -102,14 +102,14 @@ mod tests {
   }
 
   mod helpers {
-    use treetime::alphabet::alphabet::Alphabet;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
-    use treetime::progress::NoopProgress;
     use eyre::Report;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
+    use treetime::alphabet::alphabet::Alphabet;
+    use treetime::progress::NoopProgress;
     use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
     use treetime_primitives::Seq;
 

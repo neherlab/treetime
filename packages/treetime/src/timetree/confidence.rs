@@ -232,7 +232,6 @@ pub fn extract_confidence_intervals(
 ) -> Vec<NodeConfidenceInterval> {
   graph
     .get_nodes()
-    .into_iter()
     .filter_map(|node_ref| {
       let node = node_ref;
       let key = node.key();

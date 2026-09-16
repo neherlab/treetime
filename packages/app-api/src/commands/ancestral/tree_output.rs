@@ -1,14 +1,14 @@
-use treetime::ancestral::aa::AaNodeData;
 use crate::commands::ancestral::result::{AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
 };
-use treetime::seq::mutation::{Mutation, MutationTrack};
 use eyre::{Report, WrapErr};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::ancestral::aa::AaNodeData;
+use treetime::seq::mutation::{Mutation, MutationTrack};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -232,7 +232,6 @@ fn ancestral_all_mutations(
 ) -> Vec<Mutation> {
   graph
     .get_nodes()
-    .into_iter()
     .flat_map(|node| ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data))
     .collect()
 }

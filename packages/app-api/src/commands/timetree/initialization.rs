@@ -1,12 +1,12 @@
+use crate::commands::timetree::args::TreetimeTimetreeArgs;
+use eyre::{Report, WrapErr};
+use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::clock::date_constraints::load_date_constraints;
-use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime::make_error;
 use treetime::make_report;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::seq::gap_fill::apply_gap_fill;
-use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -53,7 +53,6 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   };
   let input_leaf_order = graph
     .get_leaves()
-    .into_iter()
     .map(|leaf| {
       let key = leaf.key();
       names[&key]

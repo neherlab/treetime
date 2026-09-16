@@ -108,7 +108,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
-    assert_eq!(field.edge_stats.len(), graph.get_edges().collect::<Vec<_>>().len());
+    assert_eq!(field.edge_stats.len(), graph.get_edges().count());
     for (to_parent, to_child) in field.edge_stats.values() {
       assert!(to_parent.count() > 0.0);
       assert!(to_child.count() > 0.0);

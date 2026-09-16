@@ -132,13 +132,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut graph: Graph = graph;
 
-    let initial_leaves = graph.get_leaves().collect::<Vec<_>>().len();
+    let initial_leaves = graph.get_leaves().count();
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
 
     apply_reroot_topology(&mut graph, root_key, cd_key)?;
 
-    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), initial_leaves);
+    assert_eq!(graph.get_leaves().count(), initial_leaves);
 
     Ok(())
   }
@@ -228,7 +228,7 @@ mod tests {
     assert!(cd_node.inbound().is_empty());
 
     // All 4 leaves preserved
-    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 4);
+    assert_eq!(graph.get_leaves().count(), 4);
 
     // Check total branch length conservation (unrooted tree property)
     let newick = nwk_write_str(

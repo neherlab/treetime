@@ -30,7 +30,8 @@ pub fn datasets() -> String {
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
   let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
   let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
-  let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+  let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&args, &NoopProgress)
+    .map_err(|e| eyre_to_napi(&e))?;
   serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
 }
 
@@ -100,7 +101,8 @@ impl Task for AncestralTaskNoop {
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&self.args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+    let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&self.args, &NoopProgress)
+      .map_err(|e| eyre_to_napi(&e))?;
     serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
   }
 

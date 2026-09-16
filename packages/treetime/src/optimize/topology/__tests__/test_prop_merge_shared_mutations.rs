@@ -223,7 +223,7 @@ mod tests {
     graph.build()?;
 
     // Root has 1 child (the new node), which has all 5 original children.
-    let root = graph.get_roots().into_iter().next().expect("root");
+    let root = graph.get_roots().next().expect("root");
     assert_eq!(root.degree_out(), 1);
 
     let internal_edge = root.outbound()[0];
@@ -288,7 +288,7 @@ mod tests {
     assert_eq!(merged, 1);
     graph.build()?;
 
-    let root = graph.get_roots().into_iter().next().expect("root");
+    let root = graph.get_roots().next().expect("root");
     assert_eq!(root.degree_out(), 2);
 
     Ok(())

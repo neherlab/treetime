@@ -1,3 +1,10 @@
+use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::clock::tree_output::write_clock_tree_outputs;
+use crate::commands::shared::output::OutputSelection;
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use eyre::{Report, WrapErr};
+use serde::Serialize;
+use std::collections::BTreeMap;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_regression::ClockParams;
@@ -5,15 +12,8 @@ use treetime::clock::clock_state::{ClockInputs, ClockState};
 use treetime::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use treetime::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use treetime::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
-use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
-use crate::commands::clock::tree_output::write_clock_tree_outputs;
-use crate::commands::shared::output::OutputSelection;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use treetime::make_error;
 use treetime::make_report;
-use eyre::{Report, WrapErr};
-use serde::Serialize;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -226,7 +226,6 @@ pub fn run_clock(
 fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
-    .into_iter()
     .map(|leaf| {
       let key = leaf.key();
       names[&key]

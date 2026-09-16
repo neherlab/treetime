@@ -1,6 +1,6 @@
-use treetime::seq::mutation::{Mutation, Sub};
 use serde::Serialize;
 use std::collections::BTreeMap;
+use treetime::seq::mutation::{Mutation, Sub};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

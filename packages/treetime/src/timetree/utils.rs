@@ -47,7 +47,6 @@ pub fn extract_node_times(
 ) -> BTreeMap<String, f64> {
   graph
     .get_nodes()
-    .into_iter()
     .filter_map(|node_ref| {
       let key = node_ref.key();
       let name = names[&key].clone()?;

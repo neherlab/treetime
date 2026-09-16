@@ -512,8 +512,7 @@ mod tests {
       .ok_or_else(|| make_report!("Node {parent_key} not found"))?;
     Ok(
       graph
-        .children_of(&parent)
-        .into_iter()
+        .children_of(parent)
         .map(|(node, _)| node_name(names, node.key()))
         .collect_vec(),
     )

@@ -630,9 +630,8 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_nodes()
-        .filter_map(|node| {
-          (names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A")).then(|| (node.key(), Some(0.9)))
-        })
+        .filter(|&node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A")))
+        .map(|node| (node.key(), Some(0.9)))
         .collect()
     }
 
@@ -952,7 +951,6 @@ mod tests {
       let partition = PartitionMarginalDiscrete::new(states, 1e-8, false);
       let node_states: BTreeMap<GraphNodeKey, DenseNodeState> = graph
         .get_nodes()
-        .into_iter()
         .enumerate()
         .map(|(index, node)| {
           let key = node.key();

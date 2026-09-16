@@ -1,8 +1,8 @@
-use treetime::seq::mutation::{Mutation, MutationEvent, mutation_event_strings};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use treetime::seq::mutation::{Mutation, MutationEvent, mutation_event_strings};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

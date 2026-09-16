@@ -113,7 +113,7 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4); // root, internal, A, B
+    assert_eq!(graph.get_nodes().count(), 4); // root, internal, A, B
     Ok(())
   }
 
@@ -140,7 +140,7 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4); // root, A, B, C
+    assert_eq!(graph.get_nodes().count(), 4); // root, A, B, C
     Ok(())
   }
 
@@ -175,8 +175,8 @@ mod tests {
 
     graph.build()?;
     // New topology: root -> N, N -> A, N -> B, root -> C
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 5); // root, N, A, B, C
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 4);
+    assert_eq!(graph.get_nodes().count(), 5); // root, N, A, B, C
+    assert_eq!(graph.get_edges().count(), 4);
 
     // The new internal node should exist
     let unnamed = find_unnamed_internal_nodes(&graph, &names);
@@ -304,7 +304,7 @@ mod tests {
 
     graph.build()?;
     // Topology: root -> N -> {A, B}, root -> C, root -> D
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 6); // root, N, A, B, C, D
+    assert_eq!(graph.get_nodes().count(), 6); // root, N, A, B, C, D
 
     let p = &partitions[0];
     // The new internal edge carries all 3 shared mutations
@@ -527,8 +527,8 @@ mod tests {
 
     graph.build()?;
     // root -> N1 -> {A, B}, root -> N2 -> {C, D}, root -> E
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 8); // root, N1, N2, A, B, C, D, E
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 7);
+    assert_eq!(graph.get_nodes().count(), 8); // root, N1, N2, A, B, C, D, E
+    assert_eq!(graph.get_edges().count(), 7);
 
     Ok(())
   }
@@ -579,7 +579,7 @@ mod tests {
 
     graph.build()?;
     // internal1 -> N -> {A, B}, internal1 -> C
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7); // root, internal1, N, A, B, C, D
+    assert_eq!(graph.get_nodes().count(), 7); // root, internal1, N, A, B, C, D
 
     // D should be unaffected
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());

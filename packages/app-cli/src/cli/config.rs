@@ -152,13 +152,6 @@ mod tests {
   mod end_to_end {
     use crate::cli::config::overlay_config;
     use crate::cli::treetime_cli::TreetimeArgs;
-    use clap::{CommandFactory, FromArgMatches};
-    use eyre::Report;
-    use indoc::indoc;
-    use pretty_assertions::assert_eq;
-    use std::fs;
-    use std::path::{Path, PathBuf};
-    use tempfile::tempdir;
     use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use app_api::commands::clock::args::TreetimeClockArgsRaw;
     use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -166,6 +159,13 @@ mod tests {
     use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
     use app_api::commands::prune::args::TreetimePruneArgsRaw;
     use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use clap::{CommandFactory, FromArgMatches};
+    use eyre::Report;
+    use indoc::indoc;
+    use pretty_assertions::assert_eq;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use tempfile::tempdir;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
     // Drive the real parse path: full clap parse (which records value sources), then the `--config`
@@ -383,7 +383,6 @@ mod tests {
   // missing flag with the clap-style message, built from the command's clap metadata so a flag
   // rename cannot desync it.
   mod required_args {
-    use pretty_assertions::assert_eq;
     use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use app_api::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
     use app_api::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
@@ -391,6 +390,7 @@ mod tests {
     use app_api::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
     use app_api::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
     use app_api::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+    use pretty_assertions::assert_eq;
     use treetime_utils::assert_error;
 
     #[test]
@@ -488,8 +488,6 @@ mod tests {
   // so every raw args type must round-trip losslessly. A field with an asymmetric serializer, or a
   // nested struct missing `#[serde(default)]`, fails here rather than corrupting a user's config load.
   mod round_trip {
-    use pretty_assertions::assert_eq;
-    use serde_json::{Value, from_value, to_value};
     use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
     use app_api::commands::clock::args::TreetimeClockArgsRaw;
     use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -497,6 +495,8 @@ mod tests {
     use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
     use app_api::commands::prune::args::TreetimePruneArgsRaw;
     use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use pretty_assertions::assert_eq;
+    use serde_json::{Value, from_value, to_value};
 
     macro_rules! round_trip {
       ($test:ident, $ty:ty) => {

@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::output::coalescent::{coalescent_delimited_str, coalescent_json_str};
+  use eyre::Report;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSegmentRow, CoalescentSolve,
     Estimate, SegmentInterval,
   };
-  use eyre::Report;
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::json_read_str;
 

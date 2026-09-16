@@ -226,7 +226,7 @@ mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    assert!(graph.get_nodes().collect::<Vec<_>>().is_empty());
+    assert!(graph.get_nodes().next().is_none());
     Ok(())
   }
 
@@ -307,8 +307,8 @@ mod tests {
     )?;
 
     // Both leaves should be preserved even if edge to A has no mutations
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -338,8 +338,8 @@ mod tests {
     )?;
 
     // Internal node should be collapsed, but leaves preserved
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -362,8 +362,8 @@ mod tests {
     )?;
 
     // Internal node should be preserved when mutations is None (unknown)
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().count(), 3); // root, internal, A
+    assert_eq!(graph.get_edges().count(), 2); // root->internal, internal->A
 
     Ok(())
   }
@@ -384,8 +384,8 @@ mod tests {
     )?;
 
     // Leaf should be preserved even with no mutations
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 2); // root and A
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 1); // root->A
+    assert_eq!(graph.get_nodes().count(), 2); // root and A
+    assert_eq!(graph.get_edges().count(), 1); // root->A
 
     Ok(())
   }
@@ -415,8 +415,8 @@ mod tests {
     )?;
 
     // Both internal nodes should be collapsed, leaves preserved
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -487,8 +487,8 @@ mod tests {
 
     // internal2 and internal3 should be collapsed (empty internal edges), leaves preserved
     // Result: root -> internal1 -> A, C, D and root -> B
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 6); // root, internal1, A, B, C, D
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 5); // root->internal1, internal1->A, internal1->C, internal1->D, root->B
+    assert_eq!(graph.get_nodes().count(), 6); // root, internal1, A, B, C, D
+    assert_eq!(graph.get_edges().count(), 5); // root->internal1, internal1->A, internal1->C, internal1->D, root->B
 
     Ok(())
   }
@@ -511,8 +511,8 @@ mod tests {
     )?;
 
     // Nothing should be collapsed
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().count(), 3); // root, internal, A
+    assert_eq!(graph.get_edges().count(), 2); // root->internal, internal->A
 
     Ok(())
   }
@@ -538,8 +538,8 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B, root -> C (internal1 and internal2 should be removed)
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, B, C
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->B, root->C
+    assert_eq!(graph.get_nodes().count(), 3); // root, B, C
+    assert_eq!(graph.get_edges().count(), 2); // root->B, root->C
 
     // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
@@ -574,8 +574,8 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B (internal1 collapsed)
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 2); // root, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 1); // root->B
+    assert_eq!(graph.get_nodes().count(), 2); // root, B
+    assert_eq!(graph.get_edges().count(), 1); // root->B
 
     // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
@@ -603,10 +603,10 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // Only root should remain
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 1);
+    assert_eq!(graph.get_nodes().count(), 1);
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
     assert!(find_node_key_by_name(&graph, &names, "A").is_none());
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 0);
+    assert_eq!(graph.get_edges().count(), 0);
 
     Ok(())
   }
@@ -772,7 +772,7 @@ mod tests {
       &mut branch_lengths,
     )?;
     // Root should remain
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 1);
+    assert_eq!(graph.get_nodes().count(), 1);
     Ok(())
   }
 
@@ -792,7 +792,7 @@ mod tests {
 
     // A removed, i1 becomes unary and collapses
     // Verify structure: root has 2 children (i2, D), i2 has 2 children (B, C)
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 5); // root, i2, B, C, D
+    assert_eq!(graph.get_nodes().count(), 5); // root, i2, B, C, D
 
     // Verify the leaf names are preserved
     let leaf_names: BTreeSet<_> = graph
@@ -863,8 +863,8 @@ mod tests {
     )?;
 
     // After collapse: root -> A should have all 4 mutations, root -> B should have 2 mutations
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
+    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_edges().count(), 2);
 
     // Find new edge keys after collapse
     let partition = &partitions[0];

@@ -43,8 +43,7 @@ mod tests {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let (_, edge) = graph
-        .parents_of(&node)
-        .into_iter()
+        .parents_of(node)
         .next()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
       state.edge_mut(edge.key()).time_length = Some(branch.clock_length / input.clock_rate);
@@ -66,8 +65,7 @@ mod tests {
         let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let (_, edge) = graph
-          .parents_of(&node)
-          .into_iter()
+          .parents_of(node)
           .next()
           .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
         let gamma = state.edge(edge.key()).gamma;

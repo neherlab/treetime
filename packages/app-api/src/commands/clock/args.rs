@@ -1,6 +1,3 @@
-use treetime::ancestral::params::MethodAncestral;
-use treetime::clock::clock_regression::ClockParams;
-use treetime::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
@@ -8,7 +5,6 @@ use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
-use treetime::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;
@@ -17,6 +13,10 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
+use treetime::ancestral::params::MethodAncestral;
+use treetime::clock::clock_regression::ClockParams;
+use treetime::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
+use treetime::optimize::params::BranchLengthMode;
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]

@@ -3,11 +3,11 @@ use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
 };
-use treetime::seq::mutation::Mutation;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

@@ -1,10 +1,4 @@
 use crate::cli::pipeline::suggest::suggestion_suffix;
-use eyre::Report;
-use itertools::Itertools;
-use schemars::JsonSchema;
-use serde::Serialize;
-use serde_json::{Map, Value};
-use std::path::Path;
 use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_api::commands::clock::args::TreetimeClockArgsRaw;
 use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
@@ -13,6 +7,12 @@ use app_api::commands::prune::args::TreetimePruneArgsRaw;
 use app_api::commands::shared::output::{CommandKind, ResolvedOutputs};
 use app_api::commands::shared::resolve_outputs::ResolveOutputs;
 use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use eyre::Report;
+use itertools::Itertools;
+use schemars::JsonSchema;
+use serde::Serialize;
+use serde_json::{Map, Value};
+use std::path::Path;
 use treetime_utils::make_error;
 
 /// Reserved top-level key that associates a JSON config with its schema in an editor.

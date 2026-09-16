@@ -1,6 +1,3 @@
-use treetime::ancestral::params::MethodAncestral;
-use treetime::ancestral::pipeline::AncestralParams;
-use treetime::ancestral::sample::SampleMode;
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
@@ -17,6 +14,9 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
+use treetime::ancestral::params::MethodAncestral;
+use treetime::ancestral::pipeline::AncestralParams;
+use treetime::ancestral::sample::SampleMode;
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -279,16 +279,16 @@ impl TreetimeAncestralArgs {
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
   AncestralParams {
-      method: args.method_anc,
-      model: args.model_args.model,
-      dense: args.dense,
-      include_leaves: args.include_leaves || args.reconstruct_tip_states,
-      impute_missing_data: args.impute_missing_data || args.reconstruct_tip_states,
-      gtr_iterations: args.gtr_iterations,
-      site_specific_gtr: args.site_specific_gtr,
-      seed: args.seed,
-      sample_from_profile: args.sample_from_profile,
-      ignore_missing_alns: args.ignore_missing_alns,
+    method: args.method_anc,
+    model: args.model_args.model,
+    dense: args.dense,
+    include_leaves: args.include_leaves || args.reconstruct_tip_states,
+    impute_missing_data: args.impute_missing_data || args.reconstruct_tip_states,
+    gtr_iterations: args.gtr_iterations,
+    site_specific_gtr: args.site_specific_gtr,
+    seed: args.seed,
+    sample_from_profile: args.sample_from_profile,
+    ignore_missing_alns: args.ignore_missing_alns,
   }
 }
 

@@ -1,8 +1,8 @@
-use treetime::alphabet::alphabet::AlphabetName;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
+use treetime::alphabet::alphabet::AlphabetName;
 
 /// Alphabet selection shared by every command that reads sequences.
 ///

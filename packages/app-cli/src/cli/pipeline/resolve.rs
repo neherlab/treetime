@@ -1,6 +1,7 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::suggest::{suggestion_suffix, valid_values};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
+use app_api::commands::shared::output::OutputSelection;
 use eyre::Report;
 use itertools::Itertools;
 use regex::Regex;
@@ -8,7 +9,6 @@ use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
-use app_api::commands::shared::output::OutputSelection;
 use treetime_utils::{make_error, make_report};
 
 /// Top-level keys a pipeline document may carry.

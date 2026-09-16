@@ -108,7 +108,6 @@ mod tests {
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
-        .into_iter()
         .map(|node| {
           let key = node.key();
           let name = names[&node.key()].clone().unwrap();
@@ -133,7 +132,7 @@ mod tests {
     ) -> AncestralPartition {
       let alphabet = Alphabet::default();
       let mut fasta = String::new();
-      for (leaf, seq) in graph.get_leaves().into_iter().zip(leaf_sequences) {
+      for (leaf, seq) in graph.get_leaves().zip(leaf_sequences) {
         let name = names[&leaf.key()].clone().unwrap();
         writeln!(fasta, ">{name}").unwrap();
         writeln!(fasta, "{seq}").unwrap();

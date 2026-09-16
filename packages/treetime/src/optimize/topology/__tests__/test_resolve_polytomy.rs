@@ -240,7 +240,7 @@ mod tests {
     );
     let mut sparse = vec![partition];
     let mut node_states = vec![node_states];
-    let nodes_before = graph.get_nodes().collect::<Vec<_>>().len();
+    let nodes_before = graph.get_nodes().count();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
@@ -252,7 +252,7 @@ mod tests {
     )?;
 
     assert_eq!(changed, 0);
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), nodes_before);
+    assert_eq!(graph.get_nodes().count(), nodes_before);
     assert_eq!(total_subs(&graph, &sparse[0]), 3);
     Ok(())
   }
@@ -279,7 +279,7 @@ mod tests {
     );
     let mut sparse = vec![partition];
     let mut node_states = vec![node_states];
-    let nodes_before = graph.get_nodes().collect::<Vec<_>>().len();
+    let nodes_before = graph.get_nodes().count();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
@@ -291,7 +291,7 @@ mod tests {
     )?;
 
     assert_eq!(changed, 0);
-    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), nodes_before);
+    assert_eq!(graph.get_nodes().count(), nodes_before);
     assert_eq!(total_subs(&graph, &sparse[0]), 4);
     Ok(())
   }

@@ -66,7 +66,7 @@ mod tests {
 
     assert_eq!(0, outcome.sequence_changes);
     assert_eq!(TopologyOutcome::Changed { resolved_nodes: 1 }, outcome.topology);
-    assert_eq!(5, graph.get_nodes().collect::<Vec<_>>().len());
+    assert_eq!(5, graph.get_nodes().count());
     assert!(
       graph
         .get_nodes()

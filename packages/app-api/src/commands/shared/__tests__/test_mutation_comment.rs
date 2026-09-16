@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
+  use eyre::Report;
+  use maplit::btreemap;
+  use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::ancestral::pipeline::SparseReconstruction;
-  use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
   use treetime::gtr::get_gtr::{JC69Params, jc69};
   use treetime::partition::marginal::shared::update::MarginalEdges;
   use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use treetime::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use treetime::seq::indel::InDel;
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
-  use eyre::Report;
-  use maplit::btreemap;
-  use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;

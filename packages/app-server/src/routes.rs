@@ -39,7 +39,11 @@ async fn handle_datasets(State(config): State<Arc<ServerConfig>>) -> Result<Json
 }
 
 async fn handle_ancestral(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerAncestralArgs, _, _>(body, &config.out_dir, app_api::commands::ancestral::run::run_ancestral_reconstruction)
+  handle_command::<ServerAncestralArgs, _, _>(
+    body,
+    &config.out_dir,
+    app_api::commands::ancestral::run::run_ancestral_reconstruction,
+  )
 }
 
 async fn handle_clock(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
@@ -47,7 +51,11 @@ async fn handle_clock(State(config): State<Arc<ServerConfig>>, Json(body): Json<
 }
 
 async fn handle_timetree(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerTimetreeArgs, _, _>(body, &config.out_dir, app_api::commands::timetree::run::run_timetree_estimation)
+  handle_command::<ServerTimetreeArgs, _, _>(
+    body,
+    &config.out_dir,
+    app_api::commands::timetree::run::run_timetree_estimation,
+  )
 }
 
 async fn handle_mugration(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {

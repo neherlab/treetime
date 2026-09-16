@@ -1,3 +1,7 @@
+use app_api::commands::ancestral::aa_model::AaModelName;
+use app_api::commands::optimize::args::OptimizeRerootMethod;
+use app_api::commands::shared::reroot::RerootArgs;
+use app_api::commands::timetree::args::TimeMarginalMode;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
@@ -5,10 +9,6 @@ use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
-use app_api::commands::ancestral::aa_model::AaModelName;
-use app_api::commands::optimize::args::OptimizeRerootMethod;
-use app_api::commands::shared::reroot::RerootArgs;
-use app_api::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime::seq::gap_fill::GapFill;

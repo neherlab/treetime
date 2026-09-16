@@ -85,7 +85,7 @@ mod tests {
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
-    let leaves_before = graph.get_leaves().collect::<Vec<_>>().len();
+    let leaves_before = graph.get_leaves().count();
     let root_children_before = root_child_keys(&graph);
     let output = run(
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
@@ -99,7 +99,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().collect::<Vec<_>>().len(), leaves_before);
+    assert_eq!(output.graph.get_leaves().count(), leaves_before);
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_children_after = root_child_keys(&output.graph);
     assert_ne!(
@@ -112,7 +112,7 @@ mod tests {
   #[test]
   fn test_optimize_pipeline_reroot_tips_changes_root() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
-    let leaves_before = graph.get_leaves().collect::<Vec<_>>().len();
+    let leaves_before = graph.get_leaves().count();
     let root_before = root_key(&graph);
     let tips: Vec<String> = leaf_names(&graph, &names).into_iter().take(2).collect();
     let output = run(
@@ -127,7 +127,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().collect::<Vec<_>>().len(), leaves_before);
+    assert_eq!(output.graph.get_leaves().count(), leaves_before);
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_after = root_key(&output.graph);
     assert_ne!(root_before, root_after, "tip-based reroot should move the root");
@@ -137,7 +137,7 @@ mod tests {
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_dense_completes() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
-    let leaves_before = graph.get_leaves().collect::<Vec<_>>().len();
+    let leaves_before = graph.get_leaves().count();
 
     let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
     params.dense = Some(true);
@@ -153,7 +153,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().collect::<Vec<_>>().len(), leaves_before);
+    assert_eq!(output.graph.get_leaves().count(), leaves_before);
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }
@@ -163,7 +163,7 @@ mod tests {
   #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
-    let leaves_before = graph.get_leaves().collect::<Vec<_>>().len();
+    let leaves_before = graph.get_leaves().count();
     let output = run(
       &params_with(None),
       OptimizeInput {
@@ -176,7 +176,7 @@ mod tests {
       &NoopProgress,
     )?;
 
-    assert_eq!(output.graph.get_leaves().collect::<Vec<_>>().len(), leaves_before);
+    assert_eq!(output.graph.get_leaves().count(), leaves_before);
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }

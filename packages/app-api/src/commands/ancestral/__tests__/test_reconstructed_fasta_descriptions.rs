@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod tests {
-  use treetime::alphabet::alphabet::Alphabet;
-  use treetime::ancestral::params::MethodAncestral;
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::ModelArgs;
-  use treetime::gtr::get_gtr::GtrModelName;
-  use treetime::progress::NoopProgress;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use tempfile::tempdir;
+  use treetime::alphabet::alphabet::Alphabet;
+  use treetime::ancestral::params::MethodAncestral;
+  use treetime::gtr::get_gtr::GtrModelName;
+  use treetime::progress::NoopProgress;
   use treetime_io::fasta::read_many_fasta_path;
 
   /// Run ancestral reconstruction with leaf sequences included and return each emitted record's

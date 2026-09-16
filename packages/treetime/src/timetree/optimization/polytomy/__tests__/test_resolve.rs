@@ -254,7 +254,6 @@ mod tests {
       Ok(
         graph
           .get_nodes()
-          .into_iter()
           .map(|node| {
             let key = node.key();
             leaf_names_under(&graph, &names, key).into_iter().collect::<Vec<_>>()
@@ -280,7 +279,6 @@ mod tests {
       Ok(
         graph
           .get_nodes()
-          .into_iter()
           .map(|node| {
             let key = node.key();
             leaf_names_under(&graph, &names, key).into_iter().collect::<Vec<_>>()

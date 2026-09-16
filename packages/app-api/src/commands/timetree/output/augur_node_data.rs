@@ -1,9 +1,9 @@
-use treetime::clock::clock_model::ClockModel;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
-use treetime::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime::clock::clock_model::ClockModel;
+use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

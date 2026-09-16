@@ -3,12 +3,12 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
-  use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use crate::commands::timetree::run::run_timetree_estimation;
-  use treetime::progress::NoopProgress;
   use eyre::Report;
   use std::fs::read_to_string;
   use std::path::PathBuf;
+  use treetime::progress::NoopProgress;
+  use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_utils::io::json::json_read_file;
 

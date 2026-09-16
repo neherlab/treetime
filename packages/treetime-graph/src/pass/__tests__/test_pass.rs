@@ -478,7 +478,7 @@ mod tests {
     /// The child node keys of `parent` in the graph's `children_of` (outbound-edge) order.
     pub fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
       let node = graph.get_node(parent).expect("Parent must exist");
-      graph.children_of(&node).map(|(child, _)| child.key()).collect()
+      graph.children_of(node).map(|(child, _)| child.key()).collect()
     }
 
     /// Pass inputs with a distinct own-value per node (by name) and zero edge inputs.

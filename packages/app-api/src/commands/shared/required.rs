@@ -1,5 +1,5 @@
-use treetime::make_report;
 use eyre::Report;
+use treetime::make_report;
 
 /// Build the clap-style "required arguments were not provided" error for a set of missing arg ids.
 ///

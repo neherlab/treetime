@@ -1,8 +1,8 @@
-use treetime::gtr::get_gtr::GtrModelName;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
+use treetime::gtr::get_gtr::GtrModelName;
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
 ///

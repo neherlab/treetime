@@ -1,4 +1,10 @@
 use crate::cli::pipeline::types::{Pipeline, SCHEMA_KEY};
+use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use app_api::commands::clock::args::TreetimeClockArgsRaw;
+use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
+use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use app_api::commands::prune::args::TreetimePruneArgsRaw;
+use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use clap::ValueEnum;
 use eyre::Report;
 use log::info;
@@ -8,12 +14,6 @@ use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use app_api::commands::clock::args::TreetimeClockArgsRaw;
-use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
-use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use app_api::commands::prune::args::TreetimePruneArgsRaw;
-use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_schema::{TreetimeSchemaFormat, generate_schema as generate_data_schema};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 

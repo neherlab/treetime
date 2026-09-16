@@ -131,7 +131,7 @@ pub fn apply_relaxed_clock(
   // Store gammas in the value state: each edge carries the gamma of its child node.
   for (node_key, gamma) in &gammas {
     if let Some(node) = graph.get_node(*node_key) {
-      for (_, edge) in graph.parents_of(&node) {
+      for (_, edge) in graph.parents_of(node) {
         let edge_key = edge.key();
         state.edge_mut(edge_key).gamma = *gamma;
       }

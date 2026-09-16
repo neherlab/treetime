@@ -4,12 +4,12 @@ use crate::commands::shared::tree_output::{
   write_tree_outputs,
 };
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
-use treetime::seq::mutation::Mutation;
-use treetime::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::seq::mutation::Mutation;
+use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

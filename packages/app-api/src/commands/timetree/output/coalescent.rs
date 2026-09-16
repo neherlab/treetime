@@ -1,6 +1,6 @@
-use treetime::timetree::coalescent::CoalescentOutput;
 use eyre::{Report, WrapErr};
 use std::path::Path;
+use treetime::timetree::coalescent::CoalescentOutput;
 use treetime_io::csv::{CsvStructFileWriter, CsvStructWriter};
 use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::make_report;

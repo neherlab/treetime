@@ -1,8 +1,8 @@
-use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
-use treetime::partition::storage::discrete::DiscreteStates;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
+use treetime::partition::storage::discrete::DiscreteStates;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};

@@ -1,7 +1,7 @@
-use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -33,10 +33,10 @@ impl RerootArgs {
 
 #[cfg(test)]
 mod tests {
-  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::commands::shared::reroot::RerootArgs;
-  use treetime::o;
   use pretty_assertions::assert_eq;
+  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+  use treetime::o;
 
   #[test]
   fn test_reroot_args_default_spec_is_least_squares() {

@@ -1,11 +1,11 @@
-use treetime::ancestral::mask::mask_to_string;
-use treetime::ancestral::aa::AaNodeData;
 use crate::commands::ancestral::result::AugurOutputMaps;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime::ancestral::aa::AaNodeData;
+use treetime::ancestral::mask::mask_to_string;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};

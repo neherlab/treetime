@@ -1,9 +1,3 @@
-use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-use treetime::ancestral::aa::{AaNodeData, AaSeqSink, reconstruct_aa};
-use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
-use treetime::ancestral::mask::create_mask;
-use treetime::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
-use treetime::ancestral::pipeline::{self, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
   read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
 };
@@ -16,16 +10,22 @@ use crate::commands::ancestral::tree_output::write_ancestral_tree_outputs;
 use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use eyre::Report;
+use log::{info, warn};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
+use treetime::ancestral::aa::{AaNodeData, AaSeqSink, reconstruct_aa};
+use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
+use treetime::ancestral::mask::create_mask;
+use treetime::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
+use treetime::ancestral::pipeline::{self, AncestralPartition};
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::progress::ProgressSink;
 use treetime::seq::alignment::get_common_length;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::MutationTrack;
-use eyre::Report;
-use log::{info, warn};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -471,7 +471,11 @@ fn run_aa_reconstructions(
         let path = translation_path(&template, cds);
         open = Some((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)));
       }
-      open.as_mut().expect("writer opened above").1.write(node_name, &None, seq)
+      open
+        .as_mut()
+        .expect("writer opened above")
+        .1
+        .write(node_name, &None, seq)
     });
     sink
   });

@@ -1,20 +1,20 @@
-use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::pipeline::SparseReconstruction;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use crate::commands::prune::tree_output::write_prune_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
-use treetime::make_error;
-use treetime::prune::pipeline::{self, PruneInput, PruneParams};
-use treetime::seq::mutation::MutationTrack;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
+use treetime::alphabet::alphabet::Alphabet;
+use treetime::ancestral::pipeline::SparseReconstruction;
+use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
+use treetime::make_error;
+use treetime::prune::pipeline::{self, PruneInput, PruneParams};
+use treetime::seq::mutation::MutationTrack;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -236,7 +236,6 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
 fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
-    .into_iter()
     .map(|leaf| {
       let key = leaf.key();
       names[&key]
