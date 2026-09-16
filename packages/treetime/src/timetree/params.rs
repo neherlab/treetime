@@ -10,7 +10,6 @@ use std::fmt::Debug;
 use treetime_io::fasta::FastaRecord;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum TimeMarginalMode {
   #[default]

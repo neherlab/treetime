@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
@@ -28,6 +29,34 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 }
 
 pub use treetime::timetree::params::TimeMarginalMode;
+
+// CLI mirror of core `TimeMarginalMode` carrying the clap `ValueEnum` derive. Core keeps
+// `TimeMarginalMode` as a plain domain enum (re-exported above for the resolved args and deferred
+// clients); this adapter copy owns the `--time-marginal` value parsing and converts back with `From`.
+// Variants, serde spellings, and the `schemars(rename)` schema name are kept identical to the core
+// enum so `--help`, config parsing, and the generated schema stay byte-identical. The comment is
+// non-doc on purpose: the core enum carries no doc, so a doc comment here would add a `description` to
+// the schema and break schema parity.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "TimeMarginalMode")]
+pub enum TimeMarginalModeCli {
+  #[default]
+  Never,
+  Always,
+  OnlyFinal,
+}
+
+impl From<TimeMarginalModeCli> for TimeMarginalMode {
+  fn from(mode: TimeMarginalModeCli) -> Self {
+    match mode {
+      TimeMarginalModeCli::Never => TimeMarginalMode::Never,
+      TimeMarginalModeCli::Always => TimeMarginalMode::Always,
+      TimeMarginalModeCli::OnlyFinal => TimeMarginalMode::OnlyFinal,
+    }
+  }
+}
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -79,8 +108,8 @@ pub struct TreetimeTimetreeArgsRaw {
   pub clock_std_dev: Option<f64>,
 
   /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthMode::default()))]
-  pub branch_length_mode: BranchLengthMode,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default()))]
+  pub branch_length_mode: BranchLengthModeCli,
 
   /// Control when marginal time distributions are used for output.
   ///
@@ -90,8 +119,8 @@ pub struct TreetimeTimetreeArgsRaw {
   /// - `never`: no confidence interval output (default)
   /// - `always`: write confidence intervals from distributions computed during optimization
   /// - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalMode::default()))]
-  pub time_marginal: TimeMarginalMode,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalModeCli::default()))]
+  pub time_marginal: TimeMarginalModeCli,
 
   /// Add rate-uncertainty to confidence intervals.
   ///
@@ -510,8 +539,8 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       sequence_length: raw.sequence_length,
       clock_rate: raw.clock_rate,
       clock_std_dev: raw.clock_std_dev,
-      branch_length_mode: raw.branch_length_mode,
-      time_marginal: raw.time_marginal,
+      branch_length_mode: raw.branch_length_mode.into(),
+      time_marginal: raw.time_marginal.into(),
       confidence: raw.confidence,
       keep_polytomies: raw.keep_polytomies,
       resolve_polytomies: raw.resolve_polytomies,

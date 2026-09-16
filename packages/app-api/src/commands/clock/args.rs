@@ -1,4 +1,5 @@
 use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
@@ -65,8 +66,8 @@ pub struct TreetimeClockArgsRaw {
   pub model_args: ModelArgs,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthMode::default()))]
-  pub branch_length_mode: BranchLengthMode,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default()))]
+  pub branch_length_mode: BranchLengthModeCli,
 
   /// Method used for reconstructing ancestral sequences
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default()))]
@@ -218,7 +219,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       date_column: raw.date_column,
       sequence_length: raw.sequence_length,
       model_args: raw.model_args,
-      branch_length_mode: raw.branch_length_mode,
+      branch_length_mode: raw.branch_length_mode.into(),
       method_anc: raw.method_anc.into(),
       clock_filter: raw.clock_filter,
       reroot: raw.reroot,
