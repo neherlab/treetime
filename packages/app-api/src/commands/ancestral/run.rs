@@ -3,7 +3,7 @@ use crate::commands::ancestral::aa_node_data::{
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
-use crate::commands::ancestral::result::{
+use app_output::ancestral_result::{
   AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut,
 };
 use crate::commands::ancestral::tree_output::write_ancestral_tree_outputs;

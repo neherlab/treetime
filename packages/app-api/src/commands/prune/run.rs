@@ -1,5 +1,5 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::prune::result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
+use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use crate::commands::prune::tree_output::write_prune_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;

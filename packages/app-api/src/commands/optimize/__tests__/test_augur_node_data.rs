@@ -183,7 +183,7 @@ mod tests {
 
   mod helpers {
     use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
-    use crate::commands::optimize::result::OptimizeNodeOut;
+    use app_output::optimize_result::OptimizeNodeOut;
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
     use treetime_graph::edge::GraphEdgeKey;

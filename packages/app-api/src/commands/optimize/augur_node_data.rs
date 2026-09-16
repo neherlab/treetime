@@ -1,4 +1,4 @@
-use crate::commands::optimize::result::OptimizeNodeOut;
+use app_output::optimize_result::OptimizeNodeOut;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;

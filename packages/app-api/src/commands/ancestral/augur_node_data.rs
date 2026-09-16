@@ -1,4 +1,4 @@
-use crate::commands::ancestral::result::AugurOutputMaps;
+use app_output::ancestral_result::AugurOutputMaps;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;

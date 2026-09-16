@@ -1,4 +1,4 @@
-use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
+use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
 use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
