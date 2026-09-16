@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::output::coalescent::{
+  use crate::commands::timetree::output::coalescent::{coalescent_delimited_str, coalescent_json_str};
+  use crate::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSegmentRow, CoalescentSolve,
-    Estimate, SegmentInterval, coalescent_delimited_str, coalescent_json_str,
+    Estimate, SegmentInterval,
   };
   use eyre::Report;
   use pretty_assertions::assert_eq;

@@ -3,65 +3,15 @@ mod __tests__;
 
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
-use crate::ancestral::pipeline::AncestralPartition;
 use crate::make_error;
-use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use eyre::Report;
-use itertools::Itertools;
-use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
-pub struct AaNodeData {
-  pub annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-  pub reference: BTreeMap<String, String>,
-  // Keyed by graph node key, not node name: every amino-acid partition is reconstructed on the same
-  // shared tree as the nucleotide partition, so per-node results join by node identity (key) rather
-  // than by reconstructing identity from a synthesized node name across independent graphs.
-  pub node_aa_muts: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<String>>>,
-  pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
-  pub root_aa_sequences: BTreeMap<String, String>,
-}
-
-impl AaNodeData {
-  pub fn add_cds(&mut self, cds: &str, cds_data: AaCdsNodeData, annotation: Option<AugurNodeDataJsonAnnotationEntry>) {
-    if let Some(annotation) = annotation {
-      self.annotations.insert(cds.to_owned(), annotation);
-    }
-    self.reference.insert(cds.to_owned(), cds_data.reference);
-    self.root_aa_sequences.insert(cds.to_owned(), cds_data.root_sequence);
-    for (node_key, muts) in cds_data.node_muts {
-      self
-        .node_aa_muts
-        .entry(node_key)
-        .or_default()
-        .insert(cds.to_owned(), muts);
-    }
-    for (node_key, mutations) in cds_data.node_mutations {
-      self
-        .node_aa_mutations
-        .entry(node_key)
-        .or_default()
-        .insert(cds.to_owned(), mutations);
-    }
-  }
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
-pub struct AaCdsNodeData {
-  pub reference: String,
-  pub root_sequence: String,
-  pub node_muts: BTreeMap<GraphNodeKey, Vec<String>>,
-  pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
-}
 
 pub fn validate_aa_args(
   translations: &Option<String>,
@@ -223,121 +173,5 @@ fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotation
       ),
       other,
     }
-  }
-}
-
-pub fn collect_aa_cds_node_data(
-  graph: &Graph,
-  partition: &AncestralPartition,
-  cds: &str,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  reference_override: Option<&Seq>,
-) -> Result<AaCdsNodeData, Report> {
-  let root_key = graph.root_key()?;
-  let inferred_root = partition.augur_root_sequence(graph)?;
-  let reference = reference_override.cloned().unwrap_or_else(|| inferred_root.clone());
-
-  if reference.len() != inferred_root.len() {
-    return make_error!(
-      "AA root/reference sequence for CDS '{cds}' has length {}, but inferred root has length {}",
-      reference.len(),
-      inferred_root.len()
-    );
-  }
-
-  let mut node_muts = BTreeMap::new();
-  let mut node_mutations = BTreeMap::new();
-  for node in graph.get_nodes() {
-    let node_guard = node;
-    let node_key = node_guard.key();
-    let node_name = names[&node_key]
-      .as_deref()
-      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
-
-    let mutations = if node_key == root_key {
-      diff_sequences(&reference, &inferred_root, partition.ambiguous_char())?
-        .into_iter()
-        .map(MutationEvent::Substitution)
-        .collect()
-    } else {
-      let (_parent_key, edge_key) = graph
-        .node_parent(node_key)?
-        .ok_or_else(|| eyre::eyre!("Non-root node '{node_name}' has no parent while collecting AA node data"))?;
-      let substitutions = partition
-        .edge_subs(graph, edge_key)?
-        .into_iter()
-        .sorted_by_key(Sub::pos)
-        .map(MutationEvent::Substitution)
-        .map(Ok);
-      let indels = partition
-        .edge_indels(edge_key)
-        .into_iter()
-        .map(|indel| Mutation::indel(MutationTrack::AminoAcid(cds.to_owned()), &indel).map(|mutation| mutation.event));
-      substitutions.chain(indels).collect::<Result<Vec<_>, Report>>()?
-    };
-    let muts = mutations.iter().flat_map(mutation_event_strings).collect();
-
-    node_muts.insert(node_key, muts);
-    node_mutations.insert(node_key, mutations);
-  }
-
-  Ok(AaCdsNodeData {
-    reference: reference.as_str().to_owned(),
-    root_sequence: inferred_root.as_str().to_owned(),
-    node_muts,
-    node_mutations,
-  })
-}
-
-fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {
-  if reference.len() != query.len() {
-    return make_error!(
-      "Cannot diff sequences with lengths {} and {}",
-      reference.len(),
-      query.len()
-    );
-  }
-
-  reference
-    .iter()
-    .zip(query.iter())
-    .enumerate()
-    .filter(|(_pos, (reff, qry))| reff != qry && is_reportable_sub(**reff, **qry, unknown))
-    .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
-    .collect()
-}
-
-fn mutation_event_strings(event: &MutationEvent) -> Vec<String> {
-  match event {
-    MutationEvent::Substitution(substitution) => vec![substitution.to_string()],
-    MutationEvent::Insertion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| format!("-{}{state}", segment.range.0 + offset + 1))
-      .collect(),
-    MutationEvent::Deletion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| format!("{state}{}-", segment.range.0 + offset + 1))
-      .collect(),
-  }
-}
-
-fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> bool {
-  let gap = AsciiChar::from_byte_unchecked(b'-');
-  reff != gap && qry != gap && reff != unknown && qry != unknown
-}
-
-/// Total nucleotide length of a CDS annotation: the sum of its segment lengths, or the single
-/// `start..=end` span, in 1-based inclusive coordinates. `None` when the entry carries neither.
-pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
-  if let Some(segments) = &entry.segments {
-    Some(segments.iter().map(|segment| segment.end - segment.start + 1).sum())
-  } else if let (Some(start), Some(end)) = (entry.start, entry.end) {
-    Some(end - start + 1)
-  } else {
-    None
   }
 }

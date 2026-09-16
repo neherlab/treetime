@@ -1,4 +1,4 @@
-use crate::commands::ancestral::aa_node_data::AaNodeData;
+use crate::ancestral::aa::AaNodeData;
 use crate::commands::ancestral::result::{AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::shared::tree_output::{
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,

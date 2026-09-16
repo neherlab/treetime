@@ -1,11 +1,11 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::ancestral::aa::{AaNodeData, AaSeqSink, reconstruct_aa};
 use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use crate::ancestral::mask::create_mask;
-use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
+use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
 use crate::ancestral::pipeline::{self, AncestralParams, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
-  AaNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, read_aa_root_sequences, read_gff3_annotations,
-  template_has_cds_placeholder, translation_path, validate_aa_args,
+  read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
 };
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
@@ -33,8 +33,8 @@ use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fa
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
+use treetime_primitives::Seq;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
-use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
@@ -423,14 +423,12 @@ fn run_aa_reconstructions(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Reconstruct one CDS partition at a time and consume its result before building the next. A
-  // marginal partition holds per-edge probability vectors over the ~20-symbol amino-acid alphabet, so
-  // keeping every CDS partition resident at once made peak memory scale with the CDS count. The RNG is
-  // created once and passed to each partition so sampled reconstruction draws in a fixed CDS order,
-  // independent of how many partitions are resident.
-  let mut rng = get_random_number_generator(params.seed);
-  let mut aa_node_data = AaNodeData::default();
-  for (index, cds) in cdses.iter().enumerate() {
+  // Read and sanitize each CDS translation FASTA, then build its reconstruction plan in CDS order.
+  // Sanitizing folds out-of-alphabet amino-acid characters (e.g. stop '*') into the reconstruction
+  // alphabet's unknown state, and gap-fill applies the same overhang policy as the nucleotide path.
+  // The core driver reconstructs the plans in this order.
+  let mut plans = Vec::with_capacity(cdses.len());
+  for cds in &cdses {
     let path = translation_path(translations, cds);
     let mut sequences = read_many_fasta_path(&[&path], &read_alphabet)?;
     let mut sanitized = 0_usize;
@@ -452,68 +450,31 @@ fn run_aa_reconstructions(
       );
     }
 
-    let plan = PartitionPlan {
+    plans.push(PartitionPlan {
       name: cds.clone(),
       alphabet: recon_alphabet.clone(),
       gtr_model: aa_model.gtr_model,
       sequences,
       annotation: annotations.get(cds).cloned(),
       reference_override: aa_root_sequences.get(cds).cloned(),
-    };
+    });
+  }
 
-    let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, names, branch_lengths, &mut rng)?;
-    let guard = &reconstructed.partition;
-
-    if let Some(annotation) = &reconstructed.annotation
-      && let Some(cds_len) = annotation_cds_nuc_length(annotation)
-    {
-      let aa_len = i64::try_from(guard.sequence_length())?;
-      if 3 * aa_len != cds_len {
-        return make_error!(
-          "Translated alignment for CDS '{}' has {aa_len} amino acids ({} nucleotides), which does not match \
-           the annotated CDS length of {cds_len} nucleotides. Check that the annotation matches the translations.",
-          reconstructed.name,
-          3 * aa_len
-        );
+  // Per-CDS reconstructed amino-acid FASTA: the core driver streams every node's sequence while its CDS
+  // partition is resident, and this sink opens a fresh output file when the CDS changes (the driver
+  // finishes one CDS before starting the next), writing each node in tree order.
+  let aa_seq_sink: Option<AaSeqSink> = aa_fasta_template.map(|template| {
+    let template = template.to_owned();
+    let mut open: Option<(String, FastaWriter)> = None;
+    let sink: AaSeqSink = Box::new(move |cds: &str, node_name: &str, seq: &Seq| -> Result<(), Report> {
+      if open.as_ref().map(|(name, _)| name.as_str()) != Some(cds) {
+        let path = translation_path(&template, cds);
+        open = Some((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)));
       }
-    }
+      open.as_mut().expect("writer opened above").1.write(node_name, &None, seq)
+    });
+    sink
+  });
 
-    let cds_data = collect_aa_cds_node_data(
-      graph,
-      guard,
-      &reconstructed.name,
-      names,
-      reconstructed.reference_override.as_ref(),
-    )?;
-    aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
-
-    if let Some(aa_seq_template) = aa_fasta_template {
-      write_aa_partition_sequences(graph, guard, names, &reconstructed.name, aa_seq_template)?;
-    }
-  }
-
-  Ok(aa_node_data)
-}
-
-fn write_aa_partition_sequences(
-  graph: &Graph,
-  partition: &AncestralPartition,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  name: &str,
-  template: &str,
-) -> Result<(), Report> {
-  let path = translation_path(template, name);
-  let file = create_file_or_stdout(path)?;
-  let mut writer = FastaWriter::new(file);
-
-  for node in graph.get_nodes() {
-    let node_key = node.key();
-    let node_name = names[&node_key]
-      .as_deref()
-      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
-    let seq = partition.augur_node_sequence(node_key);
-    writer.write(&node_name, &None, &seq)?;
-  }
-
-  Ok(())
+  reconstruct_aa(graph, names, branch_lengths, &params, plans, aa_seq_sink)
 }

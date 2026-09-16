@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -13,7 +14,7 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::commands::timetree::output::coalescent::{
+use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
 use crate::gtr::get_gtr::GtrModelName;
@@ -26,7 +27,9 @@ use crate::optimize::gather::{
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
+use crate::partition::timetree::marginal::{
+  ancestral_reconstruction_timetree, initialize_marginal_timetree, marginal_update_timetree,
+};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
@@ -41,12 +44,13 @@ use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinem
 use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
 use eyre::{Report, WrapErr};
-use log::{debug, info};
+use log::{debug, info, warn};
 use ndarray::{Array1, array};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io::Write;
 use treetime_distribution::Distribution;
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -54,10 +58,19 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_fasta_node_inputs;
+use treetime_primitives::Seq;
 use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
+
+/// Sink for reconstructed per-node nucleotide sequences streamed during the final ancestral pass.
+///
+/// The timetree pipeline reconstructs flag-aware per-node sequences at its tail (the v1 equivalent of
+/// v0's `ancestral_sequences.fasta`). Each node's `(name, description, sequence)` is handed to this
+/// caller-supplied sink as it is reconstructed, so the whole set never resides in memory at once. The
+/// CLI adapter wires it to a FASTA writer; a run that requests no reconstructed FASTA passes `None`.
+pub type ReconstructedSeqSink = Box<dyn FnMut(&str, &Option<String>, &Seq) -> Result<(), Report>>;
 
 pub struct TimetreeParams {
   pub model: GtrModelName,
@@ -170,9 +183,22 @@ pub fn run(
   mut input: TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   tracelog: Option<Box<dyn Write + Send>>,
+  mut reconstructed_seq_sink: Option<ReconstructedSeqSink>,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
   info!("# TreeTime Timetree Estimation");
+
+  // Descriptions live only on the input leaf FASTA records; partition init keys them to leaves by
+  // matching each leaf name to its record (first record wins on a duplicate name). Capture that
+  // name-keyed map before the alignment moves into the partitions, so the tail reconstruction can
+  // rebuild a node-keyed description map from the final `names` map.
+  let aln_descs: BTreeMap<String, Option<String>> =
+    input.sequences.iter().flatten().fold(BTreeMap::new(), |mut descs, record| {
+      descs
+        .entry(record.seq_name.clone())
+        .or_insert_with(|| record.desc.clone());
+      descs
+    });
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
     params.branch_length_mode, params.keep_root
@@ -664,6 +690,65 @@ pub fn run(
   .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &names));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
+
+  // Name any unnamed internal node before the reconstruction and outputs read the tree. Rerooting
+  // introduces a fresh root the load-time naming never saw, and polytomy resolution only re-names on a
+  // topology change, so on a run without polytomy resolution the rerooted root would otherwise reach
+  // output unnamed. Every downstream reader (the reconstructed FASTA, the gathers, the tree and augur
+  // writers) reads each node's name from the returned map.
+  let names = assign_node_names(names, &input.graph)?;
+
+  // Node-keyed descriptions for the reconstructed-FASTA sink, rebuilt from the name-keyed `aln_descs`:
+  // a leaf resolves to its record's description, an internal node (including the freshly named root) to
+  // `None`. This reproduces what partition init wrote onto each leaf by the same name-to-record match.
+  let descs: BTreeMap<GraphNodeKey, Option<String>> = names
+    .iter()
+    .map(|(&key, name)| {
+      let desc = name.as_deref().and_then(|name| aln_descs.get(name).cloned()).flatten();
+      (key, desc)
+    })
+    .collect();
+
+  // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`. The
+  // pipeline computes marginal posteriors for branch-length optimization but never materializes the
+  // flag-aware per-node sequences, so this refreshes the posteriors against the final branch lengths
+  // (`marginal_update`) and then writes each node's stored sequence, emitting it through the sink.
+  // `--include-leaves` gates whether tips are emitted; `--impute-missing-data` resolves ambiguous tip
+  // states. The pass is opt-in (FASTA requested via the sink, or a tip-state flag set); a run that asks
+  // for neither leaves all other outputs unchanged.
+  if reconstructed_seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
+    if partitions.is_empty() {
+      if reconstructed_seq_sink.is_some() {
+        return make_error!(
+          "Reconstructed sequence output requires ancestral reconstruction; \
+           incompatible with --branch-length-mode=input"
+        );
+      }
+      warn!(
+        "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
+         no ancestral reconstruction was performed under --branch-length-mode=input"
+      );
+    } else {
+      let branch_lengths_final = timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths);
+      (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_final, partitions)?;
+      let mut rng = get_random_number_generator(params.seed);
+      ancestral_reconstruction_timetree(
+        &input.graph,
+        params.include_leaves,
+        params.impute_missing_data,
+        &mut partitions,
+        SampleMode::Argmax,
+        &mut rng,
+        |key, seq| match reconstructed_seq_sink.as_mut() {
+          Some(emit) => {
+            let name = names[&key].clone().unwrap_or_default();
+            emit(&name, &descs[&key], seq)
+          },
+          None => Ok(()),
+        },
+      )?;
+    }
+  }
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {

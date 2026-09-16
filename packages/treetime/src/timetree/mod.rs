@@ -1,3 +1,4 @@
+pub mod coalescent;
 pub mod confidence;
 pub mod convergence;
 pub mod inference;

@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
-  use crate::commands::timetree::output::coalescent::{CoalescentOutput, CoalescentOutputMode};
+  use crate::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
   use eyre::Report;

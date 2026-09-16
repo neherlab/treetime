@@ -1,4 +1,3 @@
-use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_state::ClockState;
 use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
@@ -7,34 +6,30 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
-use crate::commands::timetree::output::coalescent::{
-  CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
-};
+use crate::commands::timetree::output::coalescent::{write_coalescent_delimited, write_coalescent_json};
+use crate::timetree::coalescent::CoalescentOutput;
 use crate::commands::timetree::output::date_comment::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use crate::commands::timetree::tree_output::write_timetree_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::mutation::MutationTrack;
 use crate::timetree::confidence::write_confidence_intervals_file;
-use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
+use treetime_primitives::Seq;
 use treetime_utils::io::file::create_file_or_stdout;
-use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
@@ -118,29 +113,36 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  let mut output = pipeline::run(&params, input, &parse_names, tracelog, progress)?;
+  // Reconstructed ancestral-sequence FASTA sink. The pipeline reconstructs the flag-aware per-node
+  // sequences at its tail and streams each through this sink, so the whole set never resides in
+  // memory. A run that requests no reconstructed FASTA passes `None`; `--include-leaves` /
+  // `--impute-missing-data` still drive the reconstruction inside the pipeline for the other outputs.
+  let reconstructed_nuc_fasta = resolved
+    .non_tree_outputs
+    .get(&OutputSelection::ReconstructedNucFasta)
+    .cloned();
+  let recon_sink: Option<pipeline::ReconstructedSeqSink> = match &reconstructed_nuc_fasta {
+    Some(path) => {
+      let mut writer = FastaWriter::new(create_file_or_stdout(path)?);
+      Some(Box::new(move |name: &str, desc: &Option<String>, seq: &Seq| writer.write(name, desc, seq)))
+    },
+    None => None,
+  };
 
-  // Name any unnamed internal node before serialization, and capture the resulting node-name map.
-  // Rerooting introduces a fresh root node that the load-time naming pass never saw, and polytomy
-  // resolution only re-names when it changes the topology, so on a run without polytomy resolution
-  // the rerooted root reaches output unnamed. v0 and the `ancestral` command give every internal
-  // node a `NODE_<n>` name; assigning one here keeps the reconstructed FASTA, the augur node data,
-  // and the tree outputs consistent and matches v0 rather than leaking an empty label or a
-  // key-derived placeholder.
-  //
-  // `assign_node_names` returns `node_names` taken after the write, so this is also the post-mutation
-  // re-snapshot: every downstream reader -- the reconstructed FASTA writer, the gather, and the
-  // tree/augur output writers -- reads each node's name from this map. The
-  // later `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
-  // ordering only permutes keys, so the map still describes the final tree at every later point.
-  let names = assign_node_names(output.names, &output.graph)?;
-  let branch_lengths_opt = output.branch_lengths;
+  let mut output = pipeline::run(&params, input, &parse_names, tracelog, recon_sink, progress)?;
+  if let Some(path) = &reconstructed_nuc_fasta {
+    info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
+  }
 
-  // Node-keyed descriptions for the reconstructed-FASTA writer and the node-output gather, rebuilt
-  // from the name-keyed `aln_descs` captured from the input alignment. A leaf resolves to its FASTA
-  // record's description; an internal node (including the fresh root named above, which matches no
-  // record) resolves to `None`. This reproduces exactly what partition init wrote onto each leaf by
-  // the same name-to-record match.
+  // The pipeline names any node a late reroot introduced, so `output.names` is the post-mutation name
+  // map every downstream reader keys by.
+  let names = std::mem::take(&mut output.names);
+  let branch_lengths_opt = std::mem::take(&mut output.branch_lengths);
+
+  // Node-keyed descriptions for the node-output gather, rebuilt from the name-keyed `aln_descs`
+  // captured from the input alignment. A leaf resolves to its FASTA record's description; an internal
+  // node (including a reroot-introduced root, which matches no record) resolves to `None`. This
+  // reproduces what partition init wrote onto each leaf by the same name-to-record match.
   let descs: BTreeMap<GraphNodeKey, Option<String>> = names
     .iter()
     .map(|(&key, name)| {
@@ -148,58 +150,6 @@ pub fn run_timetree_estimation(
       (key, desc)
     })
     .collect();
-
-  // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`.
-  // The timetree pipeline computes marginal posteriors for branch-length optimization but never
-  // materializes the flag-aware per-node sequences, so this reuses the same reconstruction the
-  // `ancestral` command runs: `marginal_update` refreshes the posteriors against the final branch
-  // lengths, then `ancestral_reconstruction_marginal` writes each node's stored sequence and emits
-  // it. `--include-leaves` gates whether tip sequences are emitted; `--impute-missing-data` resolves
-  // ambiguous tip states. Reconstruction runs before mutation counting and tree output so every
-  // sequence-derived output reflects the same flag-aware states. The pass is opt-in (FASTA requested
-  // or a tip-state flag set), so runs that ask for neither leave all other outputs unchanged.
-  let reconstructed_nuc_fasta = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedNucFasta);
-  if reconstructed_nuc_fasta.is_some() || params.include_leaves || params.impute_missing_data {
-    if output.partitions.is_empty() {
-      if reconstructed_nuc_fasta.is_some() {
-        return make_error!(
-          "Reconstructed sequence output requires ancestral reconstruction; \
-           incompatible with --branch-length-mode=input"
-        );
-      }
-      warn!(
-        "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
-         no ancestral reconstruction was performed under --branch-length-mode=input"
-      );
-    } else {
-      let mut writer = match reconstructed_nuc_fasta {
-        Some(path) => Some(FastaWriter::new(create_file_or_stdout(path)?)),
-        None => None,
-      };
-      let branch_lengths = timetree_branch_lengths(&output.graph, &branch_lengths_opt, &output.clock_branch_lengths);
-      (output.partitions, _) =
-        marginal_update_timetree(&output.graph, &branch_lengths, std::mem::take(&mut output.partitions))?;
-      let mut rng = get_random_number_generator(params.seed);
-      ancestral_reconstruction_timetree(
-        &output.graph,
-        params.include_leaves,
-        params.impute_missing_data,
-        &mut output.partitions,
-        SampleMode::Argmax,
-        &mut rng,
-        |key, seq| match writer.as_mut() {
-          Some(writer) => {
-            let name = names[&key].clone().unwrap_or_default();
-            writer.write(&name, &descs[&key], seq)
-          },
-          None => Ok(()),
-        },
-      )?;
-      if let Some(path) = reconstructed_nuc_fasta {
-        info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
-      }
-    }
-  }
 
   let mutation_counts = match args.divergence_units {
     DivergenceUnits::Mutations => {

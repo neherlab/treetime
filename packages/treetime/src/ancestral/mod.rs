@@ -1,3 +1,4 @@
+pub mod aa;
 pub mod attach;
 pub mod fitch;
 pub mod fitch_indel;
