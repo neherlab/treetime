@@ -1,4 +1,3 @@
-mod test_args;
 mod test_branch_length_validation;
 mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;

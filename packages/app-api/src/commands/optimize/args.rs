@@ -36,6 +36,115 @@ impl From<OptimizeRerootMethod> for RerootMethod {
   }
 }
 
+/// Per-edge branch length optimization method.
+///
+/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
+/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
+/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+//
+// CLI mirror of core `BranchOptMethod`. Core keeps the plain domain enum; this adapter copy owns the
+// `--opt-method` value parsing and converts back with `From`. Variants, docs, serde spellings, and
+// the `schemars(rename)` schema name are kept identical to the core enum so `--help` and the
+// generated schema stay byte-identical.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "BranchOptMethod")]
+pub enum BranchOptMethodCli {
+  /// Brent's method in $t$ space (derivative-free, bracket-based).
+  ///
+  /// Finds the maximum within a bracket derived from the grid search bounds.
+  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
+  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
+  Brent,
+
+  /// Brent's method in $\sqrt{t}$ space.
+  ///
+  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
+  /// reparameterization smooths the objective, giving parabolic interpolation
+  /// a better fit. Default method for golden master comparison against v0.
+  #[default]
+  BrentSqrt,
+
+  /// Brent's method in $\ln(t)$ space.
+  ///
+  /// Smoothest objective of all parameterizations, giving the best parabolic
+  /// interpolation. Requires a finite lower bound in log-space.
+  BrentLog,
+
+  /// Newton-Raphson in $t$ space.
+  ///
+  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
+  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
+  /// branches, causing the step-size convergence criterion to fire before
+  /// the combined gradient reaches zero.
+  Newton,
+
+  /// Newton-Raphson in $\sqrt{t}$ space.
+  ///
+  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
+  /// the chain rule to transform derivatives. Reduces the indel Hessian
+  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
+  /// cases ($t < 0.001$, $k > 10$).
+  NewtonSqrt,
+
+  /// Newton-Raphson in $\ln(t)$ space.
+  ///
+  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
+  /// bounded). Natural relative tolerance. Best conditioning of all Newton
+  /// variants.
+  NewtonLog,
+}
+
+impl From<BranchOptMethodCli> for BranchOptMethod {
+  fn from(method: BranchOptMethodCli) -> Self {
+    match method {
+      BranchOptMethodCli::Brent => BranchOptMethod::Brent,
+      BranchOptMethodCli::BrentSqrt => BranchOptMethod::BrentSqrt,
+      BranchOptMethodCli::BrentLog => BranchOptMethod::BrentLog,
+      BranchOptMethodCli::Newton => BranchOptMethod::Newton,
+      BranchOptMethodCli::NewtonSqrt => BranchOptMethod::NewtonSqrt,
+      BranchOptMethodCli::NewtonLog => BranchOptMethod::NewtonLog,
+    }
+  }
+}
+
+/// Controls the initial branch length estimate that runs before Newton
+/// optimization.
+///
+/// The estimate computes `#substitutions / effective_alignment_length` per
+/// edge from the marginal reconstruction. When input trees already carry
+/// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
+/// TreeTime run), preserving those values lets Newton converge from a
+/// better starting position.
+//
+// CLI mirror of core `InitialGuessMode`; see `BranchOptMethodCli` for the mirror rationale.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "InitialGuessMode")]
+pub enum InitialGuessModeCli {
+  /// Estimate only edges with missing or invalid branch lengths, preserve
+  /// valid input values. No-op when all edges have finite branch lengths.
+  #[default]
+  Auto,
+  /// Estimate all edges, overwriting input branch lengths.
+  Always,
+  /// Use input branch lengths as-is. Fails if any edge has a missing or
+  /// invalid branch length.
+  Never,
+}
+
+impl From<InitialGuessModeCli> for InitialGuessMode {
+  fn from(mode: InitialGuessModeCli) -> Self {
+    match mode {
+      InitialGuessModeCli::Auto => InitialGuessMode::Auto,
+      InitialGuessModeCli::Always => InitialGuessMode::Always,
+      InitialGuessModeCli::Never => InitialGuessMode::Never,
+    }
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
@@ -147,8 +256,8 @@ pub struct TreetimeOptimizeArgsRaw {
   ///   preserve valid input values (default)
   /// - always: estimate all edges, overwriting input branch lengths
   /// - never: use input branch lengths as-is; fails if any are missing
-  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto))]
-  pub branch_length_initial_guess: InitialGuessMode,
+  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto))]
+  pub branch_length_initial_guess: InitialGuessModeCli,
 
   /// Per-edge branch length optimization method.
   ///
@@ -159,8 +268,8 @@ pub struct TreetimeOptimizeArgsRaw {
   /// - newton: Newton-Raphson in t space
   /// - newton-sqrt: Newton-Raphson in sqrt(t) space
   /// - newton-log: Newton-Raphson in ln(t) space
-  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default()))]
-  pub opt_method: BranchOptMethod,
+  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default()))]
+  pub opt_method: BranchOptMethodCli,
 
   /// Disable indel (insertion/deletion) contributions to branch-length
   /// optimization.
@@ -306,8 +415,8 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       max_iter: raw.max_iter,
       dp: raw.dp,
       damping: raw.damping,
-      branch_length_initial_guess: raw.branch_length_initial_guess,
-      opt_method: raw.opt_method,
+      branch_length_initial_guess: raw.branch_length_initial_guess.into(),
+      opt_method: raw.opt_method.into(),
       no_indels: raw.no_indels,
       reroot: raw.reroot,
       reroot_tips: raw.reroot_tips,

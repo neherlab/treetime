@@ -40,7 +40,6 @@ pub enum BranchLengthMode {
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum BranchOptMethod {
   /// Brent's method in $t$ space (derivative-free, bracket-based).
@@ -97,7 +96,6 @@ pub enum BranchOptMethod {
 /// TreeTime run), preserving those values lets Newton converge from a
 /// better starting position.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum InitialGuessMode {
   /// Estimate only edges with missing or invalid branch lengths, preserve
