@@ -5,6 +5,7 @@ members = [
   "packages/app-api",
   "packages/app-cli",
   "packages/app-napi",
+  "packages/app-output",
   "packages/app-server",
   "packages/treetime",
   "packages/treetime-analytical",

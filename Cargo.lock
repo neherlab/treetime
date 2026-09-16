@@ -229,6 +229,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "app-output"
+version = "1.0.0"
+
+[[package]]
 name = "app-server"
 version = "1.0.0"
 dependencies = [
