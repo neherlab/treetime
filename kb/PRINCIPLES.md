@@ -6,6 +6,8 @@ These are the guiding principles, kept as a reference to ensure consistency and 
 
 Abstract example which applies all principles. Real implementation might have more nuance - to be brought forward prominently, discussed and handled explicitly.
 
+The `mod shared` block below is collapsed to one module only to keep the example short. Real shared code is several concern-named units (per format, per domain, validation), never one module -- see P3.4/P3.7.
+
 ```rust
 mod core {
   #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -207,7 +209,7 @@ One core, served unchanged from a CLI and a web backend. The CLI and web adapter
 - **P3.1. Pure core**: core algorithms accept input parameters, perform computations, and return results without relying on or modifying external state, I/O, CLI, or Web context
 - **P3.2. CLI adapter**: the CLI layer handles CLI args and I/O (files, stdin, stdout etc.) and its interaction with the core algorithms, without embedding algo logic
 - **P3.3. Web adapter**: the web backend layer handles HTTP requests, responses, and its interaction with the core algorithms, without embedding algo logic
-- **P3.4. Shared code**: functionality common to more than one adapter (parsing and encoding of core types, shared validation) lives in a shared layer, written once. Adapter-specific (de)serialization, such as CLI argument parsing and HTTP request and response shapes, stays in its own adapter
+- **P3.4. Shared is a tier, not a module**: code used by more than one adapter (parse/encode of core types, shared validation) lives in the shared tier -- below the adapters, beside the core. Split it into cohesive units named for their concern (`newick`, `auspice`, `output-paths`), one reason to change each. NEVER one catch-all crate or module; NEVER a layer or grab-bag name (`shared`, `common`, `api`, `util`, `misc`). Adapter-specific (de)serialization -- CLI argument parsing, HTTP request and response shapes -- stays in its own adapter
 - **P3.5. One-way dependencies**: dependencies point one way and form no cycle. The CLI and web adapters depend on the core and on shared code; the core depends on neither adapter and holds no CLI or Web knowledge; the two adapters never depend on each other
 - **P3.6. Return small results, stream large ones**: one `run` returns the small aggregate output by value and emits the large per-item output in order through a caller-supplied sink; the core owns no I/O either way. The CLI writes the stream to a file, the web backend to a response stream. The sink can take several forms:
   - **P3.6.1. Push callback / trait sink** (recommended): matches existing code, core owns no I/O
@@ -215,6 +217,7 @@ One core, served unchanged from a CLI and a web backend. The CLI and web adapter
   - **P3.6.3. Channel**: good for parallel ordered emit, adds concurrency machinery
   - **P3.6.4. Async stream**: best for web streaming, risks async in core
   - **P3.6.5. Raw `Write` of bytes**: reject at the core seam (leaks format/I/O)
+- **P3.7. No shared blob**: one shared unit per concern, format, or domain, so removing a capability touches one unit and a consumer depends only on what it uses. The no-`utils` rule applies inside the shared tier exactly as everywhere else.
 
 ## Principle 4: Production code is the only consumer that shapes structure.
 
