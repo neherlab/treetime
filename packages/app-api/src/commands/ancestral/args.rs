@@ -308,7 +308,7 @@ impl TreetimeAncestralArgs {
 pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
-    model: args.model_args.model,
+    model: args.model_args.model_name(),
     dense: args.dense,
     include_leaves: args.include_leaves || args.reconstruct_tip_states,
     impute_missing_data: args.impute_missing_data || args.reconstruct_tip_states,

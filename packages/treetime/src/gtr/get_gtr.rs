@@ -83,7 +83,6 @@ pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), 
 #[derive(
   Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
 )]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
@@ -100,7 +99,6 @@ pub enum GtrModelName {
   T92,
   #[serde(rename = "tn93")]
   TN93,
-  #[cfg_attr(feature = "clap", value(name = "jtt92"))]
   Jtt92,
 }
 

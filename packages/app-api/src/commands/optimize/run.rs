@@ -46,7 +46,7 @@ pub fn run_optimize(
   let resolved = args.resolve_outputs()?;
 
   let params = OptimizeParams {
-    model: args.model_args.model,
+    model: args.model_args.model_name(),
     dense: args.dense,
     max_iter: args.max_iter,
     dp: args.dp,

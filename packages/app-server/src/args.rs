@@ -2,6 +2,7 @@ use app_api::commands::ancestral::aa_model::AaModelName;
 use app_api::commands::optimize::args::OptimizeRerootMethod;
 use app_api::commands::shared::alphabet::AlphabetNameCli;
 use app_api::commands::shared::gap_fill::GapFillCli;
+use app_api::commands::shared::model::GtrModelNameCli;
 use app_api::commands::shared::reroot::RerootArgs;
 use app_api::commands::timetree::args::TimeMarginalMode;
 use serde::Deserialize;
@@ -10,7 +11,6 @@ use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
-use treetime::gtr::get_gtr::GtrModelName;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
 
 use app_api::{
@@ -26,8 +26,8 @@ pub struct ServerAncestralArgs {
   pub vcf_reference: Option<String>,
   pub tree: String,
   pub alphabet: Option<AlphabetNameCli>,
-  #[default(GtrModelName::Infer)]
-  pub model_name: GtrModelName,
+  #[default(GtrModelNameCli::Infer)]
+  pub model_name: GtrModelNameCli,
   pub gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
   pub method_anc: MethodAncestral,
@@ -113,8 +113,8 @@ pub struct ServerClockArgs {
   pub name_column: Option<String>,
   pub date_column: Option<String>,
   pub sequence_length: Option<usize>,
-  #[default(GtrModelName::default())]
-  pub gtr: GtrModelName,
+  #[default(GtrModelNameCli::default())]
+  pub gtr: GtrModelNameCli,
   pub gtr_params: Vec<String>,
   #[default(BranchLengthMode::default())]
   pub branch_length_mode: BranchLengthMode,
@@ -237,8 +237,8 @@ pub struct ServerTimetreeArgs {
   pub allow_negative_rate: bool,
   pub tip_slack: Option<f64>,
   pub covariation: bool,
-  #[default(GtrModelName::default())]
-  pub gtr: GtrModelName,
+  #[default(GtrModelNameCli::default())]
+  pub gtr: GtrModelNameCli,
   pub gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
   pub method_anc: MethodAncestral,
@@ -427,8 +427,8 @@ pub struct ServerOptimizeArgs {
   pub input_fastas: Vec<String>,
   pub tree: String,
   pub alphabet: Option<AlphabetNameCli>,
-  #[default(GtrModelName::Infer)]
-  pub model_name: GtrModelName,
+  #[default(GtrModelNameCli::Infer)]
+  pub model_name: GtrModelNameCli,
   pub dense: Option<bool>,
   pub outdir: String,
   #[default = 10]
