@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::ancestral::sample::SampleMode;
+use crate::cancel::Cancel;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -183,6 +184,7 @@ pub fn run(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   trace_sink: Option<Box<dyn TraceSink>>,
   mut reconstructed_seq_sink: Option<ReconstructedSeqSink>,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
   info!("# TreeTime Timetree Estimation");
@@ -251,7 +253,7 @@ pub fn run(
 
   let branch_params = BranchPointOptimizationParams::default();
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Clock regression", 0.1, "");
   let reroot_params = RerootParams {
     spec: params.reroot_spec.clone(),
@@ -384,7 +386,7 @@ pub fn run(
     }
   }
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Initial timetree inference", 0.2, "");
   info!("### TreeTime: initial round");
 
@@ -506,7 +508,7 @@ pub fn run(
     &timetree_state,
   );
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
@@ -535,7 +537,7 @@ pub fn run(
 
   // OPTIMIZATION LOOP
   while let Some(IterationContext { i }) = optimizer.next_iter() {
-    progress.check_cancelled()?;
+    cancel.check()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
     progress.report(
       "Optimization",
@@ -613,7 +615,7 @@ pub fn run(
     }
   }
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Postprocessing", 0.85, "");
   info!("### TreeTime: postprocessing");
 

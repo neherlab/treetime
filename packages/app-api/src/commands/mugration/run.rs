@@ -19,9 +19,10 @@ use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
+  cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
 ) -> Result<MugrationResult, Report> {
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Reading input", 0.0, "");
   let tree_path = mugration_args
     .tree
@@ -62,7 +63,7 @@ pub fn run_mugration(
     None
   };
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Mugration inference", 0.3, "");
   // The output value maps are gathered off the pipeline-local partition inside `execute_mugration`,
   // before the partition-less graph data slot is built; the tree, Newick-comment, augur, and GTR
@@ -82,6 +83,7 @@ pub fn run_mugration(
     mugration_args.sampling_bias_correction,
     mugration_args.smooth_initial_pi,
     mugration_args.filter_uninformative_root,
+    cancel,
   )?;
 
   let topology_order = mugration_args

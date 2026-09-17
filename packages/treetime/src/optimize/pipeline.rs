@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -92,6 +93,7 @@ pub fn run(
   params: &OptimizeParams,
   mut input: OptimizeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<OptimizeOutput, Report> {
   if !(0.0..1.0).contains(&params.damping) {
@@ -218,7 +220,7 @@ pub fn run(
     })
     .collect();
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Optimizing branch lengths", 0.3, "");
   let loop_result = run_optimize_loop(
     &mut input.graph,

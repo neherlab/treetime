@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::cancel::NoopCancel;
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -96,6 +97,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
 
@@ -124,6 +126,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
 
@@ -150,6 +153,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
 
@@ -173,6 +177,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
 

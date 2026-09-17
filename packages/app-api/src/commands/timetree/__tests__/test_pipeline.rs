@@ -7,6 +7,7 @@ mod tests {
   use eyre::Report;
   use std::fs::read_to_string;
   use std::path::PathBuf;
+  use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
@@ -36,7 +37,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
     // Verify tracelog was written and contains data
     let csv_content = read_to_string(&tracelog_path)?;
@@ -121,7 +122,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
     let tree: AuspiceTree = json_read_file(output.path().join("timetree.auspice.json"))?;
     let actual = tree.tree.children.iter().map(count_leaves).collect::<Vec<_>>();
@@ -154,7 +155,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
     // The default `--output-all` set writes the coalescent TSV; the JSON is requested per file.
     let tsv_path = output.path().join("timetree.coalescent.tsv");

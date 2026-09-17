@@ -37,6 +37,7 @@ use app_cli::cli::verbosity::Verbosity;
 use ctor::ctor;
 use eyre::Report;
 use log::info;
+use treetime::cancel::NoopCancel;
 use treetime::progress::{NoopProgress, ProgressSink};
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
@@ -83,23 +84,23 @@ fn main() -> Result<(), Report> {
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
       let timetree_args = TreetimeTimetreeArgs::try_from(*timetree_args)?;
-      run_timetree_estimation(&timetree_args, &*progress)?;
+      run_timetree_estimation(&timetree_args, &NoopCancel, &*progress)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
       let optimize_args = TreetimeOptimizeArgs::try_from(optimize_args)?;
-      run_optimize(&optimize_args, &*progress)?;
+      run_optimize(&optimize_args, &NoopCancel, &*progress)?;
     },
     TreetimeCommands::Prune(prune_args) => {
       let prune_args = TreetimePruneArgs::try_from(prune_args)?;
-      run_prune(&prune_args, &*progress)?;
+      run_prune(&prune_args, &NoopCancel, &*progress)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
       let ancestral_args = TreetimeAncestralArgs::try_from(ancestral_args)?;
-      run_ancestral_reconstruction(&ancestral_args, &*progress)?;
+      run_ancestral_reconstruction(&ancestral_args, &NoopCancel, &*progress)?;
     },
     TreetimeCommands::Clock(clock_args) => {
       let clock_args = TreetimeClockArgs::try_from(clock_args)?;
-      let result = run_clock(&clock_args, &*progress)?;
+      let result = run_clock(&clock_args, &NoopCancel, &*progress)?;
       if let Some(outdir) = &clock_args.output.output_all {
         write_clock_regression_chart_svg(
           &result.regression_results,
@@ -121,7 +122,7 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Mugration(mugration_args) => {
       let mugration_args = TreetimeMugrationArgs::try_from(mugration_args)?;
-      run_mugration(&mugration_args, &*progress)?;
+      run_mugration(&mugration_args, &NoopCancel, &*progress)?;
     },
     TreetimeCommands::Pipeline(pipeline_args) => {
       let pipeline = load_pipeline(&pipeline_args.config)?;

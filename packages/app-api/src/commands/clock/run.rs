@@ -99,9 +99,10 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
 
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
+  cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
 ) -> Result<ClockResult, Report> {
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Reading input", 0.0, "");
 
   let nwk_parsed = if let Some(tree) = &clock_args.tree {
@@ -156,7 +157,7 @@ pub fn run_clock(
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, progress)?;
+  let output = pipeline::run(&params, input, &names, cancel, progress)?;
   let pipeline::ClockOutput {
     mut graph,
     inputs,

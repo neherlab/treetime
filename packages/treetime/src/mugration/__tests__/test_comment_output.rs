@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::cancel::NoopCancel;
   use crate::mugration::mugration::execute_mugration;
   use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
   use eyre::Report;
@@ -37,6 +38,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
     let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);

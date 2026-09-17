@@ -5,6 +5,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
 
+  use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
   use approx::assert_ulps_eq;
   use eyre::Report;
@@ -58,7 +59,7 @@ mod tests {
       branch_lengths,
     };
 
-    let output = run(&params, input, &names, &NoopProgress)?;
+    let output = run(&params, input, &names, &NoopCancel, &NoopProgress)?;
 
     // Normalization contract: average rate 1 => mu == 1.0 for a single partition.
     assert_ulps_eq!(output.gtr.mu, 1.0, max_ulps = 4);

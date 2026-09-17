@@ -35,9 +35,10 @@ use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
+  cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
 ) -> Result<TimetreeResult, Report> {
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Loading input", 0.0, "");
 
   let input_data = load_input_data(args)?;
@@ -132,7 +133,7 @@ pub fn run_timetree_estimation(
     None => None,
   };
 
-  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, progress)?;
+  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, cancel, progress)?;
   if let Some(path) = &reconstructed_nuc_fasta {
     info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
   }

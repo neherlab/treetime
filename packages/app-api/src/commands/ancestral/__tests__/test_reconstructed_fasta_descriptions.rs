@@ -11,6 +11,7 @@ mod tests {
   use std::collections::BTreeMap;
   use tempfile::tempdir;
   use treetime::alphabet::alphabet::Alphabet;
+  use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime_io::fasta::read_many_fasta_path;
 
@@ -44,7 +45,7 @@ mod tests {
       ..TreetimeAncestralArgsRaw::default()
     })?;
 
-    run_ancestral_reconstruction(&args, &NoopProgress)?;
+    run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress)?;
 
     Ok(
       read_many_fasta_path(&[out_path], &Alphabet::default())?

@@ -1,4 +1,4 @@
-use app_api::progress::{LogEvent, LogLevel, ProgressSink};
+use app_api::progress::{Cancel, LogEvent, LogLevel, ProgressSink};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use serde::Serialize;
 use std::sync::Arc;
@@ -59,7 +59,11 @@ impl ProgressSink for NapiProgressSink {
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
   }
+}
 
+pub struct NapiCancel;
+
+impl Cancel for NapiCancel {
   fn is_cancelled(&self) -> bool {
     CANCELLED.load(Ordering::SeqCst)
   }

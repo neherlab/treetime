@@ -3,6 +3,7 @@ use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_parti
 use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
+use crate::cancel::Cancel;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_model;
@@ -412,6 +413,7 @@ pub fn run(
   input: &NwkFastaInput,
   alphabet: Alphabet,
   mask: Vec<bool>,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralOutputFull, Report> {
   let branch_lengths = input.branch_lengths();
@@ -441,7 +443,7 @@ pub fn run(
 
   match params.method {
     MethodAncestral::Parsimony => {
-      progress.check_cancelled()?;
+      cancel.check()?;
       progress.report("Fitch parsimony", 0.3, "");
       let partition = create_fitch_partition(graph, 0, alphabet, node_inputs)?;
       let mut partitions_parsimony = vec![partition];
@@ -471,7 +473,7 @@ pub fn run(
       })
     },
     MethodAncestral::Marginal => {
-      progress.check_cancelled()?;
+      cancel.check()?;
       progress.report("Inferring GTR model", 0.2, "");
 
       let created = create_marginal_partition(
@@ -489,7 +491,7 @@ pub fn run(
 
       match created.partition {
         MarginalPartition::Sparse(partition, node_states) => {
-          progress.check_cancelled()?;
+          cancel.check()?;
           progress.report("Marginal reconstruction", 0.4, "");
           let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
 
@@ -510,7 +512,7 @@ pub fn run(
             mut node_states, edges, ..
           } = update;
 
-          progress.check_cancelled()?;
+          cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
           let emitted_nodes = ancestral_reconstruction(graph, |node| {
             partition.advance_node_state(
@@ -541,7 +543,7 @@ pub fn run(
           })
         },
         MarginalPartition::Dense(partition) => {
-          progress.check_cancelled()?;
+          cancel.check()?;
           progress.report("Marginal reconstruction", 0.4, "");
           let node_states = partition.attach_sequences(graph, node_inputs)?;
           // Dense gap classification is non-idempotent, so the baseline ran two marginal passes
@@ -569,7 +571,7 @@ pub fn run(
             mut node_states, edges, ..
           } = update;
 
-          progress.check_cancelled()?;
+          cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
           // Dense reconstruction persists each node's flag-aware sequence into `seq.sequence` (read
           // back by the augur node-data path), so the walk still materializes it and only discards the

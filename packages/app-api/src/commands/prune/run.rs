@@ -26,11 +26,12 @@ use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
+  cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
 ) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Reading input", 0.0, "");
 
   let parse = nwk_read_file(args.tree())?;
@@ -71,9 +72,9 @@ pub fn run_prune(
     branch_lengths: branch_lengths_input,
   };
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input, &names)?;
+  let output = pipeline::run(&params, input, &names, cancel)?;
   let pipeline::PruneOutput {
     mut graph,
     gtr,

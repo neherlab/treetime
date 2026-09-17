@@ -21,6 +21,7 @@ use itertools::Itertools;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::path::Path;
+use treetime::cancel::NoopCancel;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
@@ -115,27 +116,27 @@ fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Repo
   match &step.command {
     PipelineStepCommand::Timetree(args) => {
       let args = TreetimeTimetreeArgs::try_from((**args).clone())?;
-      run_timetree_estimation(&args, progress).map(|_| ())
+      run_timetree_estimation(&args, &NoopCancel, progress).map(|_| ())
     },
     PipelineStepCommand::Optimize(args) => {
       let args = TreetimeOptimizeArgs::try_from(args.clone())?;
-      run_optimize(&args, progress).map(|_| ())
+      run_optimize(&args, &NoopCancel, progress).map(|_| ())
     },
     PipelineStepCommand::Prune(args) => {
       let args = TreetimePruneArgs::try_from(args.clone())?;
-      run_prune(&args, progress).map(|_| ())
+      run_prune(&args, &NoopCancel, progress).map(|_| ())
     },
     PipelineStepCommand::Ancestral(args) => {
       let args = TreetimeAncestralArgs::try_from(args.clone())?;
-      run_ancestral_reconstruction(&args, progress).map(|_| ())
+      run_ancestral_reconstruction(&args, &NoopCancel, progress).map(|_| ())
     },
     PipelineStepCommand::Mugration(args) => {
       let args = TreetimeMugrationArgs::try_from(args.clone())?;
-      run_mugration(&args, progress).map(|_| ())
+      run_mugration(&args, &NoopCancel, progress).map(|_| ())
     },
     PipelineStepCommand::Clock(args) => {
       let args = TreetimeClockArgs::try_from(args.clone())?;
-      let result = run_clock(&args, progress)?;
+      let result = run_clock(&args, &NoopCancel, progress)?;
       if let Some(outdir) = &args.output.output_all {
         write_clock_regression_chart_svg(
           &result.regression_results,

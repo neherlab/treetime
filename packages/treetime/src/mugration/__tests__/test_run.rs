@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::cancel::NoopCancel;
   use crate::mugration::mugration::{
     apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, execute_mugration, validate_weight_coverage,
   };
@@ -178,6 +179,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_eq!(o!("country"), result.traits.attribute);
@@ -242,6 +244,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_eq!(3, maps.n_states);
@@ -292,6 +295,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_eq!(3, maps.n_states);
@@ -343,6 +347,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-10);
@@ -390,6 +395,7 @@ mod tests {
       None,
       true,
       false,
+      &NoopCancel,
     )?;
 
     let total = 5.0;
@@ -434,6 +440,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let confidences = nwk_parsed.confidences();
@@ -456,6 +463,7 @@ mod tests {
       None,
       false,
       true,
+      &NoopCancel,
     )?;
 
     let pi_v0 = &v0_maps.gtr.pi;
@@ -496,6 +504,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
     let base_mu = base_maps.gtr.mu;
 
@@ -520,6 +529,7 @@ mod tests {
       Some(2.0),
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_abs_diff_eq!(corrected_maps.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
@@ -555,6 +565,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     );
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
@@ -592,6 +603,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     let nwk_parsed = nwk_read_str(tree)?;
@@ -615,6 +627,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     let mu_changed = (no_iter_maps.gtr.mu - with_iter_maps.gtr.mu).abs() > 1e-6;
@@ -671,6 +684,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     let pi_usa = maps.gtr.pi[1];
@@ -706,6 +720,7 @@ mod tests {
       None,
       false,
       false,
+      &NoopCancel,
     )?;
 
     assert_abs_diff_eq!(maps.gtr.pi.sum(), 1.0, epsilon = 1e-10);

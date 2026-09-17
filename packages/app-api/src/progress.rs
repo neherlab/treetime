@@ -1,4 +1,5 @@
-pub use treetime::progress::{CancelledError, LogEvent, LogLevel, NoopProgress, ProgressSink};
+pub use treetime::cancel::{Cancel, CancelledError, NoopCancel};
+pub use treetime::progress::{LogEvent, LogLevel, NoopProgress, ProgressSink};
 
 pub struct StderrProgress;
 

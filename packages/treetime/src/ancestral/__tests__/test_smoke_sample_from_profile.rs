@@ -6,6 +6,7 @@ mod tests {
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline::AncestralParams;
   use crate::ancestral::sample::SampleMode;
+  use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
@@ -57,7 +58,7 @@ mod tests {
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress);
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress);
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
     let err = result.err().unwrap().to_string();
     assert!(
@@ -105,7 +106,7 @@ mod tests {
 
       // Read the reconstructed sequences back off the partition in the walk's emission order, as the
       // reconstructed-FASTA writer does. This exercises the same path the CLI streams to file.
-      let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopProgress)?;
+      let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
       let partition = result.partition.expect("marginal reconstruction produces a partition");
       let captured: BTreeMap<String, String> = result
         .output

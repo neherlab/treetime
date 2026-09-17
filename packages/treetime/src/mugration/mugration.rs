@@ -1,4 +1,5 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_model_and_rate;
@@ -93,7 +94,10 @@ pub fn execute_mugration(
   sampling_bias_correction: Option<f64>,
   smooth_initial_pi: bool,
   filter_uninformative_root: bool,
+  cancel: &dyn Cancel,
 ) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
+  cancel.check()?;
+
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
 
   let model_values: IndexSet<String> = match weights {

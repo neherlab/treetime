@@ -26,9 +26,10 @@ use treetime_primitives::Seq;
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
+  cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
 ) -> Result<OptimizeResult, Report> {
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Reading input", 0.0, "");
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
@@ -65,7 +66,7 @@ pub fn run_optimize(
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, progress)?;
+  let output = pipeline::run(&params, input, &names, cancel, progress)?;
   let pipeline::OptimizeOutput {
     mut graph,
     gtr,

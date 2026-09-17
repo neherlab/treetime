@@ -137,6 +137,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::cancel::NoopCancel;
     use crate::mugration::mugration::execute_mugration;
     use crate::mugration::result::{MugrationOutputMaps, MugrationResult};
     use eyre::Report;
@@ -251,6 +252,7 @@ mod tests {
         fixture.parameters.sampling_bias_correction,
         false,
         false,
+        &NoopCancel,
       )
     }
   }

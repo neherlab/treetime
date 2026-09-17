@@ -1,3 +1,4 @@
+use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
@@ -53,15 +54,16 @@ pub fn run(
   params: &ClockPipelineParams,
   mut input: ClockInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<ClockOutput, Report> {
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
   assign_dates(&input.graph, &input.dates, &mut inputs, names)?;
   let state = ClockState::new(&input.graph);
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Clock regression", 0.3, "");
   let mut branch_lengths = input.branch_lengths;
   let (mut state, clock_model, new_outliers) = estimate_clock_model_with_prefilter(

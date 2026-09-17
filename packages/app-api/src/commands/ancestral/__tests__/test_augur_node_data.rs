@@ -195,6 +195,7 @@ mod tests {
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
     use treetime::ancestral::pipeline::AncestralPartition;
+    use treetime::cancel::NoopCancel;
     use treetime::partition::fitch::partition::PartitionFitch;
     use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
     use treetime::progress::NoopProgress;
@@ -323,7 +324,7 @@ mod tests {
       })
       .unwrap();
 
-      run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
     }
 
@@ -366,7 +367,7 @@ mod tests {
       })
       .unwrap();
 
-      run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress).unwrap();
       json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
     }
 

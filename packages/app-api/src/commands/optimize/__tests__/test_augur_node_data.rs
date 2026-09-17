@@ -126,6 +126,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_optimize_end_to_end() {
     use treetime::alphabet::alphabet::Alphabet;
+    use treetime::cancel::NoopCancel;
     use treetime::gtr::get_gtr::GtrModelName;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
@@ -161,7 +162,7 @@ mod tests {
       branch_lengths,
     };
 
-    let output = pipeline::run(&params, input, &names, &NoopProgress).unwrap();
+    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
       &names,

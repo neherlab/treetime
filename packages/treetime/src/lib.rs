@@ -1,5 +1,6 @@
 pub mod alphabet;
 pub mod ancestral;
+pub mod cancel;
 pub mod clock;
 pub mod coalescent;
 pub mod constants;

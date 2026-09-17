@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::cancel::NoopCancel;
   use crate::clock::assign_dates::assign_dates;
   use crate::clock::clock_filter::clock_filter_inplace;
   use crate::clock::clock_model::ClockModel;
@@ -295,6 +296,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
     let actual_outliers = get_outlier_names(&names, &output.graph, &output.state);
@@ -343,6 +345,7 @@ mod tests {
         branch_lengths,
       },
       &names,
+      &NoopCancel,
       &NoopProgress,
     )?;
     assert!(

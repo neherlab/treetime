@@ -18,6 +18,7 @@ use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alp
 use treetime::ancestral::mask::create_mask;
 use treetime::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
 use treetime::ancestral::pipeline::{self, AncestralPartition};
+use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::progress::ProgressSink;
@@ -36,6 +37,7 @@ use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 pub fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
   validate_aa_args(
@@ -45,7 +47,7 @@ pub fn run_ancestral_reconstruction(
     &args.aa_root_sequence,
   )?;
 
-  let (mut input, mask, alphabet) = read_nwk_fasta(args, progress)?;
+  let (mut input, mask, alphabet) = read_nwk_fasta(args, cancel, progress)?;
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -64,7 +66,7 @@ pub fn run_ancestral_reconstruction(
 
   let params = ancestral_params(args);
 
-  let result = pipeline::run(&params, &input, alphabet, mask, progress)?;
+  let result = pipeline::run(&params, &input, alphabet, mask, cancel, progress)?;
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs
@@ -79,6 +81,7 @@ pub fn run_ancestral_reconstruction(
       &input.graph,
       &names,
       &branch_lengths,
+      cancel,
       progress,
     )?)
   } else {
@@ -215,12 +218,13 @@ pub fn run_ancestral_reconstruction(
 /// over.
 fn read_nwk_fasta(
   args: &TreetimeAncestralArgs,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<(NwkFastaInput, Vec<bool>, Alphabet), Report> {
   let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Reading input", 0.0, "");
 
   let mut aln = if args.alignment.alignment.is_empty() {
@@ -235,7 +239,7 @@ fn read_nwk_fasta(
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("Parsing tree", 0.1, "");
   let parse = nwk_read_file(args.tree())?;
 
@@ -383,6 +387,7 @@ fn run_aa_reconstructions(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
@@ -409,7 +414,7 @@ fn run_aa_reconstructions(
 
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &cdses, &recon_alphabet)?;
 
-  progress.check_cancelled()?;
+  cancel.check()?;
   progress.report("AA ancestral reconstruction", 0.75, "");
 
   let params = MarginalPartitionParams {

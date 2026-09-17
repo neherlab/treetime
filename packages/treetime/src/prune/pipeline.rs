@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::SparseReconstruction;
+use crate::cancel::Cancel;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
@@ -52,7 +53,10 @@ pub fn run(
   params: &PruneParams,
   mut input: PruneInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  cancel: &dyn Cancel,
 ) -> Result<PruneOutput, Report> {
+  cancel.check()?;
+
   // Entry maps propagated through the whole prune pipeline: every downstream name and branch length
   // read comes from these maps. `names` comes from the parse; `assign_node_names`
   // after a merge refreshes it to the post-topology labels; the collapse and merge producers maintain

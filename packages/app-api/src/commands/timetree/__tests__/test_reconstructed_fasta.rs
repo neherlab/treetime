@@ -109,6 +109,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use treetime::alphabet::alphabet::Alphabet;
+    use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
     use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
     use treetime_primitives::Seq;
@@ -154,7 +155,7 @@ mod tests {
       .unwrap();
       configure(&mut args);
 
-      run_timetree_estimation(&args, &NoopProgress)?;
+      run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
       read_many_fasta_path(&[fasta], &Alphabet::default())
     }
   }

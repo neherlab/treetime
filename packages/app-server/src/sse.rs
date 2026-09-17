@@ -11,7 +11,8 @@ use std::path::Path;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use treetime::progress::{CancelledError, LogEvent, LogLevel};
+use treetime::cancel::{Cancel, CancelledError};
+use treetime::progress::{LogEvent, LogLevel};
 use treetime_schema::ProgressEvent;
 
 enum SinkEvent {
@@ -48,7 +49,9 @@ impl ProgressSink for ChannelProgress {
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
   }
+}
 
+impl Cancel for ChannelProgress {
   fn is_cancelled(&self) -> bool {
     self.tx.is_closed()
   }
@@ -57,13 +60,13 @@ impl ProgressSink for ChannelProgress {
 #[allow(tail_expr_drop_order)]
 fn sse_response<F>(run_fn: F) -> Response
 where
-  F: FnOnce(&dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
+  F: FnOnce(&dyn Cancel, &dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
 {
   let (tx, rx) = mpsc::unbounded_channel::<SinkEvent>();
 
   let computation = tokio::task::spawn_blocking(move || {
     let progress = ChannelProgress::new(tx);
-    run_fn(&progress)
+    run_fn(&progress, &progress)
   });
 
   let stream = async_stream::stream! {
@@ -128,7 +131,7 @@ where
 pub fn handle_command<S, R, T>(
   mut body: Value,
   out_dir: &Path,
-  command: fn(&R, &dyn ProgressSink) -> Result<T, Report>,
+  command: fn(&R, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
 ) -> Response
 where
   S: serde::de::DeserializeOwned + Into<R> + Send + 'static,
@@ -148,8 +151,8 @@ where
     Err(err) => return AppError::from(err).into_response(),
   };
   let real_args: R = args.into();
-  sse_response(move |progress| {
-    let result = command(&real_args, progress)?;
+  sse_response(move |cancel, progress| {
+    let result = command(&real_args, cancel, progress)?;
     serde_json::to_value(result).map_err(Report::from)
   })
 }
