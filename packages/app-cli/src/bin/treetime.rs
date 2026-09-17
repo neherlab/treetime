@@ -7,20 +7,6 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use app_api::commands::ancestral::args::TreetimeAncestralArgs;
-use app_api::commands::ancestral::run::run_ancestral_reconstruction;
-use app_api::commands::clock::args::TreetimeClockArgs;
-use app_api::commands::clock::run::run_clock;
-use app_api::commands::homoplasy::args::TreetimeHomoplasyArgs;
-use app_api::commands::homoplasy::run::run_homoplasy;
-use app_api::commands::mugration::args::TreetimeMugrationArgs;
-use app_api::commands::mugration::run::run_mugration;
-use app_api::commands::optimize::args::TreetimeOptimizeArgs;
-use app_api::commands::optimize::run::run_optimize;
-use app_api::commands::prune::args::TreetimePruneArgs;
-use app_api::commands::prune::run::run_prune;
-use app_api::commands::timetree::args::TreetimeTimetreeArgs;
-use app_api::commands::timetree::run::run_timetree_estimation;
 use app_cli::cli::pipeline::check::print_pipeline_plan;
 use app_cli::cli::pipeline::runner::{load_pipeline, run_pipeline};
 use app_cli::cli::pipeline::safety::validate_plan;
@@ -34,6 +20,20 @@ use app_cli::cli::treetime_cli::{
   TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
 };
 use app_cli::cli::verbosity::Verbosity;
+use app_cli::commands::ancestral::args::TreetimeAncestralArgs;
+use app_cli::commands::ancestral::run::run_ancestral_reconstruction;
+use app_cli::commands::clock::args::TreetimeClockArgs;
+use app_cli::commands::clock::run::run_clock;
+use app_cli::commands::homoplasy::args::TreetimeHomoplasyArgs;
+use app_cli::commands::homoplasy::run::run_homoplasy;
+use app_cli::commands::mugration::args::TreetimeMugrationArgs;
+use app_cli::commands::mugration::run::run_mugration;
+use app_cli::commands::optimize::args::TreetimeOptimizeArgs;
+use app_cli::commands::optimize::run::run_optimize;
+use app_cli::commands::prune::args::TreetimePruneArgs;
+use app_cli::commands::prune::run::run_prune;
+use app_cli::commands::timetree::args::TreetimeTimetreeArgs;
+use app_cli::commands::timetree::run::run_timetree_estimation;
 use ctor::ctor;
 use eyre::Report;
 use log::info;

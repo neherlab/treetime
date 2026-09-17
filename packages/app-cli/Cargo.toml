@@ -17,12 +17,14 @@ ignored = ["approx"]
 
 [dependencies]
 # [internal]
-app-api = { workspace = true, features = ["clap"] }
+app-output = { workspace = true }
 treetime = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
+treetime-primitives = { workspace = true }
 treetime-schema = { workspace = true, features = ["clap"] }
 treetime-utils = { workspace = true }
+util-augur-node-data-json = { workspace = true }
 
 # [external]
 clap = { workspace = true }
@@ -55,7 +57,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_path_to_error = { workspace = true }
 serde_yaml = { workspace = true }
+smart-default = { workspace = true }
 strsim = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
 textplots = { workspace = true }
 
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
@@ -71,6 +76,11 @@ tikv-jemallocator = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [features]
+default = ["clap"]
+# `clap` is a hard dependency of the CLI; this marker activates the `#[cfg(feature = "clap")]`
+# argument derives in the command layer, which stays textually identical to app-api's copy so the
+# two can be diffed for faithfulness until app-api is dissolved.
+clap = []
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [build-dependencies]

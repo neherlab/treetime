@@ -152,13 +152,13 @@ mod tests {
   mod end_to_end {
     use crate::cli::config::overlay_config;
     use crate::cli::treetime_cli::TreetimeArgs;
-    use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use app_api::commands::clock::args::TreetimeClockArgsRaw;
-    use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use app_api::commands::prune::args::TreetimePruneArgsRaw;
-    use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::clock::args::TreetimeClockArgsRaw;
+    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use crate::commands::prune::args::TreetimePruneArgsRaw;
+    use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use clap::{CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
@@ -383,13 +383,13 @@ mod tests {
   // missing flag with the clap-style message, built from the command's clap metadata so a flag
   // rename cannot desync it.
   mod required_args {
-    use app_api::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use app_api::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
-    use app_api::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
-    use app_api::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
-    use app_api::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
-    use app_api::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
-    use app_api::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+    use crate::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
+    use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+    use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+    use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
+    use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use pretty_assertions::assert_eq;
     use treetime_utils::assert_error;
 
@@ -488,13 +488,13 @@ mod tests {
   // so every raw args type must round-trip losslessly. A field with an asymmetric serializer, or a
   // nested struct missing `#[serde(default)]`, fails here rather than corrupting a user's config load.
   mod round_trip {
-    use app_api::commands::ancestral::args::TreetimeAncestralArgsRaw;
-    use app_api::commands::clock::args::TreetimeClockArgsRaw;
-    use app_api::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use app_api::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use app_api::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use app_api::commands::prune::args::TreetimePruneArgsRaw;
-    use app_api::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
+    use crate::commands::clock::args::TreetimeClockArgsRaw;
+    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use crate::commands::prune::args::TreetimePruneArgsRaw;
+    use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use pretty_assertions::assert_eq;
     use serde_json::{Value, from_value, to_value};
 

@@ -1,0 +1,311 @@
+#[cfg(test)]
+mod tests {
+  use approx::assert_relative_eq;
+  use pretty_assertions::assert_eq;
+  use treetime_primitives::AlignmentRecord;
+  use treetime_utils::io::json::json_read_str;
+  use util_augur_node_data_json::AugurNodeDataJsonRefine;
+
+  // optimize node data is the augur non-timetree refine shape: per-node
+  // branch_length (the ML-optimized divergence, subs/site) plus alignment and
+  // input_tree metadata. No clock, date, or confidence fields.
+
+  #[test]
+  fn test_augur_node_data_optimize_branch_lengths() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 0.005, max_relative = 1e-10);
+    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 0.010, max_relative = 1e-10);
+    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_only_branch_length_field() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    // Every timetree-only and confidence field must be omitted: optimize does no
+    // temporal inference and v1 does not parse input-tree branch support.
+    for (name, node) in &data.nodes {
+      assert!(node.confidence.is_none(), "{name}: confidence must be omitted");
+      assert!(node.numdate.is_none(), "{name}: numdate must be omitted");
+      assert!(node.clock_length.is_none(), "{name}: clock_length must be omitted");
+      assert!(
+        node.mutation_length.is_none(),
+        "{name}: mutation_length must be omitted"
+      );
+      assert!(node.raw_date.is_none(), "{name}: raw_date must be omitted");
+      assert!(node.date.is_none(), "{name}: date must be omitted");
+      assert!(node.date_inferred.is_none(), "{name}: date_inferred must be omitted");
+      assert!(
+        node.num_date_confidence.is_none(),
+        "{name}: num_date_confidence must be omitted"
+      );
+    }
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_metadata() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    // clock is absent (no time-tree inference); alignment and input_tree carry
+    // the input file paths passed to the writer.
+    assert!(data.metadata.clock.is_none());
+    assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
+    assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_generated_by() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+    let generated_by = data.generated_by.unwrap();
+    assert_eq!(generated_by.program, "treetime");
+    assert_eq!(generated_by.version, env!("CARGO_PKG_VERSION"));
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_roundtrip() {
+    let json_str = helpers::write_json("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let typed: AugurNodeDataJsonRefine = json_read_str(&json_str).unwrap();
+    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+
+    assert_eq!(original, roundtripped);
+  }
+
+  // --- Confidence from input tree ---
+
+  #[test]
+  fn test_augur_node_data_optimize_confidence_from_float_label() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)0.999:0.003;");
+
+    assert_eq!(
+      data.nodes["NODE_0000000"].confidence,
+      Some(0.999),
+      "Internal node with float label should emit confidence"
+    );
+    assert!(
+      data.nodes["leaf_a"].confidence.is_none(),
+      "Leaf nodes should not have confidence from float labels"
+    );
+    assert!(
+      data.nodes["leaf_b"].confidence.is_none(),
+      "Leaf nodes should not have confidence from float labels"
+    );
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_no_confidence_for_text_label() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    assert!(
+      data.nodes["root"].confidence.is_none(),
+      "Text-labeled internal node should not have confidence"
+    );
+  }
+
+  // --- Divergence units: mutations mode ---
+
+  #[test]
+  fn test_augur_node_data_optimize_mutations_mode_branch_length_is_count() {
+    let data = helpers::write_and_read_with_mutations("(leaf_a:0.005,leaf_b:0.010)root;", &[(0, 3), (1, 7)]);
+
+    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 3.0);
+    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 7.0);
+    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_mutations_mode_no_mutation_length() {
+    let data = helpers::write_and_read_with_mutations("(leaf_a:0.005,leaf_b:0.010)root;", &[(0, 3), (1, 7)]);
+
+    for node in data.nodes.values() {
+      assert!(node.mutation_length.is_none());
+    }
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_end_to_end() {
+    use treetime::alphabet::alphabet::Alphabet;
+    use treetime::cancel::NoopCancel;
+    use treetime::gtr::get_gtr::GtrModelName;
+    use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+    use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+    use treetime::progress::NoopProgress;
+    use treetime_io::fasta::read_many_fasta_path;
+    use treetime_io::nwk::nwk_read_file;
+
+    let root = helpers::project_root();
+    let alphabet = Alphabet::default();
+    let nwk_parsed = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let confidences = nwk_parsed.confidences();
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let sequences: Vec<AlignmentRecord> =
+      read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)
+        .unwrap()
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+
+    let params = OptimizeParams {
+      model: GtrModelName::default(),
+      dense: None,
+      max_iter: 2,
+      dp: 0.1,
+      damping: 0.75,
+      opt_method: BranchOptMethod::default(),
+      initial_guess: InitialGuessMode::default(),
+      no_indels: false,
+      reroot_spec: None,
+      topology_ops: TopologyOps::default(),
+    };
+    let input = OptimizeInput {
+      graph,
+      alphabet,
+      sequences,
+      branch_lengths,
+    };
+
+    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
+
+    let data = helpers::build_augur_node_data_json_from_output(
+      &names,
+      &output,
+      &confidences,
+      Some(std::path::Path::new("aln.fasta")),
+      Some(std::path::Path::new("tree.nwk")),
+    );
+
+    assert!(!data.nodes.is_empty(), "node data must contain nodes");
+    for (name, node) in &data.nodes {
+      assert!(
+        node.branch_length.is_finite() && node.branch_length >= 0.0,
+        "{name}: branch_length must be finite and non-negative, got {}",
+        node.branch_length
+      );
+    }
+  }
+
+  mod helpers {
+    use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
+    use app_output::optimize_result::OptimizeNodeOut;
+    use std::collections::BTreeMap;
+    use std::path::{Path, PathBuf};
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::nwk_read_str;
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+    use util_augur_node_data_json::AugurNodeDataJsonRefine;
+
+    pub fn node_outputs(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &Graph,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
+      graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (
+            key,
+            OptimizeNodeOut {
+              name: names.get(&node.key()).cloned().flatten(),
+              confidence: confidences.get(&key).copied().flatten(),
+            },
+          )
+        })
+        .collect()
+    }
+
+    pub fn write_json(nwk: &str) -> String {
+      let parse = nwk_read_str(nwk).unwrap();
+      let names = parse.names();
+      let confidences = parse.confidences();
+      let graph: Graph = parse.graph;
+      let branch_lengths = parse.branch_lengths;
+      let data = build_augur_node_data_json(
+        &graph,
+        &node_outputs(&names, &graph, &confidences),
+        &branch_lengths,
+        Some(Path::new("aln.fasta")),
+        Some(Path::new("tree.nwk")),
+        None,
+      )
+      .unwrap();
+      json_write_str(&data, JsonPretty(true)).unwrap()
+    }
+
+    pub fn write_and_read(nwk: &str) -> AugurNodeDataJsonRefine {
+      json_read_str(write_json(nwk)).unwrap()
+    }
+
+    pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
+      let parse = nwk_read_str(nwk).unwrap();
+      let names = parse.names();
+      let confidences = parse.confidences();
+      let graph: Graph = parse.graph;
+      let branch_lengths = parse.branch_lengths;
+      let edges = graph.get_edges().collect::<Vec<_>>();
+      let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
+        .iter()
+        .map(|&(idx, count)| (edges[idx].key(), count))
+        .collect();
+      let data = build_augur_node_data_json(
+        &graph,
+        &node_outputs(&names, &graph, &confidences),
+        &branch_lengths,
+        Some(Path::new("aln.fasta")),
+        Some(Path::new("tree.nwk")),
+        Some(&counts),
+      )
+      .unwrap();
+      json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
+    }
+
+    pub fn project_root() -> PathBuf {
+      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|p| p.parent())
+        .map(PathBuf::from)
+        .expect("project has workspace root")
+    }
+
+    pub fn build_augur_node_data_json_from_output(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      output: &treetime::optimize::pipeline::OptimizeOutput,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+      alignment: Option<&Path>,
+      input_tree: Option<&Path>,
+    ) -> AugurNodeDataJsonRefine {
+      // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map, the branch
+      // length from the loop result, and the input branch support from the parse-time confidence map.
+      let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
+        .graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (
+            key,
+            OptimizeNodeOut {
+              name: output.names[&key].clone(),
+              confidence: confidences.get(&key).copied().flatten(),
+            },
+          )
+        })
+        .collect();
+      let data = build_augur_node_data_json(
+        &output.graph,
+        &node_outputs,
+        &output.branch_lengths,
+        alignment,
+        input_tree,
+        None,
+      )
+      .unwrap();
+      json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
+    }
+  }
+}

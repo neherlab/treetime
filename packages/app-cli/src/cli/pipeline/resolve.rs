@@ -1,7 +1,7 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::suggest::{suggestion_suffix, valid_values};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
-use app_api::commands::shared::output::OutputSelection;
+use crate::commands::shared::output::OutputSelection;
 use eyre::Report;
 use itertools::Itertools;
 use regex::Regex;

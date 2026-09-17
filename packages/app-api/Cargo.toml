@@ -39,6 +39,11 @@ strum_macros = { workspace = true }
 clap = ["dep:clap"]
 
 [dev-dependencies]
+# Self-reference enabling the `clap` feature for the test build only, so tests can exercise the
+# `clap::ValueEnum` and `clap::Args` derives that production gates behind that feature. Previously
+# this feature was pulled in transitively by `app-cli`; it now calls core directly and no longer
+# depends on `app-api`, so `app-api` enables `clap` for its own tests here.
+app-api = { path = ".", features = ["clap"] }
 approx = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
