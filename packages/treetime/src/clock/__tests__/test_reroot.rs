@@ -371,7 +371,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
+    use crate::clock::clock_regression::{ClockVarianceParams, clock_regression_backward, clock_regression_forward};
     use crate::clock::clock_state::{ClockInputs, ClockState};
     use crate::o;
     use eyre::Report;
@@ -402,7 +402,7 @@ mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        ClockParams,
+        ClockVarianceParams,
         ClockInputs,
         ClockState,
         BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -416,7 +416,7 @@ mod tests {
       let graph: Graph = graph;
       let times = leaf_times(&graph, &names, dates);
 
-      let options = ClockParams::default();
+      let options = ClockVarianceParams::default();
       let inputs = ClockInputs::seed_from_times(&graph, &times);
       let mut state = ClockState::new(&graph);
       clock_regression_backward(&graph, &inputs, &mut state, &options, &branch_lengths, None)?;
@@ -429,7 +429,7 @@ mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        ClockParams,
+        ClockVarianceParams,
         ClockInputs,
         ClockState,
         BTreeMap<GraphEdgeKey, Option<f64>>,

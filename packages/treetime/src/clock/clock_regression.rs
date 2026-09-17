@@ -18,7 +18,7 @@ use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
-pub struct ClockParams {
+pub struct ClockVarianceParams {
   /// Variance scaling factor proportional to branch length
   #[default = 0.0]
   pub variance_factor: f64,
@@ -89,7 +89,7 @@ pub fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report> {
@@ -99,7 +99,7 @@ pub fn clock_regression_backward(
 }
 
 fn clock_regression_backward_node(
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &ClockInputs,
@@ -158,7 +158,7 @@ pub fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report> {
@@ -198,7 +198,7 @@ pub fn estimate_clock_model_with_reroot_policy(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
   mut state: ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   clock_rate: Option<f64>,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,

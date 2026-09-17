@@ -2,7 +2,7 @@ use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
@@ -18,8 +18,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::DatesMap;
 
-pub struct ClockPipelineParams {
-  pub clock_params: ClockParams,
+pub struct ClockParams {
+  pub clock_params: ClockVarianceParams,
   pub clock_filter: f64,
   pub keep_root: bool,
   pub allow_negative_rate: bool,
@@ -52,7 +52,7 @@ pub struct ClockOutput {
 }
 
 pub fn run(
-  params: &ClockPipelineParams,
+  params: &ClockParams,
   mut input: ClockInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
@@ -119,7 +119,7 @@ fn estimate_clock_model_with_prefilter(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
   mut state: ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   keep_root: bool,
   branch_params: &BranchPointOptimizationParams,
   clock_filter_threshold: f64,

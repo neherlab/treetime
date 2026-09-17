@@ -1,6 +1,6 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
@@ -27,7 +27,7 @@ pub fn reroot_tree(
   clock_state: &mut ClockState,
   timetree_state: &TimetreeState,
   mut partitions: Vec<PartitionTimetree>,
-  clock_params: &ClockParams,
+  clock_params: &ClockVarianceParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
   reroot_spec: &RerootSpec,

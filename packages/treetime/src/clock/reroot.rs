@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{
   ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockNodeState, ClockState,
@@ -64,7 +64,7 @@ pub fn reroot_in_place(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
   mut state: ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -208,7 +208,7 @@ fn select_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -255,7 +255,7 @@ fn find_oldest_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report> {
@@ -279,7 +279,7 @@ fn find_tip_group_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   tips: &[String],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
@@ -307,7 +307,7 @@ fn find_named_root_point(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   node_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
@@ -342,7 +342,7 @@ fn apply_reroot(
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
 ) -> Result<Vec<GraphEdgeKey>, Report> {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
 

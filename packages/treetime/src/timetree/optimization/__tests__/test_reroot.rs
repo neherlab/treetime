@@ -6,7 +6,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
-  use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
+  use crate::clock::clock_regression::{ClockVarianceParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
@@ -110,7 +110,7 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
-    let clock_params = ClockParams::default();
+    let clock_params = ClockVarianceParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
     let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);
@@ -514,7 +514,7 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
-    let clock_params = ClockParams::default();
+    let clock_params = ClockVarianceParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
     let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);

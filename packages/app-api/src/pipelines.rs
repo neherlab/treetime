@@ -5,7 +5,7 @@ pub mod ancestral {
 }
 
 pub mod clock {
-  pub use treetime::clock::pipeline::{ClockInput, ClockOutput, ClockPipelineParams, run};
+  pub use treetime::clock::pipeline::{ClockInput, ClockOutput, ClockParams, run};
 }
 
 pub mod optimize {

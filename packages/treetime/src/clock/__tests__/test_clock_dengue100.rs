@@ -4,10 +4,10 @@ mod tests {
   use crate::clock::assign_dates::assign_dates;
   use crate::clock::clock_filter::clock_filter_inplace;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
-  use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
+  use crate::clock::pipeline::{self, ClockInput, ClockParams};
   use crate::clock::reroot::RerootParams;
   use crate::o;
   use crate::progress::NoopProgress;
@@ -62,7 +62,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     inputs: &mut ClockInputs,
     state: &mut ClockState,
-    clock_params: &ClockParams,
+    clock_params: &ClockVarianceParams,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(ClockModel, i32), Report> {
     let params = BranchPointOptimizationParams::default();
@@ -147,7 +147,7 @@ mod tests {
       &names,
       &mut inputs,
       &mut state,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       &mut branch_lengths,
     )?;
     let outlier_names = get_outlier_names(&names, &graph, &state);
@@ -208,7 +208,7 @@ mod tests {
       &names,
       &mut inputs,
       &mut state,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       &mut branch_lengths,
     )?;
     let outlier_names = get_outlier_names(&names, &graph, &state);
@@ -236,7 +236,7 @@ mod tests {
 
   #[test]
   fn test_dengue100_clock_pipeline_prefilter_uses_supplied_clock_params() -> Result<(), Report> {
-    let custom_params = ClockParams {
+    let custom_params = ClockVarianceParams {
       variance_factor: 1e-3,
       variance_offset: 0.0,
       variance_offset_leaf: 1e-4,
@@ -261,7 +261,7 @@ mod tests {
       &default_names,
       &mut default_inputs,
       &mut default_state,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       &mut default_branch_lengths,
     )?;
     let default_outliers = get_outlier_names(&default_names, &default_graph, &default_state);
@@ -280,7 +280,7 @@ mod tests {
       &Some(o!("genbank_accession")),
       &Some(o!("date")),
     )?;
-    let params = ClockPipelineParams {
+    let params = ClockParams {
       clock_params: custom_params,
       clock_filter: 3.0,
       keep_root: false,
@@ -329,8 +329,8 @@ mod tests {
       &Some(o!("genbank_accession")),
       &Some(o!("date")),
     )?;
-    let params = ClockPipelineParams {
-      clock_params: ClockParams::default(),
+    let params = ClockParams {
+      clock_params: ClockVarianceParams::default(),
       clock_filter: 0.0,
       keep_root: true,
       allow_negative_rate: false,

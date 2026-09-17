@@ -8,10 +8,10 @@ use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
-use treetime::clock::clock_regression::ClockParams;
+use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::clock_state::{ClockInputs, ClockState};
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime::clock::pipeline::{self, ClockInput, ClockPipelineParams};
+use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::make_error;
 use treetime::make_report;
@@ -133,7 +133,7 @@ pub fn run_clock(
       as f64;
     let tip_slack = clock_args.tip_slack.unwrap_or(3.0);
     let overdispersion = 2.0;
-    ClockParams {
+    ClockVarianceParams {
       variance_factor: overdispersion / seq_len,
       variance_offset: 0.0,
       variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
@@ -142,7 +142,7 @@ pub fn run_clock(
     clock_args.clock_regression.clock_params.clone().into()
   };
 
-  let params = ClockPipelineParams {
+  let params = ClockParams {
     clock_params,
     clock_filter: clock_args.clock_filter,
     keep_root: clock_args.keep_root,

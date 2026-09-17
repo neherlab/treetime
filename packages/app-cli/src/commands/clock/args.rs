@@ -16,7 +16,7 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::MethodAncestral;
-use treetime::clock::clock_regression::ClockParams;
+use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use treetime::optimize::params::BranchLengthMode;
 
@@ -371,11 +371,11 @@ pub struct BranchSplitArgs {
   pub golden_params: GoldenSectionParamsCli,
 }
 
-/// CLI mirror of core `ClockParams`; see the branch-split mirror rationale above.
+/// CLI mirror of core `ClockVarianceParams`; see the branch-split mirror rationale above.
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-#[schemars(rename = "ClockParams")]
+#[schemars(rename = "ClockVarianceParams")]
 pub struct ClockParamsCli {
   /// Variance scaling factor proportional to branch length
   #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_factor))]
@@ -393,9 +393,9 @@ pub struct ClockParamsCli {
   pub variance_offset_leaf: f64,
 }
 
-impl From<ClockParamsCli> for ClockParams {
+impl From<ClockParamsCli> for ClockVarianceParams {
   fn from(params: ClockParamsCli) -> Self {
-    ClockParams {
+    ClockVarianceParams {
       variance_factor: params.variance_factor,
       variance_offset: params.variance_offset,
       variance_offset_leaf: params.variance_offset_leaf,

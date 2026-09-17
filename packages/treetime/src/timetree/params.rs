@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_regression::ClockVarianceParams;
 use crate::make_report;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
@@ -46,21 +46,21 @@ pub fn compute_effective_time_marginal(
   }
 }
 
-/// Build covariation-aware ClockParams when covariation is enabled.
+/// Build covariation-aware ClockVarianceParams when covariation is enabled.
 ///
 /// v0 (clock_tree.py:277-285):
 ///   branch_variance = (max(0, clock_length) + tip_slack^2 * om) * om   [leaves]
 ///   branch_variance = max(0, clock_length) * om                         [internal]
 /// where om = 1/seq_len, tip_slack = OVER_DISPERSION = 10 (config.py:8)
 ///
-/// Mapping to v1 ClockParams:
+/// Mapping to v1 ClockVarianceParams:
 ///   variance_factor = 1/seq_len, variance_offset = 0, variance_offset_leaf = tip_slack^2/seq_len^2
 pub fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,
   aln: Option<&[AlignmentRecord]>,
-) -> Result<Option<ClockParams>, Report> {
+) -> Result<Option<ClockVarianceParams>, Report> {
   if !covariation {
     return Ok(None);
   }
@@ -76,7 +76,7 @@ pub fn build_covariation_clock_params(
 
   info!("Covariation-aware clock regression: seq_len={seq_len}, tip_slack={tip_slack}");
 
-  Ok(Some(ClockParams {
+  Ok(Some(ClockVarianceParams {
     variance_factor: 1.0 / seq_len,
     variance_offset: 0.0,
     variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),

@@ -5,7 +5,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
@@ -250,7 +250,7 @@ pub fn run(
     &mut input.graph,
     &mut clock_inputs,
     clock_state,
-    &ClockParams::default(),
+    &ClockVarianceParams::default(),
     params.clock_rate,
     params.keep_root,
     &branch_params,
@@ -309,7 +309,7 @@ pub fn run(
       &mut clock_state,
       &timetree_state,
       partitions,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       params.clock_rate,
       &branch_params,
       &params.reroot_spec,
@@ -371,7 +371,7 @@ pub fn run(
   progress.report("Initial timetree inference", 0.2, "");
   info!("### TreeTime: initial round");
 
-  let default_clock_params = ClockParams::default();
+  let default_clock_params = ClockVarianceParams::default();
   let reroot_clock_params = covariation_clock_params.as_ref().unwrap_or(&default_clock_params);
 
   if !params.keep_root {

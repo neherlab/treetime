@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
@@ -31,7 +31,7 @@ pub fn find_best_split(
   state: &ClockState,
   edge: GraphEdgeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report> {

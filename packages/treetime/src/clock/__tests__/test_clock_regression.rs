@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
+  use crate::clock::clock_regression::{ClockVarianceParams, clock_regression_backward};
   use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::o;
@@ -50,14 +50,14 @@ mod tests {
       &graph,
       &inputs,
       &mut state,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       &branch_lengths,
       None,
     )?;
     let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
-    let options = &ClockParams {
+    let options = &ClockVarianceParams {
       variance_factor: 1.0,
       variance_offset: 0.0,
       variance_offset_leaf: 1.0,
@@ -118,7 +118,7 @@ mod tests {
         &graph,
         &inputs,
         &mut state,
-        &ClockParams::default(),
+        &ClockVarianceParams::default(),
         &branch_lengths,
         None,
       )?;

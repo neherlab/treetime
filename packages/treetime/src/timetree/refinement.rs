@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -33,7 +33,7 @@ pub(crate) struct Refinement<'a> {
   /// partitions die with the round rather than surviving half-updated.
   pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
-  pub clock_params: &'a ClockParams,
+  pub clock_params: &'a ClockVarianceParams,
   pub branch_params: &'a BranchPointOptimizationParams,
   /// This round's per-branch coalescent merger-rate schedule.
   pub merger_rate: &'a PiecewiseConstantFn,

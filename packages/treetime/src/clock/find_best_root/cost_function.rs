@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::RootObjective;
@@ -17,7 +17,7 @@ pub struct BranchPointCostFunction<'a> {
   pub branch_variance: f64,
   pub is_leaf: bool,
   pub node_time: Option<f64>,
-  pub options: &'a ClockParams,
+  pub options: &'a ClockVarianceParams,
   pub objective: RootObjective,
 }
 
@@ -28,7 +28,7 @@ impl<'a> BranchPointCostFunction<'a> {
     state: &ClockState,
     edge: GraphEdgeKey,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    options: &'a ClockParams,
+    options: &'a ClockVarianceParams,
     objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report> {
     let edge_obj = graph

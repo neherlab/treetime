@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -279,7 +279,7 @@ mod tests {
       &mut graph,
       &mut clock_estimate_inputs,
       clock_estimate_state,
-      &ClockParams::default(),
+      &ClockVarianceParams::default(),
       Some(CLOCK_RATE),
       true,
       &BranchPointOptimizationParams::default(),
@@ -359,7 +359,7 @@ mod tests {
       graph,
       partitions,
       clock_model,
-      clock_params: &ClockParams::default(),
+      clock_params: &ClockVarianceParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
       merger_rate: &merger_rate,
       prior: coalescent_tc.is_some().then_some(&coalescent),

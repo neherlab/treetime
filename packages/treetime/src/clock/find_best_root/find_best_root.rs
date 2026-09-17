@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
@@ -20,7 +20,7 @@ pub fn find_best_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,
-  options: &ClockParams,
+  options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
