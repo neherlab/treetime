@@ -26,7 +26,6 @@ argmin = { workspace = true }
 argmin-math = { workspace = true }
 auto_ops = { workspace = true }
 chrono = { workspace = true }
-clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
 crossbeam-channel = { workspace = true }
 crossbeam-queue = { workspace = true }
@@ -61,9 +60,6 @@ openblas-src = { workspace = true }
 statrs = { workspace = true }
 
 [dev-dependencies]
-# Self-reference enabling the `clap` feature for the test build only, so tests can exercise the
-# `clap::ValueEnum` derives that production gates behind that feature.
-treetime = { path = ".", features = ["clap"] }
 bio = { workspace = true }
 criterion = { workspace = true }
 ctor = { workspace = true }
@@ -75,9 +71,6 @@ pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
-
-[features]
-clap = ["dep:clap"]
 
 [lints]
 workspace = true

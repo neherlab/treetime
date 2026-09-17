@@ -88,8 +88,8 @@ pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
-  // serde's `kebab-case` splits acronym runs (`JC69` -> `j-c69`); pin these to match the
-  // command-line spelling that clap derives via heck (`jc69`), keeping `--config` and CLI in sync.
+  // serde's `kebab-case` splits acronym runs (`JC69` -> `j-c69`); pin these to the compact spelling
+  // (`jc69`) so `--config` values and the command-line value names stay in sync.
   #[serde(rename = "jc69")]
   JC69,
   K80,

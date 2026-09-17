@@ -36,7 +36,7 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 
 [features]
-clap = ["dep:clap", "treetime/clap"]
+clap = ["dep:clap"]
 
 [dev-dependencies]
 approx = { workspace = true }
