@@ -22,7 +22,7 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::progress::ProgressSink;
-use treetime::seq::alignment::{EdgeSeqInput, ReconstructionInput, get_common_length, node_seq_inputs};
+use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
@@ -49,7 +49,7 @@ pub fn run_ancestral_reconstruction(
     &args.aa_root_sequence,
   )?;
 
-  let AncestralInput {
+  let AncestralReadInputs {
     mut input,
     mask,
     alphabet,
@@ -247,8 +247,8 @@ pub fn run_ancestral_reconstruction(
 /// core input drops: per-name leaf descriptions (for the reconstructed FASTA) and per-node
 /// input-tree branch support (for the tree and node-data writers), both keyed as the writers consume
 /// them.
-struct AncestralInput {
-  input: ReconstructionInput,
+struct AncestralReadInputs {
+  input: AncestralInput,
   mask: Vec<bool>,
   alphabet: Alphabet,
   descs: BTreeMap<String, Option<String>>,
@@ -259,7 +259,7 @@ fn read_nwk_fasta(
   args: &TreetimeAncestralArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<AncestralInput, Report> {
+) -> Result<AncestralReadInputs, Report> {
   let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
@@ -314,8 +314,8 @@ fn read_nwk_fasta(
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
-  let input = ReconstructionInput { graph, nodes, edges };
-  Ok(AncestralInput {
+  let input = AncestralInput { graph, nodes, edges };
+  Ok(AncestralReadInputs {
     input,
     mask,
     alphabet,

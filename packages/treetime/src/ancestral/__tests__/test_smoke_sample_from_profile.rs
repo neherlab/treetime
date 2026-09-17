@@ -10,7 +10,7 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::{EdgeSeqInput, ReconstructionInput, node_seq_inputs};
+  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
   use eyre::Report;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
@@ -63,7 +63,7 @@ mod tests {
     let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names).unwrap();
     let alignment_length = get_common_length(&sequences).unwrap();
     let mask = create_mask(&sequences, alignment_length, &alphabet);
-    let input = ReconstructionInput {
+    let input = AncestralInput {
       nodes: node_seq_inputs(&parse.graph, &names, sequences),
       edges: parse
         .branch_lengths
@@ -121,7 +121,7 @@ mod tests {
       let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names)?;
       let alignment_length = get_common_length(&sequences)?;
       let mask = create_mask(&sequences, alignment_length, &alphabet);
-      let input = ReconstructionInput {
+      let input = AncestralInput {
         nodes: node_seq_inputs(&parse.graph, &names, sequences),
         edges: parse
           .branch_lengths

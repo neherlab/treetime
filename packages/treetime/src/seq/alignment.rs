@@ -10,13 +10,13 @@ use treetime_primitives::{AlignmentRecord, Seq};
 /// The merged tree-and-alignment input the reconstruction pipeline consumes: the graph, the per-node
 /// input keyed by the graph's own node keys, and the per-edge input keyed by its edge keys.
 #[derive(Debug)]
-pub struct ReconstructionInput {
+pub struct AncestralInput {
   pub graph: Graph,
   pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeSeqInput>,
 }
 
-impl ReconstructionInput {
+impl AncestralInput {
   /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
   /// output writers consume it.
   pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {

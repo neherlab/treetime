@@ -17,7 +17,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
-use crate::seq::alignment::ReconstructionInput;
+use crate::seq::alignment::AncestralInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
@@ -411,7 +411,7 @@ pub struct AncestralOutputFull {
 
 pub fn run(
   params: &AncestralParams,
-  input: &ReconstructionInput,
+  input: &AncestralInput,
   alphabet: Alphabet,
   mask: Vec<bool>,
   cancel: &dyn Cancel,
