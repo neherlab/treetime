@@ -18,20 +18,16 @@ use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
-#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockParams {
   /// Variance scaling factor proportional to branch length
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_factor))]
   #[default = 0.0]
   pub variance_factor: f64,
 
   /// Constant variance offset for all branches
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_offset))]
   #[default = 0.0]
   pub variance_offset: f64,
 
   /// Additional variance offset for leaf (terminal) nodes
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_offset_leaf))]
   #[default = 1.0]
   pub variance_offset_leaf: f64,
 }

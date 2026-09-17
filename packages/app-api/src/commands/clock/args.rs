@@ -243,30 +243,164 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
   }
 }
 
+// CLI mirrors of the core clock optimization parameter types. Core keeps these as plain domain
+// structs used by the branch-point optimizer; these adapter copies own the clap parsing and convert
+// back with `From`. Fields, docs, clap flag names, defaults, serde spellings, and the
+// `schemars(rename)` schema names are kept identical to the core types so `--help`, config parsing,
+// and the generated schema stay byte-identical.
+
+/// Optimization method selection
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "OptimizationMethod")]
+pub enum OptimizationMethodCli {
+  /// Grid search with equally-spaced evaluation points
+  #[default]
+  Grid,
+  /// Brent's method for robust 1D optimization
+  Brent,
+  /// Golden section search optimization
+  #[cfg_attr(feature = "clap", clap(name = "golden-section"))]
+  GoldenSection,
+}
+
+impl From<OptimizationMethodCli> for OptimizationMethod {
+  fn from(method: OptimizationMethodCli) -> Self {
+    match method {
+      OptimizationMethodCli::Grid => OptimizationMethod::Grid,
+      OptimizationMethodCli::Brent => OptimizationMethod::Brent,
+      OptimizationMethodCli::GoldenSection => OptimizationMethod::GoldenSection,
+    }
+  }
+}
+
+/// Configuration for grid search optimization
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+#[schemars(rename = "GridSearchParams")]
+pub struct GridSearchParamsCli {
+  /// Number of equally-spaced points to evaluate (grid method only)
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParamsCli::default().n_points))]
+  #[default = 11]
+  pub n_points: usize,
+}
+
+impl From<GridSearchParamsCli> for GridSearchParams {
+  fn from(params: GridSearchParamsCli) -> Self {
+    GridSearchParams {
+      n_points: params.n_points,
+    }
+  }
+}
+
+/// Configuration for Brent's method optimization
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+#[schemars(rename = "BrentParams")]
+pub struct BrentParamsCli {
+  /// Maximum number of iterations for Brent's method
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-max-iters", default_value_t = BrentParamsCli::default().brent_max_iters))]
+  #[default = 50]
+  pub brent_max_iters: usize,
+  /// Convergence tolerance for Brent's method
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-tolerance", default_value_t = BrentParamsCli::default().brent_tolerance))]
+  #[default = 1e-12]
+  pub brent_tolerance: f64,
+}
+
+impl From<BrentParamsCli> for BrentParams {
+  fn from(params: BrentParamsCli) -> Self {
+    BrentParams {
+      brent_max_iters: params.brent_max_iters,
+      brent_tolerance: params.brent_tolerance,
+    }
+  }
+}
+
+/// Configuration for golden section search optimization
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+#[schemars(rename = "GoldenSectionParams")]
+pub struct GoldenSectionParamsCli {
+  /// Maximum number of iterations for golden section search
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParamsCli::default().golden_max_iters))]
+  #[default = 50]
+  pub golden_max_iters: usize,
+  /// Convergence tolerance for golden section search
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParamsCli::default().golden_tolerance))]
+  #[default = 1e-12]
+  pub golden_tolerance: f64,
+}
+
+impl From<GoldenSectionParamsCli> for GoldenSectionParams {
+  fn from(params: GoldenSectionParamsCli) -> Self {
+    GoldenSectionParams {
+      golden_max_iters: params.golden_max_iters,
+      golden_tolerance: params.golden_tolerance,
+    }
+  }
+}
+
 /// Branch split optimization parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default()))]
-  #[default(OptimizationMethod::default())]
-  pub method: OptimizationMethod,
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethodCli::default()))]
+  #[default(OptimizationMethodCli::default())]
+  pub method: OptimizationMethodCli,
 
   /// Grid search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
-  pub grid_params: GridSearchParams,
+  pub grid_params: GridSearchParamsCli,
 
   /// Brent's method parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
-  pub brent_params: BrentParams,
+  pub brent_params: BrentParamsCli,
 
   /// Golden section search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
-  pub golden_params: GoldenSectionParams,
+  pub golden_params: GoldenSectionParamsCli,
+}
+
+/// CLI mirror of core `ClockParams`; see the branch-split mirror rationale above.
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+#[schemars(rename = "ClockParams")]
+pub struct ClockParamsCli {
+  /// Variance scaling factor proportional to branch length
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_factor))]
+  #[default = 0.0]
+  pub variance_factor: f64,
+
+  /// Constant variance offset for all branches
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_offset))]
+  #[default = 0.0]
+  pub variance_offset: f64,
+
+  /// Additional variance offset for leaf (terminal) nodes
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_offset_leaf))]
+  #[default = 1.0]
+  pub variance_offset_leaf: f64,
+}
+
+impl From<ClockParamsCli> for ClockParams {
+  fn from(params: ClockParamsCli) -> Self {
+    ClockParams {
+      variance_factor: params.variance_factor,
+      variance_offset: params.variance_offset,
+      variance_offset_leaf: params.variance_offset_leaf,
+    }
+  }
 }
 
 /// Clock regression model parameters
@@ -277,5 +411,5 @@ pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
-  pub clock_params: ClockParams,
+  pub clock_params: ClockParamsCli,
 }

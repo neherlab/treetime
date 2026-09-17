@@ -1,4 +1,4 @@
-use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::clock::tree_output::write_clock_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -9,7 +9,7 @@ use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_regression::ClockParams;
 use treetime::clock::clock_state::{ClockInputs, ClockState};
-use treetime::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
+use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use treetime::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use treetime::make_error;
@@ -88,9 +88,11 @@ fn gather_clock_outputs(
 
 fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
   match args.method {
-    OptimizationMethod::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone()),
-    OptimizationMethod::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone()),
-    OptimizationMethod::GoldenSection => BranchPointOptimizationParams::golden_section_with(args.golden_params.clone()),
+    OptimizationMethodCli::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone().into()),
+    OptimizationMethodCli::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone().into()),
+    OptimizationMethodCli::GoldenSection => {
+      BranchPointOptimizationParams::golden_section_with(args.golden_params.clone().into())
+    },
   }
 }
 
@@ -135,7 +137,7 @@ pub fn run_clock(
       variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
     }
   } else {
-    clock_args.clock_regression.clock_params.clone()
+    clock_args.clock_regression.clock_params.clone().into()
   };
 
   let params = ClockPipelineParams {

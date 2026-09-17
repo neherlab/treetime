@@ -61,7 +61,6 @@ pub enum BranchPointOptimizationParams {
 
 /// Optimization method selection
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
@@ -70,7 +69,6 @@ pub enum OptimizationMethod {
   /// Brent's method for robust 1D optimization
   Brent,
   /// Golden section search optimization
-  #[cfg_attr(feature = "clap", clap(name = "golden-section"))]
   GoldenSection,
 }
 
@@ -109,10 +107,8 @@ impl BranchPointOptimizationParams {
 /// Configuration for grid search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
-#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GridSearchParams {
   /// Number of equally-spaced points to evaluate (grid method only)
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParams::default().n_points))]
   #[default = 11]
   pub n_points: usize,
 }
@@ -120,14 +116,11 @@ pub struct GridSearchParams {
 /// Configuration for Brent's method optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
-#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BrentParams {
   /// Maximum number of iterations for Brent's method
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-max-iters", default_value_t = BrentParams::default().brent_max_iters))]
   #[default = 50]
   pub brent_max_iters: usize,
   /// Convergence tolerance for Brent's method
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-tolerance", default_value_t = BrentParams::default().brent_tolerance))]
   #[default = 1e-12]
   pub brent_tolerance: f64,
 }
@@ -135,14 +128,11 @@ pub struct BrentParams {
 /// Configuration for golden section search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
-#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GoldenSectionParams {
   /// Maximum number of iterations for golden section search
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParams::default().golden_max_iters))]
   #[default = 50]
   pub golden_max_iters: usize,
   /// Convergence tolerance for golden section search
-  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParams::default().golden_tolerance))]
   #[default = 1e-12]
   pub golden_tolerance: f64,
 }
