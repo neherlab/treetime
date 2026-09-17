@@ -76,7 +76,7 @@ pub fn run_prune(
 
   cancel.check()?;
   progress.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input, &names, cancel)?;
+  let output = pipeline::run(&params, input, &names, cancel).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
     gtr,

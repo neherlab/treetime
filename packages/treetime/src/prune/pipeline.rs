@@ -2,13 +2,13 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::SparseReconstruction;
 use crate::cancel::Cancel;
+use crate::error::OperationError;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::node_seq_inputs;
-use eyre::Report;
 use itertools::{Itertools, izip};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -54,7 +54,7 @@ pub fn run(
   mut input: PruneInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
-) -> Result<PruneOutput, Report> {
+) -> Result<PruneOutput, OperationError> {
   cancel.check()?;
 
   // Entry maps propagated through the whole prune pipeline: every downstream name and branch length
@@ -70,8 +70,11 @@ pub fn run(
   // beside them until the output reconstructions are assembled.
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, gtrs, node_states): (Vec<_>, Vec<_>, Vec<_>) = if needs_sequences {
-    let sequences = std::mem::take(&mut input.sequences)
-      .ok_or_else(|| eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations"))?;
+    let sequences = std::mem::take(&mut input.sequences).ok_or_else(|| {
+      OperationError::InvalidInput(eyre::eyre!(
+        "Sequences required for --prune-empty or --merge-shared-mutations"
+      ))
+    })?;
     let node_inputs = node_seq_inputs(&input.graph, &names, sequences);
     let created = create_marginal_partition(
       &input.graph,

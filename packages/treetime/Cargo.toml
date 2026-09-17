@@ -29,6 +29,7 @@ color-eyre = { workspace = true }
 crossbeam-channel = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
+derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 indexmap = { workspace = true }

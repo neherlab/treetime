@@ -4,6 +4,7 @@ pub mod cancel;
 pub mod clock;
 pub mod coalescent;
 pub mod constants;
+pub mod error;
 pub mod gtr;
 pub mod hacks;
 pub mod io;

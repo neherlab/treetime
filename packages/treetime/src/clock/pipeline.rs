@@ -7,6 +7,7 @@ use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
+use crate::error::OperationError;
 use crate::progress::ProgressSink;
 use eyre::{Report, WrapErr};
 use log::info;
@@ -56,11 +57,11 @@ pub fn run(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<ClockOutput, Report> {
+) -> Result<ClockOutput, OperationError> {
   cancel.check()?;
   progress.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
-  assign_dates(&input.graph, &input.dates, &mut inputs, names)?;
+  assign_dates(&input.graph, &input.dates, &mut inputs, names).map_err(OperationError::InvalidInput)?;
   let state = ClockState::new(&input.graph);
 
   cancel.check()?;

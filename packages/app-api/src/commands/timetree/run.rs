@@ -136,7 +136,8 @@ pub fn run_timetree_estimation(
     None => None,
   };
 
-  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, cancel, progress)?;
+  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, cancel, progress)
+    .map_err(|err| err.into_report())?;
   if let Some(path) = &reconstructed_nuc_fasta {
     info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
   }

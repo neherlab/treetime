@@ -3,6 +3,7 @@ use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
@@ -95,9 +96,12 @@ pub fn run(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<OptimizeOutput, Report> {
+) -> Result<OptimizeOutput, OperationError> {
   if !(0.0..1.0).contains(&params.damping) {
-    return make_error!("damping must be in [0.0, 1.0), got {}", params.damping);
+    return Err(OperationError::InvalidParams(make_report!(
+      "damping must be in [0.0, 1.0), got {}",
+      params.damping
+    )));
   }
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
@@ -252,7 +256,9 @@ pub fn run(
   } else if let Some(family) = dense_partitions.first() {
     family.gtr.clone()
   } else {
-    return make_error!("optimize produced no partition to read the GTR from");
+    return Err(OperationError::InferenceFailed(make_report!(
+      "optimize produced no partition to read the GTR from"
+    )));
   };
 
   // The loop's topology cleanup collapses edges, resolves polytomies, and re-runs `assign_node_names`

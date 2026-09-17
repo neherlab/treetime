@@ -254,6 +254,7 @@ mod tests {
         false,
         &NoopCancel,
       )
+      .map_err(|err| err.into_report())
     }
   }
 }

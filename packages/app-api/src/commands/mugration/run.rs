@@ -84,7 +84,8 @@ pub fn run_mugration(
     mugration_args.smooth_initial_pi,
     mugration_args.filter_uninformative_root,
     cancel,
-  )?;
+  )
+  .map_err(|err| err.into_report())?;
 
   let topology_order = mugration_args
     .topology_order

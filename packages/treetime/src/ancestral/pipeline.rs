@@ -4,6 +4,7 @@ use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zer
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
 use crate::cancel::Cancel;
+use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_model;
@@ -29,7 +30,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
-use treetime_utils::make_error;
+use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
 pub struct AncestralParams {
@@ -415,23 +416,23 @@ pub fn run(
   mask: Vec<bool>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<AncestralOutputFull, Report> {
+) -> Result<AncestralOutputFull, OperationError> {
   let branch_lengths = input.branch_lengths();
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   if params.site_specific_gtr {
-    return make_error!(
+    return Err(OperationError::InvalidParams(make_report!(
       "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
        The mathematical core (GTRSiteSpecific) is implemented but partition system wiring is pending."
-    );
+    )));
   }
 
   if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
-    return make_error!(
+    return Err(OperationError::InvalidParams(make_report!(
       "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
        for marginal reconstruction; {:?} has no posterior profile to sample.",
       params.sample_from_profile,
       params.method
-    );
+    )));
   }
 
   // The caller completes the alignment (fills fully-ambiguous sequences for tips absent from it) and
@@ -614,7 +615,9 @@ pub fn run(
         .copied()
         .collect::<Vec<_>>()
         .join(", ");
-      make_error!("Joint ancestral reconstruction has been removed. Available methods: {available}")
+      Err(OperationError::InvalidParams(make_report!(
+        "Joint ancestral reconstruction has been removed. Available methods: {available}"
+      )))
     },
   }
 }

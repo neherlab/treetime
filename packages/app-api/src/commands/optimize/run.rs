@@ -66,7 +66,7 @@ pub fn run_optimize(
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, cancel, progress)?;
+  let output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
     gtr,

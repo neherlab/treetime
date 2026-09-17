@@ -15,6 +15,7 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
@@ -178,7 +179,7 @@ pub fn run(
   mut seq_sink: Option<Box<dyn SeqSink>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<TimetreeOutput, Report> {
+) -> Result<TimetreeOutput, OperationError> {
   info!("# TreeTime Timetree Estimation");
 
   debug!(
@@ -198,10 +199,13 @@ pub fn run(
     params.sequence_length,
     params.tip_slack,
     input.sequences.as_deref(),
-  )?;
+  )
+  .map_err(OperationError::InvalidParams)?;
 
   let date_constraints = if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph, names).wrap_err("Failed to load date constraints")?
+    load_date_constraints(dates, &input.graph, names)
+      .wrap_err("Failed to load date constraints")
+      .map_err(OperationError::InvalidInput)?
   } else {
     DateConstraints::default()
   };
@@ -431,7 +435,9 @@ pub fn run(
   };
 
   if params.n_branches_posterior.is_some() {
-    return make_error!("--n-branches-posterior is not yet implemented");
+    return Err(OperationError::InvalidParams(make_report!(
+      "--n-branches-posterior is not yet implemented"
+    )));
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
@@ -691,10 +697,10 @@ pub fn run(
   if seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
     if partitions.is_empty() {
       if seq_sink.is_some() {
-        return make_error!(
+        return Err(OperationError::InvalidParams(make_report!(
           "Reconstructed sequence output requires ancestral reconstruction; \
            incompatible with --branch-length-mode=input"
-        );
+        )));
       }
       warn!(
         "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
@@ -704,7 +710,7 @@ pub fn run(
       // Announce the final topology before the first sequence, so the sink can resolve names against
       // the tree a late reroot or polytomy resolution produced (core does not write names onto nodes).
       if let Some(sink) = seq_sink.as_mut() {
-        sink.on_topology(&input.graph)?;
+        sink.on_topology(&input.graph).map_err(OperationError::SinkFailed)?;
       }
       let branch_lengths_final = timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths);
       (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_final, partitions)?;

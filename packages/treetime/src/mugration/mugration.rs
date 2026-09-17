@@ -1,13 +1,14 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
+use crate::error::OperationError;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_model_and_rate;
-use crate::make_error;
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::storage::discrete::DiscreteStates;
+use crate::{make_error, make_report};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -95,7 +96,7 @@ pub fn execute_mugration(
   smooth_initial_pi: bool,
   filter_uninformative_root: bool,
   cancel: &dyn Cancel,
-) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
+) -> Result<(MugrationResult, MugrationOutputMaps), OperationError> {
   cancel.check()?;
 
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
@@ -104,8 +105,8 @@ pub fn execute_mugration(
     Some(weights_map) => {
       let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
 
-      let coverage =
-        validate_weight_coverage(&observed_values, &weights_keys, missing_data, missing_weights_threshold)?;
+      let coverage = validate_weight_coverage(&observed_values, &weights_keys, missing_data, missing_weights_threshold)
+        .map_err(OperationError::InvalidInput)?;
 
       if !coverage.missing_values.is_empty() {
         warn!(
@@ -124,9 +125,9 @@ pub fn execute_mugration(
   let n_states = discrete_states.len();
 
   if n_states < 2 {
-    return make_error!(
+    return Err(OperationError::InvalidInput(make_report!(
       "Mugration: only {n_states} discrete attributes provided for mugration. At least 2 are required."
-    );
+    )));
   }
 
   info!(

@@ -74,7 +74,7 @@ pub fn run_ancestral_reconstruction(
 
   let params = ancestral_params(args);
 
-  let result = pipeline::run(&params, &input, alphabet, mask, cancel, progress)?;
+  let result = pipeline::run(&params, &input, alphabet, mask, cancel, progress).map_err(|err| err.into_report())?;
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs

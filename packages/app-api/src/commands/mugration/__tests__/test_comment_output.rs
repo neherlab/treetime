@@ -39,7 +39,8 @@ mod tests {
       false,
       false,
       &NoopCancel,
-    )?;
+    )
+    .map_err(|err| err.into_report())?;
     let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 
