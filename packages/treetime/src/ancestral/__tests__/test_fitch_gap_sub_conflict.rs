@@ -4,21 +4,25 @@ mod tests {
   use crate::ancestral::fitch::compress_sequences;
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);
 
   /// Run Fitch compression and return, per edge, the substitutions and deletion ranges.
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(nwk)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -30,7 +34,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
     let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 

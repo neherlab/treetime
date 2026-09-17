@@ -11,16 +11,17 @@ mod tests {
   use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_primitives::seq::Seq;
 
   /// All-zero branch length tree. Auto mode (overwrite_valid=false) treats
@@ -112,7 +113,7 @@ mod tests {
       newick: &str,
     ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln = read_many_fasta_str(
+      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
           >A
           AAAACCCCGGGGTTTT
@@ -122,7 +123,10 @@ mod tests {
           GGGGTTTTAAAACCCC
         "#},
         &alphabet,
-      )?;
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
       let nwk_parsed = nwk_read_str(newick)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -130,7 +134,7 @@ mod tests {
       let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+      let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
       let partitions = vec![DenseReconstruction::seeded(
         partition,
         jc69(JC69Params::default())?,

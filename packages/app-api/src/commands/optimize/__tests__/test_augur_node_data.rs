@@ -2,6 +2,7 @@
 mod tests {
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -141,7 +142,12 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let sequences = read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
+    let sequences: Vec<AlignmentRecord> =
+      read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)
+        .unwrap()
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
 
     let params = OptimizeParams {
       model: GtrModelName::default(),

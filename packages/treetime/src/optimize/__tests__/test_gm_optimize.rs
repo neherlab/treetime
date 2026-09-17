@@ -181,7 +181,7 @@ mod tests {
     use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
-    use treetime_io::nwk::nwk_fasta_node_inputs;
+    use crate::seq::alignment::node_seq_inputs;
 
     use eyre::Report;
     use itertools::Itertools;
@@ -195,6 +195,7 @@ mod tests {
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_path;
     use treetime_io::nwk::nwk_read_file;
+    use treetime_primitives::AlignmentRecord;
     use treetime_primitives::LogLh;
 
     #[derive(Clone, Deserialize)]
@@ -243,7 +244,10 @@ mod tests {
 
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
-      let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
+      let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet_sparse)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
       let nwk_parsed = nwk_read_file(&tree_path)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -254,7 +258,7 @@ mod tests {
         &graph,
         0,
         alphabet_sparse,
-        &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
+        &node_seq_inputs(&graph, &names, aln.clone()),
       )?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let sparse_partitions = vec![SparseReconstruction::seeded(
@@ -265,7 +269,7 @@ mod tests {
 
       let length = get_common_length(&aln)?;
       let dense_partition = PartitionMarginalDense::new(1, alphabet_dense, length);
-      let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+      let dense_node_states = dense_partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
       let dense_partitions = vec![DenseReconstruction::seeded(
         dense_partition,
         jc69(JC69Params::default())?,

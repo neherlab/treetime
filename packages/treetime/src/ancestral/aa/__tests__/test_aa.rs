@@ -90,12 +90,14 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::pipeline::AncestralPartition;
+    use crate::seq::alignment::node_seq_inputs;
     use std::collections::BTreeMap;
     use std::fmt::Write;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::{nwk_fasta_node_inputs, nwk_read_str};
+    use treetime_io::nwk::nwk_read_str;
+    use treetime_primitives::AlignmentRecord;
 
     pub fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -132,9 +134,12 @@ mod tests {
         writeln!(fasta, ">{name}").unwrap();
         writeln!(fasta, "{seq}").unwrap();
       }
-      let sequences = read_many_fasta_str(&fasta, &alphabet).unwrap();
-      let partition =
-        create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, sequences)).unwrap();
+      let sequences: Vec<AlignmentRecord> = read_many_fasta_str(&fasta, &alphabet)
+        .unwrap()
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+      let partition = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, sequences)).unwrap();
       AncestralPartition::Fitch(partition)
     }
   }

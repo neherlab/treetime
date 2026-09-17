@@ -30,6 +30,7 @@ use crate::partition::timetree::marginal::{
 };
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
+use crate::seq::alignment::node_seq_inputs;
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
@@ -56,9 +57,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-use treetime_io::dates_csv::DatesMap;
-use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_fasta_node_inputs;
+use treetime_primitives::AlignmentRecord;
+use treetime_primitives::date::DatesMap;
 use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -110,7 +110,7 @@ pub struct TimetreeParams {
 pub struct TimetreeInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Option<Vec<FastaRecord>>,
+  pub sequences: Option<Vec<AlignmentRecord>>,
   pub dates: Option<DatesMap>,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The pipeline takes
   /// ownership and maintains it in place: the ML pre-steps, reroots, and polytomy resolution update
@@ -285,7 +285,7 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
-      let node_inputs = nwk_fasta_node_inputs(&input.graph, names, aln.to_vec());
+      let node_inputs = node_seq_inputs(&input.graph, names, aln.to_vec());
       (partitions, _) = initialize_marginal_timetree(
         &input.graph,
         &branch_lengths_or_zero(&branch_lengths),
@@ -990,14 +990,14 @@ fn initialize_partitions_from_params(
   params: &TimetreeParams,
   graph: &Graph,
   alphabet: Alphabet,
-  aln: Option<&[FastaRecord]>,
+  aln: Option<&[AlignmentRecord]>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PartitionInitResult, Report> {
   let model_name = params.model;
 
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
-  let node_inputs = nwk_fasta_node_inputs(graph, names, aln_data.to_vec());
+  let node_inputs = node_seq_inputs(graph, names, aln_data.to_vec());
   let created = create_marginal_partition(
     graph,
     0,

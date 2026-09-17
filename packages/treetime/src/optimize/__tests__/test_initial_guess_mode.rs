@@ -16,6 +16,7 @@ pub mod tests {
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -23,13 +24,13 @@ pub mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
@@ -532,7 +533,7 @@ pub mod tests {
       Report,
     > {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln = test_alignment()?;
+      let aln: Vec<AlignmentRecord> = test_alignment()?.into_iter().map(AlignmentRecord::from).collect();
       let nwk_parsed = nwk_read_str(newick)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -540,7 +541,7 @@ pub mod tests {
       let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+      let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
       let partitions = vec![DenseReconstruction::seeded(
         partition,
         jc69(JC69Params::default())?,

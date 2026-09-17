@@ -5,14 +5,15 @@ mod tests {
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::pretty_assert_ulps_eq;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use lazy_static::lazy_static;
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::AlignmentRecord;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
@@ -36,7 +37,10 @@ mod tests {
   ) -> Result<(), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
-    let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let gtr_a = {
       let nwk_parsed = nwk_read_file(&tree_path)?;
@@ -44,7 +48,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
     };
 
@@ -54,7 +58,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
     };
 

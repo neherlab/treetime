@@ -1,8 +1,11 @@
+pub mod alignment;
 pub mod bitset128;
+pub mod date;
 pub mod log_lh;
 pub mod seq;
 pub mod seq_char;
 
+pub use alignment::AlignmentRecord;
 pub use bitset128::{BitSet128, BitSet128Status};
 pub use log_lh::LogLh;
 pub use seq::Seq;

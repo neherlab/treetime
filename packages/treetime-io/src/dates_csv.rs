@@ -2,8 +2,6 @@ use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::Path;
 use treetime_utils::datetime::options::DateParserOptions;
@@ -13,74 +11,8 @@ use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range,
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct DateExact {
-  pub value: f64,
-}
+pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct DateRange {
-  pub start: f64,
-  pub end: f64,
-}
-
-impl DateRange {
-  pub fn width(&self) -> f64 {
-    self.end - self.start
-  }
-
-  pub fn contains(&self, value: f64) -> bool {
-    value >= self.start && value <= self.end
-  }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum DateValue {
-  Exact(DateExact),
-  Uncertain(DateRange),
-  Range(DateRange),
-}
-
-impl DateValue {
-  #[inline]
-  pub fn mean(&self) -> f64 {
-    match self {
-      DateValue::Exact(d) => d.value,
-      DateValue::Uncertain(r) | DateValue::Range(r) => f64::midpoint(r.start, r.end),
-    }
-  }
-
-  pub fn is_exact(&self) -> bool {
-    matches!(self, DateValue::Exact(_))
-  }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct DateConstraint {
-  pub raw: String,
-  pub value: DateValue,
-}
-
-impl DateConstraint {
-  pub fn exact(value: f64) -> Self {
-    Self {
-      raw: value.to_string(),
-      value: DateValue::Exact(DateExact { value }),
-    }
-  }
-
-  #[inline]
-  pub fn mean(&self) -> f64 {
-    self.value.mean()
-  }
-
-  pub fn is_exact(&self) -> bool {
-    self.value.is_exact()
-  }
-}
-
-pub type DatesMap = BTreeMap<String, Option<DateConstraint>>;
 pub type DateRecord = (String, Option<DateConstraint>);
 
 pub fn read_dates_from_reader(

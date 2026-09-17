@@ -8,6 +8,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -15,10 +16,9 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::Seq;
+  use treetime_primitives::{AlignmentRecord, Seq};
 
   /// C3: a tip that is Fitch-equal to its parent must keep its own observed nucleotide.
   ///
@@ -69,7 +69,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -154,8 +154,13 @@ mod tests {
     Ok(())
   }
 
-  fn parse_aln(fasta: &str) -> Result<Vec<FastaRecord>, Report> {
-    read_many_fasta_str(fasta, &Alphabet::default())
+  fn parse_aln(fasta: &str) -> Result<Vec<AlignmentRecord>, Report> {
+    Ok(
+      read_many_fasta_str(fasta, &Alphabet::default())?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect(),
+    )
   }
 
   fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
@@ -215,14 +220,14 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(
       graph,
       0,
       Alphabet::default(),
-      &nwk_fasta_node_inputs(graph, names, aln.to_vec()),
+      &node_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
@@ -234,11 +239,11 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
     let partition = PartitionMarginalDense::new(0, Alphabet::default(), get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(to_strings(reconstruct_named_dense(graph, names, &mut recon, impute)?))

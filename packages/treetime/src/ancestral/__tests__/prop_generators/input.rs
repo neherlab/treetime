@@ -8,8 +8,8 @@ use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
-use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_read_str;
+use treetime_primitives::AlignmentRecord;
 
 /// Generate valid nucleotide equilibrium frequencies: positive, sum to 1.
 fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
@@ -59,7 +59,7 @@ pub struct MarginalTestInput {
   /// Newick tree string
   pub newick: String,
   /// Alignment with sequences for all leaf taxa
-  pub alignment: Vec<FastaRecord>,
+  pub alignment: Vec<AlignmentRecord>,
   /// GTR substitution model
   pub gtr: GTR,
   /// Number of taxa (leaves)
@@ -155,7 +155,7 @@ mod tests {
           record.seq.len(),
           input.seq_len,
           "Sequence length mismatch for {}: {} vs {}",
-          record.seq_name,
+          record.name,
           record.seq.len(),
           input.seq_len
         );
@@ -174,9 +174,9 @@ mod tests {
       // All taxa names in alignment should appear in newick
       for record in &input.alignment {
         prop_assert!(
-          input.newick.contains(&record.seq_name),
+          input.newick.contains(&record.name),
           "Taxon {} not found in Newick: {}",
-          record.seq_name,
+          record.name,
           input.newick
         );
       }
@@ -204,7 +204,7 @@ mod tests {
 
       let leaf_name_count = leaf_names.len();
       let leaf_names: BTreeSet<String> = leaf_names.into_iter().collect();
-      let aln_names: BTreeSet<String> = input.alignment.iter().map(|record| record.seq_name.clone()).collect();
+      let aln_names: BTreeSet<String> = input.alignment.iter().map(|record| record.name.clone()).collect();
 
       prop_assert_eq!(
         leaf_name_count,

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -32,9 +32,9 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::RerootChanges;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::{AsciiChar, Seq, seq};
+  use treetime_primitives::{AlignmentRecord, AsciiChar, Seq, seq};
   use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
@@ -67,10 +67,11 @@ mod tests {
     }
   }
 
-  fn gap_free_alignment() -> Result<Vec<FastaRecord>, Report> {
+  fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
-      indoc! {r#"
+    Ok(
+      read_many_fasta_str(
+        indoc! {r#"
         >A
         ACGTACGTACGTACGT
         >B
@@ -80,7 +81,11 @@ mod tests {
         >D
         ACGTACGTACGTACGC
       "#},
-      &alphabet,
+        &alphabet,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect(),
     )
   }
 
@@ -101,7 +106,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
@@ -505,7 +510,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 

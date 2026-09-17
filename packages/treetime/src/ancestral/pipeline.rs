@@ -16,6 +16,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
+use crate::seq::alignment::ReconstructionInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
@@ -25,7 +26,6 @@ use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NwkFastaInput;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
@@ -410,7 +410,7 @@ pub struct AncestralOutputFull {
 
 pub fn run(
   params: &AncestralParams,
-  input: &NwkFastaInput,
+  input: &ReconstructionInput,
   alphabet: Alphabet,
   mask: Vec<bool>,
   cancel: &dyn Cancel,

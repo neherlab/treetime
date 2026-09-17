@@ -6,6 +6,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_primitives::AlignmentRecord;
 
   /// Construct a deterministic test input: 4-taxon balanced binary tree with
   /// JC69 model and a 16bp gap-free alignment.
@@ -23,7 +24,7 @@ mod tests {
   /// exchangeabilities) is the simplest GTR submodel, isolating dense/sparse
   /// agreement from GTR parameterization effects.
   fn example_gap_free_input() -> Result<MarginalTestInput, Report> {
-    let alignment = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
       "
 >A
 ACGTACGTACGTACGT
@@ -35,7 +36,10 @@ ACGTACGTACGTACGG
 ACGTACGTACGTACGC
 ",
       &*crate::test_utils::NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
     let gtr = jc69(JC69Params::default())?;
     Ok(MarginalTestInput {
       newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),

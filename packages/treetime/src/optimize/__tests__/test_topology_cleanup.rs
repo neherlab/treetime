@@ -23,6 +23,7 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
@@ -34,8 +35,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -277,7 +278,7 @@ mod tests {
     // After Fitch compression + marginal, the optimizer should detect the zero-optimal
     // branch and the loop should collapse it.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -289,7 +290,10 @@ mod tests {
         TCGTACGTACGT
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     // A and B are identical: the internal edge AB should be optimized to zero
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
@@ -298,7 +302,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
@@ -369,7 +373,7 @@ mod tests {
   fn test_optimize_loop_no_collapse_when_branches_nonzero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     // All branches have genuine signal: no edges should be collapsed
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -381,7 +385,10 @@ mod tests {
         ACGTACGTACGA
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
     let names = nwk_parsed.names();
@@ -390,7 +397,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
@@ -447,7 +454,7 @@ mod tests {
     // majority, the root's marginal MAP resolves to A. Edges to A and B carry
     // the shared mutation A->T, triggering merge.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         TCGTACGTACGTACGT
@@ -461,7 +468,10 @@ mod tests {
         ACGTACGTACGTACGT
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
     let names = nwk_parsed.names();
@@ -470,7 +480,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(
       sp_partition,
@@ -653,7 +663,7 @@ mod tests {
     // Dense-mode integration test: identical sequences A and B should cause
     // the AB internal edge to be collapsed during optimization.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -665,7 +675,10 @@ mod tests {
         TCGTACGTACGT
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
@@ -675,7 +688,7 @@ mod tests {
     let mut graph: Graph = graph;
 
     let dense_partition = PartitionMarginalDense::new(0, nuc, get_common_length(&aln)?);
-    let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let dense_node_states = dense_partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?, dense_node_states)];
 
     let (mut dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
@@ -1017,7 +1030,7 @@ mod tests {
     // A and B are identical, so the AB internal edge optimizes toward zero. With collapse
     // disabled, run_optimize_loop must leave that edge in place: the node count is unchanged.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -1029,7 +1042,10 @@ mod tests {
         TCGTACGTACGT
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
@@ -1038,7 +1054,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
@@ -1089,7 +1105,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_topology_change_map_matches_edge_set() -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -1101,7 +1117,10 @@ mod tests {
         TCGTACGTACGT
       "#},
       &nuc,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
@@ -1110,7 +1129,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(
       sp_partition,

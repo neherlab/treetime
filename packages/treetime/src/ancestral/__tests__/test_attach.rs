@@ -4,9 +4,8 @@ use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_read_str;
-use treetime_primitives::Seq;
+use treetime_primitives::{AlignmentRecord, Seq};
 
 #[test]
 fn test_attach_synthesizes_all_unknown_for_missing_tip() {
@@ -115,23 +114,17 @@ mod helpers {
     (graph, names)
   }
 
-  pub fn records(entries: &[(&str, &str)]) -> Vec<FastaRecord> {
+  pub fn records(entries: &[(&str, &str)]) -> Vec<AlignmentRecord> {
     entries
       .iter()
-      .enumerate()
-      .map(|(index, (name, seq))| FastaRecord {
-        seq_name: (*name).to_owned(),
-        desc: None,
+      .map(|(name, seq)| AlignmentRecord {
+        name: (*name).to_owned(),
         seq: Seq::try_from_str(seq).unwrap(),
-        index,
       })
       .collect()
   }
 
-  pub fn by_name(records: Vec<FastaRecord>) -> BTreeMap<String, Seq> {
-    records
-      .into_iter()
-      .map(|record| (record.seq_name, record.seq))
-      .collect()
+  pub fn by_name(records: Vec<AlignmentRecord>) -> BTreeMap<String, Seq> {
+    records.into_iter().map(|record| (record.name, record.seq)).collect()
   }
 }

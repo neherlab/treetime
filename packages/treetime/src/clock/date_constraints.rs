@@ -7,7 +7,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
+use treetime_primitives::date::{DateConstraint, DateValue, DatesMap};
 
 /// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
 ///

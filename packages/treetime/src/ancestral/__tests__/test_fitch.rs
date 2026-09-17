@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::composition::Composition;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -26,9 +27,8 @@ mod tests {
     RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::AsciiChar;
+  use treetime_primitives::{AlignmentRecord, AsciiChar};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
@@ -192,7 +192,7 @@ mod tests {
   /// state is preferred when present in the child's state set.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -204,7 +204,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let expected = read_many_fasta_str(
       indoc! {r#"
@@ -236,7 +239,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -263,7 +266,7 @@ mod tests {
   /// observed data) and that internal node sequences match the expected reconstruction.
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -275,7 +278,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let expected = read_many_fasta_str(
       indoc! {r#"
@@ -315,7 +321,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -337,7 +343,7 @@ mod tests {
 
   #[test]
   fn test_compress_sequences_retains_internal_exact_sequences() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         RCGTACGT
@@ -349,7 +355,10 @@ mod tests {
         GCGTACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -365,7 +374,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
@@ -390,7 +399,7 @@ mod tests {
   /// indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -402,7 +411,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -419,7 +431,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
@@ -466,7 +478,7 @@ mod tests {
   fn test_fitch_complex_gaps() -> Result<(), Report> {
     // Test cases: a) deletions overlap, b) root has a deletion, c) inserted sequence is variable
     // In DE, position 3 is inserted, but it varies in D and E
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         NC--G
@@ -480,7 +492,10 @@ mod tests {
         TGCCG
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -497,7 +512,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
@@ -546,7 +561,7 @@ mod tests {
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
     // Test polytomy (node with more than 2 children)
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         NC--G
@@ -560,7 +575,10 @@ mod tests {
         TGCCG
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     // CDE is a polytomy with 3 children: C, D, E
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
@@ -578,7 +596,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     //
@@ -639,7 +657,7 @@ mod tests {
   /// - After forward: same variable positions are tracked, but root sequence is fully resolved.
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -651,7 +669,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -670,7 +691,7 @@ mod tests {
     };
 
     // Run backward pass only
-    attach_seqs_to_graph(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    attach_seqs_to_graph(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
     fitch_backward(&graph, &mut partition)?;
 
     {
@@ -742,7 +763,7 @@ mod tests {
   ///   reff and qry swapped, deletion flag toggled.
   #[test]
   fn test_fitch_reroot_sparse_on_branch_ab_to_a() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -754,7 +775,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -770,7 +794,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -977,7 +1001,7 @@ mod tests {
   /// - New root node fields (gaps, non_char) are correct
   #[test]
   fn test_fitch_reroot_sparse_with_trivial_root_removal() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -989,7 +1013,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -1005,7 +1032,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1119,7 +1146,7 @@ mod tests {
   /// root sequence during `SparseNodePartition::new`.
   #[test]
   fn test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -1131,7 +1158,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -1147,7 +1177,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

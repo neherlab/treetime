@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use treetime_io::fasta::FastaRecord;
+use treetime_primitives::AlignmentRecord;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -59,7 +59,7 @@ pub fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,
-  aln: Option<&[FastaRecord]>,
+  aln: Option<&[AlignmentRecord]>,
 ) -> Result<Option<ClockParams>, Report> {
   if !covariation {
     return Ok(None);

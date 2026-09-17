@@ -22,8 +22,8 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use pretty_assertions::assert_eq;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use eyre::Report;
   use indoc::indoc;
@@ -36,8 +36,9 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -51,7 +52,7 @@ mod tests {
 
   fn setup_dense(
     tree_nwk: &str,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
@@ -64,7 +65,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -72,7 +73,7 @@ mod tests {
 
   fn setup_sparse(
     tree_nwk: &str,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
   ) -> Result<(Graph, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
@@ -80,12 +81,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(
-      &graph,
-      0,
-      alphabet,
-      &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()),
-    )?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
     Ok((graph, fitch, branch_lengths))
   }
 
@@ -96,7 +92,7 @@ mod tests {
   /// unambiguously located on the branch leading to the mutant leaf.
   #[test]
   fn test_nij_orientation_dense() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >ref1
       AAAAAAAA
@@ -108,7 +104,10 @@ mod tests {
       CAAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, partition, branch_lengths) = setup_dense(
       "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;",
@@ -147,7 +146,7 @@ mod tests {
   /// on the root->leaf_c edge.
   #[test]
   fn test_nij_orientation_sparse() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >leaf_a
       AAAAAAAA
@@ -155,7 +154,10 @@ mod tests {
       CAAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, fitch, branch_lengths) = setup_sparse("(leaf_a:0.1,leaf_c:0.1)root:0.0;", &aln)?;
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
@@ -178,7 +180,7 @@ mod tests {
   #[case::small_vs_large(    (0.05, 0.5))]
   #[trace]
   fn test_ti_scaling_sparse(#[case] (bl1, bl2): (f64, f64)) -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGT
@@ -190,7 +192,10 @@ mod tests {
       ACGTACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree1 = format!("((A:{bl1},B:{bl1})AB:{bl1},(C:{bl1},D:{bl1})CD:{bl1})root:0.0;");
     let tree2 = format!("((A:{bl2},B:{bl2})AB:{bl2},(C:{bl2},D:{bl2})CD:{bl2})root:0.0;");
@@ -219,7 +224,7 @@ mod tests {
   #[case::small_vs_large(    (0.05, 0.5))]
   #[trace]
   fn test_ti_scaling_dense(#[case] (bl1, bl2): (f64, f64)) -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGT
@@ -231,7 +236,10 @@ mod tests {
       ACGTACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree1 = format!("((A:{bl1},B:{bl1})AB:{bl1},(C:{bl1},D:{bl1})CD:{bl1})root:0.0;");
     let tree2 = format!("((A:{bl2},B:{bl2})AB:{bl2},(C:{bl2},D:{bl2})CD:{bl2})root:0.0;");
@@ -259,7 +267,7 @@ mod tests {
     // Mostly-identical sequences with 1-2 mutations on leaf branches only.
     // The 3:1 majority at each position anchors the root state, avoiding
     // the ambiguity that causes dense-sparse divergence.
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGT
@@ -271,7 +279,10 @@ mod tests {
       GCGTACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
 
@@ -337,7 +348,7 @@ mod tests {
   fn test_root_state_dense() -> Result<(), Report> {
     // Leaves differ only at position 0: one has C, rest have A.
     // Root should reconstruct as all-A (position 0 resolves to A by majority).
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       AAAAAAAA
@@ -349,7 +360,10 @@ mod tests {
       CAAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, partition, branch_lengths) = setup_dense("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
     let counts = partition.partition.count_transitions(
@@ -379,7 +393,7 @@ mod tests {
   /// (3/4 leaves have A at position 0, majority wins).
   #[test]
   fn test_root_state_sparse() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       AAAAAAAA
@@ -391,7 +405,10 @@ mod tests {
       CAAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, fitch, branch_lengths) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
@@ -417,7 +434,7 @@ mod tests {
     // With equal branch lengths, Fitch places the root at leaf_ref states
     // (2 leaves, ties broken by parsimony with outgroup = majority).
     // Using 3 extra leaves to anchor the root at the "ref" state.
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >ref1
       ACGAAAAA
@@ -429,7 +446,10 @@ mod tests {
       GTAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;";
     let (graph, fitch, branch_lengths) = setup_sparse(tree_nwk, &aln)?;
@@ -471,7 +491,7 @@ mod tests {
   /// independent A->T mutations contribute to nij[T, A] from separate edges.
   #[test]
   fn test_nij_accumulation_dense() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >a1
       AAAAAAAA
@@ -487,7 +507,10 @@ mod tests {
       TAAAAAAA
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((a1:0.1,a2:0.1,t1:0.1)left:0.05,(a3:0.1,a4:0.1,t2:0.1)right:0.05)root:0.0;";
     let (graph, partition, branch_lengths) = setup_dense(tree_nwk, &aln)?;
@@ -526,7 +549,7 @@ mod tests {
   #[test]
   fn test_ti_proportional_to_composition_sparse() -> Result<(), Report> {
     // Each state appears exactly twice across 8 positions
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       AACCGGTT
@@ -538,7 +561,10 @@ mod tests {
       AACCGGTT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
     let (graph, fitch, branch_lengths) = setup_sparse(tree_nwk, &aln)?;
@@ -561,7 +587,7 @@ mod tests {
   fn test_dense_sparse_nij_direction_agreement() -> Result<(), Report> {
     // Clear asymmetry: clade AB has A at pos 0, clade CD has C at pos 0.
     // Root is ambiguous but parsimony and marginal should agree on mutation direction.
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGT
@@ -573,7 +599,10 @@ mod tests {
       CCGTACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.05,B:0.05)AB:0.1,(C:0.05,D:0.05)CD:0.1)root:0.0;";
 
@@ -616,7 +645,7 @@ mod tests {
   /// Root state total equals alignment length for dense path.
   #[test]
   fn test_root_state_total_equals_alignment_length_dense() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCGTAGAC
@@ -628,7 +657,10 @@ mod tests {
       TCGGCCGTGTGTTG
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, partition, branch_lengths) =
       setup_dense("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
@@ -653,7 +685,7 @@ mod tests {
   /// Both dense and sparse should zero the diagonal.
   #[test]
   fn test_nij_diagonal_zero() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCC
@@ -665,7 +697,10 @@ mod tests {
       TCGGCCGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -691,7 +726,7 @@ mod tests {
   /// nij is non-negative everywhere.
   #[test]
   fn test_nij_non_negative() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCC
@@ -703,7 +738,10 @@ mod tests {
       TCGGCCGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -729,7 +767,7 @@ mod tests {
   /// Ti is non-negative everywhere.
   #[test]
   fn test_ti_non_negative() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCC
@@ -741,7 +779,10 @@ mod tests {
       TCGGCCGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

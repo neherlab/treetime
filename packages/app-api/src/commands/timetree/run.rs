@@ -32,6 +32,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
+use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_timetree_estimation(
@@ -111,7 +112,9 @@ pub fn run_timetree_estimation(
   let input = TimetreeInput {
     graph: input_data.graph,
     alphabet: input_data.alphabet,
-    sequences: input_data.aln,
+    sequences: input_data
+      .aln
+      .map(|records| records.into_iter().map(AlignmentRecord::from).collect()),
     dates: input_data.dates,
     branch_lengths: input_data.branch_lengths,
   };

@@ -23,6 +23,7 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
+use treetime_primitives::AlignmentRecord;
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
@@ -46,7 +47,8 @@ pub fn run_prune(
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
-    Some(read_many_fasta_path(&args.alignment.alignment, &alphabet)?)
+    let records = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
+    Some(records.into_iter().map(AlignmentRecord::from).collect())
   } else {
     None
   };

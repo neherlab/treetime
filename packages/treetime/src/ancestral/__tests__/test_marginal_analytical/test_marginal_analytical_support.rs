@@ -6,13 +6,14 @@ pub mod tests {
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -103,11 +104,14 @@ pub mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();

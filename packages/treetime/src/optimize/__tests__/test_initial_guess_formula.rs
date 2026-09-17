@@ -13,11 +13,12 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use treetime_primitives::AlignmentRecord;
 
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -33,7 +34,7 @@ mod tests {
   /// is the fraction of non-gap positions with substitutions.
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
-    let aln = divergent_alignment()?;
+    let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -80,7 +81,7 @@ mod tests {
   /// the soft Hamming override that was previously shadowing the sub count.
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
-    let aln = divergent_alignment()?;
+    let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -125,7 +126,10 @@ mod tests {
 
   #[test]
   fn test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
-    let aln = ambiguous_r_in_g_clade_alignment()?;
+    let aln: Vec<AlignmentRecord> = ambiguous_r_in_g_clade_alignment()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
@@ -182,7 +186,10 @@ mod tests {
 
   #[test]
   fn test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency() -> Result<(), Report> {
-    let aln = ambiguous_r_in_g_clade_alignment()?;
+    let aln: Vec<AlignmentRecord> = ambiguous_r_in_g_clade_alignment()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
@@ -258,11 +265,11 @@ mod tests {
   fn setup_sparse(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<SparseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let partitions = vec![SparseReconstruction::seeded(
       partition,
@@ -277,12 +284,12 @@ mod tests {
   fn setup_dense(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,

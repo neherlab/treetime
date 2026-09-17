@@ -18,12 +18,12 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -31,6 +31,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   /// Verifies the full timetree pipeline completes without panic when coalescent
   /// is enabled. Before the Formula discretization fixes, this would panic on
@@ -104,7 +105,10 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
-    let aln = load_alignment_for_dataset(dataset)?;
+    let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
       partition: PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
       gtr: jc69(JC69Params::default())?,
@@ -117,7 +121,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       partitions,
-      &nwk_fasta_node_inputs(&graph, &names, aln),
+      &node_seq_inputs(&graph, &names, aln),
     )?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;

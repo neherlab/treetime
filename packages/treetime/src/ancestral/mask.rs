@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_io::fasta::FastaRecord;
+use treetime_primitives::AlignmentRecord;
 
-pub fn create_mask(aln: &[FastaRecord], alignment_length: usize, alphabet: &Alphabet) -> Vec<bool> {
+pub fn create_mask(aln: &[AlignmentRecord], alignment_length: usize, alphabet: &Alphabet) -> Vec<bool> {
   let ambiguous = alphabet.unknown();
   let gap = alphabet.gap();
 

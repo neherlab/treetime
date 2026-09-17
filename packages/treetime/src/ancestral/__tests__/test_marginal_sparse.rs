@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
@@ -25,9 +25,9 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::{AlphabetLike, Seq};
+  use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
@@ -119,11 +119,11 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
@@ -136,7 +136,7 @@ mod tests {
   /// Convenience wrapper for root-invariance tests that need to evaluate the same alignment
   /// under different rootings of the same unrooted topology. Returns only the scalar
   /// log-likelihood, discarding the partition data.
-  fn run_sparse_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
+  fn run_sparse_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -159,7 +159,7 @@ mod tests {
   /// Also verifies the total log-likelihood matches the expected value.
   #[test]
   fn test_ancestral_reconstruction_marginal_sparse() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -171,7 +171,10 @@ mod tests {
       TCGGCCGTGTRTTG--
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let expected = read_many_fasta_str(
       indoc! {r#"
@@ -197,7 +200,7 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
@@ -264,7 +267,7 @@ mod tests {
   /// forward (outgroup message) passes.
   #[test]
   fn test_marginal_sparse_probability_normalization() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -276,7 +279,10 @@ mod tests {
       TCGGCCGTGTRTTG--
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -312,7 +318,7 @@ mod tests {
   /// that no hidden mutable state accumulates across calls.
   #[test]
   fn test_marginal_sparse_update_is_idempotent() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -324,7 +330,10 @@ mod tests {
       TCGGCCGTGTRTTG--
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -335,7 +344,7 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
@@ -368,7 +377,7 @@ mod tests {
   /// holds for asymmetric equilibrium frequencies, not just JC69.
   #[test]
   fn test_marginal_sparse_log_lh_root_invariance_reversible_model() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGTACGTACGT
@@ -380,7 +389,10 @@ mod tests {
       ACGTACGTACGTACGC
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let gtr1 = make_nonuniform_gtr()?;
     let gtr2 = make_nonuniform_gtr()?;
@@ -414,7 +426,7 @@ mod tests {
   /// handling of ambiguous characters in the sparse representation.
   #[test]
   fn test_marginal_sparse_posterior_values_python_parity() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -426,7 +438,10 @@ mod tests {
       TCGGCCGTGTRTTG--
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -506,13 +521,17 @@ mod tests {
       for &state_b in &states {
         for &state_c in &states {
           // Create alignment with single position containing this triplet
-          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
+          let aln: Vec<AlignmentRecord> =
+            read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?
+              .into_iter()
+              .map(AlignmentRecord::from)
+              .collect();
 
           let fitch = create_fitch_partition(
             &graph,
             0,
             alphabet.clone(),
-            &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
+            &node_seq_inputs(&graph, &names, aln.clone()),
           )?;
           let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
           let recon = SparseReconstruction::seeded(partition, gtr.clone(), node_states);
@@ -539,7 +558,7 @@ mod tests {
   /// - the result differs from stored `edge.subs` on at least one edge
   #[test]
   fn test_sparse_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -551,7 +570,10 @@ mod tests {
       TCGGCCGTGTRTTG--
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -559,12 +581,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let fitch = create_fitch_partition(
-      &graph,
-      0,
-      Alphabet::default(),
-      &nwk_fasta_node_inputs(&graph, &names, aln),
-    )?;
+    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -628,7 +645,7 @@ mod tests {
 
     pub fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
       let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
-      let alignment = read_many_fasta_str(
+      let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
           >A
           ACAACG
@@ -640,7 +657,10 @@ mod tests {
           TCGTAG
         "#},
         &*NUC_ALPHABET,
-      )?;
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
       ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
         let nwk_parsed = nwk_read_str(newick)?;
         let names = nwk_parsed.names();

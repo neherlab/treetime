@@ -1,7 +1,7 @@
 //! Proptest generators for sequence alignments.
 
 use proptest::prelude::*;
-use treetime_io::fasta::FastaRecord;
+use treetime_primitives::AlignmentRecord;
 use treetime_primitives::seq::Seq;
 
 /// Generate a single nucleotide character.
@@ -32,32 +32,30 @@ pub fn arb_sequence_no_gaps(len: usize) -> impl Strategy<Value = String> {
 /// Generate an alignment (FASTA records) for given taxa names.
 ///
 /// All sequences have the same length.
-pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<FastaRecord>> {
+pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence(seq_len), n).prop_map(move |sequences| {
     taxa
       .iter()
       .zip(sequences)
-      .map(|(name, seq_str)| FastaRecord {
-        seq_name: name.clone(),
+      .map(|(name, seq_str)| AlignmentRecord {
+        name: name.clone(),
         seq: Seq::try_from_str(&seq_str).expect("Generated sequence should be valid ASCII"),
-        ..FastaRecord::default()
       })
       .collect()
   })
 }
 
 /// Generate a gap-free alignment for given taxa names.
-pub fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<FastaRecord>> {
+pub fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence_no_gaps(seq_len), n).prop_map(move |sequences| {
     taxa
       .iter()
       .zip(sequences)
-      .map(|(name, seq_str)| FastaRecord {
-        seq_name: name.clone(),
+      .map(|(name, seq_str)| AlignmentRecord {
+        name: name.clone(),
         seq: Seq::try_from_str(&seq_str).expect("Generated sequence should be valid ASCII"),
-        ..FastaRecord::default()
       })
       .collect()
   })
@@ -91,9 +89,9 @@ mod tests {
       aln in arb_alignment(vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 15)
     ) {
       prop_assert_eq!(aln.len(), 3);
-      prop_assert_eq!(&aln[0].seq_name, "A");
-      prop_assert_eq!(&aln[1].seq_name, "B");
-      prop_assert_eq!(&aln[2].seq_name, "C");
+      prop_assert_eq!(&aln[0].name, "A");
+      prop_assert_eq!(&aln[1].name, "B");
+      prop_assert_eq!(&aln[2].name, "C");
       for record in &aln {
         prop_assert_eq!(record.seq.len(), 15);
       }

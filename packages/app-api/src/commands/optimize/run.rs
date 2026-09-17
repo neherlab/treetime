@@ -22,7 +22,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_primitives::Seq;
+use treetime_primitives::{AlignmentRecord, Seq};
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -62,7 +62,7 @@ pub fn run_optimize(
   let input = OptimizeInput {
     graph,
     alphabet,
-    sequences: aln,
+    sequences: aln.into_iter().map(AlignmentRecord::from).collect(),
     branch_lengths,
   };
 

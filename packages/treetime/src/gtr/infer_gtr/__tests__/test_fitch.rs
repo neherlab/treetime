@@ -8,6 +8,7 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -15,8 +16,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -24,7 +25,7 @@ mod tests {
 
   #[test]
   fn test_get_mutation_counts_fitch() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -36,7 +37,10 @@ mod tests {
       TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -46,7 +50,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     assert_eq!(
@@ -65,7 +69,7 @@ mod tests {
 
   #[test]
   fn test_infer_gtr_fitch() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -77,7 +81,10 @@ mod tests {
       TCGGCCGTGTRTTG--
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
@@ -87,7 +94,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     let actual = infer_gtr_impl(

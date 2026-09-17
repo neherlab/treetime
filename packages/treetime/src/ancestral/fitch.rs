@@ -7,6 +7,7 @@ use crate::ancestral::fitch_sub::{
 use crate::make_report;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::storage::sparse::{FitchNodeData, FitchSeqDistribution, FitchSeqInfo, SparseEdgeObs};
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::alignment::get_common_length_of_node_inputs;
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -18,7 +19,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{AlphabetLike, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
@@ -27,7 +27,7 @@ pub fn create_fitch_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let length = get_common_length_of_node_inputs(node_inputs)?;
   let mut partition = PartitionFitch {
@@ -44,7 +44,7 @@ pub fn create_fitch_partition(
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<(), Report> {
   let leaf_records = graph
     .get_leaves()
@@ -54,7 +54,7 @@ pub(crate) fn attach_seqs_to_graph(
       let leaf_key = leaf.key();
       let node = &node_inputs[&leaf_key];
       let seq = node
-        .aln
+        .seq
         .as_ref()
         // Every leaf has a sequence after alignment completion.
         .ok_or_else(|| {
@@ -290,7 +290,7 @@ fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Re
 pub fn compress_sequences(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partition, node_inputs)?;
   fitch_backward(graph, partition)?;

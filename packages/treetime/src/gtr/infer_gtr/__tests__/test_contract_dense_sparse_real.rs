@@ -42,7 +42,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::get_common_length;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -54,6 +54,7 @@ mod tests {
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::AlignmentRecord;
 
   #[rustfmt::skip]
   #[rstest]
@@ -118,7 +119,10 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let aln = read_many_fasta_path(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[&alignment_path], &*DENSE_NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let dense = {
       let nwk_parsed = nwk_read_file(&tree_path)?;
@@ -127,7 +131,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let partition = PartitionMarginalDense::new(0, DENSE_NUC_ALPHABET.clone(), get_common_length(&aln)?);
-      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+      let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.clone()))?;
       let recon = DenseReconstruction::seeded(
         partition,
         jc69(JC69Params {
@@ -165,7 +169,7 @@ mod tests {
         &graph,
         0,
         SPARSE_NUC_ALPHABET.clone(),
-        &nwk_fasta_node_inputs(&graph, &names, aln),
+        &node_seq_inputs(&graph, &names, aln),
       )?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
     };

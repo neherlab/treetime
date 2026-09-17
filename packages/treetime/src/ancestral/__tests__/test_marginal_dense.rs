@@ -10,10 +10,10 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
@@ -21,8 +21,9 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Assert that every row of a dense probability matrix is a valid distribution.
@@ -83,12 +84,12 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
@@ -100,7 +101,7 @@ mod tests {
   /// Convenience wrapper for root-invariance tests that need to evaluate the
   /// same alignment under different rootings of the same unrooted topology.
   /// Returns only the scalar log-likelihood, discarding the partition data.
-  fn run_dense_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
+  fn run_dense_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -114,7 +115,7 @@ mod tests {
 
   static TREE_7_TAXON: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  static ALN_7_TAXON: LazyLock<Vec<FastaRecord>> = LazyLock::new(|| {
+  static ALN_7_TAXON: LazyLock<Vec<AlignmentRecord>> = LazyLock::new(|| {
     read_many_fasta_str(
       indoc! {r#"
       >root
@@ -135,6 +136,9 @@ mod tests {
       &*NUC_ALPHABET,
     )
     .unwrap()
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect()
   });
 
   /// Verify that dense marginal ancestral reconstruction infers the expected
@@ -310,7 +314,7 @@ mod tests {
   /// All three must produce the same log-likelihood.
   #[test]
   fn test_marginal_dense_log_lh_root_invariance_reversible_model() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGTACGTACGT
@@ -322,7 +326,10 @@ mod tests {
       ACGTACGTACGTACGC
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let gtr1 = make_nonuniform_gtr()?;
     let gtr2 = make_nonuniform_gtr()?;
@@ -391,7 +398,11 @@ mod tests {
     for &state_a in &states {
       for &state_b in &states {
         for &state_c in &states {
-          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
+          let aln: Vec<AlignmentRecord> =
+            read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?
+              .into_iter()
+              .map(AlignmentRecord::from)
+              .collect();
           let (log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr.clone())?;
           total_lh += log_lh.exp();
         }

@@ -11,12 +11,13 @@ mod tests {
   use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use treetime_primitives::AlignmentRecord;
 
   use ndarray::array;
   use treetime_graph::edge::GraphEdgeKey;
@@ -48,12 +49,12 @@ mod tests {
   fn setup_dense_jc69(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
@@ -76,7 +77,7 @@ mod tests {
   /// than fresh posteriors computed with the real model.
   #[test]
   fn test_stale_jc69_messages_bias_initial_guess() -> Result<(), Report> {
-    let aln = biased_alignment()?;
+    let aln: Vec<AlignmentRecord> = biased_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let f81_gtr = f81(F81Params {
       pi: Some(array![0.7, 0.1, 0.1, 0.1]),
       ..Default::default()
@@ -162,7 +163,7 @@ mod tests {
   /// are already computed with the real GTR.
   #[test]
   fn test_initial_guess_idempotent_after_gtr_update() -> Result<(), Report> {
-    let aln = biased_alignment()?;
+    let aln: Vec<AlignmentRecord> = biased_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let f81_gtr = f81(F81Params {
       pi: Some(array![0.7, 0.1, 0.1, 0.1]),
       ..Default::default()

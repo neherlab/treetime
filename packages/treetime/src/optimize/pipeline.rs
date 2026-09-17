@@ -24,6 +24,7 @@ use crate::reroot::div_stats_traversal::compute_div_stats;
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in_place};
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
+use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
@@ -34,8 +35,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
-use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_fasta_node_inputs;
+use treetime_primitives::AlignmentRecord;
 use treetime_utils::{make_error, make_report};
 
 /// Damping applied to the single pre-reroot branch-length pass, mirroring the
@@ -61,7 +61,7 @@ pub struct OptimizeParams {
 pub struct OptimizeInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Vec<FastaRecord>,
+  pub sequences: Vec<AlignmentRecord>,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The optimize loop
   /// takes ownership and makes it the source of truth: the initial guess, reroot, and per-edge
   /// optimizer all update it, and it exits as `OptimizeOutput.branch_lengths`.
@@ -102,7 +102,7 @@ pub fn run(
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
   let sequences = std::mem::take(&mut input.sequences);
-  let node_inputs = nwk_fasta_node_inputs(&input.graph, names, sequences);
+  let node_inputs = node_seq_inputs(&input.graph, names, sequences);
 
   let created = create_marginal_partition(
     &input.graph,

@@ -10,12 +10,12 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -23,8 +23,9 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   use treetime_utils::make_report;
 
@@ -38,9 +39,10 @@ mod tests {
   /// All sequences share a 15bp prefix `ACGTACGTACGTACG` and differ only at
   /// position 16: A=T, B=A, C=G, D=C. This creates exactly one variable site,
   /// isolating the effect of the substitution model on ancestral state inference.
-  fn gap_free_alignment() -> Result<Vec<FastaRecord>, Report> {
-    read_many_fasta_str(
-      indoc! {r#"
+  fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+    Ok(
+      read_many_fasta_str(
+        indoc! {r#"
       >A
       ACGTACGTACGTACGT
       >B
@@ -50,7 +52,11 @@ mod tests {
       >D
       ACGTACGTACGTACGC
     "#},
-      &*NUC_ALPHABET,
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect(),
     )
   }
 
@@ -60,9 +66,10 @@ mod tests {
   /// Fitch forward can resolve the A leaf canonically to `G` from its parent context,
   /// but sparse marginal leaf encoding must not rebuild a false canonical `A` from
   /// the ambiguous state set.
-  fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<FastaRecord>, Report> {
-    read_many_fasta_str(
-      indoc! {r#"
+  fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+    Ok(
+      read_many_fasta_str(
+        indoc! {r#"
       >A
       RCGTACGT
       >B
@@ -72,7 +79,11 @@ mod tests {
       >D
       GCGTACGT
     "#},
-      &*NUC_ALPHABET,
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect(),
     )
   }
 
@@ -89,12 +100,12 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
@@ -118,11 +129,11 @@ mod tests {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
@@ -234,7 +245,7 @@ mod tests {
   ///    distributions sum to 1.0.
   #[test]
   fn test_marginal_dense_sparse_ambiguous_character_expectations_documented() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGTACGTACGTACNT
@@ -246,7 +257,10 @@ mod tests {
       ACGTACGTACGTACGC
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
@@ -462,7 +476,7 @@ mod tests {
     let graph: Graph = graph;
 
     // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         AAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT
@@ -472,10 +486,13 @@ mod tests {
         ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
       "#},
       &alphabet,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
 
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

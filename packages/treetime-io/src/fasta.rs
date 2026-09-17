@@ -5,7 +5,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use treetime_primitives::{AlphabetLike, AsciiChar, Seq};
+use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, Seq};
 use treetime_utils::fmt::string::quote_single;
 use treetime_utils::io::compression::Decompressor;
 use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
@@ -40,6 +40,17 @@ impl FastaRecord {
     match &self.desc {
       Some(desc) => format!(">{} {}", self.seq_name, desc),
       None => format!(">{}", self.seq_name),
+    }
+  }
+}
+
+impl From<FastaRecord> for AlignmentRecord {
+  /// Drop the parse-only fields (`desc`, `index`) and keep only the name and sequence the
+  /// reconstruction pipeline consumes.
+  fn from(record: FastaRecord) -> Self {
+    Self {
+      name: record.seq_name,
+      seq: record.seq,
     }
   }
 }

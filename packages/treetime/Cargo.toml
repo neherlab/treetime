@@ -15,7 +15,6 @@ version.workspace = true
 treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-grid = { workspace = true }
-treetime-io = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }
@@ -71,6 +70,7 @@ pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
+treetime-io = { workspace = true }
 
 [lints]
 workspace = true

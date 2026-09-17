@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::DatesMap;
+use treetime_primitives::date::DatesMap;
 
 pub struct ClockPipelineParams {
   pub clock_params: ClockParams,

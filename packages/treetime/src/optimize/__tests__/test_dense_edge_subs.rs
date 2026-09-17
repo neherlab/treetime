@@ -7,6 +7,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use indoc::indoc;
@@ -16,8 +17,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_primitives::LogLh;
 
   /// Regression test: uniform outgroup message must not create false substitutions.
@@ -126,14 +127,14 @@ mod tests {
   /// with the node posteriors it reads.
   #[test]
   fn test_dense_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
-    let aln = divergent_alignment()?;
+    let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -236,14 +237,14 @@ mod tests {
   /// this, but this dedicated test documents the design intent.
   #[test]
   fn test_dense_edge_subs_is_canonical_filter_present() -> Result<(), Report> {
-    let aln = divergent_alignment()?;
+    let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

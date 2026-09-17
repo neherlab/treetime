@@ -7,6 +7,7 @@ mod tests {
   use indoc::indoc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     NUC_ALPHABET, TREE_NEWICK, setup_dense_only, setup_sparse_only,
@@ -51,7 +52,7 @@ mod tests {
   #[test]
   fn test_dense_sparse_initial_log_lh_equivalence_with_mutations() -> Result<(), Report> {
     // Alignment with more mutations
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       AAAAAAAAAAAAAAAA
@@ -63,7 +64,10 @@ mod tests {
       TTTTTTTTTTTTTTTT
     "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     // Initialize dense
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;

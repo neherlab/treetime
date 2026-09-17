@@ -14,15 +14,16 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Marginal dense tests ---
@@ -55,7 +56,10 @@ mod tests {
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
-    let aln = load_alignment_for_dataset(dataset)?;
+    let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction::seeded(
       PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
       jc69(JC69Params::default())?,
@@ -63,7 +67,7 @@ mod tests {
     ));
 
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

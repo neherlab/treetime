@@ -4,7 +4,7 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::DatesMap;
+use treetime_primitives::date::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
 

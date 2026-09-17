@@ -7,8 +7,8 @@ pub mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use treetime_graph::graph::Graph;
 
@@ -46,8 +46,7 @@ pub mod tests {
     let length = get_common_length(&input.alignment)?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states =
-      partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, input.alignment.clone()))?;
     let recon = DenseReconstruction::seeded(partition, input.gtr.clone(), node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -85,7 +84,7 @@ pub mod tests {
       &graph,
       0,
       alphabet,
-      &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()),
+      &node_seq_inputs(&graph, &names, input.alignment.clone()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, input.gtr.clone(), node_states);

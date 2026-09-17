@@ -6,6 +6,7 @@ mod tests {
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::shared::update::MarginalPasses;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -13,8 +14,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
 
   lazy_static! {
@@ -26,13 +27,16 @@ mod tests {
     fasta: &str,
   ) -> Result<(Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = NUC_ALPHABET.clone();
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()

@@ -6,14 +6,13 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_fasta_node_inputs;
-use treetime_primitives::Seq;
+use treetime_primitives::{AlignmentRecord, Seq};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 /// A partition to reconstruct on the shared tree.
@@ -25,7 +24,7 @@ pub struct PartitionPlan {
   pub name: String,
   pub alphabet: Alphabet,
   pub gtr_model: GtrModelName,
-  pub sequences: Vec<FastaRecord>,
+  pub sequences: Vec<AlignmentRecord>,
   pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
   pub reference_override: Option<Seq>,
 }
@@ -75,7 +74,7 @@ pub fn reconstruct_marginal_partition(
   } = plan;
 
   let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
-  let node_inputs = nwk_fasta_node_inputs(graph, names, sequences);
+  let node_inputs = node_seq_inputs(graph, names, sequences);
   let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let created = create_marginal_partition(
     graph,

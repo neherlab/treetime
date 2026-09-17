@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -18,15 +19,15 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
   };
 
   use ndarray::{Array1, Array2, array};
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -35,7 +36,7 @@ mod tests {
   /// Helper to create a dense partition and run marginal reconstruction.
   fn setup_dense_partition(
     tree_nwk: &str,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
@@ -49,7 +50,7 @@ mod tests {
     })?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -63,7 +64,7 @@ mod tests {
   /// substitution counts.
   #[test]
   fn test_uniform_sequences() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGT
@@ -75,7 +76,10 @@ mod tests {
       ACGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
@@ -105,7 +109,7 @@ mod tests {
   fn test_single_mutation() -> Result<(), Report> {
     // Simple tree: root -> A, root -> B
     // A has "ACGT", B has "CCGT" (A->C at position 0)
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGT
@@ -113,7 +117,10 @@ mod tests {
       CCGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, recon, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
@@ -172,7 +179,7 @@ mod tests {
   /// test_zero_branch_lengths_unclamped, which bypasses clamping.
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACGT
@@ -184,7 +191,10 @@ mod tests {
       CCGT
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
@@ -260,7 +270,7 @@ mod tests {
   /// Verifies that the inferred model has valid properties (symmetric W, normalized pi, positive mu).
   #[test]
   fn test_produces_valid_model() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
       ACATCGCCGTAGAC
@@ -272,7 +282,10 @@ mod tests {
       TCGGCCGTGTGTTG
       "#},
       &*NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, recon, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;

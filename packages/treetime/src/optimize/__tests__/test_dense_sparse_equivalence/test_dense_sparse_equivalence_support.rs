@@ -13,7 +13,7 @@ pub mod tests {
   //! 3. Initial log-LH (before optimization) should be identical
   //! 4. Final log-LH difference should be bounded
 
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use std::collections::BTreeMap;
 
@@ -33,15 +33,17 @@ pub mod tests {
 
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_primitives::AlignmentRecord;
 
   pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  pub fn gap_free_alignment() -> Result<Vec<FastaRecord>, Report> {
-    read_many_fasta_str(
-      indoc! {r#"
+  pub fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+    Ok(
+      read_many_fasta_str(
+        indoc! {r#"
       >A
       ACGTACGTACGTACGT
       >B
@@ -51,19 +53,23 @@ pub mod tests {
       >D
       ACGTACGTACGTACGC
     "#},
-      &*NUC_ALPHABET,
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect(),
     )
   }
 
   pub fn setup_dense_only(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
@@ -78,11 +84,11 @@ pub mod tests {
   pub fn setup_sparse_only(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<SparseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let partitions = vec![SparseReconstruction::seeded(
       partition,

@@ -12,13 +12,14 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use treetime_primitives::AlignmentRecord;
 
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;
@@ -84,11 +85,11 @@ mod tests {
   fn setup_sparse(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<SparseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let partitions = vec![SparseReconstruction::seeded(
       partition,
@@ -103,12 +104,12 @@ mod tests {
   fn setup_dense(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
@@ -129,7 +130,7 @@ mod tests {
 
   #[test]
   fn test_sparse_effective_length_no_gaps() -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
+    let aln: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -148,7 +149,7 @@ mod tests {
 
   #[test]
   fn test_dense_effective_length_no_gaps() -> Result<(), Report> {
-    let aln = gap_free_alignment()?;
+    let aln: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -167,7 +168,10 @@ mod tests {
 
   #[test]
   fn test_sparse_effective_length_shared_gaps() -> Result<(), Report> {
-    let aln = gappy_alignment_shared()?;
+    let aln: Vec<AlignmentRecord> = gappy_alignment_shared()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -187,7 +191,10 @@ mod tests {
 
   #[test]
   fn test_dense_effective_length_shared_gaps() -> Result<(), Report> {
-    let aln = gappy_alignment_shared()?;
+    let aln: Vec<AlignmentRecord> = gappy_alignment_shared()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -207,7 +214,10 @@ mod tests {
 
   #[test]
   fn test_sparse_effective_length_one_leaf_gapped() -> Result<(), Report> {
-    let aln = gappy_alignment_one_leaf()?;
+    let aln: Vec<AlignmentRecord> = gappy_alignment_one_leaf()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -231,7 +241,10 @@ mod tests {
 
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions() -> Result<(), Report> {
-    let aln = gappy_alignment_one_leaf()?;
+    let aln: Vec<AlignmentRecord> = gappy_alignment_one_leaf()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -257,7 +270,7 @@ mod tests {
   /// proportionally adjusted: subs/12 for gappy vs subs/16 for gap-free.
   #[test]
   fn test_initial_guess_sparse_gap_adjusted_rate() -> Result<(), Report> {
-    let aln_clean = gap_free_alignment()?;
+    let aln_clean: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_clean_names = nwk_parsed.names();
     let graph_clean = nwk_parsed.graph;
@@ -281,7 +294,10 @@ mod tests {
     }
     let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
-    let aln_gappy = gappy_alignment_shared()?;
+    let aln_gappy: Vec<AlignmentRecord> = gappy_alignment_shared()?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_gappy_names = nwk_parsed.names();
     let graph_gappy = nwk_parsed.graph;

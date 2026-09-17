@@ -1,17 +1,17 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
-use treetime_io::fasta::FastaRecord;
+use treetime_primitives::AlignmentRecord;
 
 #[derive(Clone, Debug)]
 pub struct PartitionFitchConfigWithAln {
   pub alphabet: Alphabet,
-  pub aln: Vec<FastaRecord>,
+  pub aln: Vec<AlignmentRecord>,
   pub length: usize,
 }
 
 impl PartitionFitchConfigWithAln {
-  pub fn new(alphabet: Alphabet, aln: Vec<FastaRecord>) -> Result<Self, Report> {
+  pub fn new(alphabet: Alphabet, aln: Vec<AlignmentRecord>) -> Result<Self, Report> {
     let length = get_common_length(&aln)?;
     Ok(Self { alphabet, aln, length })
   }

@@ -11,6 +11,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -20,7 +21,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
@@ -62,7 +62,7 @@ impl PartitionMarginalDense {
   pub fn attach_sequences(
     &self,
     graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
   ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
     let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {
@@ -70,7 +70,7 @@ impl PartitionMarginalDense {
       let node = &node_inputs[&leaf_key];
 
       let seq = node
-        .aln
+        .seq
         .as_ref()
         .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
 

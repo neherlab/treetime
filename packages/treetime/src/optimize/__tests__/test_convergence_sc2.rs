@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
+  use treetime_primitives::AlignmentRecord;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -37,13 +38,16 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
-    let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_file(&tree_path)?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(
       partition,
@@ -110,13 +114,16 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let nwk_parsed = nwk_read_file(&tree_path)?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(
       partition,

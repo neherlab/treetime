@@ -19,6 +19,7 @@ mod tests {
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::refinement::{
     Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
@@ -38,8 +39,8 @@ mod tests {
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::random::get_random_number_generator;
@@ -234,7 +235,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -244,7 +245,10 @@ mod tests {
         ACGTACGTACGT
       "#},
       &alphabet,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
     let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
       partition: PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?),
       gtr: jc69(JC69Params::default())?,
@@ -255,7 +259,7 @@ mod tests {
       &graph,
       &branch_lengths_or_zero(&branch_lengths),
       partitions,
-      &nwk_fasta_node_inputs(&graph, &names, aln),
+      &node_seq_inputs(&graph, &names, aln),
     )?;
 
     let dates: DatesMap = btreemap! {

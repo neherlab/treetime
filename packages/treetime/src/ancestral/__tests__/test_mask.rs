@@ -2,18 +2,16 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::mask::{create_mask, mask_to_string};
-  use treetime_io::fasta::FastaRecord;
-  use treetime_primitives::Seq;
+  use treetime_primitives::{AlignmentRecord, Seq};
 
   fn nuc_alphabet() -> Alphabet {
     Alphabet::new(AlphabetName::Nuc).unwrap()
   }
 
-  fn record(name: &str, sequence: &str) -> FastaRecord {
-    FastaRecord {
-      seq_name: name.to_owned(),
+  fn record(name: &str, sequence: &str) -> AlignmentRecord {
+    AlignmentRecord {
+      name: name.to_owned(),
       seq: Seq::try_from_str(sequence).unwrap(),
-      ..Default::default()
     }
   }
 
@@ -68,7 +66,7 @@ mod tests {
   #[test]
   fn test_mask_empty_alignment() {
     let alphabet = nuc_alphabet();
-    let aln: Vec<FastaRecord> = vec![];
+    let aln: Vec<AlignmentRecord> = vec![];
 
     let mask = create_mask(&aln, 5, &alphabet);
     assert_eq!(vec![true, true, true, true, true], mask);

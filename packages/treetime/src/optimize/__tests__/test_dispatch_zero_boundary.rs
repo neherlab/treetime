@@ -21,12 +21,13 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use treetime_primitives::AlignmentRecord;
 
   use ndarray::array;
   use rstest::rstest;
@@ -66,11 +67,13 @@ mod tests {
     model: GtrModelName,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
-    let aln = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let dense_partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let dense_node_states =
-      dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
+    let dense_node_states = dense_partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.clone()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(
       dense_partition,
       get_gtr_by_name(model)?,
@@ -81,7 +84,7 @@ mod tests {
       graph,
       1,
       Alphabet::new(AlphabetName::Nuc)?,
-      &nwk_fasta_node_inputs(graph, names, aln),
+      &node_seq_inputs(graph, names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(

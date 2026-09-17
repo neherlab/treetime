@@ -23,6 +23,7 @@ pub mod tests {
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::pretty_assert_neg_inf;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -30,12 +31,12 @@ pub mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::array;
   use rstest::rstest;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
@@ -70,20 +71,19 @@ pub mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
-    let aln = identical_alignment()?;
+    let aln: Vec<AlignmentRecord> = identical_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
     let dense_partition = PartitionMarginalDense::new(0, alphabet_dense, get_common_length(&aln)?);
-    let dense_node_states =
-      dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
+    let dense_node_states = dense_partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.clone()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(
       dense_partition,
       jc69(JC69Params::default())?,
       dense_node_states,
     )];
 
-    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &nwk_fasta_node_inputs(graph, names, aln))?;
+    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &node_seq_inputs(graph, names, aln))?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(
       sparse_partition,

@@ -62,6 +62,7 @@ mod tests {
     use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
     use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::seq::alignment::node_seq_inputs;
     use eyre::Report;
     use indoc::indoc;
     use rand::SeedableRng;
@@ -69,8 +70,8 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::nwk_fasta_node_inputs;
     use treetime_io::nwk::nwk_read_str;
+    use treetime_primitives::AlignmentRecord;
 
     pub const ROOT_NAME: &str = "root";
 
@@ -82,7 +83,7 @@ mod tests {
     /// A fresh partition is built on every call so that the seeded RNG is the only source of
     /// variation between runs, making reproducibility assertions meaningful.
     pub fn reconstruct(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
-      let aln = read_many_fasta_str(
+      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -94,7 +95,10 @@ mod tests {
         TCGGCCGTGTRTTG--
       "#},
         &Alphabet::default(),
-      )?;
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
       let nwk_parsed = nwk_read_str(TREE)?;
       let names = nwk_parsed.names();
@@ -102,12 +106,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(
-        &graph,
-        0,
-        Alphabet::default(),
-        &nwk_fasta_node_inputs(&graph, &names, aln),
-      )?;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 

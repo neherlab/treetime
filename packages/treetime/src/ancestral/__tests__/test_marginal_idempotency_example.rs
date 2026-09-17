@@ -9,6 +9,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   /// Build a fixed 4-taxon test input for marginal idempotency verification.
   ///
@@ -21,7 +22,7 @@ mod tests {
   /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies
   /// pi = [0.25, 0.25, 0.25, 0.25] and uniform substitution rates.
   fn example_input() -> Result<MarginalTestInput, Report> {
-    let alignment = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
       "
 >A
 ACATCGCCNNA--GAC
@@ -33,7 +34,10 @@ CCGGCGATGTRTTG--
 TCGGCCGTGTRTTG--
 ",
       &*crate::test_utils::NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
     let gtr = jc69(JC69Params::default())?;
     Ok(MarginalTestInput {
       newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),

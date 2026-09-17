@@ -58,8 +58,7 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
 
 mod helpers {
   use super::*;
-  use treetime_io::fasta::FastaRecord;
-  use treetime_primitives::Seq;
+  use treetime_primitives::{AlignmentRecord, Seq};
 
   pub fn plan(name: &str, alphabet: &Alphabet, seqs: &[(&str, &str)]) -> PartitionPlan {
     PartitionPlan {
@@ -68,12 +67,9 @@ mod helpers {
       gtr_model: GtrModelName::Infer,
       sequences: seqs
         .iter()
-        .enumerate()
-        .map(|(index, (seq_name, seq))| FastaRecord {
-          seq_name: (*seq_name).to_owned(),
-          desc: None,
+        .map(|(seq_name, seq)| AlignmentRecord {
+          name: (*seq_name).to_owned(),
           seq: Seq::try_from_str(seq).unwrap(),
-          index,
         })
         .collect(),
       annotation: None,

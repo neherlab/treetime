@@ -7,6 +7,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::prune::prune::prune_nodes;
+use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use serde::Serialize;
@@ -15,8 +16,7 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_fasta_node_inputs;
+use treetime_primitives::AlignmentRecord;
 
 pub struct PruneParams {
   pub prune_short: Option<f64>,
@@ -28,7 +28,7 @@ pub struct PruneParams {
 pub struct PruneInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Option<Vec<FastaRecord>>,
+  pub sequences: Option<Vec<AlignmentRecord>>,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The collapse and
   /// merge producers update it in place across the topology edits; it exits as
   /// `PruneOutput.branch_lengths`.
@@ -72,7 +72,7 @@ pub fn run(
   let (mut partitions, gtrs, node_states): (Vec<_>, Vec<_>, Vec<_>) = if needs_sequences {
     let sequences = std::mem::take(&mut input.sequences)
       .ok_or_else(|| eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations"))?;
-    let node_inputs = nwk_fasta_node_inputs(&input.graph, &names, sequences);
+    let node_inputs = node_seq_inputs(&input.graph, &names, sequences);
     let created = create_marginal_partition(
       &input.graph,
       0,

@@ -1,6 +1,7 @@
 use crate::ancestral::sample::SampleMode;
 use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
@@ -10,7 +11,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{LogLh, Seq, seq};
 
 impl PartitionTimetree {
@@ -35,7 +35,7 @@ impl PartitionTimetree {
   pub fn attach_sequences(
     &mut self,
     graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
   ) -> Result<(), Report> {
     if let Self::Dense(family) = self {
       family.node_states = family.partition.attach_sequences(graph, node_inputs)?;
@@ -181,7 +181,7 @@ pub fn initialize_marginal_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   mut partitions: Vec<PartitionTimetree>,
-  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
   for partition in &mut partitions {
     partition.attach_sequences(graph, node_inputs)?;

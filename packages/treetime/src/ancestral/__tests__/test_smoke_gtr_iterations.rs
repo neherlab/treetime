@@ -10,11 +10,13 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::{EdgeSeqInput, ReconstructionInput, node_seq_inputs};
   use eyre::Report;
   use lazy_static::lazy_static;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
+  use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::AlignmentRecord;
 
   lazy_static! {
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -28,7 +30,11 @@ mod tests {
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-    let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
+    let sequences: Vec<AlignmentRecord> =
+      read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
 
     let params = AncestralParams {
       method: MethodAncestral::Marginal,
@@ -46,7 +52,15 @@ mod tests {
     let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names)?;
     let alignment_length = get_common_length(&sequences)?;
     let mask = create_mask(&sequences, alignment_length, &alphabet);
-    let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
+    let input = ReconstructionInput {
+      nodes: node_seq_inputs(&parse.graph, &names, sequences),
+      edges: parse
+        .branch_lengths
+        .into_iter()
+        .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
+        .collect(),
+      graph: parse.graph,
+    };
 
     let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
 
@@ -64,7 +78,11 @@ mod tests {
   fn test_smoke_ancestral_gtr_iterations_dense() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-    let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
+    let sequences: Vec<AlignmentRecord> =
+      read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
 
     let params = AncestralParams {
       method: MethodAncestral::Marginal,
@@ -82,7 +100,15 @@ mod tests {
     let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names)?;
     let alignment_length = get_common_length(&sequences)?;
     let mask = create_mask(&sequences, alignment_length, &alphabet);
-    let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
+    let input = ReconstructionInput {
+      nodes: node_seq_inputs(&parse.graph, &names, sequences),
+      edges: parse
+        .branch_lengths
+        .into_iter()
+        .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
+        .collect(),
+      graph: parse.graph,
+    };
 
     let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
 

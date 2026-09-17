@@ -7,15 +7,16 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use pretty_assertions::assert_eq;
 
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   fn setup_dense_with_unknowns() -> Result<(Graph, DenseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -35,11 +36,14 @@ NNGTACGTAC
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let length = get_common_length(&aln)?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
@@ -63,10 +67,13 @@ NNGTACGTAC
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -164,11 +171,14 @@ ACGTACGTAC
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let length = get_common_length(&aln)?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
@@ -234,10 +244,13 @@ ACGTACGTAC
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta_str(fasta, &alphabet)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

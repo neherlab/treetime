@@ -7,13 +7,13 @@ use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodeState;
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::alignment::get_common_length_of_node_inputs;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NwkFastaNodeInput;
 
 pub enum MarginalPartition {
   /// A sparse partition together with the seed node-state map derived from the Fitch handoff. The
@@ -38,7 +38,7 @@ pub fn create_marginal_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
   model_name: GtrModelName,
   dense: Option<bool>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,

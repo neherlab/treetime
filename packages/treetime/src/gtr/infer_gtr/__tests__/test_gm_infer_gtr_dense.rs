@@ -6,7 +6,7 @@ mod tests {
   //!
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -27,8 +27,9 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_path, read_many_fasta_str};
+  use treetime_io::fasta::{read_many_fasta_path, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_primitives::AlignmentRecord;
 
   #[rstest]
   #[case::simple_4taxa("simple_4taxa")]
@@ -42,7 +43,10 @@ mod tests {
     let expected = &OUTPUTS.synthetic[case_name];
 
     let fasta_str = alignment_to_fasta(&case.alignment);
-    let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
     let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
     let counts = recon.partition.count_transitions(
@@ -143,7 +147,7 @@ mod tests {
 
   fn setup_dense_partition(
     tree_nwk: &str,
-    aln: &[FastaRecord],
+    aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
@@ -157,7 +161,7 @@ mod tests {
     })?;
 
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -176,7 +180,10 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;
+    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -184,7 +191,7 @@ mod tests {
     })?;
 
     let partition = PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))

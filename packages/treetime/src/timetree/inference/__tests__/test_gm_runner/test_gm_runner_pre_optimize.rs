@@ -3,7 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use treetime_io::nwk::nwk_fasta_node_inputs;
+  use crate::seq::alignment::node_seq_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -34,6 +34,7 @@ mod tests {
   use rstest::rstest;
 
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   fn extract_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
@@ -60,13 +61,16 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+    let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
@@ -121,13 +125,16 @@ mod tests {
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
-    let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+    let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

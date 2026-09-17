@@ -5,8 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use treetime_io::fasta::FastaRecord;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   /// Build a fixed 4-taxon test input for marginal normalization verification.
@@ -17,7 +17,7 @@ mod tests {
   /// state diversity and seven fixed (invariant) sites.
   /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies (pi = 1/4).
   fn example_input() -> Result<MarginalTestInput, Report> {
-    let alignment = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
       "
 >A
 ACGTACGT
@@ -29,7 +29,10 @@ ACGTACGG
 ACGTACGC
 ",
       &*crate::test_utils::NUC_ALPHABET,
-    )?;
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
     let gtr = jc69(JC69Params::default())?;
     Ok(MarginalTestInput {
       newick: "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".to_owned(),
@@ -42,14 +45,14 @@ ACGTACGC
 
   /// Validate that the example alignment has the expected shape: 4 sequences named
   /// A, B, C, D, each of length 8. Guards against accidental corruption of test fixtures.
-  fn assert_example_alignment_shape(alignment: &[FastaRecord]) -> Result<(), Report> {
+  fn assert_example_alignment_shape(alignment: &[AlignmentRecord]) -> Result<(), Report> {
     let expected_names = ["A", "B", "C", "D"];
     for (index, record) in alignment.iter().enumerate() {
       let expected_name = expected_names[index];
-      if record.seq_name != expected_name {
+      if record.name != expected_name {
         return Err(eyre::eyre!(
           "Unexpected sequence name at index {index}: got {}, expected {expected_name}",
-          record.seq_name
+          record.name
         ));
       }
       let expected_len = 8;
@@ -57,7 +60,7 @@ ACGTACGC
       if actual_len != expected_len {
         return Err(eyre::eyre!(
           "Unexpected sequence length for {}: got {actual_len}, expected {expected_len}",
-          record.seq_name
+          record.name
         ));
       }
     }
