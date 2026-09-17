@@ -61,7 +61,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     })
     .collect::<Result<Vec<_>, _>>()?;
 
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
   let aln = if !args.alignment.alignment.is_empty() {
     let mut records = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;

@@ -31,7 +31,7 @@ pub fn run_optimize(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
   let gap_fill = args.gap_fill_args.effective_gap_fill();
   let mut aln = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
   for record in &mut aln {

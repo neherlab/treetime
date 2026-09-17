@@ -54,7 +54,7 @@ pub fn run_timetree_estimation(
 
   let params = TimetreeParams {
     model: args.model_args.model,
-    alphabet_name: args.alphabet_args.alphabet.unwrap_or_default(),
+    alphabet_name: args.alphabet_args.alphabet_name().unwrap_or_default(),
     dense: args.dense,
     gap_fill: args.gap_fill_args.effective_gap_fill(),
     branch_length_mode: args.branch_length_mode,

@@ -1,12 +1,12 @@
 use app_api::commands::ancestral::aa_model::AaModelName;
 use app_api::commands::optimize::args::OptimizeRerootMethod;
+use app_api::commands::shared::alphabet::AlphabetNameCli;
 use app_api::commands::shared::gap_fill::GapFillCli;
 use app_api::commands::shared::reroot::RerootArgs;
 use app_api::commands::timetree::args::TimeMarginalMode;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
-use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
@@ -25,7 +25,7 @@ pub struct ServerAncestralArgs {
   pub aln: Option<String>,
   pub vcf_reference: Option<String>,
   pub tree: String,
-  pub alphabet: Option<AlphabetName>,
+  pub alphabet: Option<AlphabetNameCli>,
   #[default(GtrModelName::Infer)]
   pub model_name: GtrModelName,
   pub gtr_params: Vec<String>,
@@ -242,8 +242,8 @@ pub struct ServerTimetreeArgs {
   pub gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
   pub method_anc: MethodAncestral,
-  #[default(AlphabetName::default())]
-  pub alphabet: AlphabetName,
+  #[default(AlphabetNameCli::default())]
+  pub alphabet: AlphabetNameCli,
   pub dense: Option<bool>,
   pub aa: bool,
   #[default(GapFillCli::default())]
@@ -426,7 +426,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
 pub struct ServerOptimizeArgs {
   pub input_fastas: Vec<String>,
   pub tree: String,
-  pub alphabet: Option<AlphabetName>,
+  pub alphabet: Option<AlphabetNameCli>,
   #[default(GtrModelName::Infer)]
   pub model_name: GtrModelName,
   pub dense: Option<bool>,
@@ -500,7 +500,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
 pub struct ServerPruneArgs {
   pub input_fastas: Vec<String>,
   pub tree: String,
-  pub alphabet: Option<AlphabetName>,
+  pub alphabet: Option<AlphabetNameCli>,
   pub outdir: String,
   pub prune_short: Option<f64>,
   pub prune_empty: bool,

@@ -218,7 +218,7 @@ fn read_nwk_fasta(
   progress: &dyn ProgressSink,
 ) -> Result<(NwkFastaInput, Vec<bool>, Alphabet), Report> {
   let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");

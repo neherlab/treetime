@@ -19,13 +19,11 @@ pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 #[derive(
   Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
 )]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,
   Aa,
-  #[cfg_attr(feature = "clap", value(name = "aa-no-stop"))]
   AaNoStop,
 }
 
