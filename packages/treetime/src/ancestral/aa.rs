@@ -66,7 +66,7 @@ pub fn reconstruct_aa(
       names,
       reconstructed.reference_override.as_ref(),
     )?;
-    aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
+    aa_node_data.add_cds(&reconstructed.name, cds_data);
 
     if let Some(sink) = seq_sink.as_mut() {
       for node in graph.get_nodes() {
@@ -86,30 +86,19 @@ pub fn reconstruct_aa(
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaNodeData {
-  pub annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   pub reference: BTreeMap<String, String>,
   // Keyed by graph node key, not node name: every amino-acid partition is reconstructed on the same
   // shared tree as the nucleotide partition, so per-node results join by node identity (key) rather
-  // than by reconstructing identity from a synthesized node name across independent graphs.
-  pub node_aa_muts: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<String>>>,
+  // than by reconstructing identity from a synthesized node name across independent graphs. Held as
+  // mutation events; the output encoders render them to per-format strings.
   pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
   pub root_aa_sequences: BTreeMap<String, String>,
 }
 
 impl AaNodeData {
-  pub fn add_cds(&mut self, cds: &str, cds_data: AaCdsNodeData, annotation: Option<AugurNodeDataJsonAnnotationEntry>) {
-    if let Some(annotation) = annotation {
-      self.annotations.insert(cds.to_owned(), annotation);
-    }
+  pub fn add_cds(&mut self, cds: &str, cds_data: AaCdsNodeData) {
     self.reference.insert(cds.to_owned(), cds_data.reference);
     self.root_aa_sequences.insert(cds.to_owned(), cds_data.root_sequence);
-    for (node_key, muts) in cds_data.node_muts {
-      self
-        .node_aa_muts
-        .entry(node_key)
-        .or_default()
-        .insert(cds.to_owned(), muts);
-    }
     for (node_key, mutations) in cds_data.node_mutations {
       self
         .node_aa_mutations
@@ -124,7 +113,6 @@ impl AaNodeData {
 pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,
-  pub node_muts: BTreeMap<GraphNodeKey, Vec<String>>,
   pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
 }
 
@@ -147,7 +135,6 @@ pub fn collect_aa_cds_node_data(
     );
   }
 
-  let mut node_muts = BTreeMap::new();
   let mut node_mutations = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node;
@@ -177,16 +164,13 @@ pub fn collect_aa_cds_node_data(
         .map(|indel| Mutation::indel(MutationTrack::AminoAcid(cds.to_owned()), &indel).map(|mutation| mutation.event));
       substitutions.chain(indels).collect::<Result<Vec<_>, Report>>()?
     };
-    let muts = mutations.iter().flat_map(mutation_event_strings).collect();
 
-    node_muts.insert(node_key, muts);
     node_mutations.insert(node_key, mutations);
   }
 
   Ok(AaCdsNodeData {
     reference: reference.as_str().to_owned(),
     root_sequence: inferred_root.as_str().to_owned(),
-    node_muts,
     node_mutations,
   })
 }
@@ -207,24 +191,6 @@ fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Ve
     .filter(|(_pos, (reff, qry))| reff != qry && is_reportable_sub(**reff, **qry, unknown))
     .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
     .collect()
-}
-
-fn mutation_event_strings(event: &MutationEvent) -> Vec<String> {
-  match event {
-    MutationEvent::Substitution(substitution) => vec![substitution.to_string()],
-    MutationEvent::Insertion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| format!("-{}{state}", segment.range.0 + offset + 1))
-      .collect(),
-    MutationEvent::Deletion(segment) => segment
-      .sequence
-      .iter()
-      .enumerate()
-      .map(|(offset, state)| format!("{state}{}-", segment.range.0 + offset + 1))
-      .collect(),
-  }
 }
 
 fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> bool {

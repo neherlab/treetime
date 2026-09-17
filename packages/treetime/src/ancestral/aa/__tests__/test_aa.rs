@@ -75,11 +75,6 @@ mod tests {
     let expected = AaCdsNodeData {
       reference: o!("AA"),
       root_sequence: o!("AC"),
-      node_muts: btreemap! {
-        name_to_key["A"] => vec![],
-        name_to_key["B"] => vec![],
-        name_to_key["root"] => vec![o!("A2C")],
-      },
       node_mutations: btreemap! {
         name_to_key["A"] => vec![],
         name_to_key["B"] => vec![],

@@ -31,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) =
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
     let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
@@ -41,6 +41,7 @@ mod tests {
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -75,19 +76,21 @@ mod tests {
     // Nucleotide indels are dropped from the Auspice nuc mutation list, which mirrors the
     // substitution-only augur node-data muts. A branch whose only nucleotide change is a
     // deletion therefore has no `nuc` entry.
-    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+      helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
-    let (graph, names, branch_lengths, partition, aa_node_data) =
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let auspice = ancestral_to_auspice(
       &graph,
@@ -95,6 +98,7 @@ mod tests {
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -113,7 +117,8 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
+      helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let error = ancestral_to_mat(
       &graph,
       &names,
@@ -124,7 +129,7 @@ mod tests {
     .expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
-    let (graph, names, branch_lengths, partition, aa_node_data) =
+    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let error = ancestral_to_mat(
       &graph,
@@ -215,7 +220,8 @@ mod tests {
 
   #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+      helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let dir = TempDir::new()?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
@@ -230,6 +236,7 @@ mod tests {
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       &outputs,
       &CommentProviders::new(),
     )
@@ -243,7 +250,8 @@ mod tests {
 
   #[test]
   fn test_tree_output_graph_json_dumps_topology() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::None)?;
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+      helpers::ancestral_graph(helpers::Mutations::None)?;
     let dir = TempDir::new()?;
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
@@ -254,6 +262,7 @@ mod tests {
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       &outputs,
       &CommentProviders::new(),
     )?;
@@ -324,7 +333,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data) =
+    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
     let error = ancestral_to_auspice(
       &graph,
@@ -332,6 +341,7 @@ mod tests {
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
       aa_node_data.as_ref(),
+      &aa_annotations,
       "2026-07-19",
     )
     .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
@@ -545,6 +555,7 @@ mod tests {
       BTreeMap<GraphEdgeKey, Option<f64>>,
       Option<AncestralPartition>,
       Option<AaNodeData>,
+      BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
     );
 
     pub fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
@@ -596,16 +607,6 @@ mod tests {
         } else {
           "S"
         };
-        aa.annotations.insert(
-          "S".to_owned(),
-          AugurNodeDataJsonAnnotationEntry {
-            start: Some(1),
-            end: Some(3),
-            strand: Some("+".to_owned()),
-            entry_type: Some("CDS".to_owned()),
-            ..AugurNodeDataJsonAnnotationEntry::default()
-          },
-        );
         aa.root_aa_sequences.insert(track.to_owned(), "AA".to_owned());
         aa.node_aa_mutations.insert(
           a_key,
@@ -617,8 +618,30 @@ mod tests {
         );
         aa
       });
+      // The CDS annotation map the encoders consume, kept parallel to the AA node data (the core
+      // result no longer carries it). Present only for the amino-acid fixtures.
+      let aa_annotations = if include_aa {
+        btreemap! {
+          "S".to_owned() => AugurNodeDataJsonAnnotationEntry {
+            start: Some(1),
+            end: Some(3),
+            strand: Some("+".to_owned()),
+            entry_type: Some("CDS".to_owned()),
+            ..AugurNodeDataJsonAnnotationEntry::default()
+          },
+        }
+      } else {
+        btreemap! {}
+      };
       let ancestral_partition = AncestralPartition::Fitch(partition);
-      Ok((graph, names, branch_lengths, Some(ancestral_partition), aa_node_data))
+      Ok((
+        graph,
+        names,
+        branch_lengths,
+        Some(ancestral_partition),
+        aa_node_data,
+        aa_annotations,
+      ))
     }
 
     pub fn ancestral_nodes(
@@ -671,7 +694,7 @@ mod tests {
     }
 
     pub fn all_auspice_documents() -> Result<Vec<Value>, Report> {
-      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition, ancestral_aa) =
+      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition, ancestral_aa, ancestral_aa_annotations) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
         &ancestral_graph,
@@ -679,6 +702,7 @@ mod tests {
         &ancestral_bl,
         &ancestral_maps(&ancestral_graph, ancestral_partition.as_ref()),
         ancestral_aa.as_ref(),
+        &ancestral_aa_annotations,
         "2026-07-19",
       )?;
       let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;

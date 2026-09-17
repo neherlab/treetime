@@ -34,6 +34,7 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
+use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
@@ -73,7 +74,7 @@ pub fn run_ancestral_reconstruction(
     .get(&OutputSelection::ReconstructedAaFasta)
     .map(|path| path.to_string_lossy().into_owned());
 
-  let aa_node_data = if let Some(translations) = &args.translations {
+  let aa_result = if let Some(translations) = &args.translations {
     Some(run_aa_reconstructions(
       args,
       translations,
@@ -170,9 +171,26 @@ pub fn run_ancestral_reconstruction(
     })
     .collect();
 
+  // Split the AA reconstruction into the node-data result and the CDS annotation map: the annotations
+  // come from the CLI's GFF parse and are handed to the augur and tree encoders directly, rather than
+  // routed back through the core result.
+  let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
+  let empty_aa_annotations = BTreeMap::new();
+  let aa_annotations = aa_result
+    .as_ref()
+    .map_or(&empty_aa_annotations, |(_, annotations)| annotations);
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(&input.graph, augur_maps, &mask, &names, aa_node_data.as_ref(), path)?;
+      write_augur_node_data_json_with_aa(
+        &input.graph,
+        augur_maps,
+        &mask,
+        &names,
+        aa_node_data,
+        aa_annotations,
+        path,
+      )?;
     }
     info!("Wrote augur node data JSON to {}", path.display());
   }
@@ -196,7 +214,8 @@ pub fn run_ancestral_reconstruction(
       &nodes,
       &branch_lengths,
       &tree_maps,
-      aa_node_data.as_ref(),
+      aa_node_data,
+      aa_annotations,
       &resolved,
       partition.as_ref(),
     )?;
@@ -261,6 +280,7 @@ fn write_tree_for_partition(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
   aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
   partition: Option<&AncestralPartition>,
 ) -> Result<(), Report> {
@@ -278,6 +298,7 @@ fn write_tree_for_partition(
     branch_lengths,
     maps,
     aa_node_data,
+    aa_annotations,
     &resolved.tree_outputs,
     &providers,
   )
@@ -389,7 +410,7 @@ fn run_aa_reconstructions(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
-) -> Result<AaNodeData, Report> {
+) -> Result<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>), Report> {
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
   let recon_alphabet = Alphabet::new(aa_model.alphabet)?;
@@ -469,7 +490,16 @@ fn run_aa_reconstructions(
   let seq_sink: Option<Box<dyn SeqSink>> = aa_fasta_template
     .map(|template| -> Box<dyn SeqSink> { Box::new(AaFastaSink::new(template.to_owned(), names.clone())) });
 
-  reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink)
+  // The CDS annotation map the augur and tree encoders need, kept CLI-side: the reconstructed subset
+  // of the GFF-parsed annotations (one entry per reconstructed CDS that has an annotation). The core
+  // result no longer carries it.
+  let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
+    .iter()
+    .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
+    .collect();
+
+  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink)?;
+  Ok((node_data, cds_annotations))
 }
 
 /// Per-CDS reconstructed amino-acid FASTA sink.

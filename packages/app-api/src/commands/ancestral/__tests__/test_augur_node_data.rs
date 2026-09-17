@@ -199,7 +199,7 @@ mod tests {
     use treetime::partition::fitch::partition::PartitionFitch;
     use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
     use treetime::progress::NoopProgress;
-    use treetime::seq::mutation::Sub;
+    use treetime::seq::mutation::{MutationEvent, Sub};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
@@ -292,7 +292,7 @@ mod tests {
       mask: &[bool],
     ) -> String {
       let maps = gather_augur_output_maps(graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
-      let data = build_augur_node_data_json(graph, &maps, mask, names, None).unwrap();
+      let data = build_augur_node_data_json(graph, &maps, mask, names, None, &BTreeMap::new()).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -376,27 +376,31 @@ mod tests {
       let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
 
+      // Leaf A carries a single amino-acid substitution C2D on CDS `S`; the encoder renders it to the
+      // augur `aa_muts` string form.
       aa_node_data.add_cds(
         "S",
         AaCdsNodeData {
           reference: "AC".to_owned(),
           root_sequence: "AC".to_owned(),
-          node_muts: btreemap! {
-            name_to_key["A"] => vec![o!("C2D")],
+          node_mutations: btreemap! {
+            name_to_key["A"] => vec![MutationEvent::Substitution(sub(b'C', 1, b'D'))],
             name_to_key["B"] => vec![],
             name_to_key["root"] => vec![],
           },
-          node_mutations: btreemap! {},
         },
-        Some(AugurNodeDataJsonAnnotationEntry {
+      );
+
+      let aa_annotations = btreemap! {
+        o!("S") => AugurNodeDataJsonAnnotationEntry {
           start: Some(1),
           end: Some(6),
           strand: Some("+".to_owned()),
           entry_type: Some("CDS".to_owned()),
           segments: None,
           other: btreemap! {},
-        }),
-      );
+        },
+      };
 
       let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition)).unwrap();
       build_augur_node_data_json(
@@ -405,6 +409,7 @@ mod tests {
         &[false, false, false, false],
         &names,
         Some(&aa_node_data),
+        &aa_annotations,
       )
       .unwrap()
     }

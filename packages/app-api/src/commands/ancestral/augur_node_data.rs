@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::ancestral::mask::mask_to_string;
+use treetime::seq::mutation::{MutationEvent, mutation_event_strings};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -28,7 +29,7 @@ pub fn write_augur_node_data_json(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   path: &Path,
 ) -> Result<(), Report> {
-  write_augur_node_data_json_with_aa(graph, maps, mask, names, None, path)
+  write_augur_node_data_json_with_aa(graph, maps, mask, names, None, &BTreeMap::new(), path)
 }
 
 pub fn build_augur_node_data_json(
@@ -37,6 +38,7 @@ pub fn build_augur_node_data_json(
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
   let alignment_length = maps.sequence_length;
   let reference_seq = &maps.root_sequence;
@@ -53,9 +55,7 @@ pub fn build_augur_node_data_json(
     }),
     other: BTreeMap::new(),
   };
-  if let Some(aa_node_data) = aa_node_data {
-    annotations.other.extend(aa_node_data.annotations.clone());
-  }
+  annotations.other.extend(aa_annotations.clone());
 
   let mut nodes = BTreeMap::new();
   let root_key = graph.root_key()?;
@@ -86,7 +86,10 @@ pub fn build_augur_node_data_json(
       }
     }
 
-    let aa_muts = aa_node_data.and_then(|aa| aa.node_aa_muts.get(&node_key).cloned());
+    let aa_muts = aa_node_data
+      .and_then(|aa| aa.node_aa_mutations.get(&node_key))
+      .map(aa_mutation_strings)
+      .transpose()?;
     nodes.insert(
       node_name,
       AugurNodeDataJsonAncestralNode {
@@ -131,9 +134,23 @@ pub fn write_augur_node_data_json_with_aa(
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data)?;
+  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data, aa_annotations)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
+}
+
+/// Render per-CDS amino-acid mutation events to the augur `aa_muts` string form (substitutions as
+/// `A5T`, indels as `-5X` / `X5-`), keyed by CDS. Uses the shared event renderer so the strings match
+/// the nucleotide `muts` and the Newick/auspice mutation comments.
+fn aa_mutation_strings(tracks: &BTreeMap<String, Vec<MutationEvent>>) -> Result<BTreeMap<String, Vec<String>>, Report> {
+  tracks
+    .iter()
+    .map(|(cds, events)| {
+      let strings: Vec<String> = events.iter().map(mutation_event_strings).flatten_ok().try_collect()?;
+      Ok((cds.clone(), strings))
+    })
+    .collect()
 }

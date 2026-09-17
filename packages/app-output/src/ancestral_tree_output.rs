@@ -27,6 +27,7 @@ pub fn write_ancestral_tree_outputs(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
   aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -41,7 +42,17 @@ pub fn write_ancestral_tree_outputs(
     outputs,
     providers,
     "ancestral",
-    || ancestral_to_auspice(graph, nodes, branch_lengths, maps, aa_node_data, &updated),
+    || {
+      ancestral_to_auspice(
+        graph,
+        nodes,
+        branch_lengths,
+        maps,
+        aa_node_data,
+        aa_annotations,
+        &updated,
+      )
+    },
     || ancestral_to_mat(graph, &names, branch_lengths, maps, aa_node_data),
   )
 }
@@ -52,10 +63,11 @@ pub(crate) fn ancestral_to_auspice(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
   aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
   let root_sequences = ancestral_root_sequences(maps, aa_node_data);
-  let genome_annotations = ancestral_genome_annotations(&root_sequences, aa_node_data)?;
+  let genome_annotations = ancestral_genome_annotations(&root_sequences, aa_annotations)?;
   let data = auspice_data(
     "TreeTime ancestral analysis",
     updated,
@@ -107,7 +119,7 @@ fn ancestral_root_sequences(maps: &AncestralOutputMaps, aa_node_data: Option<&Aa
 
 fn ancestral_genome_annotations(
   root_sequences: &BTreeMap<String, String>,
-  aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 ) -> Result<Option<AuspiceGenomeAnnotations>, Report> {
   let nuc = root_sequences
     .get(NUC_TRACK)
@@ -121,16 +133,10 @@ fn ancestral_genome_annotations(
       })
     })
     .transpose()?;
-  let cdses = aa_node_data
-    .map(|data| {
-      data
-        .annotations
-        .iter()
-        .map(|(name, annotation)| Ok((name.clone(), auspice_cds_annotation(name, annotation)?)))
-        .collect::<Result<BTreeMap<_, _>, Report>>()
-    })
-    .transpose()?
-    .unwrap_or_default();
+  let cdses = aa_annotations
+    .iter()
+    .map(|(name, annotation)| Ok((name.clone(), auspice_cds_annotation(name, annotation)?)))
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
   if nuc.is_none() && cdses.is_empty() {
     return Ok(None);
   }
