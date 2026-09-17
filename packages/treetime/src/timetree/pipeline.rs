@@ -30,6 +30,7 @@ use crate::partition::timetree::marginal::{
 };
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
+use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
@@ -58,19 +59,10 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_fasta_node_inputs;
-use treetime_primitives::Seq;
 use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
-
-/// Sink for reconstructed per-node nucleotide sequences streamed during the final ancestral pass.
-///
-/// The timetree pipeline reconstructs flag-aware per-node sequences at its tail (the v1 equivalent of
-/// v0's `ancestral_sequences.fasta`). Each node's `(name, description, sequence)` is handed to this
-/// caller-supplied sink as it is reconstructed, so the whole set never resides in memory at once. The
-/// CLI adapter wires it to a FASTA writer; a run that requests no reconstructed FASTA passes `None`.
-pub type ReconstructedSeqSink = Box<dyn FnMut(&str, &Option<String>, &Seq) -> Result<(), Report>>;
 
 pub struct TimetreeParams {
   pub model: GtrModelName,
@@ -183,27 +175,12 @@ pub fn run(
   mut input: TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   trace_sink: Option<Box<dyn TraceSink>>,
-  mut reconstructed_seq_sink: Option<ReconstructedSeqSink>,
+  mut seq_sink: Option<Box<dyn SeqSink>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
   info!("# TreeTime Timetree Estimation");
 
-  // Descriptions live only on the input leaf FASTA records; partition init keys them to leaves by
-  // matching each leaf name to its record (first record wins on a duplicate name). Capture that
-  // name-keyed map before the alignment moves into the partitions, so the tail reconstruction can
-  // rebuild a node-keyed description map from the final `names` map.
-  let aln_descs: BTreeMap<String, Option<String>> =
-    input
-      .sequences
-      .iter()
-      .flatten()
-      .fold(BTreeMap::new(), |mut descs, record| {
-        descs
-          .entry(record.seq_name.clone())
-          .or_insert_with(|| record.desc.clone());
-        descs
-      });
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
     params.branch_length_mode, params.keep_root
@@ -703,27 +680,17 @@ pub fn run(
   // writers) reads each node's name from the returned map.
   let names = assign_node_names(names, &input.graph)?;
 
-  // Node-keyed descriptions for the reconstructed-FASTA sink, rebuilt from the name-keyed `aln_descs`:
-  // a leaf resolves to its record's description, an internal node (including the freshly named root) to
-  // `None`. This reproduces what partition init wrote onto each leaf by the same name-to-record match.
-  let descs: BTreeMap<GraphNodeKey, Option<String>> = names
-    .iter()
-    .map(|(&key, name)| {
-      let desc = name.as_deref().and_then(|name| aln_descs.get(name).cloned()).flatten();
-      (key, desc)
-    })
-    .collect();
-
   // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`. The
   // pipeline computes marginal posteriors for branch-length optimization but never materializes the
   // flag-aware per-node sequences, so this refreshes the posteriors against the final branch lengths
-  // (`marginal_update`) and then writes each node's stored sequence, emitting it through the sink.
-  // `--include-leaves` gates whether tips are emitted; `--impute-missing-data` resolves ambiguous tip
-  // states. The pass is opt-in (FASTA requested via the sink, or a tip-state flag set); a run that asks
-  // for neither leaves all other outputs unchanged.
-  if reconstructed_seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
+  // (`marginal_update`) and then emits each node's stored sequence through the sink, keyed by graph
+  // node. The caller's sink resolves each key to an output name and description. `--include-leaves`
+  // gates whether tips are emitted; `--impute-missing-data` resolves ambiguous tip states. The pass is
+  // opt-in (FASTA requested via the sink, or a tip-state flag set); a run that asks for neither leaves
+  // all other outputs unchanged.
+  if seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
     if partitions.is_empty() {
-      if reconstructed_seq_sink.is_some() {
+      if seq_sink.is_some() {
         return make_error!(
           "Reconstructed sequence output requires ancestral reconstruction; \
            incompatible with --branch-length-mode=input"
@@ -734,6 +701,11 @@ pub fn run(
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
     } else {
+      // Announce the final topology before the first sequence, so the sink can resolve names against
+      // the tree a late reroot or polytomy resolution produced (core does not write names onto nodes).
+      if let Some(sink) = seq_sink.as_mut() {
+        sink.on_topology(&input.graph)?;
+      }
       let branch_lengths_final = timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths);
       (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_final, partitions)?;
       let mut rng = get_random_number_generator(params.seed);
@@ -744,11 +716,12 @@ pub fn run(
         &mut partitions,
         SampleMode::Argmax,
         &mut rng,
-        |key, seq| match reconstructed_seq_sink.as_mut() {
-          Some(emit) => {
-            let name = names[&key].clone().unwrap_or_default();
-            emit(&name, &descs[&key], seq)
-          },
+        |key, seq| match seq_sink.as_mut() {
+          Some(sink) => sink.emit(SeqItem {
+            key,
+            track: SeqTrack::Nuc,
+            seq,
+          }),
           None => Ok(()),
         },
       )?;

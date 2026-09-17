@@ -13,7 +13,7 @@ use log::{info, warn};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-use treetime::ancestral::aa::{AaNodeData, AaSeqSink, reconstruct_aa};
+use treetime::ancestral::aa::{AaNodeData, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use treetime::ancestral::mask::create_mask;
 use treetime::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
@@ -25,6 +25,7 @@ use treetime::progress::ProgressSink;
 use treetime::seq::alignment::get_common_length;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::MutationTrack;
+use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -32,7 +33,6 @@ use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fa
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
-use treetime_primitives::Seq;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 pub fn run_ancestral_reconstruction(
@@ -463,25 +463,59 @@ fn run_aa_reconstructions(
     });
   }
 
-  // Per-CDS reconstructed amino-acid FASTA: the core driver streams every node's sequence while its CDS
-  // partition is resident, and this sink opens a fresh output file when the CDS changes (the driver
-  // finishes one CDS before starting the next), writing each node in tree order.
-  let aa_seq_sink: Option<AaSeqSink> = aa_fasta_template.map(|template| {
-    let template = template.to_owned();
-    let mut open: Option<(String, FastaWriter)> = None;
-    let sink: AaSeqSink = Box::new(move |cds: &str, node_name: &str, seq: &Seq| -> Result<(), Report> {
-      if open.as_ref().map(|(name, _)| name.as_str()) != Some(cds) {
-        let path = translation_path(&template, cds);
-        open = Some((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)));
-      }
-      open
-        .as_mut()
-        .expect("writer opened above")
-        .1
-        .write(node_name, &None, seq)
-    });
-    sink
-  });
+  // Per-CDS reconstructed amino-acid FASTA sink: the core driver streams every node's sequence while
+  // its CDS partition is resident, and the sink opens a fresh output file when the CDS changes (the
+  // driver finishes one CDS before starting the next), writing each node in tree order.
+  let seq_sink: Option<Box<dyn SeqSink>> = aa_fasta_template
+    .map(|template| -> Box<dyn SeqSink> { Box::new(AaFastaSink::new(template.to_owned(), names.clone())) });
 
-  reconstruct_aa(graph, names, branch_lengths, &params, plans, aa_seq_sink)
+  reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink)
+}
+
+/// Per-CDS reconstructed amino-acid FASTA sink.
+///
+/// Opens a fresh output file when the emitted CDS changes and writes each node's sequence in tree
+/// order. Node names come from the parsed tree, with a `node_{key}` fallback for unnamed internal nodes
+/// (matching the augur node-data naming); amino-acid records carry no description. The amino-acid
+/// reconstruction does not change the topology, so the names captured at construction stay valid and
+/// `on_topology` needs no per-topology resolution.
+struct AaFastaSink {
+  template: String,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  open: Option<(String, FastaWriter)>,
+}
+
+impl AaFastaSink {
+  fn new(template: String, names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
+    Self {
+      template,
+      names,
+      open: None,
+    }
+  }
+}
+
+impl SeqSink for AaFastaSink {
+  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+    Ok(())
+  }
+
+  fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+    let SeqTrack::Aa(cds) = item.track else {
+      return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");
+    };
+    if self.open.as_ref().map(|(name, _)| name.as_str()) != Some(cds) {
+      let path = translation_path(&self.template, cds);
+      self.open = Some((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)));
+    }
+    let name = self.names[&item.key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", item.key.0), str::to_owned);
+    self
+      .open
+      .as_mut()
+      .expect("writer opened above")
+      .1
+      .write(&name, &None, item.seq)
+  }
 }

@@ -21,16 +21,17 @@ use treetime::make_error;
 use treetime::partition::timetree::partition::PartitionTimetree;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
+use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use treetime::timetree::timetree_state::TimetreeState;
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
-use treetime_primitives::Seq;
 use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_timetree_estimation(
@@ -123,13 +124,12 @@ pub fn run_timetree_estimation(
     .non_tree_outputs
     .get(&OutputSelection::ReconstructedNucFasta)
     .cloned();
-  let recon_sink: Option<pipeline::ReconstructedSeqSink> = match &reconstructed_nuc_fasta {
-    Some(path) => {
-      let mut writer = FastaWriter::new(create_file_or_stdout(path)?);
-      Some(Box::new(move |name: &str, desc: &Option<String>, seq: &Seq| {
-        writer.write(name, desc, seq)
-      }))
-    },
+  let recon_sink: Option<Box<dyn SeqSink>> = match &reconstructed_nuc_fasta {
+    Some(path) => Some(Box::new(ReconstructedNucSink::new(
+      FastaWriter::new(create_file_or_stdout(path)?),
+      parse_names.clone(),
+      aln_descs.clone(),
+    ))),
     None => None,
   };
 
@@ -342,6 +342,71 @@ pub fn run_timetree_estimation(
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult { graph, nodes, edges })
+}
+
+/// Reconstructed-nucleotide FASTA sink for the timetree pipeline.
+///
+/// Resolves each emitted graph key to its output name and description and writes one FASTA record.
+/// Names are re-derived from the final topology the pipeline delivers through `on_topology`: a late
+/// reroot or polytomy resolution can rename nodes, and core does not write the synthetic names onto the
+/// graph, so the sink reproduces the pipeline's own `assign_node_names` assignment from the same parsed
+/// prior names. Descriptions come from the input alignment, keyed by the resolved name.
+struct ReconstructedNucSink {
+  writer: FastaWriter,
+  parse_names: BTreeMap<GraphNodeKey, Option<String>>,
+  aln_descs: BTreeMap<String, Option<String>>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  descs: BTreeMap<GraphNodeKey, Option<String>>,
+}
+
+impl ReconstructedNucSink {
+  fn new(
+    writer: FastaWriter,
+    parse_names: BTreeMap<GraphNodeKey, Option<String>>,
+    aln_descs: BTreeMap<String, Option<String>>,
+  ) -> Self {
+    Self {
+      writer,
+      parse_names,
+      aln_descs,
+      names: BTreeMap::new(),
+      descs: BTreeMap::new(),
+    }
+  }
+}
+
+impl SeqSink for ReconstructedNucSink {
+  fn on_topology(&mut self, graph: &Graph) -> Result<(), Report> {
+    // Reproduce the pipeline's final node names on the delivered topology, then map each node to its
+    // input-alignment description by resolved name (a leaf resolves to its record's description; an
+    // internal or reroot-introduced node matches no record and resolves to `None`).
+    self.names = assign_node_names(self.parse_names.clone(), graph)?;
+    self.descs = self
+      .names
+      .iter()
+      .map(|(&key, name)| {
+        let desc = name
+          .as_deref()
+          .and_then(|name| self.aln_descs.get(name).cloned())
+          .flatten();
+        (key, desc)
+      })
+      .collect();
+    Ok(())
+  }
+
+  fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+    match item.track {
+      SeqTrack::Nuc => {
+        let name = self.names[&item.key].clone().unwrap_or_default();
+        let desc = self.descs[&item.key].clone();
+        self.writer.write(&name, &desc, item.seq)
+      },
+      SeqTrack::Aa(cds) => treetime_utils::make_internal_error!(
+        "Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'"
+      ),
+    }
+  }
 }
 
 /// Gather the per-node and per-edge timetree outputs off the final tree into keyed value maps.

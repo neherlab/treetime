@@ -8,3 +8,4 @@ pub mod find_char_ranges;
 pub mod gap_fill;
 pub mod indel;
 pub mod mutation;
+pub mod sink;
