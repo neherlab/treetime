@@ -7,14 +7,20 @@ use crate::timetree::convergence::node_times::NodeTimeChange;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use log::info;
-use std::io::Write;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
-use treetime_io::csv::CsvStructWriter;
+
+/// Sink for per-iteration timetree optimizer convergence metrics.
+///
+/// The optimizer emits one metric per iteration. The CLI supplies an implementation that encodes the
+/// trace (for example as CSV) outside the core, so the core holds no writer and no output format.
+pub trait TraceSink: Send {
+  fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report>;
+}
 
 pub struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,
-  tracelog_writer: Option<CsvStructWriter<Box<dyn Write + Send>>>,
+  trace_sink: Option<Box<dyn TraceSink>>,
   max_iterations: usize,
   suppress_convergence: bool,
   i: usize,
@@ -24,17 +30,16 @@ impl TimetreeOptimizer {
   pub fn new(max_iter: usize, suppress_convergence: bool) -> Self {
     Self {
       trace: vec![],
-      tracelog_writer: None,
+      trace_sink: None,
       max_iterations: max_iter,
       suppress_convergence,
       i: 0,
     }
   }
 
-  pub fn with_tracelog(mut self, writer: impl Write + Send + 'static) -> Result<Self, Report> {
-    let boxed: Box<dyn Write + Send> = Box::new(writer);
-    self.tracelog_writer = Some(CsvStructWriter::new(boxed, b',')?);
-    Ok(self)
+  pub fn with_trace_sink(mut self, sink: Box<dyn TraceSink>) -> Self {
+    self.trace_sink = Some(sink);
+    self
   }
 
   pub fn next_iter(&mut self) -> Option<IterationContext> {
@@ -77,8 +82,8 @@ impl TimetreeOptimizer {
       log_lh_total,
     };
 
-    if let Some(writer) = &mut self.tracelog_writer {
-      writer.write(&metric)?;
+    if let Some(sink) = &mut self.trace_sink {
+      sink.emit(&metric)?;
     }
 
     info!(

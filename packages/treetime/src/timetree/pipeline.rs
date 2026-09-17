@@ -35,7 +35,7 @@ use crate::timetree::coalescent::{
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
-use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer};
+use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
 use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree, timetree_branch_lengths};
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
@@ -48,7 +48,6 @@ use log::{debug, info, warn};
 use ndarray::{Array1, array};
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::io::Write;
 use treetime_distribution::Distribution;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
@@ -182,7 +181,7 @@ pub fn run(
   params: &TimetreeParams,
   mut input: TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  tracelog: Option<Box<dyn Write + Send>>,
+  trace_sink: Option<Box<dyn TraceSink>>,
   mut reconstructed_seq_sink: Option<ReconstructedSeqSink>,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
@@ -511,8 +510,8 @@ pub fn run(
   progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
-  if let Some(writer) = tracelog {
-    optimizer = optimizer.with_tracelog(writer)?;
+  if let Some(sink) = trace_sink {
+    optimizer = optimizer.with_trace_sink(sink);
   }
   let refinement_options = RefinementOptions {
     relax: params.relax.clone(),

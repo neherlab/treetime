@@ -7,6 +7,7 @@ use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data::write_augur_node_data_json;
 use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
+use app_output::timetree_trace::TraceCsvSink;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use eyre::{Report, WrapErr};
@@ -21,6 +22,7 @@ use treetime::partition::timetree::partition::PartitionTimetree;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::timetree::coalescent::CoalescentOutput;
+use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use treetime::timetree::timetree_state::TimetreeState;
 use treetime_graph::edge::GraphEdgeKey;
@@ -43,12 +45,11 @@ pub fn run_timetree_estimation(
   let confidences = input_data.confidences;
   let parse_names = input_data.names;
 
-  // Resolve outputs up front so the tracelog path (which the pipeline writes during the run) is
-  // known before the pipeline starts. Topology ordering is resolved separately, after the pipeline.
+  // Resolve outputs up front so the trace-sink path is known before the pipeline starts. Topology
+  // ordering is resolved separately, after the pipeline.
   let resolved = args.resolve_outputs()?;
-  let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
-  {
-    Some(path) => Some(Box::new(create_file_or_stdout(path)?)),
+  let trace_sink: Option<Box<dyn TraceSink>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog) {
+    Some(path) => Some(Box::new(TraceCsvSink::new(create_file_or_stdout(path)?)?)),
     None => None,
   };
 
@@ -131,7 +132,7 @@ pub fn run_timetree_estimation(
     None => None,
   };
 
-  let mut output = pipeline::run(&params, input, &parse_names, tracelog, recon_sink, progress)?;
+  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, progress)?;
   if let Some(path) = &reconstructed_nuc_fasta {
     info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
   }

@@ -6,6 +6,8 @@ mod tests {
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use std::sync::Arc;
+  use std::sync::atomic::{AtomicUsize, Ordering};
 
   /// No node is dated on both sides of the iteration, so no movement is measurable and the
   /// criterion falls back to the ancestral-sequence count.
@@ -146,12 +148,14 @@ mod tests {
     Ok(())
   }
 
+  /// The optimizer emits one trace metric to the injected sink per recorded iteration.
   #[test]
-  fn test_optimizer_tracelog_writes_csv() -> Result<(), Report> {
+  fn test_optimizer_trace_sink_receives_each_iteration() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let state = TimetreeState::new(&graph);
-    let buf = Vec::<u8>::new();
-    let mut optimizer = TimetreeOptimizer::new(3, false).with_tracelog(buf)?;
+    let count = Arc::new(AtomicUsize::new(0));
+    let mut optimizer =
+      TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::CountingSink(Arc::clone(&count))));
 
     assert!(optimizer.next_iter().is_some());
     optimizer.record(5, 1, NodeTimeChange::default(), &graph, &[], &state, None)?;
@@ -160,12 +164,28 @@ mod tests {
     optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert_eq!(2, optimizer.trace().len());
+    assert_eq!(2, count.load(Ordering::Relaxed));
     Ok(())
   }
 
   mod helpers {
+    use crate::timetree::convergence::metrics::ConvergenceMetrics;
     use crate::timetree::convergence::node_times::NodeTimeChange;
+    use crate::timetree::convergence::optimizer::TraceSink;
+    use eyre::Report;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use treetime_graph::graph::Graph;
+
+    /// A trace sink that counts emissions, for asserting the optimizer emits once per iteration.
+    pub struct CountingSink(pub Arc<AtomicUsize>);
+
+    impl TraceSink for CountingSink {
+      fn emit(&mut self, _metric: &ConvergenceMetrics) -> Result<(), Report> {
+        self.0.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+      }
+    }
 
     /// A measured movement of `years`, as a single node moving that far would produce.
     pub fn moved_by(years: f64) -> NodeTimeChange {

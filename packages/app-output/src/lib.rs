@@ -25,6 +25,7 @@ pub mod prune_result;
 pub mod prune_tree_output;
 pub mod rtt;
 pub mod timetree_result;
+pub mod timetree_trace;
 pub mod timetree_tree_output;
 pub mod tree_output;
 
