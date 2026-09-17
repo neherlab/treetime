@@ -7,6 +7,7 @@ pub mod constants;
 pub mod error;
 pub mod gtr;
 pub mod hacks;
+pub mod homoplasy;
 pub mod io;
 pub mod mugration;
 pub mod optimize;

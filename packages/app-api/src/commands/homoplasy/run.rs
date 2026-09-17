@@ -1,8 +1,9 @@
 use crate::commands::homoplasy::args::TreetimeHomoplasyArgs;
 use crate::commands::homoplasy::result::HomoplasyResult;
 use eyre::Report;
-use treetime::make_error;
+use treetime::homoplasy::pipeline::{self, HomoplasyInput, HomoplasyParams};
 
 pub fn run_homoplasy(_: TreetimeHomoplasyArgs) -> Result<HomoplasyResult, Report> {
-  make_error!("The homoplasy command is not yet implemented in v1")
+  pipeline::run(&HomoplasyParams, HomoplasyInput).map_err(|err| err.into_report())?;
+  Ok(HomoplasyResult)
 }

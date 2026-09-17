@@ -54,4 +54,19 @@ mod tests {
     let err = OperationError::InvalidParams(eyre!("bad flag {}", 42));
     assert_eq!("bad flag 42", err.to_string());
   }
+
+  #[test]
+  fn test_error_not_implemented_display_names_operation() {
+    let err = OperationError::NotImplemented("homoplasy");
+    assert_eq!("The homoplasy operation is not yet implemented in v1", err.to_string());
+  }
+
+  #[test]
+  fn test_error_not_implemented_into_report_keeps_message() {
+    let recovered = OperationError::NotImplemented("homoplasy").into_report();
+    assert_eq!(
+      "The homoplasy operation is not yet implemented in v1",
+      recovered.to_string()
+    );
+  }
 }

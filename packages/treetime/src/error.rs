@@ -34,6 +34,10 @@ pub enum OperationError {
   /// A caller-supplied output sink failed while receiving a result.
   #[display("{_0}")]
   SinkFailed(Report),
+
+  /// The requested operation has no core implementation yet. `_0` names the operation.
+  #[display("The {_0} operation is not yet implemented in v1")]
+  NotImplemented(&'static str),
 }
 
 impl OperationError {
@@ -45,6 +49,7 @@ impl OperationError {
   pub fn into_report(self) -> Report {
     match self {
       Self::Cancelled => Report::new(CancelledError),
+      Self::NotImplemented(operation) => Report::msg(format!("The {operation} operation is not yet implemented in v1")),
       Self::InvalidParams(report)
       | Self::InvalidInput(report)
       | Self::InferenceFailed(report)
