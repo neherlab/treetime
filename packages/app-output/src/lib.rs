@@ -14,6 +14,7 @@ pub mod date_comment;
 pub mod mutation_comment;
 pub mod optimize_result;
 pub mod prune_result;
+pub mod rtt;
 pub mod timetree_result;
 
 pub use date_comment::DateCommentProvider;

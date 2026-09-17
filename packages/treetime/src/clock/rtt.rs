@@ -3,12 +3,10 @@ use crate::clock::clock_state::{ClockInputs, ClockState};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
-use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -71,13 +69,4 @@ pub fn gather_clock_regression_results(
       })
     })
     .collect()
-}
-
-pub fn write_clock_regression_result_csv(
-  results: &[ClockRegressionResult],
-  filepath: impl AsRef<Path>,
-  delimiter: u8,
-) -> Result<(), Report> {
-  let mut rtt_writer = CsvStructFileWriter::new(filepath, delimiter)?;
-  results.iter().try_for_each(|result| rtt_writer.write(result))
 }
