@@ -233,13 +233,20 @@ dependencies = [
 name = "app-output"
 version = "1.0.0"
 dependencies = [
+ "approx",
+ "chrono",
  "ctor 0.5.0",
  "eyre",
  "itertools 0.14.0",
+ "jsonschema",
  "maplit",
+ "ndarray",
  "pretty_assertions",
  "rayon",
+ "rstest",
  "serde",
+ "serde_json",
+ "tempfile",
  "treetime",
  "treetime-distribution",
  "treetime-graph",

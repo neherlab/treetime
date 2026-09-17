@@ -1,8 +1,8 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
-use crate::commands::mugration::tree_output::write_mugration_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;

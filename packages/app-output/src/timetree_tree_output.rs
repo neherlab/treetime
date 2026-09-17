@@ -1,9 +1,9 @@
-use crate::commands::shared::tree_output::{
+use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
+use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node, coloring,
   ensure_finite, finite_number, format_number, generation_date, group_mutations, mat_from_graph, node_name_value,
   write_tree_outputs,
 };
-use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;

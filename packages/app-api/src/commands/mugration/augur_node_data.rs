@@ -1,8 +1,8 @@
+use app_output::mugration_tree_output::{build_confidence_map, compute_entropy};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
-use treetime::partition::storage::discrete::DiscreteStates;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -124,23 +124,6 @@ fn build_nodes(
   }
 
   nodes
-}
-
-/// Build confidence map: state -> probability, sorted descending, filtered > 0.001.
-pub(crate) fn build_confidence_map(states: &DiscreteStates, profile: &ndarray::Array1<f64>) -> BTreeMap<String, f64> {
-  let mut pairs: Vec<(&str, f64)> = states.iter().zip(profile.iter()).map(|(s, &p)| (s, p)).collect();
-  pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-  pairs
-    .into_iter()
-    .filter(|(_, p)| *p > 0.001)
-    .map(|(s, p)| (s.to_owned(), p))
-    .collect()
-}
-
-/// Shannon entropy: -sum(p * ln(p + 1e-12)) over real states (excludes missing).
-pub(crate) fn compute_entropy(profile: &ndarray::Array1<f64>) -> f64 {
-  const TINY: f64 = 1e-12;
-  -profile.iter().map(|&p| p * (p + TINY).ln()).sum::<f64>()
 }
 
 fn build_branches(

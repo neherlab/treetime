@@ -10,7 +10,6 @@ pub mod output;
 pub mod required;
 pub mod reroot;
 pub mod resolve_outputs;
-pub mod tree_output;
 
 #[cfg(test)]
 mod __tests__;

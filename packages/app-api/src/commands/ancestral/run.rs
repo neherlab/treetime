@@ -3,11 +3,11 @@ use crate::commands::ancestral::aa_node_data::{
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
-use crate::commands::ancestral::tree_output::write_ancestral_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut};
+use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use eyre::Report;
 use log::{info, warn};
 use std::collections::BTreeMap;

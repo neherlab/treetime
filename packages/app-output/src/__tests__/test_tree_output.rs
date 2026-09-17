@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
-  use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat};
-  use crate::commands::mugration::tree_output::{mugration_to_auspice, mugration_to_mat};
-  use crate::commands::optimize::tree_output::{optimize_to_auspice, optimize_to_mat};
-  use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat};
-  use crate::commands::shared::tree_output::{format_number, group_mutations, mat_mutation};
-  use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat};
-  use app_output::ancestral_result::AncestralNodeOut;
+  use crate::ancestral_result::AncestralNodeOut;
+  use crate::ancestral_tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
+  use crate::clock_tree_output::{clock_to_auspice, clock_to_mat};
+  use crate::mugration_tree_output::{mugration_to_auspice, mugration_to_mat};
+  use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
+  use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
+  use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
+  use crate::tree_output::{format_number, group_mutations, mat_mutation};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -430,15 +430,11 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use crate::commands::ancestral::run::gather_ancestral_output_maps;
-    use crate::commands::optimize::run::gather_optimize_output_maps;
-    use crate::commands::prune::run::gather_prune_output_maps;
-    use crate::commands::timetree::run::gather_timetree_output_maps;
-    use app_output::ancestral_result::AncestralOutputMaps;
-    use app_output::clock_result::ClockNodeOut;
-    use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
-    use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
-    use app_output::{TimetreeNodeOut, TimetreeOutputMaps};
+    use crate::ancestral_result::AncestralOutputMaps;
+    use crate::clock_result::ClockNodeOut;
+    use crate::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
+    use crate::prune_result::{PruneNodeOut, PruneOutputMaps};
+    use crate::timetree_result::{TimetreeNodeOut, TimetreeOutputMaps};
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
     use serde::Serialize;
@@ -471,20 +467,44 @@ mod tests {
       IndelAndAminoAcid,
     }
 
+    /// Build the ancestral output maps the auspice and MAT encoders read, from the partition's public
+    /// accessors. Mirrors what the core gather produces from the same reads, keeping the maps
+    /// constructible from public API without reaching the app-api gather.
     pub fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
-      gather_ancestral_output_maps(graph, partition).unwrap()
+      let Some(partition) = partition else {
+        return AncestralOutputMaps::default();
+      };
+      let root_sequence = Some(partition.root_sequence(graph).unwrap());
+      let edge_mutations = graph
+        .get_edges()
+        .map(|edge| {
+          let key = edge.key();
+          (
+            key,
+            partition
+              .edge_mutations(graph, key, &MutationTrack::Nucleotide)
+              .unwrap(),
+          )
+        })
+        .collect();
+      AncestralOutputMaps {
+        root_sequence,
+        edge_mutations,
+      }
     }
 
-    pub fn optimize_maps(graph: &Graph) -> OptimizeOutputMaps {
-      gather_optimize_output_maps(graph, &[], &[]).unwrap()
+    /// The optimize fixtures carry no reconstruction partition, so the encoders read empty maps, exactly
+    /// what the core gather returns for an empty partition set.
+    pub fn optimize_maps(_graph: &Graph) -> OptimizeOutputMaps {
+      OptimizeOutputMaps::default()
     }
 
-    pub fn prune_maps(graph: &Graph) -> PruneOutputMaps {
-      gather_prune_output_maps(graph, &[]).unwrap()
+    pub fn prune_maps(_graph: &Graph) -> PruneOutputMaps {
+      PruneOutputMaps::default()
     }
 
-    pub fn timetree_maps(graph: &Graph) -> TimetreeOutputMaps {
-      gather_timetree_output_maps(graph, &[]).unwrap()
+    pub fn timetree_maps(_graph: &Graph) -> TimetreeOutputMaps {
+      TimetreeOutputMaps::default()
     }
 
     /// Build the mugration output maps the auspice and MAT encoders read, from the partition's public

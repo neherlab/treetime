@@ -1,8 +1,8 @@
-use crate::commands::shared::tree_output::{
+use crate::clock_result::ClockNodeOut;
+use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, auspice_data, auspice_from_graph, auspice_node, coloring, finite_number,
   generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
 };
-use app_output::clock_result::ClockNodeOut;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;

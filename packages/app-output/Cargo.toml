@@ -20,19 +20,26 @@ treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }
 
 # [external]
+chrono = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 maplit = { workspace = true }
+ndarray = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 # [internal]
 treetime-distribution = { workspace = true }
 
 # [external]
+approx = { workspace = true }
 ctor = { workspace = true }
+jsonschema = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true
