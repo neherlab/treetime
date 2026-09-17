@@ -3,6 +3,37 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 
+// CLI mirror of core `RerootMethod` carrying the clap `ValueEnum` derive. Core keeps `RerootMethod` as
+// a plain domain enum; this adapter copy owns the `--reroot` value parsing and converts back with
+// `From`. Variants, the `best` and `clock-filter` value aliases, serde spellings, and the
+// `schemars(rename)` schema name are kept identical to the core enum so `--help`, config parsing, and
+// the generated schema stay byte-identical. The comment is non-doc on purpose: the core enum carries
+// no doc, so a doc comment here would add a `description` to the schema and break schema parity.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "RerootMethod")]
+pub enum RerootMethodCli {
+  #[default]
+  #[cfg_attr(feature = "clap", value(alias = "best"))]
+  LeastSquares,
+  MinDev,
+  Oldest,
+  #[cfg_attr(feature = "clap", value(alias = "clock-filter"))]
+  ClockFilter,
+}
+
+impl From<RerootMethodCli> for RerootMethod {
+  fn from(method: RerootMethodCli) -> Self {
+    match method {
+      RerootMethodCli::LeastSquares => RerootMethod::LeastSquares,
+      RerootMethodCli::MinDev => RerootMethod::MinDev,
+      RerootMethodCli::Oldest => RerootMethod::Oldest,
+      RerootMethodCli::ClockFilter => RerootMethod::ClockFilter,
+    }
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
@@ -11,7 +42,7 @@ pub struct RerootArgs {
   ///
   /// Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
   #[cfg_attr(feature = "clap", clap(long = "reroot", value_enum, conflicts_with = "reroot_tips"))]
-  pub reroot: Option<RerootMethod>,
+  pub reroot: Option<RerootMethodCli>,
 
   /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
   #[cfg_attr(
@@ -24,7 +55,7 @@ pub struct RerootArgs {
 impl RerootArgs {
   pub fn spec(&self) -> RerootSpec {
     if self.reroot_tips.is_empty() {
-      RerootSpec::Method(self.reroot.unwrap_or_default())
+      RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default())
     } else {
       RerootSpec::Tips(self.reroot_tips.clone())
     }
@@ -33,7 +64,7 @@ impl RerootArgs {
 
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::reroot::RerootArgs;
+  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli};
   use pretty_assertions::assert_eq;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use treetime::o;
@@ -50,7 +81,7 @@ mod tests {
   #[test]
   fn test_reroot_args_method_spec() {
     let args = RerootArgs {
-      reroot: Some(RerootMethod::MinDev),
+      reroot: Some(RerootMethodCli::MinDev),
       ..RerootArgs::default()
     };
 

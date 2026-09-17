@@ -4,13 +4,13 @@ use app_api::commands::shared::alphabet::AlphabetNameCli;
 use app_api::commands::shared::gap_fill::GapFillCli;
 use app_api::commands::shared::model::GtrModelNameCli;
 use app_api::commands::shared::reroot::RerootArgs;
+use app_api::commands::shared::reroot::RerootMethodCli;
 use app_api::commands::timetree::args::TimeMarginalMode;
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
-use treetime::clock::find_best_root::params::RerootMethod;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
 
 use app_api::{
@@ -122,7 +122,7 @@ pub struct ServerClockArgs {
   pub method_anc: MethodAncestral,
   #[default = 3.0]
   pub clock_filter: f64,
-  pub reroot: Option<RerootMethod>,
+  pub reroot: Option<RerootMethodCli>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
   pub prune_short: bool,
@@ -231,7 +231,7 @@ pub struct ServerTimetreeArgs {
   pub no_tip_labels: bool,
   pub clock_filter: f64,
   pub n_iqd: Option<f64>,
-  pub reroot: Option<RerootMethod>,
+  pub reroot: Option<RerootMethodCli>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
   pub allow_negative_rate: bool,
