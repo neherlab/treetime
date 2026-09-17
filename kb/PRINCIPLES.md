@@ -194,7 +194,7 @@ mod web {
   - **P1.1.2. Per-item data as value maps**: per-item data flows as value collections keyed by a stable identifier, not by mutating shared state
   - **P1.1.3. DAG dataflow**: data flows along a DAG: sources -> transformations -> sinks, and only that direction. Sources are read, never written back. Each stage is a pure function that consumes values and returns new values; no stage mutates its inputs, a shared object, or a neighbor's state. The dataflow is acyclic: nothing feeds back upstream, and only the sink is written. A single long-lived mutable object spanning stages is the pattern this forbids
 - **P1.2. No god-objects**: no long-lived mutable object spans stages, and no object is partially initialized then completed by later mutation. State flows as values passed in and returned. The values need not mirror any earlier in-place structure; they carry only the necessary information. Multiple inputs may be passed rather than one object, and a step may use its inputs and prior outputs fully or partially. The final sink is the output write.
-- **P1.3. Structure without payload**: a shared structural object carries only its shape, holding no per-item data payload and no data-type generics. Per-item data travels as value maps alongside it.
+- **P1.3. Structure without payload**: a shared structural topology object (graph, tree) carries only its shape, holding no per-item data payload and no data-type generics. Per-item data travels alongside it.
 
 ## Principle 2: Top-level functions read as an ordered sequence of named, single-responsibility steps.
 
@@ -218,6 +218,8 @@ One core, served unchanged from a CLI and a web backend. The CLI and web adapter
   - **P3.6.4. Async stream**: best for web streaming, risks async in core
   - **P3.6.5. Raw `Write` of bytes**: reject at the core seam (leaks format/I/O)
 - **P3.7. No shared blob**: one shared unit per concern, format, or domain, so removing a capability touches one unit and a consumer depends only on what it uses. The no-`utils` rule applies inside the shared tier exactly as everywhere else.
+- **P3.8. Adapters own the workflow, shared code owns steps**: each adapter owns its complete external interaction -- convert its arguments or request, read the inputs, build core values, call the core, then project and deliver the result. A shared unit owns one step (parse, validate, plan, project, encode, write). It never owns a whole read-run-write command or an adapter-neutral command object, because that recreates the generic command layer under a new name.
+- **P3.9. The encoding tier encodes only**: a shared output unit turns core values into bytes and nothing more. It reads no input, parses nothing, and holds no path policy. The adapter selects the destination; the writer may open the path the adapter chose.
 
 ## Principle 4: Production code is the only consumer that shapes structure.
 
@@ -233,7 +235,12 @@ Production code is the sole consumer that shapes architecture and refactoring
 - **P5.1. No accidental abstractions**: distrust incidental structure. Remove a wrapper with a single caller, a struct destructured one line after it is built, an `Option` that is always `Some` on success, and a type that duplicates an existing canonical type. Keep duplication until a stable shared concept appears; merge entangled or single-consumer code, not merely similar code.
 - **P5.2. Design from intent**: name and shape each unit from what the operation must do, not from an incidental code layout. Prefer a canonical type or utility over a new local one. The result reads as written from scratch: no versioned names, no edit-history comments, no compatibility shims, legacy wrappers, or re-exports to a prior design.
 
-## Principle 6: Behavior is a specified contract, changed only deliberately.
+## Principle 6: Each operation exposes one uniform core contract.
 
-- **P6.1. Behavior is a specified contract**: the observable output is defined, not incidental; it stays stable except where a change is deliberate and stated.
-- **P6.2. Observable changes are deliberate**: any change to observable behavior is surfaced and approved before it lands, never made silently.
+Each operation in the core has one entry point and one result, named and shaped the same way across operations, so a reader locates any operation's contract without opening a file.
+
+- **P7.1. One canonical result**: each operation owns exactly one aggregate `Output` value in the core. Every response body, file format, and wire form is a projection derived from it in an adapter or the shared tier, never a second result type kept in the core.
+- **P7.2. Uniform naming**: each operation exposes the same-named `Params`, `Input`, `Output`, and `run`. `Input` holds fully parsed domain values, not raw arguments, paths, or parser records. Rename or relocate a single-consumer type to fit this shape rather than wrap it in a new one.
+- **P7.3. Uniform shape, not uniform parameters** (extends P2.3): uniformity governs names and order, never the presence of a parameter. Add a sink, progress, or cancellation argument only to an operation that has that concern; a matching signature is never a reason to carry an argument the operation ignores.
+- **P7.4. Signals split by direction**: cancellation is a read-only input the computation polls; progress and trace are output sinks the computation writes. They are separate parameters, never methods on one trait and never bundled into a context object. Sinks carry domain values, not encoded bytes or paths (see P3.6).
+- **P7.5. Typed failures keep the cause chain**: an operation returns typed failure classes at its boundary. Classification adds meaning; it never rewrites, truncates, or flattens the underlying message chain.
