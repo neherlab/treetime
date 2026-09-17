@@ -17,6 +17,7 @@ pub mod clock_tree_output;
 pub mod coalescent;
 pub mod confidence;
 pub mod date_comment;
+pub mod discrete_trait_comment;
 pub mod mugration_tree_output;
 pub mod mutation_comment;
 pub mod optimize_result;

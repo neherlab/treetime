@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::cancel::NoopCancel;
-  use crate::mugration::mugration::execute_mugration;
-  use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
+  use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime::cancel::NoopCancel;
+  use treetime::mugration::mugration::execute_mugration;
   use treetime_io::nex::NexWriteOptions;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
