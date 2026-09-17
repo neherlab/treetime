@@ -14,13 +14,9 @@ use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
-use std::io::Write;
-use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::csv::CsvStructWriter;
-use treetime_utils::io::file::create_file_or_stdout;
 
 /// Fraction of probability mass for the 90% confidence region.
 /// Matches v0's `get_max_posterior_region(n, fraction=0.9)`.
@@ -417,19 +413,4 @@ fn collect_node_times(state: &TimetreeState) -> BTreeMap<GraphNodeKey, f64> {
     .iter()
     .filter_map(|(key, node)| node.time.map(|time| (*key, time)))
     .collect()
-}
-
-/// Write confidence intervals for node dates as TSV.
-pub fn write_confidence_intervals(
-  intervals: &[NodeConfidenceInterval],
-  writer: impl Write + Send,
-) -> Result<(), Report> {
-  let mut csv = CsvStructWriter::new(writer, b'\t')?;
-  intervals.iter().try_for_each(|ci| csv.write(ci))
-}
-
-/// Write confidence intervals for node dates to a TSV file.
-pub fn write_confidence_intervals_file(intervals: &[NodeConfidenceInterval], filepath: &Path) -> Result<(), Report> {
-  let file = create_file_or_stdout(filepath)?;
-  write_confidence_intervals(intervals, file)
 }

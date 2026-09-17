@@ -25,5 +25,14 @@ itertools = { workspace = true }
 maplit = { workspace = true }
 serde = { workspace = true }
 
+[dev-dependencies]
+# [internal]
+treetime-distribution = { workspace = true }
+
+# [external]
+ctor = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+
 [lints]
 workspace = true

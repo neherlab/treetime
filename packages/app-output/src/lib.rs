@@ -10,6 +10,7 @@ pub mod ancestral_result;
 pub mod augur_node_data;
 pub mod clock_result;
 pub mod coalescent;
+pub mod confidence;
 pub mod date_comment;
 pub mod mutation_comment;
 pub mod optimize_result;
@@ -20,3 +21,18 @@ pub mod timetree_result;
 pub use date_comment::DateCommentProvider;
 pub use mutation_comment::EdgeMutationCommentProvider;
 pub use timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
+
+#[cfg(test)]
+mod tests {
+  use ctor::ctor;
+  use treetime_utils::init::global::global_init;
+
+  #[ctor]
+  fn init() {
+    global_init();
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(1)
+      .build_global()
+      .expect("rayon global thread pool initialization failed");
+  }
+}

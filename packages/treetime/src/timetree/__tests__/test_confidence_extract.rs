@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
+  use crate::timetree::confidence::extract_confidence_intervals;
   use approx::assert_relative_eq;
   use helpers::add_named;
   use maplit::btreemap;
@@ -255,26 +255,6 @@ mod tests {
     // Measured errors: lower=0.0, upper=3.9e-4.
     assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-3);
     assert_relative_eq!(intervals[0].upper, hpd_upper, epsilon = 1e-3);
-  }
-
-  #[test]
-  fn test_write_confidence_intervals_omits_internal_key_column() {
-    // The confidence TSV mirrors the augur node-data contract: columns are
-    // name, date, lower, upper. The graph node key is internal (serde-skipped)
-    // and must never leak as a serialized column.
-    let mut graph = Graph::new();
-    let mut names = BTreeMap::new();
-    let key = add_named(&mut graph, &mut names, Some("named"));
-    graph.build().unwrap();
-    let state = helpers::state(&graph, &[(key, Some(2020.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
-
-    let mut buf = Vec::new();
-    write_confidence_intervals(&intervals, &mut buf).unwrap();
-    let output = String::from_utf8(buf).unwrap();
-
-    let header = output.lines().next().unwrap();
-    assert_eq!(header, "name\tdate\tlower\tupper");
   }
 
   mod helpers {
