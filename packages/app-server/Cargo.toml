@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 app-api = { workspace = true }
+app-datasets = { workspace = true }
 treetime = { workspace = true }
 treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }

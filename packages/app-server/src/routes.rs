@@ -4,7 +4,7 @@ use crate::args::{
 use crate::error::AppError;
 use crate::sse::handle_command;
 use crate::state::ServerConfig;
-use app_api::datasets::discover_datasets;
+use app_datasets::discover_datasets;
 use axum::extract::State;
 use axum::response::Response;
 use axum::routing::{get, post};

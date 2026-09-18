@@ -217,10 +217,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "app-datasets"
+version = "1.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "app-napi"
 version = "1.0.0"
 dependencies = [
  "app-api",
+ "app-datasets",
  "ctor 0.5.0",
  "eyre",
  "napi",
@@ -268,6 +276,7 @@ name = "app-server"
 version = "1.0.0"
 dependencies = [
  "app-api",
+ "app-datasets",
  "async-stream",
  "axum",
  "clap",

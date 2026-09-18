@@ -1,11 +1,11 @@
 use crate::progress::{self, NapiCancel, NapiProgressSink};
-use app_api::datasets::discover_datasets;
 use app_api::progress::{CancelledError, NoopCancel, NoopProgress};
 use app_api::{
   TreetimeAncestralArgs, TreetimeAncestralArgsRaw, TreetimeClockArgs, TreetimeClockArgsRaw, TreetimeMugrationArgs,
   TreetimeMugrationArgsRaw, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw, TreetimePruneArgs, TreetimePruneArgsRaw,
   TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw,
 };
+use app_datasets::discover_datasets;
 use napi::Task;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;

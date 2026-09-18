@@ -4,6 +4,7 @@ resolver = '3'
 members = [
   "packages/app-api",
   "packages/app-cli",
+  "packages/app-datasets",
   "packages/app-napi",
   "packages/app-output",
   "packages/app-server",
@@ -159,6 +160,7 @@ quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 xml = "=1.0.0"
 
 app-api = { path = "packages/app-api" }
+app-datasets = { path = "packages/app-datasets" }
 app-output = { path = "packages/app-output" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }

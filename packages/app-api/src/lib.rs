@@ -1,5 +1,4 @@
 pub mod commands;
-pub mod datasets;
 pub mod pipelines;
 pub mod progress;
 
