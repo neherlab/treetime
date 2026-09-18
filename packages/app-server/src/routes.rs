@@ -1,6 +1,9 @@
-use crate::args::{
-  ServerAncestralArgs, ServerClockArgs, ServerMugrationArgs, ServerOptimizeArgs, ServerPruneArgs, ServerTimetreeArgs,
-};
+use crate::commands::ancestral::{AncestralArgs, run_ancestral};
+use crate::commands::clock::{ClockArgs, run_clock};
+use crate::commands::mugration::{MugrationArgs, run_mugration};
+use crate::commands::optimize::{OptimizeArgs, run_optimize};
+use crate::commands::prune::{PruneArgs, run_prune};
+use crate::commands::timetree::{TimetreeArgs, run_timetree};
 use crate::error::AppError;
 use crate::sse::handle_command;
 use crate::state::ServerConfig;
@@ -39,33 +42,25 @@ async fn handle_datasets(State(config): State<Arc<ServerConfig>>) -> Result<Json
 }
 
 async fn handle_ancestral(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerAncestralArgs, _, _>(
-    body,
-    &config.out_dir,
-    app_api::commands::ancestral::run::run_ancestral_reconstruction,
-  )
+  handle_command::<AncestralArgs, _>(body, &config.out_dir, run_ancestral)
 }
 
 async fn handle_clock(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerClockArgs, _, _>(body, &config.out_dir, app_api::commands::clock::run::run_clock)
+  handle_command::<ClockArgs, _>(body, &config.out_dir, run_clock)
 }
 
 async fn handle_timetree(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerTimetreeArgs, _, _>(
-    body,
-    &config.out_dir,
-    app_api::commands::timetree::run::run_timetree_estimation,
-  )
+  handle_command::<TimetreeArgs, _>(body, &config.out_dir, run_timetree)
 }
 
 async fn handle_mugration(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerMugrationArgs, _, _>(body, &config.out_dir, app_api::commands::mugration::run::run_mugration)
+  handle_command::<MugrationArgs, _>(body, &config.out_dir, run_mugration)
 }
 
 async fn handle_optimize(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerOptimizeArgs, _, _>(body, &config.out_dir, app_api::commands::optimize::run::run_optimize)
+  handle_command::<OptimizeArgs, _>(body, &config.out_dir, run_optimize)
 }
 
 async fn handle_prune(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
-  handle_command::<ServerPruneArgs, _, _>(body, &config.out_dir, app_api::commands::prune::run::run_prune)
+  handle_command::<PruneArgs, _>(body, &config.out_dir, run_prune)
 }

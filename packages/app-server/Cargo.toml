@@ -11,9 +11,12 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-app-api = { workspace = true }
 app-datasets = { workspace = true }
+app-output = { workspace = true }
 treetime = { workspace = true }
+treetime-graph = { workspace = true }
+treetime-io = { workspace = true }
+treetime-primitives = { workspace = true }
 treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 
@@ -22,7 +25,9 @@ axum = { workspace = true }
 clap = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
+maplit = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -1,5 +1,4 @@
 use crate::error::AppError;
-use app_api::progress::ProgressSink;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use eyre::Report;
@@ -12,7 +11,7 @@ use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use treetime::cancel::{Cancel, CancelledError};
-use treetime::progress::{LogEvent, LogLevel};
+use treetime::progress::{LogEvent, LogLevel, ProgressSink};
 use treetime_schema::ProgressEvent;
 
 enum SinkEvent {
@@ -128,14 +127,13 @@ where
   Sse::new(stream).into_response()
 }
 
-pub fn handle_command<S, R, T>(
+pub fn handle_command<S, T>(
   mut body: Value,
   out_dir: &Path,
-  command: fn(&R, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
+  command: fn(&S, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
 ) -> Response
 where
-  S: serde::de::DeserializeOwned + Into<R> + Send + 'static,
-  R: Send + 'static,
+  S: serde::de::DeserializeOwned + Send + 'static,
   T: Serialize + Send + 'static,
 {
   if let Some(obj) = body.as_object_mut() {
@@ -150,9 +148,8 @@ where
     Ok(args) => args,
     Err(err) => return AppError::from(err).into_response(),
   };
-  let real_args: R = args.into();
   sse_response(move |cancel, progress| {
-    let result = command(&real_args, cancel, progress)?;
+    let result = command(&args, cancel, progress)?;
     serde_json::to_value(result).map_err(Report::from)
   })
 }

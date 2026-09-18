@@ -1,4 +1,4 @@
-pub mod args;
+pub mod commands;
 pub mod error;
 pub mod routes;
 pub mod sse;

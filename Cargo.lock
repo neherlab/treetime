@@ -275,14 +275,16 @@ dependencies = [
 name = "app-server"
 version = "1.0.0"
 dependencies = [
- "app-api",
  "app-datasets",
+ "app-output",
  "async-stream",
  "axum",
  "clap",
  "ctor 0.5.0",
  "eyre",
+ "itertools 0.14.0",
  "log",
+ "maplit",
  "pretty_assertions",
  "rayon",
  "rstest",
@@ -294,6 +296,9 @@ dependencies = [
  "tokio-stream",
  "tower-http",
  "treetime",
+ "treetime-graph",
+ "treetime-io",
+ "treetime-primitives",
  "treetime-schema",
  "treetime-utils",
 ]
