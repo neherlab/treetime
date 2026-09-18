@@ -284,80 +284,146 @@ mod tests {
       );
     }
 
-    // Parse a subcommand and overlay the given `--config` file, returning the overlay result. Unlike
-    // the command-specific helpers this keeps the error so a rejection can be asserted.
-    fn overlay_result<T>(cmd: &str, config: &Path) -> Result<(), Report>
-    where
-      T: serde::Serialize + serde::de::DeserializeOwned + Default + schemars::JsonSchema + FromArgMatches,
-    {
-      let matches = TreetimeArgs::command().get_matches_from(["treetime", cmd, "--config", config.to_str().unwrap()]);
-      let sub = matches.subcommand_matches(cmd).unwrap();
-      let mut args = T::from_arg_matches(sub).unwrap();
-      overlay_config(&mut args, sub)
-    }
+    // Each test drives the real parse path for one command: a full clap parse, then the `--config`
+    // overlay, keeping the error so the rejection can be asserted. An unknown or misspelled top-level
+    // key is rejected with a rendered diagnostic instead of being silently ignored, guarding every
+    // command's strict schema.
+    mod reject_unknown_key {
+      use super::*;
 
-    // C1: an unknown or misspelled top-level config key is rejected with a rendered diagnostic instead
-    // of being silently ignored. One negative test per command guards every command's strict schema.
-    macro_rules! reject_unknown_top_level_key {
-      ($test:ident, $cmd:literal, $ty:ty) => {
-        #[test]
-        fn $test() {
-          let dir = tempdir().unwrap();
-          let path = dir.path().join("config.yaml");
-          fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
-          let result = overlay_result::<$ty>($cmd, &path);
-          assert_error!(
-            result,
-            "invalid configuration: unknown field `definitely_not_a_real_field`"
-          );
-        }
-      };
-    }
+      #[test]
+      fn test_config_ancestral_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "ancestral", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("ancestral").unwrap();
+        let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
 
-    reject_unknown_top_level_key!(
-      test_config_ancestral_rejects_unknown_key,
-      "ancestral",
-      TreetimeAncestralArgsRaw
-    );
-    reject_unknown_top_level_key!(test_config_clock_rejects_unknown_key, "clock", TreetimeClockArgsRaw);
-    reject_unknown_top_level_key!(
-      test_config_timetree_rejects_unknown_key,
-      "timetree",
-      TreetimeTimetreeArgsRaw
-    );
-    reject_unknown_top_level_key!(
-      test_config_optimize_rejects_unknown_key,
-      "optimize",
-      TreetimeOptimizeArgsRaw
-    );
-    reject_unknown_top_level_key!(test_config_prune_rejects_unknown_key, "prune", TreetimePruneArgsRaw);
-    reject_unknown_top_level_key!(
-      test_config_mugration_rejects_unknown_key,
-      "mugration",
-      TreetimeMugrationArgsRaw
-    );
-    reject_unknown_top_level_key!(
-      test_config_homoplasy_rejects_unknown_key,
-      "homoplasy",
-      TreetimeHomoplasyArgsRaw
-    );
+      #[test]
+      fn test_config_clock_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "clock", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("clock").unwrap();
+        let mut args = TreetimeClockArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
 
-    // C1: strictness reaches into nested arg groups too, so a typo inside a flattened struct (here
-    // `model_args`) is caught, not just top-level keys.
-    #[test]
-    fn test_config_ancestral_rejects_unknown_nested_key() {
-      let dir = tempdir().unwrap();
-      let path = dir.path().join("config.yaml");
-      fs::write(
-        &path,
-        indoc! {r"
+      #[test]
+      fn test_config_timetree_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "timetree", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("timetree").unwrap();
+        let mut args = TreetimeTimetreeArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
+
+      #[test]
+      fn test_config_optimize_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "optimize", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("optimize").unwrap();
+        let mut args = TreetimeOptimizeArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
+
+      #[test]
+      fn test_config_prune_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "prune", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("prune").unwrap();
+        let mut args = TreetimePruneArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
+
+      #[test]
+      fn test_config_mugration_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "mugration", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("mugration").unwrap();
+        let mut args = TreetimeMugrationArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
+
+      #[test]
+      fn test_config_homoplasy_rejects_unknown_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "homoplasy", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("homoplasy").unwrap();
+        let mut args = TreetimeHomoplasyArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(
+          result,
+          "invalid configuration: unknown field `definitely_not_a_real_field`"
+        );
+      }
+
+      // Strictness reaches into nested arg groups too, so a typo inside a flattened struct (here
+      // `model_args`) is caught, not just top-level keys.
+      #[test]
+      fn test_config_ancestral_rejects_unknown_nested_key() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        fs::write(
+          &path,
+          indoc! {r"
           model_args:
             not_a_model_field: 1
         "},
-      )
-      .unwrap();
-      let result = overlay_result::<TreetimeAncestralArgsRaw>("ancestral", &path);
-      assert_error!(result, "invalid configuration: unknown field `model_args`");
+        )
+        .unwrap();
+        let matches =
+          TreetimeArgs::command().get_matches_from(["treetime", "ancestral", "--config", path.to_str().unwrap()]);
+        let sub = matches.subcommand_matches("ancestral").unwrap();
+        let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
+        let result = overlay_config(&mut args, sub);
+        assert_error!(result, "invalid configuration: unknown field `model_args`");
+      }
     }
 
     // C4: configs are parsed as YAML, and YAML is a superset of JSON, so a JSON document loads through
@@ -501,23 +567,57 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::{Value, from_value, to_value};
 
-    macro_rules! round_trip {
-      ($test:ident, $ty:ty) => {
-        #[test]
-        fn $test() {
-          let value: Value = to_value(<$ty>::default()).unwrap();
-          let back: $ty = from_value(value.clone()).unwrap();
-          assert_eq!(value, to_value(back).unwrap());
-        }
-      };
+    // Each test serializes a command's defaults, deserializes back, and re-serializes: the two JSON
+    // values must match, which holds only if every field serializes and deserializes symmetrically. A
+    // lossy field fails the test named for its command.
+
+    #[test]
+    fn test_config_round_trip_ancestral() {
+      let value: Value = to_value(TreetimeAncestralArgsRaw::default()).unwrap();
+      let back: TreetimeAncestralArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
     }
 
-    round_trip!(test_config_round_trip_ancestral, TreetimeAncestralArgsRaw);
-    round_trip!(test_config_round_trip_clock, TreetimeClockArgsRaw);
-    round_trip!(test_config_round_trip_homoplasy, TreetimeHomoplasyArgsRaw);
-    round_trip!(test_config_round_trip_mugration, TreetimeMugrationArgsRaw);
-    round_trip!(test_config_round_trip_optimize, TreetimeOptimizeArgsRaw);
-    round_trip!(test_config_round_trip_prune, TreetimePruneArgsRaw);
-    round_trip!(test_config_round_trip_timetree, TreetimeTimetreeArgsRaw);
+    #[test]
+    fn test_config_round_trip_clock() {
+      let value: Value = to_value(TreetimeClockArgsRaw::default()).unwrap();
+      let back: TreetimeClockArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
+
+    #[test]
+    fn test_config_round_trip_homoplasy() {
+      let value: Value = to_value(TreetimeHomoplasyArgsRaw::default()).unwrap();
+      let back: TreetimeHomoplasyArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
+
+    #[test]
+    fn test_config_round_trip_mugration() {
+      let value: Value = to_value(TreetimeMugrationArgsRaw::default()).unwrap();
+      let back: TreetimeMugrationArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
+
+    #[test]
+    fn test_config_round_trip_optimize() {
+      let value: Value = to_value(TreetimeOptimizeArgsRaw::default()).unwrap();
+      let back: TreetimeOptimizeArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
+
+    #[test]
+    fn test_config_round_trip_prune() {
+      let value: Value = to_value(TreetimePruneArgsRaw::default()).unwrap();
+      let back: TreetimePruneArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
+
+    #[test]
+    fn test_config_round_trip_timetree() {
+      let value: Value = to_value(TreetimeTimetreeArgsRaw::default()).unwrap();
+      let back: TreetimeTimetreeArgsRaw = from_value(value.clone()).unwrap();
+      assert_eq!(value, to_value(back).unwrap());
+    }
   }
 }
