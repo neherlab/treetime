@@ -306,7 +306,10 @@ mod tests {
           let path = dir.path().join("config.yaml");
           fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
           let result = overlay_result::<$ty>($cmd, &path);
-          assert_error!(result, "invalid configuration (1 problem reported above)");
+          assert_error!(
+            result,
+            "invalid configuration: unknown field `definitely_not_a_real_field`"
+          );
         }
       };
     }
@@ -354,7 +357,7 @@ mod tests {
       )
       .unwrap();
       let result = overlay_result::<TreetimeAncestralArgsRaw>("ancestral", &path);
-      assert_error!(result, "invalid configuration (1 problem reported above)");
+      assert_error!(result, "invalid configuration: unknown field `model_args`");
     }
 
     // C4: configs are parsed as YAML, and YAML is a superset of JSON, so a JSON document loads through

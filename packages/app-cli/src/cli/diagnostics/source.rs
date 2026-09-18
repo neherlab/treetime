@@ -1,10 +1,12 @@
+use color_eyre::Section;
 use eyre::Report;
+use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode, SourceSpan};
 use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_report};
 
 /// A config file's text plus a JSON-pointer to source-span index for caret placement.
 ///
@@ -117,39 +119,36 @@ impl RawDiagnostic {
   }
 }
 
-/// Render all diagnostics as one batched miette report to stderr and return a terse eyre error.
+/// Build an eyre error for a batch of config diagnostics.
 ///
-/// The detailed, caret-annotated report is printed here; the returned error is a single line so that
-/// the globally installed color-eyre hook does not print the details a second time (D13). An empty
-/// diagnostic list is success.
+/// The error chain is a terse, stable headline, `"{top_message}: {problems}"`, so callers and tests
+/// can assert on it directly. The full caret-annotated source report rides along as a color-eyre
+/// section, so the globally installed handler prints it once, with location and backtrace intact,
+/// rather than the diagnostics writing to stderr on their own. An empty diagnostic list is success.
 pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Result<(), Report> {
   if diags.is_empty() {
     return Ok(());
   }
-  let count = diags.len();
-  let related = diags.into_iter().map(|diag| diag.resolve(source)).collect();
+  let related: Vec<ConfigDiagnostic> = diags.into_iter().map(|diag| diag.resolve(source)).collect();
+  let problems = related.iter().map(|diag| diag.message.as_str()).join("; ");
   let report = ConfigReport {
     message: top_message.to_owned(),
     related,
   };
 
   let mut rendered = String::new();
-  if miette::GraphicalReportHandler::new()
+  miette::GraphicalReportHandler::new()
     .render_report(&mut rendered, &report)
-    .is_ok()
-  {
-    eprint!("{rendered}");
-  }
+    .map_err(|err| make_report!("could not render config diagnostics: {err}"))?;
 
-  let plural = if count == 1 { "" } else { "s" };
-  make_error!("{top_message} ({count} problem{plural} reported above)")
+  make_error!("{top_message}: {problems}").with_section(move || rendered.trim_end().to_owned())
 }
 
-/// Parse a config document (JSON or YAML), rendering a batched syntax diagnostic and bailing on error.
+/// Parse a config document (JSON or YAML), returning an error carrying a syntax diagnostic on failure.
 ///
-/// YAML is a superset of JSON, so one parser reads both. A parse failure is rendered as a
-/// caret-annotated report against `source` before returning a terse error, matching how every other
-/// config problem is surfaced.
+/// YAML is a superset of JSON, so one parser reads both. A parse failure becomes a caret-annotated
+/// report against `source`, attached to the returned error, matching how every other config problem is
+/// surfaced.
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
   match serde_yaml::from_str(text) {
     Ok(value) => Ok(value),
