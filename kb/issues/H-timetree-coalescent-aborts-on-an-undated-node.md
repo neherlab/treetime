@@ -27,7 +27,7 @@ The messages meeting at this node leave no time with any probability: the dates 
 times the rest of the tree implies have disjoint support.
 ```
 
-This is the `timetree/lassa/L/20/basic` case in `dev/run-smoke-tests`.
+This is the `timetree/lassa/L/20/basic` case in `dev/compare-baseline`.
 
 ## Impact and scope
 
