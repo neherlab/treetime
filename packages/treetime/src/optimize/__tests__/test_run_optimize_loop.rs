@@ -124,7 +124,7 @@ mod tests {
     let mut graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
+    let first_edge_key = graph.get_edges().next().unwrap().key();
     branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .partition
@@ -288,7 +288,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
+    let first_edge_key = graph.get_edges().next().unwrap().key();
     branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .partition

@@ -504,11 +504,9 @@ mod tests {
       }
 
       let mut obs_nodes = btreemap! {};
-      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
-        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
       let mut obs_edges = btreemap! {};

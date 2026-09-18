@@ -128,6 +128,9 @@ fn estimate_clock_model_with_prefilter(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(ClockState, ClockModel, Option<i32>), Report> {
+  // The conditional block exists for its side effects (rerooting, outlier filtering, reassigning
+  // `state`); `delta` is incidental, so a plain mutable binding reads clearer than an if-expression.
+  #[allow(clippy::useless_let_if_seq)]
   let mut delta = None;
   if clock_filter_threshold > 0.0 {
     // Allow negative rates during pre-filter root finding. Some datasets (e.g. dengue/100)

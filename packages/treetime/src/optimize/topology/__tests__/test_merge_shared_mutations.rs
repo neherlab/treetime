@@ -52,11 +52,9 @@ mod tests {
 
     // Populate node observations/states so edge_subs() can reconstruct states
     let mut obs_nodes = btreemap! {};
-    let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.key();
       obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
-      node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
 
     let mut obs_edges = btreemap! {};
@@ -430,11 +428,9 @@ mod tests {
     p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
 
     let mut p2_obs_nodes = btreemap! {};
-    let mut p2_node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.key();
       p2_obs_nodes.insert(key, SparseNodeObs::empty(&p2_alphabet));
-      p2_node_states.insert(key, SparseNodeState::leaf(&p2_ref_seq));
     }
 
     // Partition 2: A and B share mutation at pos 50
@@ -1017,11 +1013,9 @@ mod tests {
       }
 
       let mut obs_nodes = btreemap! {};
-      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
-        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
       let mut obs_edges = btreemap! {};

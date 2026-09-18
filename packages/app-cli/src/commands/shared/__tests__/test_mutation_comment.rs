@@ -35,7 +35,7 @@ mod tests {
         ],
       )],
     )?;
-    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
+    let edge_key = graph.get_edges().next().unwrap().key();
     partition
       .partition
       .obs_edges
@@ -57,7 +57,7 @@ mod tests {
     let partition = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])])?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
-    let root_key = graph.get_roots().collect::<Vec<_>>()[0].key();
+    let root_key = graph.get_roots().next().unwrap().key();
     let comments = provider.node_comments(root_key)?;
     assert!(comments.is_empty());
     Ok(())
@@ -176,6 +176,6 @@ mod tests {
   }
 
   fn leaf_key(graph: &Graph) -> GraphNodeKey {
-    graph.get_leaves().collect::<Vec<_>>()[0].key()
+    graph.get_leaves().next().unwrap().key()
   }
 }

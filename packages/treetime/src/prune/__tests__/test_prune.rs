@@ -636,11 +636,11 @@ mod tests {
   fn test_create_test_edge_num_muts_none_vs_some_zero() -> Result<(), Report> {
     // Test that we can distinguish between unknown mutations (None) and zero mutations (Some(0))
     let (graph, names, partitions, _branch_lengths) = create_test_graph_with_partitions("(A:0.1)root;", &[(0, None)])?;
-    let edge_unknown_key = graph.get_edges().collect::<Vec<_>>()[0].key();
+    let edge_unknown_key = graph.get_edges().next().unwrap().key();
 
     let (graph2, names2, partitions2, _branch_lengths2) =
       create_test_graph_with_partitions("(A:0.1)root;", &[(0, Some(0))])?;
-    let edge_zero_key = graph2.get_edges().collect::<Vec<_>>()[0].key();
+    let edge_zero_key = graph2.get_edges().next().unwrap().key();
 
     assert_eq!(get_edge_num_muts(&partitions, edge_unknown_key)?, None);
     assert_eq!(get_edge_num_muts(&partitions2, edge_zero_key)?, Some(0));

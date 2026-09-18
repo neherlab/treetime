@@ -150,8 +150,7 @@ mod tests {
 
     {
       let root = graph.get_exactly_one_root()?;
-      let children = graph.children_of(root).collect::<Vec<_>>();
-      assert_eq!(children.len(), 3);
+      assert_eq!(graph.children_of(root).count(), 3);
     }
 
     // Trifurcating root: redistribution is skipped (only applies to len==2).
