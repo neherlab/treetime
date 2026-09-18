@@ -1,8 +1,9 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
-use crate::commands::shared::output::{OutputCoreArgs, PruneOutputSelection, TopologyOrderArgs};
+use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelection};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;

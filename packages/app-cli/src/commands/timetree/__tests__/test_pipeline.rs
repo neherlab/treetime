@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
+  use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
+  use crate::commands::shared::topology_order_args::{LadderizeArg, TopologyOrderArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::Report;

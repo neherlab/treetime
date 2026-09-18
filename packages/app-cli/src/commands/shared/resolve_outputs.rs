@@ -3,8 +3,8 @@ use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
 use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
 use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
-use crate::commands::shared::output::{CommandKind, OutputSelection, ResolvedOutputs};
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use eyre::Report;
 use std::path::Path;
 

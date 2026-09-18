@@ -6,8 +6,9 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
+use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
 use crate::commands::shared::reroot::RerootArgs;
+use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;

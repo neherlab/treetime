@@ -59,7 +59,6 @@ serde_path_to_error = { workspace = true }
 serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strsim = { workspace = true }
-strum = { workspace = true }
 strum_macros = { workspace = true }
 textplots = { workspace = true }
 

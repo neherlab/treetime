@@ -1,4 +1,4 @@
-use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
+use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
@@ -7,6 +7,7 @@ use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data::write_augur_node_data_json;
 use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
+use app_output::output_plan::OutputSelection;
 use app_output::timetree_trace::TraceCsvSink;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};

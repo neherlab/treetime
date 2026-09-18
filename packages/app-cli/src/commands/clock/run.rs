@@ -1,8 +1,8 @@
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
-use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::clock_result::{ClockNodeOut, EdgeOut};
 use app_output::clock_tree_output::write_clock_tree_outputs;
+use app_output::output_plan::OutputSelection;
 use app_output::rtt::write_clock_regression_result_csv;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;

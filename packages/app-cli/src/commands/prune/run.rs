@@ -1,6 +1,6 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use app_output::prune_tree_output::write_prune_tree_outputs;
 use eyre::{Report, WrapErr};

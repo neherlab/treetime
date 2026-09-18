@@ -1,7 +1,8 @@
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::MetadataIdArgs;
-use crate::commands::shared::output::{MugrationOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::output_args::{MugrationOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;

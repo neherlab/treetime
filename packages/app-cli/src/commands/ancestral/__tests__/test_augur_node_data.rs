@@ -188,7 +188,7 @@ mod tests {
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
-    use crate::commands::shared::output::OutputCoreArgs;
+    use crate::commands::shared::output_args::OutputCoreArgs;
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;

@@ -3,8 +3,9 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;

@@ -23,6 +23,7 @@ pub mod mugration_tree_output;
 pub mod mutation_comment;
 pub mod optimize_result;
 pub mod optimize_tree_output;
+pub mod output_plan;
 pub mod prune_result;
 pub mod prune_tree_output;
 pub mod rtt;

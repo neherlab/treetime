@@ -4,9 +4,10 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
+use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;

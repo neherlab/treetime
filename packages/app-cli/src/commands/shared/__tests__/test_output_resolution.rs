@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::output::{CommandKind, NwkStyleArg, OutputCoreArgs, OutputSelection};
+  use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
+  use app_output::output_plan::{CommandKind, OutputSelection};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;

@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
   use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
   use crate::commands::prune::args::TreetimePruneArgsRaw;
-  use crate::commands::shared::output::{
+  use crate::commands::shared::output_args::{
     AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, NwkStyleArg, TimetreeOutputSelection,
   };
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
