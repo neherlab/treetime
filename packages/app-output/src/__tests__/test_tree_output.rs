@@ -480,7 +480,7 @@ mod tests {
 
     /// Build the ancestral output maps the auspice and MAT encoders read, from the partition's public
     /// accessors. Mirrors what the core gather produces from the same reads, keeping the maps
-    /// constructible from public API without reaching the app-api gather.
+    /// constructible from public API without reaching the production gather.
     pub fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
       let Some(partition) = partition else {
         return AncestralOutputMaps::default();

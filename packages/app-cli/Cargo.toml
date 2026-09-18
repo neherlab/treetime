@@ -77,8 +77,7 @@ tikv-jemallocator = { workspace = true }
 [features]
 default = ["clap"]
 # `clap` is a hard dependency of the CLI; this marker activates the `#[cfg(feature = "clap")]`
-# argument derives in the command layer, which stays textually identical to app-api's copy so the
-# two can be diffed for faithfulness until app-api is dissolved.
+# argument derives in the command layer.
 clap = []
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 

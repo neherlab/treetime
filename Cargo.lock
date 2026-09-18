@@ -127,42 +127,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
-name = "app-api"
-version = "1.0.0"
-dependencies = [
- "app-api",
- "app-output",
- "approx",
- "chrono",
- "clap",
- "ctor 0.5.0",
- "eyre",
- "indoc",
- "itertools 0.14.0",
- "jsonschema",
- "log",
- "maplit",
- "ndarray",
- "pretty_assertions",
- "rayon",
- "rstest",
- "schemars",
- "serde",
- "serde_json",
- "smart-default",
- "strum 0.27.2",
- "strum_macros 0.27.2",
- "tempfile",
- "treetime",
- "treetime-distribution",
- "treetime-graph",
- "treetime-io",
- "treetime-primitives",
- "treetime-utils",
- "util-augur-node-data-json",
-]
-
-[[package]]
 name = "app-cli"
 version = "1.0.0"
 dependencies = [

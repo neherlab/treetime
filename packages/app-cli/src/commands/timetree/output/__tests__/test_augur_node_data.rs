@@ -288,8 +288,7 @@ mod tests {
 
     /// Estimated-regression clock model (rate 0.002, intercept -4.0, rate variance cov[0,0] = 1e-8),
     /// built from the public `ClockRegression` deserialize form and `ClockModel::from_regression`, so
-    /// the app-api test constructs its fixture from public API rather than a crate-internal test
-    /// constructor.
+    /// the fixture comes from the public API rather than a crate-internal test constructor.
     fn sample_clock_model() -> ClockModel {
       let regression: ClockRegression = json_read_str(indoc! {r#"{
         "clock_rate": 0.002,

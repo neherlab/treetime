@@ -82,7 +82,6 @@ If you are not a team member but want to contribute, make a [fork](https://docs.
 
 ```
 packages/
-  app-api/           Rust service layer (progress, commands)
   app-cli/           Rust CLI binary
   app-contracts/     TypeScript bridge types
   app-desktop/       Electron shell
