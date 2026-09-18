@@ -561,7 +561,7 @@ mod tests {
     )?;
 
     // Verify tree validity after first reroot
-    drop(graph.get_exactly_one_root()?);
+    let _ = graph.get_exactly_one_root()?;
     assert_eq!(
       graph.get_leaves().count(),
       initial_leaf_count,
@@ -591,7 +591,7 @@ mod tests {
     )?;
 
     // Verify tree validity after second reroot
-    drop(graph.get_exactly_one_root()?);
+    let _ = graph.get_exactly_one_root()?;
     assert_eq!(
       graph.get_leaves().count(),
       initial_leaf_count,
