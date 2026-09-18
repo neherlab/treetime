@@ -48,9 +48,5 @@ tikv-jemallocator = { workspace = true }
 [target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
 tikv-jemallocator = { workspace = true }
 
-[dev-dependencies]
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
-
 [lints]
 workspace = true
