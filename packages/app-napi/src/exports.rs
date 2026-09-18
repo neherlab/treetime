@@ -1,16 +1,24 @@
+//! N-API exports.
+//!
+//! Deserializes each request into its command's openapi-subset request struct, runs the command
+//! orchestration in `crate::commands`, and returns the serialized result. Progress and cancellation
+//! flow through the process-global threadsafe sinks in `crate::progress`.
+
+use crate::commands::ancestral::{AncestralArgs, run_ancestral};
+use crate::commands::clock::{ClockArgs, run_clock};
+use crate::commands::mugration::{MugrationArgs, run_mugration};
+use crate::commands::optimize::{OptimizeArgs, run_optimize};
+use crate::commands::prune::{PruneArgs, run_prune};
+use crate::commands::timetree::{TimetreeArgs, run_timetree};
 use crate::progress::{self, NapiCancel, NapiProgressSink};
-use app_api::progress::{CancelledError, NoopCancel, NoopProgress};
-use app_api::{
-  TreetimeAncestralArgs, TreetimeAncestralArgsRaw, TreetimeClockArgs, TreetimeClockArgsRaw, TreetimeMugrationArgs,
-  TreetimeMugrationArgsRaw, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw, TreetimePruneArgs, TreetimePruneArgsRaw,
-  TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw,
-};
 use app_datasets::discover_datasets;
 use napi::Task;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::path::Path;
 use std::sync::Arc;
+use treetime::cancel::{CancelledError, NoopCancel};
+use treetime::progress::NoopProgress;
 use treetime_schema::version_info;
 
 #[napi]
@@ -28,10 +36,8 @@ pub fn datasets() -> String {
 #[napi]
 #[allow(clippy::needless_pass_by_value)]
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
-  let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-  let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
-  let result = app_api::commands::ancestral::run::run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress)
-    .map_err(|e| eyre_to_napi(&e))?;
+  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let result = run_ancestral(&args, &NoopCancel, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
   serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
 }
 
@@ -53,7 +59,7 @@ fn json_to_napi(err: &serde_json::Error) -> napi::Error {
 }
 
 macro_rules! define_task {
-  ($task_name:ident, $raw_type:ty, $args_type:ty, $api_fn:path, $napi_fn:ident) => {
+  ($task_name:ident, $args_type:ty, $run_fn:path, $napi_fn:ident) => {
     pub struct $task_name {
       args: $args_type,
       on_event: Arc<ThreadsafeFunction<String, ()>>,
@@ -66,7 +72,7 @@ macro_rules! define_task {
       fn compute(&mut self) -> napi::Result<Self::Output> {
         progress::reset_cancel();
         let sink = NapiProgressSink::new(self.on_event.clone());
-        let result = $api_fn(&self.args, &NapiCancel, &sink).map_err(|e| eyre_to_napi(&e))?;
+        let result = $run_fn(&self.args, &NapiCancel, &sink).map_err(|e| eyre_to_napi(&e))?;
         serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
       }
 
@@ -84,26 +90,25 @@ macro_rules! define_task {
       args_json: String,
       on_event: Arc<ThreadsafeFunction<String, ()>>,
     ) -> napi::Result<napi::bindgen_prelude::AsyncTask<$task_name>> {
-      let raw: $raw_type = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-      let args: $args_type = raw.try_into().map_err(|e| eyre_to_napi(&e))?;
+      let args: $args_type = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
       Ok(napi::bindgen_prelude::AsyncTask::new($task_name { args, on_event }))
     }
   };
 }
 
-// Temporary: test with NoopProgress to isolate ThreadsafeFunction segfault
-pub struct AncestralTaskNoop {
-  args: TreetimeAncestralArgs,
+// The async `ancestral` export runs without a threadsafe progress sink: emitting progress through the
+// callback triggers a ThreadsafeFunction segfault for this command, so it computes with a no-op sink
+// and the callback receives no events. The other commands emit progress normally.
+pub struct AncestralTask {
+  args: AncestralArgs,
 }
 
-impl Task for AncestralTaskNoop {
+impl Task for AncestralTask {
   type Output = String;
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let result =
-      app_api::commands::ancestral::run::run_ancestral_reconstruction(&self.args, &NoopCancel, &NoopProgress)
-        .map_err(|e| eyre_to_napi(&e))?;
+    let result = run_ancestral(&self.args, &NoopCancel, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
     serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
   }
 
@@ -120,44 +125,13 @@ impl Task for AncestralTaskNoop {
 pub fn ancestral(
   args_json: String,
   _on_event: Arc<ThreadsafeFunction<String, ()>>,
-) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTaskNoop>> {
-  let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-  let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
-  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTaskNoop { args }))
+) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTask>> {
+  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTask { args }))
 }
 
-define_task!(
-  ClockTask,
-  TreetimeClockArgsRaw,
-  TreetimeClockArgs,
-  app_api::commands::clock::run::run_clock,
-  clock
-);
-define_task!(
-  TimetreeTask,
-  TreetimeTimetreeArgsRaw,
-  TreetimeTimetreeArgs,
-  app_api::commands::timetree::run::run_timetree_estimation,
-  timetree
-);
-define_task!(
-  MugrationTask,
-  TreetimeMugrationArgsRaw,
-  TreetimeMugrationArgs,
-  app_api::commands::mugration::run::run_mugration,
-  mugration
-);
-define_task!(
-  OptimizeTask,
-  TreetimeOptimizeArgsRaw,
-  TreetimeOptimizeArgs,
-  app_api::commands::optimize::run::run_optimize,
-  optimize
-);
-define_task!(
-  PruneTask,
-  TreetimePruneArgsRaw,
-  TreetimePruneArgs,
-  app_api::commands::prune::run::run_prune,
-  prune
-);
+define_task!(ClockTask, ClockArgs, run_clock, clock);
+define_task!(TimetreeTask, TimetreeArgs, run_timetree, timetree);
+define_task!(MugrationTask, MugrationArgs, run_mugration, mugration);
+define_task!(OptimizeTask, OptimizeArgs, run_optimize, optimize);
+define_task!(PruneTask, PruneArgs, run_prune, prune);
