@@ -2,11 +2,11 @@ use crate::commands::ancestral::aa_node_data::{
   read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
-use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut};
 use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
+use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use log::{info, warn};

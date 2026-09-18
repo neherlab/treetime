@@ -182,13 +182,13 @@ mod tests {
 
   mod helpers {
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
     use crate::commands::ancestral::run::{gather_augur_output_maps, run_ancestral_reconstruction};
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output_args::OutputCoreArgs;
+    use app_output::augur_node_data_ancestral::build_augur_node_data_json;
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;

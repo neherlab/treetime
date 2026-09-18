@@ -1,8 +1,8 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
+use app_output::augur_node_data_optimize::write_augur_node_data_json;
 use app_output::optimize_result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::OutputSelection;

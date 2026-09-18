@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::mugration::augur_node_data::build_augur_node_data_json;
+  use app_output::augur_node_data_mugration::build_augur_node_data_json;
   use app_output::mugration_result::MugrationResult;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

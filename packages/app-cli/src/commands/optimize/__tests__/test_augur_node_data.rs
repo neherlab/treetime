@@ -189,7 +189,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
+    use app_output::augur_node_data_optimize::build_augur_node_data_json;
     use app_output::optimize_result::OptimizeNodeOut;
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};

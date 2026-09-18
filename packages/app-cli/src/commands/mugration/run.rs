@@ -1,6 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
-use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::augur_node_data_mugration::write_augur_node_data_json;
 use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
 use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::write_mugration_tree_outputs;
