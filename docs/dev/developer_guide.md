@@ -202,8 +202,8 @@ v="flu/h3n2/20"
 # Full quality check (Rust lint + format + test)
 ./dev/docker/run ./dev/dev q
 
-# Smoke tests
-./dev/docker/run ./dev/dev br treetime && ./dev/docker/run ./dev/run-smoke-tests .out/treetime
+# Output comparison against the rust baseline (builds the rust and current binaries, diffs every command output)
+./dev/compare-baseline
 ```
 
 ## Linting and Formatting

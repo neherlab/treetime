@@ -1,0 +1,608 @@
+#!/usr/bin/env python3
+
+"""
+Compare current-working-tree treetime output against the `rust` base branch, byte for byte.
+
+The question this answers: does the code in the current checkout produce identical command output to
+`rust`, after removing two fields that churn for reasons unrelated to behavior? It exists because the
+previous harness let its baseline drift forward to near-HEAD, so a large refactoring could change
+output while every gate stayed green. Here the baseline is always `git rev-parse rust`, rebuilt
+automatically when `rust` moves, and never a manually supplied binary.
+
+How it works:
+
+  - The tool runs on the host (it needs `git worktree` and a build). Container-bound work is wrapped
+    with `./dev/docker/run` (override with COMPARE_BASELINE_WRAPPER; set empty to run in place).
+  - Only the `rust` binary crosses the baseline boundary. The current harness drives both the `rust`
+    binary and the current binary over the current checkout's `data/`, so inputs are identical by
+    construction and never a diff source.
+  - The `rust` binary is built once per commit in a detached worktree and cached under
+    `tmp/compare-baseline/baseline/<sha>/`. Nothing is committed.
+  - Before diffing, two churned JSON fields are stripped: auspice `meta.updated` (a wall-clock date)
+    and augur-node-data `generated_by.version` (the compile-time crate version). Everything else is
+    compared raw.
+  - Perf (per-case wall and CPU time) is measured for both binaries and reported to stdout, with the
+    current-vs-baseline delta. Timings are machine-dependent, so they are printed, never saved.
+
+Usage:
+
+    ./dev/compare-baseline [--refresh-baseline] [--only REGEX] [--jobs N]
+
+Exit code: 0 when every compared case is identical, 1 otherwise.
+"""
+
+import argparse
+import json
+import logging
+import os
+import re
+import resource
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from multiprocessing import Pool
+from pathlib import Path
+
+log = logging.getLogger("compare-baseline")
+
+BASELINE_REF = "rust"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SELF = "dev/compare-baseline"
+WORK_ROOT = Path("tmp/compare-baseline")
+DATA_DIR = "data"
+
+# Container wrapper for build and matrix execution. Default runs through Docker; tests or an
+# already-containerized caller can set it empty.
+WRAPPER = shlex.split(os.environ.get("COMPARE_BASELINE_WRAPPER", "./dev/docker/run"))
+
+# The two fields that change for reasons unrelated to behavior, keyed by output-file suffix. The JSON
+# path is the chain of keys to delete. Confirmed by source inspection:
+#   auspice `meta.updated`        <- Utc::now(), packages/app-output/src/tree_output.rs
+#   augur-node-data version       <- CARGO_PKG_VERSION, packages/app-output/src/augur_node_data.rs
+CHURNED_FIELDS: dict[str, tuple[str, ...]] = {
+  ".auspice.json": ("meta", "updated"),
+  ".augur-node-data.json": ("generated_by", "version"),
+}
+
+# The test matrix: per-command batch tables. Each tuple is (data subdirectory, output subdirectory,
+# extra CLI args). Rows that are slow or known-failing on the current datasets are left out.
+# fmt: off
+ANCESTRAL_BATCH_RUNS = [
+  ("dengue/20",        "dengue/20",     ""),
+  ("dengue/100",       "dengue/100",    ""),
+  ("ebola/20",         "ebola/20",      ""),
+  ("ebola/100",        "ebola/100",     ""),
+  ("ebola/362",        "ebola/362",     ""),
+  ("flu/h3n2/20",      "flu/h3n2/20",   ""),
+  ("flu/h3n2/200",     "flu/h3n2/200",  ""),
+  ("lassa/L/20",       "lassa/L/20",    ""),
+  ("lassa/L/50",       "lassa/L/50",    ""),
+  ("lassa/L/200",      "lassa/L/200",   ""),
+  ("rsv/a/20",         "rsv/a/20",      ""),
+  ("rsv/a/100",        "rsv/a/100",     ""),
+  ("tb/20",            "tb/20",         ""),
+  ("tb/100",           "tb/100",        ""),
+  ("tb/149",           "tb/149",        ""),
+  ("zika/20",          "zika/20",       ""),
+  ("zika/86",          "zika/86",       ""),
+]
+
+CLOCK_BATCH_RUNS = [
+  ("dengue/20",        "dengue/20",     "--name-column=genbank_accession"),
+  ("dengue/100",       "dengue/100",    "--name-column=genbank_accession"),
+  ("ebola/20",         "ebola/20",      ""),
+  ("ebola/100",        "ebola/100",     ""),
+  ("ebola/362",        "ebola/362",     ""),
+  ("flu/h3n2/20",      "flu/h3n2/20",   "--sequence-length=1400"),
+  ("flu/h3n2/200",     "flu/h3n2/200",  "--sequence-length=1400"),
+  ("lassa/L/20",       "lassa/L/20",    ""),
+  ("lassa/L/50",       "lassa/L/50",    ""),
+  ("lassa/L/200",      "lassa/L/200",   ""),
+  ("rsv/a/20",         "rsv/a/20",      ""),
+  ("rsv/a/100",        "rsv/a/100",     ""),
+  ("tb/20",            "tb/20",         ""),
+  ("tb/100",           "tb/100",        ""),
+  ("tb/149",           "tb/149",        ""),
+  ("zika/20",          "zika/20",       ""),
+  ("zika/86",          "zika/86",       ""),
+]
+
+MUGRATION_BATCH_RUNS = [
+  ("zika/20",          "zika/20/country",            "country",  "--pc=1.0"),
+  ("zika/20",          "zika/20/country-weights",    "country",  "--pc=1.0 --weights={data_dir}/zika/country_weights.csv"),
+  ("zika/20",          "zika/20/country-confidence", "country",  "--pc=1.0 --output-confidence-csv={outdir}/confidence.csv"),
+  ("dengue/20",        "dengue/20/country",          "country",  "--name-column=genbank_accession --pc=1.0"),
+  ("tb/20",            "tb/20/cluster",              "cluster",  "--name-column=strain --pc=1.0"),
+  ("lassa/L/20",       "lassa/L/20/country",         "country",  "--name-column=accession --pc=1.0"),
+  ("rsv/a/20",         "rsv/a/20/country",           "country",  "--name-column=accession --pc=1.0"),
+  ("mpox/clade-ii/20", "mpox/clade-ii/20/country",   "country",  "--name-column=accession --pc=1.0"),
+]
+
+OPTIMIZE_BATCH_RUNS = [
+  ("dengue/20",        "dengue/20",                 ""),
+  ("dengue/100",       "dengue/100",                ""),
+  ("ebola/20",         "ebola/20",                  ""),
+  ("ebola/100",        "ebola/100",                 ""),
+  ("ebola/362",        "ebola/362",                 ""),
+  ("flu/h3n2/20",      "flu/h3n2/20",               ""),
+  ("flu/h3n2/20",      "flu/h3n2/20/brent",         "--opt-method=brent"),
+  ("flu/h3n2/20",      "flu/h3n2/20/brent-log",     "--opt-method=brent-log"),
+  ("flu/h3n2/20",      "flu/h3n2/20/newton",        "--opt-method=newton"),
+  ("flu/h3n2/20",      "flu/h3n2/20/newton-sqrt",   "--opt-method=newton-sqrt"),
+  ("flu/h3n2/20",      "flu/h3n2/20/newton-log",    "--opt-method=newton-log"),
+  ("flu/h3n2/20",      "flu/h3n2/20/reroot-min-dev","--reroot=min-dev"),
+  ("flu/h3n2/200",     "flu/h3n2/200",              ""),
+  ("lassa/L/20",       "lassa/L/20",                ""),
+  ("lassa/L/50",       "lassa/L/50",                ""),
+  ("lassa/L/200",      "lassa/L/200",               ""),
+  ("rsv/a/20",         "rsv/a/20",                  ""),
+  ("rsv/a/100",        "rsv/a/100",                 ""),
+  ("tb/20",            "tb/20",                     ""),
+  ("tb/100",           "tb/100",                    ""),
+  ("tb/149",           "tb/149",                    ""),
+  ("zika/20",          "zika/20",                   ""),
+  ("zika/86",          "zika/86",                   ""),
+]
+
+PRUNE_BATCH_RUNS = [
+  ("dengue/20",        "dengue/20",     ""),
+  ("dengue/100",       "dengue/100",    ""),
+  ("ebola/20",         "ebola/20",      ""),
+  ("ebola/100",        "ebola/100",     ""),
+  ("ebola/362",        "ebola/362",     ""),
+  ("flu/h3n2/20",      "flu/h3n2/20",   ""),
+  ("flu/h3n2/200",     "flu/h3n2/200",  ""),
+  ("lassa/L/20",       "lassa/L/20",    ""),
+  ("lassa/L/50",       "lassa/L/50",    ""),
+  ("lassa/L/200",      "lassa/L/200",   ""),
+  ("rsv/a/20",         "rsv/a/20",      ""),
+  ("rsv/a/100",        "rsv/a/100",     ""),
+  ("tb/20",            "tb/20",         ""),
+  ("tb/100",           "tb/100",        ""),
+  ("tb/149",           "tb/149",        ""),
+  ("zika/20",          "zika/20",       ""),
+  ("zika/86",          "zika/86",       ""),
+]
+
+TIMETREE_BATCH_RUNS = [
+  ("flu/h3n2/20",   "flu/h3n2/20/basic",              ""),
+  ("flu/h3n2/200",  "flu/h3n2/200/basic",             ""),
+  ("ebola/20",      "ebola/20/basic",                 ""),
+  ("ebola/362",     "ebola/362/basic",                ""),
+  ("zika/20",       "zika/20/basic",                  ""),
+  ("flu/h3n2/200",  "flu/h3n2/200/fixed-clock",       "--clock-rate=0.003"),
+  ("ebola/20",      "ebola/20/fixed-clock",           "--clock-rate=0.003"),
+  ("flu/h3n2/20",   "flu/h3n2/20/branch-input",       "--branch-length-mode=input"),
+  ("ebola/20",      "ebola/20/branch-input",          "--branch-length-mode=input"),
+  ("flu/h3n2/20",   "flu/h3n2/20/reconstruct-tips",   "--reconstruct-tip-states"),
+  ("ebola/20",      "ebola/20/reconstruct-tips",      "--include-leaves --impute-missing-data"),
+  ("flu/h3n2/20",   "flu/h3n2/20/marginal-always",    "--time-marginal=always"),
+  ("flu/h3n2/200",  "flu/h3n2/200/marginal-always",   "--time-marginal=always"),
+  ("ebola/20",      "ebola/20/marginal-always",       "--time-marginal=always"),
+  ("zika/20",       "zika/20/marginal-always",        "--time-marginal=always"),
+  ("flu/h3n2/20",   "flu/h3n2/20/marginal-final",     "--time-marginal=only-final"),
+  ("flu/h3n2/20",   "flu/h3n2/20/confidence",         "--confidence"),
+  ("flu/h3n2/20",   "flu/h3n2/20/keep-polytomies",    "--keep-polytomies"),
+  ("flu/h3n2/20",   "flu/h3n2/20/resolve-polytomies", "--resolve-polytomies --max-iter=3"),
+  ("ebola/20",      "ebola/20/resolve-polytomies",    "--resolve-polytomies --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/coalescent",         "--coalescent=10.0"),
+  ("flu/h3n2/200",  "flu/h3n2/200/coalescent",        "--coalescent=10.0 --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/coal-opt",           "--coalescent-opt"),
+  ("flu/h3n2/200",  "flu/h3n2/200/coal-opt",          "--coalescent-opt --max-iter=3"),
+  ("ebola/20",      "ebola/20/coal-opt",              "--coalescent-opt"),
+  ("zika/20",       "zika/20/coal-opt",               "--coalescent-opt"),
+  ("flu/h3n2/20",   "flu/h3n2/20/skyline",            "--coalescent-skyline --skyline-n-points=5"),
+  ("flu/h3n2/200",  "flu/h3n2/200/skyline",           "--coalescent-skyline --skyline-n-points=5 --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/reroot-mindev",      "--reroot=min-dev"),
+  ("flu/h3n2/20",   "flu/h3n2/20/reroot-oldest",      "--reroot=oldest"),
+  ("ebola/362",     "ebola/362/reroot-mindev",        "--reroot=min-dev"),
+  ("ebola/362",     "ebola/362/reroot-oldest",        "--reroot=oldest"),
+  ("ebola/362",     "ebola/362/keep-root",            "--keep-root"),
+  ("ebola/20",      "ebola/20/keep-root",             "--keep-root"),
+  ("zika/20",       "zika/20/keep-root",              "--keep-root"),
+  ("flu/h3n2/200",  "flu/h3n2/200/no-filter",         "--clock-filter=0"),
+  ("flu/h3n2/200",  "flu/h3n2/200/strict-filter",     "--clock-filter=5.0"),
+  ("flu/h3n2/20",   "flu/h3n2/20/covariation",        "--covariation"),
+  ("flu/h3n2/200",  "flu/h3n2/200/covariation",       "--covariation"),
+  ("flu/h3n2/20",   "flu/h3n2/20/parsimony",          "--method-anc=parsimony --max-iter=1"),
+  ("flu/h3n2/20",   "flu/h3n2/20/jc69",               "--gtr=jc69"),
+  ("flu/h3n2/20",   "flu/h3n2/20/iter0",              "--max-iter=0"),
+  ("flu/h3n2/20",   "flu/h3n2/20/iter4",              "--max-iter=4"),
+  ("flu/h3n2/200",  "flu/h3n2/200/iter4",             "--max-iter=4"),
+  ("ebola/20",      "ebola/20/iter4",                 "--max-iter=4"),
+  ("flu/h3n2/20",   "flu/h3n2/20/tip-slack",          "--tip-slack=0.1"),
+  ("flu/h3n2/200",  "flu/h3n2/200/coal-polytomy",     "--coalescent=10.0 --resolve-polytomies --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/coal-opt-marginal",  "--coalescent-opt --time-marginal=always"),
+  ("flu/h3n2/200",  "flu/h3n2/200/coal-opt-marginal", "--coalescent-opt --time-marginal=always --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/skyline-marginal",   "--coalescent-skyline --time-marginal=always"),
+  ("flu/h3n2/200",  "flu/h3n2/200/reroot-covar",      "--reroot=least-squares --covariation"),
+  ("ebola/362",     "ebola/362/input-keeproot",       "--branch-length-mode=input --keep-root"),
+  ("flu/h3n2/20",   "flu/h3n2/20/conf-marginal-final","--confidence --time-marginal=only-final"),
+  ("ebola/362",     "ebola/362/no-filter-keeproot",   "--clock-filter=0 --keep-root"),
+  ("flu/h3n2/200",  "flu/h3n2/200/skyline-conf",      "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"),
+  ("flu/h3n2/200",  "flu/h3n2/200/fast",              "--method-anc=parsimony --max-iter=1 --keep-polytomies"),
+  ("flu/h3n2/200",  "flu/h3n2/200/relaxed-corr",      "--relax 1.0 0.5 --max-iter=3"),
+  ("flu/h3n2/200",  "flu/h3n2/200/relaxed-uncorr",    "--relax 1.0 0.0 --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/conf-stddev",        "--confidence --clock-std-dev=0.001 --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/conf-covariation",   "--confidence --covariation --max-iter=3"),
+  ("flu/h3n2/20",   "flu/h3n2/20/dense",              "--dense=true --gtr=jc69"),
+  ("rsv/a/20",      "rsv/a/20/basic",                 ""),
+  ("tb/20",         "tb/20/basic",                    ""),
+  ("lassa/L/20",    "lassa/L/20/basic",               ""),
+  ("mpox/clade-ii/20", "mpox/clade-ii/20/basic",      ""),
+]
+# fmt: on
+
+
+def main() -> int:
+  logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+  args = parse_args()
+  os.chdir(PROJECT_ROOT)
+
+  if args.run_matrix:
+    return run_matrix_mode(args)
+
+  sha = resolve_baseline_sha()
+  log.info("Baseline: %s = %s", BASELINE_REF, sha)
+
+  baseline = WORK_ROOT / "baseline" / sha
+  ensure_baseline(baseline, sha, args)
+  baseline_results = read_results(baseline / "results.json")
+
+  current = WORK_ROOT / "current"
+  build_current()
+  current_results = run_and_normalize(".out/treetime", current, jobs=args.jobs, only=args.only, label="current")
+
+  compared = filter_only(baseline_results, args.only)
+  outcomes = compare_all(compared, current_results, baseline / "out", current / "out")
+  write_report(outcomes, WORK_ROOT / "report.tsv")
+  print_summary(outcomes)
+  print_perf(baseline_results, current_results)
+  return 0 if all(o.status.ok for o in outcomes) else 1
+
+
+def resolve_baseline_sha() -> str:
+  result = subprocess.run(
+    ["git", "rev-parse", "--verify", f"{BASELINE_REF}^{{commit}}"],
+    capture_output=True, text=True, check=False,
+  )
+  if result.returncode != 0:
+    sys.exit(f"Cannot resolve baseline ref {BASELINE_REF!r}: {result.stderr.strip()}")
+  return result.stdout.strip()
+
+
+def ensure_baseline(baseline: Path, sha: str, args: argparse.Namespace) -> None:
+  if (baseline / "results.json").exists() and not args.refresh_baseline:
+    log.info("Reusing cached baseline: %s", baseline)
+    return
+  shutil.rmtree(baseline, ignore_errors=True)
+  build_baseline_binary(sha, baseline / "bin" / "treetime")
+  # The baseline is always extracted in full; --only must never shrink the cached oracle.
+  run_and_normalize(str(baseline / "bin" / "treetime"), baseline, jobs=args.jobs, only=None, label="baseline")
+
+
+def build_baseline_binary(sha: str, destination: Path) -> None:
+  """Build the `rust` binary in a detached worktree, so the checked-out branch is never disturbed."""
+  checkout = WORK_ROOT / "baseline" / "src"
+  shutil.rmtree(checkout, ignore_errors=True)
+  run_checked(["git", "worktree", "add", "--detach", "--force", str(checkout), sha])
+  try:
+    run_checked([*WRAPPER, "./dev/dev", "br", "treetime"], cwd=checkout)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(checkout / ".out" / "treetime", destination)
+  finally:
+    run_checked(["git", "worktree", "remove", "--force", str(checkout)], check=False)
+
+
+def build_current() -> None:
+  log.info("Building current binary")
+  run_checked([*WRAPPER, "./dev/dev", "br", "treetime"])
+
+
+def run_and_normalize(binary: str, run_dir: Path, jobs: int, only: str | None, label: str) -> list["CaseResult"]:
+  """Run the matrix for one binary (in-container) into run_dir/out, normalize, and cache results."""
+  out = run_dir / "out"
+  # Wipe only the output tree, never run_dir: for the baseline, run_dir also holds the built binary.
+  shutil.rmtree(out, ignore_errors=True)
+  out.mkdir(parents=True, exist_ok=True)
+  results_path = run_dir / "results.json"
+
+  command = [*WRAPPER, "python3", SELF, "--run-matrix", "--bin", binary, "--out", str(out),
+             "--results", str(results_path), "--jobs", str(jobs)]
+  if only:
+    command += ["--only", only]
+  log.info("Running matrix (%s): %s", label, binary)
+  run_checked(command)
+
+  normalize_tree(out)
+  return read_results(results_path)
+
+
+def filter_only(results: list["CaseResult"], only: str | None) -> list["CaseResult"]:
+  if not only:
+    return results
+  pattern = re.compile(only)
+  return [r for r in results if pattern.search(r.id)]
+
+
+def normalize_tree(out: Path) -> None:
+  for path in out.rglob("*"):
+    if not path.is_file():
+      continue
+    for suffix, key_path in CHURNED_FIELDS.items():
+      if path.name.endswith(suffix):
+        strip_json_key(path, key_path)
+        break
+
+
+def strip_json_key(path: Path, key_path: tuple[str, ...]) -> None:
+  # Always re-serialize both sides identically, so a canonicalized file never diffs a raw one even if
+  # the churned key is absent.
+  doc = json.loads(path.read_text())
+  node = doc
+  for key in key_path[:-1]:
+    node = node.get(key) if isinstance(node, dict) else None
+    if node is None:
+      break
+  if isinstance(node, dict):
+    node.pop(key_path[-1], None)
+  path.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
+
+
+def compare_all(baseline: list["CaseResult"], current: list["CaseResult"],
+                baseline_out: Path, current_out: Path) -> list["Outcome"]:
+  current_by_id = {c.id: c for c in current}
+  return [compare_case(b, current_by_id.get(b.id), baseline_out, current_out)
+          for b in sorted(baseline, key=lambda c: c.id)]
+
+
+def compare_case(baseline: "CaseResult", current: "CaseResult | None",
+                 baseline_out: Path, current_out: Path) -> "Outcome":
+  if baseline.code != 0:
+    return Outcome(baseline.id, baseline.cmd_name, Status.SKIP_BASELINE_FAILED, "")
+  if current is None:
+    return Outcome(baseline.id, baseline.cmd_name, Status.MISSING, "not present in current run")
+  if current.code != 0:
+    return Outcome(baseline.id, baseline.cmd_name, Status.CURRENT_FAILED, "baseline passed, current failed")
+  if baseline.output_dir is None:
+    return Outcome(baseline.id, baseline.cmd_name, Status.NO_OUTPUT, "")
+  difference = diff_dirs(baseline_out / baseline.output_dir, current_out / current.output_dir)
+  if difference is None:
+    return Outcome(baseline.id, baseline.cmd_name, Status.IDENTICAL, "")
+  return Outcome(baseline.id, baseline.cmd_name, Status.DIFFERENT, difference)
+
+
+def diff_dirs(left: Path, right: Path) -> str | None:
+  left_files = relative_files(left)
+  right_files = relative_files(right)
+  only_left = sorted(left_files - right_files)
+  only_right = sorted(right_files - left_files)
+  if only_left:
+    return f"missing in current: {only_left[0]}"
+  if only_right:
+    return f"only in current: {only_right[0]}"
+  for rel in sorted(left_files):
+    if (left / rel).read_bytes() != (right / rel).read_bytes():
+      return f"content differs: {rel}"
+  return None
+
+
+def relative_files(root: Path) -> set[str]:
+  if not root.exists():
+    return set()
+  return {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
+
+
+def write_report(outcomes: list["Outcome"], report_path: Path) -> None:
+  report_path.parent.mkdir(parents=True, exist_ok=True)
+  lines = ["id\tstatus\tdetail"]
+  lines += [f"{o.id}\t{o.status.value}\t{o.detail}" for o in outcomes]
+  report_path.write_text("\n".join(lines) + "\n")
+
+
+def print_summary(outcomes: list["Outcome"]) -> None:
+  counts: dict[Status, int] = {status: 0 for status in Status}
+  for outcome in outcomes:
+    counts[outcome.status] += 1
+  print("\nOutput comparison vs rust baseline")
+  for status in Status:
+    if counts[status]:
+      print(f"  {status.value:<22} {counts[status]}")
+  problems = [o for o in outcomes if not o.status.ok]
+  if problems:
+    print("\nProblems:")
+    for outcome in problems:
+      print(f"  {outcome.status.value}: {outcome.id} ({outcome.detail})")
+
+
+def print_perf(baseline: list["CaseResult"], current: list["CaseResult"]) -> None:
+  """Report timing to stdout only; never saved (machine-dependent, measured under parallel load)."""
+  base_by_id = {c.id: c for c in baseline}
+  ran = [c for c in current if c.code == 0]
+  if not ran:
+    return
+  cur_wall = sum(c.wall for c in ran)
+  cur_cpu = sum(c.cpu for c in ran)
+  base_wall = sum(base_by_id[c.id].wall for c in ran if c.id in base_by_id)
+
+  print("\nPerf (indicative, same-machine, under parallel load)")
+  print(f"  current total: wall {cur_wall:.1f}s  cpu {cur_cpu:.1f}s")
+  if base_wall > 0:
+    delta = (cur_wall - base_wall) / base_wall * 100
+    print(f"  baseline total wall {base_wall:.1f}s  ->  current {delta:+.1f}%")
+  print("  slowest current cases:")
+  for c in sorted(ran, key=lambda c: c.wall, reverse=True)[:10]:
+    base = base_by_id.get(c.id)
+    delta = f"{(c.wall - base.wall) / base.wall * 100:+.0f}%" if base and base.wall > 0 else "n/a"
+    print(f"    {c.wall:6.1f}s  ({delta:>6} vs base)  {c.id}")
+
+
+# --- In-container matrix mode: runs the CLI subprocesses and records exit code and timing. ---
+
+def run_matrix_mode(args: argparse.Namespace) -> int:
+  out = Path(args.out)
+  cases = build_cases(args.bin, out)
+  if args.only:
+    pattern = re.compile(args.only)
+    cases = [c for c in cases if pattern.search(c.id)]
+  with Pool(processes=args.jobs or os.cpu_count()) as pool:
+    results = pool.map(run_case, cases)
+  Path(args.results).write_text(json.dumps([r.as_dict() for r in results], indent=2))
+  failed = sum(1 for r in results if r.code != 0)
+  log.info("Matrix done: %d cases, %d failed", len(results), failed)
+  return 0
+
+
+def run_case(case: "Case") -> "CaseResult":
+  before = resource.getrusage(resource.RUSAGE_CHILDREN)
+  start = time.perf_counter()
+  proc = subprocess.run(case.argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+  wall = time.perf_counter() - start
+  after = resource.getrusage(resource.RUSAGE_CHILDREN)
+  cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+  return CaseResult(case.id, case.cmd_name, proc.returncode, case.output_dir, wall, cpu)
+
+
+def build_cases(binary: str, out: Path) -> list["Case"]:
+  exe = str(Path(binary).resolve())
+  cases: list[Case] = []
+  cases += [clock_case(exe, out, *row) for row in CLOCK_BATCH_RUNS]
+  cases += [ancestral_case(exe, out, "parsimony", None, *row) for row in ANCESTRAL_BATCH_RUNS]
+  cases += [ancestral_case(exe, out, "marginal", "sparse", *row) for row in ANCESTRAL_BATCH_RUNS]
+  cases += [ancestral_case(exe, out, "marginal", "dense", *row) for row in ANCESTRAL_BATCH_RUNS]
+  cases += [mugration_case(exe, out, *row) for row in MUGRATION_BATCH_RUNS]
+  cases += [optimize_case(exe, out, "false", *row) for row in OPTIMIZE_BATCH_RUNS]
+  cases += [prune_case(exe, out, *row) for row in PRUNE_BATCH_RUNS]
+  cases += [timetree_case(exe, out, *row) for row in TIMETREE_BATCH_RUNS]
+  return cases
+
+
+def clock_case(exe: str, out: Path, name: str, sub: str, extra: str) -> "Case":
+  outdir = out / "clock" / sub
+  argv = [exe, "clock", f"--tree={DATA_DIR}/{name}/tree.nwk", f"--dates={DATA_DIR}/{name}/metadata.tsv",
+          f"--output-all={outdir}", *shlex.split(extra)]
+  return Case(f"clock/{sub}", "clock", argv, f"clock/{sub}")
+
+
+def ancestral_case(exe: str, out: Path, method: str, seq_mode: str | None, name: str, sub: str, extra: str) -> "Case":
+  variant = method if seq_mode is None else f"{method}-{seq_mode}"
+  dense: list[str] = []
+  if method == "marginal":
+    dense = ["--dense=true", "--model=jc69"] if seq_mode == "dense" else ["--dense=false"]
+  selection = (["--output-selection=nwk,nexus,augur-node-data,reconstructed-nuc-fasta"]
+               if method == "parsimony" else [])
+  outdir = out / "ancestral" / variant / sub
+  argv = [exe, "ancestral", f"--method-anc={method}", *dense,
+          f"--tree={DATA_DIR}/{name}/tree.nwk", f"--aln={DATA_DIR}/{name}/aln.fasta.xz",
+          f"--output-all={outdir}", *selection, *shlex.split(extra)]
+  return Case(f"ancestral/{variant}/{sub}", f"ancestral-{variant}", argv, f"ancestral/{variant}/{sub}")
+
+
+def mugration_case(exe: str, out: Path, name: str, sub: str, attribute: str, extra: str) -> "Case":
+  outdir = out / "mugration" / sub
+  extra = extra.format(data_dir=DATA_DIR, outdir=outdir)
+  argv = [exe, "mugration", f"--tree={DATA_DIR}/{name}/tree.nwk", f"--states={DATA_DIR}/{name}/metadata.tsv",
+          f"--attribute={attribute}", f"--output-all={outdir}", *shlex.split(extra)]
+  return Case(f"mugration/{sub}", "mugration", argv, f"mugration/{sub}")
+
+
+def optimize_case(exe: str, out: Path, dense: str, name: str, sub: str, extra: str) -> "Case":
+  seq_mode = "dense" if dense == "true" else "sparse"
+  outdir = out / "optimize" / seq_mode / sub
+  argv = [exe, "optimize", f"--dense={dense}", f"--tree={DATA_DIR}/{name}/tree.nwk",
+          f"--aln={DATA_DIR}/{name}/aln.fasta.xz", f"--output-all={outdir}", *shlex.split(extra)]
+  return Case(f"optimize/{seq_mode}/{sub}", f"optimize-{seq_mode}", argv, f"optimize/{seq_mode}/{sub}")
+
+
+def prune_case(exe: str, out: Path, name: str, sub: str, extra: str) -> "Case":
+  outdir = out / "prune" / sub
+  argv = [exe, "prune", f"--tree={DATA_DIR}/{name}/tree.nwk", f"--aln={DATA_DIR}/{name}/aln.fasta.xz",
+          f"--output-all={outdir}", "--prune-short=1e-6", "--prune-empty", "--merge-shared-mutations",
+          *shlex.split(extra)]
+  return Case(f"prune/{sub}", "prune", argv, f"prune/{sub}")
+
+
+def timetree_case(exe: str, out: Path, name: str, sub: str, extra: str) -> "Case":
+  outputs = ["nwk", "nexus", "auspice", "augur-node-data", "clock-model"]
+  if "--branch-length-mode=input" not in extra:
+    outputs.append("gtr")
+  if "--time-marginal" in extra or "--confidence" in extra:
+    outputs.append("confidence-tsv")
+  outdir = out / "timetree" / sub
+  argv = [exe, "timetree", f"--tree={DATA_DIR}/{name}/tree.nwk", f"--dates={DATA_DIR}/{name}/metadata.tsv",
+          f"--aln={DATA_DIR}/{name}/aln.fasta.xz", f"--output-all={outdir}",
+          f"--output-selection={','.join(outputs)}", *shlex.split(extra)]
+  return Case(f"timetree/{sub}", "timetree", argv, f"timetree/{sub}")
+
+
+def read_results(path: Path) -> list["CaseResult"]:
+  return [CaseResult(**entry) for entry in json.loads(path.read_text())]
+
+
+def run_checked(command: list[str], cwd: Path | None = None, check: bool = True) -> None:
+  result = subprocess.run(command, cwd=cwd, check=False)
+  if check and result.returncode != 0:
+    sys.exit(f"Command failed ({result.returncode}): {shlex.join(command)}")
+
+
+def parse_args() -> argparse.Namespace:
+  parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+  parser.add_argument("--refresh-baseline", action="store_true", help="Force rebuild of the rust baseline.")
+  parser.add_argument("--only", default=None, help="Regex restricting case ids (fast local loop).")
+  parser.add_argument("--jobs", type=int, default=0, help="Cap worker threads (0 = all cores).")
+  parser.add_argument("--run-matrix", action="store_true", help=argparse.SUPPRESS)
+  parser.add_argument("--bin", default=None, help=argparse.SUPPRESS)
+  parser.add_argument("--out", default=None, help=argparse.SUPPRESS)
+  parser.add_argument("--results", default=None, help=argparse.SUPPRESS)
+  return parser.parse_args()
+
+
+class Status(Enum):
+  IDENTICAL = "identical"
+  DIFFERENT = "different"
+  CURRENT_FAILED = "current-failed"
+  MISSING = "missing-current"
+  NO_OUTPUT = "no-output"
+  SKIP_BASELINE_FAILED = "skip-baseline-failed"
+
+  @property
+  def ok(self) -> bool:
+    return self in (Status.IDENTICAL, Status.NO_OUTPUT, Status.SKIP_BASELINE_FAILED)
+
+
+@dataclass(frozen=True)
+class Outcome:
+  id: str
+  cmd_name: str
+  status: Status
+  detail: str
+
+
+@dataclass(frozen=True)
+class Case:
+  id: str
+  cmd_name: str
+  argv: list[str] = field(default_factory=list)
+  output_dir: str | None = None
+
+
+@dataclass(frozen=True)
+class CaseResult:
+  id: str
+  cmd_name: str
+  code: int
+  output_dir: str | None
+  wall: float
+  cpu: float
+
+  def as_dict(self) -> dict:
+    return {"id": self.id, "cmd_name": self.cmd_name, "code": self.code,
+            "output_dir": self.output_dir, "wall": self.wall, "cpu": self.cpu}
+
+
+if __name__ == "__main__":
+  sys.exit(main())
