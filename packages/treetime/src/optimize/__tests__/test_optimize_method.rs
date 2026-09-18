@@ -939,7 +939,7 @@ mod tests {
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let edge_key = graph.get_edges().next().unwrap().key();
+    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     let mut contributions_by_edge =
       gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
     let contributions = contributions_by_edge
@@ -997,7 +997,7 @@ mod tests {
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let edge_key = graph.get_edges().next().unwrap().key();
+    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     let mut contributions_by_edge =
       gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
     let contributions = contributions_by_edge
@@ -1064,7 +1064,7 @@ mod tests {
     // (production code computes the bracket from the input BL). Calls the
     // production helpers brent_bracket and min_branch_length_for_indels
     // directly to avoid drift if either formula changes.
-    let input_bl = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap_or(0.0);
+    let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length as f64;
     let min_bl = min_branch_length_for_indels(4, one_mutation);
     let (lower, upper) = brent_bracket(input_bl, min_bl, one_mutation);
@@ -1234,7 +1234,7 @@ mod tests {
       let aln = simple_alignment()?;
       let (mut dense_partitions, mut sparse_partitions) = setup_partitions(graph, names, &aln, branch_lengths)?;
 
-      let first_edge_key = graph.get_edges().next().unwrap().key();
+      let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let indels: Vec<InDel> = (0..n_indels)
         .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()).unwrap())
         .collect();
@@ -1265,7 +1265,7 @@ mod tests {
       indel_rate: f64,
       t: f64,
     ) -> Result<f64, Report> {
-      let edge_key = graph.get_edges().next().unwrap().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let contributions = gather_edge_contributions(graph, dense, sparse)?;
       let indel_counts = gather_edge_indel_counts(graph, dense, sparse);
       let edge_contributions = &contributions[&edge_key];
@@ -1290,7 +1290,7 @@ mod tests {
       indel_rate: f64,
       t: f64,
     ) -> Result<OptimizationMetrics, Report> {
-      let edge_key = graph.get_edges().next().unwrap().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let contributions = gather_edge_contributions(graph, dense, sparse)?;
       let indel_counts = gather_edge_indel_counts(graph, dense, sparse);
       let edge_contributions = &contributions[&edge_key];
@@ -1305,7 +1305,7 @@ mod tests {
     /// is missing or NaN. Captures the 5-line read chain that recurs across
     /// tests in this file.
     pub(super) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
-      branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap()
+      branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
     }
   }
 }

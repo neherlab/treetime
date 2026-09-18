@@ -115,7 +115,7 @@ mod tests {
     )?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
-    let leaf_key = graph.get_leaves().next().unwrap().key();
+    let leaf_key = graph.get_leaves().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(leaf_key)?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A55G,T93C"));
     Ok(())

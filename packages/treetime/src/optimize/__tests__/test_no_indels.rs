@@ -43,7 +43,7 @@ mod tests {
     let (dense_without, mut sparse_without) =
       setup_partitions(&graph_without, &graph_without_names, &aln, &mut branch_lengths_without)?;
 
-    let first_edge_key = graph_with.get_edges().next().unwrap().key();
+    let first_edge_key = graph_with.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths_with.insert(first_edge_key, Some(0.1));
     sparse_with[0]
       .partition
@@ -52,7 +52,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let first_edge_key_without = graph_without.get_edges().next().unwrap().key();
+    let first_edge_key_without = graph_without.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths_without.insert(first_edge_key_without, Some(0.1));
     sparse_without[0]
       .partition
@@ -114,7 +114,7 @@ mod tests {
     let graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let first_edge_key = graph.get_edges().next().unwrap().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(first_edge_key, Some(0.05));
     sparse_partitions[0]
       .partition

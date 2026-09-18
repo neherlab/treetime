@@ -105,8 +105,6 @@ where
 }
 
 /// Per-node conversion context passed to the graph-walk closures.
-// Crate-internal data carrier; direct field access is the intended interface.
-#[allow(clippy::field_scoped_visibility_modifiers)]
 pub(crate) struct GraphNodeContext {
   pub(crate) node_key: GraphNodeKey,
   pub(crate) edge_key: Option<GraphEdgeKey>,
@@ -114,8 +112,6 @@ pub(crate) struct GraphNodeContext {
 
 /// Reconstructed discrete trait for one attribute: the assigned state plus its confidence and entropy.
 #[derive(Clone, Debug, Default, PartialEq)]
-// Crate-internal data carrier; direct field access is the intended interface.
-#[allow(clippy::field_scoped_visibility_modifiers)]
 pub(crate) struct TraitValue {
   pub(crate) value: String,
   pub(crate) confidence: BTreeMap<String, f64>,

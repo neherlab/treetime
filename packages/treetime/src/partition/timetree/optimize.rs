@@ -11,8 +11,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::reroot::RerootChanges;
 
-// Methods for `PartitionTimetree` are split across `optimize.rs` and `marginal.rs` by feature area.
-#[allow(clippy::multiple_inherent_impl)]
 impl PartitionTimetree {
   /// The sequence length this partition represents.
   pub fn sequence_length(&self) -> usize {

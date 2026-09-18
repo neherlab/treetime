@@ -268,7 +268,7 @@ mod tests {
     // pre-dispatch derivative shortcut fires. Identical sequences produce
     // a strictly negative derivative at $t = 0$ for any unimodal model,
     // so the shortcut must return true.
-    let first_edge_key = graph.get_edges().next().unwrap().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     assert!(
       is_zero_branch_optimal(&contributions[&first_edge_key]),
       "precondition: JC69 identical-sequence contributions must trigger the pre-dispatch shortcut"

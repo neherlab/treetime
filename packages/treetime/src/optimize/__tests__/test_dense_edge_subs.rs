@@ -36,7 +36,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = graph.get_edges().next().unwrap();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
@@ -79,7 +79,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = graph.get_edges().next().unwrap();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
@@ -183,7 +183,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = graph.get_edges().next().unwrap();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;

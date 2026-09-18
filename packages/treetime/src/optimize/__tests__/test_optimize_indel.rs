@@ -46,7 +46,7 @@ pub mod tests {
     sparse_partitions: &mut [SparseReconstruction],
     indels: &[InDel],
   ) -> GraphEdgeKey {
-    let first_edge_key = graph.get_edges().next().unwrap().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     for partition in dense_partitions.iter_mut() {
       partition.edges.estimates.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
     }
@@ -206,7 +206,7 @@ pub mod tests {
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
-    branch_lengths.insert(graph.get_edges().next().unwrap().key(), Some(0.0));
+    branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(0.0));
 
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let indel_rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
@@ -228,7 +228,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    branch_lengths.insert(graph.get_edges().next().unwrap().key(), Some(0.0));
+    branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(0.0));
 
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let indel_rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
@@ -301,8 +301,8 @@ pub mod tests {
       &mut branch_lengths_high,
     )?;
 
-    let optimized_bl_low = branch_lengths_low[&graph_low.get_edges().next().unwrap().key()].unwrap();
-    let optimized_bl_high = branch_lengths_high[&graph_high.get_edges().next().unwrap().key()].unwrap();
+    let optimized_bl_low = branch_lengths_low[&graph_low.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
+    let optimized_bl_high = branch_lengths_high[&graph_high.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
 
     assert!(
       optimized_bl_low > optimized_bl_high,
@@ -341,7 +341,7 @@ pub mod tests {
       &mut branch_lengths,
     )?;
 
-    let bl = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap();
+    let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
       bl > 0.0,
       "Branch with indels but no subs should have positive initial guess, got {bl}"
@@ -387,7 +387,7 @@ pub mod tests {
       &mut branch_lengths,
     )?;
 
-    let bl = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap();
+    let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
       bl > 0.0,
       "Indel-bearing edge on zero-BL tree should get positive initial guess, got {bl}"
@@ -428,7 +428,7 @@ pub mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
-    let bl = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap();
+    let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
       bl > 0.0,
       "Branch with indels should have positive length after optimization, got {bl}"
@@ -451,7 +451,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    branch_lengths.insert(graph.get_edges().next().unwrap().key(), Some(-0.1));
+    branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(-0.1));
     if has_indels {
       let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
       inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
@@ -493,7 +493,7 @@ pub mod tests {
 
     // Inject indels into sparse partition only (production path: dense indels are wiped
     // by marginal_update, so only sparse contributes in the real CLI flow)
-    let first_edge_key = graph.get_edges().next().unwrap().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     sparse_partitions[0]
       .partition
       .obs_edges
@@ -517,7 +517,7 @@ pub mod tests {
     )?;
 
     // After initial_guess, the indel-bearing edge should have positive BL (bootstrap)
-    let bl_after_guess = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap();
+    let bl_after_guess = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
       bl_after_guess > 0.0,
       "initial_guess should bootstrap positive BL for indel-bearing edge, got {bl_after_guess}"
@@ -531,7 +531,7 @@ pub mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
-    let bl_final = branch_lengths[&graph.get_edges().next().unwrap().key()].unwrap();
+    let bl_final = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(bl_final > 0.0, "Optimized BL should be positive, got {bl_final}");
     assert!(bl_final.is_finite(), "Optimized BL should be finite, got {bl_final}");
     Ok(())
@@ -772,7 +772,7 @@ pub mod tests {
     let _first_edge_key = inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
     // Set a very small initial branch length to test clamping
-    let edge_ref = graph.get_edges().next().unwrap();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     branch_lengths.insert(edge_ref.key(), Some(1e-15));
 
     let (dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;

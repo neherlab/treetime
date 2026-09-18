@@ -128,7 +128,8 @@ mod tests {
         let branch_lengths = nwk_parsed.branch_lengths;
 
         let graph: Graph = graph;
-        assert_eq!(graph.get_leaves().count(), 4, "Must have 4 leaves: {rerooted}");
+        let leaves = graph.get_leaves().collect::<Vec<_>>();
+        assert_eq!(leaves.len(), 4, "Must have 4 leaves: {rerooted}");
 
         Ok(())
       }

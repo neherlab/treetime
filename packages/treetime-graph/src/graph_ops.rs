@@ -19,9 +19,6 @@ impl Graph {
   }
 
   pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
-    // The collect ends the immutable borrow of `self.edges` before `remove_edge` takes `&mut self`;
-    // chaining the iterators directly would borrow `self` both ways at once.
-    #[allow(clippy::needless_collect)]
     let edges_to_remove: Vec<GraphEdgeKey> = self
       .edges
       .iter()

@@ -62,7 +62,7 @@ pub mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let nan_edge_key = graph.get_edges().next().unwrap().key();
+    let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -186,7 +186,7 @@ pub mod tests {
     let original_lengths = get_branch_lengths(&graph, &branch_lengths);
 
     // Set one edge to NaN (simulating a missing branch length)
-    let nan_edge_key = graph.get_edges().next().unwrap().key();
+    let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
 
     let total_length = total_sequence_length(&partitions, &[]);
@@ -484,7 +484,7 @@ pub mod tests {
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       branch_length: f64,
     ) {
-      let edge_key = graph.get_edges().next().unwrap().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
@@ -513,7 +513,7 @@ pub mod tests {
     /// the first graph edge. Marginal initialization populates the edge
     /// map, so the entry always exists by the time this helper is called.
     pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
-      let edge_key = graph.get_edges().next().unwrap().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       for partition in partitions.iter_mut() {
         partition.edges.estimates.get_mut(&edge_key).unwrap().indels =
           vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
