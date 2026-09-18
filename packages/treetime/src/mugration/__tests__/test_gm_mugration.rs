@@ -5,9 +5,11 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
 
-  use helpers::{load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case};
+  use helpers::{
+    confidence_by_name, load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case, states_vec,
+    trait_assignments_by_name,
+  };
 
   // Golden master tests for mugration discrete trait reconstruction.
   //
@@ -32,19 +34,18 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let (actual, maps) = run_gm_mugration_case(input)?;
+    let (output, names) = run_gm_mugration_case(input)?;
 
     let expected_states = expected.states.clone();
-    let actual_states: Vec<String> = maps.states.iter().map(|s| s.to_owned()).collect();
+    let actual_states = states_vec(&output);
     assert_eq!(expected_states, actual_states);
 
     let expected_n_states = expected.states.len();
-    let actual_n_states = maps.n_states;
+    let actual_n_states = output.n_states;
     assert_eq!(expected_n_states, actual_n_states);
 
     let expected_trait_assignments = expected.trait_assignments.clone();
-    let actual_trait_assignments: BTreeMap<String, String> =
-      actual.trait_assignments().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let actual_trait_assignments = trait_assignments_by_name(&output, &names);
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
 
     Ok(())
@@ -82,19 +83,17 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs["zika_20_country"];
     let expected = &outputs["zika_20_country"];
-    let (actual, _maps) = run_gm_mugration_case(input)?;
+    let (output, names) = run_gm_mugration_case(input)?;
 
-    assert_eq!(expected.states, actual.confidence.states);
+    assert_eq!(expected.states, states_vec(&output));
 
+    let actual_confidence = confidence_by_name(&output, &names);
     for (node_name, expected_profile) in &expected.confidence {
-      let actual_profile = actual
-        .confidence
-        .rows
-        .iter()
-        .find(|row| row.node == *node_name)
+      let actual_profile = actual_confidence
+        .get(node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
       let expected_arr = Array1::from_vec(expected_profile.clone());
-      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-6);
+      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-6);
     }
 
     Ok(())
@@ -118,19 +117,17 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let (actual, _maps) = run_gm_mugration_case(input)?;
+    let (output, names) = run_gm_mugration_case(input)?;
 
-    assert_eq!(expected.states, actual.confidence.states);
+    assert_eq!(expected.states, states_vec(&output));
 
+    let actual_confidence = confidence_by_name(&output, &names);
     for (node_name, expected_profile) in &expected.confidence {
-      let actual_profile = actual
-        .confidence
-        .rows
-        .iter()
-        .find(|row| row.node == *node_name)
+      let actual_profile = actual_confidence
+        .get(node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
       let expected_arr = Array1::from_vec(expected_profile.clone());
-      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-10);
+      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-10);
     }
 
     Ok(())
@@ -138,13 +135,14 @@ mod tests {
 
   mod helpers {
     use crate::cancel::NoopCancel;
-    use crate::mugration::mugration::execute_mugration;
-    use crate::mugration::result::{MugrationOutputMaps, MugrationResult};
+    use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
     use eyre::Report;
     use indexmap::IndexMap;
+    use ndarray::Array1;
     use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::read_discrete_attrs;
     use treetime_io::nwk::nwk_read_file;
@@ -196,13 +194,14 @@ mod tests {
       json_read_file(&path).unwrap()
     }
 
-    pub fn run_gm_mugration_case(fixture: &GmMugrationInput) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
+    pub fn run_gm_mugration_case(
+      fixture: &GmMugrationInput,
+    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
 
       // Read tree directly
       let tree_path = project_root.join(&fixture.tree_path);
       let nwk_parsed = nwk_read_file(&tree_path)?;
-      let confidences = nwk_parsed.confidences();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -236,25 +235,61 @@ mod tests {
         None => None,
       };
 
-      let names_tt_1 = names;
-      execute_mugration(
+      let params = MugrationParams {
+        missing_data: fixture.parameters.missing_data.clone(),
+        pc: fixture.parameters.pc,
+        missing_weights_threshold: 0.5,
+        iterations: fixture.parameters.iterations,
+        sampling_bias_correction: fixture.parameters.sampling_bias_correction,
+        smooth_initial_pi: false,
+        filter_uninformative_root: false,
+      };
+      let input = MugrationInput {
         graph,
-        &confidences,
-        &names_tt_1,
-        &branch_lengths,
-        &traits,
-        &fixture.attribute,
-        weights.as_ref(),
-        &fixture.parameters.missing_data,
-        fixture.parameters.pc,
-        0.5,
-        fixture.parameters.iterations,
-        fixture.parameters.sampling_bias_correction,
-        false,
-        false,
-        &NoopCancel,
-      )
-      .map_err(|err| err.into_report())
+        traits,
+        weights,
+        branch_lengths,
+      };
+      let output = run(&params, input, &names, &NoopCancel).map_err(|err| err.into_report())?;
+      Ok((output, names))
+    }
+
+    /// Discrete state names in order.
+    pub fn states_vec(output: &MugrationOutput) -> Vec<String> {
+      output.states.iter().map(|s| s.to_owned()).collect()
+    }
+
+    /// Reconstructed trait assignments keyed by node name, falling back to `node_{key}` for unnamed
+    /// nodes and skipping nodes with no reconstructed trait.
+    pub fn trait_assignments_by_name(
+      output: &MugrationOutput,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> BTreeMap<String, String> {
+      output
+        .graph
+        .get_nodes()
+        .filter_map(|node| {
+          let key = node.key();
+          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
+          output.reconstructed_traits[&key].clone().map(|value| (name, value))
+        })
+        .collect()
+    }
+
+    /// Confidence profiles keyed by node name, skipping nodes with no profile.
+    pub fn confidence_by_name(
+      output: &MugrationOutput,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> BTreeMap<String, Array1<f64>> {
+      output
+        .graph
+        .get_nodes()
+        .filter_map(|node| {
+          let key = node.key();
+          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
+          output.confidences[&key].clone().map(|profile| (name, profile))
+        })
+        .collect()
     }
   }
 }

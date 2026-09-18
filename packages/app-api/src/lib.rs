@@ -10,7 +10,7 @@ pub use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrat
 pub use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
 pub use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 pub use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
-pub use treetime::mugration::result::MugrationResult;
+pub use app_output::mugration_result::MugrationResult;
 
 #[cfg(test)]
 mod tests {

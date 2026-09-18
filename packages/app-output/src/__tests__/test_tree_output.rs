@@ -442,6 +442,7 @@ mod tests {
     use super::*;
     use crate::ancestral_result::AncestralOutputMaps;
     use crate::clock_result::ClockNodeOut;
+    use crate::mugration_result::MugrationNodeOut;
     use crate::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
     use crate::prune_result::{PruneNodeOut, PruneOutputMaps};
     use crate::timetree_result::{TimetreeNodeOut, TimetreeOutputMaps};
@@ -452,7 +453,7 @@ mod tests {
     use std::error::Error as StdError;
     use std::io;
     use treetime::gtr::gtr::{GTR, GTRParams};
-    use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps, MugrationResult};
+    use treetime::mugration::pipeline::MugrationOutput;
     use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use treetime::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
     use treetime::partition::storage::discrete::DiscreteStates;
@@ -515,38 +516,6 @@ mod tests {
 
     pub fn timetree_maps(_graph: &Graph) -> TimetreeOutputMaps {
       TimetreeOutputMaps::default()
-    }
-
-    /// Build the mugration output maps the auspice and MAT encoders read, from the partition's public
-    /// accessors. Mirrors what the core gather produces from the same reads, keeping the maps
-    /// constructible from public API without reaching the crate-internal gather.
-    pub fn mugration_maps(
-      graph: &Graph,
-      partition: &PartitionMarginalDiscrete,
-      gtr: &GTR,
-      node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    ) -> MugrationOutputMaps {
-      let reconstructed_traits = graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (key, partition.get_reconstructed_trait(node_states, key))
-        })
-        .collect();
-      let confidences = graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (key, partition.get_confidence(node_states, key))
-        })
-        .collect();
-      MugrationOutputMaps {
-        reconstructed_traits,
-        confidences,
-        states: partition.states.clone(),
-        gtr: gtr.clone(),
-        n_states: partition.n_states(),
-      }
     }
 
     type AncestralGraphSetup = (
@@ -673,7 +642,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_nodes()
-        .filter(|&node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A")))
+        .filter(|&node| names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A"))
         .map(|node| (node.key(), Some(0.9)))
         .collect()
     }
@@ -723,18 +692,12 @@ mod tests {
       )?;
       let (clock_graph, clock_names, _clock_bl) = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_names, &clock_graph), "2026-07-19")?;
-      let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_gtr, mugration_node_states) =
-        mugration_graph()?;
+      let (mugration_output, mugration_names, mugration_bl) = mugration_graph()?;
       let mugration = mugration_to_auspice(
-        &mugration_graph,
-        &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
+        &mugration_output.graph,
+        &mugration_nodes(&mugration_names, &mugration_output.graph, &btreemap! {}),
         &mugration_bl,
-        &mugration_maps(
-          &mugration_graph,
-          &mugration_partition,
-          &mugration_gtr,
-          &mugration_node_states,
-        ),
+        &mugration_output,
         "country",
         "2026-07-19",
       )?;
@@ -763,9 +726,9 @@ mod tests {
       set_mat_branch_lengths(&prune, &prune_names, &mut prune_bl)?;
       let (clock, clock_names, mut clock_bl) = clock_graph()?;
       set_mat_branch_lengths(&clock, &clock_names, &mut clock_bl)?;
-      let (mugration, mugration_names, mut mugration_bl, _mugration_partition, _mugration_gtr, _mugration_node_states) =
-        mugration_graph()?;
-      set_mat_branch_lengths(&mugration, &mugration_names, &mut mugration_bl)?;
+      let (mugration_output, mugration_names, mut mugration_bl) = mugration_graph()?;
+      let mugration = &mugration_output.graph;
+      set_mat_branch_lengths(mugration, &mugration_names, &mut mugration_bl)?;
       let (timetree, timetree_names, _timetree_bl) = timetree_graph()?;
       let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
 
@@ -780,7 +743,7 @@ mod tests {
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize))?,
         prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?,
         clock_to_mat(&clock, &clock_names, &clock_bl)?,
-        mugration_to_mat(&mugration, &mugration_names, &mugration_bl)?,
+        mugration_to_mat(mugration, &mugration_names, &mugration_bl)?,
         timetree_to_mat(&timetree, &timetree_names, &timetree_weights, &timetree_maps(&timetree))?,
       ])
     }
@@ -971,20 +934,16 @@ mod tests {
 
     fn mugration_graph() -> Result<
       (
-        Graph,
+        MugrationOutput,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
-        PartitionMarginalDiscrete,
-        GTR,
-        BTreeMap<GraphNodeKey, DenseNodeState>,
       ),
       Report,
     > {
       let nwk_parsed = nwk_read_str(MODEL_TREE)?;
       let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
+      let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
       let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
       let gtr = GTR::new(GTRParams {
         n_states: 2,
@@ -1012,16 +971,32 @@ mod tests {
           )
         })
         .collect();
-      let result = MugrationResult::new(
+
+      // Gather the reconstructed value maps from the partition's public accessors, mirroring what the
+      // core gather produces, then assemble the canonical core output the encoders read.
+      let reconstructed_traits = graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (key, partition.get_reconstructed_trait(&node_states, key))
+        })
+        .collect();
+      let confidences = graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (key, partition.get_confidence(&node_states, key))
+        })
+        .collect();
+      let output = MugrationOutput {
+        n_states: partition.n_states(),
+        states: partition.states,
+        gtr,
         graph,
-        &btreemap! {},
-        &names,
-        &branch_lengths,
-        &partition,
-        &node_states,
-        "country",
-      );
-      Ok((result.graph, names, branch_lengths, partition, gtr, node_states))
+        reconstructed_traits,
+        confidences,
+      };
+      Ok((output, names, branch_lengths))
     }
 
     fn timetree_graph() -> Result<

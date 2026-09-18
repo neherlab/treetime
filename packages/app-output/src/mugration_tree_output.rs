@@ -1,3 +1,4 @@
+use crate::mugration_result::MugrationNodeOut;
 use crate::tree_output::{
   TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, ensure_finite,
   finite_number, generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
@@ -7,7 +8,7 @@ use maplit::btreemap;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use treetime::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
+use treetime::mugration::pipeline::MugrationOutput;
 use treetime::partition::storage::discrete::DiscreteStates;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -18,14 +19,14 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::usher_mat::UsherTree;
 
 pub fn write_mugration_tree_outputs(
-  graph: &Graph,
+  output: &MugrationOutput,
   nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
   attribute: &str,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
+  let graph = &output.graph;
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
     nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
@@ -37,7 +38,7 @@ pub fn write_mugration_tree_outputs(
     outputs,
     providers,
     "mugration",
-    || mugration_to_auspice(graph, nodes, branch_lengths, maps, attribute, &updated),
+    || mugration_to_auspice(graph, nodes, branch_lengths, output, attribute, &updated),
     || mugration_to_mat(graph, &names, branch_lengths),
   )
 }
@@ -46,7 +47,7 @@ pub(crate) fn mugration_to_auspice(
   graph: &Graph,
   nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
   attribute: &str,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
@@ -62,7 +63,7 @@ pub(crate) fn mugration_to_auspice(
   );
   auspice_from_graph(graph, data, |context| {
     let name = node_name_value(context.node_key, nodes[&context.node_key].name.as_deref());
-    let traits = mugration_traits(graph, maps, context.node_key, &name, attribute)?;
+    let traits = mugration_traits(graph, output, context.node_key, &name, attribute)?;
     Ok(auspice_node(
       name.clone(),
       finite_number(
@@ -77,7 +78,7 @@ pub(crate) fn mugration_to_auspice(
       None,
       traits,
       BTreeMap::new(),
-      mugration_transition_label(graph, maps, context.node_key, attribute)?,
+      mugration_transition_label(graph, output, context.node_key, attribute)?,
     ))
   })
 }
@@ -92,17 +93,17 @@ pub(crate) fn mugration_to_mat(
 
 fn mugration_traits(
   graph: &Graph,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
   node_key: GraphNodeKey,
   node_name: &str,
   attribute: &str,
 ) -> Result<BTreeMap<String, TraitValue>, Report> {
-  let Some(value) = maps.reconstructed_traits[&node_key].clone() else {
+  let Some(value) = output.reconstructed_traits[&node_key].clone() else {
     return Ok(BTreeMap::new());
   };
-  let profile = maps.confidences[&node_key].clone();
+  let profile = output.confidences[&node_key].clone();
   if let Some(profile) = profile.as_ref() {
-    for (state, probability) in maps.states.iter().zip(profile) {
+    for (state, probability) in output.states.iter().zip(profile) {
       ensure_finite(
         *probability,
         "mugration",
@@ -113,7 +114,7 @@ fn mugration_traits(
   }
   let confidence = profile
     .as_ref()
-    .map(|profile| build_confidence_map(&maps.states, profile))
+    .map(|profile| build_confidence_map(&output.states, profile))
     .unwrap_or_default();
   let entropy = profile.as_ref().map(compute_entropy);
   if let Some(entropy) = entropy {
@@ -126,14 +127,14 @@ fn mugration_traits(
 
 fn mugration_transition(
   graph: &Graph,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
   node_key: GraphNodeKey,
 ) -> Result<Option<(String, String)>, Report> {
   let Some((parent_key, _edge_key)) = graph.node_parent(node_key)? else {
     return Ok(None);
   };
-  let parent = maps.reconstructed_traits[&parent_key].clone();
-  let child = maps.reconstructed_traits[&node_key].clone();
+  let parent = output.reconstructed_traits[&parent_key].clone();
+  let child = output.reconstructed_traits[&node_key].clone();
   Ok(match (parent, child) {
     (Some(parent), Some(child)) if parent != child => Some((parent, child)),
     _ => None,
@@ -142,11 +143,11 @@ fn mugration_transition(
 
 fn mugration_transition_label(
   graph: &Graph,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
   node_key: GraphNodeKey,
   attribute: &str,
 ) -> Result<Option<AuspiceTreeBranchAttrsLabels>, Report> {
-  let Some((parent, child)) = mugration_transition(graph, maps, node_key)? else {
+  let Some((parent, child)) = mugration_transition(graph, output, node_key)? else {
     return Ok(None);
   };
   Ok(Some(AuspiceTreeBranchAttrsLabels {

@@ -6,7 +6,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime::cancel::NoopCancel;
-  use treetime::mugration::mugration::execute_mugration;
+  use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime_io::nex::NexWriteOptions;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
@@ -14,7 +14,6 @@ mod tests {
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let confidences = nwk_parsed.confidences();
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -22,33 +21,30 @@ mod tests {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
-    let names_tt_1 = names.clone();
-    let (result, maps) = execute_mugration(
+    let params = MugrationParams {
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+      smooth_initial_pi: false,
+      filter_uninformative_root: false,
+    };
+    let input = MugrationInput {
       graph,
-      &confidences,
-      &names_tt_1,
-      &branch_lengths,
-      &traits,
-      "country",
-      None,
-      "?",
-      None,
-      0.5,
-      5,
-      None,
-      false,
-      false,
-      &NoopCancel,
-    )
-    .map_err(|err| err.into_report())?;
-    let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
+      traits,
+      weights: None,
+      branch_lengths: branch_lengths.clone(),
+    };
+    let output = pipeline::run(&params, input, &names, &NoopCancel).map_err(|err| err.into_report())?;
+    let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, "country");
     let providers = CommentProviders::new().with(&provider);
 
     let options = NexWriteOptions {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()
     };
-    let actual = treetime_io::nex::nex_write_str_with(&result.graph, &names, &branch_lengths, &options, &providers)?;
+    let actual = treetime_io::nex::nex_write_str_with(&output.graph, &names, &branch_lengths, &options, &providers)?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;

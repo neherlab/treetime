@@ -22,6 +22,7 @@ util-augur-node-data-json = { workspace = true }
 # [external]
 chrono = { workspace = true }
 eyre = { workspace = true }
+indexmap = { workspace = true }
 itertools = { workspace = true }
 maplit = { workspace = true }
 ndarray = { workspace = true }

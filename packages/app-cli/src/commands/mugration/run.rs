@@ -3,14 +3,14 @@ use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
+use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
-use treetime::mugration::mugration::execute_mugration;
-use treetime::mugration::result::MugrationResult;
+use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
 use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
@@ -65,51 +65,56 @@ pub fn run_mugration(
 
   cancel.check()?;
   progress.report("Mugration inference", 0.3, "");
-  // The output value maps are gathered off the pipeline-local partition inside `execute_mugration`,
-  // before the partition-less graph data slot is built; the tree, Newick-comment, augur, and GTR
-  // writers read the maps here.
-  let (mut result, maps) = execute_mugration(
+  let params = MugrationParams {
+    missing_data: mugration_args.missing_data.clone(),
+    pc: mugration_args.pc,
+    missing_weights_threshold: mugration_args.missing_weights_threshold,
+    iterations: mugration_args.iterations,
+    sampling_bias_correction: mugration_args.sampling_bias_correction,
+    smooth_initial_pi: mugration_args.smooth_initial_pi,
+    filter_uninformative_root: mugration_args.filter_uninformative_root,
+  };
+  let input = MugrationInput {
     graph,
-    &confidences,
-    &names,
-    &branch_lengths,
-    &traits,
-    mugration_args.attribute(),
-    weights.as_ref(),
-    &mugration_args.missing_data,
-    mugration_args.pc,
-    mugration_args.missing_weights_threshold,
-    mugration_args.iterations,
-    mugration_args.sampling_bias_correction,
-    mugration_args.smooth_initial_pi,
-    mugration_args.filter_uninformative_root,
-    cancel,
-  )
-  .map_err(|err| err.into_report())?;
+    traits,
+    weights,
+    branch_lengths: branch_lengths.clone(),
+  };
+  let mut output = pipeline::run(&params, input, &names, cancel).map_err(|err| err.into_report())?;
 
   let topology_order = mugration_args
     .topology_order
-    .resolve_topology_order(&result.graph, &names, None)?;
-  topology_order.apply(&mut result.graph, &names, &branch_lengths)?;
+    .resolve_topology_order(&output.graph, &names, None)?;
+  topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
+  // Project the canonical core output into the serializable per-file views the writers consume. The
+  // reconstructed value maps and the tree topology stay in `output`; the writers read the maps from it
+  // and the per-node/per-edge metadata from `result`.
+  let result = MugrationResult::new(
+    &output,
+    &confidences,
+    &names,
+    &branch_lengths,
+    mugration_args.attribute(),
+  );
+
   if !resolved.tree_outputs.is_empty() {
-    let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
+    let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, mugration_args.attribute());
     let providers = CommentProviders::new().with(&provider);
     write_mugration_tree_outputs(
-      &result.graph,
+      &output,
       &result.nodes,
       &branch_lengths,
-      &maps,
-      &result.traits.attribute,
+      mugration_args.attribute(),
       &resolved.tree_outputs,
       &providers,
     )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output =
-      GtrOutput::new(&maps.gtr, GtrModelName::Infer).with_discrete_states(&result.traits.attribute, maps.states.iter());
+    let gtr_output = GtrOutput::new(&output.gtr, GtrModelName::Infer)
+      .with_discrete_states(mugration_args.attribute(), output.states.iter());
     write_gtr_json(&gtr_output, path)?;
   }
 
@@ -124,7 +129,7 @@ pub fn run_mugration(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    write_augur_node_data_json(&result, &maps, path)?;
+    write_augur_node_data_json(&result, &output, path)?;
     info!("Wrote augur node data JSON to {}", path.display());
   }
 

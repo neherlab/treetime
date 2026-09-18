@@ -1,8 +1,9 @@
+use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::{build_confidence_map, compute_entropy};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime::mugration::result::{MugrationOutputMaps, MugrationResult};
+use treetime::mugration::pipeline::MugrationOutput;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -13,19 +14,19 @@ use util_augur_node_data_json::{
 
 pub fn build_augur_node_data_json(
   result: &MugrationResult,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
 ) -> Result<AugurNodeDataJsonTraits, Report> {
   let attribute = &result.traits.attribute;
-  let graph = &result.graph;
+  let graph = &output.graph;
   let names: BTreeMap<GraphNodeKey, Option<String>> = result
     .nodes
     .iter()
     .map(|(key, node)| (*key, node.name.clone()))
     .collect();
 
-  let models = build_models(attribute, maps);
-  let nodes = build_nodes(attribute, graph, &names, maps);
-  let branches = build_branches(attribute, graph, &names, maps);
+  let models = build_models(attribute, output);
+  let nodes = build_nodes(attribute, graph, &names, output);
+  let branches = build_branches(attribute, graph, &names, output);
 
   Ok(AugurNodeDataJsonTraits {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
@@ -48,20 +49,20 @@ pub fn build_augur_node_data_json(
 
 pub fn write_augur_node_data_json(
   result: &MugrationResult,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(result, maps)?;
+  let data = build_augur_node_data_json(result, output)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
 
-fn build_models(attribute: &str, maps: &MugrationOutputMaps) -> BTreeMap<String, AugurNodeDataJsonTraitModel> {
-  let gtr = &maps.gtr;
-  let n_states = maps.n_states;
+fn build_models(attribute: &str, output: &MugrationOutput) -> BTreeMap<String, AugurNodeDataJsonTraitModel> {
+  let gtr = &output.gtr;
+  let n_states = output.n_states;
 
   // Alphabet includes missing data marker "?" at the end (n_states+1 elements)
-  let mut alphabet: Vec<String> = maps.states.iter().map(|s| s.to_owned()).collect();
+  let mut alphabet: Vec<String> = output.states.iter().map(|s| s.to_owned()).collect();
   alphabet.push("?".to_owned());
 
   // Equilibrium probabilities exclude missing (n_states elements)
@@ -90,7 +91,7 @@ fn build_nodes(
   attribute: &str,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsNode> {
   let confidence_key = format!("{attribute}_confidence");
   let entropy_key = format!("{attribute}_entropy");
@@ -106,12 +107,12 @@ fn build_nodes(
 
     let mut fields = BTreeMap::new();
 
-    if let Some(trait_value) = maps.reconstructed_traits[&node_key].clone() {
+    if let Some(trait_value) = output.reconstructed_traits[&node_key].clone() {
       fields.insert(attribute.to_owned(), serde_json::Value::String(trait_value));
     }
 
-    if let Some(profile) = maps.confidences[&node_key].as_ref() {
-      let confidence = build_confidence_map(&maps.states, profile);
+    if let Some(profile) = output.confidences[&node_key].as_ref() {
+      let confidence = build_confidence_map(&output.states, profile);
       if !confidence.is_empty() {
         fields.insert(confidence_key.clone(), serde_json::to_value(&confidence).unwrap());
       }
@@ -130,12 +131,12 @@ fn build_branches(
   attribute: &str,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  maps: &MugrationOutputMaps,
+  output: &MugrationOutput,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
   let root_key = graph.get_exactly_one_root().ok().map(|r| r.key());
   let mut branches = BTreeMap::new();
 
-  let parent_traits = build_parent_trait_map(graph, maps);
+  let parent_traits = build_parent_trait_map(graph, output);
 
   for node in graph.get_nodes() {
     let node_guard = node;
@@ -144,7 +145,7 @@ fn build_branches(
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
-    let child_trait = maps.reconstructed_traits[&node_key].clone();
+    let child_trait = output.reconstructed_traits[&node_key].clone();
 
     let label = if Some(node_key) == root_key {
       // Root gets just the state name (no arrow)
@@ -173,7 +174,7 @@ fn build_branches(
   branches
 }
 
-fn build_parent_trait_map(graph: &Graph, maps: &MugrationOutputMaps) -> BTreeMap<GraphNodeKey, Option<String>> {
+fn build_parent_trait_map(graph: &Graph, output: &MugrationOutput) -> BTreeMap<GraphNodeKey, Option<String>> {
   let mut map = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node;
@@ -181,7 +182,7 @@ fn build_parent_trait_map(graph: &Graph, maps: &MugrationOutputMaps) -> BTreeMap
     let inbound = node_guard.inbound().to_vec();
     if let Some(parent_edge_key) = inbound.first() {
       let parent_node_key = graph.get_source_node_key(*parent_edge_key).ok();
-      let parent_trait = parent_node_key.and_then(|k| maps.reconstructed_traits[&k].clone());
+      let parent_trait = parent_node_key.and_then(|k| output.reconstructed_traits[&k].clone());
       map.insert(node_key, parent_trait);
     }
   }

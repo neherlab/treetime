@@ -17,7 +17,7 @@ pub mod prune {
 }
 
 pub mod mugration {
-  pub use treetime::mugration::pipeline::{MugrationResult, run};
+  pub use treetime::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
 }
 
 pub mod timetree {

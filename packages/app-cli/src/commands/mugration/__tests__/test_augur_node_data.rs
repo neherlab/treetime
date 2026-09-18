@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::augur_node_data::build_augur_node_data_json;
+  use app_output::mugration_result::MugrationResult;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime::cancel::NoopCancel;
-  use treetime::mugration::mugration::execute_mugration;
+  use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;
@@ -16,26 +17,24 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let names_tt_1 = names;
-    let (result, maps) = execute_mugration(
+    let params = MugrationParams {
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+      smooth_initial_pi: false,
+      filter_uninformative_root: false,
+    };
+    let input = MugrationInput {
       graph,
-      &confidences,
-      &names_tt_1,
-      &branch_lengths,
-      traits,
-      "country",
-      None,
-      "?",
-      None,
-      0.5,
-      5,
-      None,
-      false,
-      false,
-      &NoopCancel,
-    )
-    .unwrap();
-    let data = build_augur_node_data_json(&result, &maps).unwrap();
+      traits: traits.clone(),
+      weights: None,
+      branch_lengths: branch_lengths.clone(),
+    };
+    let output = pipeline::run(&params, input, &names, &NoopCancel).unwrap();
+    let result = MugrationResult::new(&output, &confidences, &names, &branch_lengths, "country");
+    let data = build_augur_node_data_json(&result, &output).unwrap();
     json_write_str(&data, JsonPretty(true)).unwrap()
   }
 
