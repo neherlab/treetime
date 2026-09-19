@@ -3,7 +3,7 @@ resolver = '3'
 
 members = ["packages/app-cli", "packages/app-datasets", "packages/app-napi", "packages/app-output", "packages/app-server", "packages/treetime", "packages/treetime-analytical", "packages/treetime-distribution", "packages/treetime-graph", "packages/treetime-grid", "packages/treetime-io", "packages/treetime-ops", "packages/treetime-schema", "packages/treetime-primitives", "packages/treetime-utils", "packages/treetime-validation", "packages/util-augur-node-data-json", "packages/util-phyloxml", "packages/util-newick", "packages/util-usher-mat"]
 
-exclude = []
+exclude = ["dev/templates/rust-crate"]
 
 
 [workspace.package]
