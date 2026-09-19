@@ -8,7 +8,7 @@ use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::{CommandKind, OutputSelection};
 use eyre::Report;
 use log::info;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -32,7 +32,7 @@ use treetime_primitives::{AlignmentRecord, Seq};
 
 /// Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
 /// valid, because optimize has no sampling dates.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
@@ -72,7 +72,6 @@ pub struct OptimizeArgs {
   #[schema(value_type = String)]
   pub opt_method: BranchOptMethod,
   pub no_indels: bool,
-  #[schema(value_type = Option<String>)]
   pub reroot: Option<OptimizeRerootMethod>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
