@@ -1,13 +1,30 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
-  "globalPassThroughEnv": ["*"],
+  "globalDependencies": ["bun.lock", "tsconfig.base.json", "turbo.json"],
+  "globalEnv": ["NODE_ENV", "VITE_*", "TREETIME_DEBUG_FETCH"],
+  "globalPassThroughEnv": [
+    "CI",
+    "TERM",
+    "FORCE_COLOR",
+    "NO_COLOR",
+    "DO_NOT_TRACK",
+    "TURBO_TELEMETRY_DISABLED",
+    "electron_config_cache",
+    "LD_PRELOAD",
+    "PORT",
+    "VITE_DEV_SERVER_URL",
+    "ELECTRON_DISABLE_SANDBOX",
+    "ELECTRON_OVERRIDE_DIST_PATH",
+    "TREETIME_PROJECT_ROOT"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
       "outputs": ["dist/**"],
       "outputLogs": "errors-only",
-      "cache": false
+      "cache": true
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -20,7 +37,9 @@
       "cache": false
     },
     "lint": {
-      "cache": false
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": [],
+      "cache": true
     },
     "lint:fix": {
       "cache": false
@@ -29,15 +48,21 @@
       "cache": false
     },
     "format:check": {
-      "cache": false
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": [],
+      "cache": true
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "cache": false
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": [],
+      "cache": true
     },
     "test": {
       "dependsOn": ["^build"],
-      "cache": false
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": [],
+      "cache": true
     },
     "upgrade": {
       "outputLogs": "errors-only",
