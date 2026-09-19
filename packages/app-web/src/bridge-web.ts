@@ -2,86 +2,100 @@ import { fetchEventSource } from "@microsoft/fetch-event-source";
 import {
   CancelledError,
   createBridge,
+  parseLogEvent,
+  parseProgressEvent,
   type BridgeTransport,
   type CommandOptions,
-  type LogEvent,
-  type ProgressEvent,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
 
-const API_BASE = "/api";
-
-const DEBUG_FETCH =
-  import.meta.env.TREETIME_DEBUG_FETCH === "true" ||
-  (import.meta.env.DEV && import.meta.env.TREETIME_DEBUG_FETCH !== "false");
-
-async function getJson<T>(path: string): Promise<T> {
-  if (DEBUG_FETCH) console.debug("[TreeTime] GET", path);
-  const response = await fetch(`${API_BASE}/${path}`);
-  if (!response.ok) {
-    throw new Error(`GET ${path}: ${response.status} ${response.statusText}`);
-  }
-  const data = (await response.json()) as T;
-  if (DEBUG_FETCH) console.debug("[TreeTime] GET", path, JSON.stringify(data));
-  return data;
+export interface WebBridgeDeps {
+  fetchFn?: typeof fetch;
+  fetchEventSourceFn?: typeof fetchEventSource;
+  apiBase?: string;
 }
 
-async function postSse<T>(command: string, args: unknown, options?: CommandOptions): Promise<T> {
-  let result: T | undefined;
+export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
+  const fetchFn = deps.fetchFn ?? globalThis.fetch.bind(globalThis);
+  const fetchEventSourceFn = deps.fetchEventSourceFn ?? fetchEventSource;
+  const apiBase = deps.apiBase ?? "/api";
 
-  try {
-    await fetchEventSource(`${API_BASE}/${command}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args),
-      signal: options?.signal,
-      onmessage(msg) {
-        if (DEBUG_FETCH) console.debug("[TreeTime]", JSON.stringify(msg));
-        if (msg.event === "progress") {
-          options?.onProgress?.(JSON.parse(msg.data) as ProgressEvent);
-        } else if (msg.event === "log") {
-          const log = JSON.parse(msg.data) as LogEvent;
-          switch (log.level) {
-            case "Error":
-              console.error(`[TreeTime] ${log.message}`);
-              break;
-            case "Warn":
-              console.warn(`[TreeTime] ${log.message}`);
-              break;
-            default:
-              console.log(`[TreeTime] [${log.level}] ${log.message}`);
-              break;
-          }
-        } else if (msg.event === "result") {
-          result = JSON.parse(msg.data) as T;
-        }
-      },
-      onerror(err) {
-        throw err;
-      },
-      openWhenHidden: true,
-    });
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new CancelledError();
+  const debug = readDebugFlag();
+
+  async function getJson(path: string): Promise<unknown> {
+    if (debug) console.debug("[TreeTime] GET", path);
+    const response = await fetchFn(`${apiBase}/${path}`);
+    if (!response.ok) {
+      throw new Error(`GET ${path}: ${response.status} ${response.statusText}`);
     }
-    throw err;
+    const data: unknown = await response.json();
+    if (debug) console.debug("[TreeTime] GET", path, JSON.stringify(data));
+    return data;
   }
 
-  if (result === undefined) {
-    throw new Error(`${command}: no result received`);
+  async function postSse(command: string, args: unknown, options?: CommandOptions): Promise<unknown> {
+    let result: unknown;
+    let received = false;
+
+    try {
+      await fetchEventSourceFn(`${apiBase}/${command}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+        signal: options?.signal,
+        onmessage(msg) {
+          if (debug) console.debug("[TreeTime]", JSON.stringify(msg));
+          if (msg.event === "progress") {
+            options?.onProgress?.(parseProgressEvent(JSON.parse(msg.data)));
+          } else if (msg.event === "log") {
+            logToConsole(parseLogEvent(JSON.parse(msg.data)));
+          } else if (msg.event === "result") {
+            result = JSON.parse(msg.data);
+            received = true;
+          }
+        },
+        onerror(err) {
+          throw err;
+        },
+        openWhenHidden: true,
+      });
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new CancelledError();
+      }
+      throw err;
+    }
+
+    if (!received) {
+      throw new Error(`${command}: no result received`);
+    }
+
+    return result;
   }
 
-  return result;
-}
-
-function createWebTransport(): BridgeTransport {
-  return {
-    query: <T>(endpoint: string) => getJson<T>(endpoint),
-    command: <T>(endpoint: string, args: unknown, options?: CommandOptions) => postSse<T>(endpoint, args, options),
+  const transport: BridgeTransport = {
+    query: (endpoint) => getJson(endpoint),
+    command: (endpoint, args, options) => postSse(endpoint, args, options),
   };
+
+  return createBridge(transport);
 }
 
-export function createWebBridge(): TreeTimeBridge {
-  return createBridge(createWebTransport());
+function readDebugFlag(): boolean {
+  const env = import.meta.env;
+  return env?.TREETIME_DEBUG_FETCH === "true" || (env?.DEV === true && env?.TREETIME_DEBUG_FETCH !== "false");
+}
+
+function logToConsole(log: { level: string; message: string }): void {
+  switch (log.level) {
+    case "Error":
+      console.error(`[TreeTime] ${log.message}`);
+      break;
+    case "Warn":
+      console.warn(`[TreeTime] ${log.message}`);
+      break;
+    default:
+      console.log(`[TreeTime] [${log.level}] ${log.message}`);
+      break;
+  }
 }
