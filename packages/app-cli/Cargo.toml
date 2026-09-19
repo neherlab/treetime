@@ -54,9 +54,9 @@ rgb = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+serde-saphyr = { workspace = true }
 serde_json = { workspace = true }
 serde_path_to_error = { workspace = true }
-serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strsim = { workspace = true }
 strum_macros = { workspace = true }

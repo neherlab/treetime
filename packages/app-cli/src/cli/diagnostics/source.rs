@@ -4,6 +4,7 @@ use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode, SourceSpan};
 use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use serde_json::Value;
+use serde_saphyr::DuplicateKeyPolicy;
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 use treetime_utils::{make_error, make_report};
@@ -146,11 +147,16 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
 
 /// Parse a config document (JSON or YAML), returning an error carrying a syntax diagnostic on failure.
 ///
-/// YAML is a superset of JSON, so one parser reads both. A parse failure becomes a caret-annotated
-/// report against `source`, attached to the returned error, matching how every other config problem is
-/// surfaced.
+/// YAML is a superset of JSON, so one parser reads both. Parsing rejects duplicate mapping keys and
+/// non-finite floats (`.inf`, `.nan`): a configuration carries neither, so each is a hard parse error.
+/// A parse failure becomes a caret-annotated report against `source`, attached to the returned error,
+/// matching how every other config problem is surfaced.
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
-  match serde_yaml::from_str(text) {
+  let options = serde_saphyr::options! {
+    duplicate_keys: DuplicateKeyPolicy::Error,
+    reject_non_finite_typeless_float: true,
+  };
+  match serde_saphyr::from_str_with_options::<Value>(text, options) {
     Ok(value) => Ok(value),
     Err(err) => {
       render_and_bail(
@@ -307,4 +313,71 @@ fn byte_of(table: &[usize], char_index: usize) -> usize {
 /// Escape a mapping key for use as a JSON-pointer segment (RFC 6901).
 pub(crate) fn escape_pointer(segment: &str) -> String {
   segment.replace('~', "~0").replace('/', "~1")
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{ConfigSource, parse_config_document};
+  use eyre::Report;
+  use pretty_assertions::assert_eq;
+  use serde_json::{Value, json};
+
+  fn parse(text: &str) -> Result<Value, Report> {
+    let source = ConfigSource::new("config.yaml", text.to_owned());
+    parse_config_document(&source, text)
+  }
+
+  fn parse_error_headline(text: &str) -> String {
+    let err = parse(text).expect_err("expected a parse error");
+    err.to_string().lines().next().unwrap_or_default().to_owned()
+  }
+
+  // A duplicate mapping key is a hard parse error (serde-saphyr `DuplicateKeyPolicy::Error`).
+  #[test]
+  fn test_source_parse_rejects_duplicate_mapping_key() {
+    assert_eq!(
+      "invalid configuration: could not parse config: error: line 2 column 1: duplicate mapping key: a, set DuplicateKeyPolicy in Options if acceptable",
+      parse_error_headline("a: 1\na: 2\n")
+    );
+  }
+
+  // A positive infinity literal in a typeless position is rejected (`reject_non_finite_typeless_float`).
+  #[test]
+  fn test_source_parse_rejects_infinity() {
+    assert_eq!(
+      "invalid configuration: could not parse config: error: line 1 column 4: non-finite float `.inf` rejected by reject_non_finite_typeless_float",
+      parse_error_headline("x: .inf\n")
+    );
+  }
+
+  // A not-a-number literal in a typeless position is rejected.
+  #[test]
+  fn test_source_parse_rejects_nan() {
+    assert_eq!(
+      "invalid configuration: could not parse config: error: line 1 column 4: non-finite float `.nan` rejected by reject_non_finite_typeless_float",
+      parse_error_headline("x: .nan\n")
+    );
+  }
+
+  // YAML 1.1 boolean words `no` and `on` deserialize as booleans, not strings.
+  #[test]
+  fn test_source_parse_yaml11_booleans_no_and_on() {
+    let value = parse("first: no\nsecond: on\n").unwrap();
+    assert_eq!(json!({ "first": false, "second": true }), value);
+  }
+
+  // A merge key (`<<`) is expanded into the surrounding mapping.
+  #[test]
+  fn test_source_parse_applies_merge_key() {
+    let value = parse("base: &anchor\n  shared: 1\nchild:\n  <<: *anchor\n  own: 2\n").unwrap();
+    assert_eq!(json!({ "shared": 1 }), value["base"]);
+    assert_eq!(json!({ "shared": 1, "own": 2 }), value["child"]);
+  }
+
+  // A scientific-notation float keeps full f64 precision through the parse.
+  #[test]
+  fn test_source_parse_preserves_scientific_notation() {
+    let value = parse("rate: 5.7e-05\n").unwrap();
+    assert_eq!(json!({ "rate": 5.7e-05 }), value);
+  }
 }
