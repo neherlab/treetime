@@ -415,10 +415,10 @@ _check mode:
     done
     printf '\n'
     if (( fail > 0 )); then
-      printf 'Reported %d failing check(s). This gate is report-only and does not fail the command.\n' "${fail}"
-    else
-      printf 'All checks that ran passed.\n'
+      printf '%d check(s) reported FAIL (see summary above). Skipped checks do not count as failures.\n' "${fail}" >&2
+      exit 1
     fi
+    printf 'All checks that ran passed.\n'
 
 # ---------------------------------------------------------------------------
 # Shell scripts (dev/)
