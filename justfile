@@ -338,8 +338,9 @@ _check mode:
 
     have_bun_project() { command -v bun >/dev/null 2>&1 && [[ -x '{{project_dir}}/node_modules/.bin/turbo' ]]; }
 
+    kache_base="${KACHE_CACHE_DIR:-}"
     export CARGO_TARGET_DIR='{{build_dir}}' RUSTFLAGS="$(rustflags_build)"
-    kache_use clippy
+    export KACHE_CACHE_DIR="${kache_base}"; kache_use clippy
 
     run_check "rust-format" cargo -q fmt --all --check
     run_check "rust-clippy" cargo -q clippy -q --all-targets --all --locked
@@ -397,7 +398,7 @@ _check mode:
       fi
       skip "generated-freshness" "no freshness command yet"
       export CARGO_TARGET_DIR='{{test_dir}}' RUSTFLAGS="$(rustflags_test)"
-      kache_use test
+      export KACHE_CACHE_DIR="${kache_base}"; kache_use test
       run_check "tests" cargo -q nextest run --locked --workspace --cargo-quiet --no-fail-fast --hide-progress-bar
       if have_bun_project; then
         run_check "js-tests" bash -c "cd '{{project_dir}}' && bun run test"
