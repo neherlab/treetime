@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { useTheme } from "next-themes";
+import { useEffect } from "react";
 
 declare global {
   interface Window {

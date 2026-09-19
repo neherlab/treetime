@@ -15,6 +15,7 @@ import type {
   VersionInfo,
 } from "@neherlab/app-contracts";
 import { useMutation, useQuery } from "@tanstack/react-query";
+
 import { useBridge } from "./BridgeContext";
 
 export function useVersion() {

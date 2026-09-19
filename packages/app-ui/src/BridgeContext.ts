@@ -1,5 +1,5 @@
-import { createContext, useContext } from "react";
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
+import { createContext, useContext } from "react";
 
 export const BridgeContext = createContext<TreeTimeBridge | null>(null);
 
