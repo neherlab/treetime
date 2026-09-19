@@ -336,7 +336,7 @@ _check mode:
     }
     skip() { record "$1" "SKIP ($2)"; }
 
-    have_bun_project() { command -v bun >/dev/null 2>&1 && [[ -d '{{project_dir}}/node_modules' ]]; }
+    have_bun_project() { command -v bun >/dev/null 2>&1 && [[ -x '{{project_dir}}/node_modules/.bin/turbo' ]]; }
 
     export CARGO_TARGET_DIR='{{build_dir}}' RUSTFLAGS="$(rustflags_build)"
     kache_use clippy
@@ -352,6 +352,29 @@ _check mode:
     fi
 
     if [[ "{{mode}}" == "full" ]]; then
+      if command -v shellcheck >/dev/null 2>&1; then
+        mapfile -t sh_files < <(dev_shell_files '{{project_dir}}')
+        run_check "shellcheck" shellcheck "${sh_files[@]}"
+      else
+        skip "shellcheck" "shellcheck not installed"
+      fi
+      if command -v shfmt >/dev/null 2>&1; then
+        mapfile -t sh_files < <(dev_shell_files '{{project_dir}}')
+        run_check "shfmt" shfmt --diff "${sh_files[@]}"
+      else
+        skip "shfmt" "shfmt not installed"
+      fi
+      if command -v taplo >/dev/null 2>&1; then
+        run_check "toml-format" taplo fmt --check --diff
+      else
+        skip "toml-format" "taplo not installed"
+      fi
+      if command -v hadolint >/dev/null 2>&1; then
+        shopt -s nullglob
+        run_check "hadolint" hadolint '{{project_dir}}'/dev/docker/*.dockerfile
+      else
+        skip "hadolint" "hadolint not installed"
+      fi
       if command -v cargo-dylint >/dev/null 2>&1; then
         run_check "dylint" bash -c "just dylint"
       else
