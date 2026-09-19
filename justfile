@@ -862,3 +862,34 @@ setup:
       printf 'bun not found; skipping JS dependency install\n' >&2
     fi
     printf '==> Setup complete\n'
+
+# ---------------------------------------------------------------------------
+# App (dev servers)
+# ---------------------------------------------------------------------------
+
+# Start the web and API dev servers in the foreground (run under sess)
+[group('app')]
+up: js-install
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    source '{{project_dir}}/dev/lib/app.sh'
+    app_up
+
+# Probe the running dev servers; non-zero when a server is absent or stale
+[group('app')]
+health:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    source '{{project_dir}}/dev/lib/app.sh'
+    app_health
+
+# Print resolved ports, the commit each server was built from, and worktree match
+[group('app')]
+status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    source '{{project_dir}}/dev/lib/app.sh'
+    app_status
