@@ -1,4 +1,4 @@
-import { App, BridgeProvider, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -13,11 +13,13 @@ if (root) {
   createRoot(root).render(
     <StrictMode>
       <ThemeProvider>
-        <BridgeProvider bridge={bridge}>
-          <QueryProvider>
-            <App />
-          </QueryProvider>
-        </BridgeProvider>
+        <ErrorBoundary>
+          <BridgeProvider bridge={bridge}>
+            <QueryProvider>
+              <App />
+            </QueryProvider>
+          </BridgeProvider>
+        </ErrorBoundary>
       </ThemeProvider>
     </StrictMode>,
   );

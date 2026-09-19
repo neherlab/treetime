@@ -1,5 +1,6 @@
 export { App } from "./App";
 export { BridgeProvider } from "./BridgeProvider";
+export { ErrorBoundary } from "./ErrorBoundary";
 export { QueryProvider } from "./QueryProvider";
 export { ThemeProvider } from "./ThemeProvider";
 export { useBridge } from "./BridgeContext";
