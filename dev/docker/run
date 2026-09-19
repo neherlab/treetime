@@ -103,6 +103,25 @@ images=(
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
 )
 
+# Authenticate mise's GitHub API calls during the image build. mise fetches
+# `ubi:` and `github:` tools from the GitHub API, which throttles anonymous
+# callers to 60 requests/hour/IP and then fails the build with 403. Pass a token
+# as a BuildKit secret (never a build-arg, which is recorded in image history).
+# Source it from the environment, else from `gh auth token`. Optional: with no
+# token the build proceeds against the anonymous limit.
+github_secret_flags=()
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    GITHUB_TOKEN="${GH_TOKEN}"
+  elif command -v gh >/dev/null 2>&1; then
+    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+  fi
+fi
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  export GITHUB_TOKEN
+  github_secret_flags=(--secret="id=github_token,env=GITHUB_TOKEN")
+fi
+
 build_image() {
   local build_params=("$@")
 
@@ -111,6 +130,7 @@ build_image() {
   docker buildx build \
     --file="${dockerfile}" \
     "${images[@]/#/--tag=}" \
+    "${github_secret_flags[@]}" \
     --network=host \
     --build-arg="UID=$(id -u)" \
     --build-arg="GID=$(id -g)" \
