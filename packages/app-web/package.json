@@ -12,7 +12,7 @@
     "lint:fix": "oxlint --fix src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt --check src/",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -29,7 +29,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "nodemon": "3.1.9",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "8.0.14",
     "vitest": "4.1.7"
   },

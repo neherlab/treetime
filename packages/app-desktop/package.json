@@ -12,7 +12,7 @@
     "lint:fix": "oxlint --fix src/ renderer/",
     "format": "oxfmt --write src/ renderer/",
     "format:check": "oxfmt --check src/ renderer/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
@@ -29,7 +29,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "electron": "42.2.0",
     "electron-builder": "26.8.1",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "8.0.14",
     "vite-plugin-electron": "0.29.1"
   },
