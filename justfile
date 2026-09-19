@@ -209,6 +209,39 @@ coverage-lcov *args:
     nicely cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail --locked --workspace --hide-progress-bar --color=always "$@"
     printf 'LCOV: %s/lcov.info\n' "${cov_dir}"
 
+alias cu := coverage-uncovered
+alias cj := coverage-js
+
+# List Rust source files that have uncovered lines (reports, never gates)
+[group('test')]
+coverage-uncovered *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    export CARGO_TARGET_DIR='{{test_dir}}' RUSTFLAGS="$(rustflags_test)"
+    kache_use test
+    cov_dir='{{project_dir}}/tmp/coverage'; mkdir -p "${cov_dir}"
+    summary="${cov_dir}/summary.json"
+    nicely cargo llvm-cov nextest --json --summary-only --output-path "${summary}" --ignore-run-fail --locked --workspace --hide-progress-bar "$@"
+    printf '\nFiles with uncovered lines (uncovered/total lines):\n'
+    jq -r '.data[0].files[] | select(.summary.lines.count > .summary.lines.covered) | "\(.summary.lines.count - .summary.lines.covered)\t\(.summary.lines.count)\t\(.filename)"' "${summary}" \
+      | sort -rn | awk -F'\t' '{printf "  %6s/%-6s %s\n", $1, $2, $3}'
+    uncovered_files="$(jq -r '[.data[0].files[] | select(.summary.lines.count > .summary.lines.covered)] | length' "${summary}")"
+    total_files="$(jq -r '.data[0].files | length' "${summary}")"
+    printf '\n%s of %s files have uncovered lines. Full summary: %s\n' "${uncovered_files}" "${total_files}" "${summary}"
+
+# Report JavaScript/TypeScript coverage (vitest v8; reports, never gates)
+[group('test')]
+coverage-js *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd '{{project_dir}}'
+    if [[ ! -x node_modules/.bin/vitest ]]; then
+      printf 'vitest is not installed; run `just setup` and set up the JS test runner first. No JS coverage to report.\n' >&2
+      exit 0
+    fi
+    bun run coverage "$@"
+
 # ---------------------------------------------------------------------------
 # Mutation testing
 # ---------------------------------------------------------------------------
