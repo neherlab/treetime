@@ -346,9 +346,11 @@ _check mode:
     run_check "rust-clippy" cargo -q clippy -q --all-targets --all --locked
     if have_bun_project; then
       run_check "typescript" bash -c "cd '{{project_dir}}' && bun run typecheck"
+      run_check "typescript-config" bash -c "cd '{{project_dir}}' && bun run typecheck:tools"
       run_check "oxlint" bash -c "cd '{{project_dir}}' && bun run lint"
     else
       skip "typescript" "no node_modules; run just setup"
+      skip "typescript-config" "no node_modules; run just setup"
       skip "oxlint" "no node_modules; run just setup"
     fi
 
@@ -393,8 +395,10 @@ _check mode:
       fi
       if have_bun_project && grep -q '"knip"' package.json 2>/dev/null; then
         run_check "knip" bash -c "cd '{{project_dir}}' && bun run knip"
+        run_check "knip-production" bash -c "cd '{{project_dir}}' && bun run knip:production"
       else
         skip "knip" "not configured"
+        skip "knip-production" "not configured"
       fi
       skip "generated-freshness" "no freshness command yet"
       export CARGO_TARGET_DIR='{{test_dir}}' RUSTFLAGS="$(rustflags_test)"
