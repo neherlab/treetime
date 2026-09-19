@@ -128,7 +128,6 @@ tokio = { version = "=1.52.3", features = ["full"] }
 tokio-stream = "=0.1.18"
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 traversal = "=0.1.2"
-xml = "=1.0.0"
 
 app-datasets = { path = "packages/app-datasets" }
 app-output = { path = "packages/app-output" }

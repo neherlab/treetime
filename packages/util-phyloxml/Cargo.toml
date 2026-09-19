@@ -14,7 +14,12 @@ version.workspace = true
 quick-xml = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-xml = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
 
 [lints]
 workspace = true
