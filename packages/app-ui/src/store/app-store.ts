@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { CommandName, FileSlotKind, LoadedFile } from "../types";
+
+import type { FileSlotKind, LoadedFile } from "../types";
 
 type RunStatus = "idle" | "running" | "completed" | "failed";
 
@@ -10,8 +11,7 @@ interface ProgressInfo {
 }
 
 interface AppState {
-  activeCommand: CommandName;
-  setActiveCommand: (command: CommandName) => void;
+  resetRun: () => void;
 
   selectedDataset: string;
   setSelectedDataset: (dataset: string) => void;
@@ -36,12 +36,10 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  activeCommand: "ancestral",
-  setActiveCommand: (command) =>
+  resetRun: () =>
     set((state) => {
       state.abortController?.abort();
       return {
-        activeCommand: command,
         showResults: false,
         runStatus: "idle",
         progress: undefined,

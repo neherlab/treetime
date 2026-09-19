@@ -14,3 +14,9 @@ export const COMMANDS: ReadonlyArray<CommandInfo> = [
   { name: "prune", label: "Prune", description: "Tree pruning" },
   { name: "timetree", label: "Timetree", description: "Full timetree analysis" },
 ];
+
+export const DEFAULT_COMMAND: CommandName = "ancestral";
+
+export function isCommandName(value: string | undefined): value is CommandName {
+  return COMMANDS.some((command) => command.name === value);
+}
