@@ -19,6 +19,7 @@ use treetime_schema::version_info;
 pub fn api_routes(config: ServerConfig) -> Router {
   let state = Arc::new(config);
   Router::new()
+    .route("/health", get(handle_health))
     .route("/version", get(handle_version))
     .route("/datasets", get(handle_datasets))
     .route("/ancestral", post(handle_ancestral))
@@ -28,6 +29,13 @@ pub fn api_routes(config: ServerConfig) -> Router {
     .route("/optimize", post(handle_optimize))
     .route("/prune", post(handle_prune))
     .with_state(state)
+}
+
+async fn handle_health() -> Json<Value> {
+  Json(serde_json::json!({
+    "status": "ok",
+    "version": version_info().version,
+  }))
 }
 
 async fn handle_version() -> Result<Json<Value>, AppError> {
