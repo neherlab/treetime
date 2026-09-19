@@ -24,3 +24,13 @@ taplo = "0.10.0"
 hadolint = "2.14.0"
 cargo-deny = "0.20.2"
 "github:astral-sh/hawk" = { version = "0.1.14", exe = "cargo-hawk" }
+
+# nextest ships per-crate tags (cargo-nextest-<ver>), so the version is the full
+# tag. cargo-edit and the dylint binaries have no usable prebuilt for this glibc,
+# so they build from source via the cargo backend (the lock records versions,
+# not download checksums). The pinned nightly dylint driver toolchain stays in
+# dev/docker/files/install-dylint, since mise does not manage rustup toolchains.
+"ubi:nextest-rs/nextest" = { version = "cargo-nextest-0.9.67", exe = "cargo-nextest" }
+"cargo:cargo-edit" = "0.13.7"
+"cargo:cargo-dylint" = "6.0.3"
+"cargo:dylint-link" = "6.0.3"
