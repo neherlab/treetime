@@ -12,6 +12,7 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use utoipa::ToSchema;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
@@ -23,7 +24,7 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_utils::io::file::create_file_or_stdout;
 
 /// Mugration inference request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize)]
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct MugrationArgs {
   pub tree: Option<String>,

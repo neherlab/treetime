@@ -48,6 +48,18 @@ function generated_check() {
     fi
   done
 
+  local openapi_committed openapi_tmp
+  openapi_committed="${project_dir}/packages/app-contracts/openapi.yaml"
+  openapi_tmp="${tmp}/openapi.yaml"
+  info "Regenerating the OpenAPI document to compare against the committed copy"
+  if ! (cd "${project_dir}" && just openapi "${openapi_tmp}") >&2; then
+    err "OpenAPI generation failed"
+    rc=1
+  elif ! diff -u "${openapi_committed}" "${openapi_tmp}" >&2; then
+    err "committed openapi.yaml is stale; regenerate with 'just openapi'"
+    rc=1
+  fi
+
   if ((rc == 0)); then
     info "All generated schema files are up to date."
   fi

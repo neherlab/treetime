@@ -16,6 +16,7 @@ use log::{info, warn};
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
+use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::complete_alignment_for_leaves;
 use treetime::ancestral::mask::create_mask;
@@ -38,22 +39,26 @@ use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 /// Ancestral reconstruction request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize)]
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct AncestralArgs {
   pub input_fastas: Vec<String>,
   pub aln: Option<String>,
   pub vcf_reference: Option<String>,
   pub tree: String,
+  #[schema(value_type = Option<String>)]
   pub alphabet: Option<AlphabetName>,
   #[default(GtrModelName::Infer)]
+  #[schema(value_type = String)]
   pub model_name: GtrModelName,
   pub gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
+  #[schema(value_type = String)]
   pub method_anc: MethodAncestral,
   pub dense: Option<bool>,
   pub aa: bool,
   #[default(GapFill::default())]
+  #[schema(value_type = String)]
   pub gap_fill: GapFill,
   pub keep_overhangs: bool,
   pub zero_based: bool,

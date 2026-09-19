@@ -12,6 +12,7 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
+use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::cancel::Cancel;
@@ -30,11 +31,12 @@ use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
 
 /// Tree-pruning request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize)]
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct PruneArgs {
   pub input_fastas: Vec<String>,
   pub tree: String,
+  #[schema(value_type = Option<String>)]
   pub alphabet: Option<AlphabetName>,
   pub outdir: String,
   pub prune_short: Option<f64>,
@@ -42,9 +44,11 @@ pub struct PruneArgs {
   pub merge_shared_mutations: bool,
   pub prune_nodes_list: Option<String>,
   #[default = ',']
+  #[schema(value_type = String)]
   pub prune_nodes_list_delimiter: char,
   pub prune_nodes_list_file: Option<String>,
   #[default = '\n']
+  #[schema(value_type = String)]
   pub prune_nodes_list_file_delimiter: char,
 }
 

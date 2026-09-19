@@ -26,6 +26,14 @@ output_set = [
 ]
 
 [[generated]]
+name = "openapi-document"
+source = "the utoipa and utoipa-axum annotations on the app-server request handlers"
+update_command = "just openapi"
+freshness_check = "just generated-check regenerates the document and byte-compares it against the committed copy"
+owner = "packages/app-server (src/routes.rs, src/contract.rs, src/bin/generate-openapi.rs)"
+output_set = ["packages/app-contracts/openapi.yaml"]
+
+[[generated]]
 name = "app-contracts-typescript"
 source = "packages/app-contracts/openapi.yaml"
 update_command = "bun run --cwd packages/app-contracts generate"

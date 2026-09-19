@@ -1036,6 +1036,16 @@ status:
 # Generated files
 # ---------------------------------------------------------------------------
 
+# Regenerate the OpenAPI document from the Rust server handlers
+[group('generated')]
+openapi out=(project_dir / "packages/app-contracts/openapi.yaml"):
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    export CARGO_TARGET_DIR='{{build_dir}}' RUSTFLAGS="$(rustflags_build)"
+    kache_use build
+    nicely cargo -q run --locked -p app-server --bin generate-openapi -- '{{out}}'
+
 # Regenerate the JSON schemas and fail if any committed copy is stale (read-only)
 [group('generated')]
 generated-check:

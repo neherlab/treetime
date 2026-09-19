@@ -10,6 +10,7 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::Path;
+use utoipa::ToSchema;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
@@ -32,7 +33,7 @@ use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 
 /// Clock estimation request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize)]
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct ClockArgs {
   pub aln: Vec<String>,
@@ -43,14 +44,18 @@ pub struct ClockArgs {
   pub date_column: Option<String>,
   pub sequence_length: Option<usize>,
   #[default(GtrModelName::default())]
+  #[schema(value_type = String)]
   pub gtr: GtrModelName,
   pub gtr_params: Vec<String>,
   #[default(BranchLengthMode::default())]
+  #[schema(value_type = String)]
   pub branch_length_mode: BranchLengthMode,
   #[default(MethodAncestral::default())]
+  #[schema(value_type = String)]
   pub method_anc: MethodAncestral,
   #[default = 3.0]
   pub clock_filter: f64,
+  #[schema(value_type = Option<String>)]
   pub reroot: Option<RerootMethod>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,

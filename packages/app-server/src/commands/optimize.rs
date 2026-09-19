@@ -12,6 +12,7 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::Path;
+use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use treetime::cancel::Cancel;
@@ -46,13 +47,15 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 }
 
 /// Branch-length optimization request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize)]
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct OptimizeArgs {
   pub input_fastas: Vec<String>,
   pub tree: String,
+  #[schema(value_type = Option<String>)]
   pub alphabet: Option<AlphabetName>,
   #[default(GtrModelName::Infer)]
+  #[schema(value_type = String)]
   pub model_name: GtrModelName,
   pub dense: Option<bool>,
   pub outdir: String,
@@ -63,14 +66,18 @@ pub struct OptimizeArgs {
   #[default = 0.75]
   pub damping: f64,
   #[default(InitialGuessMode::Auto)]
+  #[schema(value_type = String)]
   pub branch_length_initial_guess: InitialGuessMode,
   #[default(BranchOptMethod::default())]
+  #[schema(value_type = String)]
   pub opt_method: BranchOptMethod,
   pub no_indels: bool,
+  #[schema(value_type = Option<String>)]
   pub reroot: Option<OptimizeRerootMethod>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
   #[default(GapFill::default())]
+  #[schema(value_type = String)]
   pub gap_fill: GapFill,
   pub keep_overhangs: bool,
 }

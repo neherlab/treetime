@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod contract;
 pub mod error;
 pub mod routes;
 pub mod sse;
@@ -10,7 +11,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 pub fn create_router(config: ServerConfig) -> Router {
-  let api = Router::new().nest("/api", routes::api_routes(config));
+  let api = routes::api_routes(config);
 
   match std::env::var("STATIC_DIR") {
     Ok(static_dir) => {
