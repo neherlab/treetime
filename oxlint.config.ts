@@ -27,7 +27,7 @@ export default defineConfig({
     "vitest",
   ],
 
-  jsPlugins: ["./oxlint-plugins/index.js"],
+  jsPlugins: ["./oxlint-plugins/index.js", "./oxlint-plugins/web.js"],
 
   categories: {
     correctness: "warn",
@@ -106,6 +106,38 @@ export default defineConfig({
       ],
       rules: {
         "import/no-nodejs-modules": "error",
+      },
+    },
+    {
+      files: ["packages/app-ui/src/**", "packages/app-web/src/**"],
+      rules: {
+        "web/tailwind-classes": "error",
+
+        "web/use-themed-cn": "error",
+
+        "react/purity": "error",
+        "react/immutability": "error",
+        "react/refs": "error",
+        "react/set-state-in-effect": "error",
+        "react/static-components": "error",
+
+        "react/no-deriving-state-in-effects": "error",
+        "web/no-chained-state-updates": "error",
+        "web/no-event-handler-effect": "error",
+        "web/no-state-in-effect-initializer": "error",
+
+        "react/no-danger": "error",
+        "react/forbid-dom-props": [
+          "error",
+          { forbid: [{ propName: "style", message: "Use Tailwind classes, not inline styles." }] },
+        ],
+        "no-restricted-properties": [
+          "error",
+          { property: "innerHTML", message: "Assigning innerHTML injects raw HTML. Render via React." },
+          { property: "outerHTML", message: "Assigning outerHTML injects raw HTML. Render via React." },
+          { property: "insertAdjacentHTML", message: "insertAdjacentHTML injects raw HTML. Render via React." },
+          { object: "document", property: "write", message: "document.write injects raw HTML. Render via React." },
+        ],
       },
     },
     {
