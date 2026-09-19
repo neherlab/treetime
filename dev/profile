@@ -46,7 +46,7 @@ SAMPLE_RATE=1234
 
 build_binary() {
   local program="${1}"
-  "${THIS_DIR}/docker/run" "${THIS_DIR}/dev" bp "${program}" >&2
+  "${THIS_DIR}/docker/run" just bp "${program}" >&2
 }
 
 profile_perf() {
