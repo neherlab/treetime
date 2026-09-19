@@ -3,19 +3,16 @@
   "version": "0.0.1",
   "private": true,
   "description": "TypeScript type definitions for TreeTime bridge interface",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {
     "generate": "bun run scripts/codegen.ts",
-    "build": "bun run generate && tsc && tsc -p tsconfig.cjs.json",
-    "dev": "tsc --watch",
     "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
     "format": "oxfmt --write src/",
