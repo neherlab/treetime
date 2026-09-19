@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::Path;
-use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use treetime::cancel::Cancel;
@@ -29,6 +28,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
+use utoipa::ToSchema;
 
 /// Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
 /// valid, because optimize has no sampling dates.

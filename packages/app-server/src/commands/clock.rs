@@ -10,7 +10,6 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::Path;
-use utoipa::ToSchema;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
@@ -31,6 +30,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
+use utoipa::ToSchema;
 
 /// Clock estimation request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]

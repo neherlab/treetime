@@ -16,7 +16,6 @@ use log::{info, warn};
 use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::complete_alignment_for_leaves;
 use treetime::ancestral::mask::create_mask;
@@ -37,6 +36,7 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
+use utoipa::ToSchema;
 
 /// Ancestral reconstruction request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]

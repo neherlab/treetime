@@ -12,7 +12,6 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use utoipa::ToSchema;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
@@ -22,6 +21,7 @@ use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_utils::io::file::create_file_or_stdout;
+use utoipa::ToSchema;
 
 /// Mugration inference request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]

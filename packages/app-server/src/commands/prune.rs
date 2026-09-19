@@ -12,7 +12,6 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
-use utoipa::ToSchema;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::cancel::Cancel;
@@ -29,6 +28,7 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
+use utoipa::ToSchema;
 
 /// Tree-pruning request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]

@@ -20,8 +20,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use treetime_schema::version_info;
 use utoipa::OpenApi;
-use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa::openapi::extensions::Extensions;
+use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -64,7 +64,10 @@ fn api_router() -> OpenApiRouter<Arc<ServerConfig>> {
 fn set_bridge_types(api: &mut utoipa::openapi::OpenApi) {
   for item in api.paths.paths.values_mut() {
     if let Some(op) = item.get.as_mut() {
-      op.extensions = Some(Extensions::from_iter([("x-bridge-type", Value::String("query".to_owned()))]));
+      op.extensions = Some(Extensions::from_iter([(
+        "x-bridge-type",
+        Value::String("query".to_owned()),
+      )]));
     }
     if let Some(op) = item.post.as_mut() {
       op.extensions = Some(Extensions::from_iter([(
