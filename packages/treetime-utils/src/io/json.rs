@@ -1,7 +1,4 @@
-use crate::io::compression::remove_compression_ext;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
-use crate::io::fs::extension;
-use crate::io::yaml::{yaml_read_file, yaml_write_file};
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use serde_json::{Deserializer, de::Read};
@@ -59,42 +56,6 @@ pub fn json_write<W: Write, T: Serialize>(writer: W, obj: &T, pretty: JsonPretty
     serde_json::to_writer(writer, &obj)
   }
   .wrap_err("When writing JSON")
-}
-
-/// Writes JSON or YAML file depending on file extension
-pub fn json_or_yaml_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  match serialization_format_from_path(filepath) {
-    SerializationFormat::Json => json_write_file(filepath, &obj, JsonPretty(true)),
-    SerializationFormat::Yaml => yaml_write_file(filepath, &obj),
-  }
-}
-
-/// Reads JSON or YAML file depending on file extension.
-///
-/// The format is chosen from the extension after any compression suffix is stripped (`.yaml`/`.yml`
-/// select YAML, everything else JSON), mirroring `json_or_yaml_write_file`. Both readers decompress
-/// transparently and accept `-` for stdin.
-pub fn json_or_yaml_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<T, Report> {
-  let filepath = filepath.as_ref();
-  match serialization_format_from_path(filepath) {
-    SerializationFormat::Json => json_read_file(filepath),
-    SerializationFormat::Yaml => yaml_read_file(filepath),
-  }
-}
-
-pub(crate) fn serialization_format_from_path(filepath: impl AsRef<Path>) -> SerializationFormat {
-  let filepath = remove_compression_ext(filepath);
-  match extension(filepath).map(|ext| ext.to_lowercase()) {
-    Some(ext) if matches!(ext.as_str(), "yaml" | "yml") => SerializationFormat::Yaml,
-    _ => SerializationFormat::Json,
-  }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum SerializationFormat {
-  Json,
-  Yaml,
 }
 
 /// Check whether a serde value serializes to null. This is useful to skip a generic struct field even if we don't
