@@ -5,8 +5,8 @@ exclude = ["**/Cargo.lock", "mise.lock", ".build/**", ".cache/**", ".out/**", "t
 [formatting]
 align_entries = false
 align_comments = false
-array_auto_expand = false
-array_auto_collapse = true
+array_auto_expand = true
+array_auto_collapse = false
 compact_arrays = true
 column_width = 120
 indent_string = "  "
