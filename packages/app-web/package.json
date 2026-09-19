@@ -20,19 +20,19 @@
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
     "@tailwindcss/vite": "4.3.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "4.3.0"
   },
   "devDependencies": {
-    "@types/react": "18.3.31",
-    "@types/react-dom": "18.3.7",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
     "nodemon": "3.1.9",
-    "typescript": "7.0.2",
+    "typescript": "catalog:",
     "vite": "8.0.14",
-    "vitest": "4.1.7",
-    "zod": "4.6.5"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   },
   "nodemonConfig": {
     "watch": [

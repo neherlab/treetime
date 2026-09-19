@@ -20,21 +20,21 @@
     "@neherlab/app-napi": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
     "@tailwindcss/vite": "4.3.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "4.3.0"
   },
   "devDependencies": {
-    "@types/react": "18.3.31",
-    "@types/react-dom": "18.3.7",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
     "electron": "42.2.0",
     "electron-builder": "26.8.1",
-    "typescript": "7.0.2",
+    "typescript": "catalog:",
     "vite": "8.0.14",
     "vite-plugin-electron": "0.29.1",
-    "vitest": "4.1.7",
-    "zod": "4.6.5"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   },
   "build": {
     "appId": "org.neherlab.treetime",
@@ -47,13 +47,20 @@
       "dist/**/*"
     ],
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     }
   }
 }

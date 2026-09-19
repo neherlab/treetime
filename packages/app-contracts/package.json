@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "generate": "openapi-ts && oxfmt --write src/generated",
+    "generate": "openapi-ts",
     "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
     "format": "oxfmt --write src/",
@@ -21,11 +21,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "4.6.5"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "typescript": "7.0.2",
-    "vitest": "4.1.7"
+    "typescript": "6.0.3",
+    "vitest": "catalog:"
   }
 }
