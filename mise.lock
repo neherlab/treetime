@@ -101,10 +101,20 @@ version = "0.13.7"
 backend = "cargo:cargo-edit"
 specifiers = ["0.13.7"]
 
+[[tools."cargo:cargo-mutants"]]
+version = "27.1.0"
+backend = "cargo:cargo-mutants"
+specifiers = ["27.1.0"]
+
 [[tools."cargo:dylint-link"]]
 version = "6.0.3"
 backend = "cargo:dylint-link"
 specifiers = ["6.0.3"]
+
+[[tools."cargo:jscpd"]]
+version = "5.2.0"
+backend = "cargo:jscpd"
+specifiers = ["5.2.0"]
 
 [[tools."github:astral-sh/hawk"]]
 version = "0.1.14"
