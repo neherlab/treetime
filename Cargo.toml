@@ -233,9 +233,7 @@ unknown_lints = "deny"
 # without an unexpected-cfg warning under stable rustc, where the dylint driver
 # is absent and the cfg is never set. A suppression therefore applies only where
 # its lint library is actually loaded.
-unexpected_cfgs = { level = "warn", check-cfg = [
-    'cfg(dylint_lib, values("treetime_lints", "assert_eq_arg_misordering", "await_holding_span_guard", "crate_wide_allow", "env_literal", "try_io_result", "unnamed_constant", "mordant"))',
-] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dylint_lib, values("treetime_lints", "assert_eq_arg_misordering", "await_holding_span_guard", "crate_wide_allow", "env_literal", "try_io_result", "unnamed_constant", "mordant"))'] }
 
 
 [workspace.lints.clippy]
