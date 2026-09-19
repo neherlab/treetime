@@ -20,6 +20,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use treetime_schema::version_info;
 use utoipa::OpenApi;
+use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa::openapi::extensions::Extensions;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -34,8 +35,15 @@ pub fn api_routes(config: ServerConfig) -> Router {
 pub fn api_doc() -> utoipa::openapi::OpenApi {
   let mut api = api_router().to_openapi();
   api.info.title = "TreeTime API".to_owned();
-  api.info.version = "0.0.1".to_owned();
-  api.info.description = Some("TreeTime phylogenetic analysis API".to_owned());
+  api.info.version = env!("CARGO_PKG_VERSION").to_owned();
+  api.info.description = Some(env!("CARGO_PKG_DESCRIPTION").to_owned());
+  api.info.contact = Some(
+    ContactBuilder::new()
+      .name(Some("NeherLab"))
+      .url(Some(env!("CARGO_PKG_HOMEPAGE")))
+      .build(),
+  );
+  api.info.license = Some(LicenseBuilder::new().name(env!("CARGO_PKG_LICENSE")).build());
   api.merge(SharedSchemas::openapi());
   set_bridge_types(&mut api);
   api
