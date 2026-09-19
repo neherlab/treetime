@@ -567,7 +567,7 @@ list filter="bin,example,test,bench":
     #!/usr/bin/env bash
     set -euo pipefail
     cd '{{project_dir}}'
-    cargo metadata --format-version=1 --no-deps 2>/dev/null | python3 -c "
+    cargo metadata --locked --format-version=1 --no-deps 2>/dev/null | python3 -c "
     import json, sys
     data = json.load(sys.stdin)
     kinds = set('{{filter}}'.split(','))
