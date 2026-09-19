@@ -32,5 +32,7 @@ cargo-deny = "0.20.2"
 # dev/docker/files/install-dylint, since mise does not manage rustup toolchains.
 "ubi:nextest-rs/nextest" = { version = "cargo-nextest-0.9.67", exe = "cargo-nextest" }
 "cargo:cargo-edit" = "0.13.7"
+# cargo-mutants (mutation testing) builds from source via the cargo backend.
+"cargo:cargo-mutants" = "27.1.0"
 "cargo:cargo-dylint" = "6.0.3"
 "cargo:dylint-link" = "6.0.3"

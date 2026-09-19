@@ -210,6 +210,88 @@ coverage-lcov *args:
     printf 'LCOV: %s/lcov.info\n' "${cov_dir}"
 
 # ---------------------------------------------------------------------------
+# Mutation testing
+# ---------------------------------------------------------------------------
+
+alias mut := mutants
+alias mutf := mutants-full
+
+# Mutation testing on the fork-point diff (cargo-mutants via nextest)
+[group('test')]
+mutants *args:
+    @just _mutants diff "$@"
+
+# Mutation testing across the whole workspace (cargo-mutants via nextest)
+[group('test')]
+mutants-full *args:
+    @just _mutants full "$@"
+
+# Shared mutation driver: validate exclusions, resolve scope, run cargo-mutants.
+_mutants scope *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    cd '{{project_dir}}'
+    # positional-arguments passes scope as $1 too; drop it so "$@" is user args.
+    shift
+    mkdir -p tmp/mutants
+    native='.cargo/mutants.toml'
+    excl_file='.cargo/mutants-exclusions.toml'
+
+    # Guard: raw exclude/examine keys in the native config would bypass the
+    # reason requirement, so reject them.
+    if yq -p toml -o json '.' "${native}" \
+      | jq -e 'has("exclude_re") or has("exclude_globs") or has("examine_re") or has("examine_globs")' >/dev/null; then
+      printf 'error: %s must not declare exclude_*/examine_* keys; declare exclusions with a reason in %s\n' "${native}" "${excl_file}" >&2
+      exit 1
+    fi
+
+    # Validate every exclusion carries a reason and exactly one of file/name,
+    # and turn each into a cargo-mutants flag.
+    excl_args=()
+    count="$(yq -p toml -oy '.exclude | length' "${excl_file}")"
+    for ((i = 0; i < count; i++)); do
+      reason="$(yq -p toml -oy ".exclude[${i}].reason // \"\"" "${excl_file}")"
+      file="$(yq -p toml -oy ".exclude[${i}].file // \"\"" "${excl_file}")"
+      name="$(yq -p toml -oy ".exclude[${i}].name // \"\"" "${excl_file}")"
+      if [[ -z "${reason}" || "${reason}" == "null" ]]; then
+        printf 'error: mutation exclusion #%s in %s has no reason; a reason is required\n' "${i}" "${excl_file}" >&2
+        exit 1
+      fi
+      if [[ -n "${file}" && -n "${name}" ]] || [[ -z "${file}" && -z "${name}" ]]; then
+        printf 'error: mutation exclusion #%s in %s must set exactly one of file or name\n' "${i}" "${excl_file}" >&2
+        exit 1
+      fi
+      [[ -n "${file}" ]] && excl_args+=(--exclude "${file}")
+      [[ -n "${name}" ]] && excl_args+=(--exclude-re "${name}")
+    done
+
+    scope_args=()
+    if [[ '{{scope}}' == "diff" ]]; then
+      branch="$(git branch --show-current)"
+      # The fork point is what create-worktree recorded; never the base branch.
+      if command -v create-worktree >/dev/null 2>&1; then
+        fork="$(create-worktree --fork-point 2>/dev/null || true)"
+      fi
+      fork="${fork:-$(git config "branch.${branch}.fork-point" 2>/dev/null || true)}"
+      if [[ -z "${fork}" ]]; then
+        printf 'error: no fork point for %s (branch.%s.fork-point unset and create-worktree unavailable)\n' "${branch}" "${branch}" >&2
+        exit 1
+      fi
+      diff_file="$(mktemp)"
+      trap 'rm -f "${diff_file}"' EXIT
+      git diff "${fork}..HEAD" >"${diff_file}"
+      printf 'Mutating the diff against fork point %s\n' "${fork}" >&2
+      scope_args=(--in-diff "${diff_file}")
+    fi
+
+    # cargo-mutants manages its own per-mutant build directories, so do not pin
+    # CARGO_TARGET_DIR (that would make parallel mutant builds overwrite each
+    # other). RUSTFLAGS still carries the openblas link flags the tests need.
+    export RUSTFLAGS="$(rustflags_test)"
+    nicely cargo mutants --test-tool nextest --colors always "${scope_args[@]}" "${excl_args[@]}" "$@"
+
+# ---------------------------------------------------------------------------
 # Lint and format (Rust)
 # ---------------------------------------------------------------------------
 
