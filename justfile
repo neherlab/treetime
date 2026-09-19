@@ -402,7 +402,7 @@ dylint *args:
     so="$(dylint_build_lib '{{project_dir}}' '{{dylint_lib_dir}}')"
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
     kache_use dylint
-    nicely cargo dylint --quiet --no-metadata --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
 
 # Run the custom dylint lint library with autofix
 [group('lint')]
@@ -414,7 +414,7 @@ dylint-fix *args:
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
     kache_use dylint
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
-    nicely cargo dylint --quiet --fix --no-metadata --lib-path "${so}" -- "${vcs_flag}" --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --fix --lib-path "${so}" -- "${vcs_flag}" --quiet --locked --workspace --all-targets "$@"
 
 # Report unnecessary public surface across the workspace (cargo-hawk)
 [group('lint')]
@@ -432,7 +432,19 @@ dylint-tob *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     export CARGO_TARGET_DIR='{{build_dir}}/dylint-tob' RUST_BACKTRACE=0 DYLINT_RUSTFLAGS="-A unknown_lints"
-    nicely cargo dylint --all -- --quiet --locked --workspace --all-targets "$@"
+    tob=https://github.com/trailofbits/dylint
+    rev=747f4aeffa640576e8633e02b8e4e0c3b1a06a1a
+    # Exactly the six reviewed lints, one per pattern (dylint takes one pattern
+    # per invocation). Each is loaded from the pinned Trail of Bits revision.
+    for pat in \
+      examples/restriction/assert_eq_arg_misordering \
+      examples/general/await_holding_span_guard \
+      examples/general/crate_wide_allow \
+      examples/restriction/env_literal \
+      examples/restriction/try_io_result \
+      examples/supplementary/unnamed_constant; do
+      nicely cargo dylint --git "${tob}" --rev "${rev}" --pattern "${pat}" -- --quiet --locked --workspace --all-targets "$@"
+    done
 
 # Run the mordant type-invariant lint set against its committed baseline
 [group('lint')]
@@ -443,7 +455,7 @@ mordant *args:
     target='{{build_dir}}/mordant'
     export CARGO_TARGET_DIR="${target}" DYLINT_RUSTFLAGS="-A unknown_lints"
     rm -f "${target}/mordant/over-baseline.txt"
-    nicely cargo dylint --no-metadata --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 -- --keep-going --locked --workspace --all-targets "$@"
+    nicely cargo dylint --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 --pattern . -- --keep-going --locked --workspace --all-targets "$@"
     if [[ -s "${target}/mordant/over-baseline.txt" ]]; then
       printf 'mordant: findings over the committed baseline:\n' >&2
       cat "${target}/mordant/over-baseline.txt" >&2
@@ -458,7 +470,7 @@ mordant-baseline *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1
-    nicely cargo dylint --no-metadata --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 -- --keep-going --locked --workspace --all-targets "$@"
+    nicely cargo dylint --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 --pattern . -- --keep-going --locked --workspace --all-targets "$@"
     printf 'Regenerated mordant-baseline.toml\n'
 
 # Lint levels, allow/expect lists, mutation exclusions, ignored tests, and float
