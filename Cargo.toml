@@ -372,7 +372,7 @@ useless_transmute = "allow"
 # We might need to reconsider these
 collapsible_if = "allow"
 needless_range_loop = "allow"
-non_std_lazy_statics = "allow" # bugs clap annotations
+non_std_lazy_statics = "warn"
 
 # Remove once amount of unimplemented code is reduced
 todo = "allow"
