@@ -1,0 +1,19 @@
+warning: the `JoinHandle` of a spawned task is dropped immediately
+  --> $DIR/spawn_handle.rs:5:5
+   |
+LL |     std::thread::spawn(|| {}); // should warn: spawn_handle_dropped
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: bind the handle and `.await` (tokio) or `.join()` (thread) it so a panic or result is not lost
+   = note: `#[warn(spawn_handle_dropped)]` on by default
+
+warning: the `JoinHandle` of a spawned task is dropped immediately
+  --> $DIR/spawn_handle.rs:6:5
+   |
+LL |     let _ = std::thread::spawn(|| {}); // should warn: spawn_handle_dropped
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: bind the handle and `.await` (tokio) or `.join()` (thread) it so a panic or result is not lost
+
+warning: 2 warnings emitted
+

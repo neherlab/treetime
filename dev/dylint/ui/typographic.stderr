@@ -1,0 +1,27 @@
+warning: literal contains a curly quote
+  --> $DIR/typographic.rs:4:21
+   |
+LL | const CURLY: &str = "the ‘quoted’ word"; // should warn: curly quote
+   |                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace it with plain ASCII punctuation (straight quotes, `-`, or a word)
+   = note: `#[warn(typographic_characters)]` on by default
+
+warning: literal contains an em or en dash
+  --> $DIR/typographic.rs:5:20
+   |
+LL | const DASH: &str = "range 1—9"; // should warn: em/en dash
+   |                    ^^^^^^^^^^^
+   |
+   = help: replace it with plain ASCII punctuation (straight quotes, `-`, or a word)
+
+warning: literal contains an emoji
+  --> $DIR/typographic.rs:6:21
+   |
+LL | const EMOJI: &str = "done 😀"; // should warn: emoji
+   |                     ^^^^^^^^^
+   |
+   = help: replace it with plain ASCII punctuation (straight quotes, `-`, or a word)
+
+warning: 3 warnings emitted
+

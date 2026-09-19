@@ -1,0 +1,19 @@
+warning: lint suppression without a `reason`
+  --> $DIR/suppression.rs:2:1
+   |
+LL | #[allow(dead_code)] // should warn: unjustified_suppression
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `reason = "..."`, and prefer `#[expect(...)]` so rustc flags it once the lint stops firing
+   = note: `#[warn(unjustified_suppression)]` on by default
+
+warning: lint suppression without a `reason`
+  --> $DIR/suppression.rs:6:5
+   |
+LL |     #[allow(unused_variables)] // should warn: unjustified_suppression
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `reason = "..."`, and prefer `#[expect(...)]` so rustc flags it once the lint stops firing
+
+warning: 2 warnings emitted
+
