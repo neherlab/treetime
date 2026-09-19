@@ -100,7 +100,7 @@ pretty_dtoa = "=0.3.0"
 proptest = "=1.6.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
-quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
+quick-xml = { version = "=0.42.0", features = ["serde", "serialize"] }
 rand = { version = "=0.8.5", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
