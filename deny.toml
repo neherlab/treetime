@@ -11,14 +11,15 @@ ignore = []
 confidence-threshold = 0.9
 allow = ["Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "BSL-1.0", "bzip2-1.0.6", "ISC", "MIT", "MIT-0", "MPL-2.0", "Unicode-3.0", "Zlib"]
 
-# `multiple-versions` reports rather than denies: the tree carries transitive
-# duplicate versions (for example thiserror and syn 1.x and 2.x) that come in
-# through third-party and git dependencies and are out of this policy's reach.
+# Duplicate versions are denied so a newly introduced duplicate fails the check. The tree already
+# carries pre-existing transitive duplicates (for example thiserror and syn 1.x and 2.x) pulled in
+# through third-party and git dependencies; the check reports those, and resolving them is out of
+# this policy's scope.
 [bans]
-multiple-versions = "warn"
+multiple-versions = "deny"
 wildcards = "deny"
 allow-wildcard-paths = true
-deny = [{ crate = "serde_yaml", reason = "upstream is archived; YAML is parsed with serde-saphyr" }, { crate = "xml", reason = "XML is serialized and parsed with quick-xml" }]
+deny = [{ crate = "serde_yaml", reason = "upstream is archived; YAML is parsed with serde-saphyr" }, { crate = "time", reason = "dates are owned by chrono and chronoutil" }, { crate = "xml", reason = "XML is serialized and parsed with quick-xml" }]
 
 [sources]
 unknown-registry = "deny"
