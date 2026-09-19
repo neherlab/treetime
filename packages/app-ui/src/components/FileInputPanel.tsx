@@ -1,37 +1,22 @@
 import type { DatasetInfo } from "@neherlab/app-contracts";
 import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
-import { FileSlot } from "./FileSlot";
+
 import { useDatasets } from "../hooks";
+import { useActiveCommand } from "../hooks/useActiveCommand";
 import { useAppStore } from "../store/app-store";
 import type { CommandName, FileSlotKind } from "../types";
 import { FILE_SLOTS } from "../types";
+import { Button, cn } from "../ui";
+import { FileSlot } from "./FileSlot";
 
 const COMMAND_FILE_REQUIREMENTS: Record<CommandName, { required: FileSlotKind[]; optional: FileSlotKind[] }> = {
-  ancestral: {
-    required: ["tree", "alignment"],
-    optional: ["vcfReference"],
-  },
-  clock: {
-    required: ["tree", "dates"],
-    optional: ["alignment", "vcfReference"],
-  },
-  mugration: {
-    required: ["tree", "states"],
-    optional: ["weights"],
-  },
-  optimize: {
-    required: ["tree", "alignment"],
-    optional: [],
-  },
-  prune: {
-    required: ["tree"],
-    optional: ["alignment"],
-  },
-  timetree: {
-    required: ["tree", "alignment", "dates"],
-    optional: ["vcfReference"],
-  },
+  ancestral: { required: ["tree", "alignment"], optional: ["vcfReference"] },
+  clock: { required: ["tree", "dates"], optional: ["alignment", "vcfReference"] },
+  mugration: { required: ["tree", "states"], optional: ["weights"] },
+  optimize: { required: ["tree", "alignment"], optional: [] },
+  prune: { required: ["tree"], optional: ["alignment"] },
+  timetree: { required: ["tree", "alignment", "dates"], optional: ["vcfReference"] },
 };
 
 const QUICK_DATASETS: ReadonlyArray<{ name: string; label: string }> = [
@@ -65,7 +50,7 @@ function applyDataset(
 }
 
 export function FileInputPanel() {
-  const activeCommand = useAppStore((s) => s.activeCommand);
+  const activeCommand = useActiveCommand();
   const selectedDataset = useAppStore((s) => s.selectedDataset);
   const setSelectedDataset = useAppStore((s) => s.setSelectedDataset);
   const setFile = useAppStore((s) => s.setFile);
@@ -101,23 +86,22 @@ export function FileInputPanel() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Input files</h3>
-        <button
-          type="button"
-          onClick={resetForm}
-          className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-        >
+        <h3 className="text-ink text-sm font-semibold">Input files</h3>
+        <Button variant="ghost" size="sm" onClick={resetForm}>
           <RotateCcw size={12} />
           Reset
-        </button>
+        </Button>
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Example dataset</label>
+        <label htmlFor="dataset-picker" className="text-2xs text-ink-muted mb-1 block">
+          Example dataset
+        </label>
         <select
+          id="dataset-picker"
           value={selectedDataset}
           onChange={handleDatasetChange}
-          className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+          className="border-line bg-surface-0 text-ink hover:border-line-strong focus-visible:ring-accent h-9 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
         >
           <option value="">Select a dataset...</option>
           {datasets?.map((d) => (
@@ -126,20 +110,15 @@ export function FileInputPanel() {
             </option>
           ))}
         </select>
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {QUICK_DATASETS.map((qd) => (
-            <button
+            <QuickDatasetButton
               key={qd.name}
-              type="button"
-              onClick={() => handleQuickSelect(qd.name)}
-              className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
-                selectedDataset === qd.name
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              }`}
-            >
-              {qd.label}
-            </button>
+              name={qd.name}
+              label={qd.label}
+              active={selectedDataset === qd.name}
+              onSelect={handleQuickSelect}
+            />
           ))}
         </div>
       </div>
@@ -152,5 +131,31 @@ export function FileInputPanel() {
         })}
       </div>
     </div>
+  );
+}
+
+function QuickDatasetButton({
+  name,
+  label,
+  active,
+  onSelect,
+}: {
+  name: string;
+  label: string;
+  active: boolean;
+  onSelect: (name: string) => void;
+}) {
+  const handleClick = useCallback(() => onSelect(name), [name, onSelect]);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "text-2xs rounded-sm px-1.5 py-0.5 font-mono transition-colors",
+        active ? "bg-accent text-accent-fg" : "bg-surface-2 text-ink-muted hover:bg-surface-3",
+      )}
+    >
+      {label}
+    </button>
   );
 }

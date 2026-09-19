@@ -1,8 +1,9 @@
 import { Upload, X } from "lucide-react";
-import { clsx } from "clsx";
 import { useCallback, useRef } from "react";
+
 import { useAppStore } from "../store/app-store";
 import type { FileSlotConfig } from "../types";
+import { cn } from "../ui";
 
 interface FileSlotProps {
   config: FileSlotConfig;
@@ -47,25 +48,32 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
     e.preventDefault();
   }, []);
 
+  const handleBrowse = useCallback(() => {
+    inputRef.current?.click();
+  }, []);
+
   return (
     <div
-      className={clsx(
-        "rounded-lg border-2 border-dashed p-3 transition-colors",
+      className={cn(
+        "rounded-md border border-dashed p-3 transition-colors",
         !relevant && "opacity-40",
-        file
-          ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
-          : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600",
+        file ? "border-signal-ok/60 bg-signal-ok/10" : "border-line bg-surface-0 hover:border-line-strong",
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{config.label}</span>
-          {required && relevant && <span className="text-xs text-red-500">required</span>}
+          <span className="text-ink text-sm font-medium">{config.label}</span>
+          {required && relevant && <span className="text-2xs text-signal-danger">required</span>}
         </div>
         {file && (
-          <button type="button" onClick={handleClear} className="rounded p-0.5 text-gray-400 hover:text-red-500">
+          <button
+            type="button"
+            onClick={handleClear}
+            aria-label={`Clear ${config.label}`}
+            className="text-ink-faint hover:text-signal-danger rounded-sm p-0.5"
+          >
             <X size={14} />
           </button>
         )}
@@ -73,14 +81,14 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
 
       {file ? (
         <div className="mt-1 flex items-center gap-2">
-          <span className="truncate text-xs text-gray-600 dark:text-gray-400">{file.name}</span>
-          <span className="shrink-0 text-xs text-gray-400">{formatSize(file.size)}</span>
+          <span className="text-2xs text-ink-muted truncate font-mono">{file.name}</span>
+          <span className="text-2xs text-ink-faint shrink-0 font-mono">{formatSize(file.size)}</span>
         </div>
       ) : (
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
-          className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md bg-gray-50 py-2 text-xs text-gray-500 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
+          onClick={handleBrowse}
+          className="bg-surface-2 text-2xs text-ink-muted hover:bg-surface-3 mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md py-2"
         >
           <Upload size={14} />
           <span>{config.description}</span>

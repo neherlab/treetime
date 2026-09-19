@@ -1,7 +1,9 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
-import { useAppStore } from "../store/app-store";
+
+import { useActiveCommand } from "../hooks/useActiveCommand";
 import type { CommandName } from "../types";
+import { Button, Field, Select, cn } from "../ui";
 
 interface ParamDef {
   key: string;
@@ -264,7 +266,7 @@ const ADVANCED_PARAMS: Record<CommandName, ParamDef[]> = {
 };
 
 export function ParamForm() {
-  const activeCommand = useAppStore((s) => s.activeCommand);
+  const activeCommand = useActiveCommand();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const essentials = useMemo(() => ESSENTIAL_PARAMS[activeCommand], [activeCommand]);
@@ -274,9 +276,9 @@ export function ParamForm() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Parameters</h3>
+      <h3 className="text-ink text-sm font-semibold">Parameters</h3>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {essentials.map((param) => (
           <ParamField key={param.key} param={param} />
         ))}
@@ -284,16 +286,12 @@ export function ParamForm() {
 
       {advanced.length > 0 && (
         <div>
-          <button
-            type="button"
-            onClick={toggleAdvanced}
-            className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-          >
+          <Button variant="ghost" size="sm" onClick={toggleAdvanced}>
             {showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             Advanced
-          </button>
+          </Button>
           {showAdvanced && (
-            <div className="mt-2 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
+            <div className="border-line mt-2 space-y-2.5 border-l-2 pl-3">
               {advanced.map((param) => (
                 <ParamField key={param.key} param={param} />
               ))}
@@ -309,58 +307,69 @@ function ParamField({ param }: { param: ParamDef }) {
   const [value, setValue] = useState(param.defaultValue);
 
   return (
-    <div className="flex items-center gap-3" title={param.tooltip}>
-      <label className="w-28 shrink-0 text-xs text-gray-600 dark:text-gray-400">{param.label}</label>
+    <Field.Root className="flex items-center gap-3">
+      <Field.Label className="text-2xs text-ink-muted w-28 shrink-0" title={param.tooltip}>
+        {param.label}
+      </Field.Label>
 
       {param.type === "select" && (
-        <select
-          value={String(value)}
-          onChange={(e) => setValue(e.target.value)}
-          className="flex-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-        >
-          {param.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <Select.Root value={String(value)} onValueChange={(next: string | null) => setValue(next ?? "")}>
+            <Select.Trigger className="h-8 text-xs">
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Popup>
+              {param.options?.map((opt) => (
+                <Select.Item key={opt} value={opt}>
+                  {opt}
+                </Select.Item>
+              ))}
+            </Select.Popup>
+          </Select.Root>
+        </div>
       )}
 
       {param.type === "number" && (
-        <input
+        <Field.Control
           type="number"
+          step="any"
           value={String(value)}
           onChange={(e) => setValue(Number(e.target.value))}
-          step="any"
-          className="flex-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+          className="h-8 flex-1 font-mono text-xs"
         />
       )}
 
       {param.type === "text" && (
-        <input
+        <Field.Control
           type="text"
           value={String(value)}
           onChange={(e) => setValue(e.target.value)}
           placeholder={param.tooltip}
-          className="flex-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder:text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:placeholder:text-gray-600"
+          className="h-8 flex-1 text-xs"
         />
       )}
 
-      {param.type === "toggle" && (
-        <button
-          type="button"
-          onClick={() => setValue(!value)}
-          className={`relative h-5 w-9 rounded-full transition-colors ${
-            value ? "bg-[var(--color-accent)]" : "bg-gray-300 dark:bg-gray-600"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-              value ? "translate-x-4" : ""
-            }`}
-          />
-        </button>
-      )}
-    </div>
+      {param.type === "toggle" && <Toggle value={Boolean(value)} onChange={setValue} />}
+    </Field.Root>
+  );
+}
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+  const handleClick = useCallback(() => onChange(!value), [value, onChange]);
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={handleClick}
+      className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", value ? "bg-accent" : "bg-surface-3")}
+    >
+      <span
+        className={cn(
+          "bg-surface-0 absolute top-0.5 left-0.5 size-4 rounded-full shadow transition-transform",
+          value && "translate-x-4",
+        )}
+      />
+    </button>
   );
 }

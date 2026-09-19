@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
 import { Download } from "lucide-react";
-import { clsx } from "clsx";
 import { useTheme } from "next-themes";
-import { useAppStore } from "../store/app-store";
+import { useState, useMemo } from "react";
+
+import { useActiveCommand } from "../hooks/useActiveCommand";
 import type { CommandName } from "../types";
+import { Button, Menu, cn } from "../ui";
 
 interface TabDef {
   key: string;
@@ -43,40 +44,42 @@ const COMMAND_TABS: Record<CommandName, TabDef[]> = {
   ],
 };
 
-export function ResultsPanel() {
-  const activeCommand = useAppStore((s) => s.activeCommand);
-  const tabs = useMemo(() => COMMAND_TABS[activeCommand], [activeCommand]);
-  const [activeTab, setActiveTab] = useState(tabs[0].key);
+const EXPORT_TARGETS = ["Auspice JSON", "Newick tree", "Node data (CSV)"];
 
-  const validTab = useMemo(() => (tabs.some((t) => t.key === activeTab) ? activeTab : tabs[0].key), [tabs, activeTab]);
+export function ResultsPanel() {
+  const activeCommand = useActiveCommand();
+  const tabs = useMemo(() => COMMAND_TABS[activeCommand], [activeCommand]);
+  const fallbackTab = tabs[0]?.key ?? "tree";
+  const [activeTab, setActiveTab] = useState(fallbackTab);
+
+  const validTab = useMemo(
+    () => (tabs.some((t) => t.key === activeTab) ? activeTab : fallbackTab),
+    [tabs, activeTab, fallbackTab],
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 dark:border-gray-700">
+      <div className="border-line flex items-center justify-between border-b px-4">
         <div className="flex">
           {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={clsx(
-                "border-b-2 px-3 py-2 text-xs font-medium transition-colors",
-                validTab === tab.key
-                  ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300",
-              )}
-            >
-              {tab.label}
-            </button>
+            <TabButton key={tab.key} tab={tab} active={validTab === tab.key} onSelect={setActiveTab} />
           ))}
         </div>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-        >
-          <Download size={12} />
-          Export
-        </button>
+        <Menu.Root>
+          <Menu.Trigger
+            render={
+              <Button variant="outline" size="sm">
+                <Download size={12} />
+                Export
+              </Button>
+            }
+          />
+          <Menu.Popup>
+            {EXPORT_TARGETS.map((target) => (
+              <Menu.Item key={target}>{target}</Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Root>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -86,35 +89,47 @@ export function ResultsPanel() {
   );
 }
 
+function TabButton({ tab, active, onSelect }: { tab: TabDef; active: boolean; onSelect: (key: string) => void }) {
+  const handleClick = () => onSelect(tab.key);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "text-2xs border-b-2 px-3 py-2 font-medium transition-colors",
+        active ? "border-accent text-accent" : "text-ink-muted hover:text-ink border-transparent",
+      )}
+    >
+      {tab.label}
+    </button>
+  );
+}
+
 function TabContent({ command, tab }: { command: CommandName; tab: string }) {
   if (tab === "tree") return <MockTree />;
   if (tab === "regression") return <MockRegressionPlot />;
-  if (tab === "table" || tab === "traits" || tab === "confidence") return <MockDataTable command={command} tab={tab} />;
+  if (tab === "table" || tab === "traits" || tab === "confidence") return <MockDataTable tab={tab} />;
   if (tab === "sequences") return <MockFastaViewer />;
   if (tab === "model") return <MockModelPanel command={command} />;
   if (tab === "summary") return <MockPruneSummary />;
   if (tab === "auspice") return <MockAuspiceLink />;
-  return <div className="text-sm text-gray-500">Unknown tab</div>;
+  return <div className="text-ink-muted text-sm">Unknown tab</div>;
 }
 
 function MockTree() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-900">
-      <div className="mb-4 font-mono text-xs text-gray-400 dark:text-gray-600">
+    <div className="border-line bg-surface-1 flex flex-col items-center justify-center rounded-md border border-dashed p-8">
+      <div className="text-2xs text-ink-faint mb-4 font-mono">
         <pre className="leading-relaxed">{MOCK_TREE_ASCII}</pre>
       </div>
       <div className="flex gap-2">
         {["Rectangular", "Radial", "Clock"].map((layout) => (
-          <button
-            key={layout}
-            type="button"
-            className="rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-white dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-          >
+          <Button key={layout} variant="subtle" size="sm">
             {layout}
-          </button>
+          </Button>
         ))}
       </div>
-      <p className="mt-3 text-xs text-gray-400">Tree visualization placeholder</p>
+      <p className="text-2xs text-ink-faint mt-3">Tree visualization placeholder</p>
     </div>
   );
 }
@@ -154,12 +169,12 @@ function MockRegressionPlot() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="border-line bg-surface-1 rounded-md border p-4">
         <svg viewBox="0 0 600 300" className="w-full">
-          <line x1="60" y1="260" x2="570" y2="260" stroke="currentColor" className="text-gray-300 dark:text-gray-600" />
-          <line x1="60" y1="20" x2="60" y2="260" stroke="currentColor" className="text-gray-300 dark:text-gray-600" />
+          <line x1="60" y1="260" x2="570" y2="260" stroke="currentColor" className="text-line-strong" />
+          <line x1="60" y1="20" x2="60" y2="260" stroke="currentColor" className="text-line-strong" />
 
-          <text x="315" y="290" textAnchor="middle" className="fill-gray-500 text-[10px]">
+          <text x="315" y="290" textAnchor="middle" className="fill-ink-muted text-[10px]">
             Sampling date
           </text>
           <text
@@ -167,7 +182,7 @@ function MockRegressionPlot() {
             y="140"
             textAnchor="middle"
             transform="rotate(-90, 15, 140)"
-            className="fill-gray-500 text-[10px]"
+            className="fill-ink-muted text-[10px]"
           >
             Root-to-tip divergence
           </text>
@@ -178,7 +193,7 @@ function MockRegressionPlot() {
             x2="555"
             y2="40"
             stroke="currentColor"
-            className="text-[var(--color-accent)]"
+            className="text-accent"
             strokeWidth="1.5"
             strokeDasharray="4 2"
           />
@@ -189,8 +204,8 @@ function MockRegressionPlot() {
               cx={60 + ((p.x - 1999) / 15) * 510}
               cy={260 - (p.y / 0.05) * 240}
               r={p.outlier ? 5 : 3.5}
-              className={p.outlier ? "fill-red-400" : "fill-[var(--color-accent)]"}
-              opacity={0.7}
+              className={p.outlier ? "fill-signal-outlier" : "fill-accent"}
+              opacity={0.75}
             />
           ))}
         </svg>
@@ -207,10 +222,10 @@ function MockRegressionPlot() {
 
 function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
-      <div className="text-xs text-gray-500 dark:text-gray-400">{label}</div>
-      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</div>
-      {unit && <div className="text-xs text-gray-400">{unit}</div>}
+    <div className="border-line bg-surface-1 rounded-md border px-3 py-2">
+      <div className="text-2xs text-ink-muted">{label}</div>
+      <div className="text-ink font-mono text-sm font-medium">{value}</div>
+      {unit && <div className="text-2xs text-ink-faint">{unit}</div>}
     </div>
   );
 }
@@ -237,16 +252,16 @@ const MOCK_CLOCK_DATA = [
   { x: 2013.405, y: 0.0441, name: "A/Hawaii/02/2013", outlier: false },
 ];
 
-function MockDataTable({ command, tab }: { command: CommandName; tab: string }) {
-  const { columns, rows } = useMemo(() => getMockTableData(command, tab), [command, tab]);
+function MockDataTable({ tab }: { tab: string }) {
+  const { columns, rows } = useMemo(() => getMockTableData(tab), [tab]);
 
   return (
-    <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
-      <table className="w-full text-left text-xs">
+    <div className="border-line overflow-auto rounded-md border">
+      <table className="text-2xs w-full text-left">
         <thead>
-          <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+          <tr className="border-line bg-surface-2 border-b">
             {columns.map((col) => (
-              <th key={col} className="px-3 py-2 font-medium text-gray-500 dark:text-gray-400">
+              <th key={col} className="text-ink-muted px-3 py-2 font-medium">
                 {col}
               </th>
             ))}
@@ -254,12 +269,9 @@ function MockDataTable({ command, tab }: { command: CommandName; tab: string }) 
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr
-              key={row[0]}
-              className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
-            >
+            <tr key={row[0]} className="border-line/60 hover:bg-surface-1 border-b">
               {row.map((cell, j) => (
-                <td key={columns[j]} className="px-3 py-1.5 text-gray-700 dark:text-gray-300">
+                <td key={columns[j] ?? j} className="text-ink px-3 py-1.5 font-mono">
                   {cell}
                 </td>
               ))}
@@ -271,7 +283,7 @@ function MockDataTable({ command, tab }: { command: CommandName; tab: string }) 
   );
 }
 
-function getMockTableData(command: CommandName, tab: string): { columns: string[]; rows: string[][] } {
+function getMockTableData(tab: string): { columns: string[]; rows: string[][] } {
   if (tab === "table") {
     return {
       columns: ["Name", "Divergence", "Date", "Predicted", "Deviation", "Outlier"],
@@ -324,11 +336,11 @@ function getMockTableData(command: CommandName, tab: string): { columns: string[
 
 function MockFastaViewer() {
   return (
-    <div className="overflow-auto rounded-lg border border-gray-200 font-mono text-xs dark:border-gray-700">
+    <div className="border-line text-2xs overflow-auto rounded-md border font-mono">
       {MOCK_FASTA.map((entry) => (
-        <div key={entry.name} className="border-b border-gray-100 p-2 dark:border-gray-800">
-          <div className="text-[var(--color-accent)]">&gt;{entry.name}</div>
-          <div className="break-all text-gray-600 dark:text-gray-400">{entry.seq}</div>
+        <div key={entry.name} className="border-line/60 border-b p-2">
+          <div className="text-accent">&gt;{entry.name}</div>
+          <div className="text-ink-muted break-all">{entry.seq}</div>
         </div>
       ))}
     </div>
@@ -373,16 +385,18 @@ const GTR_FREQUENCIES = [
   { nuc: "T", freq: 0.245 },
 ];
 
-const FREQ_COLORS = {
-  light: ["oklch(0.82 0.08 250)", "oklch(0.82 0.08 160)", "oklch(0.82 0.08 80)", "oklch(0.82 0.08 20)"],
-  dark: ["oklch(0.50 0.08 250)", "oklch(0.50 0.08 160)", "oklch(0.50 0.08 80)", "oklch(0.50 0.08 20)"],
-};
+const FREQ_HUES = [200, 150, 70, 25];
+
+function freqColor(index: number, isDark: boolean): string {
+  const hue = FREQ_HUES[index] ?? 200;
+  return isDark ? `oklch(0.5 0.08 ${hue})` : `oklch(0.82 0.08 ${hue})`;
+}
 
 function rateHeatmapColor(value: number, maxValue: number, isDark: boolean): string {
   const t = Math.min(value / maxValue, 1);
   const lightness = isDark ? 0.3 + 0.15 * (1 - t) : 0.92 - 0.15 * t;
   const chroma = 0.04 + 0.08 * t;
-  const hue = 250 - 210 * t;
+  const hue = 200 - 175 * t;
   return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} ${hue.toFixed(0)})`;
 }
 
@@ -391,85 +405,28 @@ function MockModelPanel({ command }: { command: CommandName }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const maxRate = useMemo(
-    () => Math.max(...GTR_RATE_MATRIX.flatMap((row, i) => row.filter((_, j) => i !== j))),
-    [],
-  );
-
-  const freqColors = isDark ? FREQ_COLORS.dark : FREQ_COLORS.light;
+  const maxRate = useMemo(() => Math.max(...GTR_RATE_MATRIX.flatMap((row, i) => row.filter((_, j) => i !== j))), []);
 
   return (
     <div className="space-y-4">
       {showGtr && (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">GTR Model: Inferred</h4>
-          <div className="mb-3">
-            <div className="mb-1 text-xs text-gray-500">Rate matrix</div>
-            <table className="border-separate border-spacing-0.5 font-mono text-xs">
-              <thead>
-                <tr>
-                  <th className="w-8" />
-                  {NUC_LABELS.map((n) => (
-                    <th key={n} className="w-14 text-center text-gray-500">
-                      {n}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {NUC_LABELS.map((row, i) => (
-                  <tr key={row}>
-                    <td className="pr-1 text-right text-gray-500">{row}</td>
-                    {GTR_RATE_MATRIX[i].map((val, j) => {
-                      const isDiag = i === j;
-                      return (
-                        <td
-                          key={NUC_LABELS[j]}
-                          className="rounded px-2 py-1 text-center"
-                          style={
-                            isDiag
-                              ? undefined
-                              : { backgroundColor: rateHeatmapColor(val, maxRate, isDark) }
-                          }
-                        >
-                          <span className={isDiag ? "text-gray-300 dark:text-gray-600" : "text-gray-800 dark:text-gray-100"}>
-                            {isDiag ? "-" : val.toFixed(2)}
-                          </span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="border-line bg-surface-1 rounded-md border p-4">
+          <h4 className="text-2xs text-ink-muted mb-3 font-semibold">GTR model (inferred)</h4>
+          <div className="mb-4">
+            <div className="text-2xs text-ink-muted mb-1.5">Rate matrix</div>
+            <RateMatrix maxRate={maxRate} isDark={isDark} />
           </div>
           <div>
-            <div className="mb-1 text-xs text-gray-500">Equilibrium frequencies</div>
-            <div className="flex items-center gap-2 font-mono text-xs text-gray-700 dark:text-gray-300">
-              <div className="flex h-5 flex-1 overflow-hidden rounded">
-                {GTR_FREQUENCIES.map(({ nuc, freq }, idx) => (
-                  <div
-                    key={nuc}
-                    className="flex items-center justify-center text-[10px] font-medium"
-                    style={{
-                      width: `${freq * 100}%`,
-                      backgroundColor: freqColors[idx],
-                      color: isDark ? "oklch(0.9 0 0)" : "oklch(0.25 0 0)",
-                    }}
-                  >
-                    {nuc} {(freq * 100).toFixed(0)}%
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="text-2xs text-ink-muted mb-1.5">Equilibrium frequencies</div>
+            <FrequencyBar isDark={isDark} />
           </div>
         </div>
       )}
 
       {(command === "clock" || command === "timetree") && (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Clock Model</h4>
-          <div className="space-y-1 text-xs">
+        <div className="border-line bg-surface-1 rounded-md border p-4">
+          <h4 className="text-2xs text-ink-muted mb-2 font-semibold">Clock model</h4>
+          <div className="text-2xs space-y-1">
             <KV label="Clock rate" value="3.3e-3 subs/site/year" />
             <KV label="Intercept" value="-6.57" />
             <KV label="R-squared" value="0.970" />
@@ -481,20 +438,96 @@ function MockModelPanel({ command }: { command: CommandName }) {
   );
 }
 
+function RateMatrix({ maxRate, isDark }: { maxRate: number; isDark: boolean }) {
+  const cell = 34;
+  const pad = 18;
+  const size = pad + cell * NUC_LABELS.length;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[220px] font-mono">
+      {NUC_LABELS.map((label, j) => (
+        <text
+          key={`col-${label}`}
+          x={pad + cell * j + cell / 2}
+          y={pad - 6}
+          textAnchor="middle"
+          className="fill-ink-muted text-[9px]"
+        >
+          {label}
+        </text>
+      ))}
+      {NUC_LABELS.map((label, i) => (
+        <text
+          key={`row-${label}`}
+          x={pad - 6}
+          y={pad + cell * i + cell / 2 + 3}
+          textAnchor="end"
+          className="fill-ink-muted text-[9px]"
+        >
+          {label}
+        </text>
+      ))}
+      {NUC_LABELS.map((_, i) =>
+        (GTR_RATE_MATRIX[i] ?? []).map((val, j) => {
+          const isDiag = i === j;
+          return (
+            <g key={`${i}-${j}`}>
+              <rect
+                x={pad + cell * j + 1}
+                y={pad + cell * i + 1}
+                width={cell - 2}
+                height={cell - 2}
+                rx={3}
+                fill={isDiag ? "var(--color-surface-2)" : rateHeatmapColor(val, maxRate, isDark)}
+              />
+              <text
+                x={pad + cell * j + cell / 2}
+                y={pad + cell * i + cell / 2 + 3}
+                textAnchor="middle"
+                className={isDiag ? "fill-ink-faint text-[9px]" : "fill-ink text-[9px]"}
+              >
+                {isDiag ? "-" : val.toFixed(2)}
+              </text>
+            </g>
+          );
+        }),
+      )}
+    </svg>
+  );
+}
+
+function FrequencyBar({ isDark }: { isDark: boolean }) {
+  return (
+    <svg viewBox="0 0 100 12" className="h-5 w-full" preserveAspectRatio="none">
+      {GTR_FREQUENCIES.map(({ nuc, freq }, index) => {
+        const x = GTR_FREQUENCIES.slice(0, index).reduce((sum, g) => sum + g.freq * 100, 0);
+        const width = freq * 100;
+        return (
+          <g key={nuc}>
+            <rect x={x} y={0} width={width} height={12} fill={freqColor(index, isDark)} />
+            <text x={x + width / 2} y={8.5} textAnchor="middle" className="fill-ink text-[6px] font-medium">
+              {nuc} {(freq * 100).toFixed(0)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function KV({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-24 text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="font-mono text-gray-700 dark:text-gray-300">{value}</span>
+      <span className="text-ink-muted w-24">{label}</span>
+      <span className="text-ink font-mono">{value}</span>
     </div>
   );
 }
 
 function MockPruneSummary() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-      <h4 className="mb-3 text-xs font-semibold text-gray-500 dark:text-gray-400">Pruning Summary</h4>
-      <div className="space-y-1 text-xs">
+    <div className="border-line bg-surface-1 rounded-md border p-4">
+      <h4 className="text-2xs text-ink-muted mb-3 font-semibold">Pruning summary</h4>
+      <div className="text-2xs space-y-1">
         <KV label="Nodes removed" value="4" />
         <KV label="Branches removed" value="4" />
         <KV label="Nodes before" value="37" />
@@ -508,15 +541,12 @@ function MockPruneSummary() {
 
 function MockAuspiceLink() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 p-8 dark:border-gray-700">
-      <p className="text-sm text-gray-600 dark:text-gray-400">Open the Auspice v2 JSON in Nextstrain's tree viewer</p>
-      <button
-        type="button"
-        className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)]"
-      >
+    <div className="border-line flex flex-col items-center gap-3 rounded-md border border-dashed p-8">
+      <p className="text-ink-muted text-sm">Open the Auspice v2 JSON in Nextstrain's tree viewer</p>
+      <Button variant="solid" size="md">
         Open in Auspice
-      </button>
-      <p className="text-xs text-gray-400">auspice_tree.json will be generated after a real run</p>
+      </Button>
+      <p className="text-2xs text-ink-faint">auspice_tree.json is written after a real run</p>
     </div>
   );
 }
