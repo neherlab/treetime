@@ -79,3 +79,17 @@ impl Default for FallibleNewConfig {
         }
     }
 }
+
+/// Config for the `file_too_long` lint.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct FileLengthConfig {
+    /// Maximum number of lines allowed in a source file before the lint fires.
+    pub threshold: usize,
+}
+
+impl Default for FileLengthConfig {
+    fn default() -> Self {
+        Self { threshold: 1000 }
+    }
+}

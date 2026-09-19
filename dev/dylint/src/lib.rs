@@ -44,6 +44,23 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::suggest_builder::SUGGEST_BUILDER,
         lints::needless_builder::NEEDLESS_BUILDER,
         lints::bon_builder_collector::BON_BUILDER_COLLECTOR,
+        lints::code_hygiene::SUPER_IMPORT,
+        lints::code_hygiene::LOCAL_USE,
+        lints::code_hygiene::NESTED_FUNCTION,
+        lints::code_hygiene::VERSIONED_NAME,
+        lints::error_handling::DISCARDED_ERROR,
+        lints::error_handling::DEFAULT_MASKS_ERROR,
+        lints::spawn_handle::SPAWN_HANDLE_DROPPED,
+        lints::clone_to_deserialize::VALUE_CLONED_TO_DESERIALIZE,
+        lints::handwritten_fmt::HANDWRITTEN_FMT_IMPL,
+        lints::typographic::TYPOGRAPHIC_CHARACTERS,
+        lints::test_hygiene::TEST_STDOUT_PRINT,
+        lints::test_hygiene::TEST_REAL_SLEEP,
+        lints::test_hygiene::ASSERT_IN_LOOP,
+        lints::test_hygiene::RSTEST_WITHOUT_TRACE,
+        lints::serde_default_fn::SERDE_DEFAULT_FN,
+        lints::file_length::FILE_TOO_LONG,
+        lints::suppression::UNJUSTIFIED_SUPPRESSION,
     ]);
     lint_store.register_pre_expansion_pass(|| {
         Box::new(lints::bon_builder_collector::BonBuilderCollector)
@@ -61,4 +78,22 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         .register_late_pass(|_| Box::new(lints::prefer_error_macros::PreferErrorMacros::new()));
     lint_store.register_late_pass(|_| Box::new(lints::suggest_builder::SuggestBuilder::new()));
     lint_store.register_late_pass(|_| Box::new(lints::needless_builder::NeedlessBuilder::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::code_hygiene::CodeHygiene::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::error_handling::ErrorHandling::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::spawn_handle::SpawnHandle::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::clone_to_deserialize::CloneToDeserialize::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::handwritten_fmt::HandwrittenFmt::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::typographic::Typographic::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::test_hygiene::TestHygiene::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::serde_default_fn::SerdeDefaultFn::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::file_length::FileLength::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::suppression::UnjustifiedSuppression::new()));
+}
+
+#[cfg(test)]
+mod ui_tests {
+    #[test]
+    fn ui() {
+        dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui").run();
+    }
 }

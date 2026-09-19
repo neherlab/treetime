@@ -19,6 +19,9 @@ clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "9fca3b
 dylint_linting = "6.0"
 serde = { version = "1", features = ["derive"] }
 
+[dev-dependencies]
+dylint_testing = "6.0"
+
 [package.metadata.rust-analyzer]
 rustc_private = true
 

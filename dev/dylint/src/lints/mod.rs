@@ -1,15 +1,24 @@
 pub mod bon_builder_collector;
+pub mod clone_to_deserialize;
+pub mod code_hygiene;
 pub mod debug_remnants;
+pub mod error_handling;
 pub mod fallible_new;
+pub mod file_length;
+pub mod handwritten_fmt;
 mod hir_refs;
 pub mod needless_builder;
 pub mod panic_in_drop;
 pub mod prefer_error_macros;
 pub mod proper_error_type;
 pub mod result_result;
+pub mod serde_default_fn;
+pub mod spawn_handle;
 pub mod suggest_builder;
-mod suppression;
+pub mod suppression;
+pub mod test_hygiene;
 pub mod topological_ordering;
+pub mod typographic;
 pub mod unclear_exports;
 
 use core::cell::RefCell;
