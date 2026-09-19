@@ -12,8 +12,8 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
   use eyre::Report;
-  use std::sync::LazyLock;
   use std::path::PathBuf;
+  use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;

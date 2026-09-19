@@ -7,9 +7,9 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use std::sync::LazyLock;
   use rstest::rstest;
   use std::path::PathBuf;
+  use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;

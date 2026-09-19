@@ -9,8 +9,8 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use std::sync::LazyLock;
   use std::collections::BTreeMap;
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;

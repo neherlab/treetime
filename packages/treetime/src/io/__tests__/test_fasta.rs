@@ -4,9 +4,9 @@ mod tests {
   use crate::o;
   use eyre::Report;
   use indoc::indoc;
-  use std::sync::LazyLock;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
+  use std::sync::LazyLock;
   use treetime_io::fasta::*;
   use treetime_primitives::Seq;
   use treetime_utils::error::report_to_string;
