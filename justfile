@@ -893,3 +893,16 @@ status:
     source '{{project_dir}}/dev/lib/utils.sh'
     source '{{project_dir}}/dev/lib/app.sh'
     app_status
+
+# ---------------------------------------------------------------------------
+# Generated files
+# ---------------------------------------------------------------------------
+
+# Regenerate the JSON schemas and fail if any committed copy is stale (read-only)
+[group('generated')]
+generated-check:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    source '{{project_dir}}/dev/lib/generated.sh'
+    generated_check
