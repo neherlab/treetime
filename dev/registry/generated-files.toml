@@ -12,18 +12,7 @@ source = "schemars over the CLI argument types and the treetime-schema data type
 update_command = "just r treetime -- schema --for all -o packages/schemas"
 freshness_check = "just generated-check; also the unit test test_schema_committed_files_match_generated in packages/app-cli/src/cli/schema.rs"
 owner = "packages/app-cli (src/cli/schema.rs) and packages/treetime-schema"
-output_set = [
-  "packages/schemas/version-info.schema.json",
-  "packages/schemas/progress-event.schema.json",
-  "packages/schemas/error-response.schema.json",
-  "packages/schemas/input-config-pipeline.schema.json",
-  "packages/schemas/input-config-timetree.schema.json",
-  "packages/schemas/input-config-optimize.schema.json",
-  "packages/schemas/input-config-prune.schema.json",
-  "packages/schemas/input-config-ancestral.schema.json",
-  "packages/schemas/input-config-clock.schema.json",
-  "packages/schemas/input-config-mugration.schema.json",
-]
+output_set = ["packages/schemas/version-info.schema.json", "packages/schemas/progress-event.schema.json", "packages/schemas/error-response.schema.json", "packages/schemas/input-config-pipeline.schema.json", "packages/schemas/input-config-timetree.schema.json", "packages/schemas/input-config-optimize.schema.json", "packages/schemas/input-config-prune.schema.json", "packages/schemas/input-config-ancestral.schema.json", "packages/schemas/input-config-clock.schema.json", "packages/schemas/input-config-mugration.schema.json"]
 
 [[generated]]
 name = "openapi-document"
@@ -39,10 +28,7 @@ source = "packages/app-contracts/openapi.yaml, via @hey-api/openapi-ts (TypeScri
 update_command = "bun run --cwd packages/app-contracts generate"
 freshness_check = "none"
 owner = "packages/app-contracts (openapi-ts.config.ts)"
-output_set = [
-  "packages/app-contracts/src/generated/types.gen.ts",
-  "packages/app-contracts/src/generated/zod.gen.ts",
-]
+output_set = ["packages/app-contracts/src/generated/types.gen.ts", "packages/app-contracts/src/generated/zod.gen.ts"]
 
 [[generated]]
 name = "cli-reference-docs"

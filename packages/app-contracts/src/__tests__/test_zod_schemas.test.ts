@@ -17,21 +17,19 @@ interface SchemaCase {
   name: string;
   schema: { safeParse(value: unknown): { success: boolean } };
   base: Record<string, unknown>;
-  requiredKey: string;
 }
 
 const SCHEMA_CASES: SchemaCase[] = [
-  { name: "AncestralArgs", schema: zAncestralArgs, base: { tree: "t.nwk", outdir: "out" }, requiredKey: "tree" },
-  { name: "ClockArgs", schema: zClockArgs, base: { dates: "d.tsv", outdir: "out" }, requiredKey: "dates" },
-  { name: "TimetreeArgs", schema: zTimetreeArgs, base: { outdir: "out" }, requiredKey: "outdir" },
+  { name: "AncestralArgs", schema: zAncestralArgs, base: { tree: "t.nwk", outdir: "out" } },
+  { name: "ClockArgs", schema: zClockArgs, base: { dates: "d.tsv", outdir: "out" } },
+  { name: "TimetreeArgs", schema: zTimetreeArgs, base: { outdir: "out" } },
   {
     name: "MugrationArgs",
     schema: zMugrationArgs,
     base: { attribute: "country", states: "s.tsv", outdir: "out" },
-    requiredKey: "attribute",
   },
-  { name: "OptimizeArgs", schema: zOptimizeArgs, base: { tree: "t.nwk", outdir: "out" }, requiredKey: "tree" },
-  { name: "PruneArgs", schema: zPruneArgs, base: { tree: "t.nwk", outdir: "out" }, requiredKey: "tree" },
+  { name: "OptimizeArgs", schema: zOptimizeArgs, base: { tree: "t.nwk", outdir: "out" } },
+  { name: "PruneArgs", schema: zPruneArgs, base: { tree: "t.nwk", outdir: "out" } },
 ];
 
 describe("zod_schemas optional fields", () => {
@@ -39,9 +37,8 @@ describe("zod_schemas optional fields", () => {
     expect(schema.safeParse(base).success).toBe(true);
   });
 
-  test.each(SCHEMA_CASES)("$name rejects a missing required field", ({ schema, base, requiredKey }) => {
-    const withoutRequired = Object.fromEntries(Object.entries(base).filter(([key]) => key !== requiredKey));
-    expect(schema.safeParse(withoutRequired).success).toBe(false);
+  test.each(SCHEMA_CASES)("$name accepts an empty object because every field carries a default", ({ schema }) => {
+    expect(schema.safeParse({}).success).toBe(true);
   });
 
   test("AncestralArgs accepts optional fields when present", () => {
@@ -65,11 +62,12 @@ interface IntCase {
   schema: { safeParse(value: unknown): { success: boolean } };
   base: Record<string, unknown>;
   field: string;
+  int64?: boolean;
 }
 
 const INT_CASES: IntCase[] = [
   { name: "AncestralArgs.gtr_iterations", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "gtr_iterations" },
-  { name: "AncestralArgs.seed", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "seed" },
+  { name: "AncestralArgs.seed", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "seed", int64: true },
   { name: "ClockArgs.sequence_length", schema: zClockArgs, base: { dates: "d", outdir: "o" }, field: "sequence_length" },
   { name: "TimetreeArgs.max_iter", schema: zTimetreeArgs, base: { outdir: "o" }, field: "max_iter" },
   {
@@ -86,8 +84,8 @@ describe("zod_schemas integer fields", () => {
     expect(schema.safeParse({ ...base, [field]: 4 }).success).toBe(true);
   });
 
-  test.each(INT_CASES)("$name accepts a negative whole number", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: -3 }).success).toBe(true);
+  test.each(INT_CASES)("$name rejects a negative whole number because the Rust type is unsigned", ({ schema, base, field }) => {
+    expect(schema.safeParse({ ...base, [field]: -3 }).success).toBe(false);
   });
 
   test.each(INT_CASES)("$name rejects a fractional number", ({ schema, base, field }) => {
@@ -98,9 +96,16 @@ describe("zod_schemas integer fields", () => {
     expect(schema.safeParse({ ...base, [field]: Number.NaN }).success).toBe(false);
   });
 
-  test.each(INT_CASES)("$name rejects a numeric string", ({ schema, base, field }) => {
+  test.each(INT_CASES.filter((c) => !c.int64))("$name rejects a numeric string", ({ schema, base, field }) => {
     expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(false);
   });
+
+  test.each(INT_CASES.filter((c) => c.int64))(
+    "$name accepts a numeric string because JSON cannot carry a 64-bit integer",
+    ({ schema, base, field }) => {
+      expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(true);
+    },
+  );
 });
 
 describe("zod_schemas number fields keep fractional values", () => {
