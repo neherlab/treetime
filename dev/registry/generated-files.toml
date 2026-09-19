@@ -35,14 +35,13 @@ output_set = ["packages/app-contracts/openapi.yaml"]
 
 [[generated]]
 name = "app-contracts-typescript"
-source = "packages/app-contracts/openapi.yaml"
+source = "packages/app-contracts/openapi.yaml, via @hey-api/openapi-ts (TypeScript types and Zod schemas for the component definitions)"
 update_command = "bun run --cwd packages/app-contracts generate"
 freshness_check = "none"
-owner = "packages/app-contracts (scripts/codegen.ts)"
+owner = "packages/app-contracts (openapi-ts.config.ts)"
 output_set = [
-  "packages/app-contracts/src/generated/types.ts",
-  "packages/app-contracts/src/generated/bridge.ts",
-  "packages/app-contracts/src/generated/index.ts",
+  "packages/app-contracts/src/generated/types.gen.ts",
+  "packages/app-contracts/src/generated/zod.gen.ts",
 ]
 
 [[generated]]

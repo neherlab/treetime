@@ -12,17 +12,20 @@
     }
   },
   "scripts": {
-    "generate": "bun run scripts/codegen.ts",
+    "generate": "openapi-ts && oxfmt --write src/generated",
     "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt --check src/",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "yaml": "2.7.1"
+    "zod": "4.6.5"
   },
   "devDependencies": {
-    "typescript": "7.0.2"
+    "@hey-api/openapi-ts": "0.99.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.7"
   }
 }
