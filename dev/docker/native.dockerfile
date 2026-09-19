@@ -18,6 +18,7 @@ RUN set -euxo pipefail >/dev/null \
   file \
   git \
   libc6-dev \
+  libfontconfig-dev \
   libssl-dev \
   lsb-release \
   make \
@@ -134,6 +135,14 @@ RUN set -euxo pipefail >/dev/null \
 COPY --link "dev/docker/files/install-dylint" "/"
 RUN set -euxo pipefail >/dev/null \
 && /install-dylint
+
+COPY --link "dev/docker/files/install-tob-toolchain" "dev/docker/files/tob-toolchain" "/"
+RUN set -euxo pipefail >/dev/null \
+&& /install-tob-toolchain
+
+COPY --link "dev/docker/files/install-hawk" "dev/docker/files/hawk-toolchain" "/"
+RUN set -euxo pipefail >/dev/null \
+&& /install-hawk
 
 
 # Developer tooling via mise, pinned and checksummed in mise.lock. This layer is

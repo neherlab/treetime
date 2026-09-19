@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Install the nightly toolchain that the Trail of Bits dylint lint set is pinned
+# to. Those lints build against a different nightly than dev/dylint's own, and
+# cargo-dylint compiles both the lint libraries and the target workspace with the
+# library's toolchain, so that nightly must be present with rustc-dev and
+# rust-src. Kept in its own cached layer next to the other toolchains.
+#
+# The version lives in dev/docker/files/tob-toolchain (the single source shared
+# with the `dylint-tob` justfile recipe and its gate guard) so the Dockerfile and
+# the recipe never repeat the literal. It must match the rust-toolchain of the
+# Trail of Bits revision pinned in the justfile.
+#
+set -euxo pipefail
+
+TOB_TOOLCHAIN="$(cat /tob-toolchain)"
+
+rustup toolchain install "${TOB_TOOLCHAIN}" --profile minimal -c rustc-dev -c llvm-tools-preview -c rust-src
+rustc "+${TOB_TOOLCHAIN}" --version --verbose

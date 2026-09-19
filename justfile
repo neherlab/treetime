@@ -439,7 +439,11 @@ hawk *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     unset RUSTFLAGS CARGO_TARGET_DIR
-    nicely cargo hawk check --target-dir '{{build_dir}}/hawk' "$@"
+    # cargo-hawk ships a compiler driver tied to a specific rustc; run it through
+    # that toolchain (installed by dev/docker/files/install-hawk, version shared
+    # via dev/docker/files/hawk-toolchain).
+    toolchain="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain')"
+    nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "$@"
 
 # Run the Trail of Bits dylint lint set (builds on its own pinned nightly)
 [group('lint')]
@@ -620,24 +624,19 @@ _check mode:
       else
         skip "dylint" "cargo-dylint not installed"
       fi
-      if command -v cargo-hawk >/dev/null 2>&1; then
-        printf '\n=== %s ===\n' "cargo-hawk" >&2
-        # cargo-hawk refuses to run when its build rustc differs from the active
-        # toolchain. Treat that (and any other launch failure) as not-run rather
-        # than a failure: findings are advisory and toolchain provisioning is out
-        # of this check's control. `-W warnings` keeps real findings non-fatal.
-        if bash -c "just hawk -W warnings"; then
-          record "cargo-hawk" PASS
-        else
-          skip "cargo-hawk" "cargo-hawk could not run against the active toolchain"
-        fi
+      hawk_tc="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain' 2>/dev/null || true)"
+      if command -v cargo-hawk >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -qF "${hawk_tc}"; then
+        # `-W warnings` reports findings without failing (pre-existing unreachable
+        # public API is out of scope), so this is a real run whose findings show.
+        run_check "cargo-hawk" bash -c "just hawk -W warnings"
       else
-        skip "cargo-hawk" "cargo-hawk not installed"
+        skip "cargo-hawk" "cargo-hawk or its rustc ${hawk_tc:-?} not installed"
       fi
-      if command -v cargo-dylint >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -q 'nightly-2026-07-09'; then
+      tob_tc="$(cat '{{project_dir}}/dev/docker/files/tob-toolchain' 2>/dev/null || true)"
+      if command -v cargo-dylint >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -qF "${tob_tc}"; then
         run_check "dylint-tob" bash -c "just dylint-tob"
       else
-        skip "dylint-tob" "Trail of Bits nightly (nightly-2026-07-09) not installed"
+        skip "dylint-tob" "Trail of Bits toolchain ${tob_tc:-?} not installed"
       fi
       if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
         printf '\n=== %s ===\n' "mordant" >&2
