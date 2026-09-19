@@ -134,3 +134,23 @@ RUN set -euxo pipefail >/dev/null \
 COPY --link "dev/docker/files/install-dylint" "/"
 RUN set -euxo pipefail >/dev/null \
 && /install-dylint
+
+
+# Developer tooling via mise, pinned and checksummed in mise.lock. This layer is
+# last so the expensive toolchain layers above stay cached. mise.toml / mise.lock
+# are inputs to dev/docker/checksum, so a tool change rebuilds the image. At run
+# time the mise shims resolve the same versions from the global config below.
+ENV MISE_DATA_DIR="${HOME}/.local/share/mise"
+ENV MISE_GLOBAL_CONFIG_FILE="${HOME}/tools/mise.toml"
+ENV MISE_TRUSTED_CONFIG_PATHS="/workdir:${HOME}/tools"
+ENV MISE_NOT_FOUND_AUTO_INSTALL="0"
+ENV PATH="${HOME}/.local/bin:${MISE_DATA_DIR}/shims:${PATH}"
+ARG MISE_VERSION="v2026.9.11"
+COPY --link --chown="${UID}:${GID}" "mise.toml" "mise.lock" "${HOME}/tools/"
+RUN set -euxo pipefail >/dev/null \
+&& curl -fsSL https://mise.run | MISE_INSTALL_PATH="${HOME}/.local/bin/mise" MISE_VERSION="${MISE_VERSION}" sh \
+&& mise trust "${HOME}/tools/mise.toml" \
+&& mise install \
+&& mise reshim \
+&& mise ls \
+&& just --version

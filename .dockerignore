@@ -2,3 +2,5 @@
 !/dev/docker/files/
 !/requirements.txt
 !/rust-toolchain.toml
+!/mise.toml
+!/mise.lock
