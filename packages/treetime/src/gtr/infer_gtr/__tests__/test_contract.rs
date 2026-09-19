@@ -27,7 +27,7 @@ mod tests {
 
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_utils::{
     pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
@@ -40,9 +40,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   // State index constants: A=0, C=1, G=2, T=3 (from canonical order ['A','C','G','T'])
   const IDX_A: usize = 0;

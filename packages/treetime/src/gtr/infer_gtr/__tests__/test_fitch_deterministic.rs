@@ -7,7 +7,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
@@ -15,14 +15,14 @@ mod tests {
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   #[rustfmt::skip]
   #[rstest]

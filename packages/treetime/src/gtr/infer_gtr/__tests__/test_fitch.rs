@@ -11,7 +11,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
@@ -19,9 +19,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   #[test]
   fn test_get_mutation_counts_fitch() -> Result<(), Report> {

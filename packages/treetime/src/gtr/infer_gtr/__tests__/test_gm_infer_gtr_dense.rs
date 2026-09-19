@@ -18,7 +18,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
 
   use rstest::rstest;
@@ -126,24 +126,24 @@ mod tests {
     real: BTreeMap<String, InferGtrResult>,
   }
 
-  lazy_static! {
-    static ref INPUTS: Inputs = {
-      let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_inputs.json");
-      let content = fs::read_to_string(&path).expect("Failed to read inputs JSON");
-      serde_json::from_str(&content).expect("Failed to parse inputs JSON")
-    };
-    static ref OUTPUTS: Outputs = {
-      let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_outputs.json");
-      let content = fs::read_to_string(&path).expect("Failed to read outputs JSON");
-      serde_json::from_str(&content).expect("Failed to parse outputs JSON")
-    };
-    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static INPUTS: LazyLock<Inputs> = LazyLock::new(|| {
+    let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_inputs.json");
+    let content = fs::read_to_string(&path).expect("Failed to read inputs JSON");
+    serde_json::from_str(&content).expect("Failed to parse inputs JSON")
+  });
+  static OUTPUTS: LazyLock<Outputs> = LazyLock::new(|| {
+    let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_outputs.json");
+    let content = fs::read_to_string(&path).expect("Failed to read outputs JSON");
+    serde_json::from_str(&content).expect("Failed to parse outputs JSON")
+  });
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   fn setup_dense_partition(
     tree_nwk: &str,

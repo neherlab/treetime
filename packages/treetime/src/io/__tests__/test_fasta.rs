@@ -4,17 +4,15 @@ mod tests {
   use crate::o;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
   use treetime_io::fasta::*;
   use treetime_primitives::Seq;
   use treetime_utils::error::report_to_string;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-    static ref AA_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+  static AA_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Aa).unwrap());
 
   fn seq(s: &str) -> Seq {
     Seq::try_from_str(s).unwrap()

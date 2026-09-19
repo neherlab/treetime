@@ -78,7 +78,6 @@ indoc = "=2.0.6"
 intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.14.0"
 jsonschema = { version = "=0.48.1", default-features = false }
-lazy_static = "=1.5.0"
 log = "=0.4.28"
 maplit = { version = "=1.0.2", features = [] }
 miette = { version = "=7.6.0", features = ["fancy"] }

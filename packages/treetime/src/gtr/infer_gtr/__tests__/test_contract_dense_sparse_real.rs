@@ -45,7 +45,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
 
   use eyre::Report;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, Array2};
@@ -100,15 +100,15 @@ mod tests {
     Ok(())
   }
 
-  lazy_static! {
-    static ref DENSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref SPARSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static DENSE_NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
+  static SPARSE_NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   struct DenseSparseGtr {
     dense: GTR,

@@ -12,19 +12,19 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
   use eyre::Report;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {

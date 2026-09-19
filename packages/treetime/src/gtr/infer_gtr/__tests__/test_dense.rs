@@ -14,7 +14,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
@@ -29,9 +29,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   /// Helper to create a dense partition and run marginal reconstruction.
   fn setup_dense_partition(

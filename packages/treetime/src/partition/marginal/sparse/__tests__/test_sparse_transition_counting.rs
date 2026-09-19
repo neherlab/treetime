@@ -9,7 +9,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -18,9 +18,7 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
 
   fn setup_sparse(
     tree_nwk: &str,

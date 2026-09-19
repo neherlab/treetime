@@ -12,7 +12,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
   use eyre::Report;
-  use lazy_static::lazy_static;
+  use std::sync::LazyLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
@@ -20,13 +20,13 @@ mod tests {
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
-  lazy_static! {
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   #[test]
   fn test_smoke_ancestral_sample_from_profile_root_reproducible() -> Result<(), Report> {
