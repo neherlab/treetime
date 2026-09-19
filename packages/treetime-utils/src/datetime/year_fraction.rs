@@ -1,8 +1,7 @@
 use crate::datetime::date_range::DateRange;
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
 use std::time::Duration as StdDuration;
-use time::util::days_in_year;
 
 /// Convert DateTime object to a year-fraction number
 ///
@@ -36,6 +35,13 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
 
 pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
+}
+
+/// Number of days in a proleptic-Gregorian year: the ordinal of its December 31 (365 or 366).
+fn days_in_year(year: i32) -> u32 {
+  NaiveDate::from_ymd_opt(year, 12, 31)
+    .expect("December 31 is a valid date in every supported year")
+    .ordinal()
 }
 
 #[cfg(test)]
@@ -122,5 +128,21 @@ mod tests {
 
     let actual = year_fraction_to_date(yf).round_subsecs(0); // Rounded to seconds; precision loss
     assert_eq!(date, actual);
+  }
+
+  // The calendar primitive behind the year fraction: 366 in a leap year, 365 otherwise, with the
+  // Gregorian century rule (2000 is a leap year, 1900 is not).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::start_of_ad(          1, 365)]
+  #[case::century_non_leap_1900(1900, 365)]
+  #[case::ordinary_1901(        1901, 365)]
+  #[case::century_leap_2000(    2000, 366)]
+  #[case::leap_2004(            2004, 366)]
+  #[case::ordinary_2023(        2023, 365)]
+  #[case::leap_2024(            2024, 366)]
+  #[trace]
+  fn test_days_in_year_calendar_primitive(#[case] year: i32, #[case] expected: u32) {
+    assert_eq!(expected, days_in_year(year));
   }
 }

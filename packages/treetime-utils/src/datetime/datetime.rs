@@ -1,6 +1,6 @@
-use chrono::{DateTime, FixedOffset, TimeZone, Utc};
+use crate::make_error;
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
-use time::Month;
 
 pub fn date_now() -> DateTime<Utc> {
   Utc::now()
@@ -79,6 +79,12 @@ pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
 }
 
 pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {
-  let month = Month::try_from(month as u8).wrap_err_with(|| format!("Invalid month: {month}"))?;
-  Ok(month.length(year as i32) as u32)
+  if !(1..=12).contains(&month) {
+    return make_error!("Invalid month: {month}");
+  }
+  let (next_year, next_month) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+  let last_day = NaiveDate::from_ymd_opt(next_year as i32, next_month, 1)
+    .and_then(|first_of_next_month| first_of_next_month.pred_opt())
+    .expect("a validated 1-12 month always has a last day");
+  Ok(last_day.day())
 }
