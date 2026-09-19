@@ -14,13 +14,13 @@ Requirements: bash, Docker
 
 ```bash
 # First run builds the Docker image (takes a few minutes)
-./dev/docker/run ./dev/dev l
+./dev/docker/run just l
 
 # Rebuild the image after Dockerfile changes
 DOCKER_FORCE_REBUILD=1 ./dev/docker/run echo ok
 ```
 
-All `./dev/dev` commands should be run inside the Docker container via `./dev/docker/run`.
+All `just` commands should be run inside the Docker container via `./dev/docker/run`.
 
 ### Native (alternative)
 
@@ -98,7 +98,7 @@ packages/
 
 ## Dev Shortcuts
 
-All commands are run via `./dev/docker/run ./dev/dev <shortcut>`. Multiple shortcuts can be chained: `./dev/dev l f t` runs lint, format, then test.
+All commands are run via `./dev/docker/run just <shortcut>`. Run several in sequence with separate invocations (`just lf && just f && just t`), or use `just q` (quality), which runs lint-fix, format, then tests. Run `just --list` to see every task grouped with a one-line description.
 
 ### Rust
 
@@ -157,13 +157,13 @@ All commands are run via `./dev/docker/run ./dev/dev <shortcut>`. Multiple short
 v="flu/h3n2/20"
 
 # Run in debug mode
-./dev/docker/run ./dev/dev r treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+./dev/docker/run just r treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
 # Run in release mode
-./dev/docker/run ./dev/dev rr treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+./dev/docker/run just rr treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
 # Clock estimation
-./dev/docker/run ./dev/dev r treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
+./dev/docker/run just r treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
 ```
 
 > 💡 Set variable `v` to a different path in the `data/` directory to try other example inputs. List all examples with:
@@ -176,30 +176,30 @@ v="flu/h3n2/20"
 
 ```bash
 # Start Electron app (builds contracts, UI, starts Vite renderer + napi IPC bridge)
-./dev/docker/run ./dev/dev d
+./dev/docker/run just d
 ```
 
 ### Web App
 
 ```bash
 # Start web dev (Bacon auto-restarts Rust server on source changes, Vite serves frontend with HMR)
-./dev/docker/run ./dev/dev a
+./dev/docker/run just a
 ```
 
 ## Testing
 
 ```bash
 # All Rust tests
-./dev/docker/run ./dev/dev t
+./dev/docker/run just t
 
 # Specific tests by regex
-./dev/docker/run ./dev/dev t gtr
+./dev/docker/run just t gtr
 
 # All TypeScript tests
-./dev/docker/run ./dev/dev jt
+./dev/docker/run just jt
 
 # Full quality check (Rust lint + format + test)
-./dev/docker/run ./dev/dev q
+./dev/docker/run just q
 
 # Output comparison against the rust baseline (builds the rust and current binaries, diffs every command output)
 ./dev/compare-baseline
@@ -209,14 +209,14 @@ v="flu/h3n2/20"
 
 ```bash
 # Rust
-./dev/docker/run ./dev/dev l     # lint
-./dev/docker/run ./dev/dev lf    # lint with auto-fix
-./dev/docker/run ./dev/dev f     # format
+./dev/docker/run just l     # lint
+./dev/docker/run just lf    # lint with auto-fix
+./dev/docker/run just f     # format
 
 # TypeScript (all packages)
-./dev/docker/run ./dev/dev jl    # lint
-./dev/docker/run ./dev/dev jlf   # lint with auto-fix
-./dev/docker/run ./dev/dev jf    # format
+./dev/docker/run just jl    # lint
+./dev/docker/run just jlf   # lint with auto-fix
+./dev/docker/run just jf    # format
 ```
 
 ## Monorepo Tooling
@@ -227,10 +227,10 @@ Turbo handles the dependency chain automatically: starting the desktop app (`ds`
 
 ```bash
 # Install all JS dependencies
-./dev/docker/run ./dev/dev ji
+./dev/docker/run just ji
 
 # Upgrade all JS dependencies to latest versions
-./dev/docker/run ./dev/dev ju
+./dev/docker/run just ju
 ```
 
 Configuration:
@@ -269,7 +269,7 @@ The Rust version is defined in `rust-toolchain.toml`. When using `cargo`, the ve
 ### Upgrading Rust Dependencies
 
 ```bash
-./dev/docker/run ./dev/dev U
+./dev/docker/run just U
 ```
 
 Note that dependency upgrades can cause breakage. The upgraded dependencies need to be reviewed, and unit tests, smoke tests and manual sanity checks may need to be performed.
@@ -277,7 +277,7 @@ Note that dependency upgrades can cause breakage. The upgraded dependencies need
 ### Upgrading JavaScript Dependencies
 
 ```bash
-./dev/docker/run ./dev/dev ju
+./dev/docker/run just ju
 ```
 
 ### Versioning

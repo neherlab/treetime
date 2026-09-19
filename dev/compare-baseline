@@ -285,13 +285,22 @@ def ensure_baseline(baseline: Path, sha: str, args: argparse.Namespace) -> None:
   run_and_normalize(str(baseline / "bin" / "treetime"), baseline, jobs=args.jobs, only=None, label="baseline")
 
 
+def release_build_cmd(checkout: Path | None) -> list[str]:
+  """Pick the task runner present in the given checkout: the justfile (current
+  tree) or the legacy dev/dev script (older baselines such as `rust`)."""
+  base = checkout if checkout is not None else Path.cwd()
+  if (base / "justfile").exists():
+    return ["just", "br", "treetime"]
+  return ["./dev/dev", "br", "treetime"]
+
+
 def build_baseline_binary(sha: str, destination: Path) -> None:
   """Build the `rust` binary in a detached worktree, so the checked-out branch is never disturbed."""
   checkout = WORK_ROOT / "baseline" / "src"
   shutil.rmtree(checkout, ignore_errors=True)
   run_checked(["git", "worktree", "add", "--detach", "--force", str(checkout), sha])
   try:
-    run_checked([*WRAPPER, "./dev/dev", "br", "treetime"], cwd=checkout)
+    run_checked([*WRAPPER, *release_build_cmd(checkout)], cwd=checkout)
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(checkout / ".out" / "treetime", destination)
   finally:
@@ -300,7 +309,7 @@ def build_baseline_binary(sha: str, destination: Path) -> None:
 
 def build_current() -> None:
   log.info("Building current binary")
-  run_checked([*WRAPPER, "./dev/dev", "br", "treetime"])
+  run_checked([*WRAPPER, *release_build_cmd(None)])
 
 
 def run_and_normalize(binary: str, run_dir: Path, jobs: int, only: str | None, label: str) -> list["CaseResult"]:

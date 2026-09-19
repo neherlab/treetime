@@ -138,6 +138,92 @@ function project_root() {
 }
 export -f project_root
 
+function kache_use() {
+  local task="${1:?}"
+  if [[ -n "${KACHE_CACHE_DIR:-}" ]]; then
+    export KACHE_CACHE_DIR="${KACHE_CACHE_DIR%/}/${task}"
+  fi
+  return 0
+}
+export -f kache_use
+
+function require_main_checkout() {
+  local project_dir="${1:?}"
+  local what="${2:-this operation}"
+  if [[ -f "${project_dir}/.git" ]]; then
+    printf 'error: %s must run in the main checkout, not a worktree\n' "${what}" >&2
+    return 1
+  fi
+  return 0
+}
+export -f require_main_checkout
+
+function dev_shell_files() {
+  local project_dir="${1:?}"
+  {
+    grep -rlIE '^#!/usr/bin/env bash|^#!/usr/bin/env sh|^#!/bin/bash|^#!/bin/sh' "${project_dir}/dev" 2>/dev/null
+    find "${project_dir}/dev" -type f -name '*.sh'
+  } | sort -u
+}
+export -f dev_shell_files
+
+# Build the custom dylint lint library from dev/dylint (so its .cargo/config.toml
+# applies: dylint-link appends the toolchain suffix the driver requires). Prints
+# the toolchain-suffixed .so path to stdout; build output goes to stderr.
+function dylint_build_lib() {
+  local project_dir="${1:?}"
+  local lib_dir="${2:?}"
+  (
+    cd "${project_dir}/dev/dylint"
+    nicely cargo -q build --release --target-dir "${lib_dir}"
+  ) >&2
+  local so
+  so="$(find "${lib_dir}/release" -maxdepth 1 -name 'libtreetime_lints@*.so' -print -quit)"
+  if [[ -z "${so}" ]]; then
+    printf 'Error: dylint library build produced no toolchain-suffixed .so\n' >&2
+    return 1
+  fi
+  printf '%s' "${so}"
+}
+export -f dylint_build_lib
+
+# Fail when explicit test filters or scope flags select zero tests (B9). The
+# installed nextest has no --no-tests option, so this guards it with a list pass
+# that reuses the same target dir, adding only test-binary enumeration.
+function nextest_guard() {
+  (($# > 0)) || return 0
+  local out rc=0
+  out="$(cargo nextest list --workspace --cargo-quiet "$@" 2>/dev/null)" || rc=$?
+  ((rc == 0)) || return 0
+  if [[ -z "${out//[$' \t\n']/}" ]]; then
+    printf 'error: test filter matched no tests: %s\n' "$*" >&2
+    return 4
+  fi
+  return 0
+}
+export -f nextest_guard
+
+function rustflags_common() {
+  local flags="-Cforce-frame-pointers=yes -Csymbol-mangling-version=v0"
+  if command -v mold >/dev/null 2>&1; then
+    flags+=" -Clink-arg=-fuse-ld=mold"
+  fi
+  printf '%s' "${flags}"
+}
+export -f rustflags_common
+
+function rustflags_build() {
+  printf '%s %s' "$(rustflags_common)" "${RUSTFLAGS:-}"
+}
+export -f rustflags_build
+
+function rustflags_test() {
+  local openblas="${OPENBLAS_LIB_DIR:+-L native=${OPENBLAS_LIB_DIR} }"
+  printf '%s%s%s -Clink-arg=-pthread -Clink-arg=-lopenblas -Clink-arg=-lgfortran -Clink-arg=-static-libgfortran -Clink-arg=-static-libgcc -Clink-arg=-static-libstdc++ %s' \
+    "${HOSTCC:+-Clinker=${HOSTCC} }" "${openblas}" "$(rustflags_common)" "${RUSTFLAGS:-}"
+}
+export -f rustflags_test
+
 function get_build_dir() {
   local target="${1:-}"
   abspath "$(project_root)/.build/docker${target:+"-${target}"}"
