@@ -83,7 +83,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
 
 function readDebugFlag(): boolean {
   const env = import.meta.env;
-  return env?.TREETIME_DEBUG_FETCH === "true" || (env?.DEV === true && env?.TREETIME_DEBUG_FETCH !== "false");
+  return env.TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.TREETIME_DEBUG_FETCH !== "false");
 }
 
 function logToConsole(log: { level: string; message: string }): void {

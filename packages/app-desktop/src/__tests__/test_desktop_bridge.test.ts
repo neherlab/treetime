@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import { createDesktopBridge, createDesktopTransport, type IpcRendererLike } from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
-type Invoke = (channel: string, ...args: unknown[]) => Promise<unknown>;
+type OnInvoke = (ipc: FakeIpc, channel: string, argsJson: unknown) => Promise<unknown>;
 
 interface FakeIpc extends IpcRendererLike {
   emit(channel: string, data: unknown): void;
@@ -12,11 +12,11 @@ interface FakeIpc extends IpcRendererLike {
   readonly sent: string[];
 }
 
-function makeFakeIpc(invoke: Invoke): FakeIpc {
+function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
   const handlers = new Map<string, Listener[]>();
   const sent: string[] = [];
-  return {
-    invoke,
+  const fake: FakeIpc = {
+    invoke: (channel, ...args) => onInvoke(fake, channel, args[0]),
     on(channel, listener) {
       const list = handlers.get(channel) ?? [];
       list.push(listener);
@@ -38,6 +38,7 @@ function makeFakeIpc(invoke: Invoke): FakeIpc {
     },
     sent,
   };
+  return fake;
 }
 
 describe("desktop_bridge query path", () => {
@@ -54,11 +55,10 @@ describe("desktop_bridge query path", () => {
 
 describe("desktop_bridge streaming command path", () => {
   test("progress and log events reach the caller and the result validates", async () => {
-    let fake: FakeIpc;
-    fake = makeFakeIpc((channel) => {
+    const fake = makeFakeIpc((ipc, channel) => {
       if (channel === "treetime:ancestral") {
-        fake.emit("treetime:progress", { stage: "infer", fraction: 1, message: "done" });
-        fake.emit("treetime:log", { level: "Info", message: "ok" });
+        ipc.emit("treetime:progress", { stage: "infer", fraction: 1, message: "done" });
+        ipc.emit("treetime:log", { level: "Info", message: "ok" });
         return Promise.resolve({ model_name: "JC69" });
       }
       return Promise.resolve(undefined);

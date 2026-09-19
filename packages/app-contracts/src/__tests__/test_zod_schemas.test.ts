@@ -40,7 +40,7 @@ describe("zod_schemas optional fields", () => {
   });
 
   test.each(SCHEMA_CASES)("$name rejects a missing required field", ({ schema, base, requiredKey }) => {
-    const { [requiredKey]: _omitted, ...withoutRequired } = base;
+    const withoutRequired = Object.fromEntries(Object.entries(base).filter(([key]) => key !== requiredKey));
     expect(schema.safeParse(withoutRequired).success).toBe(false);
   });
 

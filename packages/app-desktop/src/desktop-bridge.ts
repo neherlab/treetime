@@ -21,8 +21,7 @@ export function createDesktopBridge(ipc: IpcRendererLike): TreeTimeBridge {
 
 export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
   async function query(endpoint: string): Promise<unknown> {
-    const result = await ipc.invoke(`treetime:${endpoint}`);
-    return typeof result === "string" ? JSON.parse(result) : result;
+    return decode(await ipc.invoke(`treetime:${endpoint}`));
   }
 
   async function command(endpoint: string, args: unknown, options?: CommandOptions): Promise<unknown> {
@@ -41,8 +40,7 @@ export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
     options?.signal?.addEventListener("abort", abortHandler);
 
     try {
-      const result = await ipc.invoke(`treetime:${endpoint}`, JSON.stringify(args));
-      return typeof result === "string" ? JSON.parse(result) : result;
+      return decode(await ipc.invoke(`treetime:${endpoint}`, JSON.stringify(args)));
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes("cancelled")) {
         throw new CancelledError();
@@ -56,6 +54,14 @@ export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
   }
 
   return { query, command };
+}
+
+function decode(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const parsed: unknown = JSON.parse(value);
+  return parsed;
 }
 
 function logToConsole(log: { level: string; message: string }): void {
