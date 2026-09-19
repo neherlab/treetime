@@ -3,8 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2022"],
     "types": ["node"],
-    "outDir": "dist-electron",
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["scripts"]
 }
