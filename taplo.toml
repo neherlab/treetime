@@ -1,6 +1,23 @@
 # taplo TOML formatter configuration. See https://taplo.tamasfe.dev/configuration/
 
-exclude = ["**/Cargo.lock", "mise.lock", ".build/**", ".cache/**", ".out/**", "target/**", "node_modules/**", ".repos/**", "tmp/**", "packages/legacy/**", "dev/dylint/**", "**/rust-toolchain.toml", "rustfmt.toml", "clippy.toml", "bunfig.toml", "bacon.toml"]
+exclude = [
+  "**/Cargo.lock",
+  "mise.lock",
+  ".build/**",
+  ".cache/**",
+  ".out/**",
+  "target/**",
+  "node_modules/**",
+  ".repos/**",
+  "tmp/**",
+  "packages/legacy/**",
+  "dev/dylint/**",
+  "**/rust-toolchain.toml",
+  "rustfmt.toml",
+  "clippy.toml",
+  "bunfig.toml",
+  "bacon.toml",
+]
 
 [formatting]
 align_entries = false
@@ -16,7 +33,17 @@ reorder_arrays = false
 # Sort dependency tables by crate name. reorder_keys is scoped to dependency
 # tables only, so every other table keeps its authored order.
 [[rule]]
-keys = ["dependencies", "dev-dependencies", "build-dependencies", "workspace.dependencies", "workspace.dev-dependencies", "workspace.build-dependencies", "target.*.dependencies", "target.*.dev-dependencies", "target.*.build-dependencies"]
+keys = [
+  "dependencies",
+  "dev-dependencies",
+  "build-dependencies",
+  "workspace.dependencies",
+  "workspace.dev-dependencies",
+  "workspace.build-dependencies",
+  "target.*.dependencies",
+  "target.*.dev-dependencies",
+  "target.*.build-dependencies",
+]
 
 [rule.formatting]
 reorder_keys = true

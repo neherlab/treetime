@@ -8,7 +8,18 @@
 # subtracts everything listed here, and reports any tracked fixture that no entry
 # claims.
 
-roots = ["packages/treetime-distribution/src/__tests__/__fixtures__", "packages/treetime/src/gtr/__tests__/__fixtures__", "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__", "packages/treetime/src/mugration/__tests__/__fixtures__", "packages/treetime/src/optimize/__tests__/__fixtures__", "packages/treetime/src/timetree/inference/__tests__/__fixtures__", "packages/treetime/src/timetree/optimization/__tests__/__fixtures__", "packages/treetime/src/coalescent/__tests__/__fixtures__", "packages/app-output/src/__tests__/schemas", "packages/treetime/proptest-regressions"]
+roots = [
+  "packages/treetime-distribution/src/__tests__/__fixtures__",
+  "packages/treetime/src/gtr/__tests__/__fixtures__",
+  "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__",
+  "packages/treetime/src/mugration/__tests__/__fixtures__",
+  "packages/treetime/src/optimize/__tests__/__fixtures__",
+  "packages/treetime/src/timetree/inference/__tests__/__fixtures__",
+  "packages/treetime/src/timetree/optimization/__tests__/__fixtures__",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__",
+  "packages/app-output/src/__tests__/schemas",
+  "packages/treetime/proptest-regressions",
+]
 
 [[reference]]
 name = "gm_neglog_normalization"
@@ -18,7 +29,10 @@ origin = "TreeTime v0 (Python) distribution normalization"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_inputs.json", "packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_outputs.json"]
+files = [
+  "packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_inputs.json",
+  "packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_outputs.json",
+]
 
 [[reference]]
 name = "gm_overlap_boundaries"
@@ -28,7 +42,10 @@ origin = "TreeTime v0 (Python) distribution overlap boundaries"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime-distribution/src/__tests__/__fixtures__/gm_overlap_boundaries_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime-distribution/src/__tests__/__fixtures__/gm_overlap_boundaries_inputs.json", "packages/treetime-distribution/src/__tests__/__fixtures__/gm_overlap_boundaries_outputs.json"]
+files = [
+  "packages/treetime-distribution/src/__tests__/__fixtures__/gm_overlap_boundaries_inputs.json",
+  "packages/treetime-distribution/src/__tests__/__fixtures__/gm_overlap_boundaries_outputs.json",
+]
 
 [[reference]]
 name = "gm_gtr"
@@ -38,7 +55,10 @@ origin = "TreeTime v0 (Python) GTR model"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json", "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json"]
+files = [
+  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json",
+  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json",
+]
 
 [[reference]]
 name = "gm_gtr_site_specific"
@@ -48,7 +68,10 @@ origin = "TreeTime v0 (Python) site-specific GTR model"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_inputs.json", "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_outputs.json"]
+files = [
+  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_inputs.json",
+  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_outputs.json",
+]
 
 [[reference]]
 name = "gm_infer_gtr_dense"
@@ -58,7 +81,10 @@ origin = "TreeTime v0 (Python) dense GTR inference"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_inputs.json", "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_outputs.json"]
+files = [
+  "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_inputs.json",
+  "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_outputs.json",
+]
 
 [[reference]]
 name = "gm_mugration"
@@ -68,7 +94,10 @@ origin = "TreeTime v0 (Python) mugration"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_inputs.json", "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_outputs.json"]
+files = [
+  "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
+  "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
+]
 
 [[reference]]
 name = "gm_optimize"
@@ -78,7 +107,10 @@ origin = "TreeTime v0 (Python) branch-length optimization"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_inputs.json", "packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json"]
+files = [
+  "packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_inputs.json",
+  "packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json",
+]
 
 [[reference]]
 name = "gm_runner"
@@ -88,7 +120,10 @@ origin = "TreeTime v0 (Python) timetree inference runner"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance across the marginal dense and marginal sparse cases"
-files = ["packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_inputs.json", "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json"]
+files = [
+  "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_inputs.json",
+  "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json",
+]
 
 [[reference]]
 name = "gm_relaxed_clock"
@@ -98,7 +133,10 @@ origin = "TreeTime v0 (Python) relaxed clock"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_capture"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_inputs.json", "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_outputs.json"]
+files = [
+  "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_inputs.json",
+  "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_outputs.json",
+]
 
 [[reference]]
 name = "gm_total_lh"
@@ -118,7 +156,34 @@ origin = "TreeTime v0 (Python) coalescent, per dataset and Tc"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_capture"
 normalization = "each Tc snapshot is compared as parsed JSON with float tolerance; the tree and dates are read indirectly via tree_path and metadata_path inside each snapshot"
-files = ["packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc1.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc10.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc100.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tree.nwk", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_dates.tsv", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc0.1.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc1.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc10.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tree.nwk", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_dates.tsv", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.01.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.1.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc1.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc10.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tree.nwk", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_dates.tsv", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc0.1.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc1.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc10.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tree.nwk", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_dates.tsv", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc1.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc10.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc100.0.json", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tree.nwk", "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_dates.tsv"]
+files = [
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc1.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc10.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc100.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tree.nwk",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_dates.tsv",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc0.1.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc1.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc10.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tree.nwk",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_dates.tsv",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.01.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.1.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc1.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc10.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tree.nwk",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_dates.tsv",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc0.1.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc1.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc10.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tree.nwk",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_dates.tsv",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc1.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc10.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc100.0.json",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tree.nwk",
+  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_dates.tsv",
+]
 
 [[reference]]
 name = "auspice_schemas"
@@ -128,7 +193,12 @@ origin = "upstream Auspice JSON schemas (v2), used to validate emitted tree outp
 revision = "vendored copy; provenance and terms in the accompanying LICENSE.txt"
 capture = "manual vendoring from upstream Auspice; no capture script"
 normalization = "used as-is via include_str! to validate output; no normalization"
-files = ["packages/app-output/src/__tests__/schemas/auspice/schema-export-v2.json", "packages/app-output/src/__tests__/schemas/auspice/schema-auspice-config-v2.json", "packages/app-output/src/__tests__/schemas/auspice/schema-annotations.json", "packages/app-output/src/__tests__/schemas/auspice/schema-export-root-sequence.json"]
+files = [
+  "packages/app-output/src/__tests__/schemas/auspice/schema-export-v2.json",
+  "packages/app-output/src/__tests__/schemas/auspice/schema-auspice-config-v2.json",
+  "packages/app-output/src/__tests__/schemas/auspice/schema-annotations.json",
+  "packages/app-output/src/__tests__/schemas/auspice/schema-export-root-sequence.json",
+]
 
 [[reference]]
 name = "auspice_schema_license"
