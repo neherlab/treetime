@@ -384,7 +384,7 @@ _check mode:
         skip "dylint" "cargo-dylint not installed"
       fi
       if [[ -f '{{project_dir}}/deny.toml' ]] && command -v cargo-deny >/dev/null 2>&1; then
-        run_check "cargo-deny" cargo deny --locked check
+        run_check "cargo-deny" cargo deny --locked check bans licenses sources
       else
         skip "cargo-deny" "no deny.toml"
       fi
@@ -537,6 +537,24 @@ why *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     nicely cargo -q tree -i -p --locked "$@"
+
+# Security audit over the network: cargo-deny advisories (fetches the RustSec database) and bun audit
+[group('deps')]
+audit *args:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    cd '{{project_dir}}'
+    rc=0
+    printf '\n=== cargo-deny advisories ===\n' >&2
+    nicely cargo deny --locked check advisories "$@" || rc=1
+    if command -v bun >/dev/null 2>&1; then
+      printf '\n=== bun audit ===\n' >&2
+      bun audit || rc=1
+    else
+      printf 'bun not found; skipping bun audit\n' >&2
+    fi
+    exit "${rc}"
 
 # Report mise-managed tools that have newer versions available
 [group('deps')]
