@@ -24,6 +24,7 @@ export default defineConfig({
         vite: {
           build: {
             outDir: resolve(__dirname, "dist-electron"),
+            sourcemap: true,
             rollupOptions: {
               external: ["@neherlab/app-napi"],
             },
@@ -38,6 +39,7 @@ export default defineConfig({
         vite: {
           build: {
             outDir: resolve(__dirname, "dist-electron"),
+            sourcemap: true,
           },
         },
       },

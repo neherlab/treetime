@@ -1,8 +1,16 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 import * as path from "path";
 
+import { initDiagnostics } from "./diagnostics";
+
+initDiagnostics("treetime-desktop");
+
 if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
   app.commandLine.appendSwitch("no-sandbox");
+}
+
+function isThemeSource(value: string): value is "system" | "light" | "dark" {
+  return value === "system" || value === "light" || value === "dark";
 }
 
 const projectRoot = process.env.TREETIME_PROJECT_ROOT;
@@ -12,7 +20,9 @@ if (projectRoot) {
 
 function registerThemeHandler() {
   ipcMain.on("treetime:theme", (_event, theme: string) => {
-    nativeTheme.themeSource = theme as "system" | "light" | "dark";
+    if (isThemeSource(theme)) {
+      nativeTheme.themeSource = theme;
+    }
   });
 }
 
