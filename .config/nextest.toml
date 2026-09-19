@@ -1,0 +1,13 @@
+# cargo-nextest configuration. See https://nexte.st/docs/configuration/
+
+[profile.default]
+# Warn when a test runs longer than one period, and hard-terminate it after
+# five periods (5 minutes), so a hung test cannot stall the run indefinitely.
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+# CI profile: emit a JUnit report under $CARGO_TARGET_DIR/nextest/ci/.
+[profile.ci]
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+[profile.ci.junit]
+path = "junit.xml"
