@@ -1,4 +1,39 @@
+# Clippy configuration.
 # https://doc.rust-lang.org/clippy/lint_configuration.html
 
 # clippy::type_complexity
 type-complexity-threshold = 500
+
+# clippy::too_many_lines -- cap function bodies at 100 lines.
+too-many-lines-threshold = 100
+
+# Keep the panic-path restriction lints (unwrap_used, expect_used, panic,
+# indexing_slicing) active in library code but exempt inside tests, where a
+# panic is the correct failure mode for setup and assertions.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+# clippy::disallowed_types -- steer type choices toward the workspace defaults.
+# An unresolved path is silently ignored, so a ban can precede its first use.
+disallowed-types = [
+    { path = "std::sync::Mutex", reason = "use parking_lot::Mutex (poison-free, faster, supports lock_arc)" },
+    { path = "std::sync::RwLock", reason = "use parking_lot::RwLock (poison-free, faster, supports read_arc/write_arc)" },
+    { path = "std::collections::HashMap", reason = "use BTreeMap for deterministic order, or IndexMap for insertion order; #[allow] with a reason in a profiled hot path" },
+    { path = "std::collections::HashSet", reason = "use BTreeSet for deterministic order, or IndexSet for insertion order; #[allow] with a reason in a profiled hot path" },
+]
+
+# clippy::disallowed_methods -- forbid non-deterministic, panicking, or
+# unbounded constructors in favor of their safe counterparts. Unresolved paths
+# (e.g. for crates not yet depended on) are ignored until the crate is present.
+disallowed-methods = [
+    { path = "rand::thread_rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible" },
+    { path = "rand::rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible" },
+    { path = "std::time::Duration::from_secs_f32", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f32" },
+    { path = "std::time::Duration::from_secs_f64", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f64" },
+    { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)" },
+    { path = "std::sync::mpsc::channel", reason = "use a bounded channel (sync_channel or crossbeam bounded) to apply backpressure" },
+    { path = "crossbeam_channel::unbounded", reason = "use crossbeam_channel::bounded to apply backpressure" },
+    { path = "tokio::sync::mpsc::unbounded_channel", reason = "use tokio::sync::mpsc::channel with an explicit capacity" },
+]

@@ -219,10 +219,23 @@ unused_lifetimes = "warn"
 unused_macro_rules = "warn"
 unused_qualifications = "warn"
 variant_size_differences = "warn"
-# unused_crate_dependencies = "warn"
-# unreachable_pub = "warn"
+unused_crate_dependencies = "warn"
+unreachable_pub = "warn"
 # missing_copy_implementations = "warn"
 # missing_debug_implementations = "warn"
+
+# An unrecognized lint name is a hard error rather than a warning, so a typo or
+# a lint removed upstream fails the build instead of silently doing nothing.
+unknown_lints = "deny"
+
+# Names of the custom lint libraries loaded by cargo-dylint. Declaring them lets
+# a `#[cfg_attr(dylint_lib = "<name>", allow(<lint>))]` suppression compile
+# without an unexpected-cfg warning under stable rustc, where the dylint driver
+# is absent and the cfg is never set. A suppression therefore applies only where
+# its lint library is actually loaded.
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(dylint_lib, values("treetime_lints", "assert_eq_arg_misordering", "await_holding_span_guard", "crate_wide_allow", "env_literal", "try_io_result", "unnamed_constant", "mordant"))',
+] }
 
 
 [workspace.lints.clippy]
@@ -235,13 +248,35 @@ blanket_clippy_restriction_lints = "allow"
 nursery = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 restriction = { level = "warn", priority = -1 }
+
+# Additional correctness, precision, and hygiene lints promoted to warnings.
+# Enabling these surfaces pre-existing violations across the workspace; they
+# stay at "warn" (not "deny") so the read-only gate reports them without
+# blocking, and new code is expected to avoid them. The panic-path lints
+# (unwrap/expect/panic/indexing) are exempted inside tests through clippy.toml.
+allow_attributes_without_reason = "warn"
+arithmetic_side_effects = "warn"
+as_conversions = "warn"
+default_numeric_fallback = "warn"
+expect_used = "warn"
+float_cmp_const = "warn"
+indexing_slicing = "warn"
+integer_division = "warn"
+iter_over_hash_type = "warn"
+lossy_float_literal = "warn"
+missing_assert_message = "warn"
+panic = "warn"
+str_to_string = "warn"
+tests_outside_test_module = "warn"
+too_many_lines = "warn"
+unwrap_used = "warn"
+use_debug = "warn"
+wildcard_enum_match_arm = "warn"
+
 # Disable some of the Clippy lints
 absolute_paths = "allow"
 allow_attributes = "allow"
-allow_attributes_without_reason = "allow"
 arbitrary_source_item_ordering = "allow"
-arithmetic_side_effects = "allow"
-as_conversions = "allow"
 assign_op_pattern = "allow"
 assigning_clones = "allow"
 bool_to_int_with_if = "allow"
@@ -253,7 +288,6 @@ cast_sign_loss = "allow"
 char_lit_as_u8 = "allow"
 cognitive_complexity = "allow"
 comparison_chain = "allow"
-default_numeric_fallback = "allow"
 deref_by_slicing = "allow"
 doc_markdown = "allow"
 doc_paragraphs_missing_punctuation = "allow"
@@ -261,15 +295,12 @@ else_if_without_else = "allow"
 equatable_if_let = "allow"
 exhaustive_enums = "allow"
 exhaustive_structs = "allow"
-expect_used = "allow"
 float_arithmetic = "allow"
 if_not_else = "allow"
 impl_trait_in_params = "allow"
 implicit_hasher = "allow"
 implicit_return = "allow"
 inconsistent_digit_grouping = "allow"
-indexing_slicing = "allow"
-integer_division = "allow"
 iter_nth_zero = "allow"
 large_digit_groups = "allow"
 len_zero = "allow"
@@ -278,7 +309,6 @@ manual_string_new = "allow"
 integer_division_remainder_used = "allow"
 match_same_arms = "allow"
 min_ident_chars = "allow"
-missing_assert_message = "allow"
 missing_const_for_fn = "allow"
 missing_docs_in_private_items = "allow"
 missing_errors_doc = "allow"
@@ -296,7 +326,6 @@ needless_raw_strings = "allow"
 new_without_default = "allow"
 non_ascii_literal = "allow"
 option_if_let_else = "allow"
-panic = "allow"
 panic_in_result_fn = "allow"
 pattern_type_mismatch = "allow"
 print_stderr = "allow"
@@ -328,7 +357,6 @@ struct_field_names = "allow"
 suboptimal_flops = "allow"
 too_long_first_doc_paragraph = "allow"
 too_many_arguments = "allow"
-too_many_lines = "allow"
 type_repetition_in_bounds = "allow"
 unimplemented = "allow"
 unnecessary_wraps = "allow"
@@ -339,15 +367,10 @@ unused_self = "allow"
 unused_trait_names = "allow"
 unused_unit = "allow"
 unwrap_in_result = "allow"
-unwrap_used = "allow"
-use_debug = "allow"
 use_self = "allow"
 useless_transmute = "allow"
-wildcard_enum_match_arm = "allow"
-
 # We might need to reconsider these
 collapsible_if = "allow"
-iter_over_hash_type = "allow"
 needless_range_loop = "allow"
 non_std_lazy_statics = "allow" # bugs clap annotations
 
