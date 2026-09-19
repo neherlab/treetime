@@ -28,6 +28,16 @@ openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" 
 argmin = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
 argmin-math = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
 
+# This table is the single list of dependency owners: one crate per job, no separate owners
+# document.
+#
+# YAML has two owners on purpose: serde-saphyr reads and writes typed values, and saphyr owns the
+# byte-span index that places carets in configuration diagnostics. serde-saphyr cannot report source
+# positions, so both stay.
+#
+# Reserved owners, added here when their first caller lands, so nothing unused is pinned now: reqwest
+# with reqwest-middleware and reqwest-retry for the HTTP client, backon for retry around non-HTTP
+# operations, and globwalk for globbing.
 [workspace.dependencies]
 blas-src = { version = "=0.12.1", features = ["openblas-src"] }
 ndarray = { version = "=0.16.1", features = ["rayon", "serde", "approx", "blas"] }
