@@ -52,10 +52,10 @@ output_set = ["docs/docs/reference.md"]
 [[generated]]
 name = "cargo-lockfiles"
 source = "the crate dependency graph"
-update_command = "cargo update (workspace) / cargo update in dev/dylint"
+update_command = "cargo update (workspace) / cargo update in dev/lints/dylint"
 freshness_check = "cargo builds run with --locked, which fails on drift"
 owner = "cargo"
-output_set = ["Cargo.lock", "dev/dylint/Cargo.lock"]
+output_set = ["Cargo.lock", "dev/lints/dylint/Cargo.lock"]
 
 [[generated]]
 name = "tool-lockfile"

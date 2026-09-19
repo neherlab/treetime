@@ -405,9 +405,9 @@ dylint *args:
     # a warm compiler cache can replay the build and skip dylint-link's copy step.
     # Build under the pinned nightly (from rust-toolchain.toml, the single source
     # of truth) and produce the suffixed name from the plain cdylib directly.
-    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/dylint/rust-toolchain.toml')"
+    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/lints/dylint/rust-toolchain.toml')"
     dylint_toolchain="${nightly}-$(rustc -vV | sed -n 's/^host: //p')"
-    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
+    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/lints/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
     so='{{dylint_lib_dir}}/release/libtreetime_lints@'"${dylint_toolchain}"'.so'
     cp -f '{{dylint_lib_dir}}/release/libtreetime_lints.so' "${so}"
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
@@ -422,9 +422,9 @@ dylint-fix *args:
     source '{{project_dir}}/dev/lib/utils.sh'
     # See the `dylint` recipe: build under the pinned nightly and produce the
     # toolchain-suffixed .so the driver loads from the plain cdylib.
-    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/dylint/rust-toolchain.toml')"
+    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/lints/dylint/rust-toolchain.toml')"
     dylint_toolchain="${nightly}-$(rustc -vV | sed -n 's/^host: //p')"
-    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
+    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/lints/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
     so='{{dylint_lib_dir}}/release/libtreetime_lints@'"${dylint_toolchain}"'.so'
     cp -f '{{dylint_lib_dir}}/release/libtreetime_lints.so' "${so}"
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0

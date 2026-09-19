@@ -3,7 +3,7 @@
 # Usage: $0
 #
 # Install the nightly toolchain that the Trail of Bits dylint lint set is pinned
-# to. Those lints build against a different nightly than dev/dylint's own, and
+# to. Those lints build against a different nightly than dev/lints/dylint's own, and
 # cargo-dylint compiles both the lint libraries and the target workspace with the
 # library's toolchain, so that nightly must be present with rustc-dev and
 # rust-src. Kept in its own cached layer next to the other toolchains.

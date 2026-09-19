@@ -3,7 +3,7 @@
 # Usage: $0
 #
 # Install the pinned nightly toolchain used to build and run the custom lint
-# library in dev/dylint. Kept in its own image layer so it is cached
+# library in dev/lints/dylint. Kept in its own image layer so it is cached
 # independently of the main Rust toolchain install.
 #
 # The cargo-dylint and dylint-link binaries come from mise (cargo backend),
@@ -11,7 +11,7 @@
 # than the Debian base image provides. mise does not manage rustup toolchains,
 # so the nightly driver toolchain stays here.
 #
-# The nightly channel must match the clippy_utils rev in dev/dylint/Cargo.toml;
+# The nightly channel must match the clippy_utils rev in dev/lints/dylint/Cargo.toml;
 # the mise cargo-dylint version must match its dylint_linting dependency.
 #
 set -euxo pipefail
