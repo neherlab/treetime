@@ -1,446 +1,809 @@
 openapi: 3.1.0
 info:
   title: TreeTime API
-  version: 0.0.1
-  description: TreeTime phylogenetic analysis API
-
+  description: Maximum-likelihood phylodynamic inference
+  contact:
+    name: NeherLab
+    url: https://github.com/neherlab/treetime
+  license:
+    name: MIT
+  version: 1.0.0
 paths:
-  /version:
-    get:
-      operationId: version
-      x-bridge-type: query
+  /api/ancestral:
+    post:
+      operationId: ancestral
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AncestralArgs'
+        required: true
       responses:
-        "200":
-          description: Version information
+        '200':
+          description: SSE stream with progress events and final result
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: "#/components/schemas/VersionInfo"
-
-  /datasets:
+                $ref: '#/components/schemas/AncestralResult'
+      x-bridge-type: command
+  /api/clock:
+    post:
+      operationId: clock
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClockArgs'
+        required: true
+      responses:
+        '200':
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ClockResult'
+      x-bridge-type: command
+  /api/datasets:
     get:
       operationId: datasets
-      x-bridge-type: query
       responses:
-        "200":
+        '200':
           description: Available datasets
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/DatasetInfo"
-
-  /ancestral:
-    post:
-      operationId: ancestral
-      x-bridge-type: command
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AncestralArgs"
-      responses:
-        "200":
-          description: SSE stream with progress events and final result
-          content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/AncestralResult"
-
-  /clock:
-    post:
-      operationId: clock
-      x-bridge-type: command
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ClockArgs"
-      responses:
-        "200":
-          description: SSE stream with progress events and final result
-          content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/ClockResult"
-
-  /timetree:
-    post:
-      operationId: timetree
-      x-bridge-type: command
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TimetreeArgs"
-      responses:
-        "200":
-          description: SSE stream with progress events and final result
-          content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/TimetreeResult"
-
-  /mugration:
+                  $ref: '#/components/schemas/DatasetInfo'
+      x-bridge-type: query
+  /api/mugration:
     post:
       operationId: mugration
-      x-bridge-type: command
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MugrationArgs"
+              $ref: '#/components/schemas/MugrationArgs'
+        required: true
       responses:
-        "200":
+        '200':
           description: SSE stream with progress events and final result
           content:
             text/event-stream:
               schema:
-                $ref: "#/components/schemas/MugrationResult"
-
-  /optimize:
+                $ref: '#/components/schemas/MugrationResult'
+      x-bridge-type: command
+  /api/optimize:
     post:
       operationId: optimize
-      x-bridge-type: command
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OptimizeArgs"
+              $ref: '#/components/schemas/OptimizeArgs'
+        required: true
       responses:
-        "200":
+        '200':
           description: SSE stream with progress events and final result
           content:
             text/event-stream:
               schema:
-                $ref: "#/components/schemas/OptimizeResult"
-
-  /prune:
+                $ref: '#/components/schemas/OptimizeResult'
+      x-bridge-type: command
+  /api/prune:
     post:
       operationId: prune
-      x-bridge-type: command
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PruneArgs"
+              $ref: '#/components/schemas/PruneArgs'
+        required: true
       responses:
-        "200":
+        '200':
           description: SSE stream with progress events and final result
           content:
             text/event-stream:
               schema:
-                $ref: "#/components/schemas/PruneResult"
-
+                $ref: '#/components/schemas/PruneResult'
+      x-bridge-type: command
+  /api/timetree:
+    post:
+      operationId: timetree
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimetreeArgs'
+        required: true
+      responses:
+        '200':
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/TimetreeResult'
+      x-bridge-type: command
+  /api/version:
+    get:
+      operationId: version
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionInfo'
+      x-bridge-type: query
 components:
   schemas:
-    VersionInfo:
+    AncestralArgs:
       type: object
-      required: [version]
+      description: Ancestral reconstruction request (openapi subset).
       properties:
-        version:
+        aa:
+          type: boolean
+          default: false
+        aln:
+          type:
+          - string
+          - 'null'
+          default: null
+        alphabet:
+          type:
+          - string
+          - 'null'
+          default: null
+        dense:
+          type:
+          - boolean
+          - 'null'
+          default: null
+        gap_fill:
           type: string
-
+          default: only-terminal
+        gtr_iterations:
+          type: integer
+          default: 0
+          minimum: 0
+        gtr_params:
+          type: array
+          items:
+            type: string
+          default: []
+        impute_missing_data:
+          type: boolean
+          default: false
+        include_leaves:
+          type: boolean
+          default: false
+        input_fastas:
+          type: array
+          items:
+            type: string
+          default: []
+        keep_overhangs:
+          type: boolean
+          default: false
+        method_anc:
+          type: string
+          default: marginal
+        model_name:
+          type: string
+          default: infer
+        outdir:
+          type: string
+          default: ''
+        reconstruct_tip_states:
+          type: boolean
+          default: false
+        report_ambiguous:
+          type: boolean
+          default: false
+        seed:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          default: null
+          minimum: 0
+        site_specific_gtr:
+          type: boolean
+          default: false
+        tree:
+          type: string
+          default: ''
+        vcf_reference:
+          type:
+          - string
+          - 'null'
+          default: null
+        zero_based:
+          type: boolean
+          default: false
+    AncestralResult:
+      type: object
+      required:
+      - model_name
+      properties:
+        model_name:
+          type: string
+    ClockArgs:
+      type: object
+      description: Clock estimation request (openapi subset).
+      properties:
+        allow_negative_rate:
+          type: boolean
+          default: false
+        aln:
+          type: array
+          items:
+            type: string
+          default: []
+        branch_length_mode:
+          type: string
+          default: marginal
+        clock_filter:
+          type: number
+          format: double
+          default: 3.0
+        covariation:
+          type: boolean
+          default: false
+        date_column:
+          type:
+          - string
+          - 'null'
+          default: null
+        dates:
+          type: string
+          default: ''
+        gtr:
+          type: string
+          default: infer
+        gtr_params:
+          type: array
+          items:
+            type: string
+          default: []
+        keep_root:
+          type: boolean
+          default: false
+        method_anc:
+          type: string
+          default: marginal
+        name_column:
+          type:
+          - string
+          - 'null'
+          default: null
+        outdir:
+          type: string
+          default: ''
+        prune_short:
+          type: boolean
+          default: false
+        reroot:
+          type:
+          - string
+          - 'null'
+          default: null
+        reroot_tips:
+          type: array
+          items:
+            type: string
+          default: []
+        seed:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          default: null
+          minimum: 0
+        sequence_length:
+          type:
+          - integer
+          - 'null'
+          default: null
+          minimum: 0
+        tip_slack:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        tree:
+          type:
+          - string
+          - 'null'
+          default: null
+        vcf_reference:
+          type:
+          - string
+          - 'null'
+          default: null
+    ClockResult:
+      type: object
+      required:
+      - clock_model
+      - regression_results
+      properties:
+        clock_model:
+          type: object
+        regression_results:
+          type: array
+          items:
+            type: object
     DatasetInfo:
       type: object
-      required: [name, files]
+      required:
+      - name
+      - files
       properties:
-        name:
-          type: string
         files:
           type: array
           items:
             type: string
-
-    ProgressEvent:
-      type: object
-      required: [stage, fraction, message]
-      properties:
-        stage:
+        name:
           type: string
-        fraction:
-          type: number
-        message:
-          type: string
-
-    LogLevel:
-      type: string
-      enum: [Trace, Debug, Info, Warn, Error]
-
-    LogEvent:
-      type: object
-      required: [level, message]
-      properties:
-        level:
-          $ref: "#/components/schemas/LogLevel"
-        message:
-          type: string
-
     ErrorResponse:
       type: object
-      required: [code, message]
+      required:
+      - code
+      - message
       properties:
         code:
           type: string
         message:
           type: string
-
-    AncestralArgs:
+    LogEvent:
       type: object
-      required: [tree, outdir]
+      required:
+      - level
+      - message
       properties:
-        tree:
+        level:
+          $ref: '#/components/schemas/LogLevel'
+        message:
           type: string
-        outdir:
-          type: string
-        input_fastas:
-          type: array
-          items:
-            type: string
-        aln:
-          type: string
-        vcf_reference:
-          type: string
-        alphabet:
-          type: string
-        model_name:
-          type: string
-        gtr_params:
-          type: array
-          items:
-            type: string
-        method_anc:
-          type: string
-        dense:
-          type: boolean
-        aa:
-          type: boolean
-        gap_fill:
-          type: string
-        keep_overhangs:
-          type: boolean
-        zero_based:
-          type: boolean
-        reconstruct_tip_states:
-          type: boolean
-        report_ambiguous:
-          type: boolean
-        gtr_iterations:
-          type: integer
-        site_specific_gtr:
-          type: boolean
-        seed:
-          type: integer
-
-    AncestralResult:
-      type: object
-      required: [model_name]
-      properties:
-        model_name:
-          type: string
-
-    ClockArgs:
-      type: object
-      required: [dates, outdir]
-      properties:
-        dates:
-          type: string
-        outdir:
-          type: string
-        aln:
-          type: array
-          items:
-            type: string
-        tree:
-          type: string
-        vcf_reference:
-          type: string
-        name_column:
-          type: string
-        date_column:
-          type: string
-        sequence_length:
-          type: integer
-        gtr:
-          type: string
-        gtr_params:
-          type: array
-          items:
-            type: string
-        branch_length_mode:
-          type: string
-        method_anc:
-          type: string
-        clock_filter:
-          type: number
-        reroot:
-          type: string
-        keep_root:
-          type: boolean
-        prune_short:
-          type: boolean
-        tip_slack:
-          type: number
-        covariation:
-          type: boolean
-        allow_negative_rate:
-          type: boolean
-        seed:
-          type: integer
-
-    ClockResult:
-      type: object
-      required: [clock_model, regression_results]
-      properties:
-        clock_model:
-          type: object
-          additionalProperties: true
-        regression_results:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
-
-    TimetreeArgs:
-      type: object
-      required: [outdir]
-      properties:
-        outdir:
-          type: string
-        tree:
-          type: string
-        dates:
-          type: string
-        input_fastas:
-          type: array
-          items:
-            type: string
-        aln:
-          type: string
-        vcf_reference:
-          type: string
-        clock_rate:
-          type: number
-        max_iter:
-          type: integer
-        seed:
-          type: integer
-
-    TimetreeResult:
-      type: object
-      required: [clock_model]
-      properties:
-        clock_model:
-          type: object
-          additionalProperties: true
-
+    LogLevel:
+      type: string
+      enum:
+      - Trace
+      - Debug
+      - Info
+      - Warn
+      - Error
     MugrationArgs:
       type: object
-      required: [attribute, states, outdir]
+      description: Mugration inference request (openapi subset).
       properties:
         attribute:
           type: string
-        states:
-          type: string
-        outdir:
-          type: string
-        tree:
-          type: string
-        weights:
-          type: string
-        name_column:
-          type: string
+          default: country
         confidence:
-          type: string
-        pc:
-          type: number
-        missing_data:
-          type: string
-        missing_weights_threshold:
-          type: number
+          type:
+          - string
+          - 'null'
+          default: null
         iterations:
           type: integer
-        sampling_bias_correction:
+          default: 5
+          minimum: 0
+        missing_data:
+          type: string
+          default: '?'
+        missing_weights_threshold:
           type: number
-
+          format: double
+          default: 0.5
+        name_column:
+          type:
+          - string
+          - 'null'
+          default: null
+        outdir:
+          type: string
+          default: ''
+        pc:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        sampling_bias_correction:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        states:
+          type: string
+          default: ''
+        tree:
+          type:
+          - string
+          - 'null'
+          default: null
+        weights:
+          type:
+          - string
+          - 'null'
+          default: null
     MugrationResult:
       type: object
-      required: [log_lh]
+      required:
+      - log_lh
       properties:
         log_lh:
           type: number
-
+          format: double
     OptimizeArgs:
       type: object
-      required: [tree, outdir]
+      description: Branch-length optimization request (openapi subset).
       properties:
-        tree:
-          type: string
-        outdir:
-          type: string
-        input_fastas:
-          type: array
-          items:
-            type: string
         alphabet:
-          type: string
-        model_name:
-          type: string
-        dense:
-          type: boolean
-        max_iter:
-          type: integer
-        dp:
-          type: number
-        damping:
-          type: number
+          type:
+          - string
+          - 'null'
+          default: null
         branch_length_initial_guess:
           type: string
-        opt_method:
+          default: auto
+        damping:
+          type: number
+          format: double
+          default: 0.75
+        dense:
+          type:
+          - boolean
+          - 'null'
+          default: null
+        dp:
+          type: number
+          format: double
+          default: 0.1
+        gap_fill:
           type: string
-        no_indels:
-          type: boolean
-
-    OptimizeResult:
-      type: object
-      properties: {}
-
-    PruneArgs:
-      type: object
-      required: [tree, outdir]
-      properties:
-        tree:
-          type: string
-        outdir:
-          type: string
+          default: only-terminal
         input_fastas:
           type: array
           items:
             type: string
-        alphabet:
-          type: string
-        prune_short:
-          type: number
-        prune_empty:
+          default: []
+        keep_overhangs:
           type: boolean
+          default: false
+        keep_root:
+          type: boolean
+          default: false
+        max_iter:
+          type: integer
+          default: 10
+          minimum: 0
+        model_name:
+          type: string
+          default: infer
+        no_indels:
+          type: boolean
+          default: false
+        opt_method:
+          type: string
+          default: brent-sqrt
+        outdir:
+          type: string
+          default: ''
+        reroot:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/OptimizeRerootMethod'
+          default: null
+        reroot_tips:
+          type: array
+          items:
+            type: string
+          default: []
+        tree:
+          type: string
+          default: ''
+    OptimizeRerootMethod:
+      type: string
+      description: |-
+        Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
+        valid, because optimize has no sampling dates.
+      enum:
+      - min-dev
+    OptimizeResult:
+      type: object
+    ProgressEvent:
+      type: object
+      required:
+      - stage
+      - fraction
+      - message
+      properties:
+        fraction:
+          type: number
+          format: double
+        message:
+          type: string
+        stage:
+          type: string
+    PruneArgs:
+      type: object
+      description: Tree-pruning request (openapi subset).
+      properties:
+        alphabet:
+          type:
+          - string
+          - 'null'
+          default: null
+        input_fastas:
+          type: array
+          items:
+            type: string
+          default: []
         merge_shared_mutations:
           type: boolean
-        prune_nodes_list:
+          default: false
+        outdir:
           type: string
+          default: ''
+        prune_empty:
+          type: boolean
+          default: false
+        prune_nodes_list:
+          type:
+          - string
+          - 'null'
+          default: null
         prune_nodes_list_delimiter:
           type: string
+          default: ','
         prune_nodes_list_file:
-          type: string
+          type:
+          - string
+          - 'null'
+          default: null
         prune_nodes_list_file_delimiter:
           type: string
+          default: |2+
 
+        prune_short:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        tree:
+          type: string
+          default: ''
     PruneResult:
       type: object
-      properties: {}
+    TimetreeArgs:
+      type: object
+      description: Time-tree estimation request (openapi subset).
+      properties:
+        aa:
+          type: boolean
+          default: false
+        allow_negative_rate:
+          type: boolean
+          default: false
+        alphabet:
+          type: string
+          default: nuc
+        branch_length_mode:
+          type: string
+          default: marginal
+        clock_filter:
+          type: number
+          format: double
+          default: 0.0
+        clock_rate:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        clock_std_dev:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        coalescent:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        coalescent_confidence:
+          type: number
+          format: double
+          default: 2.0
+        coalescent_opt:
+          type: boolean
+          default: false
+        coalescent_skyline:
+          type: boolean
+          default: false
+        confidence:
+          type: boolean
+          default: false
+        covariation:
+          type: boolean
+          default: false
+        date_column:
+          type:
+          - string
+          - 'null'
+          default: null
+        dates:
+          type:
+          - string
+          - 'null'
+          default: null
+        dense:
+          type:
+          - boolean
+          - 'null'
+          default: null
+        gap_fill:
+          type: string
+          default: only-terminal
+        gen_per_year:
+          type: number
+          format: double
+          default: 50.0
+        gtr:
+          type: string
+          default: infer
+        gtr_params:
+          type: array
+          items:
+            type: string
+          default: []
+        impute_missing_data:
+          type: boolean
+          default: false
+        include_leaves:
+          type: boolean
+          default: false
+        input_fastas:
+          type: array
+          items:
+            type: string
+          default: []
+        keep_overhangs:
+          type: boolean
+          default: false
+        keep_polytomies:
+          type: boolean
+          default: false
+        keep_root:
+          type: boolean
+          default: false
+        max_iter:
+          type: integer
+          default: 2
+          minimum: 0
+        method_anc:
+          type: string
+          default: marginal
+        n_branches_posterior:
+          type:
+          - integer
+          - 'null'
+          default: null
+          minimum: 0
+        n_iqd:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        name_column:
+          type:
+          - string
+          - 'null'
+          default: null
+        no_indels:
+          type: boolean
+          default: false
+        no_tip_labels:
+          type: boolean
+          default: false
+        outdir:
+          type: string
+          default: ''
+        reconstruct_tip_states:
+          type: boolean
+          default: false
+        relax:
+          type: array
+          items:
+            type: number
+            format: double
+          default: []
+        report_ambiguous:
+          type: boolean
+          default: false
+        reroot:
+          type:
+          - string
+          - 'null'
+          default: null
+        reroot_tips:
+          type: array
+          items:
+            type: string
+          default: []
+        resolve_polytomies:
+          type: boolean
+          default: false
+        seed:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          default: null
+          minimum: 0
+        sequence_length:
+          type:
+          - integer
+          - 'null'
+          default: null
+          minimum: 0
+        skyline_n_points:
+          type: integer
+          default: 20
+          minimum: 0
+        skyline_stiffness:
+          type: number
+          format: double
+          default: 2.0
+        time_marginal:
+          type: string
+          default: never
+        tip_labels:
+          type: boolean
+          default: false
+        tip_slack:
+          type:
+          - number
+          - 'null'
+          format: double
+          default: null
+        tracelog:
+          type:
+          - string
+          - 'null'
+          default: null
+        tree:
+          type:
+          - string
+          - 'null'
+          default: null
+        vcf_reference:
+          type:
+          - string
+          - 'null'
+          default: null
+        zero_based:
+          type: boolean
+          default: false
+    TimetreeResult:
+      type: object
+      required:
+      - clock_model
+      properties:
+        clock_model:
+          type: object
+    VersionInfo:
+      type: object
+      required:
+      - version
+      properties:
+        version:
+          type: string
