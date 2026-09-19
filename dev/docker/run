@@ -4,6 +4,7 @@ trap "exit" INT
 # shellcheck source=./../lib/utils.sh
 source "${BASH_SOURCE%/*}/../lib/utils.sh"
 
+load_env_maybe "$(project_root)/.env.local"
 load_env_maybe "$(project_root)/.env"
 load_env "$(project_root)/.env.example"
 

@@ -4,6 +4,7 @@
 /.build
 /.cache
 /.env
+/.env.local
 /.out
 /.vscode*
 /data_dev
