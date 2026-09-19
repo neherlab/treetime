@@ -1,0 +1,15 @@
+{
+  "path": ["packages"],
+  "format": ["rust", "typescript", "tsx"],
+  "ignore": [
+    "**/target/**",
+    "**/.build/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/tmp/**",
+    "packages/app-contracts/src/generated/**"
+  ],
+  "reporters": ["console", "json"],
+  "output": "tmp/jscpd",
+  "absolute": true
+}

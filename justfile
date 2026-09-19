@@ -325,6 +325,22 @@ _mutants scope *args:
     nicely cargo mutants --test-tool nextest --colors always "${scope_args[@]}" "${excl_args[@]}" "$@"
 
 # ---------------------------------------------------------------------------
+# Duplication
+# ---------------------------------------------------------------------------
+
+alias dup := duplication
+
+# Report copy-paste duplication across Rust and TypeScript (jscpd, reports only)
+[group('test')]
+duplication *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    cd '{{project_dir}}'
+    mkdir -p tmp/jscpd
+    nicely jscpd --config .jscpd.json "$@"
+
+# ---------------------------------------------------------------------------
 # Lint and format (Rust)
 # ---------------------------------------------------------------------------
 

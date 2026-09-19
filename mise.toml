@@ -34,5 +34,9 @@ cargo-deny = "0.20.2"
 "cargo:cargo-edit" = "0.13.7"
 # cargo-mutants (mutation testing) builds from source via the cargo backend.
 "cargo:cargo-mutants" = "27.1.0"
+# jscpd (copy-paste detection) via the cargo backend. jscpd also ships an npm
+# package, but the npm backend's supply-chain trust policy blocks it; the
+# crates.io release is the same Rust CLI and installs cleanly.
+"cargo:jscpd" = "5.2.0"
 "cargo:cargo-dylint" = "6.0.3"
 "cargo:dylint-link" = "6.0.3"
