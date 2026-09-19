@@ -2,14 +2,25 @@
   "name": "@neherlab/treetime",
   "private": true,
   "packageManager": "bun@1.3.14",
-  "workspaces": [
-    "packages/app-contracts",
-    "packages/app-desktop",
-    "packages/app-napi",
-    "packages/app-server",
-    "packages/app-ui",
-    "packages/app-web"
-  ],
+  "workspaces": {
+    "packages": [
+      "packages/app-contracts",
+      "packages/app-desktop",
+      "packages/app-napi",
+      "packages/app-server",
+      "packages/app-ui",
+      "packages/app-web"
+    ],
+    "catalog": {
+      "@types/react": "19.2.15",
+      "fast-check": "4.10.1",
+      "react": "19.2.6",
+      "react-dom": "19.2.6",
+      "typescript": "6.0.3",
+      "vitest": "4.1.7",
+      "zod": "4.6.5"
+    }
+  },
   "scripts": {
     "dev:desktop": "turbo dev --cache-dir=.turbo/cache --filter=@neherlab/app-desktop",
     "dev:web": "turbo dev --cache-dir=.turbo/cache --filter=@neherlab/app-web --filter=@neherlab/app-server",
