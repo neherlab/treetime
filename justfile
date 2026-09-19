@@ -402,7 +402,7 @@ dylint *args:
     so="$(dylint_build_lib '{{project_dir}}' '{{dylint_lib_dir}}')"
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
     kache_use dylint
-    nicely cargo dylint --quiet --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --no-metadata --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
 
 # Run the custom dylint lint library with autofix
 [group('lint')]
@@ -414,7 +414,77 @@ dylint-fix *args:
     export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
     kache_use dylint
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
-    nicely cargo dylint --quiet --fix --lib-path "${so}" -- "${vcs_flag}" --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --fix --no-metadata --lib-path "${so}" -- "${vcs_flag}" --quiet --locked --workspace --all-targets "$@"
+
+# Report unnecessary public surface across the workspace (cargo-hawk)
+[group('lint')]
+hawk *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    unset RUSTFLAGS CARGO_TARGET_DIR
+    nicely cargo hawk check --target-dir '{{build_dir}}/hawk' "$@"
+
+# Run the Trail of Bits dylint lint set (builds on its own pinned nightly)
+[group('lint')]
+dylint-tob *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    export CARGO_TARGET_DIR='{{build_dir}}/dylint-tob' RUST_BACKTRACE=0 DYLINT_RUSTFLAGS="-A unknown_lints"
+    nicely cargo dylint --all -- --quiet --locked --workspace --all-targets "$@"
+
+# Run the mordant type-invariant lint set against its committed baseline
+[group('lint')]
+mordant *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    target='{{build_dir}}/mordant'
+    export CARGO_TARGET_DIR="${target}" DYLINT_RUSTFLAGS="-A unknown_lints"
+    rm -f "${target}/mordant/over-baseline.txt"
+    nicely cargo dylint --no-metadata --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 -- --keep-going --locked --workspace --all-targets "$@"
+    if [[ -s "${target}/mordant/over-baseline.txt" ]]; then
+      printf 'mordant: findings over the committed baseline:\n' >&2
+      cat "${target}/mordant/over-baseline.txt" >&2
+      exit 1
+    fi
+    printf 'mordant: no findings over the committed baseline\n'
+
+# Regenerate the committed mordant baseline (mordant-baseline.toml)
+[group('lint')]
+mordant-baseline *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1
+    nicely cargo dylint --no-metadata --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 -- --keep-going --locked --workspace --all-targets "$@"
+    printf 'Regenerated mordant-baseline.toml\n'
+
+# Lint levels, allow/expect lists, mutation exclusions, ignored tests, and float
+# tolerances are changed rarely and reviewed separately from ordinary code.
+
+# Inventory lint suppressions and other review-sensitive surfaces (read-only)
+[group('lint')]
+review-suppressions *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    cd '{{project_dir}}'
+    report() { printf '\n=== %s ===\n' "$1"; shift; "$@" || true; }
+    report "rust #[allow]/#[expect] attributes" \
+      rg -n --glob 'packages/**/*.rs' '#!?\[(allow|expect)\(' -g '!**/generated/**'
+    report "clippy/rustc allow entries in manifests" \
+      rg -n --glob '**/Cargo.toml' -e '= "allow"' -e 'level *= *"allow"'
+    report "ignored or skipped rust tests" \
+      rg -n --glob 'packages/**/*.rs' '#\[ignore'
+    report "cargo-mutants exclusions" \
+      rg -n --glob '**/mutants.toml' -e 'exclude' -e 'skip'
+    report "float comparison tolerances" \
+      rg -n --glob 'packages/**/*.rs' 'epsilon *= *1e-|max_ulps *= *'
+    report "typescript lint suppressions" \
+      rg -n --glob '**/*.{ts,tsx}' 'oxlint-disable|eslint-disable|@ts-(expect-error|ignore)' -g '!**/generated/**'
+    printf '\nReview these separately from ordinary code changes.\n'
 
 # Format Rust code
 [group('lint')]
@@ -513,6 +583,21 @@ _check mode:
         run_check "dylint" bash -c "just dylint"
       else
         skip "dylint" "cargo-dylint not installed"
+      fi
+      if command -v cargo-hawk >/dev/null 2>&1; then
+        run_check "cargo-hawk" bash -c "just hawk -W warnings"
+      else
+        skip "cargo-hawk" "cargo-hawk not installed"
+      fi
+      if command -v cargo-dylint >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -q 'nightly-2026-07-09'; then
+        run_check "dylint-tob" bash -c "just dylint-tob"
+      else
+        skip "dylint-tob" "Trail of Bits nightly (nightly-2026-07-09) not installed"
+      fi
+      if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
+        run_check "mordant" bash -c "just mordant"
+      else
+        skip "mordant" "no committed mordant baseline"
       fi
       if [[ -f '{{project_dir}}/deny.toml' ]] && command -v cargo-deny >/dev/null 2>&1; then
         run_check "cargo-deny" cargo deny --locked check bans licenses sources

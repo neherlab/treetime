@@ -1,0 +1,46 @@
+# cargo-hawk configuration -- finds unnecessary public surface in the workspace.
+# https://github.com/astral-sh/hawk
+#
+# `[[production]]` names the reachability roots (the shipped binaries). Public
+# items unreachable from a root are candidates for the `hawk::dead_public`
+# diagnostic. `[[exclude]]` silences diagnostics in generated code. `[[override]]`
+# records a single item deliberately kept public despite being unreachable, each
+# with a mandatory reason.
+
+# Shipped command-line binary; reachability root for the whole workspace.
+[[production]]
+package = "app-cli"
+bin = "treetime"
+reason = "the shipped treetime CLI is the primary product entry point"
+
+# Shipped HTTP server binary; second reachability root.
+[[production]]
+package = "app-server"
+bin = "treetime-server"
+reason = "the shipped treetime-server binary is a product entry point"
+
+# Prost-generated protobuf modules in util-usher-mat: machine-generated code
+# whose public surface is dictated by the .proto schema, not by hand.
+[[exclude]]
+crate = "util_usher_mat"
+module = "mutation_detailed"
+reason = "prost-generated from the UShER protobuf schema"
+
+[[exclude]]
+crate = "util_usher_mat"
+module = "parsimony"
+reason = "prost-generated from the UShER protobuf schema"
+
+[[exclude]]
+crate = "util_usher_mat"
+module = "taxodium"
+reason = "prost-generated from the UShER protobuf schema"
+
+# Record intentional exceptions here, one table per item, e.g.:
+#
+# [[override]]
+# lint = "hawk::dead_public"
+# crate = "treetime"
+# item = "some::intentional::api"
+# level = "expect"
+# reason = "part of the stable library API consumed by an external crate"

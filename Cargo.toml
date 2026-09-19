@@ -155,6 +155,23 @@ util-newick = { path = "packages/util-newick" }
 util-phyloxml = { path = "packages/util-phyloxml" }
 util-usher-mat = { path = "packages/util-usher-mat" }
 
+[workspace.metadata.dylint]
+# External Trail of Bits custom-lint libraries loaded by `cargo dylint` for the
+# `dylint-tob` justfile recipe. The local treetime_lints library builds on a
+# pinned nightly and is loaded separately via --lib-path; `just dylint` passes
+# --no-metadata so the fast local run never builds these. mordant is loaded
+# directly by git in its own recipe (also --no-metadata), so only the Trail of
+# Bits libraries live here; they pin their own newer nightly. Each rule was
+# reviewed against its source before being listed.
+libraries = [
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/restriction/assert_eq_arg_misordering" },
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/general/await_holding_span_guard" },
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/general/crate_wide_allow" },
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/restriction/env_literal" },
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/restriction/try_io_result" },
+    { git = "https://github.com/trailofbits/dylint", rev = "747f4aeffa640576e8633e02b8e4e0c3b1a06a1a", pattern = "examples/supplementary/unnamed_constant" },
+]
+
 [workspace.metadata.cargo-shear]
 # bon is available workspace-wide for incremental adoption of the builder pattern
 # (guided by the suggest_builder / needless_builder dylint lints); no member

@@ -1,0 +1,17 @@
+# Configuration for cargo-dylint custom lint libraries.
+# The local treetime_lints library reads its own sections here and falls back to
+# built-in defaults when a section is absent.
+
+# mordant: type-invariant lints (github.com/scarletindustries/mordant).
+# All non-opt-in rule families (state, checks, errors, enums, duplication,
+# naming, keys_locks, comments, unused) stay enabled; pre-existing findings are
+# absorbed by the committed baseline so only new findings fail the mordant gate.
+[mordant]
+baseline = "mordant-baseline.toml"
+
+# unnamed_constant (Trail of Bits, supplementary): flags integer literals that
+# should be named constants. Raised above the default of 10 because this is a
+# numerically dense codebase where small dimension, index, and exponent literals
+# are idiomatic; the ceiling still catches genuinely opaque magic numbers.
+[unnamed_constant]
+threshold = 32
