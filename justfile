@@ -906,3 +906,12 @@ generated-check:
     source '{{project_dir}}/dev/lib/utils.sh'
     source '{{project_dir}}/dev/lib/generated.sh'
     generated_check
+
+# Report reference/golden fixtures that no test uses, from the registry list
+[group('generated')]
+fixtures-unused:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    source '{{project_dir}}/dev/lib/fixtures.sh'
+    fixtures_unused
