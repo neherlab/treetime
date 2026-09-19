@@ -1,28 +1,7 @@
 [workspace]
 resolver = '3'
 
-members = [
-  "packages/app-cli",
-  "packages/app-datasets",
-  "packages/app-napi",
-  "packages/app-output",
-  "packages/app-server",
-  "packages/treetime",
-  "packages/treetime-analytical",
-  "packages/treetime-distribution",
-  "packages/treetime-graph",
-  "packages/treetime-grid",
-  "packages/treetime-io",
-  "packages/treetime-ops",
-  "packages/treetime-schema",
-  "packages/treetime-primitives",
-  "packages/treetime-utils",
-  "packages/treetime-validation",
-  "packages/util-augur-node-data-json",
-  "packages/util-phyloxml",
-  "packages/util-newick",
-  "packages/util-usher-mat",
-]
+members = ["packages/app-cli", "packages/app-datasets", "packages/app-napi", "packages/app-output", "packages/app-server", "packages/treetime", "packages/treetime-analytical", "packages/treetime-distribution", "packages/treetime-graph", "packages/treetime-grid", "packages/treetime-io", "packages/treetime-ops", "packages/treetime-schema", "packages/treetime-primitives", "packages/treetime-utils", "packages/treetime-validation", "packages/util-augur-node-data-json", "packages/util-phyloxml", "packages/util-newick", "packages/util-usher-mat"]
 
 exclude = []
 
@@ -37,13 +16,7 @@ edition = "2024"
 license = "MIT"
 publish = false
 keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
-authors = [
-  "NeherLab <https://neherlab.org>",
-  "Richard Neher",
-  "Pavel Sagulenko",
-  "Emma Hodcroft",
-  "Ivan Aksamentov",
-]
+authors = ["NeherLab <https://neherlab.org>", "Richard Neher", "Pavel Sagulenko", "Emma Hodcroft", "Ivan Aksamentov"]
 
 
 [patch.crates-io]
@@ -69,12 +42,11 @@ xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
 approx = "=0.5.1"
-async-stream = "=0.3.6"
-axum = { version = "=0.8.9", features = ["json"] }
-indicatif = "=0.18.4"
 argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
+async-stream = "=0.3.6"
 auto_ops = "=0.3.0"
+axum = { version = "=0.8.9", features = ["json"] }
 bio = { version = "=2.3.0", features = ["phylogeny"] }
 bon = "=3.9.3"
 bytes = { version = "1.10.1", features = ["serde"] }
@@ -101,6 +73,7 @@ gcollections = "=1.5.0"
 getset = "=0.1.6"
 image = { version = "=0.25.8", features = ["png"] }
 indexmap = { version = "=2.11.4", features = ["rayon", "serde"] }
+indicatif = "=0.18.4"
 indoc = "=2.0.6"
 intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.14.0"
@@ -125,8 +98,10 @@ petgraph = { version = "=0.6.5", features = ["serde", "stable_graph"] }
 plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.1"
 pretty_dtoa = "=0.3.0"
+proptest = "=1.6.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
+quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 rand = { version = "=0.8.5", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
@@ -154,8 +129,6 @@ tokio = { version = "=1.52.3", features = ["full"] }
 tokio-stream = "=0.1.18"
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 traversal = "=0.1.2"
-proptest = "=1.6.0"
-quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 xml = "=1.0.0"
 
 app-datasets = { path = "packages/app-datasets" }

@@ -45,8 +45,8 @@ log = { workspace = true }
 maplit = { workspace = true }
 miette = { workspace = true }
 minijinja = { workspace = true }
-parking_lot = { workspace = true }
 num-traits = { workspace = true }
+parking_lot = { workspace = true }
 plotters = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
