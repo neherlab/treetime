@@ -1,17 +1,9 @@
 use std::env;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Output};
-use treetime_schema::{TreetimeSchemaFormat, generate_schema};
 
 fn main() -> Result<(), Box<dyn Error>> {
-  println!("cargo:rerun-if-changed=../treetime/src");
-
-  let out_dir = PathBuf::from("../app-contracts/src/generated");
-  if let Err(err) = generate_schema(&TreetimeSchemaFormat::All, Some(&out_dir)) {
-    eprintln!("cargo:warning=Schema generation failed: {err}");
-  }
-
   emit_long_version()?;
   Ok(())
 }

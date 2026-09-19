@@ -81,9 +81,6 @@ default = ["clap"]
 clap = []
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
-[build-dependencies]
-treetime-schema = { workspace = true }
-
 [dev-dependencies]
 approx = { workspace = true }
 pretty_assertions = { workspace = true }
