@@ -33,7 +33,8 @@
     "typescript": "7.0.2",
     "vite": "8.0.14",
     "vite-plugin-electron": "0.29.1",
-    "vitest": "4.1.7"
+    "vitest": "4.1.7",
+    "zod": "4.6.5"
   },
   "build": {
     "appId": "org.neherlab.treetime",
