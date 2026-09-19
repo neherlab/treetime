@@ -669,7 +669,7 @@ _check mode:
         skip "knip" "not configured"
         skip "knip-production" "not configured"
       fi
-      skip "generated-freshness" "no freshness command yet"
+      run_check "generated-freshness" bash -c "just generated-check"
       export CARGO_TARGET_DIR='{{test_dir}}' RUSTFLAGS="$(rustflags_test)"
       export KACHE_CACHE_DIR="${kache_base}"; kache_use test
       run_check "tests" cargo -q nextest run --locked --workspace --cargo-quiet --no-fail-fast --hide-progress-bar
