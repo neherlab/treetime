@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/knip@6.35.1/schema.json",
+  "ignoreWorkspaces": ["packages/app-server"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "oxlint.config.ts",
+        "oxlint-plugins/index.js",
+        "oxfmt.config.ts",
+        "vitest.config.ts",
+        "vitest.setup.ts",
+        "test/**/*.test.ts"
+      ],
+      "project": ["*.ts", "oxlint-plugins/**/*.js", "test/**/*.ts"]
+    },
+    "packages/app-contracts": {
+      "entry": ["src/index.ts!", "src/generated/index.ts", "scripts/codegen.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/app-ui": {
+      "entry": ["src/index.ts!"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/app-web": {
+      "entry": ["index.html!", "src/main.tsx!", "vite.config.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/app-desktop": {
+      "entry": [
+        "src/main.ts!",
+        "src/preload.ts!",
+        "renderer/index.html!",
+        "renderer/main.tsx!",
+        "vite.config.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx}"]
+    },
+    "packages/app-napi": {
+      "entry": ["index.js!"],
+      "project": ["*.js"]
+    }
+  }
+}
