@@ -1,3 +1,9 @@
+#![allow(
+  clippy::expect_used,
+  clippy::wildcard_enum_match_arm,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::cli::pipeline::types::{Pipeline, SCHEMA_KEY};
 use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use crate::commands::clock::args::TreetimeClockArgsRaw;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
+)]
+
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;

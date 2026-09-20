@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
+)]
+
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node, coloring,

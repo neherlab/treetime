@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
+)]
+
 use crate::mugration_result::MugrationResult;
 use crate::mugration_tree_output::{build_confidence_map, compute_entropy};
 use eyre::Report;

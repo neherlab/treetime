@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
+)]
+
 #[cfg(any(
   all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
   all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),

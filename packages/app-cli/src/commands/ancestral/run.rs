@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::commands::ancestral::aa_node_data::{
   read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
 };

@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::output_plan::OutputSelection;

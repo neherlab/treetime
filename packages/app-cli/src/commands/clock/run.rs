@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::clock_result::{ClockNodeOut, EdgeOut};

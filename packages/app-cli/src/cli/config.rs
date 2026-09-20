@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use treetime_utils::io::fs::read_file_to_string;
 
@@ -42,7 +42,7 @@ where
 
   // Ids the user supplied on the command line, as opposed to defaults or the config file. Only these
   // override the file.
-  let explicit: HashSet<String> = matches
+  let explicit: BTreeSet<String> = matches
     .ids()
     .filter(|id| matches.value_source(id.as_str()) == Some(ValueSource::CommandLine))
     .map(|id| id.to_string())
@@ -88,7 +88,7 @@ fn merge_value(base: &mut Value, overlay: &Value) {
 /// Arg ids are unique within a command, so a key in `explicit` always denotes a leaf the user set on
 /// the command line; such leaves replace the config value wholesale. Objects that are not themselves
 /// args are flatten containers, descended to reach the explicit leaves inside them.
-fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &HashSet<String>) {
+fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
   let (Value::Object(merged), Value::Object(cli)) = (merged, cli) else {
     return;
   };
@@ -107,7 +107,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::json;
 
-  fn ids(names: &[&str]) -> HashSet<String> {
+  fn ids(names: &[&str]) -> BTreeSet<String> {
     names.iter().map(|s| (*s).to_owned()).collect()
   }
 

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use clap::Args;
 use serde::Serialize;
 use std::thread::available_parallelism;

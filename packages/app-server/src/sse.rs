@@ -1,3 +1,9 @@
+#![allow(
+  clippy::disallowed_methods,
+  clippy::expect_used,
+  reason = "server-sent-event sink: an unbounded channel avoids blocking request handlers on slow clients, and stream setup expects hold for a freshly built channel"
+)]
+
 use crate::error::AppError;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};

@@ -1,3 +1,10 @@
+#![allow(
+  clippy::field_scoped_visibility_modifiers,
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "plain crate-internal output record: pub(crate) fields are the intended interface, casts are counts to f64, and node access expects hold by the graph invariant"
+)]
+
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};

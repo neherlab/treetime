@@ -1,9 +1,14 @@
+#![allow(
+  clippy::wildcard_enum_match_arm,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use eyre::Report;
 use itertools::Itertools;
 use minijinja::{Environment, UndefinedBehavior};
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 use treetime_utils::{make_error, make_report};
 
 /// Namespaces available to a template, as they appear at the root of a `{{ ... }}` expression.
@@ -67,15 +72,15 @@ impl Interpolator {
   ///
   /// Empty when the leaf has no template. `nested = true` yields the full dotted path so the caller
   /// can validate each reference against the namespace it names.
-  pub fn references(&self, leaf: &str) -> Result<HashSet<String>, Report> {
+  pub fn references(&self, leaf: &str) -> Result<BTreeSet<String>, Report> {
     if !leaf.contains("{{") {
-      return Ok(HashSet::new());
+      return Ok(BTreeSet::new());
     }
     let template = self
       .env
       .template_from_str(leaf)
       .map_err(|err| minijinja_error("template", leaf, &err))?;
-    Ok(template.undeclared_variables(true))
+    Ok(template.undeclared_variables(true).into_iter().collect())
   }
 }
 

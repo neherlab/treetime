@@ -1,3 +1,8 @@
+#![allow(
+  clippy::integer_division,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use itertools::Itertools;
 use strsim::levenshtein;
 

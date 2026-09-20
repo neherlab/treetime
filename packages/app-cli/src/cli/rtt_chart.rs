@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::cli::rtt_chart_render::draw_chart;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;

@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use indicatif::{ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, ProgressSink};

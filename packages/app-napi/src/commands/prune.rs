@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
+)]
+
 //! N-API `prune` request shape and orchestration.
 
 use crate::commands::support::{default_output_plan, default_topology_order};

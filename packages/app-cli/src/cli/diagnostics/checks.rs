@@ -1,3 +1,8 @@
+#![allow(
+  clippy::wildcard_enum_match_arm,
+  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
+)]
+
 use crate::cli::diagnostics::source::{RawDiagnostic, escape_pointer};
 use crate::cli::pipeline::interpolate::{Interpolator, NAMESPACES};
 use crate::cli::pipeline::resolve::{STEP_REF, TOP_LEVEL_KEYS};
