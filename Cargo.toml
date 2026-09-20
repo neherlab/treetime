@@ -265,7 +265,7 @@ unknown_lints = "deny"
 # is absent and the cfg is never set. A suppression therefore applies only where
 # its lint library is actually loaded.
 unexpected_cfgs = { level = "warn", check-cfg = [
-  'cfg(dylint_lib, values("treetime_lints", "assert_eq_arg_misordering", "await_holding_span_guard", "crate_wide_allow", "env_literal", "try_io_result", "unnamed_constant", "mordant"))',
+  'cfg(dylint_lib, values("treetime_lints", "assert_eq_arg_misordering", "await_holding_span_guard", "crate_wide_allow", "env_literal", "try_io_result", "unnamed_constant", "wrong_serialize_struct_arg", "mordant"))',
 ] }
 
 

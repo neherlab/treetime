@@ -21,6 +21,7 @@ crate_wide_allow = { path = "crate_wide_allow", features = ["rlib"] }
 env_literal = { path = "env_literal", features = ["rlib"] }
 try_io_result = { path = "try_io_result", features = ["rlib"] }
 unnamed_constant = { path = "unnamed_constant", features = ["rlib"] }
+wrong_serialize_struct_arg = { path = "wrong_serialize_struct_arg", features = ["rlib"] }
 
 dylint_linting = { workspace = true }
 

@@ -15,4 +15,5 @@ pub fn register_lints(sess: &rustc_session::Session, lint_store: &mut rustc_lint
     env_literal::register_lints(sess, lint_store);
     try_io_result::register_lints(sess, lint_store);
     unnamed_constant::register_lints(sess, lint_store);
+    wrong_serialize_struct_arg::register_lints(sess, lint_store);
 }

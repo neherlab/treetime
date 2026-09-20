@@ -461,6 +461,19 @@ dylint-all *args:
       exit 1
     fi
 
+# Run one lint from the vendored Trail of Bits library
+[group('lint')]
+dylint-trailofbits lint *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    unset RUSTFLAGS
+    lint="${1}"
+    shift
+    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints -A warnings -W ${lint}" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    kache_use dylint
+    nicely cargo dylint --quiet --lib trailofbits -- --quiet --locked --workspace --all-targets "$@"
+
 # Apply every machine-applicable Dylint fix
 [group('lint')]
 dylint-all-fix *args:
