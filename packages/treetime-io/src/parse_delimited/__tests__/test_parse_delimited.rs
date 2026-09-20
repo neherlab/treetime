@@ -63,7 +63,6 @@ mod tests {
 
   #[test]
   fn test_parse_delimited_str_trailing_delimiter() -> Result<(), Report> {
-    // BufRead::split does not produce trailing empty element
     let result: Vec<String> = parse_delimited_str("A,B,", b',').try_collect()?;
     assert_eq!(result, vec!["A", "B"]);
     Ok(())
@@ -78,7 +77,6 @@ mod tests {
 
   #[test]
   fn test_parse_delimited_str_only_delimiters() -> Result<(), Report> {
-    // BufRead::split does not include trailing empty element
     let result: Vec<String> = parse_delimited_str(",,", b',').try_collect()?;
     assert_eq!(result, vec!["", ""]);
     Ok(())

@@ -137,7 +137,6 @@ fn print_fake_edges<W>(mut writer: W, node_keys: &[GraphNodeKey]) -> Result<(), 
 where
   W: Write,
 {
-  // Fake edges needed to align a set of nodes beautifully
   let fake_edges = iproduct!(node_keys, node_keys)
     .enumerate()
     .map(|(i, (left, right))| {

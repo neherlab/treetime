@@ -9,7 +9,6 @@ use std::path::Path;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
 
-/// CDS-name attribute priority matching nextclade's `NAME_ATTRS_CDS` in `gff3_reader.rs`.
 const NAME_ATTRS_CDS: &[&str] = &[
   "Name",
   "name",
@@ -153,7 +152,6 @@ fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec<GffCdsFeat
         return make_error!("CDS feature rows for CDS '{name}' span multiple sequence IDs");
       }
 
-      // 5'-to-3' order: ascending for plus strand (already sorted), reversed for minus strand.
       if strand == "-" {
         rows.reverse();
       }

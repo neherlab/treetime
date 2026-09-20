@@ -48,10 +48,6 @@ impl AuspiceTreeNodeAttrF64 {
   }
 }
 
-/// Numeric date attribute for Auspice v2 JSON.
-///
-/// Auspice schema: `num_date` is an object with required `value` (decimal year)
-/// and optional `confidence` (array of exactly 2 numbers: [lower, upper]).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuspiceNumDate {
   pub value: f64,
@@ -288,20 +284,7 @@ pub enum DivergenceUnits {
 }
 
 impl DivergenceUnits {
-  ///
-  /// Guesses the unit of measurement of divergence, based on the greatest value of divergence on the tree
-  ///
   pub fn guess_from_max_divergence(max_divergence: f64) -> DivergenceUnits {
-    // FIXME: This should be fixed upstream in augur & auspice, but it is hard to do without breaking Auspice JSON v2 format.
-    // Taken from: https://github.com/nextstrain/auspice/blob/6a2d0f276fccf05bfc7084608bb0010a79086c83/src/components/tree/phyloTree/renderers.js#L376
-    // A quote from there:
-    //  > Prior to Jan 2020, the divergence measure was always "subs per site per year"
-    //  > however certain datasets changed this to "subs per year" across entire sequence.
-    //  > This distinction is not set in the JSON, so in order to correctly display the rate
-    //  > we will "guess" this here. A future augur update will export this in a JSON key,
-    //  > removing the need to guess
-    //
-    // HACK: Arbitrary threshold to make a guess
     const HACK_MAX_DIVERGENCE_THRESHOLD: f64 = 5.0;
     if max_divergence <= HACK_MAX_DIVERGENCE_THRESHOLD {
       DivergenceUnits::NumSubstitutionsPerYearPerSite
@@ -338,21 +321,18 @@ pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
 pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
 
 impl AuspiceTree {
-  /// Returns iterator for breadth-first tree traversal
   pub fn iter_breadth_first<'a>(
     &'a self,
   ) -> Bft<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
     Bft::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
   }
 
-  /// Returns iterator for depth-first pre-order tree traversal
   pub fn iter_depth_first_preorder<'a>(
     &'a self,
   ) -> DftPre<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
     DftPre::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
   }
 
-  /// Returns iterator for depth-first post-order tree traversal
   pub fn iter_depth_first_postorder<'a>(
     &'a self,
   ) -> DftPost<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
@@ -366,7 +346,6 @@ impl AuspiceTree {
     }
   }
 
-  /// Iterates over nodes and applies a function to each. Immutable version.
   pub fn map_nodes(&self, action: fn((usize, &AuspiceTreeNode))) {
     Self::map_nodes_rec(0, &self.tree, action);
   }
@@ -378,7 +357,6 @@ impl AuspiceTree {
     }
   }
 
-  /// Iterates over nodes and applies a function to each. Mutable version.
   pub fn map_nodes_mut(&mut self, action: fn((usize, &mut AuspiceTreeNode))) {
     Self::map_nodes_mut_rec(0, &mut self.tree, action);
   }

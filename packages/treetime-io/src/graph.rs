@@ -1,6 +1,5 @@
 use util_newick::NwkStyle;
 
-/// Dispatch tag for tree output formats. Used as keys in the resolved output map.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TreeWriteKind {
   Nwk(NwkWriteSpec),

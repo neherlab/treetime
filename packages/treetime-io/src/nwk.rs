@@ -22,22 +22,12 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
-/// Per-node metadata parsed from the Newick tree, before any alignment is attached.
-///
-/// `name` is the node's name: the parsed name for named nodes and the synthetic `NODE_xxxxx` name
-/// that `assign_node_names` assigns to internals, `None` where a node has no name. `confidence` is
-/// the node's Newick branch support (bootstrap or posterior), `None` where a node carried no
-/// confidence annotation.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct NwkNodeMeta {
   pub name: Option<String>,
   pub confidence: Option<f64>,
 }
 
-/// One node's reconstruction input: its tree metadata merged with its attached alignment sequence.
-///
-/// `name` and `confidence` come from the Newick parse; `aln` and `desc` come from the alignment.
-/// `aln` and `desc` are `None` for internal nodes, which carry no input sequence.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NwkFastaNodeInput {
   pub name: Option<String>,
@@ -46,15 +36,11 @@ pub struct NwkFastaNodeInput {
   pub desc: Option<String>,
 }
 
-/// One edge's reconstruction input: the raw input-tree branch length, `None` where the edge carried
-/// no `:length`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct NwkFastaEdgeInput {
   pub branch_length: Option<f64>,
 }
 
-/// The merged tree-and-alignment input passed through the reconstruction pipeline: the graph, the
-/// per-node input keyed by the graph's own node keys, and the per-edge input keyed by its edge keys.
 #[derive(Debug)]
 pub struct NwkFastaInput {
   pub graph: Graph,
@@ -63,12 +49,6 @@ pub struct NwkFastaInput {
 }
 
 impl NwkFastaInput {
-  /// Merge a parsed Newick tree with alignment records, matching each leaf to its record by name and
-  /// moving the matched sequence and description into the node's input.
-  ///
-  /// Leaves with no matching record get `aln = None`; a later completion step may fill them. Internal
-  /// nodes always get `aln = None`. On duplicate record names the first record wins, matching the
-  /// attachment order. Extra records that match no leaf are ignored.
   pub fn from_parse_and_aln(parse: NwkParse, aln: Vec<FastaRecord>) -> Self {
     let NwkParse {
       graph,
@@ -85,14 +65,10 @@ impl NwkFastaInput {
     Self { graph, nodes, edges }
   }
 
-  /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
-  /// output writers consume it.
   pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
     self.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect()
   }
 
-  /// The per-edge branch-length map, keyed by edge id, as the reconstruction and output writers
-  /// consume it.
   pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     self
       .edges
@@ -102,13 +78,6 @@ impl NwkFastaInput {
   }
 }
 
-/// Build the per-node reconstruction input map from node names and alignment records, matching each
-/// leaf to its record by name (first record wins on duplicate names) and setting `confidence` to
-/// `None`.
-///
-/// Leaves with no matching record get `aln = None`; callers that require a sequence for every leaf
-/// complete the alignment first. Internal nodes always get `aln = None`. Extra records that match no
-/// leaf are ignored.
 pub fn nwk_fasta_node_inputs(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -166,13 +135,6 @@ fn build_node_inputs(
     .collect()
 }
 
-/// A parsed Newick tree: the graph together with the per-node metadata and per-edge branch lengths.
-///
-/// `nodes` is keyed by the graph's own node keys and holds each node's name and branch support as
-/// values propagated from the parse rather than off the node payload.
-///
-/// `branch_lengths` is keyed by the graph's own edge keys and holds each edge's raw input-tree branch
-/// length, `None` where an edge carried no `:length`, as a value rather than off the edge payload.
 #[derive(Debug)]
 pub struct NwkParse {
   pub graph: Graph,
@@ -181,13 +143,10 @@ pub struct NwkParse {
 }
 
 impl NwkParse {
-  /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
-  /// output writers consume it.
   pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
     self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
   }
 
-  /// The per-node branch-support map, keyed by node id, as the output writers consume it.
   pub fn confidences(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
     self.nodes.iter().map(|(key, meta)| (*key, meta.confidence)).collect()
   }
@@ -258,8 +217,6 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
 
   graph.build()?;
 
-  // `assign_node_names` fills synthetic `NODE_xxxxx` names for unnamed internals. It operates on a
-  // name-only map, so extract names, assign, then merge the assigned names back into the metadata.
   let names = nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect();
   let names = assign_node_names(names, &graph)?;
   for (key, name) in names {
@@ -277,14 +234,11 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
 
 #[derive(Clone, SmartDefault)]
 pub struct NwkWriteOptions {
-  /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
   #[default(NwkStyle::Plain)]
   pub style: NwkStyle,
 
-  /// Format node weights keeping this many significant digits
   pub weight_significant_digits: Option<u8>,
 
-  /// Format node weights keeping this many decimal digits
   pub weight_decimal_digits: Option<i8>,
 }
 
@@ -325,7 +279,6 @@ pub fn nwk_write_str(
   nwk_write_str_with(graph, names, weights, options, &providers)
 }
 
-/// Return the Newick representation of a graph, augmented by external node comment providers.
 pub fn nwk_write_str_with(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -349,12 +302,6 @@ pub fn nwk_write(
   nwk_write_with(writer, graph, names, weights, options, &providers)
 }
 
-/// Write a graph in Newick format, taking node names and edge weights from explicit value maps and
-/// node comments from external comment providers.
-///
-/// `names` supplies each node's display label and `weights` each edge's branch weight, both keyed by
-/// the graph's own keys and kept as `Option` so a missing label writes no name and a missing weight
-/// writes no `:weight`. Comments come solely from the providers.
 pub fn nwk_write_with(
   writer: &mut impl Write,
   graph: &Graph,
@@ -454,14 +401,10 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   )
 }
 
-/// Return extra node comments for a graph node during Newick or Nexus serialization.
 pub trait NodeCommentProvider {
   fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
 }
 
-/// Compose multiple node comment providers.
-///
-/// Providers are queried in insertion order. Later providers override earlier providers on key conflicts.
 #[must_use]
 #[derive(Default)]
 pub struct CommentProviders<'a> {

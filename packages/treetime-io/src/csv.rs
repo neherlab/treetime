@@ -11,7 +11,6 @@ use treetime_utils::io::fs::{extension, read_file_to_string};
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 
-/// Writes CSV. Each row is a serde-annotated struct.
 pub struct CsvStructWriter<W: Write + Send> {
   pub writer: CsvWriterImpl<W>,
 }
@@ -28,7 +27,6 @@ impl<W: Write + Send> CsvStructWriter<W> {
   }
 }
 
-/// Writes CSV files. Each row is a serde-annotated struct.
 pub struct CsvStructFileWriter {
   pub filepath: PathBuf,
   pub writer: CsvStructWriter<Box<dyn Write + Send>>,
@@ -55,7 +53,6 @@ pub trait VecWriter {
   fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report>;
 }
 
-/// Writes CSV. Each row is a vec of strings.
 pub struct CsvVecWriter<W: Write + Send> {
   pub headers: Vec<String>,
   pub writer: CsvWriterImpl<W>,
@@ -79,7 +76,6 @@ impl<W: Write + Send> VecWriter for CsvVecWriter<W> {
   }
 }
 
-/// Writes CSV files. Each row is a vec of strings.
 pub struct CsvVecFileWriter {
   pub filepath: PathBuf,
   pub headers: Vec<String>,
@@ -106,14 +102,12 @@ impl VecWriter for CsvVecFileWriter {
   }
 }
 
-/// Parse entire CSV file
 pub fn csv_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<Vec<T>, Report> {
   let filepath = filepath.as_ref();
   let data = read_file_to_string(filepath)?;
   csv_read_str(data)
 }
 
-/// Parse entire CSV string
 pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result<Vec<T>, Report> {
   let reader = CsvReaderBuilder::new()
     .has_headers(true)
@@ -124,13 +118,10 @@ pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Res
     .collect::<Result<Vec<T>, Report>>()
 }
 
-/// Default candidate column names for the taxon identifier linking CSV rows to tree tips.
-/// Consumed by `get_col_name` auto-detection and by CLI `MetadataIdArgs` defaults.
 pub fn default_name_candidates() -> Vec<String> {
   vec!["strain".to_owned(), "name".to_owned(), "accession".to_owned()]
 }
 
-/// Return the default metadata delimiter candidates.
 pub fn default_metadata_delimiters() -> Vec<char> {
   vec![',', '\t', ';']
 }
@@ -167,7 +158,6 @@ pub fn get_col_name(
   }
 }
 
-/// Select a delimiter from a bounded sample of the decompressed input header.
 pub fn detect_csv_delimiter<R: BufRead + ?Sized>(
   reader: &mut R,
   filepath: impl AsRef<Path>,
@@ -218,7 +208,6 @@ pub fn detect_csv_delimiter<R: BufRead + ?Sized>(
   }
 }
 
-/// Normalize metadata header labels for column matching.
 pub fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
   headers
     .iter()

@@ -13,14 +13,11 @@ use util_newick::NwkStyle;
 
 #[derive(Clone, SmartDefault)]
 pub struct NexWriteOptions {
-  /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
   #[default(NwkStyle::Plain)]
   pub style: NwkStyle,
 
-  /// Format node weights keeping this many significant digits
   pub weight_significant_digits: Option<u8>,
 
-  /// Format node weights keeping this many decimal digits
   pub weight_decimal_digits: Option<i8>,
 }
 
@@ -61,7 +58,6 @@ pub fn nex_write_str(
   nex_write_str_with(graph, names, weights, options, &providers)
 }
 
-/// Return the Nexus representation of a graph, augmented by external node comment providers.
 pub fn nex_write_str_with(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -85,8 +81,6 @@ pub fn nex_write(
   nex_write_with(w, graph, names, weights, options, &providers)
 }
 
-/// Write a graph in Nexus format, passing node names, edge weights, and comment providers through to
-/// the embedded Newick tree.
 pub fn nex_write_with(
   w: &mut impl Write,
   graph: &Graph,
