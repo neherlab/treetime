@@ -168,3 +168,5 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -euxo pipefail >/de
 && mise reshim \
 && mise ls \
 && just --version
+
+ENV RUSTFLAGS="-Clink-arg=-B/usr/lib/${HOST_TUPLE_DEBIAN}/"
