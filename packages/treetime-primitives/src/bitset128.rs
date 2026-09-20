@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "128-bit ASCII set: casts move between u8 bit indices, char code points, and the u128 mask, all within the < 128 domain the type is built for"
-)]
-
 use crate::seq_char::AsciiChar;
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use itertools::Itertools;
@@ -42,6 +37,7 @@ impl BitSet128 {
     self.bits == 0
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   pub fn len(&self) -> usize {
     self.bits.count_ones() as usize
   }
@@ -192,10 +188,12 @@ impl BitSet128 {
     }
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   pub fn first(&self) -> Option<AsciiChar> {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   pub fn last(&self) -> Option<AsciiChar> {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.ilog2() as u8))
   }
@@ -260,12 +258,14 @@ impl<'a> FromIterator<&'a u8> for BitSet128 {
 }
 
 impl FromIterator<char> for BitSet128 {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
     iter.into_iter().map(|c| c as u8).collect()
   }
 }
 
 impl<'a> FromIterator<&'a char> for BitSet128 {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> Self {
     iter.into_iter().map(|&c| c as u8).collect()
   }
@@ -302,12 +302,14 @@ impl From<u8> for BitSet128 {
 }
 
 impl From<char> for BitSet128 {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn from(c: char) -> Self {
     BitSet128 { bits: 1 << (c as u8) }
   }
 }
 
 impl std::fmt::Display for BitSet128 {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let chars: String = (0..128)
       .filter(|&i| (self.bits & (1 << i)) != 0)
