@@ -134,9 +134,6 @@ mod tests {
 
   #[test]
   fn test_distribution_neglog_normalize_function_shifts_peak_to_zero() {
-    // The NegLog ordinate is -ln(p). Normalization divides every probability by the peak, which
-    // is subtracting the minimum ordinate, so the mode becomes 0 = -ln(1). Ordinate differences
-    // (log-likelihood ratios) are preserved exactly: min(1004, 1000, 1003) = 1000.
     let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
     let normalized = distribution.normalize();
     let expected = array![4.0, 0.0, 3.0];
@@ -148,7 +145,6 @@ mod tests {
 
   #[test]
   fn test_distribution_neglog_normalize_is_idempotent() {
-    // An already-normalized distribution has minimum ordinate 0, so re-normalizing shifts by zero.
     let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
     let once = distribution.normalize();
     let twice = once.normalize();
@@ -192,7 +188,6 @@ mod tests {
 
   #[test]
   fn test_distribution_neglog_min_value_empty_is_infinite() {
-    // An empty distribution carries no probability, encoded as +inf under NegLog (-ln(0)).
     let min_value = Distribution::<NegLog>::Empty.min_value();
     assert!(min_value.is_infinite() && min_value.is_sign_positive());
   }

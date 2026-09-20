@@ -3,10 +3,6 @@ use crate::distribution_scaled::scaled::ScaledDistribution;
 use eyre::Report;
 use treetime_utils::make_error;
 
-/// Divide one scaled distribution by another.
-///
-/// Delegates to distribution_division for the inner (normalized) distributions,
-/// then combines log_scales (subtraction for division).
 pub fn scaled_distribution_division(
   dividend: &ScaledDistribution,
   divisor: &ScaledDistribution,

@@ -44,10 +44,6 @@ fn try_extract_aligned_function_arrays<'a>(
   Some(AlignedFunctionArrays { arrays, x_min, dx })
 }
 
-/// Multiply two scaled distributions.
-///
-/// Delegates to distribution_multiplication for the inner (normalized) distributions,
-/// then combines log_scales.
 pub fn scaled_distribution_multiplication(
   a: &ScaledDistribution,
   b: &ScaledDistribution,
@@ -69,11 +65,6 @@ pub fn scaled_distribution_multiplication(
   Ok(ScaledDistribution::from_parts(combined_log_scale, normalized_product))
 }
 
-/// Multiply many scaled distributions.
-///
-/// When all inputs are Function distributions with matching grids, delegates
-/// to `treetime_ops::multiply_many_lazy_normalize` for validated numerical
-/// stability. Otherwise falls back to pairwise multiplication.
 pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) -> Result<ScaledDistribution, Report> {
   match distributions {
     [] => Ok(ScaledDistribution::default()),

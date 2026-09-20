@@ -14,13 +14,6 @@ mod tests {
 
   use self::helpers::{DistributionVariant, distribution};
 
-  /// Analytic oracle: convolving two unit-variance Gaussians yields a Gaussian with variance
-  /// `sigma1^2 + sigma2^2 = 2` and mean `mu1 + mu2 = 0`. In NegLog the ordinate is the negative
-  /// log likelihood `y(t) = (t - mu)^2 / (2 sigma^2)`, so the result must peak at `t = 0` with
-  /// near-peak curvature `1 / (2 * 2)`: `y(1) - y(0) = 0.25` and `y(2) - y(0) = 1.0`.
-  ///
-  /// Exercises the plain-space FFT round-trip in the trusted bulk. The far tails (reconstructed by
-  /// log-linear fit) need separate validation once this path is wired into the pipeline.
   #[test]
   fn test_convolve_neglog_gaussian_variances_add() -> Result<(), Report> {
     let gaussian = |sigma: f64| -> Result<DistributionNegLog, Report> {
@@ -55,7 +48,6 @@ mod tests {
     #[case] right: DistributionVariant,
     #[case] expected: &str,
   ) {
-    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
     assert_error!(distribution_convolution(&distribution(left), &distribution(right)), expected);
   }
 
@@ -79,16 +71,10 @@ mod tests {
 
   #[test]
   fn test_convolution_range_range_triangle() {
-    // Triangle case: equal-width ranges always produce triangles with uniform spacing
     let a = Distribution::range((2.0, 4.0), 3.0);
     let b = Distribution::range((6.0, 8.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // start = 2.0 + 6.0 = 8.0
-      // end = 4.0 + 8.0 = 12.0
-      // peak_start = max(2.0+6.0, 4.0+6.0) = 10.0
-      // peak_end = min(4.0+8.0, 2.0+8.0) = 10.0
-      // Peak amplitude = 3.0 * 2.0 = 6.0
       let x = array![8.0, 10.0, 12.0];
       let y = array![0.0, 6.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -102,9 +88,6 @@ mod tests {
     let b = Distribution::range((6.0, 9.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // Trapezoid: start=8.0, peak_start=10.0, peak_end=11.0, end=13.0
-      // Non-uniform spacing (1, 2, 1.5, 2), so resampled to uniform grid
-      // With dx=1.0 (smallest spacing), the uniform grid is:
       let x = array![8.0, 9.0, 10.0, 11.0, 12.0, 13.0];
       let y = array![0.0, 3.0, 6.0, 6.0, 3.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -118,8 +101,6 @@ mod tests {
     let b = Distribution::range((3.0, 7.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // Trapezoid: start=3.0, peak_start=5.0, peak_end=7.0, end=9.0
-      // Uniform spacing (dx=2.0), so no resampling needed
       let x = array![3.0, 5.0, 7.0, 9.0];
       let y = array![0.0, 2.0, 2.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -152,8 +133,6 @@ mod tests {
     let f = Distribution::function(x, y).unwrap();
     let actual = distribution_convolution(&r, &f).unwrap();
 
-    // Convolution routes through a shared log-space peak-normalization, so the plain result carries
-    // ULP-level round-trip noise. Compare the grid exactly and the amplitudes at a tight tolerance.
     let expected_t = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
     let expected_y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
     assert_eq!(expected_t, actual.t());
@@ -180,7 +159,6 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_basic() {
-    // Simple test with aligned grids
     let a_x = array![0.0, 1.0, 2.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
@@ -191,7 +169,6 @@ mod tests {
 
     let actual = distribution_convolution(&a, &b).unwrap();
 
-    // Shared log-space peak-normalization adds ULP-level round-trip noise to the plain result.
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![1.0, 4.0, 5.0, 2.0];
     assert_eq!(expected_t, actual.t());
@@ -225,10 +202,6 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  /// Convolution is a Minkowski sum, so two mass-bearing operands on disjoint grids still produce a
-  /// non-empty result whose support is the sum of the grids. This is why the empty-result guard
-  /// models a mass-bearing convolution operand as unbounded: only an actually empty operand may
-  /// yield `Empty`, never disjoint grids (which would be legitimate empties under multiplication).
   #[test]
   fn test_convolution_disjoint_grids_is_not_empty() {
     let a = Distribution::function(array![0.0, 1.0], array![1.0, 1.0]).unwrap();
@@ -240,7 +213,6 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_different_spacing() {
-    // Test with different grid spacings to ensure proper resampling
     let a_x = array![0.0, 0.5, 1.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
@@ -251,8 +223,6 @@ mod tests {
 
     let actual = distribution_convolution(&a, &b).unwrap();
 
-    // Shared log-space peak-normalization and the plain-space FFT add ULP-level round-trip noise to
-    // the plain result. Compare the grid exactly and the amplitudes at a tight tolerance.
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![0.5, 2.0, 2.0, 0.5];
     assert_eq!(expected_t, actual.t());
@@ -261,7 +231,6 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_zero_width() {
-    // Test point distribution convolved with function
     let a = Distribution::point(5.0, 1.0);
 
     let b_x = array![1.0, 2.0];
@@ -279,11 +248,9 @@ mod tests {
 
   #[test]
   fn test_backward_pass_temporal_direction() -> Result<(), Report> {
-    // Test the specific use case in backward pass: parent_time = child_time + (-branch_length)
     let child_time_dist = Distribution::point(2013.0, 1.0);
     let branch_length_dist = Distribution::point(2.5, 1.0);
 
-    // In backward pass, we negate the branch distribution
     let negated_branch = branch_length_dist.negate()?;
     let actual = distribution_convolution(&child_time_dist, &negated_branch)?;
 
@@ -294,7 +261,6 @@ mod tests {
 
   #[test]
   fn test_forward_pass_temporal_direction() {
-    // Test the forward pass: child_time = parent_time + branch_length
     let parent_time_dist = Distribution::point(2010.0, 1.0);
     let branch_length_dist = Distribution::point(1.5, 1.0);
 
@@ -306,7 +272,6 @@ mod tests {
 
   #[test]
   fn test_convolution_with_uncertainty() {
-    // Test convolution with uncertainty distributions (functions)
     let parent_x = array![2010.0, 2010.5, 2011.0];
     let parent_y = array![0.2, 0.6, 0.2];
     let parent_dist = Distribution::function(parent_x, parent_y).unwrap();
@@ -317,21 +282,16 @@ mod tests {
 
     let actual = distribution_convolution(&parent_dist, &branch_dist).unwrap();
 
-    // Shared log-space peak-normalization adds ULP-level round-trip noise to the plain result.
     let expected_t = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
     let expected_y = array![0.03, 0.13, 0.18, 0.13, 0.03];
     assert_eq!(expected_t, actual.t());
     pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
   }
 
-  /// Regression: small dx values caused "x array must be uniformly spaced" when grid
-  /// x-arrays accumulated floating-point rounding errors over many points. The fix
-  /// avoids the roundtrip through explicit x-arrays by using from_start_dx_values.
   #[test]
   fn test_convolution_convolve_small_dx_function_function() -> Result<(), Report> {
     let dx = 1e-7;
     let num_points = 500;
-    // Constant distributions: convolution output length = n_a + n_b - 1 = 999
     let values = Array1::from_elem(num_points, 1.0);
     let dist_a: Distribution =
       Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values.clone())?);
@@ -340,8 +300,6 @@ mod tests {
     let actual = distribution_convolution(&dist_a, &dist_b)?;
     assert!(matches!(actual, Distribution::Function(_)));
 
-    // Verify structural properties derived from convolution theory:
-    // output length = n_a + n_b - 1, output dx preserved, output x_min = x_min_a + x_min_b
     let Distribution::Function(result_fn) = actual else {
       return Err(eyre::eyre!("expected Function variant"));
     };
@@ -352,8 +310,6 @@ mod tests {
     Ok(())
   }
 
-  /// Regression: convolution_range_function built its result via Distribution::function(t_out, y_out)
-  /// where t_out was generated from grid parameters and then validated back through Grid::from_array.
   #[test]
   fn test_convolution_convolve_small_dx_range_function() -> Result<(), Report> {
     let dx = 1e-7;
@@ -366,7 +322,6 @@ mod tests {
     let actual = distribution_convolution(&range, &func)?;
     assert!(matches!(actual, Distribution::Function(_)));
 
-    // Range+function preserves the function's grid spacing and point count
     let Distribution::Function(f) = actual else {
       return Err(eyre::eyre!("expected Function variant"));
     };
@@ -375,12 +330,6 @@ mod tests {
     Ok(())
   }
 
-  /// The fine-grid convolution result is coarsened to the coarser operand spacing. When the trusted
-  /// bulk is narrower than half a coarse cell, `Grid::from_range_dx` cannot build a `>= 2`-point
-  /// coarse grid, so `coarsen_convolution` must keep the fine-grid result unchanged rather than fail.
-  ///
-  /// Oracle: `Grid::from_range_dx(0.0, 0.02, 1.0)` rejects a single-point grid, so the coarse
-  /// spacing is unrepresentable and the fine result is the only valid output.
   #[test]
   fn test_coarsen_convolution_narrow_range_keeps_fine_grid() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.01, array![1.0, 2.0, 1.0])?;
@@ -395,8 +344,6 @@ mod tests {
     Ok(())
   }
 
-  /// A trusted bulk exactly `0.5 * coarse_dx` wide rounds up to a two-point coarse grid, so it
-  /// coarsens rather than staying fine. Oracle: `Grid::from_range_dx(0.0, 0.5, 1.0)` yields two points.
   #[test]
   fn test_coarsen_convolution_half_cell_range_resamples_to_two_points() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.25, array![1.0, 2.0, 1.0])?;
@@ -412,8 +359,6 @@ mod tests {
     Ok(())
   }
 
-  /// A wide trusted bulk coarsens to the coarse operand spacing. Oracle: `Grid::from_range_dx(0.0,
-  /// 4.0, 1.0)` yields five points at spacing `1.0`, the grid `resample_dx(1.0)` targets.
   #[test]
   fn test_coarsen_convolution_wide_range_resamples_to_coarse_spacing() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.5, Array1::from_elem(9, 1.0))?;

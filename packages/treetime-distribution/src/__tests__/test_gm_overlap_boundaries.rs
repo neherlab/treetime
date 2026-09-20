@@ -33,8 +33,6 @@ mod tests {
       Operation::Multiply => distribution_multiplication(&left, &right)?,
     };
 
-    // Oracle: v0 `Distribution.multiply()` and `Distribution.divide()` in
-    // packages/legacy/treetime/treetime/distribution.py:82-185.
     pretty_assert_eq!(expected.kind(), DistributionKind::from_distribution(&actual));
     let [expected_start, expected_end] = expected.bounds();
     let (actual_start, actual_end) = actual.time_bounds().unwrap();
@@ -43,7 +41,6 @@ mod tests {
 
     if let Some([expected_start_value, expected_end_value]) = expected.endpoint_values() {
       let actual = [actual.eval(expected_start)?, actual.eval(expected_end)?];
-      // V0 clips vectorized endpoint evaluation inward by TINY_NUMBER=1e-12.
       pretty_assert_abs_diff_eq!(expected_start_value, actual[0], epsilon = 1e-12);
       pretty_assert_abs_diff_eq!(expected_end_value, actual[1], epsilon = 1e-12);
     }

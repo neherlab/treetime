@@ -13,10 +13,6 @@ mod tests {
 
   #[test]
   fn test_distribution_function_shift_y_shifts_values_and_preserves_tails() -> Result<(), Report> {
-    // shift_y adds a constant to every ordinate and keeps the grid and both out-of-support tails,
-    // the additive counterpart of scale_y used by NegLog normalization. Subtracting the minimum
-    // ordinate (1000) shifts the peak to 0 while the soft tail laws carry through unchanged (they are
-    // edge-relative and read the shifted edge on evaluation).
     let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 });
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1004.0, 1000.0, 1003.0])?
@@ -31,10 +27,6 @@ mod tests {
 
   #[test]
   fn test_distribution_function_shift_y_preserves_fitted_approach_law() -> Result<(), Report> {
-    // NegLog normalization is a pure shift, so a fitted boundary law must survive it: the hard
-    // approach law is edge-relative (stores only the exponent `b` and the immovable `t_hard`) and
-    // shift-invariant, so subtracting the peak ordinate leaves it identical while evaluation reads
-    // the shifted edge. This locks the routing of `shift_y` through the law-preserving grid shift.
     let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law))?;
@@ -145,12 +137,6 @@ mod tests {
     pretty_assert_ulps_eq!(f.interp_many(&query)?, expected);
     Ok(())
   }
-
-  // Oracle: the two functions represent the same distribution on grid [0, 1, 2, 3]. Its mode is
-  // at t = 1.0 (probability 5.0, the largest). Under `Plain` the ordinate is probability, so the
-  // mode is the maximum ordinate. Under `NegLog` the ordinate is -ln(probability), so the mode is
-  // the minimum ordinate. Selecting the opposite extremum returns t = 0.0 (probability 1.0), so
-  // the asymmetric peak position discriminates the extremum direction.
 
   #[test]
   fn test_distribution_function_likely_time_plain_selects_max_ordinate() -> Result<(), Report> {

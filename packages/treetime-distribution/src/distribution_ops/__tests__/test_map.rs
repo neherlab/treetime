@@ -7,7 +7,6 @@ mod tests {
 
   #[test]
   fn test_map_formula_returns_error() {
-    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
     let formula = Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0));
 
     assert_error!(

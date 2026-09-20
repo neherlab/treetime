@@ -4,17 +4,6 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_internal_error;
 
-/// Product of N distribution factors: the N-ary generalization of [`distribution_multiplication`].
-///
-/// A product of independent factors is pointwise -- a sum of neg-log ordinates -- so it is exact,
-/// associative, and independent of factor order. The gridded `Function` factors are co-located on one
-/// common grid and reduced once ([`multiply_functions`], the same primitive the pairwise
-/// `multiply_function_function` uses), so every function is interpolated at most once regardless of
-/// fan-out and no accumulator is re-resampled per factor. The remaining exact factors (`Point`,
-/// `Range`, `Formula`) need no grid: their product is formed with the pairwise
-/// [`distribution_multiplication`] and multiplied into the function product in one final step.
-///
-/// An `Empty` factor makes the product `Empty` (an empty operand is disjoint from every domain).
 pub fn distribution_product<Y: YAxisPolicy>(factors: &[&Distribution<Y>]) -> Result<Distribution<Y>, Report> {
   let mut functions = Vec::new();
   let mut others = Vec::new();

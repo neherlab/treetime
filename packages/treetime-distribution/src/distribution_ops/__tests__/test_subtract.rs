@@ -8,8 +8,6 @@ mod tests {
   use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::assert_error;
 
-  /// A pointwise difference on matching grids subtracts ordinates and keeps `Hard` on both sides when
-  /// both operands vanish beyond the edge (`0 - 0 = 0`).
   #[test]
   fn test_subtract_function_hard_both_sides_stays_hard() {
     let a = DistributionFunction::from_start_dx_values(0.0, 1.0, array![5.0, 4.0, 3.0])
@@ -31,8 +29,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
   }
 
-  /// A soft or `Error` operand on a side leaves the difference without a representable tail law, so
-  /// that side is `Error`; a side where both operands are zero-beyond stays `Hard`.
   #[test]
   fn test_subtract_function_soft_side_becomes_error() {
     let a = DistributionFunction::from_start_dx_values(0.0, 1.0, array![5.0, 4.0, 3.0])
@@ -55,7 +51,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
   }
 
-  /// Subtraction requires identical grids.
   #[test]
   fn test_subtract_function_mismatched_grids_errors() {
     let a = Distribution::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();
@@ -67,7 +62,6 @@ mod tests {
     );
   }
 
-  /// Non-`Function` operands are rejected.
   #[test]
   fn test_subtract_non_function_errors() {
     let a = Distribution::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();

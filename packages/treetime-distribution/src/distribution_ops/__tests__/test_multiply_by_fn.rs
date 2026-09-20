@@ -8,8 +8,6 @@ mod tests {
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::assert_error;
 
-  /// A constant weight is a uniform shift in log space, which normalization removes: the result
-  /// equals the already-normalized input.
   #[test]
   fn test_multiply_by_fn_constant_is_uniform_shift() {
     let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
@@ -17,14 +15,12 @@ mod tests {
     assert_abs_diff_eq!(array![4.0, 0.0, 3.0], actual.y(), epsilon = 1e-15);
   }
 
-  /// Empty passes through unchanged.
   #[test]
   fn test_multiply_by_fn_empty_passthrough() {
     let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0)).unwrap();
     assert_eq!(DistributionNegLog::Empty, actual);
   }
 
-  /// A Formula has no grid and is rejected.
   #[test]
   fn test_multiply_by_fn_rejects_formula() {
     let formula = DistributionNegLog::Formula(crate::DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
@@ -34,13 +30,6 @@ mod tests {
     );
   }
 
-  /// A varying weight keeps the input's per-side tail *class* and re-fits the soft slope it changed.
-  ///
-  /// The input is `y = -2t` with a fitted soft `Linear` left tail (slope `-2`) and a `Hard` right
-  /// edge -- the exact Linear-left / Hard-right policy the coalescent backward pass produces. Adding
-  /// `w(t) = 0.5 t` makes the combined ordinate `-1.5 t`, so the re-fit left slope is `-1.5`
-  /// (analytical: least-squares slope of an exactly linear ordinate) and the right edge stays `Hard`.
-  /// Before the fix the rebuild reset both sides to `Error`, disabling the following mass re-window.
   #[test]
   fn test_multiply_by_fn_preserves_soft_left_hard_right() {
     let t = Array1::linspace(0.0, 4.0, 21);
@@ -68,11 +57,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
   }
 
-  /// A constant weight is a pure shift, so the re-fit leaves the soft slope unchanged.
-  ///
-  /// Same `y = -2t` input (left slope `-2`); a constant weight adds no `t`-dependence, so the
-  /// combined ordinate is still `-2t` and the re-fit recovers slope `-2`. This is the boundary case
-  /// where the general re-fit reduces to `normalize`'s shift-invariant carry.
   #[test]
   fn test_multiply_by_fn_constant_weight_keeps_soft_slope() {
     let t = Array1::linspace(0.0, 4.0, 21);
@@ -97,7 +81,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
   }
 
-  /// Hard sides carry through unchanged: `0 * exp(-w) = 0` beyond the edge regardless of the weight.
   #[test]
   fn test_multiply_by_fn_carries_hard_both_sides() {
     let t = Array1::linspace(0.0, 4.0, 21);

@@ -32,7 +32,6 @@ mod tests {
     #[case] divisor: DistributionVariant,
     #[case] expected: &str,
   ) {
-    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
     assert_error!(
       distribution_division(&distribution(dividend), &distribution(divisor)),
       expected
@@ -104,15 +103,12 @@ mod tests {
 
   #[test]
   fn test_divide_range_by_function_full_overlap() {
-    // Range [1.0, 3.0] overlaps with function at points [1.0, 2.0, 3.0]
     let range = Distribution::range((1.0, 3.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = Distribution::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-    // Result covers the overlap region [1.0, 3.0]. A range is zero outside its box, so the quotient is
-    // zero beyond the overlap edges: both result sides are `Hard`.
     let expected = Distribution::Function(
       DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5])
         .unwrap()
@@ -155,7 +151,6 @@ mod tests {
     let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_division(&range, &function).unwrap();
-    // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
     let expected = Distribution::point(2.0, 4.0);
     assert_eq!(expected, actual);
   }
@@ -205,11 +200,6 @@ mod tests {
 
   #[test]
   fn test_divide_function_by_function_neglog_bounds_quotient_to_hard_divisor() {
-    // A NegLog dividend wider than its hard-bounded divisor. Under NegLog a hard boundary reads +inf
-    // (zero probability) beyond the edge, so extending the quotient into the divisor's tail would
-    // compute `dividend - (+inf) = -inf` and spike the result, collapsing the downstream forward
-    // message. The quotient must be bounded to the divisor's real grid support and stay finite.
-    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md (Division).
     let dividend =
       DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.4, 0.2, 0.0, 0.2, 0.4]).unwrap();
     let divisor = DistributionNegLog::function(array![1.0, 2.0, 3.0], array![0.1, 0.0, 0.1])
@@ -243,16 +233,6 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  /// A soft `Linear` divisor tail no longer truncates the quotient: it is sampled as bulk out to the
-  /// dividend's own hard edge.
-  ///
-  /// The dividend spans `[0, 4]` with hard (`Error`) edges; the divisor spans `[1, 3]` with soft
-  /// `Linear` tails. Under the unified division rule (intersect hard sides, union soft sides), the
-  /// dividend's two hard edges bind the quotient to `[0, 4]`, and the divisor's decaying tails are
-  /// evaluated as bulk on `[0, 1]` and `[3, 4]` instead of clipping the result. The divisor
-  /// extrapolates to `2.5` at both `t = 0` (left tail) and `t = 4` (right tail), so the quotient there
-  /// is `dividend / 2.5`.
-  /// Oracle: kb/decisions/distribution-tails-and-arithmetic.md (Division); test_scripts/density_algebra.py `combine()`.
   #[test]
   fn test_divide_function_by_function_soft_divisor_tail_extends_quotient_within_dividend() {
     let dividend =
@@ -276,18 +256,10 @@ mod tests {
     let divisor = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
     let expected = Distribution::point(1.0, 0.6);
     assert_eq!(expected, actual);
   }
 
-  /// A soft side of the quotient is refit from the combined grid, and a hard dividend edge binds.
-  ///
-  /// The dividend spans `[2, 10]` with a soft `Linear` left law and a `Hard` right edge; the divisor
-  /// spans the wider `[0, 12]` with a soft `Linear` left law and a `Hard` right edge. Both operands
-  /// are soft on the left, so the union rule extends the quotient to the outermost left edge (`0`) and
-  /// refits a decaying `Linear` law there. Both are hard on the right, so the innermost bound (the
-  /// dividend's `10`) binds and the quotient inherits the dividend's `Hard` right edge.
   #[test]
   fn test_divide_function_by_function_soft_left_refits_hard_right_binds() {
     let dividend =
@@ -311,7 +283,6 @@ mod tests {
     };
     pretty_assert_ulps_eq!(0.0, f.x_min(), max_ulps = 4);
     pretty_assert_ulps_eq!(10.0, f.x_max(), max_ulps = 4);
-    // The left side is a refit soft tail, not the dividend's own law; it must decay (slope <= 0).
     let BoundaryBehavior::Linear(left) = f.left_extrap() else {
       panic!("expected a refit Linear left tail, got {:?}", f.left_extrap());
     };
@@ -323,12 +294,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
   }
 
-  /// A divisor `Error` bound strictly inside the dividend truncates the result grid, so that side is
-  /// `Error` (the quotient is undefined past the divisor's own edge).
-  ///
-  /// The dividend spans `[2, 10]` (Linear left, Hard right); the divisor spans `[4, 8]` with `Error`
-  /// tails, so it truncates both sides inward of the dividend and the intersection is `[4, 8]`. Both
-  /// result sides are `Error`, overriding the dividend's inherited tails.
   #[test]
   fn test_divide_function_by_function_divisor_error_truncation_yields_error_tails() {
     let dividend =
@@ -349,14 +314,6 @@ mod tests {
     assert_eq!(BoundaryBehavior::Error, f.right_extrap());
   }
 
-  /// The cavity identity: dividing a product by one of its own factors recovers the other factor.
-  ///
-  /// The forward-pass cavity is `parent_posterior / msg_to_parent`, where the posterior is a product
-  /// that contains the message as a factor, so `divide(a * b, b) == a`. Both operands share a grid, so
-  /// the bulk is exact subtraction in neg-log; the soft-left tail is refit from the same leftmost
-  /// points `a` was fit from, so it recovers `a`'s law exactly. This is why the corrected division
-  /// rule cannot explode the quotient tail: the divisor's decay is already baked into the dividend.
-  /// Oracle: test_scripts/density_algebra.py `test_quotient_equals_the_explicit_product_beyond_the_second_cell`.
   #[test]
   fn test_divide_function_by_function_roundtrip_recovers_dividend_factor() {
     let grid = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];

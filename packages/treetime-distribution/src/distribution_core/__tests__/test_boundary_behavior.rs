@@ -19,7 +19,6 @@ mod tests {
   fn test_boundary_neglog_hard_left_returns_infinity() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let f = f.with_left_extrap(BoundaryBehavior::Hard)?;
-    // Infinity is exact -- no floating-point precision concern
     #[allow(clippy::float_cmp)]
     {
       assert_eq!(f64::INFINITY, f.interp(-1.0)?);
@@ -125,10 +124,6 @@ mod tests {
   #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
   #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error),    None)]
   #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard),     None)]
-  // Soft Linear tail: the function continues past the edge, so the product is non-empty. The tail is
-  // the neg-log line y_edge + slope*(t - t_edge) read from the live grid edge. Left: y_edge=1.0 at
-  // x_min=0.0, so at t=-1.0 it is 1.0 + (-1.0)*(-1.0) = 2.0, product 2.0*2.0 = 4.0. Right: y_edge=3.0
-  // at x_max=2.0, so at t=3.0 it is 3.0 + 1.0*(3.0-2.0) = 4.0, product 2.0*4.0 = 8.0.
   #[case::linear_some_left( (-1.0, BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), BoundaryBehavior::Error), Some(4.0))]
   #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })), Some(8.0))]
   #[trace]
@@ -143,9 +138,6 @@ mod tests {
     let point = Distribution::point(t, 2.0);
 
     let actual = distribution_multiplication(&point, &function)?;
-    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md defines soft tails as evaluable
-    // outside the grid and Hard/Error as carrying no product there. Linear is a soft tail, so it
-    // extends; its value is SoftTailLaw's neg-log line y_edge + slope*(t-t_edge).
     let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
     assert_eq!(expected, actual);
     Ok(())
@@ -153,9 +145,6 @@ mod tests {
 
   #[test]
   fn test_boundary_multiply_composes_linear_tail_slopes() -> Result<(), Report> {
-    // Two functions on the same support, each with a right soft tail. Multiplication is addition
-    // in neg-log space, so the product's right tail decays with the sum of the two slopes,
-    // anchored on the product's own right edge value.
     let (slope_a, slope_b) = (0.6, 0.9);
     let fa: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_a }))?;
@@ -164,8 +153,6 @@ mod tests {
 
     let product = distribution_multiplication(&Distribution::Function(fa), &Distribution::Function(fb))?;
 
-    // The product's right edge ordinate is 2.0 * 2.5 = 5.0 at x_max = 2.0. Evaluated 0.5 beyond the
-    // edge, the composed neg-log tail is 5.0 + (slope_a + slope_b) * 0.5.
     let expected = 5.0 + (slope_a + slope_b) * 0.5;
     assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
     Ok(())
@@ -177,7 +164,6 @@ mod tests {
     let function = Distribution::Function(f);
     let point_inside = Distribution::point(1.0, 2.0);
     let actual = distribution_multiplication(&point_inside, &function)?;
-    // function(1.0) = 2.0, point amplitude 2.0, product 4.0 at t = 1.0
     assert_eq!(Distribution::point(1.0, 4.0), actual);
     Ok(())
   }

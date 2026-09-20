@@ -11,33 +11,12 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn is_defined(val: f64) -> bool;
   fn safe_divisor(val: f64) -> f64;
 
-  /// The stored ordinate that represents zero probability under this policy.
-  ///
-  /// Under [`Plain`] zero probability is `0.0`. Under [`NegLog`] zero probability is
-  /// `+inf` (`-ln(0)`). The distribution layer uses this to map hard-boundary
-  /// extrapolation values, because the underlying [`GridFn`](treetime_grid::GridFn)
-  /// always returns `0.0` outside a hard boundary regardless of policy.
   fn probability_zero() -> f64;
 
-  /// Whether the most likely time sits at the maximum stored ordinate.
-  ///
-  /// Under [`Plain`] the ordinate is probability, so the mode is the maximum ordinate. Under
-  /// [`NegLog`] the ordinate is `-ln(probability)`, so the mode is the minimum ordinate.
-  /// Most-likely-time selection dispatches on this instead of assuming a maximum.
   fn likely_is_maximum() -> bool;
 
-  /// Map a stored ordinate to negative-log probability (`-ln p`).
-  ///
-  /// This is the common space where the convolution tail law is linear (an exponential tail in
-  /// probability is a straight line in `-ln p`). [`Plain`] takes `-ln`, treating a non-positive
-  /// probability as `+inf` (zero probability); [`NegLog`] is already there and is the identity.
   fn to_neg_log(y: f64) -> f64;
 
-  /// Inverse of [`Self::to_neg_log`]: map a negative-log value back to a stored ordinate.
-  ///
-  /// [`Plain`] exponentiates (`exp(-nl)`), so values below the plain underflow floor collapse to
-  /// zero; [`NegLog`] is the identity and preserves the full dynamic range. This asymmetry is why
-  /// log-space storage can represent tail values the plain axis cannot.
   fn from_neg_log(nl: f64) -> f64;
 }
 
@@ -47,19 +26,11 @@ pub struct Plain;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NegLog;
 
-/// Marker trait for policies whose convolution is defined.
-///
-/// The convolution integral runs in plain probability space regardless of storage policy: each
-/// operand is converted through [`YAxisPolicy::to_neg_log`] and peak-normalized to plain, convolved,
-/// then converted back through [`YAxisPolicy::from_neg_log`]. Both [`Plain`] and [`NegLog`] support
-/// this round-trip.
 pub trait SupportsConvolution: YAxisPolicy {}
 
 impl SupportsConvolution for Plain {}
 impl SupportsConvolution for NegLog {}
 
-/// Marker trait for policies that support subtraction operations.
-/// Subtraction uses direct y value subtraction which is only valid for plain values.
 pub trait SupportsSubtraction: YAxisPolicy {}
 
 impl SupportsSubtraction for Plain {}

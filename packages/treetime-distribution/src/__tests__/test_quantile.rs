@@ -38,7 +38,6 @@ mod tests {
 
   #[test]
   fn test_quantile_uniform_function() {
-    // Uniform distribution over [0, 4] with constant density
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 1.0, 1.0, 1.0, 1.0];
     let func = Distribution::<Plain>::function(t, y).unwrap();
@@ -59,12 +58,10 @@ mod tests {
 
   #[test]
   fn test_quantile_function_median() {
-    // Triangular distribution peaking at center
     let t = array![0.0, 1.0, 2.0];
     let y = array![0.0, 2.0, 0.0];
     let func = Distribution::<Plain>::function(t, y).unwrap();
 
-    // Median of symmetric triangle at center
     assert_relative_eq!(func.quantile(0.5).unwrap(), 1.0, epsilon = 1e-10);
   }
 
@@ -74,15 +71,12 @@ mod tests {
     let y = array![1.0, 2.0, 2.0, 1.0];
     let func = Distribution::<Plain>::function(t, y).unwrap();
 
-    // p=0 returns first point
     assert_relative_eq!(func.quantile(0.0).unwrap(), 0.0);
-    // p=1 returns last point
     assert_relative_eq!(func.quantile(1.0).unwrap(), 3.0);
   }
 
   #[test]
   fn test_confidence_interval_95_percent() {
-    // Uniform distribution - 95% CI should be [0.025*range, 0.975*range]
     let range = Distribution::<Plain>::range((0.0, 100.0), 1.0);
     let ci = range.confidence_interval(0.025, 0.975).unwrap();
     assert_relative_eq!(ci.0, 2.5);

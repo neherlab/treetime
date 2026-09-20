@@ -88,10 +88,6 @@ mod tests {
 
   #[test]
   fn test_gaussian_product_two_identical() -> Result<(), Report> {
-    // Product of two N(0,1) Gaussians:
-    // - sigma_star = 1/sqrt(2) ≈ 0.7071
-    // - mu_star = 0
-    // - log_scale = 0 (amplitudes=1, centered at mu_star)
     let g1 = create_gaussian_scaled(0.0, 1.0, 1.0, 201);
     let g2 = create_gaussian_scaled(0.0, 1.0, 1.0, 201);
     let product = scaled_distribution_multiplication(&g1, &g2)?;
@@ -99,12 +95,8 @@ mod tests {
     assert!(!product.is_empty());
     assert_ulps_eq!(product.inner().max_value(), 1.0, max_ulps = 4);
 
-    // Verify log_scale is 0 (both amplitudes=1, both centered at result mean)
     assert_relative_eq!(product.log_scale(), 0.0, epsilon = 0.01);
 
-    // Verify the width narrowed to sigma_star = 1/sqrt(2)
-    // Width at half-max for Gaussian: FWHM = 2*sqrt(2*ln(2))*sigma ≈ 2.355*sigma
-    // For sigma_star=0.7071, FWHM ≈ 1.665
     if let Distribution::Function(f) = product.inner() {
       let t = f.t();
       let y = f.y();
@@ -125,10 +117,6 @@ mod tests {
 
   #[test]
   fn test_gaussian_product_ten() -> Result<(), Report> {
-    // Product of 10 N(0,1) Gaussians:
-    // - sigma_star = 1/sqrt(10) ≈ 0.3162
-    // - mu_star = 0
-    // - log_scale = 0 (amplitudes=1, centered at mu_star)
     let gaussians: Vec<ScaledDistribution> = std::iter::repeat_with(|| create_gaussian_scaled(0.0, 1.0, 1.0, 201))
       .take(10)
       .collect();
@@ -137,10 +125,8 @@ mod tests {
 
     assert!(!product.is_empty());
 
-    // Verify log_scale is approximately 0
     assert_relative_eq!(product.log_scale(), 0.0, epsilon = 0.1);
 
-    // Verify the width narrowed to sigma_star = 1/sqrt(10)
     if let Distribution::Function(f) = product.inner() {
       let t = f.t();
       let y = f.y();
@@ -181,9 +167,6 @@ mod tests {
 
   #[test]
   fn test_gaussian_convolution_basic() -> Result<(), Report> {
-    // Convolution of two N(0,1) Gaussians:
-    // - sigma_conv = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414
-    // - mu_conv = 0
     let g1 = create_gaussian_scaled(0.0, 1.0, 1.0, 201);
     let g2 = create_gaussian_scaled(0.0, 1.0, 1.0, 201);
 
@@ -192,12 +175,10 @@ mod tests {
     assert!(!result.is_empty());
     assert!(result.log_scale().is_finite());
 
-    // Verify the result is centered at 0 and has widened to sigma = sqrt(2)
     if let Distribution::Function(f) = result.inner() {
       let t = f.t();
       let y = f.y();
 
-      // Find peak location (should be near 0)
       let max_idx = y
         .iter()
         .enumerate()
@@ -207,8 +188,6 @@ mod tests {
       let peak_t = t[max_idx];
       assert_relative_eq!(peak_t, 0.0, epsilon = 0.1);
 
-      // Verify width increased to sigma = sqrt(2)
-      // FWHM = 2*sqrt(2*ln(2))*sigma ≈ 2.355*sqrt(2) ≈ 3.33
       let half_max_indices: Vec<usize> = y
         .iter()
         .enumerate()
@@ -248,19 +227,15 @@ mod tests {
 
   #[test]
   fn test_gaussian_product_matches_analytical() -> Result<(), Report> {
-    // Two Gaussians at mu=-1 and mu=1, both sigma=1
-    // Analytical: mu*=0, sigma*=1/sqrt(2), log_scale=-1.0
     let g1 = create_gaussian_scaled(-1.0, 1.0, 1.0, 401);
     let g2 = create_gaussian_scaled(1.0, 1.0, 1.0, 401);
     let product = scaled_distribution_multiplication(&g1, &g2)?;
 
     assert!(!product.is_empty());
 
-    // Expected log_scale from analytical formula
     let expected_log_scale = -1.0;
     assert_relative_eq!(product.log_scale(), expected_log_scale, epsilon = 0.1);
 
-    // Verify peak location is near mu*=0
     if let Distribution::Function(f) = product.inner() {
       let t = f.t();
       let y = f.y();
@@ -279,8 +254,6 @@ mod tests {
 
   #[test]
   fn test_gaussian_normalization_preserved() -> Result<(), Report> {
-    // Product of N(0,1) with amplitude=10 and N(0,1) with amplitude=20
-    // Analytical: log_scale = ln(10) + ln(20) = ln(200) ≈ 5.298
     let g1 = create_gaussian_scaled(0.0, 1.0, 10.0, 201);
     let g2 = create_gaussian_scaled(0.0, 1.0, 20.0, 201);
     let product = scaled_distribution_multiplication(&g1, &g2)?;
@@ -288,11 +261,9 @@ mod tests {
     assert!(!product.is_empty());
     assert_ulps_eq!(product.inner().max_value(), 1.0, max_ulps = 4);
 
-    // Verify log_scale captures the amplitude product
     let expected_log_scale = (10.0_f64 * 20.0).ln();
     assert_relative_eq!(product.log_scale(), expected_log_scale, epsilon = 0.1);
 
-    // Verify peak value when unscaled: exp(log_scale) * max_value = 200
     let unscaled_peak = product.log_scale().exp() * product.inner().max_value();
     assert_relative_eq!(unscaled_peak, 200.0, epsilon = 1.0);
     Ok(())

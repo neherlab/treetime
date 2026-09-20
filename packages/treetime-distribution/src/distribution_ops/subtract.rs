@@ -14,11 +14,6 @@ pub fn distribution_subtraction<Y: SupportsSubtraction>(
       if af.grid() != bf.grid() {
         return make_error!("Cannot subtract distributions with different grids");
       }
-      // Tail policy survives (kb/decisions/distribution-tails-and-arithmetic.md). A pointwise
-      // difference of two densities is not log-linear, so no soft tail law can represent it: a side
-      // becomes `Hard` (zero beyond) only when both operands vanish beyond the edge (`Hard` or
-      // `HardApproach`), otherwise `Error`. This preserves the genuine zero-beyond fact without
-      // fabricating a slope the difference cannot carry, rather than erasing every side to `Error`.
       let left = subtraction_result_tail(af.left_extrap(), bf.left_extrap());
       let right = subtraction_result_tail(af.right_extrap(), bf.right_extrap());
       DistributionFunction::from_start_dx_values(af.x_min(), af.dx(), af.y() - bf.y())?
@@ -33,9 +28,6 @@ pub fn distribution_subtraction<Y: SupportsSubtraction>(
   }
 }
 
-/// Per-side tail of a Function difference. Zero-beyond-hard on both operands (`Hard`/`HardApproach`)
-/// gives a `Hard` result (`0 - 0 = 0`); any soft or `Error` operand leaves the difference without a
-/// representable tail law, so the side is `Error`.
 fn subtraction_result_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   let zero_beyond = |tail| matches!(tail, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_));
   if zero_beyond(a) && zero_beyond(b) {

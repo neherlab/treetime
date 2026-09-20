@@ -8,8 +8,6 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
 
-  // Resolution floor: the interval count is rounded up (ceil), so the realized spacing is never
-  // coarser than dx, except that an exact multiple (within float tolerance) adds no spurious point.
   #[rustfmt::skip]
   #[rstest]
   #[case::fractional_ceils_up(     (0.0, 2.4),        1.0, 4)]

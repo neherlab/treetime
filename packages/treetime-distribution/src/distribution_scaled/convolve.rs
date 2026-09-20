@@ -2,10 +2,6 @@ use crate::distribution_ops::convolve::distribution_convolution;
 use crate::distribution_scaled::scaled::ScaledDistribution;
 use eyre::Report;
 
-/// Convolve two scaled distributions.
-///
-/// Delegates to distribution_convolution for the inner (normalized) distributions,
-/// then combines log_scales.
 pub fn scaled_distribution_convolution(
   a: &ScaledDistribution,
   b: &ScaledDistribution,

@@ -11,7 +11,6 @@ mod tests {
 
   #[test]
   fn test_scalar_multiply_formula_returns_error() {
-    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
     let formula = Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0));
 
     assert_error!(
@@ -180,12 +179,6 @@ mod tests {
     }
   }
 
-  /// Scaling the probability by a constant leaves both fitted tail laws unchanged.
-  ///
-  /// A constant probability scale is a constant shift of the negative-log ordinate, which both the
-  /// soft slope and the hard edge are invariant to. The input carries a soft `Linear` left law
-  /// (slope `-0.7`) and a `Hard` right edge; after scaling by `2.5` both are byte-identical. Before
-  /// the fix the rebuild dropped both sides to `Error`.
   #[test]
   fn test_distribution_scalar_multiplication_preserves_tail_laws() {
     let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.7 });

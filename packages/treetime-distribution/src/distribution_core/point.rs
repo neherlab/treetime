@@ -2,8 +2,6 @@ use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-/// Represents a single-point spike or delta-function
-/// https://en.wikipedia.org/wiki/Dirac_delta_function
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DistributionPoint<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
   t: T,

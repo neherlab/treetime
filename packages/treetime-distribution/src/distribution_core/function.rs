@@ -210,7 +210,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.right_extrap
   }
 
-  /// Set the left (below `x_min`) out-of-support tail policy.
   pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     self.left_extrap = behavior;
     Ok(self)
@@ -263,9 +262,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.resample(&grid)
   }
 
-  /// Resample onto a uniform grid over `x_range`, clamping any target point that grid-construction
-  /// rounding pushes marginally outside this function's own support back to the nearest boundary
-  /// (see [`GridFn::resample_range_dx_clamped`]). The result preserves this distribution's policy.
   pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -282,10 +278,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float + UlpsEq,
   {
-    // Re-grid onto the function's own support. When dx does not divide the range evenly, the final
-    // uniform grid point can round a fraction of dx beyond x_max; the clamped resample holds the
-    // boundary value there instead of erroring, since this is a gridding artifact, not a genuine
-    // out-of-support query. The resampled result keeps this function's own tail policy.
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx)
   }
 
@@ -320,11 +312,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(())
   }
 
-  /// Find the most likely time point (the x-value at the highest-likelihood ordinate).
-  ///
-  /// The extremum direction is policy-aware: the maximum ordinate under [`Plain`], the minimum
-  /// under [`NegLog`] (where the ordinate is `-ln(probability)`). See
-  /// [`YAxisPolicy::likely_is_maximum`].
   pub fn likely_time(&self) -> Option<T>
   where
     T: Float,
@@ -342,11 +329,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  /// Create a new distribution function with y values scaled by factor.
-  ///
-  /// Preserves the grid parameters and transforms each stored boundary law in closed form.
-  /// Scaling every ordinate by a constant scales the approach exponent and soft-tail slope by the
-  /// same factor. This makes `fn Distribution.normalize()` preserve boundary laws.
   pub fn scale_y(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,
@@ -359,14 +341,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     ))
   }
 
-  /// Create a new distribution function with a constant delta added to every y value.
-  ///
-  /// Preserves the grid parameters and per-side tail policies exactly, including any fitted boundary
-  /// law, the additive counterpart of [`Self::scale_y`]. Under
-  /// [`crate::policy::NegLog`] the ordinate is `-ln(probability)`, so adding `-min` shifts the peak
-  /// ordinate to zero: this is normalization by a pure shift, which keeps likelihood ratios and
-  /// out-of-support tails intact. Both boundary laws are edge-relative and shift-invariant, so they
-  /// carry through unchanged while evaluation reads the shifted edge ordinate.
   #[must_use]
   pub fn shift_y(&self, delta: T) -> Self
   where
@@ -377,7 +351,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 }
 
 impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
-  /// Fit and store a decaying log-linear tail on one side.
   pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
     match side {

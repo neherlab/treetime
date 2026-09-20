@@ -31,8 +31,6 @@ mod tests {
     let actual = distribution_multiplication(&child, &coalescent)?.to_plain_normalized();
 
     pretty_assert_ulps_eq!(Array1::from_vec(expected.time_points.clone()), actual.t(), max_ulps = 4);
-    // v0 clips endpoint evaluation inward by TINY_NUMBER=1e-12 before
-    // interpolation (`treetime/distribution.py:295-303`).
     pretty_assert_abs_diff_eq!(
       Array1::from_vec(expected.probabilities_relative.clone()),
       actual.y(),

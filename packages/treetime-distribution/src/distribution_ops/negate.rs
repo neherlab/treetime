@@ -6,7 +6,6 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_error;
 
-/// Negate a distribution by reflecting it across the time axis: f(x) -> f(-x).
 pub fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {
   match dist {
     Distribution::Empty => Ok(Distribution::empty()),
@@ -17,7 +16,6 @@ pub fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<D
   }
 }
 
-/// Negate a distribution in-place by reflecting it across the time axis: f(x) -> f(-x).
 pub fn distribution_negation_inplace<Y: YAxisPolicy>(dist: &mut Distribution<Y>) -> Result<(), Report> {
   match dist {
     Distribution::Empty => Ok(()),
