@@ -21,7 +21,7 @@ interface TailwindModule {
   ): DesignSystem
 }
 
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..")
 const CSS_ENTRY = resolve(PROJECT_ROOT, "packages/app-web/src/index.css")
 
 const designSystem = await loadDesignSystem()
@@ -110,11 +110,13 @@ async function loadDesignSystem(): Promise<DesignSystem> {
 }
 
 function pickTailwindModule(imported: unknown): TailwindModule {
-  const candidate = hasDefault(imported) ? imported.default : imported
-  if (!hasLoader(candidate)) {
-    throw new Error("tailwindcss does not expose __unstable__loadDesignSystem")
+  if (hasDefault(imported) && hasLoader(imported.default)) {
+    return imported.default
   }
-  return candidate
+  if (hasLoader(imported)) {
+    return imported
+  }
+  throw new Error("tailwindcss does not expose __unstable__loadDesignSystem")
 }
 
 function hasDefault(value: unknown): value is { default: unknown } {
@@ -123,7 +125,7 @@ function hasDefault(value: unknown): value is { default: unknown } {
 
 function hasLoader(value: unknown): value is TailwindModule {
   return (
-    typeof value === "object" &&
+    (typeof value === "object" || typeof value === "function") &&
     value !== null &&
     typeof Reflect.get(value, "__unstable__loadDesignSystem") === "function"
   )

@@ -52,6 +52,7 @@
   "devDependencies": {
     "@fast-check/vitest": "0.5.0",
     "@microsoft/fetch-event-source": "2.0.1",
+    "@oxlint/plugins": "1.82.0",
     "@vitest/coverage-v8": "4.1.7",
     "@types/node": "24.13.4",
     "eslint-plugin-no-comments": "1.2.1",
