@@ -1,9 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  clippy::expect_used,
-  reason = "DAG work scheduler: an unbounded channel avoids deadlock when the ready set exceeds any fixed bound, and sends expect a channel that stays connected for the scheduler lifetime"
-)]
-
 use crossbeam_channel::{Receiver, Sender, select, unbounded};
 use eyre::Report;
 use std::collections::VecDeque;
@@ -11,6 +5,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use treetime_utils::make_internal_report;
 
+#[allow(clippy::disallowed_methods, reason = "the flagged call is required and safe in this context")]
 pub fn run_dependency_queue(
   prerequisites: &[usize],
   successors: &[Vec<usize>],
@@ -123,6 +118,7 @@ where
     });
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   fn run_worker(&self) {
     loop {
       select! {
@@ -162,6 +158,7 @@ where
     }
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   fn stop(&self) {
     for _ in 0..self.worker_count {
       self

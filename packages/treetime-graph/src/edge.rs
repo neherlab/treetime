@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph edge endpoint access crashes on a missing key by the project's node/edge access invariant"
-)]
-
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use derive_more::Display;
@@ -45,6 +40,7 @@ impl Edge {
   }
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Invert direction of an edge.
 pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
   let (source_key, target_key) = {

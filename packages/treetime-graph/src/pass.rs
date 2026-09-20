@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project's node/edge access invariant"
-)]
-
 #[cfg(test)]
 mod __tests__;
 
@@ -98,6 +93,7 @@ impl GraphPass {
     })
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   /// Run a value-returning backward map (children before parent) over borrowed input maps.
   ///
   /// Every node is visited exactly once, after all of its children have published their outputs, in a
@@ -179,6 +175,7 @@ impl GraphPass {
     self.collect_map_outputs(completed)
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   /// Run a value-returning forward map (parent before children) over borrowed input maps.
   ///
   /// Every node is visited exactly once, after its single parent has published its output (roots run
@@ -279,6 +276,7 @@ impl GraphPass {
     Ok(created)
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   /// Borrow the input for node `index`, from the caller's map when present or from the created
   /// missing-node inputs otherwise.
   fn resolve_node<'a, N>(
@@ -294,6 +292,7 @@ impl GraphPass {
       .expect("Indexed node must have an input")
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   /// Drain the per-index published outputs into key-addressed maps: each node output keyed by its node,
   /// and each node's optional parent-edge message keyed by that parent edge. Duplicate keys signal a
   /// scheduling bug, so they are reported as internal errors.
