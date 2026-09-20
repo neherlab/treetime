@@ -19,39 +19,6 @@ use util_augur_node_data_json::{
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Write augur-compatible node data JSON for the `timetree` command.
-///
-/// Produces the structure consumed by `augur export v2 --node-data`, equivalent
-/// to `augur refine` output: top-level `clock` regression parameters, `alignment`
-/// and `input_tree` paths, and per-node dates, branch lengths, and confidence
-/// intervals.
-///
-/// Augur builds this JSON itself from TreeTime tree-node attributes (it never
-/// calls the TreeTime CLI), so the contract is augur's `refine.py` traced against
-/// TreeTime's final node-attribute state, not a v0 CLI oracle. Branch-field
-/// semantics, traced through `TreeTime.run()`:
-///
-/// - `mutation_length` = TreeTime `node.mutation_length`: the ML-optimized branch
-///   length in substitutions/site (`treeanc.py` sets `node.mutation_length =
-///   node.branch_length` during branch-length optimization). This drives
-///   `node_attrs.div` in `augur export v2` (cumulative `mutation_length`), so it
-///   must be the divergence length. Source: `TimetreeEdgeOut.branch_length`.
-/// - `clock_length` = TreeTime `node.clock_length = up.time_before_present -
-///   time_before_present` (`clock_tree.py:924`): the time-tree branch duration in
-///   years. Equals `child.numdate - parent.numdate`. Source: difference of
-///   `TimetreeNodeOut.time`.
-/// - `branch_length` = `clock_length`: `make_time_tree` overwrites
-///   `node.branch_length = node.clock_length` (`clock_tree.py:925`) and augur
-///   emits it unchanged under the default `--divergence-units=mutations-per-site`.
-///   So `branch_length` carries the time value, identical to `clock_length`.
-///
-/// `dates` carries the parsed metadata date constraints used for `raw_date` (tips)
-/// and `date_inferred`; the inferred `date` string derives from each node's
-/// `numdate`.
-///
-/// When `mutation_counts` is `Some`, `mutation_length` is set to the per-edge
-/// mutation count instead of the ML branch length (subs/site). `branch_length`
-/// and `clock_length` remain time-valued (years) regardless.
 pub fn build_augur_node_data_json(
   graph: &Graph,
   outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
@@ -77,10 +44,6 @@ pub fn build_augur_node_data_json(
       .map_or_else(|| format!("node_{}", node_key.as_usize()), str::to_owned);
     let numdate = out.time;
 
-    // Per-branch fields live on the parent edge. The root has no incoming branch,
-    // so its branch length, clock length, and mutation length are all zero. augur's
-    // `export v2` requires `mutation_length` on every node (including the root) to
-    // compute divergence, so these are emitted as explicit zeros rather than omitted.
     let (branch_length, clock_length, mutation_length) = match graph.node_parent(node_key)? {
       Some((parent_key, edge_key)) => {
         let mutation_length = if let Some(counts) = mutation_counts {
@@ -94,18 +57,13 @@ pub fn build_augur_node_data_json(
           .map(|(parent, child)| child - parent);
         (clock_length.unwrap_or(0.0), clock_length, mutation_length)
       },
-      None => (0.0, Some(0.0), Some(0.0)), // root node: no parent edge, so branch fields are zero
+      None => (0.0, Some(0.0), Some(0.0)),
     };
 
     let constraint: Option<&DateConstraint> = dates.and_then(|dates| dates.get(&node_name)).and_then(Option::as_ref);
 
-    // date_inferred mirrors augur `not isinstance(node.raw_date_constraint, float)`:
-    // a node carrying an exact (point) date is not inferred; range, uncertain, or
-    // absent constraints are inferred.
     let date_inferred = !constraint.is_some_and(DateConstraint::is_exact);
 
-    // raw_date is the original metadata string, set on tips only (augur sets it
-    // for terminals from the metadata table).
     let raw_date = if is_leaf {
       constraint.map(|constraint| constraint.raw.clone())
     } else {
@@ -176,12 +134,6 @@ pub fn write_augur_node_data_json(
   Ok(())
 }
 
-/// Build the top-level `clock` object from the root-to-tip regression.
-///
-/// Mirrors augur `refine.py`: `rtt_Tmrca = -intercept / rate`, `cov` is the 2x2
-/// regression covariance over `[rate, intercept]`, and `rate_std = sqrt(cov[0, 0])`
-/// (the rate variance). `cov` and `rate_std` are present only when the clock rate
-/// was estimated (absent for a fixed rate).
 fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {
   let rate = clock_model.clock_rate();
   let intercept = clock_model.intercept();
@@ -200,8 +152,6 @@ fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {
   }
 }
 
-/// Confidence-interval lookup keyed by `GraphNodeKey` for stable lookup
-/// independent of display naming, matching the auspice writer.
 fn build_ci_map(intervals: &[NodeConfidenceInterval]) -> BTreeMap<GraphNodeKey, [f64; 2]> {
   intervals.iter().map(|ci| (ci.key, [ci.lower, ci.upper])).collect()
 }
