@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { ZodError } from "zod";
 
 import {
@@ -76,12 +76,16 @@ describe("bridge streaming and cancellation", () => {
 
   test("the abort signal is passed through to the transport", async () => {
     const controller = new AbortController();
-    const command = vi.fn(() => Promise.resolve({}));
+    let captured: Parameters<BridgeTransport["command"]> | undefined;
+    const command: BridgeTransport["command"] = (...args) => {
+      captured = args;
+      return Promise.resolve({});
+    };
     const bridge = createBridge(stubTransport({ command }));
 
     await bridge.optimize({ tree: "t", outdir: "o" }, { signal: controller.signal });
 
-    expect(command).toHaveBeenCalledWith("optimize", { tree: "t", outdir: "o" }, { signal: controller.signal });
+    expect(captured).toStrictEqual(["optimize", { tree: "t", outdir: "o" }, { signal: controller.signal }]);
   });
 });
 

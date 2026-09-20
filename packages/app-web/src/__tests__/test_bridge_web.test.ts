@@ -13,11 +13,15 @@ interface StreamMessage {
   data: unknown;
 }
 
+const rejectingEventSource: FetchEventSource = () =>
+  Promise.reject(new DOMException("Aborted", "AbortError"));
+
 function scriptedEventSource(messages: StreamMessage[]): FetchEventSource {
-  return async (_input, init: FetchEventSourceInit) => {
+  return (_input, init: FetchEventSourceInit) => {
     for (const message of messages) {
       init.onmessage?.({ id: "", event: message.event, data: JSON.stringify(message.data) });
     }
+    return Promise.resolve();
   };
 }
 
@@ -68,8 +72,7 @@ describe("bridge_web streaming command path", () => {
   });
 
   test("an abort surfaces as CancelledError", async () => {
-    const eventSource: FetchEventSource = () => Promise.reject(new DOMException("Aborted", "AbortError"));
-    const bridge = createWebBridge({ fetchEventSourceFn: eventSource });
+    const bridge = createWebBridge({ fetchEventSourceFn: rejectingEventSource });
     await expect(bridge.clock({ dates: "d", outdir: "o" })).rejects.toBeInstanceOf(CancelledError);
   });
 });
