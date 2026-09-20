@@ -93,3 +93,39 @@ impl Default for FileLengthConfig {
         Self { threshold: 1000 }
     }
 }
+
+/// Config for the `no_comments` and `doc_comment_limit` lints.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct NoCommentsConfig {
+    /// Item-level derives whose doc comments render as help or schema text and are kept.
+    pub help_derives: Vec<String>,
+    /// Enum derives whose per-variant doc comments render as help text and are kept.
+    pub help_variant_derives: Vec<String>,
+    /// Attribute paths whose doc comments render as help text and are kept.
+    pub help_attrs: Vec<String>,
+    pub max_chars: usize,
+    pub max_lines: usize,
+    pub max_paragraphs: usize,
+}
+
+impl Default for NoCommentsConfig {
+    fn default() -> Self {
+        Self {
+            help_derives: vec![
+                "Parser".into(),
+                "Args".into(),
+                "Subcommand".into(),
+                "JsonSchema".into(),
+                "ToSchema".into(),
+                "IntoParams".into(),
+                "ToResponse".into(),
+            ],
+            help_variant_derives: vec!["ValueEnum".into()],
+            help_attrs: vec!["utoipa::path".into()],
+            max_chars: 300,
+            max_lines: 3,
+            max_paragraphs: 2,
+        }
+    }
+}
