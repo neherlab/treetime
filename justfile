@@ -349,15 +349,15 @@ alias l := lint
 alias lf := lint-fix
 alias lc := lint-ci
 alias lD := lint-deps
-alias dy := dylint
-alias dyf := dylint-fix
+alias dy := dylint-self
+alias dyf := dylint-self-fix
 alias f := format
 alias fc := format-check
 alias q := quality
 
 # Clippy over all targets
 [group('lint')]
-lint *args:
+clippy *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -367,7 +367,7 @@ lint *args:
 
 # Clippy with autofix (stage changes first)
 [group('lint')]
-lint-fix *args:
+clippy-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -375,6 +375,57 @@ lint-fix *args:
     kache_use clippy
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
     nicely cargo -q clippy -q --all-targets --all --fix "${vcs_flag}" --locked "$@"
+
+# Lint: clippy
+[group('lint')]
+lint *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy "$@"
+
+# Lint with autofix
+[group('lint')]
+lint-fix *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy-fix "$@"
+
+# Lint: clippy + all dylint libraries
+[group('lint')]
+lint-extra *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy "$@"
+    just dylint-all
+
+# Lint with autofix: clippy + dylint-self (mordant and tob have no autofix)
+[group('lint')]
+lint-extra-fix *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy-fix "$@"
+    just dylint-self-fix
+
+# Lint: every Rust checker (clippy, dylint, hawk, deny, shear)
+[group('lint')]
+lint-all *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy "$@"
+    just dylint-all
+    just hawk -W warnings
+    just lint-deps
+    if [[ -f '{{project_dir}}/deny.toml' ]] && command -v cargo-deny >/dev/null 2>&1; then
+      cargo deny --locked check bans licenses sources
+    fi
+
+# Lint with autofix: every Rust checker that supports it
+[group('lint')]
+lint-all-fix *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just clippy-fix "$@"
+    just dylint-self-fix
 
 # Clippy denying warnings (CI parity)
 [group('lint')]
@@ -394,9 +445,9 @@ lint-deps *args:
     source '{{project_dir}}/dev/lib/utils.sh'
     nicely cargo shear "$@"
 
-# Run the custom dylint lint library
+# Run the project-specific dylint lint library
 [group('lint')]
-dylint *args:
+dylint-self *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -415,9 +466,9 @@ dylint *args:
     kache_use dylint
     nicely cargo dylint --quiet --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
 
-# Run the custom dylint lint library with autofix
+# Run the project-specific dylint lint library with autofix
 [group('lint')]
-dylint-fix *args:
+dylint-self-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -457,7 +508,7 @@ dylint-tob *args:
 
 # Run the mordant type-invariant lint set against its committed baseline
 [group('lint')]
-mordant *args:
+dylint-mordant *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -478,7 +529,7 @@ mordant *args:
 
 # Regenerate the committed mordant baseline (mordant-baseline.toml)
 [group('lint')]
-mordant-baseline *args:
+dylint-mordant-baseline *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
@@ -488,6 +539,22 @@ mordant-baseline *args:
     export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 CARGO_INCREMENTAL=0
     nicely cargo dylint --path dev/lints/mordant -- --keep-going --locked --workspace --all-targets "$@"
     printf 'Regenerated mordant-baseline.toml\n'
+
+# Run all three dylint libraries (self, mordant, tob)
+[group('lint')]
+dylint-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just dylint-self
+    just dylint-tob
+    just dylint-mordant
+
+# Autofix across all dylint libraries that support it (self only)
+[group('lint')]
+dylint-all-fix:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just dylint-self-fix
 
 # Lint levels, allow/expect lists, mutation exclusions, ignored tests, and float
 # tolerances are changed rarely and reviewed separately from ordinary code.
@@ -550,7 +617,7 @@ check: (_check "fast")
 
 # Full read-only checks: fast set plus dylint, deny, unused code, freshness, tests
 [group('gate')]
-check-full: (_check "full")
+check-all: (_check "full")
 
 _check mode:
     #!/usr/bin/env bash
@@ -609,9 +676,9 @@ _check mode:
         skip "hadolint" "hadolint not installed"
       fi
       if command -v cargo-dylint >/dev/null 2>&1; then
-        run_check "dylint" bash -c "just dylint"
+        run_check "dylint-self" bash -c "just dylint-self"
       else
-        skip "dylint" "cargo-dylint not installed"
+        skip "dylint-self" "cargo-dylint not installed"
       fi
       hawk_tc="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain' 2>/dev/null || true)"
       if command -v cargo-hawk >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -qF "${hawk_tc}"; then
@@ -627,9 +694,9 @@ _check mode:
         skip "dylint-tob" "cargo-dylint not installed"
       fi
       if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
-        run_check "mordant" bash -c "just mordant"
+        run_check "dylint-mordant" bash -c "just dylint-mordant"
       else
-        skip "mordant" "no committed mordant baseline"
+        skip "dylint-mordant" "no committed mordant baseline"
       fi
       if [[ -f '{{project_dir}}/deny.toml' ]] && command -v cargo-deny >/dev/null 2>&1; then
         run_check "cargo-deny" cargo deny --locked check bans licenses sources

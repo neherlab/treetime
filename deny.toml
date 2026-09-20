@@ -1,5 +1,5 @@
 # cargo-deny policy. Advisories and yanked crates are checked by the network
-# `just audit` recipe (it fetches the advisory database); `just check-full` runs
+# `just audit` recipe (it fetches the advisory database); `just check-all` runs
 # the offline bans, licenses, and sources checks.
 
 [advisories]
