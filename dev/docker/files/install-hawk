@@ -5,7 +5,7 @@
 # Install the rustc toolchain that cargo-hawk was built against. Hawk ships a
 # compiler driver linked against a specific rustc's private internals and
 # refuses to run on any other compiler, so its toolchain is installed here next
-# to dev/lints/dylint's nightly, in its own cached layer.
+# to dev/lints/dylint-custom's nightly, in its own cached layer.
 #
 # cargo-hawk itself comes from mise; this only provides the matching compiler.
 # The version lives in dev/docker/files/hawk-toolchain (the single source shared

@@ -3,7 +3,7 @@
 # Usage: $0
 #
 # Install the pinned nightly toolchain used to build and run the custom lint
-# library in dev/lints/dylint. Kept in its own image layer so it is cached
+# library in dev/lints/dylint-custom. Kept in its own image layer so it is cached
 # independently of the main Rust toolchain install.
 #
 # The cargo-dylint and dylint-link binaries come from mise (cargo backend),

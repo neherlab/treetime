@@ -167,14 +167,14 @@ function dev_shell_files() {
 }
 export -f dev_shell_files
 
-# Build the custom dylint lint library from dev/lints/dylint (so its .cargo/config.toml
+# Build the custom dylint lint library from dev/lints/dylint-custom (so its .cargo/config.toml
 # applies: dylint-link appends the toolchain suffix the driver requires). Prints
 # the toolchain-suffixed .so path to stdout; build output goes to stderr.
 function dylint_build_lib() {
   local project_dir="${1:?}"
   local lib_dir="${2:?}"
   (
-    cd "${project_dir}/dev/lints/dylint"
+    cd "${project_dir}/dev/lints/dylint-custom"
     nicely cargo -q build --release --target-dir "${lib_dir}"
   ) >&2
   local so

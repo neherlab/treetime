@@ -813,17 +813,9 @@ tools-lock *args:
 dylint-lock:
     #!/usr/bin/env bash
     set -euo pipefail
-    for manifest in '{{project_dir}}'/dev/lints/{dylint,mordant,trailofbits}/Cargo.toml; do
+    for manifest in '{{project_dir}}'/dev/lints/{dylint-custom,dylint-mordant,dylint-trailofbits}/Cargo.toml; do
       cargo generate-lockfile --manifest-path "${manifest}"
     done
-
-# Run tests for the project Dylint library
-[group('lint')]
-dylint-test:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd '{{project_dir}}/dev/lints/dylint'
-    cargo test
 
 # Generate the CLI reference docs
 [group('docs')]

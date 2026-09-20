@@ -28,9 +28,9 @@ exclude = ["dev/templates/rust-crate"]
 
 [workspace.metadata.dylint]
 libraries = [
-  { path = "dev/lints/dylint" },
-  { path = "dev/lints/mordant" },
-  { path = "dev/lints/trailofbits" },
+  { path = "dev/lints/dylint-custom" },
+  { path = "dev/lints/dylint-mordant" },
+  { path = "dev/lints/dylint-trailofbits" },
 ]
 
 
