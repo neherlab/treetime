@@ -1,3 +1,10 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  clippy::unwrap_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;

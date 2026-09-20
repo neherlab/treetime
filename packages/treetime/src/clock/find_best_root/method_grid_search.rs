@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GridSearchParams;

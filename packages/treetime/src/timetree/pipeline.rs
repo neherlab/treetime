@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::wildcard_enum_match_arm,
+  reason = "counts and indices to f64 for normalization and coordinate math; variant matches default the irrelevant variants by design"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
 use eyre::Report;
 use log::warn;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "graph lookups and Float-to-f64 conversions are Some by construction"
+)]
+
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use maplit::btreemap;

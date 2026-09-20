@@ -1,3 +1,9 @@
+#![allow(
+  clippy::expect_used,
+  clippy::as_conversions,
+  reason = "graph node/edge access crashes on a missing key by project invariant, and casts are edge/mutation counts to f64"
+)]
+
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -7,7 +13,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -168,7 +174,7 @@ fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[G
 /// is scored by intersecting all (partition, mutation) buckets that cover every edge in the
 /// group.
 fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGroup> {
-  let mut seen: HashSet<Vec<GraphEdgeKey>> = HashSet::new();
+  let mut seen: BTreeSet<Vec<GraphEdgeKey>> = BTreeSet::new();
   let mut groups = Vec::new();
 
   for edges in index.values() {
@@ -228,7 +234,7 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
       .cmp(&a.total_shared)
       .then(b.edges.len().cmp(&a.edges.len()))
   });
-  let mut used: HashSet<GraphEdgeKey> = HashSet::new();
+  let mut used: BTreeSet<GraphEdgeKey> = BTreeSet::new();
   groups.retain(|g| {
     if g.edges.iter().all(|e| !used.contains(e)) {
       used.extend(g.edges.iter().copied());

@@ -11,6 +11,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::reroot::RerootChanges;
 
+#[allow(clippy::multiple_inherent_impl, reason = "PartitionTimetree's inherent impl is split by concern: the type definition in partition.rs, the timetree optimization methods here")]
 impl PartitionTimetree {
   /// The sequence length this partition represents.
   pub fn sequence_length(&self) -> usize {

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "graph lookups and Float-to-f64 conversions are Some by construction"
+)]
+
 use auto_ops::impl_op_ex;
 use getset::CopyGetters;
 use ndarray::Array2;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;

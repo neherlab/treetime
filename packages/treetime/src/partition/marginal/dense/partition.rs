@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::{SampleMode, resolve_profile};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
@@ -296,6 +301,7 @@ impl MarginalPasses for PartitionMarginalDense {
 
 /// Deterministic most-likely-state sequence assignment. Used by the forward pass and convergence
 /// reads, which must stay reproducible regardless of the user's output sampling mode.
+#[allow(clippy::disallowed_methods, reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature")]
 pub(crate) fn assign_sequence(seq_info: &DenseNodeState, alphabet: &Alphabet) -> Seq {
   assign_sequence_sampled(seq_info, alphabet, false, &mut rand::thread_rng())
 }

@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 //! Polytomy resolution for the timetree refinement loop.
 //!
 //! A polytomy is resolved by sampling a coalescent history for its children, conditioned on

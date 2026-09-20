@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::constants::{MIN_BRANCH_LENGTH_FRACTION, SUPERTINY_NUMBER};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};

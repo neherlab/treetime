@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};

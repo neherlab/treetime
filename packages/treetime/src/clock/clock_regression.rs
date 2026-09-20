@@ -1,3 +1,9 @@
+#![allow(
+  clippy::expect_used,
+  clippy::unwrap_used,
+  reason = "graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockNodeState, ClockState};

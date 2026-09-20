@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction"
+)]
+
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BrentParams;

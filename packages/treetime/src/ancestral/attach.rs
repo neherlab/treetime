@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::alignment::get_common_length;
 use crate::{make_error, make_report};

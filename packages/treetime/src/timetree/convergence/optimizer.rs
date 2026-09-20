@@ -37,6 +37,7 @@ impl TimetreeOptimizer {
     }
   }
 
+  #[must_use]
   pub fn with_trace_sink(mut self, sink: Box<dyn TraceSink>) -> Self {
     self.trace_sink = Some(sink);
     self

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::gtr::gtr::GTR;

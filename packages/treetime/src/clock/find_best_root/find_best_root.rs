@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};

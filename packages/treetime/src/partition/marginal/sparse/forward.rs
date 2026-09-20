@@ -1,3 +1,10 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  clippy::unwrap_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;

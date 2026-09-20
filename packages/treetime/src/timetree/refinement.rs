@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};

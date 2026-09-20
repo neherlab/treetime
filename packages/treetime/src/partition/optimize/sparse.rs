@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction"
+)]
+
 //! The likelihood of an edge length is the product of the likelihoods of all positions of all partitions:
 //!
 //!   Lh = prod_i prod_j \sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b

@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};

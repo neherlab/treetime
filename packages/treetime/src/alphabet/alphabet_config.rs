@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "graph lookups and Float-to-f64 conversions are Some by construction"
+)]
+
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
 use color_eyre::{Section, SectionExt};

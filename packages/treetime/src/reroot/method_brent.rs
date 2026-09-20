@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::make_report;
 use crate::reroot::cost_function::EdgeCostFn;
 use crate::reroot::params::BrentParams;

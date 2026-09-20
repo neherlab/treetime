@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;

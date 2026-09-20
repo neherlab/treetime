@@ -1,3 +1,8 @@
+#![allow(
+  clippy::panic,
+  reason = "mandated crash on missing graph node/edge access"
+)]
+
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use eyre::Report;

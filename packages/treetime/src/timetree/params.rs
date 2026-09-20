@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::clock::clock_regression::ClockVarianceParams;
 use crate::make_report;
 use crate::seq::alignment::get_common_length;

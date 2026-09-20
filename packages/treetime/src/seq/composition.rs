@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;

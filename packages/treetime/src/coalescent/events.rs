@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::time_coordinate::CalendarTime;
 use eyre::Report;

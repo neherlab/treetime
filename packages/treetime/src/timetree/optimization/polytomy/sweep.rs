@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 //! Stochastic coalescent-with-mutations sweep over the children of one polytomy.
 //!
 //! Pure simulation: no graph, no partitions, no I/O. Takes a summary of the children and

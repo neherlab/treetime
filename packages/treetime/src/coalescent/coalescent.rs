@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::coalescent::edge_data::CoalescentEdgeData;
 use crate::coalescent::integration::{
   compute_integral_merger_rate, compute_merger_rate_per_lineage_scalar, compute_merger_rate_total_scalar,

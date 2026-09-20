@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use itertools::izip;
 use ndarray::prelude::*;
 use treetime_primitives::LogLh;

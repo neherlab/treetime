@@ -1,3 +1,10 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  clippy::wildcard_enum_match_arm,
+  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant; variant matches default the irrelevant variants by design"
+)]
+
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::make_error;

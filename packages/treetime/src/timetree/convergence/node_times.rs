@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::timetree::timetree_state::TimetreeState;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;

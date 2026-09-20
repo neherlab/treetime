@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project invariant"
+)]
+
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use eyre::Report;

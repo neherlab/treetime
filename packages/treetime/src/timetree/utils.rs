@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "counts and indices to f64 for normalization and coordinate math"
+)]
+
 use crate::clock::clock_state::ClockState;
 use crate::seq::div::{OnlyLeaves, compute_divs};
 use crate::timetree::timetree_state::TimetreeState;

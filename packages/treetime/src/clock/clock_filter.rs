@@ -1,3 +1,9 @@
+#![allow(
+  clippy::expect_used,
+  clippy::integer_division,
+  reason = "graph node/edge access crashes on a missing key by the project invariant; intentional integer halving or segmentation"
+)]
+
 use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::make_error;
