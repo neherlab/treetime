@@ -1,0 +1,6 @@
+# The Dockerfiles set `SHELL ["bash", "-euxo", "pipefail", "-c"]`, so every RUN is bash
+# with pipefail; hadolint resolves a shell only from an absolute path and would otherwise
+# read the steps as POSIX sh.
+ignored:
+  - SC2239
+  - SC3040
