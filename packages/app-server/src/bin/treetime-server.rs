@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 #[cfg(any(
   all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
   all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
@@ -99,6 +94,7 @@ async fn main() -> eyre::Result<()> {
   Ok(())
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 async fn shutdown_signal() {
   let ctrl_c = tokio::signal::ctrl_c();
   let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())

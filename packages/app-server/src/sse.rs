@@ -1,9 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  clippy::expect_used,
-  reason = "server-sent-event sink: an unbounded channel avoids blocking request handlers on slow clients, and stream setup expects hold for a freshly built channel"
-)]
-
 use crate::error::AppError;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
@@ -62,6 +56,11 @@ impl Cancel for ChannelProgress {
   }
 }
 
+#[allow(
+  clippy::disallowed_methods,
+  clippy::expect_used,
+  reason = "the synchronous ProgressSink cannot await bounded sends, so SSE buffering does not apply backpressure; event serialization is infallible"
+)]
 #[allow(tail_expr_drop_order)]
 fn sse_response<F>(run_fn: F) -> Response
 where

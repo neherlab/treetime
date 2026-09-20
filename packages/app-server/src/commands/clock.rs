@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 //! Server `clock` request shape and orchestration.
 
 use crate::commands::support::{default_output_plan, default_topology_order, reroot_spec};
@@ -88,6 +83,7 @@ pub struct ClockResult {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn run_clock(args: &ClockArgs, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<ClockResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");

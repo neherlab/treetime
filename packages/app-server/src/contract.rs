@@ -1,8 +1,3 @@
-#![allow(
-  clippy::empty_structs_with_brackets,
-  reason = "ToSchema types serialize as an empty JSON object in the OpenAPI contract; a unit struct would change the generated schema"
-)]
-
 use serde_json::Value;
 use utoipa::ToSchema;
 
@@ -70,7 +65,15 @@ pub struct MugrationResult {
 }
 
 #[derive(ToSchema)]
+#[allow(
+  clippy::empty_structs_with_brackets,
+  reason = "the OpenAPI result schema intentionally represents an empty object"
+)]
 pub struct OptimizeResult {}
 
 #[derive(ToSchema)]
+#[allow(
+  clippy::empty_structs_with_brackets,
+  reason = "the OpenAPI result schema intentionally represents an empty object"
+)]
 pub struct PruneResult {}
