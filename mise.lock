@@ -157,6 +157,22 @@ url = "https://github.com/astral-sh/hawk/releases/download/0.1.14/cargo-hawk-x86
 url_api = "https://api.github.com/repos/astral-sh/hawk/releases/assets/544384063"
 provenance = "github-attestations"
 
+[[tools."github:kunobi-ninja/kache"]]
+version = "0.13.0"
+backend = "github:kunobi-ninja/kache"
+specifiers = ["0.13.0"]
+
+[tools."github:kunobi-ninja/kache".options]
+asset_pattern = "kache-x86_64-unknown-linux-musl.tar.gz"
+
+[[tools."github:taiki-e/cargo-llvm-cov"]]
+version = "0.9.1"
+backend = "github:taiki-e/cargo-llvm-cov"
+specifiers = ["0.9.1"]
+
+[tools."github:taiki-e/cargo-llvm-cov".options]
+asset_pattern = "cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz"
+
 [[tools.hadolint]]
 version = "2.14.0"
 backend = "aqua:hadolint/hadolint"
