@@ -11,7 +11,7 @@ use ndarray_rand::rand::distributions::uniform::SampleUniform;
 use ndarray_stats::QuantileExt;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
-use num_traits::{Bounded, Float, NumCast, One, Zero};
+use num_traits::{Bounded, Float, One, Zero};
 use ordered_float::OrderedFloat;
 use std::f64::consts::E;
 use std::ops::{AddAssign, Mul};
@@ -307,17 +307,11 @@ where
   }
 }
 
-#[allow(
-  clippy::unwrap_used,
-  reason = "0 and 1 are representable in every NumCast numeric target"
-)]
-pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
+pub fn random<T: Copy + SampleUniform + Zero + One, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
   shape: Sh,
   rng: &mut R,
 ) -> Array<T, D> {
-  let from: T = NumCast::from(0_i32).unwrap();
-  let to: T = NumCast::from(1_i32).unwrap();
-  Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
+  Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(T::zero(), T::one()), rng)
 }
 
 /// Reverse 1D array in place by inverting axis 0
