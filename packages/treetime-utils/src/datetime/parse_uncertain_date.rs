@@ -12,7 +12,6 @@ use std::sync::LazyLock;
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Try to read date with uncertain components, e.g. 2024-07-XX
 pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptions) -> Result<DateRange, Report> {
   for regex in DATE_UNCERTAIN_REGEXES.iter() {
     if let Some(caps) = regex.captures(date_uncertain_str) {
@@ -72,8 +71,6 @@ fn determine_date_range(
   }
 }
 
-/// Try to resolve uncertainty of the given date component string and clamp it to the given bounds.
-/// For example, month `XX` should be clamped to (1, 12).
 fn resolve_uncertain_date_component(s: impl AsRef<str>, bounds: (u32, u32)) -> Result<(u32, u32), Report> {
   let s = s.as_ref();
   let min = s.replace('X', "0").parse::<u32>()?.clamp(bounds.0, bounds.1);
@@ -93,21 +90,16 @@ fn create_date_uncertain_regexes() -> Vec<Regex> {
     "%Y-%m-%d",
     "%Y/%m/%d",
     "%Y.%m.%d",
-    //
     "%Y-%m",
     "%Y/%m",
     "%Y.%m",
-    //
     "%d-%m-%Y",
     "%d/%m/%Y",
     "%d.%m.%Y",
-    //
     "%m-%Y",
     "%m/%Y",
     "%m.%Y",
-    //
     "%Y",
-    //
     "%Y%m%d",
   ];
 

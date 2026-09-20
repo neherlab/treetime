@@ -16,14 +16,12 @@ fn trim_trailing_zeros(input: &str) -> String {
     None => (input, None),
   };
 
-  // Never trim trailing zeros in scientific notation.
   if exponent.is_some() {
     return input.to_owned();
   }
 
   match mantissa.find('.') {
     Some(pos) => {
-      // For plain decimals we can remove the fractional part entirely.
       format!(
         "{}{}",
         &mantissa[..pos],
@@ -39,15 +37,11 @@ fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
   trim_trailing_zeros(&raw)
 }
 
-/// Trait providing convenient float formatting methods
 pub trait FloatFormatExt {
-  /// Format float to a specific number of significant digits
   fn to_significant_digits(self, max_significant_digits: u8) -> String;
 
-  /// Format float to a specific number of decimal digits
   fn to_decimal_digits(self, max_decimal_digits: i8) -> String;
 
-  /// Format float with optional significant and decimal digit limits
   fn to_digits(self, max_significant_digits: Option<u8>, max_decimal_digits: Option<i8>) -> String;
 }
 
@@ -80,7 +74,6 @@ pub fn float_to_digits<F: Into<f64>>(
 ) -> String {
   let mut config = *FLOAT_CONFIG;
 
-  // If neither constraint is specified, use the default significant digits from FLOAT_CONFIG
   if max_significant_digits.is_none() && max_decimal_digits.is_none() {
     config = config.max_significant_digits(3);
   }

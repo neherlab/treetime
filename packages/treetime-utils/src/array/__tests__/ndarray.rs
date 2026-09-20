@@ -259,8 +259,6 @@ mod tests {
   #[case::large_offset_small_spacing(1e6, 1e-2, 500)]
   #[case::zero_crossing(-0.1, 1e-3, 201)]
   fn test_has_uniform_spacing_accepts_regenerated_grid(#[case] x_min: f64, #[case] dx: f64, #[case] n: usize) {
-    // A grid rebuilt from exact uniform-grid metadata must be accepted despite the
-    // floating-point cancellation in adjacent-coordinate subtraction at large offsets.
     let grid = helpers::regenerate_uniform(x_min, dx, n);
     assert!(has_uniform_spacing(&grid));
   }
@@ -270,21 +268,17 @@ mod tests {
   #[case::single(array![2014.18])]
   #[case::two_points(array![2014.18, 2014.181])]
   fn test_has_uniform_spacing_accepts_degenerate(#[case] grid: Array1<f64>) {
-    // Fewer than two intervals cannot be non-uniform.
     assert!(has_uniform_spacing(&grid));
   }
 
   #[test]
   fn test_has_uniform_spacing_rejects_nonuniform() {
-    // Spacings 1.0 then 2.0: a genuine non-uniformity of order dx.
     let grid = array![0.0, 1.0, 3.0];
     assert!(!has_uniform_spacing(&grid));
   }
 
   #[test]
   fn test_has_uniform_spacing_rejects_perturbation_above_tolerance() {
-    // Grid at scale ~1050 has tolerance MAX_SPACING_ULPS * 1050 * f64::EPSILON ~ 1.5e-11.
-    // Displacing one coordinate by 1e-9 (>> tolerance) makes it non-uniform.
     let mut grid = helpers::regenerate_uniform(1000.0, 1.0, 100);
     grid[50] += 1e-9;
     assert!(!has_uniform_spacing(&grid));
@@ -292,8 +286,6 @@ mod tests {
 
   #[test]
   fn test_has_uniform_spacing_accepts_perturbation_below_tolerance() {
-    // The same grid, displaced by 1e-12 (above one ULP of ~1050 but well below the
-    // ~1.5e-11 tolerance), stays within the rounding budget and is accepted.
     let mut grid = helpers::regenerate_uniform(1000.0, 1.0, 100);
     grid[50] += 1e-12;
     assert!(has_uniform_spacing(&grid));
@@ -302,8 +294,6 @@ mod tests {
   mod helpers {
     use ndarray::Array1;
 
-    /// Regenerate a uniform grid the way `Grid::x_at` does: `x_i = x_min + dx*i`.
-    /// This is the exact coordinate reconstruction that `has_uniform_spacing` must accept.
     pub fn regenerate_uniform(x_min: f64, dx: f64, n: usize) -> Array1<f64> {
       Array1::from_shape_fn(n, |i| x_min + dx * i as f64)
     }

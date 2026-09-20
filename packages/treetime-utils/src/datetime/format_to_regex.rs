@@ -3,13 +3,6 @@ use regex::{Error, Regex};
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
-/// Try to convert strftime-style format string to a corresponding regular expression.
-///
-/// Note that at the current state the implementation is quite silly and not all formats are supported.
-///
-/// See: https://man7.org/linux/man-pages/man3/strftime.3.html
-///
-/// See: https://docs.rs/chrono/latest/chrono/format/strftime/index.html
 pub fn date_format_to_regex(format: &str) -> Result<Regex, Error> {
   let escaped_format = regex::escape(format);
   let result = SPEC_MAP.iter().fold(escaped_format, |acc, (spec, expr)| {

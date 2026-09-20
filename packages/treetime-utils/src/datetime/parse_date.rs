@@ -62,25 +62,17 @@ pub fn parse_date_with_format(
 }
 
 pub const DATE_FORMATS: &[&str] = &[
-  // Y, m, d
   "%Y-%m-%d",
   "%Y/%m/%d",
   "%Y.%m.%d",
-  // d, m, Y
   "%d-%m-%Y",
   "%d/%m/%Y",
   "%d.%m.%Y",
-  //
   "%Y%m%d",
-  // Year and day of the year (2024-205)
   "%Y-%j",
-  // ISO week date (2024-W30-2)
   "%Y-W%W-%w",
-  // ISO week and week year (30-2024)
   "%V-%G",
-  // US date format (07/23/2024)
   "%m/%d/%Y",
-  // Month name day, year (July 23, 2024)
   "%B %d, %Y",
 ];
 
@@ -116,7 +108,6 @@ fn create_date_range_regexes() -> Vec<(Regex, String)> {
 
   let mut regexes = vec![];
 
-  // Separator-delimited formats, e.g. "2021-12-17 / 2024-07-23"
   {
     const SEPARATORS: &[&str] = &["/", "..", "...", "-", ",", ";", ":"];
     for pattern in DATE_PATTERNS {
@@ -128,7 +119,6 @@ fn create_date_range_regexes() -> Vec<(Regex, String)> {
     }
   }
 
-  // Parenthesized formats, e.g. "[ 2021-12-17 , 2024-07-23 ]"
   {
     const PARENS: &[(&str, &str)] = &[(r"\[", r"\]"), (r"\(", r"\)"), (r"\{", r"\}")];
     const SEPARATORS: &[&str] = &["..", "...", ",", ";", ":"];

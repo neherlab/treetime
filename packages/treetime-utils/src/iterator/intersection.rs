@@ -1,9 +1,5 @@
 use itertools::{EitherOrBoth, Itertools};
 
-/// Creates an intersection of two iterators (items present in both).
-///
-/// Both inputs are sorted and deduplicated before intersecting.
-/// Output is sorted and deduplicated.
 pub fn iterator_intersection<I1, I2, T>(iter1: I1, iter2: I2) -> impl Iterator<Item = T>
 where
   I1: IntoIterator<Item = T>,

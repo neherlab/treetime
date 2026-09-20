@@ -1,11 +1,5 @@
-/// Threshold below which the ordinary-least-squares design matrix is treated as singular.
-///
-/// `denom = n*sum(x^2) - (sum x)^2` is `n^2` times the variance of the abscissae, so it vanishes
-/// when every `x` is equal. Below this magnitude the slope is numerically undefined and the fit
-/// falls back to a flat line through the mean ordinate.
 const SINGULAR_DENOM_EPS: f64 = 1e-30;
 
-/// A simple least-squares line fit `y = slope * x + intercept`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LineFit {
   pub slope: f64,
@@ -13,14 +7,6 @@ pub struct LineFit {
 }
 
 impl LineFit {
-  /// Fit the least-squares line `y = slope * x + intercept` to paired samples.
-  ///
-  /// Solves the ordinary-least-squares normal equations for the two parameters. When the abscissae
-  /// are degenerate -- every `x` equal, so the design matrix is singular -- the slope is undefined
-  /// and the fit falls back to a flat line through the mean ordinate (`slope = 0`,
-  /// `intercept = mean(y)`).
-  ///
-  /// `xs` and `ys` must have the same non-zero length.
   #[allow(
     clippy::as_conversions,
     reason = "sample count to f64; exact for any realistic input length"
@@ -53,9 +39,6 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use rstest::rstest;
 
-  // Oracle: each case is an exact line `y = slope*x + intercept` sampled at the given abscissae, so
-  // the fit must recover the generating parameters. The degenerate case has a singular design
-  // matrix (all `x` equal) and falls back to `slope = 0`, `intercept = mean(y)`.
   #[rustfmt::skip]
   #[rstest]
   #[case::unit_slope(   &[0.0, 1.0, 2.0, 3.0], &[1.0, 3.0,  5.0,  7.0], ( 2.0, 1.0))]

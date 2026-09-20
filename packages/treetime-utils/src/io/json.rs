@@ -20,8 +20,6 @@ pub fn json_read<T: for<'de> Deserialize<'de>>(reader: impl std::io::Read) -> Re
   deserialize_without_recursion_limit(&mut de).wrap_err("When reading JSON")
 }
 
-/// Mitigates recursion limit error when parsing large JSONs
-/// See https://github.com/serde-rs/json/issues/334
 fn deserialize_without_recursion_limit<'de, R: Read<'de>, T: Deserialize<'de>>(
   de: &mut Deserializer<R>,
 ) -> Result<T, Report> {
@@ -58,9 +56,6 @@ pub fn json_write<W: Write, T: Serialize>(writer: W, obj: &T, pretty: JsonPretty
   .wrap_err("When writing JSON")
 }
 
-/// Check whether a serde value serializes to null. This is useful to skip a generic struct field even if we don't
-/// know the exact type. Usage: add attribute `#[serde(skip_serializing_if = "is_json_value_null")]` to a struct field
-/// you want to skip.
 pub fn is_json_value_null<T: Serialize>(t: &T) -> bool {
   match serde_json::to_value(t) {
     Ok(v) => v.is_null(),

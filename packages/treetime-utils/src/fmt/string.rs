@@ -13,7 +13,6 @@ macro_rules! o {
   reason = "ASCII char sequence narrowed to bytes; the resulting buffer is valid UTF-8 by construction"
 )]
 pub fn vec_to_string(v: Vec<char>) -> String {
-  // Surprisingly, this is the fastest way, according to `benches/vec_char_to_string.rs`
   let bytes: Vec<u8> = v.into_iter().map(|c| c as u8).collect();
   String::from_utf8(bytes).unwrap()
 }
@@ -33,8 +32,6 @@ pub enum TruncateDirection {
   Middle,
 }
 
-/// Truncates string to max_len bytes with ellipsis placement based on direction.
-/// Assumes ASCII input for performance.
 #[allow(clippy::string_slice)]
 #[allow(
   clippy::integer_division,
@@ -47,7 +44,6 @@ pub fn truncate(s: impl AsRef<str>, max_len: usize, ellipsis: Option<&str>, dire
     return s.into();
   }
 
-  // If ellipsis is provided but too long, ignore it
   let ellipsis = ellipsis.filter(|ell| max_len >= ell.len());
 
   match (direction, ellipsis) {
@@ -68,38 +64,26 @@ pub fn truncate(s: impl AsRef<str>, max_len: usize, ellipsis: Option<&str>, dire
   }
 }
 
-/// Truncates string to max_len bytes from the right.
-/// Assumes ASCII input for performance.
 pub fn truncate_right(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, None, TruncateDirection::Right)
 }
 
-/// Truncates string to max_len bytes from the left.
-/// Assumes ASCII input for performance.
 pub fn truncate_left(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, None, TruncateDirection::Left)
 }
 
-/// Truncates string to max_len bytes from the middle.
-/// Assumes ASCII input for performance.
 pub fn truncate_middle(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, None, TruncateDirection::Middle)
 }
 
-/// Truncates string to max_len bytes from the right, appending "..." if truncated.
-/// Assumes ASCII input for performance.
 pub fn truncate_right_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, Some("..."), TruncateDirection::Right)
 }
 
-/// Truncates string to max_len bytes from the left, prepending "..." if truncated.
-/// Assumes ASCII input for performance.
 pub fn truncate_left_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, Some("..."), TruncateDirection::Left)
 }
 
-/// Truncates string to max_len bytes from the middle, inserting "..." if truncated.
-/// Assumes ASCII input for performance.
 pub fn truncate_middle_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, Some("..."), TruncateDirection::Middle)
 }

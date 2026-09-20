@@ -1,7 +1,3 @@
-/// Zip an unknown number of iterators
-///
-/// Borrowed with modifications from https://stackoverflow.com/a/55292215
-/// Author: Shepmaster
 pub struct Manyzip<T>(pub Vec<T>);
 
 impl<T> Iterator for Manyzip<T>

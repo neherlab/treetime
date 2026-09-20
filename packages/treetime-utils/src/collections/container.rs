@@ -4,7 +4,6 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
-/// Count occurrences (multiplicities) of unique values in an iterator
 pub fn count_occurrences<T: Copy + Hash + Eq + Ord>(it: impl Iterator<Item = T>) -> Vec<(T, usize)> {
   let mut occurrences: BTreeMap<T, usize> = BTreeMap::new();
   for x in it {
@@ -31,7 +30,6 @@ pub fn get_exactly_one_mut<T>(x: &mut [T]) -> Result<&mut T, Report> {
   }
 }
 
-/// Find min and max of a non-empty iterator
 #[allow(
   clippy::unwrap_used,
   reason = "documented non-empty precondition; into_option is Some for a non-empty iterator"

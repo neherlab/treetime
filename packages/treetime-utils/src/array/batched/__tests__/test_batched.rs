@@ -78,7 +78,6 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
-    /// $(AB)C = A(BC)$
     #[test]
     fn test_prop_matmul_3d_associative(
       a in arb_array3(3, 4, 2),
@@ -93,7 +92,6 @@ mod tests {
       );
     }
 
-    /// $AI = IA = A$
     #[test]
     fn test_prop_matmul_3d_identity(a in arb_array3(3, 3, 2)) {
       let identity = Array3::from_shape_fn((3, 3, 2), |(i, j, _)| if i == j { 1.0 } else { 0.0 });
@@ -103,7 +101,6 @@ mod tests {
       prop_assert!(approx::abs_diff_eq!(&ia, &a, epsilon = 1e-10), "IA != A");
     }
 
-    /// $A(u + v) = Au + Av$
     #[test]
     fn test_prop_matmul_3d_distributive(
       a in arb_array3(3, 4, 2),
@@ -118,7 +115,6 @@ mod tests {
       );
     }
 
-    /// $M(av) = a(Mv)$
     #[test]
     fn test_prop_matvec_3d_scalar_linearity(
       mat in arb_array3(3, 3, 2),
@@ -133,7 +129,6 @@ mod tests {
       );
     }
 
-    /// $M(u + v) = Mu + Mv$
     #[test]
     fn test_prop_matvec_3d_additive(
       mat in arb_array3(3, 3, 2),
@@ -148,7 +143,6 @@ mod tests {
       );
     }
 
-    /// $Iv = v$
     #[test]
     fn test_prop_matvec_3d_identity(vec in arb_array2(3, 2)) {
       let identity = Array3::from_shape_fn((3, 3, 2), |(i, j, _)| if i == j { 1.0 } else { 0.0 });
@@ -156,7 +150,6 @@ mod tests {
       prop_assert!(approx::abs_diff_eq!(&result, &vec, epsilon = 1e-10), "Iv != v");
     }
 
-    /// $(AB)v = A(Bv)$
     #[test]
     fn test_prop_matvec_3d_matmul_consistency(
       a in arb_array3(3, 4, 2),

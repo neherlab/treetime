@@ -5,7 +5,6 @@ use num::{FromPrimitive, Zero};
 use std::ops::{Add, Div};
 
 pub trait MeanByKey<T>: Iterator<Item = T> + Sized {
-  /// Calculate the arithmetic mean of values extracted from an iterator
   fn mean_by_key<F, U>(self, mut f: F) -> U
   where
     F: FnMut(T) -> U,

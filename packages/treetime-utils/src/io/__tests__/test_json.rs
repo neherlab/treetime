@@ -12,8 +12,6 @@ mod tests {
     count: u32,
   }
 
-  // `json_read_file` must round-trip whatever `json_write_file` produced, through the transparent
-  // (de)compression the file helpers apply based on the file extension.
   #[rustfmt::skip]
   #[rstest]
   #[case::json(   "config.json")]

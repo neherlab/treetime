@@ -1,9 +1,5 @@
 use itertools::{EitherOrBoth, Itertools};
 
-/// Creates a set difference of two iterators (items in first but not second).
-///
-/// Both inputs are sorted and deduplicated before differencing.
-/// Output is sorted and deduplicated.
 pub fn iterator_difference<I1, I2, T>(iter1: I1, iter2: I2) -> impl Iterator<Item = T>
 where
   I1: IntoIterator<Item = T>,

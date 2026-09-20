@@ -70,8 +70,6 @@ pub fn add_extension(filepath: impl AsRef<Path>, extension: impl AsRef<OsStr>) -
   filepath.to_owned().with_file_name(&stem)
 }
 
-/// Reads entire file into a string.
-/// Compared to `std::fs::read_to_string` uses buffered reader
 pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report> {
   let filepath = filepath.as_ref();
   let mut file = open_file_or_stdin(&Some(filepath))?;
@@ -82,8 +80,6 @@ pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report>
   Ok(data)
 }
 
-/// Reads entire reader into a string.
-/// Compared to `std::fs::read_to_string` uses buffered reader
 pub fn read_reader_to_string(reader: impl Read) -> Result<String, Report> {
   const BUF_SIZE: usize = 2 * 1024 * 1024;
 

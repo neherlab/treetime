@@ -8,7 +8,6 @@ use std::path::Path;
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
-/// Open stdin
 pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
   info!("Reading from standard input");
 
@@ -18,7 +17,6 @@ pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
   Ok(Box::new(BufReader::new(stdin())))
 }
 
-/// Open file for reading given a filepath. If the filepath is None, then read from stdin.
 pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dyn BufRead>, Report> {
   match filepath {
     Some(filepath) => {
@@ -37,7 +35,6 @@ pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dy
   }
 }
 
-/// Open file for writing. If the path does not exist it will be created recursively.
 pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, Report> {
   let filepath = filepath.as_ref();
 

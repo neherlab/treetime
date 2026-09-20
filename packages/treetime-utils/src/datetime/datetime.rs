@@ -6,7 +6,6 @@ pub fn date_now() -> DateTime<Utc> {
   Utc::now()
 }
 
-// Parse RFC 3339 and ISO 8601 datetime string (1996-12-19T16:39:57-08:00)
 pub fn date_from_iso(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
   let parsed = DateTime::<FixedOffset>::parse_from_rfc3339(date_str)
@@ -23,7 +22,6 @@ pub fn iso(date_str: impl AsRef<str>) -> DateTime<Utc> {
   date_from_iso(date_str).unwrap()
 }
 
-// Parse RFC 2822 datetime string (Tue, 1 Jul 2003 10:52:37 +0200)
 pub fn date_from_rfc2822(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
   let parsed = DateTime::<FixedOffset>::parse_from_rfc2822(date_str)
@@ -40,10 +38,6 @@ pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Convert millisecond timestamp to DateTime.
-///
-/// # Panics
-/// Panics if timestamp is out of range for DateTime (approximately ±262,000 years from epoch).
 pub fn timestamp_to_date(timestamp: i64) -> DateTime<Utc> {
   DateTime::from_timestamp_millis(timestamp).expect("timestamp out of DateTime range")
 }

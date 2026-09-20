@@ -1,10 +1,3 @@
-//! Proptest-compatible approximate equality assertions with pretty diffs.
-//!
-//! Use `return Err(TestCaseError::fail(...))` instead of panicking,
-//! avoiding noisy backtraces during proptest shrinking.
-//!
-//! Dependencies resolved at expansion site: `approx`, `proptest`, `pretty_assertions`.
-
 #[macro_export]
 macro_rules! prop_assert_abs_diff_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{

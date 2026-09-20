@@ -2,11 +2,6 @@ use indexmap::IndexMap;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Output empty value if false
-///
-/// Usage:
-///     #[serde(serialize_with = "skip_serializing_if_false")]
-//      pub is_foo: bool
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn skip_serializing_if_false<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -19,11 +14,6 @@ where
   }
 }
 
-/// Serialize Array1<T> as a simple JSON array
-///
-/// Usage:
-///     #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-///     pub values: Array1<T>
 pub fn array1_as_vec<T, S>(array: &Array1<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
   T: Serialize,
@@ -32,11 +22,6 @@ where
   serializer.collect_seq(array.iter())
 }
 
-/// Deserialize Array1<T> from a simple JSON array
-///
-/// Usage:
-///     #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-///     pub values: Array1<T>
 pub fn array1_from_vec<'de, T, D>(deserializer: D) -> Result<Array1<T>, D::Error>
 where
   T: Deserialize<'de>,
@@ -46,11 +31,6 @@ where
   Ok(Array1::from_vec(vec))
 }
 
-/// Serialize Array2<T> as a nested JSON array (row-major)
-///
-/// Usage:
-///     #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-///     pub values: Array2<T>
 pub fn array2_as_vec<T, S>(array: &Array2<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
   T: Serialize,
@@ -64,11 +44,6 @@ where
   rows.serialize(serializer)
 }
 
-/// Deserialize Array2<T> from a nested JSON array (row-major)
-///
-/// Usage:
-///     #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-///     pub values: Array2<T>
 pub fn array2_from_vec<'de, T, D>(deserializer: D) -> Result<Array2<T>, D::Error>
 where
   T: Deserialize<'de>,
@@ -81,11 +56,6 @@ where
   Array2::from_shape_vec((nrows, ncols), flat).map_err(serde::de::Error::custom)
 }
 
-/// Serialize Option<Array1<T>> as a simple JSON array or null
-///
-/// Usage:
-///     #[serde(default, serialize_with = "option_array1_as_vec", deserialize_with = "option_array1_from_vec")]
-///     pub values: Option<Array1<T>>
 pub fn option_array1_as_vec<T, S>(array: &Option<Array1<T>>, serializer: S) -> Result<S::Ok, S::Error>
 where
   T: Serialize,
@@ -97,11 +67,6 @@ where
   }
 }
 
-/// Deserialize Option<Array1<T>> from a simple JSON array or null
-///
-/// Usage:
-///     #[serde(default, serialize_with = "option_array1_as_vec", deserialize_with = "option_array1_from_vec")]
-///     pub values: Option<Array1<T>>
 pub fn option_array1_from_vec<'de, T, D>(deserializer: D) -> Result<Option<Array1<T>>, D::Error>
 where
   T: Deserialize<'de>,
@@ -110,11 +75,6 @@ where
   Option::<Vec<T>>::deserialize(deserializer).map(|opt| opt.map(Array1::from_vec))
 }
 
-/// Deserialize IndexMap<String, Array1<f64>> from JSON object
-///
-/// Usage:
-///     #[serde(deserialize_with = "indexmap_array1_from_map")]
-///     pub values: IndexMap<String, Array1<f64>>
 pub fn indexmap_array1_from_map<'de, D>(deserializer: D) -> Result<IndexMap<String, Array1<f64>>, D::Error>
 where
   D: Deserializer<'de>,
