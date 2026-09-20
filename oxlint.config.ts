@@ -1,5 +1,35 @@
 import { defineConfig } from "oxlint";
 
+const PACKAGE_GRAPH: Record<string, readonly string[]> = {
+  "app-contracts": [],
+  "app-napi": [],
+  "app-ui": ["app-contracts"],
+  "app-web": ["app-contracts", "app-ui"],
+  "app-desktop": ["app-contracts", "app-napi", "app-ui"],
+};
+
+const PACKAGE_GRAPH_MESSAGE =
+  "This package may import only the workspace packages it declares. Add the dependency to package.json and PACKAGE_GRAPH, or route through an allowed package.";
+
+function packageBoundaryOverrides() {
+  const names = Object.keys(PACKAGE_GRAPH);
+  return names.flatMap((name) => {
+    const allowed = new Set([name, ...(PACKAGE_GRAPH[name] ?? [])]);
+    const banned = names.filter((other) => !allowed.has(other)).map((other) => `@neherlab/${other}`);
+    if (banned.length === 0) {
+      return [];
+    }
+    return [
+      {
+        files: [`packages/${name}/**`],
+        rules: {
+          "no-restricted-imports": ["error", { patterns: [{ group: banned, message: PACKAGE_GRAPH_MESSAGE }] }],
+        },
+      },
+    ];
+  });
+}
+
 export default defineConfig({
   ignorePatterns: [
     "dist",
@@ -146,6 +176,7 @@ export default defineConfig({
   },
 
   overrides: [
+    ...packageBoundaryOverrides(),
     {
       files: [
         "packages/app-web/src/**",
