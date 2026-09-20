@@ -1,0 +1,126 @@
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:12:9
+   |
+LL |         _ => 0,
+   |         ^
+   |
+note: `Op` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:3:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+   = note: `#[warn(wildcard_over_own_enum)]` on by default
+help: list the remaining variants instead of `_`
+   |
+LL -         _ => 0,
+LL +         Op::Sub | Op::Mul => 0,
+   |
+
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:19:9
+   |
+LL |         other => cost(other),
+   |         ^^^^^
+   |
+note: `Op` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:3:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+help: list the remaining variants instead of `other`
+   |
+LL |         other @ (Op::Sub | Op::Mul) => cost(other),
+   |               +++++++++++++++++++++
+
+warning: this catch-all will also match any variant added to `Entry` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:96:9
+   |
+LL |         _ => 0,
+   |         ^
+   |
+note: `Entry` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:87:1
+   |
+LL | pub enum Entry {
+   | ^^^^^^^^^^^^^^
+help: list the remaining variants instead of `_`
+   |
+LL -         _ => 0,
+LL +         Entry::Memory | Entry::Irq => 0,
+   |
+
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:163:9
+   |
+LL |         _ => {
+   |         ^
+   |
+note: `Op` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:3:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+help: list the remaining variants instead of `_`
+   |
+LL -         _ => {
+LL +         Op::Sub | Op::Mul => {
+   |
+
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:208:13
+   |
+LL |             _ => 0,
+   |             ^
+   |
+note: `Op` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:3:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+help: list the remaining variants instead of `_`
+   |
+LL -             _ => 0,
+LL +             Op::Add | Op::Mul => 0,
+   |
+
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/wildcard_over_own_enum.rs:217:9
+   |
+LL |         other => {
+   |         ^^^^^
+   |
+note: `Op` is defined here
+  --> $DIR/wildcard_over_own_enum.rs:3:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+help: list the remaining variants instead of `other`
+   |
+LL |         other @ (Op::Sub | Op::Mul) => {
+   |               +++++++++++++++++++++
+
+warning: this `match` on `Op` repeats an earlier one arm for arm. The mapping exists twice, and a change to one copy will miss the other
+  --> $DIR/wildcard_over_own_enum.rs:219:13
+   |
+LL | /             match other {
+LL | |                 Op::Add => 0,
+LL | |                 Op::Sub => 2,
+LL | |                 Op::Mul => 3,
+LL | |             }
+   | |_____________^
+   |
+note: the other copy
+  --> $DIR/wildcard_over_own_enum.rs:177:18
+   |
+LL |           other => match other {
+   |  __________________^
+LL | |             Op::Add => 0,
+LL | |             Op::Sub => 2,
+LL | |             Op::Mul => 3,
+LL | |         },
+   | |_________^
+   = help: move the mapping into a method on `Op` and call it from both places
+   = note: `#[warn(same_match_twice)]` on by default
+
+warning: 7 warnings emitted
+

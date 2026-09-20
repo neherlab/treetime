@@ -1,0 +1,68 @@
+warning: `Entry.slot` can be `INVALID_SLOT`, which 2 other places treat as "no value". `rename` indexes with it here without checking, so the sentinel becomes an out-of-range index
+  --> $DIR/sentinel_integer.rs:34:9
+   |
+LL |         self.names[e.slot as usize] = to;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the places that checks for `INVALID_SLOT`
+  --> $DIR/sentinel_integer.rs:25:12
+   |
+LL |         if e.slot == INVALID_SLOT {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   = help: store `slot` as an `Option` (over `NonZero` or `NonMax` to keep the size). `rename` then has to handle the empty case before it can index
+   = note: `#[warn(sentinel_integer)]` on by default
+
+warning: `Entry.slot` can be `INVALID_SLOT`, which 2 other places treat as "no value". `name_after` indexes with it here without checking, so the sentinel becomes an out-of-range index
+  --> $DIR/sentinel_integer.rs:68:9
+   |
+LL |         self.names[e.width as usize + e.slot as usize]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the places that checks for `INVALID_SLOT`
+  --> $DIR/sentinel_integer.rs:25:12
+   |
+LL |         if e.slot == INVALID_SLOT {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   = help: store `slot` as an `Option` (over `NonZero` or `NonMax` to keep the size). `name_after` then has to handle the empty case before it can index
+
+warning: `Entry.parent` can be `u32::MAX`, which 3 other places treat as "no value". `parent_ptr` offsets a pointer by it here without checking, so the sentinel becomes a wild offset
+  --> $DIR/sentinel_integer.rs:82:18
+   |
+LL |         unsafe { self.entries.as_ptr().add(e.parent as usize) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the places that checks for `u32::MAX`
+  --> $DIR/sentinel_integer.rs:76:9
+   |
+LL |         e.parent == u32::MAX
+   |         ^^^^^^^^^^^^^^^^^^^^
+   = help: store `parent` as an `Option` (over `NonZero` or `NonMax` to keep the size). `parent_ptr` then has to handle the empty case before it can offset
+
+warning: `Entry.parent` can be `u32::MAX`, which 3 other places treat as "no value". `parent_ptr_wrapping` offsets a pointer by it here without checking, so the sentinel becomes a wild offset
+  --> $DIR/sentinel_integer.rs:87:9
+   |
+LL |         self.entries.as_ptr().wrapping_add(e.parent as usize)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the places that checks for `u32::MAX`
+  --> $DIR/sentinel_integer.rs:76:9
+   |
+LL |         e.parent == u32::MAX
+   |         ^^^^^^^^^^^^^^^^^^^^
+   = help: store `parent` as an `Option` (over `NonZero` or `NonMax` to keep the size). `parent_ptr_wrapping` then has to handle the empty case before it can offset
+
+warning: `Entry.depth` can be `-1`, which 2 other places treat as "no value". `below` indexes with it here without checking, so the sentinel becomes an out-of-range index
+  --> $DIR/sentinel_integer.rs:133:10
+   |
+LL |         &self.entries[(e.depth + 1) as usize]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the places that checks for `-1`
+  --> $DIR/sentinel_integer.rs:124:9
+   |
+LL |         e.depth != -1
+   |         ^^^^^^^^^^^^^
+   = help: store `depth` as an `Option` (over `NonZero` or `NonMax` to keep the size). `below` then has to handle the empty case before it can index
+
+warning: 5 warnings emitted
+

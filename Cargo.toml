@@ -26,6 +26,12 @@ members = [
 
 exclude = ["dev/templates/rust-crate"]
 
+[workspace.metadata.dylint]
+libraries = [
+  { path = "dev/lints/dylint" },
+  { path = "dev/lints/mordant" },
+]
+
 
 [workspace.package]
 description = "Maximum-likelihood phylodynamic inference"

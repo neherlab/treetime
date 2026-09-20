@@ -1,0 +1,159 @@
+warning: `INVALID_PACKAGE - 1` is a `PackageId` but is used to define the `DependencyId` const `ROOT_DEPENDENCY`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:11:43
+   |
+LL | pub const ROOT_DEPENDENCY: DependencyId = INVALID_PACKAGE - 1;
+   |                                           ^^^^^^^^^^^^^^^^^^^
+   |
+note: the `PackageId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:9:28
+   |
+LL | pub const INVALID_PACKAGE: PackageId = PackageId::MAX;
+   |                            ^^^^^^^^^
+   = help: make `PackageId` and `DependencyId` newtypes instead of aliases. This line then fails to compile until the right id is used
+   = note: `#[warn(interchangeable_aliases)]` on by default
+
+warning: `dep` is a `DependencyId` but is passed as the `PackageId` parameter `package` of `link`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:32:10
+   |
+LL |     link(dep, pkg)
+   |          ^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:30:53
+   |
+LL | pub fn swapped_call_is_flagged(pkg: PackageId, dep: DependencyId) -> u32 {
+   |                                                     ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `pkg` is a `PackageId` but is passed as the `DependencyId` parameter `dependency` of `link`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:32:15
+   |
+LL |     link(dep, pkg)
+   |               ^^^
+   |
+note: the `PackageId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:30:37
+   |
+LL | pub fn swapped_call_is_flagged(pkg: PackageId, dep: DependencyId) -> u32 {
+   |                                     ^^^^^^^^^
+   = help: make `PackageId` and `DependencyId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `dep` is a `DependencyId` but is stored in the `PackageId` field `package`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:38:18
+   |
+LL |         package: dep,
+   |                  ^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:35:55
+   |
+LL | pub fn struct_literal_is_flagged(pkg: PackageId, dep: DependencyId) -> Resolution {
+   |                                                       ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `other.dependency` is a `DependencyId` but is stored in the `PackageId` field `package`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:50:17
+   |
+LL |     r.package = other.dependency;
+   |                 ^^^^^^^^^^^^^^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:17:21
+   |
+LL |     pub dependency: DependencyId,
+   |                     ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `first_dependency(r)` is a `DependencyId` but is bound to `pkg: PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:57:26
+   |
+LL |     let pkg: PackageId = first_dependency(r);
+   |                          ^^^^^^^^^^^^^^^^^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:26:44
+   |
+LL | pub fn first_dependency(r: &Resolution) -> DependencyId {
+   |                                            ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `dep` is a `DependencyId` but is returned from `return_is_flagged` as a `PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:64:5
+   |
+LL |     dep
+   |     ^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:61:31
+   |
+LL | pub fn return_is_flagged(dep: DependencyId) -> PackageId {
+   |                               ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `r.dependency` is a `DependencyId` but is returned from `branch_tail_is_flagged` as a `PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:70:9
+   |
+LL |         r.dependency
+   |         ^^^^^^^^^^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:17:21
+   |
+LL |     pub dependency: DependencyId,
+   |                     ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `first_dependency(r)` is a `DependencyId` but is returned from `branch_tail_is_flagged` as a `PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:74:18
+   |
+LL |             _ => first_dependency(r),
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:26:44
+   |
+LL | pub fn first_dependency(r: &Resolution) -> DependencyId {
+   |                                            ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `r.dependency` is a `DependencyId` but is returned from `explicit_return_is_flagged` as a `PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:82:16
+   |
+LL |         return r.dependency;
+   |                ^^^^^^^^^^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:17:21
+   |
+LL |     pub dependency: DependencyId,
+   |                     ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `dep` is a `DependencyId` but is stored in the `PackageId` field `0`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:92:13
+   |
+LL |     (Pinned(dep, dep), Pinned(pkg, dep))
+   |             ^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:89:58
+   |
+LL | pub fn tuple_constructor_is_flagged(pkg: PackageId, dep: DependencyId) -> (Pinned, Pinned) {
+   |                                                          ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: `dep` is a `DependencyId` but is compared with `INVALID_PACKAGE`, a `PackageId`. Both are plain `u32`, so the mix-up compiles
+  --> $DIR/interchangeable_aliases.rs:97:8
+   |
+LL |     if dep == INVALID_PACKAGE {
+   |        ^^^
+   |
+note: the `DependencyId` this value comes from
+  --> $DIR/interchangeable_aliases.rs:95:51
+   |
+LL | pub fn comparison_is_flagged(r: &Resolution, dep: DependencyId) -> bool {
+   |                                                   ^^^^^^^^^^^^
+   = help: make `DependencyId` and `PackageId` newtypes instead of aliases. This line then fails to compile until the right id is used
+
+warning: 12 warnings emitted
+

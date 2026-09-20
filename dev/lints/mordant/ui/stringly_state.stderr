@@ -1,0 +1,108 @@
+warning: `kind` only ever holds `"download"` or `"extract"` (3 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:5:5
+   |
+LL |     kind: &'static str,
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:20:8
+   |
+LL |     if t.kind == "download" { t.id } else { 0 }
+   |        ^^^^^^^^^^^^^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `kind`. Keep the text in an `as_str` method for printing
+   = note: `#[warn(stringly_state)]` on by default
+
+warning: `name` only ever holds `"link"` or `"resolve"` (2 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:25:5
+   |
+LL |     name: Vec<u8>,
+   |     ^^^^^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:40:11
+   |
+LL |     match p.name.as_slice() {
+   |           ^^^^^^^^^^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `name`. Keep the text in an `as_str` method for printing
+
+warning: `label` only ever holds `"fast"` or `"slow"` (2 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:48:5
+   |
+LL |     label: String,
+   |     ^^^^^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:64:5
+   |
+LL |     m.label.eq_ignore_ascii_case("FAST")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `label`. Keep the text in an `as_str` method for printing
+
+warning: `scheme` only ever holds `"ws"` or `"wss"` (2 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:69:5
+   |
+LL |     scheme: &'static [u8],
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:88:14
+   |
+LL |     matches!(c.scheme, b"wss") == (c.port == 443)
+   |              ^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `scheme`. Keep the text in an `as_str` method for printing
+
+warning: `color` only ever holds `"green"`, `"red"` or `"yellow"` (3 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:93:9
+   |
+LL |     let mut color = "green";
+   |         ^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:99:8
+   |
+LL |     if color == "red" {
+   |        ^^^^^^^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `color`. Keep the text in an `as_str` method for printing
+
+warning: `level` only ever holds `"hi"` or `"lo"` (1 store) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:110:9
+   |
+LL |     let level = if n > 9 { "hi" } else { "lo" };
+   |         ^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:111:14
+   |
+LL |     matches!(level, "hi")
+   |              ^^^^^
+   = help: declare an enum with a variant per string and store that in `level`. Keep the text in an `as_str` method for printing
+
+warning: `step` only ever holds `"emit"` or `"parse"` (2 stores) and is read by comparing against literals. It is an enum written as a string, and a typo still compiles
+  --> $DIR/stringly_state.rs:117:5
+   |
+LL |     step: &'static str,
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: one of the comparisons
+  --> $DIR/stringly_state.rs:126:5
+   |
+LL |     s.step == "parse"
+   |     ^^^^^^^^^^^^^^^^^
+   = help: declare an enum with a variant per string and store that in `step`. Keep the text in an `as_str` method for printing
+
+warning: `severity` takes bools `major` and `minor`, and 1 of its 1 calls passes bare `true`/`false` for both. At `severity(true, false)` nothing says which is which
+  --> $DIR/stringly_state.rs:92:4
+   |
+LL | fn severity(major: bool, minor: bool) -> u8 {
+   |    ^^^^^^^^
+   |
+note: one of those calls
+  --> $DIR/stringly_state.rs:344:13
+   |
+LL |     let _ = severity(true, false) + tier(3) as u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   = help: give `major` and `minor` a two-variant enum each, or an options struct, so every call names what it sets
+   = note: `#[warn(bare_bool_args)]` on by default
+
+warning: 8 warnings emitted
+

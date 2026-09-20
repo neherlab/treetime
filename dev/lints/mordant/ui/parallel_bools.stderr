@@ -1,0 +1,16 @@
+warning: `done` and `running` of `Task` are always assigned together (2 blocks in 2 functions). Together they hold one state, and the struct lets them drift apart
+  --> $DIR/parallel_bools.rs:4:1
+   |
+LL | struct Task {
+   | ^^^^^^^^^^^
+   |
+note: one of the blocks that sets both
+  --> $DIR/parallel_bools.rs:13:9
+   |
+LL |         self.done = false;
+   |         ^^^^^^^^^^^^^^^^^
+   = help: replace `done`, `running` with one enum field whose variants are the states those blocks set
+   = note: `#[warn(parallel_bools)]` on by default
+
+warning: 1 warning emitted
+

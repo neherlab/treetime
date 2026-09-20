@@ -1,0 +1,37 @@
+warning: `limit` always has the same value for a given `ceiling`, in all 3 places `Exceeded` is b$DIRlt. It is a stored copy of something `ceiling` decides
+  --> $DIR/derived_field.rs:15:1
+   |
+LL | pub struct Exceeded {
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the constructions
+  --> $DIR/derived_field.rs:22:5
+   |
+LL | /     Exceeded {
+LL | |         ceiling: Ceiling::Words,
+LL | |         limit: MAX_WORDS,
+LL | |         wanted,
+LL | |     }
+   | |_____^
+   = help: add `fn limit(&self)` to `Ceiling` and delete the `limit` field
+   = note: `#[warn(derived_field)]` on by default
+
+warning: `remaining` always has the same value for a given `header`, in all 2 places `Entries` is b$DIRlt. It is a stored copy of something `header` decides
+  --> $DIR/derived_field.rs:56:1
+   |
+LL | pub struct Entries<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the constructions
+  --> $DIR/derived_field.rs:63:5
+   |
+LL | /     Entries {
+LL | |         buf,
+LL | |         header: Header::Narrow,
+LL | |         remaining: None,
+LL | |     }
+   | |_____^
+   = help: add `fn remaining(&self)` to `Header` and delete the `remaining` field
+
+warning: 2 warnings emitted
+

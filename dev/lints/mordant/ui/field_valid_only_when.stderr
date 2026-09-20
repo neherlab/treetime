@@ -1,0 +1,55 @@
+warning: `raw` is only read after checking `tag == Tag::Subproc` (3 reads), and every other `Child` fills it with a placeholder (1 place). The field only means something in that one case
+  --> $DIR/field_valid_only_when.rs:16:5
+   |
+LL |     raw: *mut u8,
+   |     ^^^^^^^^^^^^
+   |
+note: one of the guarded reads
+  --> $DIR/field_valid_only_when.rs:37:16
+   |
+LL |         return c.raw as usize;
+   |                ^^^^^
+   = help: make the `Subproc` case of `tag` an enum variant that carries `raw`, and drop the flat field
+   = note: `#[warn(field_valid_only_when)]` on by default
+
+warning: `reject` is only read after checking `request` (2 reads), and every other `Verify` fills it with a placeholder (1 place). The field only means something in that one case
+  --> $DIR/field_valid_only_when.rs:57:5
+   |
+LL |     reject: bool,
+   |     ^^^^^^^^^^^^
+   |
+note: one of the guarded reads
+  --> $DIR/field_valid_only_when.rs:80:25
+   |
+LL |         out += u8::from(v.reject);
+   |                         ^^^^^^^^
+   = help: make the `true` case of `request` an enum variant that carries `reject`, and drop the flat field
+
+warning: `result` is only read after checking `state == State::Done` (1 read), and every other `Job` fills it with a placeholder (1 place). The field only means something in that one case
+  --> $DIR/field_valid_only_when.rs:100:5
+   |
+LL |     result: u64,
+   |     ^^^^^^^^^^^
+   |
+note: one of the guarded reads
+  --> $DIR/field_valid_only_when.rs:120:29
+   |
+LL |         State::Done => Some(j.result),
+   |                             ^^^^^^^^
+   = help: make the `Done` case of `state` an enum variant that carries `result`, and drop the flat field
+
+warning: `href` is only read after checking `depth == 1` (1 read), and every other `Nest` fills it with a placeholder (1 place). The field only means something in that one case
+  --> $DIR/field_valid_only_when.rs:129:5
+   |
+LL |     href: Option<u8>,
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: one of the guarded reads
+  --> $DIR/field_valid_only_when.rs:147:33
+   |
+LL |     let out = if n.depth == 1 { n.href.take() } else { None };
+   |                                 ^^^^^^
+   = help: make the `1` case of `depth` an enum variant that carries `href`, and drop the flat field
+
+warning: 4 warnings emitted
+

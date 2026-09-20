@@ -1,0 +1,29 @@
+warning: this catch-all will also match any variant added to `Op` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/groups.rs:14:9
+   |
+LL |         _ => 0,
+   |         ^
+   |
+note: `Op` is defined here
+  --> $DIR/groups.rs:4:1
+   |
+LL | enum Op {
+   | ^^^^^^^
+   = note: `#[warn(wildcard_over_own_enum)]` on by default
+help: list the remaining variants instead of `_`
+   |
+LL -         _ => 0,
+LL +         Op::Sub | Op::Mul => 0,
+   |
+
+warning: `.ok();` converts this `Result` to an `Option` and drops it, so the `std::num::ParseIntError` error disappears in a line that looks like handling
+  --> $DIR/groups.rs:30:5
+   |
+LL |     "1".parse::<u8>().ok();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: handle the `Err` or pass it on with `?`. If dropping it is intended, write `let _ = ...;` to say so
+   = note: `#[warn(discarded_error)]` on by default
+
+warning: 2 warnings emitted
+

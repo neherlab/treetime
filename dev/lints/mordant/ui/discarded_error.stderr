@@ -1,0 +1,11 @@
+warning: `.ok();` converts this `Result` to an `Option` and drops it, so the `u32` error disappears in a line that looks like handling
+  --> $DIR/discarded_error.rs:8:5
+   |
+LL |     fallible().ok();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: handle the `Err` or pass it on with `?`. If dropping it is intended, write `let _ = ...;` to say so
+   = note: `#[warn(discarded_error)]` on by default
+
+warning: 1 warning emitted
+

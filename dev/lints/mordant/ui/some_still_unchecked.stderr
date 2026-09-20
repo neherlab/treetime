@@ -1,0 +1,86 @@
+warning: a `Some` that fails `j.ready` is treated exactly like `None` here. `Some` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:28:9
+   |
+LL |         Some(j) if j.ready => j.id,
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the failing `Some` ends up here, with `None`
+  --> $DIR/some_still_unchecked.rs:29:9
+   |
+LL |         _ => wait(),
+   |         ^
+   = help: filter where `next()` is produced, with `.filter(..)` or a payload type that cannot fail `j.ready`
+   = note: `#[warn(some_still_unchecked)]` on by default
+
+warning: a `Some` that fails `j.ready` is treated exactly like `None` here. `Some` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:38:9
+   |
+LL |         Some(j) if j.ready => j.id,
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the failing `Some` ends up here, with `None`
+  --> $DIR/some_still_unchecked.rs:39:9
+   |
+LL |         Some(_) => wait(),
+   |         ^^^^^^^
+   = help: filter where `next()` is produced, with `.filter(..)` or a payload type that cannot fail `j.ready`
+
+warning: a `Some` that fails `j.ready && j.id > 0` is treated exactly like `None` here. `Some` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:46:9
+   |
+LL |         Some(j) if j.ready && j.id > 0 => j.id,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the failing `Some` ends up here, with `None`
+  --> $DIR/some_still_unchecked.rs:47:9
+   |
+LL |         Some(_) | None => wait(),
+   |         ^^^^^^^^^^^^^^
+   = help: filter where `next()` is produced, with `.filter(..)` or a payload type that cannot fail `j.ready && j.id > 0`
+
+warning: an `Ok` that fails `n > 2` is treated exactly like `Err` here. `Ok` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:54:9
+   |
+LL |         Ok(n) if n > 2 => n,
+   |         ^^^^^^^^^^^^^^
+   |
+note: the failing `Ok` ends up here, with `Err`
+  --> $DIR/some_still_unchecked.rs:55:9
+   |
+LL |         Err(_) | Ok(_) => wait(),
+   |         ^^^^^^^^^^^^^^
+   = help: reject that case where `parse()` is produced, with an error for it or a payload type that cannot fail `n > 2`
+
+warning: a `Some` that fails `j.ready` is treated exactly like `None` here. `Some` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:61:8
+   |
+LL |       if let Some(j) = next()
+   |  ________^
+LL | |         && j.ready
+   | |__________________^
+   |
+note: the failing `Some` ends up here, with `None`
+  --> $DIR/some_still_unchecked.rs:65:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         wait()
+LL | |     }
+   | |_____^
+   = help: filter where `next()` is produced, with `.filter(..)` or a payload type that cannot fail `j.ready`
+
+warning: a `Some` that fails `j.ready` is treated exactly like `None` here. `Some` alone does not mean usable, and every consumer has to repeat the check
+  --> $DIR/some_still_unchecked.rs:72:8
+   |
+LL |     if let Some(j) = next() {
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the failing `Some` ends up here, with `None`
+  --> $DIR/some_still_unchecked.rs:73:34
+   |
+LL |         if j.ready { j.id } else { wait() + 1 }
+   |                                  ^^^^^^^^^^^^^^
+   = help: filter where `next()` is produced, with `.filter(..)` or a payload type that cannot fail `j.ready`
+
+warning: 6 warnings emitted
+

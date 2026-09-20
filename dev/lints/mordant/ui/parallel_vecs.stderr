@@ -1,0 +1,42 @@
+warning: `ages` and `names` of `People` only change length together (2 blocks) and are read at the same index. Element `i` of each is one record split across 2 vecs
+  --> $DIR/parallel_vecs.rs:7:1
+   |
+LL | struct People {
+   | ^^^^^^^^^^^^^
+   |
+note: one of the reads at a shared index
+  --> $DIR/parallel_vecs.rs:42:44
+   |
+LL |         format!("{} is {}", self.names[i], self.ages[i])
+   |                                            ^^^^^^^^^^^^
+   = help: use one `Vec` of a struct with a field for each. One length, one push
+   = note: `#[warn(parallel_vecs)]` on by default
+
+warning: `keys`, `phases` and `values` of `Table` only change length together (1 block) and are read at the same index. Element `i` of each is one record split across 3 vecs
+  --> $DIR/parallel_vecs.rs:54:1
+   |
+LL | struct Table {
+   | ^^^^^^^^^^^^
+   |
+note: one of the reads at a shared index
+  --> $DIR/parallel_vecs.rs:67:19
+   |
+LL |     for (k, v) in t.keys.iter().zip(&t.values) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use one `Vec` of a struct with a field for each. One length, one push
+
+warning: `items` and `locs` of `Tape` only change length together (2 blocks) and are read at the same index. Element `i` of each is one record split across 2 vecs
+  --> $DIR/parallel_vecs.rs:73:1
+   |
+LL | struct Tape {
+   | ^^^^^^^^^^^
+   |
+note: one of the reads at a shared index
+  --> $DIR/parallel_vecs.rs:89:49
+   |
+LL |         let n = self.tape.items[mark..].len() + self.tape.locs[mark..].len();
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^
+   = help: use one `Vec` of a struct with a field for each. One length, one push
+
+warning: 3 warnings emitted
+

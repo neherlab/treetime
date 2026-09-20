@@ -1,0 +1,81 @@
+warning: `l.resolutions` is indexed by `pkg_id` here. Elsewhere in this function it is indexed by `dep_id` (1 place), and `pkg_id` indexes `l.packages`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:15:17
+   |
+LL |     let stale = l.resolutions[pkg_id as usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `l.resolutions` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:12:20
+   |
+LL |     let resolved = l.resolutions[dep_id as usize];
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: give `l.resolutions` and `l.packages` their own index newtypes so `l.resolutions[pkg_id]` cannot compile. If this line is intended, rename the index to say so
+   = note: `#[warn(index_of_other_kind)]` on by default
+
+warning: `parts` is indexed by `source_index` here. Elsewhere in this function it is indexed by `part_index` (1 place), and `source_index` indexes `sources`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:29:19
+   |
+LL |     let crossed = parts.get(source_index);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `parts` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:26:16
+   |
+LL |     let part = parts.get(part_index);
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   = help: give `parts` and `sources` their own index newtypes so `parts[source_index]` cannot compile. If this line is intended, rename the index to say so
+
+warning: `self.files` is indexed by `part_index` here. Elsewhere in this function it is indexed by `source_index` (1 place), and `part_index` indexes `self.parts[..]`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:44:17
+   |
+LL |         let _ = self.files.get_mut(part_index as usize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `self.files` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:41:17
+   |
+LL |         let _ = self.files[source_index as usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: give `self.files` and `self.parts[..]` their own index newtypes so `self.files[part_index]` cannot compile. If this line is intended, rename the index to say so
+
+warning: `states` is indexed by `dep_idx` here. Elsewhere in this function it is indexed by `root_id` (1 place), and `dep_id` (the same kind as `dep_idx`) indexes `dependencies`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:78:24
+   |
+LL |     unvisited + name + states[dep_idx]
+   |                        ^^^^^^^^^^^^^^^
+   |
+note: `states` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:75:21
+   |
+LL |     let unvisited = states[root_id];
+   |                     ^^^^^^^^^^^^^^^
+   = help: give `states` and `dependencies` their own index newtypes so `states[dep_idx]` cannot compile. If this line is intended, rename the index to say so
+
+warning: `parts` is indexed by `source_index` here. Elsewhere in this function it is indexed by `part_index` (1 place), and `source_index` indexes `sources`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:88:19
+   |
+LL |     let crossed = parts[source_index];
+   |                   ^^^^^^^^^^^^^^^^^^^
+   |
+note: `parts` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:89:15
+   |
+LL |     crossed + parts[part_index] + sources[source_index]
+   |               ^^^^^^^^^^^^^^^^^
+   = help: give `parts` and `sources` their own index newtypes so `parts[source_index]` cannot compile. If this line is intended, rename the index to say so
+
+warning: `table` is indexed by `dep_id` here. Elsewhere in this function it is indexed by `pkg_id` (3 places), and `dep_id` indexes `deps`. This looks like the wrong table
+  --> $DIR/index_of_other_kind.rs:103:11
+   |
+LL |         + table[dep_id]
+   |           ^^^^^^^^^^^^^
+   |
+note: `table` indexed the usual way
+  --> $DIR/index_of_other_kind.rs:101:5
+   |
+LL |     table[pkg_id]
+   |     ^^^^^^^^^^^^^
+   = help: give `table` and `deps` their own index newtypes so `table[dep_id]` cannot compile. If this line is intended, rename the index to say so
+
+warning: 6 warnings emitted
+

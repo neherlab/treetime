@@ -1,0 +1,55 @@
+warning: `b.len` is a `usize` cut down to `u32` with `as` here, which wraps silently. Another place converts the same `b.len` to `u32` with `try_from` because it might not fit
+  --> $DIR/narrowed_two_ways.rs:18:5
+   |
+LL |     b.len as u32
+   |     ^^^^^^^^^^^^
+   |
+note: the checked conversion
+  --> $DIR/narrowed_two_ways.rs:22:5
+   |
+LL |     u32::try_from(b.len).expect("length fits the header")
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = help: store `b.len` as `u32` (or a newtype checked once at construction) so nobody has to narrow it. At least use `u32::try_from` here as well
+   = note: `#[warn(narrowed_two_ways)]` on by default
+
+warning: `b.offset` is a `u64` cut down to `i64` with `as` here, which wraps silently. Another place converts the same `b.offset` to `i64` with `try_from` because it might not fit
+  --> $DIR/narrowed_two_ways.rs:27:5
+   |
+LL |     b.offset as i64
+   |     ^^^^^^^^^^^^^^^
+   |
+note: the checked conversion
+  --> $DIR/narrowed_two_ways.rs:31:5
+   |
+LL |     i64::try_from(b.offset).expect("offset fits off_t")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: store `b.offset` as `i64` (or a newtype checked once at construction) so nobody has to narrow it. At least use `i64::try_from` here as well
+
+warning: `b.count` is a `u32` cut down to `u8` with `as` here, which wraps silently. Another place converts the same `b.count` to `u8` with `try_from` because it might not fit
+  --> $DIR/narrowed_two_ways.rs:36:5
+   |
+LL |     b.count as u8
+   |     ^^^^^^^^^^^^^
+   |
+note: the checked conversion
+  --> $DIR/narrowed_two_ways.rs:40:17
+   |
+LL |     let c: u8 = b.count.try_into().unwrap_or(u8::MAX);
+   |                 ^^^^^^^^^^^^^^^^^^
+   = help: store `b.count` as `u8` (or a newtype checked once at construction) so nobody has to narrow it. At least use `u8::try_from` here as well
+
+warning: `n` is a `u64` cut down to `u16` with `as` here, which wraps silently. Another place converts the same `n` to `u16` with `try_from` because it might not fit
+  --> $DIR/narrowed_two_ways.rs:47:6
+   |
+LL |     (n as u16, checked)
+   |      ^^^^^^^^
+   |
+note: the checked conversion
+  --> $DIR/narrowed_two_ways.rs:46:19
+   |
+LL |     let checked = u16::try_from(n).unwrap_or(u16::MAX);
+   |                   ^^^^^^^^^^^^^^^^
+   = help: store `n` as `u16` (or a newtype checked once at construction) so nobody has to narrow it. At least use `u16::try_from` here as well
+
+warning: 4 warnings emitted
+

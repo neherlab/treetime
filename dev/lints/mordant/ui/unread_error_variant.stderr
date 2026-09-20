@@ -1,0 +1,55 @@
+warning: `LoadError::Corrupt` is constructed here, but no pattern anywhere singles it out (its own trait impls aside). What it carries is never read, and it is only ever caught by a catch-all
+  --> $DIR/unread_error_variant.rs:26:18
+   |
+LL |         1 => Err(LoadError::Corrupt("bad header".to_owned())),
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the variant
+  --> $DIR/unread_error_variant.rs:9:5
+   |
+LL |     Corrupt(String),
+   |     ^^^^^^^
+   = help: add an arm for `LoadError::Corrupt` where `LoadError` is matched, or fold it into the variant it is lumped with
+   = note: `#[warn(unread_error_variant)]` on by default
+
+warning: `Mode::Slow` is constructed here, but no pattern anywhere singles it out (its own trait impls aside). What it carries is never read, and it is only ever caught by a catch-all
+  --> $DIR/unread_error_variant.rs:96:31
+   |
+LL |     speed(Mode::Fast) + speed(Mode::Slow) + speed(Mode::Crawl) + speed(Mode::Off)
+   |                               ^^^^^^^^^^
+   |
+note: the variant
+  --> $DIR/unread_error_variant.rs:83:5
+   |
+LL |     Slow,
+   |     ^^^^
+   = help: add an arm for `Mode::Slow` where `Mode` is matched, or fold it into the variant it is lumped with
+
+warning: `Mode::Crawl` is constructed here, but no pattern anywhere singles it out (its own trait impls aside). What it carries is never read, and it is only ever caught by a catch-all
+  --> $DIR/unread_error_variant.rs:96:51
+   |
+LL |     speed(Mode::Fast) + speed(Mode::Slow) + speed(Mode::Crawl) + speed(Mode::Off)
+   |                                                   ^^^^^^^^^^^
+   |
+note: the variant
+  --> $DIR/unread_error_variant.rs:84:5
+   |
+LL |     Crawl,
+   |     ^^^^^
+   = help: add an arm for `Mode::Crawl` where `Mode` is matched, or fold it into the variant it is lumped with
+
+warning: `ParseError::Malformed` is constructed here, but no pattern anywhere singles it out (its own trait impls aside). What it carries is never read, and it is only ever caught by a catch-all
+  --> $DIR/unread_error_variant.rs:176:30
+   |
+LL |     s.parse::<u32>().map_err(ParseError::Malformed)
+   |                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the variant
+  --> $DIR/unread_error_variant.rs:169:5
+   |
+LL |     Malformed(std::num::ParseIntError),
+   |     ^^^^^^^^^
+   = help: add an arm for `ParseError::Malformed` where `ParseError` is matched, or fold it into the variant it is lumped with
+
+warning: 4 warnings emitted
+

@@ -477,9 +477,9 @@ mordant *args:
     # that exports RUSTFLAGS.
     unset RUSTFLAGS
     target='{{build_dir}}/mordant'
-    export CARGO_TARGET_DIR="${target}" DYLINT_RUSTFLAGS="-A unknown_lints"
+    export CARGO_TARGET_DIR="${target}" DYLINT_RUSTFLAGS="-A unknown_lints" CARGO_INCREMENTAL=0
     rm -f "${target}/mordant/over-baseline.txt"
-    nicely cargo dylint --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 --pattern . -- --keep-going --locked --workspace --all-targets "$@"
+    nicely cargo dylint --path dev/lints/mordant -- --keep-going --locked --workspace --all-targets "$@"
     if [[ -s "${target}/mordant/over-baseline.txt" ]]; then
       printf 'mordant: findings over the committed baseline:\n' >&2
       cat "${target}/mordant/over-baseline.txt" >&2
@@ -496,8 +496,8 @@ mordant-baseline *args:
     # Match the mordant gate: fixed (empty) RUSTFLAGS so the seeded baseline and
     # the check run analyze the workspace identically.
     unset RUSTFLAGS
-    export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1
-    nicely cargo dylint --git https://github.com/scarletindustries/mordant --rev 0d9bacefbd6d6a5f3c8341205b31f2fbe7dea750 --pattern . -- --keep-going --locked --workspace --all-targets "$@"
+    export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 CARGO_INCREMENTAL=0
+    nicely cargo dylint --path dev/lints/mordant -- --keep-going --locked --workspace --all-targets "$@"
     printf 'Regenerated mordant-baseline.toml\n'
 
 # Lint levels, allow/expect lists, mutation exclusions, ignored tests, and float
@@ -639,16 +639,7 @@ _check mode:
         skip "dylint-tob" "Trail of Bits toolchain ${tob_tc:-?} not installed"
       fi
       if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
-        printf '\n=== %s ===\n' "mordant" >&2
-        # Advisory, not gating: mordant's finding set is not reproducible across
-        # runs. It lints the workspace through the dylint driver with `--keep-going`
-        # over `--all-targets`, so which compilation units get (re)analyzed depends
-        # on the incremental cache, and the per-file `unused_pub` counts drift
-        # between two consecutive runs. Allowing `unknown_lints` (so the workspace
-        # `clippy::*` levels no longer hard-error under the non-clippy driver) lets
-        # every crate compile but does not make the set stable. Treat over-baseline
-        # or a build failure as not-run rather than a gate failure.
-        if bash -c "just mordant"; then record "mordant" PASS; else skip "mordant" "mordant analysis is not reproducible under its dylint driver toolchain"; fi
+        run_check "mordant" bash -c "just mordant"
       else
         skip "mordant" "no committed mordant baseline"
       fi

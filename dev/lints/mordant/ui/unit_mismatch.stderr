@@ -1,0 +1,35 @@
+warning: `timeout_ms` says milliseconds and `deadline_ns` says nanoseconds, and this arithmetic mixes them
+  --> $DIR/unit_mismatch.rs:11:5
+   |
+LL |     t.timeout_ms + t.deadline_ns
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: convert one side first. If a name is wrong about its unit, rename it. A `Duration` or a unit newtype would catch the next one
+   = note: `#[warn(unit_mismatch)]` on by default
+
+warning: `timeout_ms` says milliseconds and `deadline_ns` says nanoseconds, and this comparison mixes them
+  --> $DIR/unit_mismatch.rs:15:5
+   |
+LL |     t.timeout_ms < t.deadline_ns
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: convert one side first. If a name is wrong about its unit, rename it. A `Duration` or a unit newtype would catch the next one
+
+warning: `timeout_ms` says milliseconds and `size_bytes` says bytes, and this comparison mixes them
+  --> $DIR/unit_mismatch.rs:19:5
+   |
+LL |     t.timeout_ms == t.size_bytes
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: convert one side first. If a name is wrong about its unit, rename it. A `Duration` or a unit newtype would catch the next one
+
+warning: `timeout_ms` says milliseconds and `elapsed_ns` says nanoseconds, and this arithmetic mixes them
+  --> $DIR/unit_mismatch.rs:40:5
+   |
+LL |     t.timeout_ms + elapsed_ns()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: convert one side first. If a name is wrong about its unit, rename it. A `Duration` or a unit newtype would catch the next one
+
+warning: 4 warnings emitted
+

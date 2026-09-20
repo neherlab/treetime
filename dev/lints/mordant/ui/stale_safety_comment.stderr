@@ -1,0 +1,12 @@
+warning: this SAFETY comment relies on `frames_lock`, but nothing with that name exists in this file, this crate, or any crate it links. The justification describes code that is gone
+  --> $DIR/stale_safety_comment.rs:9:1
+   |
+LL | /     // SAFETY: `frames_lock` is held for the duration of this read.
+LL | |     unsafe { *p }
+   | |_^
+   |
+   = help: restate the comment in terms of what replaced `frames_lock`. If nothing did, this `unsafe` block has lost its guard and needs one
+   = note: `#[warn(stale_safety_comment)]` on by default
+
+warning: 1 warning emitted
+

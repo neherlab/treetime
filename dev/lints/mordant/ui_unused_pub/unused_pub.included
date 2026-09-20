@@ -1,0 +1,6 @@
+// Stands in for generated code: `unused_pub.rs` brings it in with `include!`.
+pub fn included_never_called_is_skipped() {}
+
+pub mod deeper {
+    pub fn nested_in_included_file_is_skipped() {}
+}

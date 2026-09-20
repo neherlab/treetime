@@ -1,0 +1,19 @@
+warning: this `map_err` turns a `ParseError` into a `String`. From here on, callers cannot match on which failure it was
+  --> $DIR/stringified_error.rs:23:5
+   |
+LL |     r.map_err(|e| e.to_string())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: return `ParseError` itself, or an error enum that wraps it, and turn it into text only where it is shown
+   = note: `#[warn(stringified_error)]` on by default
+
+warning: this `map_err` turns a `ParseError` into a `String`. From here on, callers cannot match on which failure it was
+  --> $DIR/stringified_error.rs:27:5
+   |
+LL |     r.map_err(|e| format!("parse failed: {e}"))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: return `ParseError` itself, or an error enum that wraps it, and turn it into text only where it is shown
+
+warning: 2 warnings emitted
+

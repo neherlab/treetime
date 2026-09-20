@@ -1,0 +1,47 @@
+warning: `detach` only runs when `can_donate` returns true, but it changes `conns`, which `can_donate` never reads. The check cannot tell whether `detach` is safe
+  --> $DIR/guard_blind_to_action.rs:22:9
+   |
+LL |         self.detach();
+   |         ^^^^^^^^^^^^^
+   |
+note: `can_donate` reads only `queue`
+  --> $DIR/guard_blind_to_action.rs:9:5
+   |
+LL |     fn can_donate(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: make `can_donate` look at `conns` too, or move the `conns` work out from under this check
+   = note: `#[warn(guard_blind_to_action)]` on by default
+
+warning: `drain` only runs when `can_donate` returns true, but it changes `conns`, which `can_donate` never reads. The check cannot tell whether `drain` is safe
+  --> $DIR/guard_blind_to_action.rs:43:17
+   |
+LL |         let n = self.drain();
+   |                 ^^^^^^^^^^^^
+   |
+note: `can_donate` reads only `queue`
+  --> $DIR/guard_blind_to_action.rs:9:5
+   |
+LL |     fn can_donate(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: make `can_donate` look at `conns` too, or move the `conns` work out from under this check
+
+warning: `detach` only runs when `can_donate` and `can_log` return true, but it changes `conns`, which neither `can_donate` nor `can_log` reads. The checks cannot tell whether `detach` is safe
+  --> $DIR/guard_blind_to_action.rs:120:13
+   |
+LL |             self.detach();
+   |             ^^^^^^^^^^^^^
+   |
+note: `can_donate` reads only `queue`
+  --> $DIR/guard_blind_to_action.rs:9:5
+   |
+LL |     fn can_donate(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `can_log` reads only `queue`
+  --> $DIR/guard_blind_to_action.rs:109:5
+   |
+LL |     fn can_log(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: make `can_donate` or `can_log` look at `conns` too, or move the `conns` work out from under this check
+
+warning: 3 warnings emitted
+

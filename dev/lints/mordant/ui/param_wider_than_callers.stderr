@@ -1,0 +1,47 @@
+warning: this catch-all will also match any variant added to `Shape` later (3 today). A new variant lands here silently instead of failing to compile
+  --> $DIR/param_wider_than_callers.rs:34:9
+   |
+LL |         _ => unreachable!("only circles have diameters"),
+   |         ^
+   |
+note: `Shape` is defined here
+  --> $DIR/param_wider_than_callers.rs:4:1
+   |
+LL | enum Shape {
+   | ^^^^^^^^^^
+   = note: `#[warn(wildcard_over_own_enum)]` on by default
+help: list the remaining variants instead of `_`
+   |
+LL -         _ => unreachable!("only circles have diameters"),
+LL +         Shape::Square(..) | Shape::Line => unreachable!("only circles have diameters"),
+   |
+
+warning: this arm panics on `Line`, but all 2 calls to `area` pass only `Circle`, `Square`. The parameter type allows a case no caller uses
+  --> $DIR/param_wider_than_callers.rs:16:9
+   |
+LL |         Shape::Line => unreachable!("lines have no area"),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the calls
+  --> $DIR/param_wider_than_callers.rs:74:18
+   |
+LL |     let _ = area(Shape::Circle(2));
+   |                  ^^^^^^^^^^^^^^^^
+   = help: narrow `area`'s parameter to a type that cannot be `Line`, such as a smaller enum or the payload itself. A caller passing `Line` then fails to compile
+   = note: `#[warn(param_wider_than_callers)]` on by default
+
+warning: this arm panics on `Line`, but all 2 calls to `corners` pass only `Circle`, `Square`. The parameter type allows a case no caller uses
+  --> $DIR/param_wider_than_callers.rs:58:13
+   |
+LL |             Shape::Line => unreachable!("lines have no corners"),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: one of the calls
+  --> $DIR/param_wider_than_callers.rs:81:13
+   |
+LL |     let _ = Shape::Circle(1).corners();
+   |             ^^^^^^^^^^^^^^^^
+   = help: narrow `corners`'s parameter to a type that cannot be `Line`, such as a smaller enum or the payload itself. A caller passing `Line` then fails to compile
+
+warning: 3 warnings emitted
+

@@ -1,0 +1,55 @@
+warning: this looks up `1` in `m` and unwraps it right after the `insert` above put it there. Nothing in between could remove it, so the lookup and its panic are redundant
+  --> $DIR/insert_then_unwrap.rs:11:13
+   |
+LL |     let v = m.get(&1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+note: the insert
+  --> $DIR/insert_then_unwrap.rs:10:5
+   |
+LL |     m.insert(1, 2);
+   |     ^^^^^^^^^^^^^^
+   = help: keep the value you inserted, or use `m.entry(1)` which hands it back
+   = note: `#[warn(insert_then_unwrap)]` on by default
+
+warning: this looks up `7` in `m` and unwraps it right after the `insert` above put it there. Nothing in between could remove it, so the lookup and its panic are redundant
+  --> $DIR/insert_then_unwrap.rs:19:13
+   |
+LL |     let v = m.get(&7).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+note: the insert
+  --> $DIR/insert_then_unwrap.rs:17:5
+   |
+LL |     m.insert(7, 8);
+   |     ^^^^^^^^^^^^^^
+   = help: keep the value you inserted, or use `m.entry(7)` which hands it back
+
+warning: this looks up `k` in `m` and unwraps it right after the `insert` above put it there. Nothing in between could remove it, so the lookup and its panic are redundant
+  --> $DIR/insert_then_unwrap.rs:80:13
+   |
+LL |     let v = m.get(k).unwrap();
+   |             ^^^^^^^^^^^^^^^^^
+   |
+note: the insert
+  --> $DIR/insert_then_unwrap.rs:79:5
+   |
+LL |     m.insert(*k, 2);
+   |     ^^^^^^^^^^^^^^^
+   = help: keep the value you inserted, or use `m.entry(k)` which hands it back
+
+warning: this looks up `k` in `m` and unwraps it right after the `insert` above put it there. Nothing in between could remove it, so the lookup and its panic are redundant
+  --> $DIR/insert_then_unwrap.rs:87:13
+   |
+LL |     let k = m.get(&k).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+note: the insert
+  --> $DIR/insert_then_unwrap.rs:86:5
+   |
+LL |     m.insert(k, 2);
+   |     ^^^^^^^^^^^^^^
+   = help: keep the value you inserted, or use `m.entry(k)` which hands it back
+
+warning: 4 warnings emitted
+

@@ -1,0 +1,199 @@
+warning: `mem::transmute` turns `u8` into `level::Level` here and accepts any bit pattern. `Level::try_from` is the checked conversion from `u8` and would reject some of them
+  --> $DIR/cast_bypasses_from.rs:195:14
+   |
+LL |     unsafe { core::mem::transmute::<u8, Level>(n) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Level::try_from`, the checked conversion
+  --> $DIR/cast_bypasses_from.rs:16:9
+   |
+LL |         fn try_from(n: u8) -> Result<Self, u8> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Level::try_from` instead. If this path must skip the check, add an unchecked constructor next to it so both live beside the layout
+   = note: `#[warn(cast_bypasses_from)]` on by default
+
+warning: `mem::transmute` turns `u16` into `code::Code` here and accepts any bit pattern. `Code::from_raw` is the checked conversion from `u32` and would reject some of them
+  --> $DIR/cast_bypasses_from.rs:200:14
+   |
+LL |     unsafe { core::mem::transmute::<u16, Code>(n as u16) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Code::from_raw`, the checked conversion
+  --> $DIR/cast_bypasses_from.rs:41:9
+   |
+LL |         pub fn from_raw(n: u32) -> Option<Code> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Code::from_raw` instead. If this path must skip the check, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute_copy` turns `u16` into `code::Code` here and accepts any bit pattern. `Code::from_raw` is the checked conversion from `u32` and would reject some of them
+  --> $DIR/cast_bypasses_from.rs:205:14
+   |
+LL |     unsafe { core::mem::transmute_copy::<u16, Code>(n) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Code::from_raw`, the checked conversion
+  --> $DIR/cast_bypasses_from.rs:41:9
+   |
+LL |         pub fn from_raw(n: u32) -> Option<Code> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Code::from_raw` instead. If this path must skip the check, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `i32` into `fd::Fd` here and accepts any bit pattern. `Fd::new` is where the crate says how `i32` becomes `fd::Fd`
+  --> $DIR/cast_bypasses_from.rs:210:14
+   |
+LL |     unsafe { core::mem::transmute::<i32, Fd>(raw) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Fd::new`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:57:9
+   |
+LL |         pub fn new(raw: i32) -> Fd {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Fd::new` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: a pointer cast turns `u32` into `meters::Meters` here and accepts any bit pattern. `Meters::from` is where the crate says how `u32` becomes `meters::Meters`
+  --> $DIR/cast_bypasses_from.rs:215:15
+   |
+LL |     unsafe { *(n as *const u32 as *const Meters) }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Meters::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:74:9
+   |
+LL |         fn from(n: u32) -> Meters {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Meters::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: a pointer cast turns `u32` into `meters::Meters` here and accepts any bit pattern. `Meters::from` is where the crate says how `u32` becomes `meters::Meters`
+  --> $DIR/cast_bypasses_from.rs:220:14
+   |
+LL |     unsafe { p.cast::<Meters>().read() }
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+note: `Meters::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:74:9
+   |
+LL |         fn from(n: u32) -> Meters {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Meters::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `u32` into `meters::Meters` here and accepts any bit pattern. `Meters::from` is where the crate says how `u32` becomes `meters::Meters`
+  --> $DIR/cast_bypasses_from.rs:225:14
+   |
+LL |     unsafe { core::mem::transmute::<&u32, &Meters>(n) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Meters::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:74:9
+   |
+LL |         fn from(n: u32) -> Meters {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Meters::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `u32` into `meters::Meters` here and accepts any bit pattern. `Meters::from` is where the crate says how `u32` becomes `meters::Meters`
+  --> $DIR/cast_bypasses_from.rs:230:14
+   |
+LL |     unsafe { core::mem::transmute::<&u32, &Meters>(v) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Meters::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:74:9
+   |
+LL |         fn from(n: u32) -> Meters {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Meters::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: a pointer cast turns `u32` into `meters::Meters` here and accepts any bit pattern. `Meters::from` is where the crate says how `u32` becomes `meters::Meters`
+  --> $DIR/cast_bypasses_from.rs:237:25
+   |
+LL |         sum += unsafe { p.cast::<Meters>().read() }.0;
+   |                         ^^^^^^^^^^^^^^^^^^
+   |
+note: `Meters::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:74:9
+   |
+LL |         fn from(n: u32) -> Meters {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Meters::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `f32` into `px::Px<px::Screen>` here and accepts any bit pattern. `Px::from` is where the crate says how `f32` becomes `px::Px<px::Screen>`
+  --> $DIR/cast_bypasses_from.rs:244:14
+   |
+LL |     unsafe { core::mem::transmute::<f32, Px<Screen>>(v) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Px::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:122:9
+   |
+LL |         fn from(v: f32) -> Px<Screen> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Px::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `[u8; 4]` into `hdr::Hdr` here and accepts any bit pattern. `Hdr::from` is where the crate says how `&[u8; 4]` becomes `hdr::Hdr`
+  --> $DIR/cast_bypasses_from.rs:254:14
+   |
+LL |     unsafe { core::mem::transmute::<[u8; 4], Hdr>(*b) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Hdr::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:134:9
+   |
+LL |         fn from(b: &'a [u8; 4]) -> Hdr {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Hdr::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: a pointer cast turns `[u8; 4]` into `hdr::Hdr` here and accepts any bit pattern. `Hdr::from` is where the crate says how `&[u8; 4]` becomes `hdr::Hdr`
+  --> $DIR/cast_bypasses_from.rs:259:16
+   |
+LL |     unsafe { &*(b as *const [u8; 4] as *const Hdr) }
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Hdr::from`, the conversion this skips
+  --> $DIR/cast_bypasses_from.rs:134:9
+   |
+LL |         fn from(b: &'a [u8; 4]) -> Hdr {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Hdr::from` instead. If this path must skip it, add an unchecked constructor next to it so both live beside the layout
+
+warning: a pointer cast turns `[u8]` into `name::NameRef` here and accepts any bit pattern. `NameRef::new` is the checked conversion from `&[u8]` and would reject some of them
+  --> $DIR/cast_bypasses_from.rs:264:16
+   |
+LL |     unsafe { &*(b as *const [u8] as *const NameRef) }
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `NameRef::new`, the checked conversion
+  --> $DIR/cast_bypasses_from.rs:146:9
+   |
+LL |         pub fn new(b: &[u8]) -> Option<&NameRef> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `NameRef::new` instead. If this path must skip the check, add an unchecked constructor next to it so both live beside the layout
+
+warning: `mem::transmute` turns `&[u8]` into `name::Str<'_>` here and accepts any bit pattern. `Str::new` is the checked conversion from `&[u8]` and would reject some of them
+  --> $DIR/cast_bypasses_from.rs:269:14
+   |
+LL |     unsafe { core::mem::transmute::<&[u8], Str<'_>>(b) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `Str::new`, the checked conversion
+  --> $DIR/cast_bypasses_from.rs:160:9
+   |
+LL |         pub fn new(b: &[u8]) -> Option<Str<'_>> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: call `Str::new` instead. If this path must skip the check, add an unchecked constructor next to it so both live beside the layout
+
+warning: `gate::Gate` is produced with `mem::transmute` here, skipping the check on `v` that `Gate::new` makes
+  --> $DIR/cast_bypasses_from.rs:274:14
+   |
+LL |     unsafe { core::mem::transmute::<u8, Gate>(n) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the check in `Gate::new`
+  --> $DIR/cast_bypasses_from.rs:176:16
+   |
+LL |             if v < 2 { Some(Gate { v }) } else { None }
+   |                ^^^^^
+   = help: b$DIRld it with `Gate::new(..)`. If this path must skip the check, add an unchecked constructor next to `Gate::new` and call that
+   = note: `#[warn(unchecked_construction)]` on by default
+
+warning: 15 warnings emitted
+

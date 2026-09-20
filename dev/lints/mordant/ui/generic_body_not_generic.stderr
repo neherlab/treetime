@@ -1,0 +1,762 @@
+warning: `checksum` is generic over `B` and is compiled 3 times in this crate, but one part of it, 43 of its 46 statements (as MIR), does not use `B`
+  --> $DIR/generic_body_not_generic.rs:6:1
+   |
+LL | pub fn checksum<B: AsRef<[u8]>>(bytes: B) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:8:19
+   |
+LL |       let mut acc = 17u32;
+   |  ___________________^
+LL | |     let mut run = 0u32;
+LL | |     for byte in src {
+LL | |         let v = u32::from(*byte);
+...  |
+LL | |     (acc ^ (src.len() as u32)).rotate_left(7)
+   | |_____________________________________________^
+note: one of the 3 argument sets: B = &str
+  --> $DIR/generic_body_not_generic.rs:1725:13
+   |
+LL |     let _ = checksum("abc");
+   |             ^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `checksum` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+   = note: `#[warn(generic_body_not_generic)]` on by default
+
+warning: `WithHeader::<T>::header_word` is generic over `T` and is compiled 2 times in this crate, but one part of it, 44 of its 47 statements (as MIR), does not use `T`
+  --> $DIR/generic_body_not_generic.rs:31:5
+   |
+LL |     pub fn header_word(&self) -> u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `header: [u8; 4]`, `declared: u32` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:34:24
+   |
+LL |           let mut word = 0u32;
+   |  ________________________^
+LL | |         let mut shift = 0u32;
+LL | |         for b in header {
+LL | |             word |= u32::from(b) << shift;
+...  |
+LL | |         } else {
+LL | |             padded.wrapping_sub(word).wrapping_mul(3)
+   | |_____________________________________________________^
+note: one of the 2 argument sets: T = u8
+  --> $DIR/generic_body_not_generic.rs:1730:13
+   |
+LL |     let _ = small.header_word() + wide.header_word();
+   |             ^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `WithHeader::<T>::header_word` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `fold_block` is generic over `N` and is compiled 2 times in this crate, but one part of it, 56 of its 58 statements (as MIR), does not use `N`
+  --> $DIR/generic_body_not_generic.rs:50:1
+   |
+LL | pub fn fold_block<const N: usize>(block: [u8; N]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `bytes: &[u8]` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:52:18
+   |
+LL |       let mut lo = 1u32;
+   |  __________________^
+LL | |     let mut hi = 0u32;
+LL | |     let mut i = 0usize;
+LL | |     while i < bytes.len() {
+...  |
+LL | |     let folded = (hi << 16) | lo;
+LL | |     if folded % 2 == 0 { folded / 2 } else { folded.wrapping_mul(3) + 1 }
+   | |_______________________________________________________________________^
+note: one of the 2 argument sets: N = 2
+  --> $DIR/generic_body_not_generic.rs:1731:13
+   |
+LL |     let _ = fold_block([1u8, 2]);
+   |             ^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `fold_block` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `digits` is generic over `S` and is compiled 2 times in this crate, but one part of it, 50 of its 53 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:66:1
+   |
+LL | pub fn digits<S: AsRef<str>>(text: S) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `s: &str` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:68:21
+   |
+LL |       let mut total = 0u32;
+   |  _____________________^
+LL | |     let mut weight = 1u32;
+LL | |     let mut groups = 0u32;
+LL | |     for ch in s.bytes() {
+...  |
+LL | |     (total ^ weight.rotate_right(5)).wrapping_add(groups)
+   | |_________________________________________________________^
+note: one of the 2 argument sets: S = &str
+  --> $DIR/generic_body_not_generic.rs:87:5
+   |
+LL |     digits(text).wrapping_add(1)
+   |     ^^^^^^^^^^^^
+   = note: `digits` is `#[inline]`. Leave `#[inline]` off the separate function, or every codegen unit that calls it compiles its own copy and shares nothing
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `digits` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `digits_priv` is generic over `S` and is compiled 2 times in this crate, but one part of it, 39 of its 46 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:91:1
+   |
+LL | fn digits_priv<S: AsRef<str>>(text: S) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `s: &str` and produce `longest: u32`, the `u32` from `vowels`
+  --> $DIR/generic_body_not_generic.rs:93:22
+   |
+LL |       let mut vowels = 0u32;
+   |  ______________________^
+LL | |     let mut longest = 0u32;
+LL | |     let mut current = 0u32;
+LL | |     for ch in s.bytes() {
+...  |
+LL | |     (vowels << 8) | (longest & 0xff)
+   | |_________________^
+note: one of the 2 argument sets: S = &str
+  --> $DIR/generic_body_not_generic.rs:1735:13
+   |
+LL |     let _ = digits_priv("12a3") + digits_priv(String::from("45"));
+   |             ^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `digits_priv` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+   = help: `digits_priv` uses `text` only to get a `&str` through `AsRef::as_ref`, so it could take `&str` instead
+
+warning: `tally` is generic over `X` and is compiled 3 times in this crate, but one part of it, 41 of its 44 statements (as MIR), does not use `X`
+  --> $DIR/generic_body_not_generic.rs:137:1
+   |
+LL | pub fn tally<X: HasName>(x: X) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `s: &str` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:139:17
+   |
+LL |       let bytes = s.as_bytes();
+   |  _________________^
+LL | |     let mut h = 2166136261u32;
+LL | |     let mut upper = 0u32;
+LL | |     let mut i = 0usize;
+...  |
+LL | |     (h ^ upper).wrapping_add(bytes.len() as u32)
+   | |________________________________________________^
+note: one of the 3 argument sets: X = Ann
+  --> $DIR/generic_body_not_generic.rs:1736:13
+   |
+LL |     let _ = tally(Ann) + tally(Bob) + tally(Cy);
+   |             ^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `tally` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `wide_sum` is generic over `WIDE` and is compiled 2 times in this crate, but one part of it, 41 of its 83 statements (as MIR), does not use `WIDE`
+  --> $DIR/generic_body_not_generic.rs:155:1
+   |
+LL | pub fn wide_sum<const WIDE: bool>(src: &[u8]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]` and produce `acc: u32`, and the body has 1 more such part of at least 24 statements
+  --> $DIR/generic_body_not_generic.rs:156:19
+   |
+LL |       let mut acc = 1u32;
+   |  ___________________^
+LL | |     let mut i = 0usize;
+LL | |     while i < src.len() {
+LL | |         let v = u32::from(src[i]);
+...  |
+LL | |         i += 1;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: WIDE = true
+  --> $DIR/generic_body_not_generic.rs:1737:13
+   |
+LL |     let _ = wide_sum::<true>(b"wide") + wide_sum::<false>(b"narrow");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `wide_sum` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `stamp_tag` is generic over `TAG` and is compiled 2 times in this crate, but one part of it, 130 of its 138 statements (as MIR), does not use `TAG`
+  --> $DIR/generic_body_not_generic.rs:276:1
+   |
+LL | pub fn stamp_tag<const TAG: u8>(src: &[u8; 4]) -> [u8; 16] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8; 4]`, `buf: [u8; 16]`, the `usize` from `0` and produce the returned `[u8; 16]`
+  --> $DIR/generic_body_not_generic.rs:279:5
+   |
+LL | /     buf[4] = src[0];
+LL | |     buf[5] = src[1];
+LL | |     buf[6] = src[2];
+LL | |     buf[7] = src[3];
+...  |
+LL | |     buf[0] = buf[15];
+LL | |     buf
+   | |_______^
+note: one of the 2 argument sets: TAG = 0
+  --> $DIR/generic_body_not_generic.rs:1743:13
+   |
+LL |     let _ = stamp_tag::<0>(b"abcd")[0] ^ stamp_tag::<1>(b"cdef")[0];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `stamp_tag` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `stamp_at` is generic over `TAG` and is compiled 2 times in this crate, but one part of it, 130 of its 138 statements (as MIR), does not use `TAG`
+  --> $DIR/generic_body_not_generic.rs:296:1
+   |
+LL | pub fn stamp_at<const TAG: u8>(src: &[u8; 4]) -> [u8; 16] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8; 4]`, `buf: [u8; 16]`, the `usize` from `0` and produce the returned `[u8; 16]`
+  --> $DIR/generic_body_not_generic.rs:299:5
+   |
+LL | /     buf[4] = src[0];
+LL | |     buf[5] = src[1];
+LL | |     buf[6] = src[2];
+LL | |     buf[7] = src[3];
+...  |
+LL | |     buf[0] = buf[15];
+LL | |     buf
+   | |_______^
+note: one of the 2 argument sets: TAG = 2
+  --> $DIR/generic_body_not_generic.rs:1744:13
+   |
+LL |     let _ = stamp_at::<2>(b"abcd")[0] ^ stamp_at::<3>(b"cdef")[0];
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `stamp_at` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `strict_sum` is generic over `B` and is compiled 2 times in this crate, but one part of it, 43 of its 46 statements (as MIR), does not use `B`
+  --> $DIR/generic_body_not_generic.rs:353:1
+   |
+LL | pub fn strict_sum<B: AsRef<[u8]>>(bytes: B) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:355:19
+   |
+LL |       let mut acc = 1u32;
+   |  ___________________^
+LL | |     let mut zeros = 0u32;
+LL | |     for byte in src {
+LL | |         let v = u32::from(*byte);
+...  |
+LL | |     (acc ^ zeros).rotate_right(3)
+   | |_________________________________^
+note: one of the 2 argument sets: B = &str
+  --> $DIR/generic_body_not_generic.rs:1748:13
+   |
+LL |     let _ = strict_sum("s") + strict_sum([1u8, 0]);
+   |             ^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `strict_sum` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `lattice` is generic over `B` and is compiled 2 times in this crate, but one part of it, 60 of its 63 statements (as MIR), does not use `B`
+  --> $DIR/generic_body_not_generic.rs:372:1
+   |
+LL | pub fn lattice<B: AsRef<[u8]>>(bytes: B) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:374:19
+   |
+LL |       let mut acc = 0x9e3779b9u32;
+   |  ___________________^
+LL | |     let mut i = 0usize;
+LL | |     while i < src.len() {
+LL | |         let v = u32::from(src[i]);
+...  |
+LL | |     (acc ^ (src.len() as u32)).rotate_left(5)
+   | |_____________________________________________^
+note: one of the 2 argument sets: B = &str
+  --> $DIR/generic_body_not_generic.rs:1749:13
+   |
+LL |     let _ = lattice("l") + lattice(vec![3u8]);
+   |             ^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `lattice` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `map_in_part` is generic over `S` and is compiled 2 times in this crate, but one part of it, 110 of its 112 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:563:1
+   |
+LL | pub fn map_in_part<S: Sink>(sink: &mut S, src: &[u8]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:565:19
+   |
+LL |       let mut acc = 17u32;
+   |  ___________________^
+LL | |     let mut run = 0u32;
+LL | |     let mut odd = 0u32;
+LL | |     for &b in src {
+...  |
+LL | |     acc ^ run ^ odd ^ n
+   | |_______________________^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1770:13
+   |
+LL |     let _ = map_in_part(&mut count, b"map") ^ map_in_part(&mut last, b"map");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `map_in_part` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `map_captures_generic` is generic over `S` and `K` and is compiled 2 times in this crate, but one part of it, 56 of its 113 statements (as MIR), does not use `S` or `K`
+  --> $DIR/generic_body_not_generic.rs:590:1
+   |
+LL | pub fn map_captures_generic<S: Sink, K: AsRef<[u8]>>(sink: &mut S, key: &K, src: &[u8]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]`, `acc: u32`, `run: u32`, `odd: u32`, `n: u32` and produce the returned `u32`, and the body has 1 more such part of at least 24 statements
+  --> $DIR/generic_body_not_generic.rs:604:5
+   |
+LL | /     for &b in src {
+LL | |         let v = u32::from(b);
+LL | |         acc = acc.wrapping_mul(37).wrapping_add(v ^ n);
+LL | |         run = if v & 4 == 0 { run + 2 } else { 1 };
+...  |
+LL | |     acc ^ run ^ odd ^ n
+   | |_______________________^
+note: one of the 2 argument sets: S = Count, K = [u8; 1]
+  --> $DIR/generic_body_not_generic.rs:1771:13
+   |
+LL |     let _ = map_captures_generic(&mut count, b"k", b"map") ^ map_captures_generic(&mut last, &vec![7u8], b"map");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `map_captures_generic` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `map_body_names_param` is generic over `S` and is compiled 2 times in this crate, but one part of it, 56 of its 112 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:617:1
+   |
+LL | pub fn map_body_names_param<S: Sink>(sink: &mut S, src: &[u8]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `src: &[u8]`, `acc: u32`, `run: u32`, `odd: u32`, `n: u32` and produce the returned `u32`, and the body has 1 more such part of at least 24 statements
+  --> $DIR/generic_body_not_generic.rs:631:5
+   |
+LL | /     for &b in src {
+LL | |         let v = u32::from(b);
+LL | |         acc = acc.wrapping_mul(37).wrapping_add(v ^ n);
+LL | |         run = if v & 4 == 0 { run + 2 } else { 1 };
+...  |
+LL | |     acc ^ run ^ odd ^ n
+   | |_______________________^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1772:13
+   |
+LL |     let _ = map_body_names_param(&mut count, b"map") ^ map_body_names_param(&mut last, b"map");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `map_body_names_param` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `<Sealed<T> as std::ops::Deref>::deref` is generic over `T` and is compiled 2 times in this crate, but one part of it, 41 of its 50 statements (as MIR), does not use `T`
+  --> $DIR/generic_body_not_generic.rs:652:5
+   |
+LL |     fn deref(&self) -> &u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `table: [u8; 8]`, `acc: u32` and produce `pick: bool`
+  --> $DIR/generic_body_not_generic.rs:655:23
+   |
+LL |           let mut odd = 0u32;
+   |  _______________________^
+LL | |         for b in table {
+LL | |             let v = u32::from(b);
+LL | |             acc = acc.rotate_left(3) ^ v;
+...  |
+LL | |         let pick = (acc ^ odd) % 3 == 1 || odd > 4;
+   | |__________________________________________________^
+note: one of the 2 argument sets: T = &str
+  --> $DIR/generic_body_not_generic.rs:1775:25
+   |
+LL |     let coerced: &u32 = &other;
+   |                         ^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `<Sealed<T> as std::ops::Deref>::deref` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `tail_after_refused_head` is generic over `S` and is compiled 2 times in this crate, but one part of it, 39 of its 125 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:721:1
+   |
+LL | pub fn tail_after_refused_head<S: Sink>(sink: &mut S, rec: &mut Record, weight: u32, src: &[u8]) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `rec: &mut Record`, `src: &[u8]` and produce `acc: u32`
+  --> $DIR/generic_body_not_generic.rs:740:5
+   |
+LL | /     rec.sent += 1;
+LL | |     let mut acc = 17u32;
+LL | |     let mut run = 0u32;
+LL | |     for byte in src {
+...  |
+LL | |         acc ^= run << 3;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1782:13
+   |
+LL |     let _ = tail_after_refused_head(&mut count, &mut rec, 2, b"even");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `tail_after_refused_head` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `read_scanned` is generic over `W` and is compiled 2 times in this crate, but one part of it, 37 of its 72 statements (as MIR), does not use `W`
+  --> $DIR/generic_body_not_generic.rs:801:1
+   |
+LL | pub fn read_scanned<W: Push>(out: &mut W, cur: &mut Cursor, want: usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `cur: &mut Cursor`, `want: usize` and produce `start: usize`, `take: usize`, `end: usize`, `sum: u32`
+  --> $DIR/generic_body_not_generic.rs:802:17
+   |
+LL |       let start = cur.pos.min(cur.data.len());
+   |  _________________^
+LL | |     let avail = cur.data.len() - start;
+LL | |     let take = avail.min(want).min(64);
+LL | |     let end = start + take;
+...  |
+LL | |         i += 1;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: W = std::vec::Vec<u8>
+  --> $DIR/generic_body_not_generic.rs:1790:9
+   |
+LL |         read_scanned(&mut v, &mut cur, 2);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `read_scanned` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `refill` is generic over `S` and is compiled 2 times in this crate, but one part of it, 48 of its 67 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:918:1
+   |
+LL | pub fn refill<S: Sink>(sink: &mut S, cur: &mut Cursor, want: usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `cur: &mut Cursor`, `want: usize` and produce `start: usize`, `end: usize`, `padded: bool`
+  --> $DIR/generic_body_not_generic.rs:919:17
+   |
+LL |       let start = cur.pos.min(cur.data.len());
+   |  _________________^
+LL | |     let avail = cur.data.len() - start;
+LL | |     let take = avail.min(want).min(64);
+LL | |     let end = start + take;
+...  |
+LL | |         cur.sum ^= 0xa5a5_a5a5;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1817:5
+   |
+LL |     refill(&mut count, &mut cur, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `refill` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `refill_twice` is generic over `S` and is compiled 2 times in this crate, but one part of it, 50 of its 70 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:943:1
+   |
+LL | pub fn refill_twice<S: Sink>(sink: &mut S, cur: &mut Cursor, want: usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `cur: &mut Cursor`, `want: usize` and produce `start: usize`, `end: usize`, `padded: bool`
+  --> $DIR/generic_body_not_generic.rs:944:17
+   |
+LL |       let start = cur.pos.min(cur.data.len());
+   |  _________________^
+LL | |     let avail = cur.data.len() - start;
+LL | |     let take = avail.min(want).min(64);
+LL | |     let end = start + take;
+...  |
+LL | |         cur.sum ^= 0xa5a5_a5a5;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1819:5
+   |
+LL |     refill_twice(&mut count, &mut cur, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `refill_twice` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `refill_total` is generic over `S` and is compiled 2 times in this crate, but one part of it, 50 of its 69 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:969:1
+   |
+LL | pub fn refill_total<S: Sink>(sink: &mut S, cur: &mut Cursor, want: usize) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `cur: &mut Cursor`, `want: usize` and produce `start: usize`, `end: usize`, `padded: bool`
+  --> $DIR/generic_body_not_generic.rs:970:17
+   |
+LL |       let start = cur.pos.min(cur.data.len());
+   |  _________________^
+LL | |     let avail = cur.data.len() - start;
+LL | |     let take = avail.min(want).min(64);
+LL | |     let end = start + take;
+...  |
+LL | |         cur.sum ^= 0xa5a5_a5a5;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1821:13
+   |
+LL |     let _ = refill_total(&mut count, &mut cur, 2) + refill_total(&mut last, &mut cur, 9);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `refill_total` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `unlabel` is generic over `S` and is compiled 2 times in this crate, but one part of it, 58 of its 77 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:1037:1
+   |
+LL | pub fn unlabel<S: Sink>(sink: &mut S, seed: u32, keep: bool) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `seed: u32`, `acc: u32` and produce the returned `u32`
+  --> $DIR/generic_body_not_generic.rs:1044:5
+   |
+LL | /     acc = acc.rotate_left(5).wrapping_mul(31);
+LL | |     acc ^= acc >> 7;
+LL | |     acc = acc.wrapping_add(seed | 1);
+LL | |     acc = acc.rotate_right(3).wrapping_sub(40503);
+...  |
+LL | |     acc ^= acc >> 3;
+LL | |     acc.wrapping_mul(16777619).rotate_right(seed & 7)
+   | |_____________________________________________________^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1825:13
+   |
+LL |     let _ = unlabel(&mut count, 5, true) + unlabel(&mut last, 6, false);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `unlabel` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `handoff` is generic over `S` and is compiled 2 times in this crate, but one part of it, 41 of its 56 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:1058:1
+   |
+LL | pub fn handoff<S: Sink>(sink: &mut S, seed: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `seed: u32`, `text: std::string::String` and produce `acc: u32`
+  --> $DIR/generic_body_not_generic.rs:1061:19
+   |
+LL |       let mut acc = seed;
+   |  ___________________^
+LL | |     acc = acc.rotate_left(5).wrapping_mul(31);
+LL | |     acc ^= acc >> 7;
+LL | |     acc = acc.wrapping_add(seed | 1);
+...  |
+LL | |         acc ^= 0x9e3779b9;
+LL | |     }
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1826:13
+   |
+LL |     let _ = handoff(&mut count, 7) + handoff(&mut last, 8);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `handoff` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `own_extent` is generic over `E` and is compiled 2 times in this crate, but one part of it, 55 of its 61 statements (as MIR), does not use `E`
+  --> $DIR/generic_body_not_generic.rs:1229:1
+   |
+LL | pub fn own_extent<E: EmitRaw>(out: &mut E, seed: u32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `seed: u32` and produce `extent: Extent`, `ready: usize`
+  --> $DIR/generic_body_not_generic.rs:1230:13
+   |
+LL |       let x = seed.wrapping_mul(0x9e37_79b9);
+   |  _____________^
+LL | |     let y = x.rotate_left(7) ^ seed;
+LL | |     let z = y.swap_bytes().wrapping_add(x);
+LL | |     let n = (z & 7) as usize;
+...  |
+LL | |     let extent = Extent { first: usize::from(buf[0]), len: buf[..n].len() };
+LL | |     let ready = extent.len.min(4);
+   | |_________________________________^
+note: one of the 2 argument sets: E = Count
+  --> $DIR/generic_body_not_generic.rs:1835:5
+   |
+LL |     own_extent(&mut count, 3);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `own_extent` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `trim_stamp` is generic over `E` and is compiled 2 times in this crate, but one part of it, 87 of its 117 statements (as MIR), does not use `E`
+  --> $DIR/generic_body_not_generic.rs:1375:1
+   |
+LL | pub fn trim_stamp<E: Emit>(out: &mut E, secs: u32, frac: u32) -> usize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `buf: [u8; 32]`, `start: usize`, `len: usize` and produce `end: usize`, `begin: usize`, the `&[u8]` assigned to `shown`
+  --> $DIR/generic_body_not_generic.rs:1381:13
+   |
+LL |       let n = start - len;
+   |  _____________^
+LL | |     let text = &buf[..4 + n];
+LL | |     let mut end = text.len();
+LL | |     while end > 0 && text[end - 1] == b' ' {
+...  |
+LL | |     let shown = &text[begin..end];
+   | |_________________________________^
+note: one of the 2 argument sets: E = Count
+  --> $DIR/generic_body_not_generic.rs:1845:13
+   |
+LL |     let _ = trim_stamp(&mut count, 7, 9) + trim_stamp(&mut last, 1, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `trim_stamp` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `FrameHeader::write` is generic over `E` and is compiled 2 times in this crate, but one part of it, 44 of its 52 statements (as MIR), does not use `E`
+  --> $DIR/generic_body_not_generic.rs:1408:5
+   |
+LL |     pub fn write<E: Emit>(&self, out: &mut E) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `self: &FrameHeader` and produce `buf: [u8; 9]`
+  --> $DIR/generic_body_not_generic.rs:1409:23
+   |
+LL |           let mut buf = [0u8; 9];
+   |  _______________________^
+LL | |         buf[0] = (self.length >> 16) as u8;
+LL | |         buf[1] = (self.length >> 8) as u8;
+LL | |         buf[2] = self.length as u8;
+LL | |         buf[3] = self.kind;
+LL | |         buf[4] = self.flags;
+LL | |         buf[5..9].copy_from_slice(&self.stream.to_be_bytes());
+   | |_____________________________________________________________^
+note: one of the 2 argument sets: E = Count
+  --> $DIR/generic_body_not_generic.rs:1847:13
+   |
+LL |     let _ = header.write(&mut count) + header.write(&mut last);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `FrameHeader::write` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `print_stamp` is generic over `E` and is compiled 2 times in this crate, but one part of it, 91 of its 172 statements (as MIR), does not use `E`
+  --> $DIR/generic_body_not_generic.rs:1427:1
+   |
+LL | pub fn print_stamp<E: Emit>(out: &mut E, stats: &mut Stats, secs: u64, frac: u32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `stats: &mut Stats`, `secs: u64`, `frac: u32`, the `&mut [u8]` assigned to `cursor` and produce `cursor: &mut [u8]`, `start: usize`, `hours: u32`, `minutes: u32`, `seconds: u32`, `year_ish: u32`, `day_ish: u32`, `millis: u32`, `micros: u32`, the `u32` for field `dots`
+  --> $DIR/generic_body_not_generic.rs:1431:17
+   |
+LL |       let start = cursor.len();
+   |  _________________^
+LL | |     let days = secs / 86_400;
+LL | |     let rem = secs - days * 86_400;
+LL | |     let hours = (rem / 3_600) as u32;
+...  |
+LL | |     let packed = (hours << 12) | (minutes << 6) | seconds;
+LL | |     stats.dots = stats.dots.wrapping_add(packed ^ day_ish ^ micros);
+   | |___________________________________________________________________^
+note: one of the 2 argument sets: E = Count
+  --> $DIR/generic_body_not_generic.rs:1849:5
+   |
+LL |     print_stamp(&mut count, &mut stats, 12, 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `print_stamp` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `settings_for` is generic over `M` and is compiled 3 times in this crate, but one part of it, 31 of its 34 statements (as MIR), does not use `M`
+  --> $DIR/generic_body_not_generic.rs:1467:1
+   |
+LL | pub fn settings_for<M>(marker: M, base: u32) -> Settings<M> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `base: u32` and produce the `u32` for field `width`, the `u32` for field `height`, the `u32` for field `depth`, the `u32` for field `gamma`, the `u32` for field `seed`, the `u32` for field `limit`, the `u32` for field `floor`, the `u32` from `base.wrapping_mul(23).rotate_left(19)`
+  --> $DIR/generic_body_not_generic.rs:1469:16
+   |
+LL |           width: base.wrapping_mul(3).rotate_left(2) ^ 0x51,
+   |  ________________^
+LL | |         height: base.wrapping_mul(5).rotate_left(3) ^ 0x52,
+LL | |         depth: base.wrapping_mul(7).rotate_left(5) ^ 0x53,
+LL | |         gamma: base.wrapping_mul(11).rotate_left(7) ^ 0x54,
+...  |
+LL | |         floor: base.wrapping_mul(19).rotate_left(17) ^ 0x57,
+LL | |         scale: base.wrapping_mul(23).rotate_left(19) ^ 0x58,
+   | |____________________________________________________^
+note: one of the 3 argument sets: M = ()
+  --> $DIR/generic_body_not_generic.rs:1851:13
+   |
+LL |     let _ = settings_for((), 3).width + settings_for(7u8, 5).height + settings_for("m", 9).depth;
+   |             ^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `settings_for` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `Printer::write_str` is generic over `S` and is compiled 3 times in this crate, but one part of it, 36 of its 48 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:1494:5
+   |
+LL |     pub fn write_str<S: AsRef<[u8]>>(&mut self, s: S) -> Result<(), u32> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `self: &mut Printer`, `s: &[u8]` and produce the `usize` from `self.out.len()`
+  --> $DIR/generic_body_not_generic.rs:1496:9
+   |
+LL | /         self.col = self.col.wrapping_add(s.len() as u32);
+LL | |         let mut h = self.col;
+LL | |         for &b in s {
+LL | |             h = (h ^ u32::from(b)).wrapping_mul(0x01000193);
+...  |
+LL | |         self.out.push((h & 0x7f) as u8);
+LL | |         if self.out.len() > 4096 {
+   | |_________________________^
+note: one of the 3 argument sets: S = &str
+  --> $DIR/generic_body_not_generic.rs:1853:13
+   |
+LL |     let _ = printer.write_str("abc");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `Printer::write_str` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `<Ledger<T> as std::ops::Drop>::drop` is generic over `T` and is compiled 2 times in this crate, but one part of it, 55 of its 61 statements (as MIR), does not use `T`
+  --> $DIR/generic_body_not_generic.rs:1518:5
+   |
+LL |     fn drop(&mut self) {
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `counts: [u32; 6]`, `floor: u32` and produce `total: u32`
+  --> $DIR/generic_body_not_generic.rs:1521:23
+   |
+LL |           let mut sum = 0u32;
+   |  _______________________^
+LL | |         let mut peak = 0u32;
+LL | |         let mut at = 0u32;
+LL | |         let mut i = 0u32;
+...  |
+LL | |         let spread = peak.saturating_sub(sum / 6).wrapping_add(floor);
+LL | |         let total = if spread > at { sum ^ spread } else { sum.wrapping_mul(at + 1) };
+   | |___________________________________________________________________________________^
+note: one of the 2 argument sets: T = u8
+  --> $DIR/generic_body_not_generic.rs:1856:9
+   |
+LL |     let _small_ledger = Ledger { tag: 1u8, counts: [1, 2, 3, 4, 5, 6], total: 0 };
+   |         ^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `<Ledger<T> as std::ops::Drop>::drop` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `hash_row` is generic over `S` and is compiled 2 times in this crate, but one part of it, 67 of its 82 statements (as MIR), does not use `S`
+  --> $DIR/generic_body_not_generic.rs:1660:1
+   |
+LL | pub fn hash_row<S: Sink>(sink: &mut S, rows: &[Row], key: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only `acc: u32`, the `std::option::Option<&Row>` from `rows.get(key as usize)` and produce `acc: u32`
+  --> $DIR/generic_body_not_generic.rs:1662:47
+   |
+LL |       if let Some(row) = rows.get(key as usize) {
+   |  _______________________________________________^
+LL | |         let v = row.a.rotate_left(3);
+LL | |         acc = acc.wrapping_mul(31).wrapping_add(v);
+LL | |         acc ^= acc >> 7;
+...  |
+LL | |         acc ^= 0x5555_aaaa;
+LL | |     } else {
+   | |_____^
+note: one of the 2 argument sets: S = Count
+  --> $DIR/generic_body_not_generic.rs:1866:13
+   |
+LL |     let _ = hash_row(&mut count, &rows, 0) + hash_row(&mut last, &rows, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `hash_row` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: `Canvas::<T>::area` is generic over `T` and `S` and is compiled 2 times in this crate, but one part of it, 65 of its 74 statements (as MIR), does not use `T` or `S`
+  --> $DIR/generic_body_not_generic.rs:1703:5
+   |
+LL |     pub fn area<S: Sink>(&self, sink: &mut S) -> u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: these statements read only the `(u32, u32)` from `self.dims.split()` and produce the `u32` assigned to `acc`
+  --> $DIR/generic_body_not_generic.rs:1705:23
+   |
+LL |           let mut acc = w.rotate_left(3);
+   |  _______________________^
+LL | |         acc = acc.wrapping_mul(31).wrapping_add(h);
+LL | |         acc ^= acc >> 7;
+LL | |         acc = acc.wrapping_add(h | 1);
+...  |
+LL | |         acc ^= acc >> 16;
+LL | |         acc = acc.rotate_left(h & 31);
+   | |_____________________________________^
+note: one of the 2 argument sets: T = u8, S = Count
+  --> $DIR/generic_body_not_generic.rs:1869:13
+   |
+LL |     let _ = tagged.area(&mut count) + titled.area(&mut last);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: move these statements into a separate non-generic function that takes what they read and returns what they produce, and call it here. `Canvas::<T>::area` keeps its signature. They are compiled once only if the compiler keeps the new function out of line
+
+warning: 31 warnings emitted
+

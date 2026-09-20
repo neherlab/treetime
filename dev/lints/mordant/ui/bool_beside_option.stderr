@@ -1,0 +1,42 @@
+warning: `Conn.connected` is only ever written next to `peer`, `true` with `Some` and `false` with `None`, in all 3 places. It is `peer.is_some()` stored twice
+  --> $DIR/bool_beside_option.rs:7:5
+   |
+LL |     connected: bool,
+   |     ^^^^^^^^^^^^^^^
+   |
+note: one of the paired writes
+  --> $DIR/bool_beside_option.rs:15:13
+   |
+LL |             connected: false,
+   |             ^^^^^^^^^^^^^^^^
+   = help: delete `connected` and call `peer.is_some()` where it was read
+   = note: `#[warn(bool_beside_option)]` on by default
+
+warning: `Cache.stale` is only ever written next to `fresh`, `true` with `None` and `false` with `Some`, in all 2 places. It is `fresh.is_none()` stored twice
+  --> $DIR/bool_beside_option.rs:44:5
+   |
+LL |     stale: bool,
+   |     ^^^^^^^^^^^
+   |
+note: one of the paired writes
+  --> $DIR/bool_beside_option.rs:51:13
+   |
+LL |             stale: false,
+   |             ^^^^^^^^^^^^
+   = help: delete `stale` and call `fresh.is_none()` where it was read
+
+warning: `Link.linked` is only ever written next to `up`, `true` with `Some` and `false` with `None`, in all 3 places. It is `up.is_some()` stored twice
+  --> $DIR/bool_beside_option.rs:73:5
+   |
+LL |     linked: bool,
+   |     ^^^^^^^^^^^^
+   |
+note: one of the paired writes
+  --> $DIR/bool_beside_option.rs:84:9
+   |
+LL |         self.linked = true;
+   |         ^^^^^^^^^^^^^^^^^^
+   = help: delete `linked` and call `up.is_some()` where it was read
+
+warning: 3 warnings emitted
+

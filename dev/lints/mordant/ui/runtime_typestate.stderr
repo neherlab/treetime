@@ -1,0 +1,16 @@
+warning: 2 methods of `Conn` begin by testing `ready` and returning early. Whether they may be called yet is checked at runtime, one method at a time
+  --> $DIR/runtime_typestate.rs:5:5
+   |
+LL |     ready: bool,
+   |     ^^^^^^^^^^^
+   |
+note: the test at the top of one of them
+  --> $DIR/runtime_typestate.rs:11:12
+   |
+LL |         if !self.ready {
+   |            ^^^^^^^^^^^
+   = help: split `Conn` into a type per state and put those 2 methods only on the one `ready` allows. Calling them too early becomes a compile error
+   = note: `#[warn(runtime_typestate)]` on by default
+
+warning: 1 warning emitted
+

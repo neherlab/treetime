@@ -1,0 +1,63 @@
+warning: `add_overflow_root` can reach `core::panicking::panic_const::panic_const_add_overflow`, which the `forbidden-reach` config bans for it. Path: add_overflow_root -> core::panicking::panic_const::panic_const_add_overflow
+  --> $DIR/forbidden_reach_assert.rs:10:1
+   |
+LL | / fn add_overflow_root(a: u32, b: u32) -> u32 {
+LL | |     a + b
+LL | | }
+   | |_^
+   |
+note: the last call in that path, to `core::panicking::panic_const::panic_const_add_overflow`
+  --> $DIR/forbidden_reach_assert.rs:11:5
+   |
+LL |     a + b
+   |     ^^^^^
+   = help: break the path (each arrow is a real call in this crate), or relax the `forbidden-reach` rule for `add_overflow_root` if the call is fine
+   = note: `#[warn(forbidden_reach)]` on by default
+
+warning: `div_zero_root` can reach `core::panicking::panic_const::panic_const_div_by_zero`, which the `forbidden-reach` config bans for it. Path: div_zero_root -> core::panicking::panic_const::panic_const_div_by_zero
+  --> $DIR/forbidden_reach_assert.rs:16:1
+   |
+LL | / fn div_zero_root(a: u32, b: u32) -> u32 {
+LL | |     a / b
+LL | | }
+   | |_^
+   |
+note: the last call in that path, to `core::panicking::panic_const::panic_const_div_by_zero`
+  --> $DIR/forbidden_reach_assert.rs:17:5
+   |
+LL |     a / b
+   |     ^^^^^
+   = help: break the path (each arrow is a real call in this crate), or relax the `forbidden-reach` rule for `div_zero_root` if the call is fine
+
+warning: `rem_zero_root` can reach `core::panicking::panic_const::panic_const_rem_by_zero`, which the `forbidden-reach` config bans for it. Path: rem_zero_root -> core::panicking::panic_const::panic_const_rem_by_zero
+  --> $DIR/forbidden_reach_assert.rs:23:1
+   |
+LL | / fn rem_zero_root(a: u32, b: u32) -> u32 {
+LL | |     a % b
+LL | | }
+   | |_^
+   |
+note: the last call in that path, to `core::panicking::panic_const::panic_const_rem_by_zero`
+  --> $DIR/forbidden_reach_assert.rs:24:5
+   |
+LL |     a % b
+   |     ^^^^^
+   = help: break the path (each arrow is a real call in this crate), or relax the `forbidden-reach` rule for `rem_zero_root` if the call is fine
+
+warning: `neg_overflow_root` can reach `core::panicking::panic_const::panic_const_neg_overflow`, which the `forbidden-reach` config bans for it. Path: neg_overflow_root -> core::panicking::panic_const::panic_const_neg_overflow
+  --> $DIR/forbidden_reach_assert.rs:29:1
+   |
+LL | / fn neg_overflow_root(a: i32) -> i32 {
+LL | |     -a
+LL | | }
+   | |_^
+   |
+note: the last call in that path, to `core::panicking::panic_const::panic_const_neg_overflow`
+  --> $DIR/forbidden_reach_assert.rs:30:5
+   |
+LL |     -a
+   |     ^^
+   = help: break the path (each arrow is a real call in this crate), or relax the `forbidden-reach` rule for `neg_overflow_root` if the call is fine
+
+warning: 4 warnings emitted
+
