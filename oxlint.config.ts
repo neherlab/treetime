@@ -158,6 +158,7 @@ export default defineConfig({
     "treetime/no-typographic-characters": "error",
     "treetime/use-class-name-helper": "error",
     "treetime/require-io-timeout": "error",
+    "treetime/no-async-array-predicate": "error",
 
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
@@ -273,10 +274,12 @@ export default defineConfig({
         "import/no-nodejs-modules": "error",
         "treetime/no-fake-success": "error",
         "treetime/no-tautological-assertion": "error",
+        "treetime/no-assertion-in-loop": "error",
+        "treetime/no-uppercase-test-title": "error",
+        "treetime/prefer-strict-equal": "error",
         "treetime/no-disabled-tests": "error",
         "treetime/no-focused-tests": "error",
         "treetime/prefer-test-over-it": "error",
-        "treetime/no-module-mocks": "error",
         "treetime/no-leaky-mocks": "error",
         "vitest/no-restricted-matchers": [
           "error",

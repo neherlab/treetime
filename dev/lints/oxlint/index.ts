@@ -8,7 +8,6 @@ import { noFakeSuccessRule } from "./rules/no-fake-success.ts"
 import { noFocusedTestsRule } from "./rules/no-focused-tests.ts"
 import { noLeakyMocksRule } from "./rules/no-leaky-mocks.ts"
 import { noModuleLevelMutableRule } from "./rules/no-module-level-mutable.ts"
-import { noModuleMocksRule } from "./rules/no-module-mocks.ts"
 import { noTautologicalAssertionRule } from "./rules/no-tautological-assertion.ts"
 import { noTypographicCharactersRule } from "./rules/no-typographic-characters.ts"
 import { noUppercaseTestTitleRule } from "./rules/no-uppercase-test-title.ts"
@@ -30,7 +29,6 @@ export default definePlugin({
     "no-focused-tests": noFocusedTestsRule,
     "no-leaky-mocks": noLeakyMocksRule,
     "no-module-level-mutable": noModuleLevelMutableRule,
-    "no-module-mocks": noModuleMocksRule,
     "no-tautological-assertion": noTautologicalAssertionRule,
     "no-typographic-characters": noTypographicCharactersRule,
     "no-uppercase-test-title": noUppercaseTestTitleRule,
