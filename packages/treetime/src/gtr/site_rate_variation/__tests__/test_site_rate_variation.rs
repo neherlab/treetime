@@ -28,7 +28,7 @@ mod tests {
   #[test]
   fn test_discrete_gamma_rates_single_category() {
     let rates = discrete_gamma_rates(1.0, 1).unwrap();
-    assert_eq!(rates.len(), 1);
+    assert_eq!(1, rates.len());
     assert_abs_diff_eq!(rates[0], 1.0, epsilon = 1e-14);
   }
 
@@ -50,7 +50,6 @@ mod tests {
 
   #[test]
   fn test_discrete_gamma_rates_high_alpha_approaches_uniform() {
-    // Large alpha: rates converge toward 1.0
     let rates = discrete_gamma_rates(100.0, 4).unwrap();
     for &r in &rates {
       assert_abs_diff_eq!(r, 1.0, epsilon = 0.15);
@@ -59,7 +58,6 @@ mod tests {
 
   #[test]
   fn test_discrete_gamma_rates_low_alpha_wide_spread() {
-    // Small alpha: large spread between slowest and fastest categories
     let rates = discrete_gamma_rates(0.5, 4).unwrap();
     let ratio = rates[3] / rates[0];
     assert!(
@@ -92,9 +90,6 @@ mod tests {
     );
   }
 
-  // Conditional-mean discretization for Gamma(1,1) (exponential), K=4.
-  // Analytically: quantile boundaries at -ln(3/4), -ln(1/2), -ln(1/4).
-  // Category means via integral of x*exp(-x) in each interval.
   #[test]
   fn test_discrete_gamma_rates_reference_alpha_1_k4() {
     let rates = discrete_gamma_rates(1.0, 4).unwrap();

@@ -36,8 +36,6 @@ mod tests {
     SparseEdgeObs::default()
   }
 
-  // --- resolve_variable_positions_backward ---
-
   #[test]
   fn test_fitch_sub_variable_backward_children_agree() {
     let child0 = make_seq_info("ACGT");
@@ -80,7 +78,6 @@ mod tests {
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
-    // intersection {A,G} ∩ {A,C} = {A} is a singleton: resolved immediately, not stored as variable
     assert!(variable.is_empty());
     assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
   }
@@ -98,7 +95,6 @@ mod tests {
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
-    // intersection {A,G,C} ∩ {A,C} = {A,C}: ambiguous, stored as variable
     assert_eq!(variable.len(), 1);
     assert!(variable[&0].contains(b'A'));
     assert!(variable[&0].contains(b'C'));
@@ -156,13 +152,10 @@ mod tests {
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
-    // child1 is in non_char at pos 0, so only child0's {A,G} contributes
     assert_eq!(variable.len(), 1);
     assert!(variable[&0].contains(b'A'));
     assert!(variable[&0].contains(b'G'));
   }
-
-  // --- discover_fixed_disagreements_backward ---
 
   #[test]
   fn test_fitch_sub_discover_sets_fill_char() {
@@ -208,8 +201,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_discover_reports_position_once_for_many_children() {
-    // A position is flagged on the first disagreement and skipped by every later child, so it is
-    // reported exactly once however many children differ.
     let child0 = make_seq_info("A");
     let child1 = make_seq_info("C");
     let child2 = make_seq_info("G");
@@ -228,9 +219,6 @@ mod tests {
     assert_eq!(discovered, vec![0]);
   }
 
-  // --- plurality resolution on multifurcations ---
-
-  /// Builds `n` single-position children, each fixed at the given state.
   fn fixed_children(states: &[&str]) -> Vec<FitchSeqInfo> {
     states.iter().map(|s| make_seq_info(s)).collect()
   }
@@ -244,7 +232,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_plurality_three_children_c_c_a() {
-    // Fitch's union fallback would give {A,C}, which admits the non-minimal root state A.
     let infos = fixed_children(&["C", "C", "A"]);
     let edges = vec![make_edge(), make_edge(), make_edge()];
     let children = as_children(&infos, &edges);
@@ -285,7 +272,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_plurality_two_children_unchanged() {
-    // Bifurcations must keep the intersect-or-unite result exactly.
     let infos = fixed_children(&["C", "A"]);
     let edges = vec![make_edge(), make_edge()];
     let children = as_children(&infos, &edges);
@@ -299,17 +285,13 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_plurality_counts_ambiguous_leaf_exactly_once() {
-    // Position 0 is reachable from both discovery sources: child2 carries an IUPAC code, so the
-    // position is in its `fitch.variable`, and the canonical states of child0 and child1 differ,
-    // so the discovery pass also flags it. Counting child0 twice would make count(C) = 2 beat
-    // count(A) = count(G) = 1 and wrongly collapse the result to {C}.
     let mut child0 = make_seq_info("C");
     let mut child1 = make_seq_info("A");
     let mut child2 = make_seq_info("R");
     child2
       .fitch
       .variable
-      .insert(0, NUC_ALPHABET.char_to_set(AsciiChar::from_byte_unchecked(b'R'))); // R = {A, G}
+      .insert(0, NUC_ALPHABET.char_to_set(AsciiChar::from_byte_unchecked(b'R')));
     child0.fitch.variable.clear();
     child1.fitch.variable.clear();
     let edges = [make_edge(), make_edge(), make_edge()];
@@ -322,7 +304,6 @@ mod tests {
 
     let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
 
-    // count(C) = 1 (child0), count(A) = 2 (child1, child2), count(G) = 1 (child2).
     assert_eq!(variable[&0], stateset! {b'A'});
   }
 
@@ -346,8 +327,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_resolution_never_stores_sentinel_states() {
-    // The discovery pass writes VARIABLE_CHAR into `sequence`; no sentinel may ever reach a
-    // StateSet, whether from that marker or from a gap or fill byte.
     let mut child0 = make_seq_info("CA");
     child0.fitch.variable.insert(1, stateset! {b'A', b'G'});
     let child1 = make_seq_info("AA");
@@ -366,14 +345,12 @@ mod tests {
           NUC_ALPHABET.is_canonical(state) || NUC_ALPHABET.is_ambiguous(state),
           "position {pos} holds non-alphabet state {state:?}"
         );
-        assert_ne!(state, VARIABLE_CHAR);
-        assert_ne!(state, FILL_CHAR);
-        assert_ne!(state, NON_CHAR);
+        assert_ne!(VARIABLE_CHAR, state);
+        assert_ne!(FILL_CHAR, state);
+        assert_ne!(NON_CHAR, state);
       }
     }
   }
-
-  // --- resolve_root_forward ---
 
   #[test]
   fn test_fitch_sub_root_forward_resolves_variable() {
@@ -393,8 +370,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_root_forward_tie_break_uses_canonical_order_not_ascii() {
-    // In the amino-acid alphabet canonical order lists `*` last, but its byte (42) sorts below
-    // `A` (65). Selecting by byte would commit the stop codon; canonical order gives `A`.
     let aa = Alphabet::new(AlphabetName::Aa).unwrap();
     let mut sequence = Seq::try_from_str("~").unwrap();
     let variable = btreemap! { 0_usize => stateset! {b'*', b'A', b'C'} };
@@ -424,8 +399,6 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_root_forward_variable_indel_not_resolved() {
-    // Variable indels at the root default to present (no gap).
-    // Direction is resolved in the forward pass on children via parent state.
     let mut sequence = Seq::try_from_str("ACGT").unwrap();
     let variable = BTreeMap::new();
     let mut chosen_state = BTreeMap::new();
@@ -435,8 +408,6 @@ mod tests {
     assert!(chosen_state.is_empty(), "No variable substitutions to resolve");
     assert_eq!(sequence, Seq::try_from_str("ACGT").unwrap(), "Sequence unchanged");
   }
-
-  // --- resolve_nonroot_substitutions_forward ---
 
   #[test]
   fn test_fitch_sub_nonroot_forward_parent_in_child_set() -> Result<(), Report> {
@@ -538,8 +509,6 @@ mod tests {
     assert_eq!(subs[1].to_string(), "T4A", "Position 3 second");
     Ok(())
   }
-
-  // --- finalize_sequence_forward ---
 
   #[test]
   fn test_fitch_sub_finalize_fills_gaps_and_unknown() {

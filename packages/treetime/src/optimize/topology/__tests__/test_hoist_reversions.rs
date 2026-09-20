@@ -17,14 +17,10 @@ mod tests {
 
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
 
-  // Tree: root -> U -> V -> {A, B, Z}. The hoist inserts N between U and V, grouping V with A.
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
 
   #[test]
   fn test_hoist_reversions_large_t_not_duplicated() -> Result<(), Report> {
-    // M_v has three substitutions; the child reverts only one. The two untouched
-    // substitutions (T) must land on u->N once and NOT be duplicated onto N->c
-    // (which distinguishes the move from re-attaching the child to the parent).
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -58,15 +54,12 @@ mod tests {
     assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
 
-    // V keeps its other children B and Z.
     assert_eq!(graph.get_node(h.v).unwrap().degree_out(), 2);
     Ok(())
   }
 
   #[test]
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
-    // Chain: parent A0T at pos 0, child T0G at pos 0 -> net A0G. The original A0T stays
-    // on N->v; the composed A0G moves to N->c.
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -100,7 +93,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
-    // Pure reversion: A0T then T0A. Two mutations before, one after (delta = -1).
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -138,8 +130,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
-    // Distances root->V and root->A are unchanged by the move; the parent edge is split
-    // proportionally to substitution count (|T|/|M_v| = 2/3).
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -180,8 +170,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
-    // Two partitions revert independent positions. Each partition's edges are split on
-    // its own positions; T is per-partition (present in p0, empty in p1).
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -230,8 +218,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
-    // A deletion on the parent edge and its inverse insertion on the child edge interact,
-    // so the parent indel stays on N->v and the composition cancels on N->c.
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -272,8 +258,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
-    // Overlapping deletions cannot be cleanly hoisted: the parent deletion stays on N->v
-    // and the merged deletion lands on N->c.
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -318,8 +302,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
-    // A parent indel disjoint from the child's indels is hoisted cleanly to u->N, leaving
-    // N->v free of indels and N->c carrying only the child's own indel.
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -358,17 +340,10 @@ mod tests {
     Ok(())
   }
 
-  // Bifurcating root: root -> {V, S}. V groups two children; S is the sibling leaf. A site
-  // where V equals the root but S differs carries its substitution on the sibling edge root->S,
-  // and a child of V that makes the same change reverts it across the root.
   const NWK_BIFURCATING: &str = "((C1:0.1,C2:0.1)V:0.1,S:0.1)root:0.0;";
 
   #[test]
   fn test_hoist_reversions_slide_moves_sibling_sub_to_parent() -> Result<(), Report> {
-    // Sibling edge root->S carries A3G (root=A, S=G); V's parent edge is empty at 3 (V=A);
-    // child V->C1 carries A3G (the same change). The slide re-roots the site onto the
-    // sibling's state: root becomes G, the sibling edge empties, and the parent edge gains the
-    // inverse G3A. The root's clamped MAP sequence moves with root_sequence.
     let nwk_parsed = nwk_read_str(NWK_BIFURCATING)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -404,10 +379,6 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_slide_then_hoist_removes_cross_root_reversion() -> Result<(), Report> {
-    // The slide exposes the reversion on V's parent edge; the standard hoist then removes it.
-    // Two mutations before (sibling A3G plus the child's A3G), one after (delta = -1): a single
-    // G3A on the branch to the A-state V, exactly the reroot-invariant parsimony cost of the
-    // site. The slide alone is count-neutral, so the reduction comes from the hoist it enables.
     let nwk_parsed = nwk_read_str(NWK_BIFURCATING)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -439,7 +410,7 @@ mod tests {
     let after_hoist = helpers::total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 2);
-    assert_eq!(after_slide, 2); // the slide moves a substitution, it does not remove one
+    assert_eq!(after_slide, 2);
     assert_eq!(after_hoist, 1);
     Ok(())
   }
@@ -460,7 +431,6 @@ mod tests {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    /// Edge keys of the three edges the hoist produces, located by the child/node names.
     pub struct Hoisted {
       pub v: GraphNodeKey,
       pub un: GraphEdgeKey,

@@ -11,19 +11,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 
-/// Count the substitution reversions a child edge applies to its parent edge, summed
-/// across sparse partitions.
-///
-/// A position is a reversion when the parent edge carries $a \to b$ and the child edge
-/// carries the exact inverse $b \to a$, so composing the two edges cancels the change.
-/// This is the gain $\lvert R\rvert$ of hoisting that child (see [`hoist_reverting_child`]);
-/// each reversion is one mutation the move removes.
-///
-/// When `sibling_edge_key` is `Some`, the node sits directly under a bifurcating (degree-2)
-/// root and the parent set is augmented with the inverted sibling substitutions at
-/// parent-empty positions (see [`augment_parent_with_sibling`]), so a reversion split across
-/// the root is counted. The augmentation is scoring only; [`slide_bifurcating_root_for_child`]
-/// materializes it before the hoist.
 pub(crate) fn count_child_reversions(
   sparse: &[PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,
@@ -53,19 +40,6 @@ pub(crate) fn count_child_reversions(
     .sum()
 }
 
-/// Build the parent-edge substitution set as seen across a bifurcating root.
-///
-/// A degree-2 root is a reversible pass-through: the edge above a child `v` is one half of the
-/// single unrooted edge `v--s` to the sibling `s`. At a site where `v` equals the root but `s`
-/// differs, the distinguishing substitution sits on the sibling edge (`root_char -> s_char`),
-/// not on `v`'s parent edge. The effective parent substitution there is its inverse
-/// (`s_char -> v_char`, with `v_char` the root char), which a child of `v` can revert.
-///
-/// Returns the augmented, position-sorted parent substitutions and the set of positions
-/// contributed by the sibling. A site carried by both edges is skipped rather than composed:
-/// under Fitch a degree-2 root state is always one of its two children's states, so no site is
-/// ever non-empty on both root edges, and skipping keeps the augmentation exactly invertible by
-/// the slide, which only rewrites parent-empty sites.
 fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Vec<Sub>, BTreeSet<usize>) {
   let parent_positions: BTreeSet<usize> = parent_subs.iter().map(Sub::pos).collect();
   let mut augmented = parent_subs.to_vec();
@@ -83,24 +57,6 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
   (augmented, sibling_sourced)
 }
 
-/// Re-root a bifurcating root toward the sibling at the positions the chosen child reverts.
-///
-/// For each sparse partition, a site qualifies when the sibling edge carries a substitution
-/// there, the parent edge is empty there, and `child_edge_key` carries the same substitution
-/// (the child changes the root char to the sibling char). Such a site is re-rooted onto the
-/// sibling's state: the root char becomes `s_char`, the sibling substitution is dropped, and its
-/// inverse (`s_char -> v_char`) is added to the parent edge. The reversion is then local to the
-/// parent edge and [`hoist_reverting_child`] removes it unchanged.
-///
-/// The re-rooting preserves every leaf and internal MAP sequence and the total mutation count;
-/// it only moves one substitution from the sibling half of the root edge to the parent half. It
-/// is therefore substitution-count neutral on its own, so the caller MUST follow it immediately
-/// with the hoist that consumes the exposed reversion. Restricting to a degree-2 root guarantees
-/// both root edges are rewritten consistently, because the root has exactly these two children.
-///
-/// The root's parsimony sequence (`root_sequence` and the root node's `seq.sequence`) is moved in
-/// lock-step, so the marginal pass that reads it on the next optimizer iteration stays consistent
-/// with the rewritten edges.
 pub(crate) fn slide_bifurcating_root_for_child(
   sparse: &mut [PartitionMarginalSparse],
   node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
@@ -137,9 +93,6 @@ pub(crate) fn slide_bifurcating_root_for_child(
       if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
         let pos = sibling_sub.pos();
         partition.root_sequence[pos] = sibling_sub.qry();
-        // Keep the root node's parsimony sequence in step with `root_sequence`. The forward pass
-        // only seeds the root from `root_sequence` when it is empty, so a bare `root_sequence` edit
-        // would leave the populated root stale for the next iteration's marginal reconstruction.
         if let Some(root_node) = node_states.get_mut(&root_key) {
           if pos < root_node.sequence.len() {
             root_node.sequence[pos] = sibling_sub.qry();
@@ -175,42 +128,6 @@ pub(crate) fn slide_bifurcating_root_for_child(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Insert a new node $N$ between $u$ and $v$ that groups $v$ and one reverting child $c$,
-/// hoisting the non-reverted substitutions above $N$.
-///
-/// Let $e_p = u \to v$ carry the parent substitutions $M_v$ and $e_c = v \to c$ carry $M_c$.
-/// Each position of $M_v$ falls into one of three disjoint sets relative to $M_c$:
-///
-/// - $T$: positions untouched by the child. Hoisted onto $u \to N$.
-/// - $H$: chained positions ($a \to b$ then $b \to d$, $d \neq a$). Kept on $N \to v$; the
-///   composed $a \to d$ moves to $N \to c$.
-/// - $R$: reverted positions ($a \to b$ then $b \to a$). Kept on $N \to v$; nothing on
-///   $N \to c$, because the composition cancels. This is where the move removes one mutation
-///   per reverted position.
-///
-/// The resulting edges carry:
-///
-/// | edge | substitutions |
-/// | --- | --- |
-/// | $u \to N$ | $T$ |
-/// | $N \to v$ | $H \cup R$ (the original $M_v$ entries at child-shared positions) |
-/// | $N \to c$ | $\mathrm{compose}(M_v, M_c)$ at $M_c$ positions ($H' \cup D$) |
-///
-/// where $D$ are the child's own positions absent from $M_v$. The net substitution change is
-/// $\Delta = -\lvert R\rvert$: no mutation is ever added.
-///
-/// Branch lengths are split in proportion to substitution count so that root-to-$v$ and
-/// root-to-$c$ distances are preserved exactly; the next optimizer iteration re-fits them.
-///
-/// Indels use an all-or-nothing rule (see [`split_indels`]) that is always distance
-/// preserving. The substitution gain is unaffected by the indel handling.
-///
-/// The relocated edges $e_p$ and $e_c$ keep their edge keys via
-/// [`Graph::reparent_edge`](treetime_graph::graph::Graph::reparent_edge), so their partition
-/// entries stay valid and only their substitution and indel content is rewritten. Only the
-/// fresh $u \to N$ edge and the node $N$ are new keys to register.
-///
-/// Returns the key of the new node $N$.
 pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -220,8 +137,6 @@ pub(crate) fn hoist_reverting_child(
 ) -> Result<GraphNodeKey, Report> {
   let u_key = graph.get_source_node_key(parent_edge_key)?;
 
-  // Compute the per-partition split before touching the graph, so the reads see the
-  // pre-move edge state.
   let mut splits = Vec::with_capacity(sparse.len());
   let mut total_parent_subs = 0_usize;
   let mut total_hoisted_subs = 0_usize;
@@ -250,8 +165,6 @@ pub(crate) fn hoist_reverting_child(
     });
   }
 
-  // Distance-preserving branch-length split, proportional to substitution count. The move
-  // only fires when R is non-empty, so `total_parent_subs >= 1` and the ratio is well defined.
   let bl_uv = branch_lengths[&parent_edge_key].unwrap_or(0.0);
   let bl_vc = branch_lengths[&child_edge_key].unwrap_or(0.0);
   let bl_un = if total_parent_subs > 0 {
@@ -262,22 +175,14 @@ pub(crate) fn hoist_reverting_child(
   let bl_nv = bl_uv - bl_un;
   let bl_nc = bl_nv + bl_vc;
 
-  // Graph surgery: add N, connect u -> N, then relocate the two existing edges under N.
-  // Branch lengths live in the map: the fresh u -> N edge gets a new entry, and the two
-  // relocated edges (which keep their keys) get their split lengths.
   let n_key = graph.add_node();
   let un_edge_key = graph.add_edge(u_key, n_key)?;
   branch_lengths.insert(un_edge_key, Some(bl_un));
-  graph.reparent_edge(parent_edge_key, n_key)?; // e_p becomes N -> v
-  graph.reparent_edge(child_edge_key, n_key)?; // e_c becomes N -> c
+  graph.reparent_edge(parent_edge_key, n_key)?;
+  graph.reparent_edge(child_edge_key, n_key)?;
   branch_lengths.insert(parent_edge_key, Some(bl_nv));
   branch_lengths.insert(child_edge_key, Some(bl_nc));
 
-  // Sparse partition bookkeeping. The relocated edges keep their keys, so only their observation
-  // content is rewritten; the u -> N edge and node N are inserted fresh. The new node inherits the
-  // parent's residue composition; the marginal passes rebuild its evolving state and the caller
-  // reconciles the node-state map after the topology batch. Dense partitions carry no per-edge
-  // mutation lists and learn about the new node/edge through that same reconciliation.
   for (partition, split) in sparse.iter_mut().zip(splits) {
     let mut node_n = SparseNodeObs::empty(&partition.alphabet);
     node_n.composition = partition.obs_nodes[&u_key].composition.clone();
@@ -299,20 +204,12 @@ pub(crate) fn hoist_reverting_child(
   Ok(n_key)
 }
 
-/// One partition's substitution split of $M_v$ against $M_c$ (see [`hoist_reverting_child`]).
 struct SubSplit {
-  /// $T$: parent positions untouched by the child. Goes to $u \to N$.
   hoisted: Vec<Sub>,
-  /// $H \cup R$: original parent entries at positions the child also touches. Goes to $N \to v$.
   kept: Vec<Sub>,
-  /// $H' \cup D$: $\mathrm{compose}(M_v, M_c)$ restricted to child positions. Goes to $N \to c$.
   composed: Vec<Sub>,
 }
 
-/// Split parent-edge substitutions against one child edge into the hoist's three edges.
-///
-/// Both inputs are position-sorted with at most one entry per position (the fitch-subs
-/// invariant). The single merge-walk keeps every output position-sorted.
 fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Report> {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
@@ -334,11 +231,11 @@ fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Repor
     let cs = &child_subs[ci];
     match ps.pos().cmp(&cs.pos()) {
       Ordering::Less => {
-        hoisted.push(ps.clone()); // T: parent-only position
+        hoisted.push(ps.clone());
         pi += 1;
       },
       Ordering::Greater => {
-        composed.push(cs.clone()); // D: child-only position
+        composed.push(cs.clone());
         ci += 1;
       },
       Ordering::Equal => {
@@ -350,19 +247,18 @@ fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Repor
           ps.qry(),
           cs.reff()
         );
-        kept.push(ps.clone()); // H or R: keep original parent entry on N -> v
+        kept.push(ps.clone());
         if ps.reff() != cs.qry() {
-          composed.push(Sub::new(ps.reff(), ps.pos(), cs.qry())?); // H': net a -> d on N -> c
+          composed.push(Sub::new(ps.reff(), ps.pos(), cs.qry())?);
         }
-        // ps.reff() == cs.qry(): reversion, cancels, nothing on N -> c
         pi += 1;
         ci += 1;
       },
     }
   }
 
-  hoisted.extend_from_slice(&parent_subs[pi..]); // remaining parent-only -> T
-  composed.extend_from_slice(&child_subs[ci..]); // remaining child-only -> D
+  hoisted.extend_from_slice(&parent_subs[pi..]);
+  composed.extend_from_slice(&child_subs[ci..]);
 
   Ok(SubSplit {
     hoisted,
@@ -371,7 +267,6 @@ fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Repor
   })
 }
 
-/// Count reversions between one parent edge and one child edge (single partition).
 fn count_reversions(parent_subs: &[Sub], child_subs: &[Sub]) -> usize {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
@@ -403,21 +298,12 @@ fn count_reversions(parent_subs: &[Sub], child_subs: &[Sub]) -> usize {
   count
 }
 
-/// One partition's indel split for the hoist.
 struct IndelSplit {
   hoisted: Vec<InDel>,
   kept: Vec<InDel>,
   composed: Vec<InDel>,
 }
 
-/// Split parent-edge indels against a child edge, all-or-nothing.
-///
-/// `compose_indels` merges overlapping and adjacent ranges rather than being position-keyed,
-/// so an exact three-way split is not always definable. When no child indel overlaps or is
-/// adjacent to any parent indel, the parent indels move cleanly above $N$ and $N \to c$ carries
-/// only the child's own indels. Otherwise the parent indels stay on $N \to v$ and $N \to c$
-/// carries the full composition. Both branches preserve the root-to-$v$ and root-to-$c$ indel
-/// content exactly.
 fn split_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> IndelSplit {
   if indels_interact(parent_indels, child_indels) {
     let mut parent = parent_indels.to_vec();
@@ -439,10 +325,6 @@ fn split_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> IndelSplit {
   }
 }
 
-/// Whether any parent indel overlaps or is adjacent to any child indel.
-///
-/// Adjacency matters because `compose_indels` merges touching deletions, so a clean hoist is
-/// only possible when the ranges are strictly separated.
 fn indels_interact(parent_indels: &[InDel], child_indels: &[InDel]) -> bool {
   parent_indels.iter().any(|p| {
     child_indels
@@ -451,12 +333,10 @@ fn indels_interact(parent_indels: &[InDel], child_indels: &[InDel]) -> bool {
   })
 }
 
-/// Whether two half-open ranges overlap or touch at an endpoint.
 fn ranges_overlap_or_adjacent((a_lo, a_hi): (usize, usize), (b_lo, b_hi): (usize, usize)) -> bool {
   a_lo <= b_hi && b_lo <= a_hi
 }
 
-/// Combined substitution and indel split for one partition.
 struct EdgeSplit {
   hoisted: Vec<Sub>,
   kept: Vec<Sub>,

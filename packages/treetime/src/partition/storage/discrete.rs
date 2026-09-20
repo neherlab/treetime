@@ -9,7 +9,7 @@ pub struct DiscreteStates {
 }
 
 impl DiscreteStates {
-  #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
+  #[allow(single_use_lifetimes)]
   pub fn from_values<'a>(values: impl Iterator<Item = &'a str>, missing: &str) -> Self {
     let mut unique: Vec<String> = values.filter(|&v| v != missing).map(|s| s.to_owned()).collect();
     unique.sort();

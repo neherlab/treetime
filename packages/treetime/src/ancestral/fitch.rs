@@ -53,16 +53,12 @@ pub(crate) fn attach_seqs_to_graph(
     .map(|leaf| -> Result<_, Report> {
       let leaf_key = leaf.key();
       let node = &node_inputs[&leaf_key];
-      let seq = node
-        .seq
-        .as_ref()
-        // Every leaf has a sequence after alignment completion.
-        .ok_or_else(|| {
-          make_report!(
-            "Leaf sequence not found after alignment completion: '{}'",
-            node.name.as_deref().unwrap_or("")
-          )
-        })?;
+      let seq = node.seq.as_ref().ok_or_else(|| {
+        make_report!(
+          "Leaf sequence not found after alignment completion: '{}'",
+          node.name.as_deref().unwrap_or("")
+        )
+      })?;
       Ok((leaf_key, seq))
     })
     .collect::<Result<Vec<_>, Report>>()?;
@@ -107,16 +103,11 @@ fn run_fitch_backward_indexed(
   context: &GraphPassBackwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData, SparseEdgeObs>,
 ) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   if context.is_leaf {
-    // A leaf keeps its attached Fitch data unchanged and returns its parent edge untouched so the
-    // forward pass keeps the edge entries it depends on. A single-node tree, where the leaf is also the
-    // root, has no parent edge and returns no message.
     let node = context.input.clone();
     let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
     return Ok(GraphPassNodeOutput { node, parent_message });
   }
 
-  // Children arrive in the graph's canonical `children_of` order, so every child is fetched and folded
-  // in that order, keeping the parsimony result byte-for-byte identical.
   let children = context
     .children
     .iter()
@@ -139,14 +130,6 @@ fn run_fitch_backward_indexed(
 
   let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, length);
 
-  // A resolved gap is a position with no character state, so it has to be masked like every other
-  // non-char position. `compute_node_ranges` intersects the children's `non_char`, which drops any
-  // column a child left as `variable_indel`, while `resolve_indels_backward` still resolves such a
-  // column to a gap (it counts `variable_indel` as gap-compatible). Taking the union keeps `gaps` a
-  // subset of `non_char`, the invariant leaves (`FitchNodeData::new`) and the dense
-  // representation (`DenseSeqInfo::new`) already hold. Without it a single determined residue
-  // stranded inside a missing-data run keeps a character state at a position the node reports as
-  // deleted, and the forward pass then emits a substitution inside its own deletion.
   let non_char = range_union(&[ranges.non_char, indels_bw.resolved_gaps.clone()]);
 
   let mut sequence = seq![FILL_CHAR; length];
@@ -154,11 +137,6 @@ fn run_fitch_backward_indexed(
     sequence[r.0..r.1].fill(NON_CHAR);
   }
 
-  // Discovery first, resolution second. The discovery pass only flags positions where children
-  // hold differing canonical states; the resolution pass then recomputes every candidate position
-  // from all children, so each child is counted exactly once. Running them the other way round
-  // let both passes fold child states into the same map, which is harmless for a union but not
-  // for the plurality rule.
   let discovered = discover_fixed_disagreements_backward(&children, alphabet, &mut sequence);
   let variable = resolve_variable_positions_backward(&children, &discovered, &non_char, &mut sequence);
 
@@ -177,8 +155,6 @@ fn run_fitch_backward_indexed(
     },
   };
 
-  // Fitch backward computes only node data. A non-root node returns its parent edge unchanged so the
-  // forward pass keeps its edge entries; the root has no parent edge.
   let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
@@ -212,9 +188,6 @@ fn run_fitch_forward_indexed(
 ) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   let mut node = context.input.clone();
 
-  // The forward pass produces the durable edge data for the asymmetric Fitch case, so a non-root
-  // node clones and extends its parent edge rather than building a fresh one: the edge arrived through
-  // the backward pass carrying fields that must survive here.
   let parent_message = if let Some((_, edge)) = context.parent_edge {
     let mut edge = edge.clone();
     let parent = &context.parent.expect("Non-root node must have a parent").seq;
@@ -244,9 +217,6 @@ fn run_fitch_forward_indexed(
       &seq.sequence,
     );
     seq.gaps = new_gaps;
-    // The forward pass widens `gaps` with gaps inherited from the parent, so re-establish
-    // `gaps ⊆ non_char` here too. Must run after `resolve_indels_forward`, which distinguishes
-    // insertions by testing `non_char` as it stood during the backward pass.
     seq.non_char = range_union(&[seq.non_char.clone(), seq.gaps.clone()]);
     for indel in &indels {
       seq.composition.add_indel(indel);
@@ -307,16 +277,6 @@ pub fn compress_sequences(
   fitch_cleanup(graph, partition)
 }
 
-/// Reconstruct ancestral sequences using Fitch parsimony.
-///
-/// Calls the visitor for every reconstructed node, providing the node itself and its reconstructed
-/// sequence, and returns the reconstructed sequences keyed by node id. The returned map is the
-/// reconstruction result as a value the command captures; each sequence also stays written into the
-/// partition (read by the node-data serializer until the tree writers read the map directly).
-/// Optionally reconstructs leaf sequences.
-/// Walk the tree in depth-first preorder, writing each node's reconstructed sequence into its partition
-/// state (the parent-to-child propagation store the child reads), and return the node ids that emit a
-/// sequence, in walk order.
 pub fn ancestral_reconstruction_fitch(
   graph: &Graph,
   include_leaves: bool,
@@ -336,8 +296,6 @@ pub fn ancestral_reconstruction_fitch(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Reconstruct one node's sequence into its partition state. Returns `true` when the node emits a
-/// sequence, `false` for a suppressed tip.
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
@@ -348,7 +306,7 @@ fn run_fitch_reconstruction(
   }
 
   for partition in partitions.iter_mut() {
-    let alphabet = partition.alphabet.clone(); // TODO: avoid clone
+    let alphabet = partition.alphabet.clone();
 
     let mut sequence = if !node.is_root {
       let (parent, edge) = get_exactly_one(&node.parent_keys).unwrap();

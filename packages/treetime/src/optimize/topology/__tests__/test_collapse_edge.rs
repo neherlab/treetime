@@ -54,9 +54,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_sparse_composes_subs() -> Result<(), Report> {
-    // Tree: root -> I (bl=0.0) -> A, B
-    // I has sub A0T; A has sub G5C; B has no subs
-    // After collapse: root -> A has {A0T, G5C}, root -> B has {A0T}
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -86,7 +83,7 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_nodes().count(), 3);
     assert_eq!(graph.get_edges().count(), 2);
 
     let p = &sparse[0];
@@ -105,7 +102,6 @@ mod tests {
       }
     }
 
-    // Stale observations removed
     assert!(!p.obs_nodes.contains_key(&i_node_key));
     assert!(!p.obs_edges.contains_key(&ri_key));
 
@@ -114,9 +110,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_graph_cleanup() -> Result<(), Report> {
-    // Graph-level cleanup: the target node and collapsed edge are removed from the graph. Dense
-    // per-node/per-edge state is reconciled centrally after a topology batch (reconcile_dense_family
-    // in run_loop), not by collapse_edge, so this checks only the graph effect collapse_edge owns.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -146,8 +139,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_sum() -> Result<(), Report> {
-    // Collapsed edge has bl=0.3, child edges bl=0.1 and bl=0.2
-    // After collapse: child edges bl = 0.3 + 0.1 = 0.4 and 0.3 + 0.2 = 0.5
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -179,7 +170,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_sum_with_zero() -> Result<(), Report> {
-    // Collapsed edge has bl=0.0, child edges preserved unchanged.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -211,9 +201,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
-    // Collapsed edge length present, one child length missing (None): the missing child length
-    // is preserved as None (no sum), the present child is summed. Oracle: the Option-aware sum
-    // in `collapse_edge` only sums when both operands are `Some`.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -244,8 +231,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
-    // Collapsed edge length missing (None): child lengths are preserved unchanged. Oracle: the
-    // Option-aware sum in `collapse_edge` only sums when both operands are `Some`.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -275,8 +260,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_indel_concatenation() -> Result<(), Report> {
-    // Indels on the collapsed edge must be preserved on each former-child edge
-    // (collapsed-edge indels prepended to child indels).
     use crate::seq::indel::InDel;
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
@@ -333,7 +316,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_reversion_cancels() -> Result<(), Report> {
-    // Collapsed edge A0T + child edge T0A = no net change (reversion).
     let nwk_parsed = nwk_read_str("((A:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -381,7 +363,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_no_partitions() -> Result<(), Report> {
-    // Graph-only collapse with no partitions: topology still changes correctly.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -397,7 +378,7 @@ mod tests {
     graph.build()?;
 
     assert!(graph.get_node(i_node_key).is_none());
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_nodes().count(), 3);
     assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
@@ -405,7 +386,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_multiple_sparse_partitions() -> Result<(), Report> {
-    // Two sparse partitions with independent edge data should both be updated.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;

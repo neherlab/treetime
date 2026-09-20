@@ -44,9 +44,6 @@ mod tests {
   ) -> Result<PartitionMarginalSparse, Report> {
     let alphabet = Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?;
 
-    // Build root reference sequence consistent with edge subs.
-    // Set each position to the sub's ref character so that edge_subs()
-    // produces the same mutations as the stored subs.
     let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, _, subs) in edge_mutations {
       for s in subs {
@@ -56,7 +53,6 @@ mod tests {
       }
     }
 
-    // Populate node observations/states so edge_subs() can reconstruct states
     let mut obs_nodes = btreemap! {};
     let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
@@ -84,7 +80,6 @@ mod tests {
     Ok(partition)
   }
 
-  /// Find the new internal node (unnamed, non-root, non-leaf).
   fn find_unnamed_internal_nodes(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<GraphNodeKey> {
     graph
       .get_nodes()
@@ -98,7 +93,6 @@ mod tests {
 
   #[test]
   fn test_merge_no_polytomy() -> Result<(), Report> {
-    // Binary tree: no polytomy, nothing to merge
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -119,13 +113,12 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().count(), 4); // root, internal, A, B
+    assert_eq!(graph.get_nodes().count(), 4);
     Ok(())
   }
 
   #[test]
   fn test_merge_polytomy_no_shared_mutations() -> Result<(), Report> {
-    // Polytomy with 3 children, no shared mutations
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -146,17 +139,12 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().count(), 4); // root, A, B, C
+    assert_eq!(graph.get_nodes().count(), 4);
     Ok(())
   }
 
   #[test]
   fn test_merge_polytomy_two_siblings_share_all_mutations() -> Result<(), Report> {
-    // Polytomy: A and B share identical mutations, C is different
-    //   root -> A (subs: A0T, G5C)
-    //   root -> B (subs: A0T, G5C)
-    //   root -> C (subs: T10A)
-    // After merge: root -> N (subs: A0T, G5C), N -> A (subs: []), N -> B (subs: [])
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -180,17 +168,13 @@ mod tests {
     assert_eq!(merged, 1);
 
     graph.build()?;
-    // New topology: root -> N, N -> A, N -> B, root -> C
-    assert_eq!(graph.get_nodes().count(), 5); // root, N, A, B, C
+    assert_eq!(graph.get_nodes().count(), 5);
     assert_eq!(graph.get_edges().count(), 4);
 
-    // The new internal node should exist
     let unnamed = find_unnamed_internal_nodes(&graph, &names);
     assert_eq!(unnamed.len(), 1);
 
-    // Check partition data: new edge to N has shared mutations
     let p = &partitions[0];
-    // A and B should have no remaining mutations
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = names.get(&target.key()).cloned().flatten();
@@ -217,9 +201,6 @@ mod tests {
 
   #[test]
   fn test_merge_polytomy_partial_overlap() -> Result<(), Report> {
-    // A has {A0T, G5C}, B has {A0T, G5C, T10A}, C has {C20G}
-    // Shared(A,B) = {A0T, G5C} (2), so merge A and B
-    // After: N -> A (subs: []), N -> B (subs: {T10A})
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -248,7 +229,6 @@ mod tests {
     graph.build()?;
     let p = &partitions[0];
 
-    // Check that B retains only its unique mutation
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = names.get(&target.key()).cloned().flatten();
@@ -275,9 +255,6 @@ mod tests {
 
   #[test]
   fn test_merge_greedy_picks_best_pair() -> Result<(), Report> {
-    // A has {A0T, G5C, T10A}, B has {A0T, G5C, T10A}, C has {C20G}, D has {T30A}
-    // Shared(A,B) = 3, no other pair shares mutations
-    // Greedy merges A and B
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -309,11 +286,9 @@ mod tests {
     assert_eq!(merged, 1);
 
     graph.build()?;
-    // Topology: root -> N -> {A, B}, root -> C, root -> D
-    assert_eq!(graph.get_nodes().count(), 6); // root, N, A, B, C, D
+    assert_eq!(graph.get_nodes().count(), 6);
 
     let p = &partitions[0];
-    // The new internal edge carries all 3 shared mutations
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = names.get(&target.key()).cloned().flatten();
@@ -329,9 +304,6 @@ mod tests {
 
   #[test]
   fn test_merge_branch_length_adjustment() -> Result<(), Report> {
-    // A and B share 2 mutations out of length 100. Both have 0 unique mutations.
-    // Parent edge: jc(2/100).
-    // Child edges: jc(0/100) = 0.0 (no remaining mutations).
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -374,8 +346,6 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
-    // 10 shared mutations out of length 100. Both children have only shared
-    // mutations (0 remaining), so child BLs are jc(0) = 0.0.
     let nwk_parsed = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -413,7 +383,6 @@ mod tests {
 
   #[test]
   fn test_merge_multiple_partitions() -> Result<(), Report> {
-    // Two partitions: shared in both
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -433,7 +402,7 @@ mod tests {
 
     let p2_alphabet = Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?;
     let mut p2_ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
-    p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
+    p2_ref_seq[50] = c(b'C');
 
     let mut p2_obs_nodes = btreemap! {};
     let mut p2_node_states = btreemap! {};
@@ -443,7 +412,6 @@ mod tests {
       p2_node_states.insert(key, SparseNodeState::leaf(&p2_ref_seq));
     }
 
-    // Partition 2: A and B share mutation at pos 50
     let edge_a = find_edge_key(&graph, &names, "root", "A").unwrap();
     let edge_b = find_edge_key(&graph, &names, "root", "B").unwrap();
     let edge_c = find_edge_key(&graph, &names, "root", "C").unwrap();
@@ -468,9 +436,6 @@ mod tests {
     assert_eq!(merged, 1);
     graph.build()?;
 
-    // Total shared = 1 (from p1) + 1 (from p2) = 2 across total length 100 + 200 = 300
-    // Pooled p-distance = 2/300 ≈ 0.006667
-    // JC69 correction with k=4: d = -3/4 * ln(1 - 4*p/3)
     let p_pooled = 2.0 / 300.0;
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * p_pooled / 3.0);
     for edge in graph.get_edges() {
@@ -483,17 +448,14 @@ mod tests {
       }
     }
 
-    // Verify partition 1: internal edge has 1 shared sub, B has 1 remaining
     let p1 = &partitions[0];
     let p2 = &partitions[1];
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = names.get(&target.key()).cloned().flatten();
       if target_name.as_deref() == Some("B") {
-        // P1: B had {A0T, G5C}, shared = {A0T}, remaining = {G5C}
         assert_eq!(p1.obs_edges[&edge.key()].fitch_subs().len(), 1);
         assert_eq!(p1.obs_edges[&edge.key()].fitch_subs()[0], sub(b'G', 5, b'C'));
-        // P2: B had {C50G}, shared = {C50G}, remaining = {}
         assert_eq!(p2.obs_edges[&edge.key()].fitch_subs().len(), 0);
       }
     }
@@ -503,10 +465,6 @@ mod tests {
 
   #[test]
   fn test_merge_repeated_until_exhausted() -> Result<(), Report> {
-    // 5 children: A, B share {A0T}; C, D share {G5C}; E has nothing shared
-    // First merge: pick pair with more shared (both have 1, so either pair)
-    // After first merge: remaining polytomy of 4 children (N1, <one of C/D/E>, <other>, <other>)
-    // If C and D still share mutations, they get merged too
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -528,12 +486,10 @@ mod tests {
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
-    // Two merge rounds: A+B, then C+D
     assert_eq!(merged, 2);
 
     graph.build()?;
-    // root -> N1 -> {A, B}, root -> N2 -> {C, D}, root -> E
-    assert_eq!(graph.get_nodes().count(), 8); // root, N1, N2, A, B, C, D, E
+    assert_eq!(graph.get_nodes().count(), 8);
     assert_eq!(graph.get_edges().count(), 7);
 
     Ok(())
@@ -541,7 +497,6 @@ mod tests {
 
   #[test]
   fn test_merge_empty_partitions() -> Result<(), Report> {
-    // No partition data at all
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -557,9 +512,6 @@ mod tests {
 
   #[test]
   fn test_merge_preserves_tree_structure_for_non_polytomies() -> Result<(), Report> {
-    // Mix of polytomy and binary nodes
-    // root -> internal1 -> {A, B, C} (polytomy), root -> D
-    // A and B share mutations, C is different
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -584,10 +536,8 @@ mod tests {
     assert_eq!(merged, 1);
 
     graph.build()?;
-    // internal1 -> N -> {A, B}, internal1 -> C
-    assert_eq!(graph.get_nodes().count(), 7); // root, internal1, N, A, B, C, D
+    assert_eq!(graph.get_nodes().count(), 7);
 
-    // D should be unaffected
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());
     assert!(find_edge_key(&graph, &names, "root", "D").is_some());
 
@@ -596,7 +546,6 @@ mod tests {
 
   #[test]
   fn test_merge_single_mutation_shared() -> Result<(), Report> {
-    // Minimal case: exactly 1 shared mutation
     let nwk_parsed = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -619,9 +568,6 @@ mod tests {
     assert_eq!(merged, 1);
     graph.build()?;
 
-    // 1 shared mutation out of 1000 => p = 0.001
-    // JC69 correction: d = -3/4 * ln(1 - 4*0.001/3) ≈ 0.001001
-    // At small p the correction is a few parts per thousand above raw p.
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * 0.001 / 3.0);
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
@@ -638,9 +584,6 @@ mod tests {
 
   #[test]
   fn test_merge_branch_length_jc_correction_differs_from_raw() -> Result<(), Report> {
-    // 10 shared mutations out of length 100 places the pooled p-distance at
-    // 0.10, where JC69 correction differs from the raw ratio by about 7%.
-    // Both children have 0 unique mutations, so child BLs are 0.0.
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -681,8 +624,6 @@ mod tests {
     Ok(())
   }
 
-  // === Child branch length = JC69(remaining_mutations / alignment_length) ===
-
   #[rustfmt::skip]
   #[rstest]
   #[case::basic_remaining(       (2, 0, 1),  100, 0.2)]
@@ -721,8 +662,6 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
-    // A has 2 shared subs + 1 indel on its edge (counted in remaining).
-    // B has 2 shared subs only. bl_a = jc(1/100), bl_b = 0.0.
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -761,8 +700,6 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
-    // Two partitions (lengths 100 and 200). A has 1 unique sub in p1, 2 in p2.
-    // Total remaining = 3, total length = 300. bl_a = jc(3/300).
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -810,11 +747,8 @@ mod tests {
     Ok(())
   }
 
-  // === Group merge (k >= 2 siblings) and indel sharing ===
-
   #[test]
   fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
-    // A, B, C all share {A0T}. All 3 should land under one new internal node.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -849,7 +783,6 @@ mod tests {
 
   #[test]
   fn test_merge_shared_indels_only() -> Result<(), Report> {
-    // A and B share an identical deletion but no substitutions.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -885,7 +818,6 @@ mod tests {
 
   #[test]
   fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
-    // A and B share 1 sub + 1 indel. A also has 1 unique sub.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;

@@ -76,7 +76,6 @@ impl Default for Alphabet {
 }
 
 impl Alphabet {
-  /// Create one of the pre-defined alphabets
   pub fn new(name: AlphabetName) -> Result<Self, Report> {
     match name {
       AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
@@ -123,7 +122,6 @@ impl Alphabet {
     }
   }
 
-  /// Create custom alphabet from a given config
   pub fn with_config(config: &AlphabetConfig) -> Result<Self, Report> {
     let AlphabetConfig {
       canonical,
@@ -202,7 +200,6 @@ impl Alphabet {
     })
   }
 
-  /// Create a profile vector given a set of characters
   pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
   where
     I: IntoIterator<Item = T>,
@@ -220,7 +217,6 @@ impl Alphabet {
   }
 
   pub fn get_code(&self, profile: &Array1<f64>) -> Result<AsciiChar, Report> {
-    // TODO(perf): this mapping needs to be precomputed
     self
       .profile_map
       .iter()
@@ -228,7 +224,7 @@ impl Alphabet {
       .ok_or_else(|| make_report!("When accessing profile map: Unknown profile: '{profile}'"))
   }
 
-  #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
+  #[allow(single_use_lifetimes)]
   pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let profiles = chars
       .into_iter()
@@ -247,7 +243,6 @@ impl Alphabet {
     self.char_to_set[&c.into()]
   }
 
-  /// Get u8 by index (indexed in the same order as given by `.chars()`)
   pub fn char(&self, index: usize) -> AsciiChar {
     self.index_to_char[index]
   }
@@ -256,7 +251,6 @@ impl Alphabet {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  /// Get index of a character (indexed in the same order as given by `.chars()`)
   pub fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();
     self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
@@ -269,26 +263,14 @@ impl Alphabet {
     self.all.len()
   }
 
-  /// Canonical (unambiguous) characters (e.g. 'A', 'C', 'G', 'T' in nuc alphabet)
   pub fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.canonical.iter()
   }
 
-  /// First state of `set` in canonical alphabet order, or `None` if `set` holds no canonical state.
-  ///
-  /// Use this, rather than `StateSet::get_one()`, whenever an arbitrary member of a state set has
-  /// to be committed to a sequence. `get_one()` returns the lowest ASCII byte and never consults
-  /// the alphabet: for `nuc` that happens to coincide with canonical order (`A`, `C`, `G`, `T`),
-  /// but for `aa` it does not, since canonical order lists `*` last while its byte (42) sorts
-  /// below `A`.
   pub fn first_canonical(&self, set: StateSet) -> Option<AsciiChar> {
-    // Iterates `index_to_char`, which is built from `config.canonical` and so preserves the
-    // configured order. `canonical()` cannot be used here: it iterates a `StateSet`, which yields
-    // ascending byte order and would reproduce exactly the behaviour this method exists to avoid.
     self.index_to_char.iter().copied().find(|c| set.contains(*c))
   }
 
-  /// Check is character is canonical
   pub fn is_canonical(&self, c: AsciiChar) -> bool {
     self.canonical.contains(c)
   }
@@ -297,12 +279,10 @@ impl Alphabet {
     self.canonical.len()
   }
 
-  /// Ambiguous characters (e.g. 'R', 'S' etc. in nuc alphabet)
   pub fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.ambiguous_keys.iter()
   }
 
-  /// Check if character is ambiguous (e.g. 'R', 'S' etc. in nuc alphabet)
   pub fn is_ambiguous(&self, c: AsciiChar) -> bool {
     self.ambiguous_keys.contains(c)
   }
@@ -311,7 +291,6 @@ impl Alphabet {
     self.ambiguous.len()
   }
 
-  /// Determined characters: canonical or ambiguous
   pub fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.determined.iter()
   }
@@ -324,7 +303,6 @@ impl Alphabet {
     self.determined.len()
   }
 
-  /// Undetermined characters: gap or unknown
   pub fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.undetermined.iter()
   }
@@ -337,34 +315,28 @@ impl Alphabet {
     self.undetermined.len()
   }
 
-  /// Get 'unknown' character
   pub fn unknown(&self) -> AsciiChar {
     self.unknown
   }
 
-  /// Check if character is an 'unknown' character
   pub fn is_unknown(&self, c: impl Into<AsciiChar>) -> bool {
     c.into() == self.unknown()
   }
 
-  /// Get 'gap' character
   pub fn gap(&self) -> AsciiChar {
     self.gap
   }
 
-  /// Check if character is a gap
   pub fn is_gap(&self, c: impl Into<AsciiChar>) -> bool {
     c.into() == self.gap()
   }
 }
 
 impl AlphabetLike for Alphabet {
-  /// Check if character is in alphabet (including 'unknown' and 'gap')
   fn contains(&self, c: AsciiChar) -> bool {
     self.all.contains(c)
   }
 
-  /// All existing characters (including 'unknown' and 'gap')
   fn chars(&self) -> impl Iterator<Item = AsciiChar> {
     self.all.iter()
   }

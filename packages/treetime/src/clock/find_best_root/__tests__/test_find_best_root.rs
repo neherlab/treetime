@@ -115,19 +115,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.00026106623586340597, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -147,19 +144,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_256_025_848_142_593_5, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -204,19 +198,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -239,19 +230,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -271,19 +259,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.00025599999999690367, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -306,19 +291,16 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_999_2, max_ulps = 4);
 
-    // Verify split is in valid range
     assert!(
       best_root.split >= 0.0 && best_root.split <= 1.0,
       "split should be in [0, 1]"
     );
 
-    // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!(source, "root");
-    assert_eq!(target, "CD");
+    assert_eq!("root", source);
+    assert_eq!("CD", target);
 
     Ok(())
   }
@@ -327,7 +309,6 @@ mod tests {
   fn test_optimization_methods_improve_on_grid() -> Result<(), Report> {
     let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
 
-    // Run all three methods
     let grid_result = find_best_root(
       &graph,
       &inputs,
@@ -359,8 +340,6 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Brent and golden section should find better or equal chisq than default grid
-    // (lower chisq is better)
     assert!(
       brent_result.chisq <= grid_result.chisq,
       "Brent ({:.6e}) should achieve <= chisq than grid ({:.6e})",
@@ -374,7 +353,6 @@ mod tests {
       grid_result.chisq
     );
 
-    // All methods should find the same edge
     assert_eq!(
       grid_result.edge, brent_result.edge,
       "Brent should find same edge as grid"
@@ -387,8 +365,6 @@ mod tests {
     Ok(())
   }
 
-  /// Dates inversely correlated with divergence: negative clock rate at all root positions.
-  /// Root-to-tip: A=0.2, B=0.3, C=0.25, D=0.17
   fn setup_negative_rate_graph() -> Result<
     (
       Graph,
@@ -452,7 +428,6 @@ mod tests {
       RootObjective::EstimatedRate,
     )?;
 
-    // Confirm the fixture produces a negative-rate scenario
     let det = best_root.clock_set.determinant();
     assert!(det > 0.0, "determinant should be positive");
     let rate = best_root.clock_set.clock_rate(det);
@@ -461,7 +436,6 @@ mod tests {
       "rate should be negative for this test graph, got {rate:.6e}"
     );
 
-    // Non-negative chi-squared from valid weighted least squares
     assert!(best_root.chisq >= 0.0, "chisq should be non-negative");
     assert!(best_root.chisq.is_finite(), "chisq should be finite");
 

@@ -18,8 +18,6 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
-  // At very high iteration counts, the exponential damping factor decays below the floor.
-  // The floor ensures the old-value weight never drops below DAMPING_FLOOR.
   #[rustfmt::skip]
   #[rstest]
   #[case::iter_100(  100, DAMPING_FLOOR)]
@@ -37,23 +35,20 @@ mod tests {
     let graph: Graph = graph;
     let old_bls = branch_lengths;
 
-    // Set all "optimized" branch lengths to zero.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
-    // bl = 0.0 * (1 - old_weight) + 1.0 * old_weight = old_weight
     for bl in bls.values() {
       assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
 
-  // Verify that below the crossover iteration, the exponential decay is used (not the floor).
   #[test]
   fn test_convergence_conditions_damping_uses_exponential_below_crossover() -> Result<(), Report> {
     let damping = 0.75;
-    let iteration = 5; // 0.75^6 = 0.178 >> DAMPING_FLOOR
+    let iteration = 5;
     let expected_old_weight = pow(damping, iteration + 1);
     assert!(expected_old_weight > DAMPING_FLOOR);
 
@@ -75,8 +70,6 @@ mod tests {
     Ok(())
   }
 
-  // The convergence check fires when successive likelihoods are within dp.
-  // On a toy tree with damping, the loop should converge within a few iterations.
   #[test]
   fn test_convergence_conditions_converged_reason() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -112,8 +105,6 @@ mod tests {
     Ok(())
   }
 
-  // The worsened condition fires when the likelihood decreases after the peak.
-  // On an undamped toy tree, oscillation causes the worsened condition to fire.
   #[test]
   fn test_convergence_conditions_worsened_reverts_to_best() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -124,8 +115,6 @@ mod tests {
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
-    // worsened condition to be the only active stopping criterion.
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
@@ -146,14 +135,11 @@ mod tests {
     match result.stopped_at {
       Some((iter, ConvergenceReason::Worsened)) => {
         assert!(iter >= 2, "Worsened should not fire before iteration 2, got {iter}");
-        // The best LH should be the maximum in the history (the worsened condition
-        // restores branch lengths from the best iteration).
         let best_lh = result
           .lh_history
           .iter()
           .map(|log_lh| log_lh.value())
           .fold(f64::NEG_INFINITY, f64::max);
-        // The iteration that triggered worsened must have a lower LH than the best.
         let trigger_lh = result.lh_history[iter].value();
         assert!(
           trigger_lh < best_lh,
@@ -165,12 +151,6 @@ mod tests {
     Ok(())
   }
 
-  // Rollback validation (T1.4 gate). On a worsening iteration the loop restores the best-seen
-  // branch-length map and recomputes the partitions from it, so the returned map must reproduce
-  // the best likelihood. With `no_indels = true` the total log-likelihood is exactly the sum of
-  // the sparse and dense marginal passes, so recomputing those two from the returned map must
-  // match the maximum recorded in `lh_history` (the best likelihood the loop retained).
-  // Oracle: the rollback contract in `run_optimize_loop` (restore best map, recompute marginal).
   #[test]
   fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -199,7 +179,7 @@ mod tests {
     let dense_partitions = result.dense_partitions;
 
     let (_iter, reason) = result.stopped_at.expect("loop should stop");
-    assert_eq!(reason, ConvergenceReason::Worsened);
+    assert_eq!(ConvergenceReason::Worsened, reason);
 
     let best_lh = result
       .lh_history
@@ -207,7 +187,6 @@ mod tests {
       .map(|log_lh| log_lh.value())
       .fold(f64::NEG_INFINITY, f64::max);
 
-    // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
     let marginal_bl = branch_lengths_or_zero(&result.branch_lengths);
     let (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &marginal_bl, sparse_partitions)?;
     let sparse_lh = sparse_lh.value();
@@ -217,8 +196,6 @@ mod tests {
     Ok(())
   }
 
-  // The oscillation detection fires when |LH[i] - LH[i-2]| < dp.
-  // Use a moderate dp that catches the 2-cycle amplitude on the toy tree.
   #[test]
   fn test_convergence_conditions_oscillation_detection() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -229,8 +206,6 @@ mod tests {
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    // Use damping to prevent the worsened condition from firing, but set dp
-    // large enough that the oscillation check catches the 2-cycle.
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
@@ -249,17 +224,14 @@ mod tests {
     let dense_partitions = result.dense_partitions;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
-    // With dp=1.0, either convergence or oscillation should fire early.
     assert!(
       reason == ConvergenceReason::Converged || reason == ConvergenceReason::Oscillating,
       "Expected early stop with dp=1.0, got {reason:?} at iteration {iter}"
     );
-    // Should stop well before max_iter
     assert!(iter < 10, "Expected early stop, got iteration {iter}");
     Ok(())
   }
 
-  // Exhausting max_iter without any stopping condition results in stopped_at = None.
   #[test]
   fn test_convergence_conditions_exhausts_max_iter() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -270,8 +242,6 @@ mod tests {
     let mut graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    // Only 2 iterations with dp=0 and damping. The worsened condition requires
-    // i >= 2, so with max_iter=2 (iterations 0 and 1) it cannot fire.
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
@@ -289,7 +259,7 @@ mod tests {
     let sparse_partitions = result.sparse_partitions;
     let dense_partitions = result.dense_partitions;
 
-    assert_eq!(result.lh_history.len(), 2);
+    assert_eq!(2, result.lh_history.len());
     assert!(
       result.stopped_at.is_none(),
       "Should exhaust max_iter=2 without stopping"
@@ -297,7 +267,6 @@ mod tests {
     Ok(())
   }
 
-  // Dense-only convergence: verify the fix does not regress dense mode.
   #[test]
   fn test_convergence_conditions_dense_only_converges() -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -307,7 +276,6 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
-    // Use the setup but only dense partitions (sparse empty)
     let (dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let empty_sparse = vec![];

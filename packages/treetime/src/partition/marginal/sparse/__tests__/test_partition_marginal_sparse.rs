@@ -49,7 +49,6 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_chain() -> Result<()> {
-    // A5G + G5T = A5T (composition at same position)
     let parent = vec![sub(b'A', 5, b'G')];
     let child = vec![sub(b'G', 5, b'T')];
     let result = compose_substitutions(&parent, &child)?;
@@ -59,7 +58,6 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_cancellation() -> Result<()> {
-    // A5G + G5A = no mutation (cancellation)
     let parent = vec![sub(b'A', 5, b'G')];
     let child = vec![sub(b'G', 5, b'A')];
     let result = compose_substitutions(&parent, &child)?;
@@ -69,14 +67,9 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_mixed() -> Result<()> {
-    // Position 5: A->G + G->T = A->T (chain)
-    // Position 10: C->T (parent only)
-    // Position 15: G->A (child only)
-    // Position 20: T->C + C->T = no mutation (cancellation)
     let parent = vec![sub(b'A', 5, b'G'), sub(b'C', 10, b'T'), sub(b'T', 20, b'C')];
     let child = vec![sub(b'G', 5, b'T'), sub(b'G', 15, b'A'), sub(b'C', 20, b'T')];
     let result = compose_substitutions(&parent, &child)?;
-    // Expected: pos 5 chained, pos 10 kept, pos 15 added, pos 20 cancelled
     assert_eq!(
       vec![sub(b'A', 5, b'T'), sub(b'C', 10, b'T'), sub(b'G', 15, b'A')],
       result
@@ -85,10 +78,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(b'A', b'G', b'T', Some((b'A', b'T')))] // chain: A->G->T = A->T
-  #[case(b'A', b'G', b'A', None)] // cancel: A->G->A = none
-  #[case(b'C', b'T', b'G', Some((b'C', b'G')))] // chain: C->T->G = C->G
-  #[case(b'G', b'A', b'G', None)] // cancel: G->A->G = none
+  #[case(b'A', b'G', b'T', Some((b'A', b'T')))]
+  #[case(b'A', b'G', b'A', None)]
+  #[case(b'C', b'T', b'G', Some((b'C', b'G')))]
+  #[case(b'G', b'A', b'G', None)]
   #[trace]
   fn test_compose_substitutions_single_position(
     #[case] parent_reff: u8,

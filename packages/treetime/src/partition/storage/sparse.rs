@@ -13,20 +13,16 @@ use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
-/// Durable per-node observations produced by the Fitch pre-pass and consumed (never rewritten) by the
-/// marginal passes and reconstruction: the ambiguity/gap ranges, the residue composition, and the
-/// Fitch state sets. The partition owns these as immutable inputs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeObs {
   pub unknown: Vec<(usize, usize)>,
   pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub composition: Composition,      // count of all characters in the region that is not `non_char`
+  pub non_char: Vec<(usize, usize)>,
+  pub composition: Composition,
   pub fitch: FitchSeqDistribution,
 }
 
 impl SparseNodeObs {
-  /// Empty observations for a placeholder node created by an edge split.
   pub fn empty(alphabet: &Alphabet) -> Self {
     Self {
       unknown: vec![],
@@ -69,21 +65,11 @@ impl SparseNodeObs {
   }
 }
 
-/// The evolving per-node marginal state: the reconstructed (or observed, at a leaf) sequence, the
-/// posterior profile, and the cached emitted output. A genuinely unified positional slot -- `sequence`
-/// is observed at a leaf and parsimony-reconstructed at an internal node -- so it is kept together
-/// rather than split across obs/result structs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeState {
   pub sequence: Seq,
   pub profile: SparseSeqDistribution,
 
-  /// Cached output sequence for the two cases that cannot be rebuilt from `sequence` and `profile`.
-  ///
-  /// Every output path normally rebuilds the sequence on demand, so nothing needs storing. Two results
-  /// cannot be rebuilt and are kept here so all paths return the same bytes: a random draw under
-  /// `--sample-from-profile`, and an imputed leaf, whose filled-in states depend on
-  /// `--impute-missing-data`. `None` in a default run.
   #[serde(default)]
   pub emitted: Option<Seq>,
 }
@@ -97,8 +83,6 @@ impl SparseNodeState {
     }
   }
 
-  /// Seed the node state for a leaf from its observed sequence: the observed sequence is also the
-  /// leaf's initial marginal sequence.
   pub fn leaf(seq: &Seq) -> Self {
     Self {
       sequence: seq.to_owned(),
@@ -118,8 +102,6 @@ impl MarginalNodeState for SparseNodeState {
   }
 }
 
-/// Durable per-edge observations produced by the Fitch pre-pass: the Fitch substitutions, the indels,
-/// and the transmission mask. The partition owns these as immutable inputs to the marginal passes.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[allow(clippy::partial_pub_fields)]
 pub struct SparseEdgeObs {
@@ -175,45 +157,30 @@ impl SparseEdgeObs {
   }
 }
 
-/// Backward-pass edge messages: distinct owner from the forward messages and the final estimates.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeBackward {
   pub msg_to_parent: SparseSeqDistribution,
   pub msg_from_child: SparseSeqDistribution,
 }
 
-/// Forward-pass edge messages: the cavity down-message and, for leaf edges, the propagated parent
-/// posterior used for tip imputation. Distinct owner from the backward messages and the estimates.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeForward {
   pub msg_to_child: SparseSeqDistribution,
 
-  /// The parent posterior evolved across this branch to the child (the marginal down-message).
-  ///
-  /// Populated by the forward pass only for edges whose child is a leaf, where tip imputation needs it
-  /// at reconstruction time. `msg_to_child` stores the pre-propagation cavity message; the forward pass
-  /// already computes this propagated form for the profile update but otherwise discards it. At a tip
-  /// position with no observed state the leaf likelihood is uniform, so this down-message is the leaf's
-  /// marginal posterior there, matching v0's per-leaf marginal profile.
   #[serde(default)]
   pub msg_from_parent: SparseSeqDistribution,
 }
 
-/// Final per-edge marginal estimate: the maximum-likelihood substitutions placed on the branch,
-/// produced by the forward pass and held in the estimates map as a plain `Vec<Sub>`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDistribution {
-  /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, VarPos>,
 
   pub variable_indel: BTreeSet<(usize, usize)>,
 
-  /// probability vector for the state of fixed positions based on information from children
   pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
 
   pub fixed_counts: Composition,
 
-  /// Total log likelihood
   pub log_lh: LogLh,
 }
 
@@ -238,9 +205,6 @@ pub struct FitchSeqDistribution {
   pub chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
-/// The Fitch parsimony pre-pass's own working per-node data. The parsimony passes build this in place;
-/// the marginal handoff (`PartitionFitch::into_marginal_*`) splits it into the durable observations the
-/// partition owns and the seed node state the marginal passes evolve.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchNodeData {
   pub seq: FitchSeqInfo,
@@ -307,8 +271,8 @@ pub struct FitchSeqInfo {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
-  pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: AsciiChar, // exact reference state for this sparse position
+  pub dis: Array1<f64>,
+  pub state: AsciiChar,
 }
 
 impl VarPos {

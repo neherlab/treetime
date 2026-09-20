@@ -15,14 +15,13 @@ mod tests {
     };
 
     assert!(contribution.site_contributions.is_empty());
-    assert_eq!(contribution.gtr.eigvals.len(), 4);
+    assert_eq!(4, contribution.gtr.eigvals.len());
   }
 
   #[test]
   fn test_partition_contribution_single_variable_site() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // One variable site with multiplicity 1
     let site = SiteContribution {
       multiplicity: 1.0,
       coefficients: array![0.5, 0.2, 0.2, 0.1],
@@ -33,7 +32,7 @@ mod tests {
       gtr,
     };
 
-    assert_eq!(contribution.site_contributions.len(), 1);
+    assert_eq!(1, contribution.site_contributions.len());
     pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 1.0, max_ulps = 10);
   }
 
@@ -41,7 +40,6 @@ mod tests {
   fn test_partition_contribution_multiple_variable_sites() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Multiple variable sites, each with multiplicity 1
     let sites = vec![
       SiteContribution {
         multiplicity: 1.0,
@@ -62,7 +60,7 @@ mod tests {
       gtr,
     };
 
-    assert_eq!(contribution.site_contributions.len(), 3);
+    assert_eq!(3, contribution.site_contributions.len());
     for site in &contribution.site_contributions {
       pretty_assert_ulps_eq!(site.multiplicity, 1.0, max_ulps = 10);
     }
@@ -72,14 +70,13 @@ mod tests {
   fn test_partition_contribution_fixed_sites_with_multiplicity() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Fixed sites have multiplicity > 1 (count of identical positions)
     let sites = vec![
       SiteContribution {
-        multiplicity: 100.0, // 100 identical fixed positions
+        multiplicity: 100.0,
         coefficients: array![0.9, 0.03, 0.03, 0.04],
       },
       SiteContribution {
-        multiplicity: 50.0, // 50 identical fixed positions
+        multiplicity: 50.0,
         coefficients: array![0.8, 0.1, 0.05, 0.05],
       },
     ];
@@ -89,7 +86,7 @@ mod tests {
       gtr,
     };
 
-    assert_eq!(contribution.site_contributions.len(), 2);
+    assert_eq!(2, contribution.site_contributions.len());
     pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 100.0, max_ulps = 10);
     pretty_assert_ulps_eq!(contribution.site_contributions[1].multiplicity, 50.0, max_ulps = 10);
   }

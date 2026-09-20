@@ -19,8 +19,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{o, vec_of_owned};
 
-  /// Run the mugration pipeline on a Newick string and observed traits, returning the aggregate output
-  /// and the parsed node-name map so a test can project trait assignments and confidence by name.
   #[allow(clippy::too_many_arguments)]
   fn run_mugration_case(
     nwk: &str,
@@ -56,8 +54,6 @@ mod tests {
     Ok((output, names))
   }
 
-  /// Project reconstructed trait assignments keyed by node name, falling back to `node_{key}` for
-  /// unnamed nodes and skipping nodes with no reconstructed trait.
   fn trait_assignments_by_name(
     output: &MugrationOutput,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -73,7 +69,6 @@ mod tests {
       .collect()
   }
 
-  /// Find the confidence profile of the node with the given name.
   fn confidence_of(
     output: &MugrationOutput,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -161,7 +156,6 @@ mod tests {
 
   #[test]
   fn test_run_compute_pi_from_weights_uses_mean_for_missing() {
-    // DiscreteStates sorts alphabetically: france, germany, usa
     let states = DiscreteStates::from_values(["usa", "germany", "france"].into_iter(), "?");
     let weights = btreemap! {
       o!("usa") => 2.0,
@@ -172,12 +166,10 @@ mod tests {
 
     assert_eq!(3, pi.len());
     assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
-    // mean_weight = (2.0 + 4.0) / 2 = 3.0
-    // total = france(3.0) + germany(4.0) + usa(2.0) = 9.0
     let total = 9.0;
-    assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10); // france (mean)
-    assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10);
   }
 
   #[test]
@@ -289,9 +281,9 @@ mod tests {
     assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12);
+    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -326,9 +318,9 @@ mod tests {
     assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12);
+    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -357,18 +349,15 @@ mod tests {
     )?;
 
     assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, output.gtr.pi[0], epsilon = 1e-10); // france
-    assert_abs_diff_eq!(0.2, output.gtr.pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(0.6, output.gtr.pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(0.2, output.gtr.pi[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.2, output.gtr.pi[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.6, output.gtr.pi[2], epsilon = 1e-10);
 
     Ok(())
   }
 
   #[test]
   fn test_run_mugration_smooth_initial_pi_preserves_fixed_equilibrium() -> Result<(), Report> {
-    // Smoothing flattens only the initial pi used for the first reconstruction
-    // pass; the final equilibrium stays pinned to the raw weight-derived
-    // fixed_pi, so the returned model matches the unsmoothed equilibrium.
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -392,20 +381,15 @@ mod tests {
 
     let total = 5.0;
     assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-10); // france
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(3.0 / total, output.gtr.pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(3.0 / total, output.gtr.pi[2], epsilon = 1e-10);
 
     Ok(())
   }
 
   #[test]
   fn test_run_mugration_filter_uninformative_root_changes_inferred_equilibrium() -> Result<(), Report> {
-    // Symmetric two-leaf tree: the root posterior is exactly uniform [0.5, 0.5].
-    // With filtering off (v0) the root's argmax state is folded into the
-    // equilibrium-frequency prior; with filtering on the uniform root is
-    // skipped. With no weights (pi inferred from counts) the two policies must
-    // therefore yield different equilibrium frequencies.
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),

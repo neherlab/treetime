@@ -18,7 +18,6 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Per-leaf date inputs as a value map. Each named leaf with a date carries a point distribution at that date.
   fn date_constraints(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     graph: &Graph,
@@ -39,9 +38,6 @@ mod tests {
     }
   }
 
-  /// Seed the clock state from date-constraint values: the date
-  /// state built from `constraints` supplies each node's date through `likely_times`, and the clock
-  /// state starts from those dates with default divergence and outlier flags.
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
     let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(constraints));
@@ -57,16 +53,12 @@ mod tests {
 
   #[test]
   fn test_clock_filter_no_outliers_clean_data() -> Result<(), Report> {
-    // Tree with dates that fit the clock model well (linear relationship)
-    // Clock model: div = 0.01 * date - 20.0 (rate=0.01, intercept=-20.0)
-    // For a node at date 2010 with div 0.1: expected_div = 0.01 * 2010 - 20.0 = 0.1
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // Set dates that match the branch lengths well
     let dates = btreemap! {
       "A".to_owned() => 2010.0,
       "B".to_owned() => 2020.0,
@@ -75,19 +67,14 @@ mod tests {
     };
     let constraints = date_constraints(&names, &graph, &dates);
 
-    // Clock model: rate=0.01, intercept=-20.0
-    // At date 2010, expected div = 0.01 * 2010 + (-20.0) = 0.1
-    // At date 2020, expected div = 0.01 * 2020 + (-20.0) = 0.2
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } =
       clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
-    // With well-fitting data, no outliers should be detected
     assert_eq!(count_outliers(&graph, &state), 0, "No outliers expected for clean data");
     assert!(iqd >= 0.0, "IQD should be non-negative");
-    // new_outliers counts status changes, could be 0 if none were outliers before
     assert_eq!(new_outliers, 0, "No status changes expected");
 
     Ok(())
@@ -95,34 +82,26 @@ mod tests {
 
   #[test]
   fn test_clock_filter_detects_outlier() -> Result<(), Report> {
-    // Tree with one leaf having a date that deviates strongly from the clock model
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // Set dates where one sample (A) has an extreme deviation
-    // A is at div ~0.2 (root:0.01 + AB:0.1 + A:0.1) but claims date 1900 (very old)
     let dates = btreemap! {
-      "A".to_owned() => 1900.0,  // Outlier: claims very old date but has recent divergence
+      "A".to_owned() => 1900.0,
       "B".to_owned() => 2020.0,
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
     };
     let constraints = date_constraints(&names, &graph, &dates);
 
-    // Clock model based on B, C, D (excluding A)
-    // rate=0.01, intercept=-20.0
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } =
       clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
-    // A should be detected as outlier (date 1900 with div ~0.2 doesn't fit clock)
-    // Expected div at 1900 = 0.01 * 1900 - 20.0 = -1.0, but actual div ~0.2
-    // Deviation = expected - actual = -1.0 - 0.2 = -1.2 (huge compared to IQD of others)
     assert!(
       count_outliers(&graph, &state) >= 1,
       "At least one outlier expected for data with extreme deviation"
@@ -130,7 +109,6 @@ mod tests {
     assert!(iqd > 0.0, "IQD should be positive with varying dates");
     assert!(new_outliers >= 1, "At least one status change expected");
 
-    // Verify A is marked as outlier
     let a_is_outlier = graph.get_leaves().any(|leaf| {
       let node = leaf;
       state.node(node.key()).is_outlier
@@ -146,14 +124,12 @@ mod tests {
 
   #[test]
   fn test_clock_filter_iqd_calculation() -> Result<(), Report> {
-    // Verify IQD is computed and returned correctly
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // Dates with some spread to create non-zero IQD
     let dates = btreemap! {
       "A".to_owned() => 2010.0,
       "B".to_owned() => 2020.0,
@@ -168,7 +144,6 @@ mod tests {
     let ClockFilterResult { iqd, .. } =
       clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
-    // IQD should be computed (may be zero or positive depending on data fit)
     assert!(iqd.is_finite(), "IQD should be a finite number");
 
     Ok(())
@@ -176,7 +151,6 @@ mod tests {
 
   #[test]
   fn test_clock_filter_respects_threshold() -> Result<(), Report> {
-    // Test that higher threshold allows more deviation
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -184,7 +158,7 @@ mod tests {
     let graph: Graph = graph;
 
     let dates = btreemap! {
-      "A".to_owned() => 1980.0,  // Moderate deviation
+      "A".to_owned() => 1980.0,
       "B".to_owned() => 2020.0,
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
@@ -193,13 +167,10 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    // With low threshold, A might be outlier
     let (inputs_low, mut state_low) = seed_clock_state(&graph, &constraints);
     clock_filter_inplace(&graph, &inputs_low, &mut state_low, &clock_model, &branch_lengths, 1.0)?;
     let outliers_low_threshold = count_outliers(&graph, &state_low);
 
-    // With high threshold, A should not be outlier. Each filter runs on its own freshly seeded state,
-    // so the low-threshold outlier flags do not carry over.
     let (inputs_high, mut state_high) = seed_clock_state(&graph, &constraints);
     clock_filter_inplace(
       &graph,

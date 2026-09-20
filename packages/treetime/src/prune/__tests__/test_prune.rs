@@ -31,7 +31,6 @@ mod tests {
     AsciiChar::from_byte_unchecked(b)
   }
 
-  /// Give the partition an observation entry for every graph node, over a dummy reference sequence.
   fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
     let alphabet = partition.alphabet.clone();
     let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
@@ -49,7 +48,7 @@ mod tests {
 
   fn create_test_graph_with_partitions(
     nwk: &str,
-    edge_mutations: &[(usize, Option<usize>)], // (edge_index, num_mutations)
+    edge_mutations: &[(usize, Option<usize>)],
   ) -> Result<
     (
       Graph,
@@ -71,7 +70,7 @@ mod tests {
       let mut partition = PartitionMarginalSparse {
         index: 0,
         alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
-        length: 100, // dummy length
+        length: 100,
         root_sequence: seq![],
         obs_nodes: btreemap! {},
         obs_edges: btreemap! {},
@@ -101,8 +100,6 @@ mod tests {
     Ok((graph, names, partitions, branch_lengths))
   }
 
-  /// Create test graph with edge mutations specified by node names.
-  /// edge_mutations: (source_name, target_name, num_mutations) - None means default (no mutations entry)
   fn create_test_graph_with_named_edge_mutations(
     nwk: &str,
     edge_mutations: &[(&str, &str, Option<usize>)],
@@ -291,7 +288,6 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_preserves_leaves() -> Result<(), Report> {
-    // Edge to A has no mutations, edge to B has 2 mutations
     let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "(A:0.1,B:0.1)root;",
       &[("root", "A", None), ("root", "B", Some(2))],
@@ -306,19 +302,14 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Both leaves should be preserved even if edge to A has no mutations
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
-    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_prune_empty_internal_nodes() -> Result<(), Report> {
-    // Structure: ((A:0.1,B:0.1)internal:0.1)root;
-    // root->internal edge: no mutations (empty)
-    // internal->A edge: 1 mutation
-    // internal->B edge: 2 mutations
     let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1,B:0.1)internal:0.1)root;",
       &[
@@ -337,20 +328,16 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Internal node should be collapsed, but leaves preserved
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
-    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_prune_empty_none_mutations() -> Result<(), Report> {
-    // Only add edge data for internal->A edge, leaving root->internal edge unknown (None mutations)
-    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
-      "((A:0.1)internal:0.1)root;",
-      &[("internal", "A", Some(1))], // root->internal has no entry (unknown mutations)
-    )?;
+    let (mut graph, names, mut partitions, mut branch_lengths) =
+      create_test_graph_with_named_edge_mutations("((A:0.1)internal:0.1)root;", &[("internal", "A", Some(1))])?;
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -361,16 +348,14 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Internal node should be preserved when mutations is None (unknown)
-    assert_eq!(graph.get_nodes().count(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().count(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_prune_empty_simple_leaf_case() -> Result<(), Report> {
-    // Single leaf edge with no mutations should be preserved
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
     prune_nodes(
@@ -383,25 +368,21 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Leaf should be preserved even with no mutations
-    assert_eq!(graph.get_nodes().count(), 2); // root and A
-    assert_eq!(graph.get_edges().count(), 1); // root->A
+    assert_eq!(graph.get_nodes().count(), 2);
+    assert_eq!(graph.get_edges().count(), 1);
 
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_combined_prune_short_and_empty() -> Result<(), Report> {
-    // Tree: root -> internal1 (short edge 0.001, has muts) -> A (leaf)
-    //            -> internal2 (normal edge 0.1, no muts)   -> B (leaf)
-    // Topology-only test: mutation counts trigger pruning but content is not verified
     let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal1:0.001,(B:0.1)internal2:0.1)root;",
       &[
-        ("root", "internal1", Some(1)), // short edge with mutations
-        ("root", "internal2", None),    // empty edge (no mutations)
-        ("internal1", "A", None),       // leaf, no overlapping subs with parent
-        ("internal2", "B", Some(2)),    // leaf with mutations
+        ("root", "internal1", Some(1)),
+        ("root", "internal2", None),
+        ("internal1", "A", None),
+        ("internal2", "B", Some(2)),
       ],
     )?;
     prune_nodes(
@@ -414,9 +395,8 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Both internal nodes should be collapsed, leaves preserved
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
-    assert_eq!(graph.get_edges().count(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }
@@ -453,26 +433,22 @@ mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
-    // All edges remain because A, B, C are leaves and leaves are never collapsed
     assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_prune_empty_complex_tree() -> Result<(), Report> {
-    // Complex tree structure: root -> internal1 (with muts) -> A (leaf)
-    //                              -> internal1 -> internal3 (no muts) -> C,D (leaves)
-    //                         root -> internal2 (no muts) -> B (leaf)
     let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "(((C:0.1,D:0.1)internal3:0.1,A:0.1)internal1:0.1,(B:0.1)internal2:0.1)root;",
       &[
-        ("root", "internal1", Some(2)),      // has muts
-        ("root", "internal2", Some(0)),      // no muts, to internal
-        ("internal1", "A", Some(1)),         // leaf, has muts
-        ("internal1", "internal3", Some(0)), // no muts, to internal
-        ("internal2", "B", Some(0)),         // leaf, no muts (preserved)
-        ("internal3", "C", Some(1)),         // leaf, has muts
-        ("internal3", "D", Some(2)),         // leaf, has muts
+        ("root", "internal1", Some(2)),
+        ("root", "internal2", Some(0)),
+        ("internal1", "A", Some(1)),
+        ("internal1", "internal3", Some(0)),
+        ("internal2", "B", Some(0)),
+        ("internal3", "C", Some(1)),
+        ("internal3", "D", Some(2)),
       ],
     )?;
     prune_nodes(
@@ -485,17 +461,14 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // internal2 and internal3 should be collapsed (empty internal edges), leaves preserved
-    // Result: root -> internal1 -> A, C, D and root -> B
-    assert_eq!(graph.get_nodes().count(), 6); // root, internal1, A, B, C, D
-    assert_eq!(graph.get_edges().count(), 5); // root->internal1, internal1->A, internal1->C, internal1->D, root->B
+    assert_eq!(graph.get_nodes().count(), 6);
+    assert_eq!(graph.get_edges().count(), 5);
 
     Ok(())
   }
 
   #[test]
   fn test_prune_nodes_prune_both_disabled() -> Result<(), Report> {
-    // Very short edge (root->internal) with no mutations - should be preserved when both pruning options disabled
     let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal:0.0001)root;",
       &[("root", "internal", Some(0)), ("internal", "A", Some(1))],
@@ -510,18 +483,14 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Nothing should be collapsed
-    assert_eq!(graph.get_nodes().count(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().count(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
     Ok(())
   }
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
-    // Tree structure: root -> internal1 -> internal2 -> A (the path to prune)
-    //                      -> B (to keep)
-    //                      -> C (to keep)
     let nwk_parsed = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -530,23 +499,18 @@ mod tests {
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
-    // Find the edge leading to leaf A
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal2", "A").ok_or_else(|| make_report!("Edge internal2->A not found"))?;
 
-    // Recursively prune leaf A and its childless ancestors
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
-    // The result should be: root -> B, root -> C (internal1 and internal2 should be removed)
-    assert_eq!(graph.get_nodes().count(), 3); // root, B, C
-    assert_eq!(graph.get_edges().count(), 2); // root->B, root->C
+    assert_eq!(graph.get_nodes().count(), 3);
+    assert_eq!(graph.get_edges().count(), 2);
 
-    // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
     assert!(find_node_key_by_name(&graph, &names, "B").is_some());
     assert!(find_node_key_by_name(&graph, &names, "C").is_some());
 
-    // Verify removed nodes
     assert!(find_node_key_by_name(&graph, &names, "A").is_none());
     assert!(find_node_key_by_name(&graph, &names, "internal1").is_none());
     assert!(find_node_key_by_name(&graph, &names, "internal2").is_none());
@@ -556,8 +520,6 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
-    // Tree structure: root -> internal1 -> A (to prune)
-    //                               -> B (to keep)
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -566,22 +528,17 @@ mod tests {
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
-    // Find the edge leading to leaf A
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal1", "A").ok_or_else(|| make_report!("Edge internal1->A not found"))?;
 
-    // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
-    // The result should be: root -> B (internal1 collapsed)
-    assert_eq!(graph.get_nodes().count(), 2); // root, B
-    assert_eq!(graph.get_edges().count(), 1); // root->B
+    assert_eq!(graph.get_nodes().count(), 2);
+    assert_eq!(graph.get_edges().count(), 1);
 
-    // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
     assert!(find_node_key_by_name(&graph, &names, "B").is_some());
 
-    // Verify removed nodes
     assert!(find_node_key_by_name(&graph, &names, "A").is_none());
     assert!(find_node_key_by_name(&graph, &names, "internal1").is_none());
 
@@ -590,7 +547,6 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
-    // Tree: root -> A (only child)
     let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -598,11 +554,9 @@ mod tests {
     let mut graph: Graph = graph;
     let mut partitions = vec![];
 
-    // Collapse the path starting at leaf A; should stop at root
     let a_inbound_edge = find_edge_key(&graph, &names, "root", "A").unwrap();
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
-    // Only root should remain
     assert_eq!(graph.get_nodes().count(), 1);
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
     assert!(find_node_key_by_name(&graph, &names, "A").is_none());
@@ -623,7 +577,6 @@ mod tests {
 
     let mut partitions = vec![];
 
-    // Use a non-existent edge key to ensure we surface an error
     let bogus = GraphEdgeKey(usize::MAX);
     let mut branch_lengths = btreemap! { e_root_a => Some(0.1) };
     let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, bogus, &mut branch_lengths);
@@ -634,7 +587,6 @@ mod tests {
 
   #[test]
   fn test_create_test_edge_num_muts_none_vs_some_zero() -> Result<(), Report> {
-    // Test that we can distinguish between unknown mutations (None) and zero mutations (Some(0))
     let (graph, names, partitions, _branch_lengths) = create_test_graph_with_partitions("(A:0.1)root;", &[(0, None)])?;
     let edge_unknown_key = graph.get_edges().collect::<Vec<_>>()[0].key();
 
@@ -716,7 +668,6 @@ mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
-    // Internal node collapsed, its children moved to root
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
   }
@@ -735,7 +686,6 @@ mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
-    // Internal collapsed, D removed
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
   }
@@ -771,7 +721,6 @@ mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    // Root should remain
     assert_eq!(graph.get_nodes().count(), 1);
     Ok(())
   }
@@ -790,11 +739,8 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // A removed, i1 becomes unary and collapses
-    // Verify structure: root has 2 children (i2, D), i2 has 2 children (B, C)
-    assert_eq!(graph.get_nodes().count(), 5); // root, i2, B, C, D
+    assert_eq!(graph.get_nodes().count(), 5);
 
-    // Verify the leaf names are preserved
     let leaf_names: BTreeSet<_> = graph
       .get_nodes()
       .filter(|n| graph.is_leaf(n.key()))
@@ -807,8 +753,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
-    // Non-overlapping positions: all subs kept from both edges
-    // Tree: root -> internal (subs at pos 0,1) -> A (subs at pos 2,3), B
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -828,7 +772,6 @@ mod tests {
       obs_edges: btreemap! {},
     };
 
-    // Root -> internal has mutations at positions 0, 1
     partition.obs_edges.insert(
       root_internal_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![
@@ -836,7 +779,6 @@ mod tests {
         Sub::new(c(b'A'), 1_usize, c(b'C'))?,
       ]),
     );
-    // Internal -> A has mutations at positions 2, 3
     partition.obs_edges.insert(
       internal_a_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![
@@ -844,14 +786,12 @@ mod tests {
         Sub::new(c(b'C'), 3_usize, c(b'A'))?,
       ]),
     );
-    // Internal -> B has no mutations
     partition
       .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition];
 
-    // Collapse internal node by name
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -862,11 +802,9 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // After collapse: root -> A should have all 4 mutations, root -> B should have 2 mutations
-    assert_eq!(graph.get_nodes().count(), 3); // root, A, B
+    assert_eq!(graph.get_nodes().count(), 3);
     assert_eq!(graph.get_edges().count(), 2);
 
-    // Find new edge keys after collapse
     let partition = &partitions[0];
     let mut a_muts_count = 0;
     let mut b_muts_count = 0;
@@ -886,16 +824,14 @@ mod tests {
       }
     }
 
-    assert_eq!(a_muts_count, 4); // 2 from root->internal + 2 from internal->A
-    assert_eq!(b_muts_count, 2); // 2 from root->internal + 0 from internal->B
+    assert_eq!(a_muts_count, 4);
+    assert_eq!(b_muts_count, 2);
 
     Ok(())
   }
 
   #[test]
   fn test_collapse_edge_compose_chain() -> Result<(), Report> {
-    // Chain composition: parent A->G + child G->T = net A->T at same position
-    // Tree: root -> internal -> A, B
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -915,12 +851,10 @@ mod tests {
       obs_edges: btreemap! {},
     };
 
-    // Parent edge: A->G at pos 0
     partition.obs_edges.insert(
       root_internal_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
-    // Child edge: G->T at pos 0 (ref=G matches parent qry)
     partition.obs_edges.insert(
       internal_a_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?]),
@@ -940,7 +874,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // After collapse: net A->T at pos 0 (1 composed sub)
     let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge_key = edge.key();
@@ -962,8 +895,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
-    // Cancellation: parent A->G + child G->A = no net change at same position
-    // Tree: root -> internal -> A, B
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -983,12 +914,10 @@ mod tests {
       obs_edges: btreemap! {},
     };
 
-    // Parent edge: A->G at pos 0
     partition.obs_edges.insert(
       root_internal_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
-    // Child edge: G->A at pos 0 (reverts back to original state)
     partition.obs_edges.insert(
       internal_a_edge_key,
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?]),
@@ -1008,7 +937,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // After collapse: mutations cancel, edge to A has 0 subs
     let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge_key = edge.key();
@@ -1028,8 +956,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
-    // Substitutions composed independently per partition
-    // Tree: root -> internal -> A, B
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -1040,7 +966,6 @@ mod tests {
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
-    // Create two partitions with different mutations
     let mut partition1 = PartitionMarginalSparse {
       index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
@@ -1086,7 +1011,6 @@ mod tests {
 
     let mut partitions = vec![partition1, partition2];
 
-    // Collapse internal node by name
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -1097,7 +1021,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // Check partition 1: edge to A should have 2 mutations
     let p1 = &partitions[0];
     let p2 = &partitions[1];
 
@@ -1109,8 +1032,8 @@ mod tests {
         .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if target_name.as_deref() == Some("A") {
-        assert_eq!(p1.obs_edges[&edge_key].fitch_subs().len(), 2); // 1 + 1
-        assert_eq!(p2.obs_edges[&edge_key].fitch_subs().len(), 3); // 2 + 1
+        assert_eq!(p1.obs_edges[&edge_key].fitch_subs().len(), 2);
+        assert_eq!(p2.obs_edges[&edge_key].fitch_subs().len(), 3);
       }
     }
 
@@ -1119,8 +1042,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
-    // When both edges have branch lengths, they should be summed
-    // Tree: root -> internal:0.3 -> A:0.2, B:0.1
     let nwk_parsed = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -1129,7 +1050,6 @@ mod tests {
 
     let mut partitions = vec![];
 
-    // Mark internal node for pruning by name
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -1140,7 +1060,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // After collapse: root -> A should have 0.3 + 0.2 = 0.5
     for edge in graph.get_edges() {
       let target_key = edge.target();
       let target_name = graph
@@ -1149,10 +1068,8 @@ mod tests {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
-        // 0.3 + 0.2 = 0.5
         assert_relative_eq!(branch_length.unwrap(), 0.5, epsilon = 1e-6);
       } else if target_name.as_deref() == Some("B") {
-        // 0.3 + 0.1 = 0.4
         assert_relative_eq!(branch_length.unwrap(), 0.4, epsilon = 1e-6);
       }
     }
@@ -1162,8 +1079,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
-    // Verify precision is preserved when summing small branch lengths
-    // Tree: ((A:2e-10,B:3e-10)internal:1e-10)root;
     let nwk_parsed = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -1189,10 +1104,8 @@ mod tests {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
-        // 1e-10 + 2e-10 = 3e-10
         pretty_assert_ulps_eq!(branch_length.unwrap(), 3e-10, max_ulps = 4);
       } else if target_name.as_deref() == Some("B") {
-        // 1e-10 + 3e-10 = 4e-10
         pretty_assert_ulps_eq!(branch_length.unwrap(), 4e-10, max_ulps = 4);
       }
     }
@@ -1202,8 +1115,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
-    // When removed edge has Some and new edge has None, result should stay None
-    // (based on collapse_sparse_edge logic: only sums when both are Some)
     let mut graph = Graph::new();
 
     let root = graph.add_node();
@@ -1213,7 +1124,6 @@ mod tests {
     let names =
       btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
 
-    // Root -> internal has branch length, internal -> A has None
     let e_root_internal = graph.add_edge(root, internal)?;
     let e_internal_a = graph.add_edge(internal, a)?;
     let e_internal_b = graph.add_edge(internal, b)?;
@@ -1244,10 +1154,8 @@ mod tests {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
-        // One was None, so result stays None (no sum performed)
         assert!(branch_length.is_none());
       } else if target_name.as_deref() == Some("B") {
-        // Both Some: 0.5 + 0.2 = 0.7
         pretty_assert_ulps_eq!(branch_length.unwrap(), 0.7, max_ulps = 4);
       }
     }
@@ -1257,8 +1165,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
-    // When removed edge has None and new edge has Some, result should stay as-is (Some)
-    // because condition requires both Some
     let mut graph = Graph::new();
 
     let root = graph.add_node();
@@ -1268,7 +1174,6 @@ mod tests {
     let names =
       btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
 
-    // Root -> internal has None, internal -> A has Some
     let e_root_internal = graph.add_edge(root, internal)?;
     let e_internal_a = graph.add_edge(internal, a)?;
     let e_internal_b = graph.add_edge(internal, b)?;
@@ -1299,10 +1204,8 @@ mod tests {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
-        // Removed edge had None, so no sum - original Some(0.3) preserved
         pretty_assert_ulps_eq!(branch_length.unwrap(), 0.3, max_ulps = 4);
       } else if target_name.as_deref() == Some("B") {
-        // Removed edge had None, so no sum - original Some(0.2) preserved
         pretty_assert_ulps_eq!(branch_length.unwrap(), 0.2, max_ulps = 4);
       }
     }
@@ -1312,7 +1215,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_both_none() -> Result<(), Report> {
-    // When both edges have None, result should stay None
     let mut graph = Graph::new();
 
     let root = graph.add_node();
@@ -1346,28 +1248,12 @@ mod tests {
 
     for edge in graph.get_edges() {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
-      // Both None -> stays None
       assert!(branch_length.is_none());
     }
 
     Ok(())
   }
 
-  /// Pruning a short internal branch exposes a hidden polytomy, enabling merge
-  /// to group all siblings that share the same mutation.
-  ///
-  /// Before prune:
-  ///   P → I (bl=1e-8, no subs) → A (subs: A0T), B (subs: A0T)
-  ///   P → C (subs: A0T)
-  ///   P → D (subs: A5T)
-  ///
-  /// After prune (I collapsed, P becomes degree-4 polytomy):
-  ///   P → A (subs: A0T), B (subs: A0T), C (subs: A0T), D (subs: A5T)
-  ///
-  /// After merge (A, B, C grouped by shared A0T):
-  ///   P → N2 (subs: A0T) → N1 → A, B
-  ///                       → C
-  ///   P → D (subs: A5T)
   #[test]
   fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
@@ -1387,11 +1273,9 @@ mod tests {
 
     populate_test_nodes(&mut partition, &graph);
 
-    // P→I: no subs (short branch)
     let pi_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     partition.obs_edges.insert(pi_key, SparseEdgeObs::default());
 
-    // I→A, I→B, P→C: identical mutation A0T
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
     partition.obs_edges.insert(
       ia_key,
@@ -1410,7 +1294,6 @@ mod tests {
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
 
-    // P→D: different mutation at position 5 (not shared with A, B, C)
     let pd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
     partition.obs_edges.insert(
       pd_key,
@@ -1419,7 +1302,6 @@ mod tests {
 
     let mut partitions = vec![partition];
 
-    // Step 1: Prune short branch I (bl=1e-8 < threshold 1e-6)
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -1434,19 +1316,15 @@ mod tests {
       "I should be collapsed by prune"
     );
 
-    // Step 2: Merge shared mutations on the now-exposed polytomy
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
-    // Group merge: A, B, C all share A0T and form one group.
     assert_eq!(merged, 1, "one group merge should place A, B, C under one node");
 
-    // Root should have exactly 2 children: the merged subtree and D
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.degree_out(), 2);
 
-    // D should remain directly under root
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());
 
     Ok(())
@@ -1454,7 +1332,6 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
-    // Indels from both removed (parent) and retained (child) edges must be preserved
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -1510,7 +1387,6 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];
-        // Parent indel first, then child indel
         assert_eq!(edge_partition.indels.len(), 2);
         assert_eq!(edge_partition.indels[0].range, (10, 15));
         assert!(edge_partition.indels[0].is_deletion());
@@ -1518,7 +1394,6 @@ mod tests {
         assert!(!edge_partition.indels[1].is_deletion());
       } else if target_name.as_deref() == Some("B") {
         let edge_partition = &partition.obs_edges[&edge_key];
-        // Only parent indel (child had none)
         assert_eq!(edge_partition.indels.len(), 1);
         assert_eq!(edge_partition.indels[0].range, (10, 15));
       }

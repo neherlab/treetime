@@ -12,19 +12,14 @@ use strum_macros::Display;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 
-/// Classification of how the GTR model was obtained.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GtrModelType {
-  /// Standard named model (JC69, K80, etc.)
   Named,
-  /// Model inferred from data
   Inferred,
-  /// User-provided custom parameters
   Custom,
 }
 
-/// GTR model output for JSON serialization.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GtrOutput {
   pub model_type: GtrModelType,
@@ -72,14 +67,12 @@ impl GtrOutput {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Log GTR model parameters as JSON.
 pub fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
   let output = GtrOutput::new(gtr, model_name);
   let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
   info!("GTR model initialized:\n{json}");
 }
 
-/// Write GTR model output to a JSON file at the given path.
 pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {
   json_write_file(path, output, JsonPretty(true))
 }
@@ -92,8 +85,6 @@ pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
-  // serde's `kebab-case` splits acronym runs (`JC69` -> `j-c69`); pin these to the compact spelling
-  // (`jc69`) so `--config` values and the command-line value names stay in sync.
   #[serde(rename = "jc69")]
   JC69,
   K80,
@@ -121,7 +112,6 @@ pub fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct JC69Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
@@ -129,32 +119,21 @@ pub struct JC69Params {
   pub alphabet: AlphabetName,
 }
 
-/// Jukes-Cantor 1969 model.
-///
-/// This model assumes equal concentrations of the nucleotides and equal transition rates
-/// between nucleotide states.
-///
-/// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21-132
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
   let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
-  // JC69 has one distinct nonzero eigenvalue: L(t) is unimodal.
-  // Dinh V, Matsen FA IV (2017). "The shape of the one-dimensional phylogenetic likelihood
-  // function." Ann Appl Probab 27(3):1646-1677. DOI: 10.1214/16-AAP1240, Corollary 3.1.
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct K80Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
-  /// Ratio of transversion/transition rates
   #[default = 0.1]
   pub kappa: f64,
 
@@ -166,15 +145,6 @@ pub struct K80Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Kimura 1980 model.
-///
-/// Assumes equal concentrations across nucleotides, but
-/// allows different rates between transitions and transversions. The ratio
-/// of the transversion/transition rates is given by kappa parameter.
-///
-/// NOTE: Current implementation of the model does not account for the gaps.
-///
-/// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
 pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
@@ -185,11 +155,9 @@ pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> 
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct F81Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
-  /// Equilibrium frequencies
   #[default(None)]
   pub pi: Option<Array1<f64>>,
 
@@ -201,35 +169,24 @@ pub struct F81Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Felsenstein 1981 model.
-///
-/// Assumes non-equal concentrations across nucleotides,
-/// but the transition rate between all states is assumed to be equal.
-///
-/// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
 pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
   let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
-  // F81 has one distinct nonzero eigenvalue: L(t) is unimodal.
-  // Dinh & Matsen (2017), DOI: 10.1214/16-AAP1240, Corollary 3.1.
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct HKY85Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
-  /// Ratio of transversion/transition rates
   #[default = 0.1]
   pub kappa: f64,
 
-  /// Equilibrium frequencies
   #[default(None)]
   pub pi: Option<Array1<f64>>,
 
@@ -241,14 +198,6 @@ pub struct HKY85Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Hasegawa, Kishino and Yano 1985 model.
-///
-/// Allows different concentrations of the nucleotides (as in F81) and distinguishes between transition/transversion
-/// substitutions (similar to K80).
-///
-/// NOTE: Current implementation of the model does not account for the gaps
-///
-/// See: Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 pub fn hky85(
   HKY85Params {
     mu,
@@ -266,15 +215,12 @@ pub fn hky85(
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct T92Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
-  /// Ratio of transversion/transition rates
   #[default = 0.1]
   pub kappa: f64,
 
-  /// Relative GC content
   #[default = 0.5]
   pub pi_GC: f64,
 
@@ -282,13 +228,6 @@ pub struct T92Params {
   pub alphabet: AlphabetName,
 }
 
-/// Tamura 1992 model.
-///
-/// Extending Kimura (1980) model for the case where a G+C-content bias exists.
-///
-/// NOTE: Current implementation of the model does not account for the gaps
-///
-/// See: Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678-687.  DOI: 10.1093/oxfordjournals.molbev.a040752
 pub fn t92(
   T92Params {
     mu,
@@ -317,18 +256,10 @@ pub struct Jtt92Params {
   pub alphabet: AlphabetName,
 }
 
-/// Jones-Taylor-Thornton 1992 amino acid substitution model.
-///
-/// Empirical model derived from protein sequence alignments. Uses a 20x20 rate matrix
-/// for the 20 standard amino acids.
-///
-/// See: Jones, Taylor, Thornton (1992). CABIOS 8(3):275-282
 #[allow(clippy::excessive_precision)]
 pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
 
-  // Stationary frequencies (pi) from JTT92 model
-  // Order: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
   #[rustfmt::skip]
   let pi = array![
     0.07674789, 0.05169087, 0.04264509, 0.05154407, 0.01980301,
@@ -337,7 +268,6 @@ pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
     0.06876503, 0.05856501, 0.01426057, 0.03210196, 0.06600504
   ];
 
-  // Rate matrix Q from JTT92 model (20x20)
   #[rustfmt::skip]
   let q = array![
     [-1.247831, 0.044229, 0.041179, 0.061769, 0.042704, 0.043467, 0.08007, 0.136501, 0.02059, 0.027453, 0.022877, 0.02669, 0.041179, 0.011439, 0.14794, 0.288253, 0.362223, 0.006863, 0.008388, 0.227247],
@@ -362,8 +292,6 @@ pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
     [0.195438, 0.011149, 0.010493, 0.020331, 0.040662, 0.013117, 0.029512, 0.030824, 0.007214, 0.630254, 0.11805, 0.009182, 0.211834, 0.040662, 0.015084, 0.024922, 0.073453, 0.016396, 0.010493, -1.241722]
   ];
 
-  // Compute W from Q: W_ij = Q_ij * sqrt(pi_j / pi_i)
-  // This is the symmetric exchangeability matrix
   let n = 20;
   let mut w = Array2::<f64>::zeros((n, n));
   for i in 0..n {
@@ -396,19 +324,15 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct TN93Params {
-  /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
 
-  /// Transversion rate (A<->C, A<->T, G<->C, G<->T) relative to A<->G = 1
   #[default = 1.0]
   pub kappa1: f64,
 
-  /// Pyrimidine transition rate (C<->T) relative to A<->G = 1
   #[default = 1.0]
   pub kappa2: f64,
 
-  /// Equilibrium frequencies [piA, piC, piG, piT]
   #[default(None)]
   pub pi: Option<Array1<f64>>,
 
@@ -420,13 +344,6 @@ pub struct TN93Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Tamura-Nei 1993 model.
-///
-/// Distinguishes between the two types of transitions: A<->G has rate 1 (reference),
-/// C<->T has rate kappa2. All transversions have rate kappa1. Equilibrium frequencies
-/// can be non-uniform.
-///
-/// See: Tamura, Nei (1993), Mol Biol Evol. 10(3): 512-526. DOI: 10.1093/oxfordjournals.molbev.a040023
 pub fn tn93(
   TN93Params {
     mu,
@@ -439,16 +356,12 @@ pub fn tn93(
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
 
-  // W matrix for alphabet [A, C, G, T]:
-  // - A<->G (purine transition): rate = 1 (reference)
-  // - C<->T (pyrimidine transition): rate = kappa2
-  // - All transversions: rate = kappa1
   #[rustfmt::skip]
   let W = Some(array![
-    [1.0,    kappa1, 1.0,    kappa1],  // A
-    [kappa1, 1.0,    kappa1, kappa2],  // C
-    [1.0,    kappa1, 1.0,    kappa1],  // G
-    [kappa1, kappa2, kappa1, 1.0   ]   // T
+    [1.0,    kappa1, 1.0,    kappa1],
+    [kappa1, 1.0,    kappa1, kappa2],
+    [1.0,    kappa1, 1.0,    kappa1],
+    [kappa1, kappa2, kappa1, 1.0   ]
   ]);
 
   let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / (n_states as f64));

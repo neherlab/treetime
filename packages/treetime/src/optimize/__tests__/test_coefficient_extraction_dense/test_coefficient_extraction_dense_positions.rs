@@ -9,35 +9,23 @@ mod tests {
 
   #[test]
   fn test_get_coefficients_multiple_positions() {
-    // Test with multiple alignment positions
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    let parent = array![
-      [1.0, 0.0, 0.0, 0.0],     // position 0: certain A
-      [0.0, 1.0, 0.0, 0.0],     // position 1: certain C
-      [0.25, 0.25, 0.25, 0.25]  // position 2: uniform
-    ];
-    let child = array![
-      [1.0, 0.0, 0.0, 0.0],     // position 0: certain A (match)
-      [0.0, 1.0, 0.0, 0.0],     // position 1: certain C (match)
-      [0.25, 0.25, 0.25, 0.25]  // position 2: uniform
-    ];
+    let parent = array![[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.25, 0.25, 0.25, 0.25]];
+    let child = array![[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.25, 0.25, 0.25, 0.25]];
     let msg_to_parent = make_dense_seq_dis(parent);
     let msg_to_child = make_dense_seq_dis(child);
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    // Should have 3 rows of coefficients
-    assert_eq!(contribution.coefficients.nrows(), 3);
-    assert_eq!(contribution.coefficients.ncols(), 4); // 4 eigenvalues for JC69
+    assert_eq!(3, contribution.coefficients.nrows());
+    assert_eq!(4, contribution.coefficients.ncols());
   }
 
   #[test]
   fn test_get_coefficients_row_independence() {
-    // Each position's coefficients should be computed independently
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Single position with certain A
     let single_parent = array![[1.0, 0.0, 0.0, 0.0]];
     let single_child = array![[0.25, 0.25, 0.25, 0.25]];
     let single_contribution = get_coefficients(
@@ -46,15 +34,8 @@ mod tests {
       &gtr,
     );
 
-    // Multiple positions, first matches the single case
-    let multi_parent = array![
-      [1.0, 0.0, 0.0, 0.0],
-      [0.0, 0.0, 1.0, 0.0] // different state
-    ];
-    let multi_child = array![
-      [0.25, 0.25, 0.25, 0.25],
-      [0.5, 0.5, 0.0, 0.0] // different distribution
-    ];
+    let multi_parent = array![[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]];
+    let multi_child = array![[0.25, 0.25, 0.25, 0.25], [0.5, 0.5, 0.0, 0.0]];
     let multi_contribution = get_coefficients(
       &make_dense_seq_dis(multi_parent),
       &make_dense_seq_dis(multi_child),

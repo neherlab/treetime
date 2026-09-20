@@ -19,11 +19,9 @@ mod tests {
       gtr,
     };
 
-    // At different branch lengths, exp(λt) changes for non-zero eigenvalues
     let metrics_short = evaluate_sparse_contribution(&contribution, 0.01).expect("valid branch length");
     let metrics_long = evaluate_sparse_contribution(&contribution, 1.0).expect("valid branch length");
 
-    // Log-LH should differ at different branch lengths
     assert!(
       (metrics_short.log_lh.value() - metrics_long.log_lh.value()).abs() > 1e-6,
       "log-LH should differ at different branch lengths"
@@ -32,14 +30,11 @@ mod tests {
 
   #[test]
   fn test_jc69_eigenvalues_structure() {
-    // JC69 has one zero eigenvalue and three equal negative eigenvalues
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Find the zero eigenvalue (should be one)
     let zero_count = gtr.eigvals.iter().filter(|&&ev| ev.abs() < 1e-10).count();
-    assert_eq!(zero_count, 1, "JC69 should have exactly one zero eigenvalue");
+    assert_eq!(1, zero_count, "JC69 should have exactly one zero eigenvalue");
 
-    // All eigenvalues should be <= 0
     for &ev in &gtr.eigvals {
       assert!(ev <= 1e-10, "JC69 eigenvalues should be non-positive");
     }

@@ -62,7 +62,7 @@ mod tests {
     )?;
 
     let dists = root_to_tip_distances(&graph, &branch_lengths);
-    assert_eq!(dists.len(), 2);
+    assert_eq!(2, dists.len());
     assert_abs_diff_eq!(dists[0], dists[1], epsilon = 1e-6);
     Ok(())
   }
@@ -112,8 +112,6 @@ mod tests {
       &BrentParams::default(),
     )?;
 
-    // The optimal root is interior (not at an endpoint), so test the snap
-    // logic directly via the endpoint mapping by verifying the split convention.
     assert!(best.edge.is_some());
     assert!(
       best.split > 0.0 && best.split < 1.0,
@@ -123,8 +121,6 @@ mod tests {
     Ok(())
   }
 
-  // The optimal split on edge i->B (~x=0.28 from source=i) is closer to i than
-  // to B, so snap-to-nearest reroots to internal node i -- a real topology change.
   #[test]
   fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;

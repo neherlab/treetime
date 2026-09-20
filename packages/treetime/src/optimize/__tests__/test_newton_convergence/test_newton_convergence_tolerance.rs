@@ -53,11 +53,9 @@ mod tests {
     assert!(tol.is_finite(), "Tolerance must be finite for branch_length={bl}");
   }
 
-  /// sqrt-space tolerance uses 0.5 * η * s to correct the 2x factor
-  /// from Δt/t ≈ 2Δs/s.
   #[test]
   fn test_newton_tolerance_sqrt_half_factor() {
-    let s = 0.3; // t = 0.09
+    let s = 0.3;
     let tol = newton_tolerance_sqrt(s);
     assert_abs_diff_eq!(tol, 0.5 * 0.001 * 0.3, epsilon = 1e-15);
   }
@@ -68,21 +66,13 @@ mod tests {
     assert_abs_diff_eq!(tol, 1e-8, epsilon = 1e-15);
   }
 
-  /// log-space tolerance is constant (η ≈ 0.001), independent of |u|.
   #[test]
   fn test_newton_tolerance_log_is_constant() {
     let tol = newton_tolerance_log();
     assert_abs_diff_eq!(tol, NEWTON_REL_TOL.ln_1p(), epsilon = 1e-15);
-    // For η = 0.001, ln(1.001) ≈ 0.0009995
     assert_abs_diff_eq!(tol, 0.001_f64.ln_1p(), epsilon = 1e-15);
   }
 
-  /// The implied branch-length relative tolerance Δt/t is approximately η
-  /// for all three parameterizations.
-  ///
-  /// - t-space: Δt/t ≈ tol_t / t = η (exact by construction)
-  /// - sqrt-space: Δt/t ≈ 2 * tol_s / s = 2 * 0.5*η*s / s = η
-  /// - log-space: Δt/t ≈ tol_u = ln(1+η) ≈ η
   #[rustfmt::skip]
   #[rstest]
   #[case::small( 0.001)]
@@ -92,29 +82,18 @@ mod tests {
   fn test_newton_tolerance_implied_relative_tolerance_consistent(#[case] t: f64) {
     let eta = NEWTON_REL_TOL;
 
-    // t-space: implied Δt/t = tol / t
     let implied_t = newton_tolerance_t(t) / t;
 
-    // sqrt-space: implied Δt/t ≈ 2 * tol_s / s
     let s = t.sqrt();
     let implied_sqrt = 2.0 * newton_tolerance_sqrt(s) / s;
 
-    // log-space: implied Δt/t ≈ tol_u (constant)
     let implied_log = newton_tolerance_log();
 
-    // All three should be approximately η
     assert_abs_diff_eq!(implied_t, eta, epsilon = 1e-10);
     assert_abs_diff_eq!(implied_sqrt, eta, epsilon = 1e-10);
-    // ln(1+η) ≈ η - η²/2, so the difference from η is ~η²/2 ≈ 5e-7
     assert_abs_diff_eq!(implied_log, eta, epsilon = 1e-6);
   }
 
-  /// The log-space tolerance is constant in $u$, independent of $|\ln(t)|$.
-  /// A tolerance proportional to $|u|$ would grow unboundedly as branches
-  /// shrink, weakening the convergence criterion at exactly the values
-  /// where extra precision matters. A constant $\eta$ in $u$-space
-  /// corresponds to a constant relative tolerance in $t$-space because
-  /// $du = dt/t$.
   #[rustfmt::skip]
   #[rstest]
   #[case::moderate(1e-3 )]
@@ -122,9 +101,8 @@ mod tests {
   #[case::tiny(    1e-12)]
   #[trace]
   fn test_newton_tolerance_log_does_not_grow_with_short_branches(#[case] t: f64) {
-    let _u = t.ln(); // just to show what u would be
+    let _u = t.ln();
     let tol = newton_tolerance_log();
-    // Tolerance is constant, always ≈ 0.001, never grows with |u|
     assert!(tol < 0.002, "Log tolerance should be ≈0.001, got {tol} at t={t}");
     assert!(tol > 0.0009, "Log tolerance should be ≈0.001, got {tol} at t={t}");
   }

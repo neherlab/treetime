@@ -3,10 +3,6 @@ use crate::gtr::infer_gtr::site_specific::MutationCountsSiteSpecific;
 use ndarray::Array3;
 use ndarray::prelude::*;
 
-/// Simulate per-site mutation counts from a known site-specific GTR model.
-///
-/// For each site a, generates synthetic n_ija and T_ia consistent with the
-/// model's W, pi_a, and mu_a: n_ija[i,j,a] = pi_a[i] * W[i,j] * T_ia[j,a] * mu_a
 pub fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCountsSiteSpecific {
   let n = gtr.pi.nrows();
   let seq_len = gtr.seq_len;
@@ -37,18 +33,16 @@ pub fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCounts
   }
 }
 
-/// Convert nested JSON array [[r0c0, r0c1, ...], [r1c0, ...]] to Array2.
 pub fn value_to_array2(value: &serde_json::Value) -> Array2<f64> {
-  let rows: Vec<Vec<f64>> = serde_json::from_value(value.clone()).unwrap();
+  let rows: Vec<Vec<f64>> = serde::Deserialize::deserialize(value).unwrap();
   let nrows = rows.len();
   let ncols = rows[0].len();
   let flat: Vec<f64> = rows.into_iter().flatten().collect();
   Array2::from_shape_vec((nrows, ncols), flat).unwrap()
 }
 
-/// Convert nested JSON array [[[d000, d001, ...], ...], ...] to Array3.
 pub fn value_to_array3(value: &serde_json::Value) -> Array3<f64> {
-  let dim0: Vec<Vec<Vec<f64>>> = serde_json::from_value(value.clone()).unwrap();
+  let dim0: Vec<Vec<Vec<f64>>> = serde::Deserialize::deserialize(value).unwrap();
   let d0 = dim0.len();
   let d1 = dim0[0].len();
   let d2 = dim0[0][0].len();

@@ -8,14 +8,12 @@ mod tests {
 
   #[test]
   fn test_grid_search_one_mutation_dominates_range() {
-    // When one_mutation is large relative to branch_length,
-    // the range should still be valid
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
     let branch_length = 0.001;
-    let one_mutation = 0.01; // 10x branch_length
+    let one_mutation = 0.01;
 
     let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let lower = grid[0];

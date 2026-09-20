@@ -43,8 +43,6 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Per-leaf date inputs as a value map. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
-  /// which `seed_from_values` reads as no constraint.
   fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> DateConstraints {
     let dates = btreemap! {
       o!("A") => 2013.0,
@@ -91,7 +89,6 @@ mod tests {
 
   #[test]
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
-    // Test that reroot works correctly with sparse partitions when edge split is enabled
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
@@ -133,11 +130,9 @@ mod tests {
 
     let partitions = vec![sparse_partition];
 
-    // Record initial state
     let initial_leaf_count = graph.get_leaves().count();
     let initial_node_count = graph.get_nodes().count();
 
-    // Should complete without error - edge split and trivial root removal are now always enabled
     let names_tt_3 = names;
     let (clock_model, partitions) = reroot_tree(
       &mut graph,
@@ -154,31 +149,25 @@ mod tests {
       &names_tt_3,
     )?;
 
-    // Verify we still have a valid tree with exactly one root
     let root = graph.get_exactly_one_root()?;
 
-    // Root should have no parent edges (it's the true root)
     assert!(root.inbound().is_empty(), "Root should have no inbound edges");
 
-    // Leaf count must be preserved
     assert_eq!(
       graph.get_leaves().count(),
       initial_leaf_count,
       "Leaf count should be unchanged"
     );
 
-    // Node count may increase by 1 if edge was split, but never decrease
     assert!(
       graph.get_nodes().count() >= initial_node_count,
       "Node count should not decrease after reroot"
     );
 
-    // Clock model should have reasonable R² (r_val² > 0.5 for this well-structured tree)
     let r_val = clock_model.r_val().expect("Clock model should have r_val");
     let r_squared = r_val * r_val;
     assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
 
-    // Clock model chisq should be finite and positive
     let chisq = clock_model.chisq().expect("Clock model should have chisq");
     assert!(
       chisq.is_finite() && chisq >= 0.0,
@@ -190,8 +179,6 @@ mod tests {
 
   #[test]
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
-    // Tree: (A:0.1,B:0.2)root;
-    // After reroot to A, edge direction inverts
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -203,7 +190,6 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
     let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
 
-    // Find edge from root to A
     let edge_to_a_key = graph
       .get_edges()
       .find(|e| {
@@ -214,15 +200,14 @@ mod tests {
       .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
-    // Create sparse partition with manually seeded edge data
-    let sub_original = Sub::new(c(b'A'), 5_usize, c(b'G'))?; // A5G: ref=A, qry=G
+    let sub_original = Sub::new(c(b'A'), 5_usize, c(b'G'))?;
     let indel_original = InDel::del(
       (10, 12),
       seq![
         AsciiChar::from_byte_unchecked(b'A'),
         AsciiChar::from_byte_unchecked(b'C')
       ],
-    )?; // deletion=true
+    )?;
 
     let partition = PartitionMarginalSparse {
       index: 0,
@@ -242,7 +227,6 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
     };
 
-    // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
     let changes = RerootChanges {
       inverted_edge_keys: vec![edge_to_a_key],
       ..RerootChanges::default()
@@ -250,18 +234,14 @@ mod tests {
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
-    // Verify substitution is inverted
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
     let sub_after = &edge_data.fitch_subs()[0];
     assert_eq!(sub_after.reff(), c(b'G'), "Sub ref should be swapped to G");
     assert_eq!(sub_after.qry(), c(b'A'), "Sub qry should be swapped to A");
 
-    // Verify indel is inverted
     let indel_after = &edge_data.indels[0];
     assert!(!indel_after.is_deletion(), "Indel direction should be toggled");
 
-    // The reroot returns a reconstruction with no per-edge results: the messages and estimates of the
-    // previous update describe the pre-reroot topology, and the next marginal update rebuilds them.
     assert!(
       recon.edges.backward.is_empty() && recon.edges.forward.is_empty() && recon.edges.estimates.is_empty(),
       "a reroot carries no per-edge results across"
@@ -272,11 +252,6 @@ mod tests {
 
   #[test]
   fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
-    // Test that update_partition_after_reroot inverts edge mutations on the reroot path.
-    // Note: This method does NOT compute node sequences - that's done by the subsequent
-    // marginal update pass (process_node_backward + process_node_forward).
-    //
-    // Tree: (A:0.1,B:0.2)root;
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -288,7 +263,6 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
     let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
 
-    // Find edge from root to A
     let edge_to_a_key = graph
       .get_edges()
       .find(|e| {
@@ -299,10 +273,8 @@ mod tests {
       .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
-    // Create root sequence with specific characters
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
 
-    // Edge has substitution at position 2: root has G, child has T (G->T in parent->child direction)
     let sub = Sub::new(c(b'G'), 2_usize, c(b'T'))?;
 
     let partition = PartitionMarginalSparse {
@@ -323,7 +295,6 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 8]),
     };
 
-    // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
     let changes = RerootChanges {
       inverted_edge_keys: vec![edge_to_a_key],
       ..RerootChanges::default()
@@ -331,7 +302,6 @@ mod tests {
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
-    // Verify edge mutation is inverted: was G->T, now should be T->G
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
     assert_eq!(edge_data.fitch_subs().len(), 1);
     let inverted_sub = &edge_data.fitch_subs()[0];
@@ -347,8 +317,6 @@ mod tests {
     );
     assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");
 
-    // Verify root_sequence is updated: original root had G at pos 2,
-    // child A had T. After reroot to A, new root_sequence should have T at pos 2.
     let expected_new_root_seq = {
       let mut s = root_seq;
       s[2] = c(b'T');
@@ -407,9 +375,6 @@ mod tests {
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
-    // Original: root has "ACGTACGT", edge to A has deletion at [2,4) (G,T -> gap).
-    // After inversion the indel becomes an insertion. Going from old root to new
-    // root in original direction, the child had gaps at [2,4).
     let mut expected = root_seq;
     expected[2] = alphabet.gap();
     expected[3] = alphabet.gap();
@@ -446,9 +411,9 @@ mod tests {
       .ok_or_else(|| make_report!("Edge AB->A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
-    let sub1 = Sub::new(c(b'A'), 0_usize, c(b'G'))?; // root->AB: A0G
-    let sub2 = Sub::new(c(b'G'), 0_usize, c(b'T'))?; // AB->A: G0T (cumulative at pos 0)
-    let sub3 = Sub::new(c(b'C'), 1_usize, c(b'A'))?; // AB->A: C1A
+    let sub1 = Sub::new(c(b'A'), 0_usize, c(b'G'))?;
+    let sub2 = Sub::new(c(b'G'), 0_usize, c(b'T'))?;
+    let sub3 = Sub::new(c(b'C'), 1_usize, c(b'A'))?;
 
     let partition = PartitionMarginalSparse {
       index: 0,
@@ -471,7 +436,6 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
 
-    // Reroot from root through AB to A: two inverted edges
     let changes = RerootChanges {
       inverted_edge_keys: vec![edge_root_ab, edge_ab_a],
       ..RerootChanges::default()
@@ -479,8 +443,6 @@ mod tests {
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
-    // Original path: root(ACGTACGT) -> AB (pos0: A->G) -> A (pos0: G->T, pos1: C->A)
-    // New root = A: pos0 = T, pos1 = A, rest unchanged from root
     let mut expected = root_seq;
     expected[0] = c(b'T');
     expected[1] = c(b'A');
@@ -494,8 +456,6 @@ mod tests {
 
   #[test]
   fn test_reroot_tree_sparse_flow_does_not_panic() -> Result<(), Report> {
-    // Regression test: verify reroot_tree completes without panicking
-    // when keep_root=false (reroot enabled) with sparse partitions
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
@@ -537,13 +497,10 @@ mod tests {
 
     let partitions = vec![sparse_partition];
 
-    // Record initial state
     let initial_leaf_count = graph.get_leaves().count();
 
-    // Initialize marginal for the sparse partition
     let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
-    // First reroot call (simulating keep_root=false flow)
     let names_tt_2 = names.clone();
     let (clock_model_1, partitions) = reroot_tree(
       &mut graph,
@@ -560,7 +517,6 @@ mod tests {
       &names_tt_2,
     )?;
 
-    // Verify tree validity after first reroot
     let _ = graph.get_exactly_one_root()?;
     assert_eq!(
       graph.get_leaves().count(),
@@ -570,9 +526,6 @@ mod tests {
 
     let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
 
-    // Second reroot call (simulating refinement iteration). The reroot leaves the named leaves and
-    // their stable keys in place, so the same date constraints seed the post-reroot date state; the
-    // split node the reroot introduced gets no constraint entry, matching a fresh seed.
     let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
     let names_tt_1 = names;
     let (clock_model_2, partitions) = reroot_tree(
@@ -590,7 +543,6 @@ mod tests {
       &names_tt_1,
     )?;
 
-    // Verify tree validity after second reroot
     let _ = graph.get_exactly_one_root()?;
     assert_eq!(
       graph.get_leaves().count(),
@@ -598,17 +550,13 @@ mod tests {
       "Leaf count should be unchanged after second reroot"
     );
 
-    // Second reroot with fixed rate should maintain or improve R²
-    // (or have no r_val if rate was fixed)
     if let (Some(r2_1), Some(r2_2)) = (r_squared_1, clock_model_2.r_val().map(|r| r * r)) {
-      // Allow small tolerance for floating point
       assert!(
         r2_2 >= r2_1 - 1e-6,
         "Second reroot R² ({r2_2}) should be >= first R² ({r2_1})"
       );
     }
 
-    // Both clock models should have finite chisq
     let chisq_1 = clock_model_1.chisq().expect("First clock model should have chisq");
     assert!(
       chisq_1.is_finite() && chisq_1 >= 0.0,

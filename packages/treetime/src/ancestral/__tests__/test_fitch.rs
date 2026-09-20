@@ -32,16 +32,10 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
-  /// Retrieve the name of a graph node by its key from the threaded name map. Panics if unnamed.
   fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
     names[&key].clone().expect("node has name")
   }
 
-  /// Collect substitution mutations on every edge, keyed by "parent->child" label.
-  ///
-  /// Each edge's substitutions are formatted as strings (e.g. "A1G" for A->G at position 1).
-  /// Used to verify that compression (backward + forward + cleanup) correctly placed
-  /// mutations on branches.
   fn collect_edge_subs(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -63,12 +57,6 @@ mod tests {
       .collect()
   }
 
-  /// Return the sorted list of alignment positions that are variable at the root node.
-  ///
-  /// After Fitch's backward pass, variable positions are those where the intersection of
-  /// child state sets was either empty (union taken) or contained more than one state
-  /// (ambiguous intersection). Positions where the intersection was a singleton are resolved
-  /// immediately and do not appear as variable.
   fn get_root_variable_positions(graph: &Graph, partition: &PartitionFitch) -> Vec<usize> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.key();
@@ -81,13 +69,6 @@ mod tests {
       .collect_vec()
   }
 
-  /// Return the Fitch state sets at each variable position of the root node.
-  ///
-  /// After the backward pass, each variable position holds the set of candidate nucleotide
-  /// states. The set is either a multi-element intersection (children partially agree) or the
-  /// union of child state sets (children share no common state, implying a state change).
-  /// Singleton intersections (all children agree on one state) are resolved immediately and
-  /// do not appear in this map.
   fn get_root_state_sets(graph: &Graph, partition: &PartitionFitch) -> BTreeMap<usize, String> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.key();
@@ -100,8 +81,6 @@ mod tests {
       .collect()
   }
 
-  /// Look up a node by name and return its variable positions after the Fitch backward pass.
-  /// Panics if no node with the given name exists.
   fn get_node_variable_positions_by_name(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -123,10 +102,6 @@ mod tests {
     panic!("Node {name} not found");
   }
 
-  /// Return the reconstructed sequence at the root node as a string.
-  ///
-  /// After the backward pass, unresolved variable positions are marked with '~'.
-  /// After the forward pass, all positions are resolved to concrete nucleotides.
   fn get_root_seq(graph: &Graph, partition: &PartitionFitch) -> String {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.key();
@@ -148,11 +123,6 @@ mod tests {
       .collect()
   }
 
-  /// Collect insertion/deletion (indel) mutations on every edge, keyed by "parent->child" label.
-  ///
-  /// Each indel is formatted as a range with parent and child states (e.g. "12--13: T -> -"
-  /// for a deletion of T at positions 12-13). Used to verify that the Fitch algorithm correctly
-  /// identifies gap openings, extensions, and insertions relative to the ancestral sequence.
   fn collect_edge_indels(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -176,20 +146,6 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  /// Fitch maximum parsimony reconstruction on a balanced 4-taxon binary tree (Fitch 1971).
-  ///
-  /// Tree topology: ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01
-  ///
-  /// Verifies that the full Fitch pipeline (backward + forward + cleanup, then reconstruction
-  /// traversal) produces the correct ancestral sequences at internal nodes (root, AB, CD).
-  /// The alignment contains substitutions, ambiguous bases (N, R), and gap patterns to
-  /// exercise all code paths.
-  ///
-  /// Only internal node sequences are emitted (leaves excluded via `include_leaves=false`).
-  /// Expected sequences are hand-derived from the Fitch intersection/union rule applied
-  /// bottom-up, then resolved top-down: at the root, the alphabetically first state from
-  /// the candidate set is chosen (no parent to prefer); at non-root nodes, the parent
-  /// state is preferred when present in the child's state set.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -259,11 +215,6 @@ mod tests {
     Ok(())
   }
 
-  /// Same Fitch reconstruction as `test_ancestral_reconstruction_fitch`, but with
-  /// `include_leaves=true` so that both internal and leaf node sequences are emitted.
-  ///
-  /// Verifies that leaf sequences pass through unchanged (the algorithm must not alter
-  /// observed data) and that internal node sequences match the expected reconstruction.
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -386,17 +337,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify substitution and indel mutations placed on individual edges by Fitch's algorithm.
-  ///
-  /// Uses the same 4-taxon tree and alignment as `test_ancestral_reconstruction_fitch`.
-  /// After running `compress_sequences()` (backward + forward + cleanup), inspects each
-  /// edge for:
-  /// - Substitutions: point mutations between parent and child states (e.g. "C6G")
-  /// - Indels: gap openings/closings with position ranges (e.g. "12--13: T -> -")
-  ///
-  /// This tests the mutation-placement logic in the forward pass, verifying that the diff
-  /// between parent and child sequences is correctly decomposed into substitution and
-  /// indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -433,7 +373,6 @@ mod tests {
     };
     compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
-    // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")    => vec_of_owned!["C6G", "T8C"],
@@ -445,7 +384,6 @@ mod tests {
     };
     assert_eq!(expected_subs, actual_subs);
 
-    // Verify indels on edges
     let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec_of_owned!["14--16: -- -> AC"],
@@ -460,24 +398,8 @@ mod tests {
     Ok(())
   }
 
-  /// Fitch algorithm with complex gap (indel) patterns on a 5-taxon asymmetric tree.
-  ///
-  /// Tree: ((A,B)AB,(C,(D,E)DE)CDE)root
-  ///
-  /// Standard Fitch parsimony (Fitch 1971) operates on single characters. This
-  /// implementation extends it with range-based gap tracking for multi-position insertions
-  /// and deletions. Tests three challenging indel scenarios via `compress_sequences()`
-  /// (backward + forward + cleanup):
-  /// - Overlapping deletions: leaves A and B have deletions at different but overlapping
-  ///   positions, requiring the algorithm to reconstruct which gaps are ancestral vs derived.
-  /// - Root-level deletion: the root itself carries a gap that propagates to subtrees.
-  /// - Variable inserted sequence: positions 2-3 in subtree DE are inserted (absent in
-  ///   the rest of the tree), and the inserted characters differ between D and E,
-  ///   requiring both indel and substitution tracking within the insertion.
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
-    // Test cases: a) deletions overlap, b) root has a deletion, c) inserted sequence is variable
-    // In DE, position 3 is inserted, but it varies in D and E
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -514,7 +436,6 @@ mod tests {
     };
     compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
-    // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")     => vec![],
@@ -528,7 +449,6 @@ mod tests {
     };
     assert_eq!(expected_subs, actual_subs);
 
-    // Verify indels on edges
     let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec![o!("3--4: A -> -")],
@@ -545,22 +465,8 @@ mod tests {
     Ok(())
   }
 
-  /// Fitch algorithm on a tree with a polytomy (multifurcation).
-  ///
-  /// Tree: ((A,B)AB,(C,D,E)CDE)root - node CDE has 3 children instead of 2.
-  ///
-  /// Fitch's algorithm generalizes from binary to n-ary nodes: the backward pass computes
-  /// the intersection of all n child state sets. If the intersection is empty, it takes
-  /// the union (implying at least one state change). The forward pass resolves ambiguities
-  /// using the parent state when it is present in the child's state set.
-  ///
-  /// Uses the same alignment as `test_fitch_complex_gaps` but with a different tree topology
-  /// (D and E are direct children of CDE rather than grouped under a DE intermediate node).
-  /// This changes which substitutions and indels appear on which edges compared to the
-  /// binary tree version.
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
-    // Test polytomy (node with more than 2 children)
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -580,7 +486,6 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    // CDE is a polytomy with 3 children: C, D, E
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -598,15 +503,6 @@ mod tests {
     };
     compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
 
-    // Verify substitutions on edges
-    //
-    // Position 4 exercises the multifurcation recurrence. C and D read `T` there while E reads
-    // `C`, so the child state sets are {T}, {T}, {C}: no state is shared by all three. Fitch's
-    // union fallback would retain {T,C} and commit `C`, charging one substitution to each of
-    // `CDE->C` and `CDE->D` plus `A4C` on `root->CDE`, for three changes. The plurality is {T},
-    // which commits `T` and charges only `CDE->E` plus `A4T` on `root->CDE`, for two. Two is
-    // minimal: B reads `A`, C and D read `T`, and E reads `C`, three distinct states in separate
-    // subtrees, so at least two changes are unavoidable.
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")     => vec![],
@@ -619,7 +515,6 @@ mod tests {
     };
     assert_eq!(expected_subs, actual_subs);
 
-    // Verify indels on edges
     let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec![o!("3--4: A -> -")],
@@ -635,26 +530,6 @@ mod tests {
     Ok(())
   }
 
-  /// Inspect intermediate state of Fitch's algorithm between the backward and forward passes.
-  ///
-  /// Fitch's algorithm (Fitch 1971) has two distinct phases:
-  ///
-  /// **Backward pass** (post-order, leaves to root): At each internal node, compute the
-  /// intersection of child state sets. Three outcomes per position:
-  /// - Singleton intersection (all children agree on one state): resolved immediately.
-  /// - Multi-element intersection (children partially agree): stored as variable, marked '~'.
-  /// - Empty intersection (children share no state, implying a state change): the union is
-  ///   stored as variable, marked '~'.
-  ///
-  /// **Forward pass** (pre-order, root to leaves): Resolve variable state sets to concrete
-  /// nucleotides. At the root (no parent), the alphabetically first state from the candidate
-  /// set is chosen via `StateSet::get_one()`. At non-root nodes, the parent state is chosen
-  /// when present in the child's state set. After this pass, all '~' markers are replaced.
-  ///
-  /// This test runs each pass separately and verifies:
-  /// - After backward: correct variable positions identified, state sets contain the
-  ///   expected candidate nucleotides, root sequence has '~' at unresolved positions.
-  /// - After forward: same variable positions are tracked, but root sequence is fully resolved.
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -690,52 +565,38 @@ mod tests {
       edges: btreemap! {},
     };
 
-    // Run backward pass only
     attach_seqs_to_graph(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
     fitch_backward(&graph, &mut partition)?;
 
     {
-      // After backward: variable positions identified, sequence has '~' markers
       let variable_positions = get_root_variable_positions(&graph, &partition);
       assert_eq!(vec![0, 2, 3, 5, 6], variable_positions);
 
-      // Positions 14-15 read as non-char ('.') rather than "AC". The root resolves 14..16 to a gap
-      // (AB leaves it `variable_indel`, CD is gapped, and `resolve_indels_backward` treats
-      // `variable_indel` as gap-compatible), so the backward mask covers them and the states A/C
-      // that leaf A carries there no longer propagate up. Before `gaps` was unioned into
-      // `non_char`, those columns kept a character state while the node reported them deleted,
-      // which let the forward pass emit a substitution inside its own deletion.
-      // See test_fitch_gap_sub_conflict.rs.
       let root_seq = get_root_seq(&graph, &partition);
       assert_eq!("~C~~C~~TGTATTG..", root_seq);
 
-      // Verify state sets at each variable position (which characters are possible)
       let state_sets = get_root_state_sets(&graph, &partition);
       assert_eq!(
         btreemap! {
-          0 => o!("{A, C, G, T}"),  // union: AB={A,G}, CD={C,T}, intersection empty
-          2 => o!("{A, G}"),        // union: AB=A (resolved), CD=G (resolved), intersection empty
-          3 => o!("{G, T}"),        // union: AB=T (resolved), CD=G (resolved), intersection empty
-          5 => o!("{C, G}"),        // intersection: AB={C,G}, CD={C,G}, intersection={C,G} (ambiguous)
-          6 => o!("{A, C, G}"),     // union: AB=C (resolved), CD={A,G}, intersection empty
+          0 => o!("{A, C, G, T}"),
+          2 => o!("{A, G}"),
+          3 => o!("{G, T}"),
+          5 => o!("{C, G}"),
+          6 => o!("{A, C, G}"),
         },
         state_sets
       );
 
-      // Verify internal node AB has variable positions (specific values depend on leaf data)
       let ab_vars = get_node_variable_positions_by_name(&graph, &names, &partition, "AB");
       assert!(!ab_vars.is_empty(), "AB should have variable positions");
 
-      // Verify internal node CD has variable positions
       let cd_vars = get_node_variable_positions_by_name(&graph, &names, &partition, "CD");
       assert!(!cd_vars.is_empty(), "CD should have variable positions");
     }
 
-    // Run forward pass
     fitch_forward(&graph, &mut partition)?;
 
     {
-      // After forward: variable positions still tracked, sequence resolved
       let variable_positions = get_root_variable_positions(&graph, &partition);
       assert_eq!(vec![0, 2, 3, 5, 6], variable_positions);
 
@@ -746,21 +607,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that the sparse partition remains consistent after rerooting on branch AB->A.
-  ///
-  /// Uses the same 4-taxon tree and alignment as `test_fitch_internals`. After Fitch
-  /// reconstruction, converts to a sparse partition, then places the new root at the
-  /// midpoint of the AB->A edge using `split_edge`. The old root is kept as a trivial node
-  /// (no merge). Verifies:
-  ///
-  /// - The root_sequence after reroot equals the AB node's sequence (new root sits on
-  ///   the AB->A branch, so it inherits AB's ancestral state with no further mutations).
-  /// - The child-side edge (new_root->A) retains the original AB->A substitutions and
-  ///   indels unchanged (mutations still describe AB-state to A-state).
-  /// - The parent-side edge (new_root->AB) is empty (no mutations between the split point
-  ///   and AB, since the split was placed at 0.0 relative to AB).
-  /// - The inverted root->AB edge (now AB->root) has its substitutions and indels inverted:
-  ///   reff and qry swapped, deletion flag toggled.
   #[test]
   fn test_fitch_reroot_sparse_on_branch_ab_to_a() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -803,7 +649,6 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
-    // Find relevant node keys and the AB->A edge key
     let old_root_key = graph.get_exactly_one_root()?.key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
@@ -814,7 +659,6 @@ mod tests {
       .map(|e| e.key())
       .expect("AB->A edge not found");
 
-    // Record original AB->A subs and indels before the split
     let orig_subs: Vec<String> = recon.partition.obs_edges[&edge_ab_a_key]
       .fitch_subs()
       .iter()
@@ -826,7 +670,6 @@ mod tests {
       .map(|i| i.to_string())
       .collect();
 
-    // Find the root->AB edge key (for verifying inversion)
     let edge_root_ab_key = graph
       .get_edges()
       .find(|e| e.source() == old_root_key && e.target() == ab_key)
@@ -844,16 +687,13 @@ mod tests {
       .map(|i| i.to_string())
       .collect();
 
-    // Split AB->A at 0.5 to insert new root node
     let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
     let new_root_key = split_info.new_node_key;
-    let parent_side_key = split_info.parent_side_edge_key; // AB -> new_root
-    let child_side_key = split_info.child_side_edge_key; // new_root -> A
+    let parent_side_key = split_info.parent_side_edge_key;
+    let child_side_key = split_info.child_side_edge_key;
 
-    // Invert graph topology: edges on path new_root -> old_root are inverted
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
-    // Keep old root as trivial node (no merge)
     let changes = RerootChanges {
       edge_split: Some(split_info),
       edge_merge: None,
@@ -862,10 +702,6 @@ mod tests {
 
     let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
-    // --- Verify root_sequence ---
-    // New root sits on AB->A (closer to AB side, split at 0.5 with empty parent-side).
-    // The only mutations on the path from old_root to new_root are via root->AB (now AB->root).
-    // After inversion, root_seq should reflect AB's state: ACATCCCTGTA--G--
     let expected_root_seq = "ACATCCCTGTA--G--";
     let actual_root_seq = recon.partition.root_sequence.as_str();
     assert_eq!(
@@ -873,8 +709,6 @@ mod tests {
       "root_sequence after reroot should equal AB's sequence"
     );
 
-    // --- Verify child-side edge (new_root->A) ---
-    // Should carry the original AB->A subs and indels unchanged
     let child_edge = &recon.partition.obs_edges[&child_side_key];
     let child_subs: Vec<String> = child_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let child_indels: Vec<String> = child_edge.indels.iter().map(|i| i.to_string()).collect();
@@ -887,8 +721,6 @@ mod tests {
       "child-side edge indels should equal original AB->A indels"
     );
 
-    // --- Verify parent-side edge (new_root->AB, was AB->new_root before inversion) ---
-    // Should be empty (no mutations between split point and AB)
     let parent_edge = &recon.partition.obs_edges[&parent_side_key];
     assert!(
       parent_edge.fitch_subs().is_empty(),
@@ -896,9 +728,6 @@ mod tests {
     );
     assert!(parent_edge.indels.is_empty(), "parent-side edge should have no indels");
 
-    // --- Verify inverted root->AB edge (now AB->root) ---
-    // Original root->AB: subs=[G4T, A7C], indels=[11--13: TT->--]
-    // After inversion: subs=[T4G, C7A], indels=[11--13: --->TT]
     let inv_edge = &recon.partition.obs_edges[&edge_root_ab_key];
     let inv_subs: Vec<String> = inv_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let inv_indels: Vec<String> = inv_edge.indels.iter().map(|i| i.to_string()).collect();
@@ -913,12 +742,9 @@ mod tests {
       "inverted AB->root indel should be toggled to insertion"
     );
 
-    // Sanity: original root->AB subs were [G4T, A7C]
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
 
-    // --- G1: new root node composition matches root_sequence ---
-    // ACATCCCTGTA--G--: A=3 C=4 G=2 T=3 -=4
     let root_node = &recon.partition.obs_nodes[&new_root_key];
     let c = AsciiChar::from_byte_unchecked;
     #[rustfmt::skip]
@@ -936,8 +762,6 @@ mod tests {
       "new root node composition should match root_sequence character counts"
     );
 
-    // --- G2: gap and non_char ranges match root_sequence ---
-    // Root sequence ACATCCCTGTA--G--: gaps at positions 11-12 and 14-15
     assert_eq!(
       vec![(11, 13), (14, 16)],
       root_node.gaps,
@@ -952,24 +776,12 @@ mod tests {
       "non_char should equal gaps when there are no N positions"
     );
 
-    // --- G3: edge_effective_length excludes non_char positions ---
-    // Root non_char: positions 11-12, 14-15 (4 positions)
-    // Child A non_char: gaps at 11-12 + N at 8-9 (from original sequence ACATCGCCNNA--GAC)
-    // Union: positions 8-9, 11-12, 14-15 = 6 positions
-    // Effective length = 16 - 6 = 10
     let effective = recon.partition.edge_effective_length(&graph, child_side_key)?;
     assert_eq!(
       10, effective,
       "effective length should exclude union of parent+child non_char positions"
     );
 
-    // Non-char positions (N, gap) are tracked through non_char ranges, not
-    // Fitch substitutions. Applying child-side subs+indels to root composition
-    // does NOT reproduce child composition when the child has N or gaps that
-    // the root does not.
-    //
-    // Child A has N at positions 8-9 where root has G,T. No Fitch sub exists
-    // for these positions because N is ambiguous (non-informative).
     let child_node = &recon.partition.obs_nodes[&a_key];
     let child_edge = &recon.partition.obs_edges[&child_side_key];
 
@@ -988,17 +800,6 @@ mod tests {
     Ok(())
   }
 
-  /// Reroot on branch AB->A with trivial root removal (edge_merge path).
-  ///
-  /// Same tree and alignment as `test_fitch_reroot_sparse_on_branch_ab_to_a`.
-  /// After splitting AB->A and inverting the path to the old root, the old root
-  /// becomes trivial (1 parent, 1 child). `remove_node_if_trivial` merges the
-  /// two edges around it. Verifies:
-  ///
-  /// - Root sequence is derived from inverted edges (not from merge parent_edge)
-  /// - Old root node is removed from the partition
-  /// - Merged edge has composed substitutions from both original edges
-  /// - New root node fields (gaps, non_char) are correct
   #[test]
   fn test_fitch_reroot_sparse_with_trivial_root_removal() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -1051,7 +852,6 @@ mod tests {
       .map(|e| e.key())
       .expect("AB->A edge not found");
 
-    // Record original root->CD subs (will appear in merged edge)
     let edge_root_cd_key = graph
       .get_edges()
       .find(|e| {
@@ -1080,14 +880,11 @@ mod tests {
         .collect()
     };
 
-    // Split AB->A at midpoint
     let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
     let new_root_key = split_info.new_node_key;
 
-    // Invert path from new_root to old_root
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
-    // Old root is now trivial (1 parent: AB, 1 child: CD) - remove it
     let (old_root_parent, old_root_child) = trivial_node_branch_lengths(&graph, old_root_key, &branch_lengths);
     let edge_merge = remove_node_if_trivial(&mut graph, old_root_key, old_root_parent, old_root_child)?;
     assert!(edge_merge.is_some(), "old root should be trivial after reroot");
@@ -1100,38 +897,28 @@ mod tests {
 
     let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
-    // Root sequence should be AB's ancestral state (derived from inverted edges)
     assert_eq!(
       "ACATCCCTGTA--G--",
       recon.partition.root_sequence.as_str(),
       "root_sequence should equal AB's sequence after reroot with merge"
     );
 
-    // Old root node should be removed
     assert!(
       !recon.partition.obs_nodes.contains_key(&old_root_key),
       "old root node should be removed from partition after trivial root removal"
     );
 
-    // New root node should have correct fields
     let root_node = &recon.partition.obs_nodes[&new_root_key];
     assert_eq!(vec![(11, 13), (14, 16)], root_node.gaps);
     assert!(root_node.unknown.is_empty());
     assert_eq!(root_node.gaps, root_node.non_char);
 
-    // Merged edge (AB->CD, replacing AB->root + root->CD) should have composed subs.
-    // Original root->AB: [G4T, A7C], inverted to AB->root: [T4G, C7A]
-    // Original root->CD: [A1C, A3G]
-    // After merge removal, the merged edge connects AB->CD.
-    // Composed subs: AB->root subs [T4G, C7A] chained with root->CD subs [A1C, A3G]
     let merge_info = changes.edge_merge.as_ref().unwrap();
     let merged_edge = &recon.partition.obs_edges[&merge_info.merged_edge_key];
 
-    // Sanity: original subs are what we expect
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
     assert_eq!(vec_of_owned!["A1C", "A3G"], orig_root_cd_subs);
 
-    // Merged AB->CD edge: inverted AB->root [T4G, C7A] chained with root->CD [A1C, A3G]
     let mut merged_subs: Vec<String> = merged_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     merged_subs.sort();
     assert_eq!(vec_of_owned!["A1C", "A3G", "C7A", "T4G"], merged_subs);
@@ -1139,11 +926,6 @@ mod tests {
     Ok(())
   }
 
-  /// After reroot, a marginal forward pass should produce non-zero fixed_counts.
-  ///
-  /// Invariant: rerooted sparse nodes must seed nonzero fixed_counts for outgoing
-  /// messages, since `Composition::with_seq` populates character counts from the
-  /// root sequence during `SparseNodePartition::new`.
   #[test]
   fn test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -1186,10 +968,8 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
-    // Run initial marginal pass before reroot
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
@@ -1214,7 +994,6 @@ mod tests {
 
     let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
-    // Run marginal pass after reroot
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let root_edge_totals: Vec<(_, usize)> = graph

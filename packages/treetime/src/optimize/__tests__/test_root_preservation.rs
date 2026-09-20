@@ -46,7 +46,7 @@ mod tests {
   fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> (f64, f64) {
     let root = graph.get_exactly_one_root().unwrap();
     let children = graph.children_of(root).collect::<Vec<_>>();
-    assert_eq!(children.len(), 2);
+    assert_eq!(2, children.len());
     let bl0 = branch_lengths[&children[0].1.key()].unwrap_or(0.0);
     let bl1 = branch_lengths[&children[1].1.key()].unwrap_or(0.0);
     (bl0, bl1)
@@ -55,8 +55,6 @@ mod tests {
   #[rustfmt::skip]
   const BIFURCATING_TREE: &str = "((A:0.05,B:0.05)AB:0.15,(C:0.05,D:0.05)CD:0.05)root:0.0;";
 
-  // Subtree AB has A/G at variable sites, subtree CD has T/C.
-  // This ensures the root arc carries real substitution signal and is not zero-optimal.
   const ALIGNMENT: &str = indoc! {r#"
     >A
     ACGTACGTAAGGACGT
@@ -151,11 +149,9 @@ mod tests {
     {
       let root = graph.get_exactly_one_root()?;
       let children = graph.children_of(root).collect::<Vec<_>>();
-      assert_eq!(children.len(), 3);
+      assert_eq!(3, children.len());
     }
 
-    // Trifurcating root: redistribution is skipped (only applies to len==2).
-    // The function should complete without error.
     let total_length = total_sequence_length(&partitions, &[]);
     let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
     let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);

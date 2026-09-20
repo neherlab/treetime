@@ -21,15 +21,6 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::LogLh;
 
-  /// Regression test: uniform outgroup message must not create false substitutions.
-  ///
-  /// Constructs a partition where the parent and child node posteriors are both
-  /// sharp at G (index 2), but the child edge's msg_to_child is uniform [0.25,
-  /// 0.25, 0.25, 0.25]. The old implementation compared per-edge message argmax:
-  /// msg_to_parent argmax = G, msg_to_child argmax = A (tie-breaks to index 0),
-  /// reporting a false G->A substitution. The fixed implementation compares node
-  /// posteriors: parent argmax = G, child argmax = G, correctly reporting zero
-  /// substitutions.
   #[test]
   fn test_dense_edge_subs_no_false_mutation_from_uniform_outgroup() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
@@ -41,13 +32,9 @@ mod tests {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
-    // Parent posterior: sharp at G (index 2) at position 0
     let parent_posterior = array![[0.0, 0.0, 1.0, 0.0]];
-    // Child posterior: sharp at G (index 2) at position 0
     let child_posterior = array![[0.0, 0.0, 1.0, 0.0]];
 
-    // `edge_subs` compares node posteriors, not per-edge messages, so a uniform down-message cannot
-    // fabricate a substitution: parent argmax = G and child argmax = G give zero subs.
     let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, 1);
     let node_states = btreemap! {
       parent_key => DenseNodeState {
@@ -66,13 +53,6 @@ mod tests {
     Ok(())
   }
 
-  /// Regression test: edge messages that disagree with posteriors must not mask
-  /// real substitutions.
-  ///
-  /// Constructs a partition where parent posterior = A and child posterior = C
-  /// (a real substitution), but both edge messages happen to have the same argmax
-  /// (both sharp at G). The old code would compare edge messages and report zero
-  /// substitutions, missing the real A->C change visible in the node posteriors.
   #[test]
   fn test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
@@ -84,16 +64,13 @@ mod tests {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
-    // Node posteriors: parent = A, child = C -> real substitution
     let parent_posterior = array![[1.0, 0.0, 0.0, 0.0]];
     let child_posterior = array![[0.0, 1.0, 0.0, 0.0]];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let parent_state = alphabet.char(0); // A
-    let child_state = alphabet.char(1); // C
+    let parent_state = alphabet.char(0);
+    let child_state = alphabet.char(1);
 
-    // `edge_subs` reads node posteriors directly, so the real A->C change is detected regardless of
-    // any per-edge message content.
     let partition = PartitionMarginalDense::new(0, alphabet, 1);
     let node_states = btreemap! {
       parent_key => DenseNodeState {
@@ -113,18 +90,6 @@ mod tests {
     Ok(())
   }
 
-  /// Parity test: dense edge_subs must match parent-child MAP sequence differences.
-  ///
-  /// After full marginal inference (backward + forward pass), the node posteriors
-  /// contain the complete marginal state distribution at each node. The MAP state
-  /// (argmax of the posterior) at each position defines the reconstructed sequence.
-  /// Branch mutations are differences between reconstructed parent and child
-  /// sequences at canonical (non-gap, non-ambiguous) positions.
-  ///
-  /// This test mirrors the sparse parity test
-  /// `test_sparse_edge_subs_match_reconstructed_branch_differences` in
-  /// `test_marginal_sparse.rs`, verifying that dense `edge_subs()` is consistent
-  /// with the node posteriors it reads.
   #[test]
   fn test_dense_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -139,7 +104,6 @@ mod tests {
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    // Collect edge_subs() results from all edges.
     let actual_by_edge: BTreeMap<_, _> = graph
       .get_edges()
       .map(|edge_ref| {
@@ -149,8 +113,6 @@ mod tests {
       })
       .collect();
 
-    // Build expected substitutions by comparing MAP states of node posteriors
-    // directly. This is independent of edge_subs() and serves as the oracle.
     let expected_by_edge: BTreeMap<_, _> = graph
       .get_edges()
       .map(|edge_ref| {
@@ -170,13 +132,6 @@ mod tests {
     Ok(())
   }
 
-  /// Gap positions must be excluded from dense edge_subs even when node posteriors
-  /// differ at those positions.
-  ///
-  /// Constructs a partition where one leaf has gaps at positions 1-2. The node
-  /// posteriors at gap positions are uniform (from treat_gap_as_unknown), which
-  /// could differ from the parent's non-gap posterior. The gap filter must prevent
-  /// these positions from appearing as substitutions.
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions_with_posteriors() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
@@ -188,10 +143,6 @@ mod tests {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
-    // Position 0: both A -> no sub
-    // Position 1: parent C, child uniform (gap) -> excluded by gap filter
-    // Position 2: parent G, child uniform (gap) -> excluded by gap filter
-    // Position 3: parent A, child C -> real sub
     #[rustfmt::skip]
     let parent_posterior = array![
       [1.0,  0.0,  0.0,  0.0],
@@ -222,19 +173,11 @@ mod tests {
 
     let subs = partition.edge_subs(&node_states, &graph, edge_key)?;
 
-    // Only position 3 (A->C) should appear; positions 1-2 are gap-filtered.
     let expected = vec![Sub::new(alphabet.char(0), 3_usize, alphabet.char(1))?];
     assert_eq!(expected, subs);
     Ok(())
   }
 
-  /// The is_canonical filter is present in dense edge_subs for consistency with
-  /// sparse edge_subs (marginal_sparse.rs:287), but it is structurally vacuous
-  /// for current profile shapes: dense profiles have n_canonical columns, so
-  /// argmax always maps to a canonical character. This test verifies the
-  /// filter's presence by ensuring the parity test oracle (which has the
-  /// filter) agrees with production. The parity test above already covers
-  /// this, but this dedicated test documents the design intent.
   #[test]
   fn test_dense_edge_subs_is_canonical_filter_present() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -251,8 +194,6 @@ mod tests {
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
       let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key)?;
-      // Every reported substitution must involve canonical states only.
-      // This validates the is_canonical filter is present and active.
       for sub in &subs {
         assert!(
           recon.partition.alphabet.is_canonical(sub.reff()),
@@ -290,12 +231,6 @@ mod tests {
     use crate::seq::mutation::Sub;
     use treetime_utils::array::ndarray::argmax_first;
 
-    /// Derive MAP-state substitutions from two node posteriors, skipping gap positions.
-    ///
-    /// This is the oracle for parity testing: it reads the same node posterior data
-    /// that edge_subs() reads, computes argmax independently, and compares. The
-    /// implementation deliberately avoids calling edge_subs() so the test is not
-    /// circular.
     pub fn diff_map_states(alphabet: &Alphabet, parent_node: &DenseNodeState, child_node: &DenseNodeState) -> Vec<Sub> {
       let parent_profile = &parent_node.profile.dis;
       let child_profile = &child_node.profile.dis;

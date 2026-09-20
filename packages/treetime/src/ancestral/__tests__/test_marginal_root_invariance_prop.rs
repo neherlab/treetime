@@ -7,12 +7,6 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(30))]
 
-    /// Felsenstein's pulley principle: for a reversible GTR model, the total log-likelihood
-    /// is invariant to root placement on an unrooted tree. Dense representation.
-    ///
-    /// Generates a random tree+alignment+GTR, reroots at a different internal node
-    /// (preserving the unrooted topology and branch lengths), and verifies that
-    /// dense marginal log-likelihoods agree between the two rootings.
     #[test]
     fn test_prop_marginal_dense_log_lh_root_invariance(
       input in arb_marginal_input_no_gaps(4, 10),
@@ -29,17 +23,6 @@ mod tests {
         "Dense root invariance violated: lh1={lh1}, lh2={lh2}, diff={diff}");
     }
 
-    /// Felsenstein's pulley principle: for a reversible GTR model, the total log-likelihood
-    /// is invariant to root placement on an unrooted tree. Sparse representation.
-    ///
-    /// Same strategy as the dense test, but uses sparse marginal reconstruction
-    /// (Fitch compression + marginal on variable positions only).
-    ///
-    /// Sparse root invariance: Fitch forward pass resolves ambiguous state
-    /// sets using parent states, which differ under different rootings. This
-    /// produces different compression patterns and different sets of edge
-    /// mutations, causing root-dependent likelihood contributions.
-    /// See kb/issues/M-ancestral-sparse-root-invariance.md.
     #[test]
     #[ignore = "sparse root invariance violation: max ~1e-2 (kb/issues/M-ancestral-sparse-root-invariance.md)"]
     fn test_prop_marginal_sparse_log_lh_root_invariance(
@@ -68,11 +51,6 @@ mod tests {
     };
     use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
-    /// Reroot a tree at a non-root internal node and return the new Newick string.
-    ///
-    /// Inverts edges along the path from the selected internal node to the old
-    /// root, then collapses the old root (now degree-2) by merging its two edges
-    /// into one with summed branch length. This preserves the unrooted topology.
     pub fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
       let nwk_parsed = nwk_read_str(newick)?;
       let names = nwk_parsed.names();
@@ -129,7 +107,7 @@ mod tests {
 
         let graph: Graph = graph;
         let leaves = graph.get_leaves().collect::<Vec<_>>();
-        assert_eq!(leaves.len(), 4, "Must have 4 leaves: {rerooted}");
+        assert_eq!(4, leaves.len(), "Must have 4 leaves: {rerooted}");
 
         Ok(())
       }

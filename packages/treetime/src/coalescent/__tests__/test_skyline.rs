@@ -19,9 +19,6 @@ mod tests {
     scaled_small_tree_dates(1.0)
   }
 
-  /// `small_tree_dates` with every node time scaled by `s` about the root (2000), so
-  /// all time intervals scale by `s` while the topology and relative timing are
-  /// preserved.
   fn scaled_small_tree_dates(s: f64) -> DatesMap {
     let base = 2000.0;
     btreemap! {
@@ -43,8 +40,8 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
 
-    assert_eq!(result.segment_boundaries.len(), 6);
-    assert_eq!(result.tc_values.len(), 5);
+    assert_eq!(6, result.segment_boundaries.len());
+    assert_eq!(5, result.tc_values.len());
     pretty_assert_ulps_eq!(
       result.tc_schedule.breakpoints().view(),
       result.segment_boundaries.slice(ndarray::s![1..5]),
@@ -146,7 +143,7 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
 
-    assert_eq!(result.tc_values.len(), 10);
+    assert_eq!(10, result.tc_values.len());
     assert!(result.log_likelihood.value().is_finite());
 
     Ok(())
@@ -154,8 +151,6 @@ mod tests {
 
   #[test]
   fn test_skyline_reported_likelihood_matches_model_evaluation() -> Result<(), Report> {
-    // The reported log-likelihood must equal the shared per-edge model cost
-    // evaluated on the returned piecewise-constant Tc(t).
     let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let params = SkylineParams {
@@ -190,30 +185,24 @@ mod tests {
     let result = optimize_skyline(&graph, &params, &node_times)?;
     let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution, &node_times)?.value();
 
-    // Oracle: the canonical per-edge Kingman cost assigns m - 1 merger-rate
-    // factors to an m-child polytomy (Kingman 1982, doi:10.1016/0304-4149(82)90011-4).
     pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
   }
 
   #[test]
   fn test_skyline_beats_or_matches_constant_tc() -> Result<(), Report> {
-    // The regularized skyline optimum should not have lower likelihood than the
-    // best constant Tc (a skyline with all segments equal is a feasible point).
     let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let params = SkylineParams {
       n_points: 4,
-      stiffness: 1e-6,  // near-zero smoothing: skyline free to fit each segment
-      tolerance: 1e-12, // converge hard so the slack below reflects only solver noise
+      stiffness: 1e-6,
+      tolerance: 1e-12,
       ..SkylineParams::default()
     };
 
     let result = optimize_skyline(&graph, &params, &node_times)?;
 
     let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph, &node_times)?;
-    // The constant Tc is a feasible skyline (all segments equal), so the skyline
-    // optimum can only match or beat its likelihood; the slack is solver noise.
     assert!(
       result.log_likelihood.value() >= constant_tc.likelihood.value() - 1e-10,
       "skyline LL {} should be >= constant-Tc LL {}",
@@ -226,10 +215,6 @@ mod tests {
 
   #[test]
   fn test_skyline_scale_invariant_trajectory() -> Result<(), Report> {
-    // The penalty charges squared log-fold-changes of Tc, so it is scale-independent:
-    // scaling every node time by a factor s scales the whole Tc(t) trajectory by s
-    // and leaves its shape unchanged. Equal-width boundaries scale with the span, so
-    // each segment's optimum shifts by exactly ln(s) in z = ln Tc.
     let params = SkylineParams {
       n_points: 4,
       stiffness: 2.0,

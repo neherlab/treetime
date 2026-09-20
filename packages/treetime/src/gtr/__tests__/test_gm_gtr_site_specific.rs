@@ -15,15 +15,6 @@ mod tests {
   use crate::gtr::__tests__::site_specific_support::{simulate_counts, value_to_array2, value_to_array3};
   use helpers::{load_gm_inputs, load_gm_outputs};
 
-  // Golden master tests for site-specific GTR models.
-  //
-  // Validates Rust v1 GTRSiteSpecific against Python v0 GTR_site_specific outputs.
-  // Inputs (gm_gtr_site_specific_inputs.json) define test parameters.
-  // Outputs (gm_gtr_site_specific_outputs.json) captured from v0 using gm_gtr_site_specific_capture.
-  //
-  // See also:
-  // - https://en.wikipedia.org/wiki/Characterization_test
-
   #[rstest]
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
@@ -37,7 +28,6 @@ mod tests {
 
     let gtr = build_from_input(input)?;
 
-    // Compare eigenvalues (per-site, sorted per column for ordering independence)
     let expected_eigvals = value_to_array2(&expected.eigenvals);
     for a in 0..gtr.seq_len {
       let mut actual_col: Vec<f64> = gtr.eigvals.column(a).to_vec();
@@ -49,7 +39,6 @@ mod tests {
       assert_abs_diff_eq!(expected_arr, actual_arr, epsilon = 1e-10);
     }
 
-    // Compare expQt at each captured time point
     for entry in &expected.exp_qts {
       let actual = gtr.expQt_raw(entry.time);
       let expected_qt = value_to_array3(&entry.exp_qt);
@@ -98,7 +87,7 @@ mod tests {
     let n_states = infer_input["n_states"].as_u64().unwrap() as usize;
     let seq_len = infer_input["seq_len"].as_u64().unwrap() as usize;
     let pi = value_to_array2(&infer_input["pi"]);
-    let mu: Vec<f64> = serde_json::from_value(infer_input["mu"].clone()).unwrap();
+    let mu: Vec<f64> = serde::Deserialize::deserialize(&infer_input["mu"]).unwrap();
     let mu = Array1::from_vec(mu);
     let W = value_to_array2(&infer_input["W"]);
     let total_time = infer_input["total_time"].as_f64().unwrap();
@@ -129,13 +118,8 @@ mod tests {
     let expected_pi = value_to_array2(&expected.pi);
     let expected_W = value_to_array2(&expected.W);
 
-    // Compare inferred pi against v0 oracle.
-    // Tolerance 1e-3: iterative convergence differs between numpy and ndarray due
-    // to floating-point arithmetic order. With dp=1e-5 and total_time=5000, the
-    // solvers converge to nearby but not identical fixed points.
     assert_abs_diff_eq!(result.pi, expected_pi, epsilon = 1e-3);
 
-    // Compare W ratios against v0 oracle
     let v1_ref = result.W[[0, 1]];
     let v0_ref = expected_W[[0, 1]];
     for i in 0..n_states {
@@ -149,7 +133,6 @@ mod tests {
     Ok(())
   }
 
-  /// Approximate-mode golden master: compare v1 interpolation against v0 interpolation.
   #[rstest]
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
@@ -166,9 +149,6 @@ mod tests {
     for entry in &expected.exp_qts {
       let actual = gtr.expQt(entry.time)?;
       let expected_qt = value_to_array3(&entry.exp_qt);
-      // v0 and v1 interpolation grids are identical (same 61-point non-uniform grid),
-      // so interpolated outputs should match closely. Tolerance 1e-8 accounts for
-      // floating-point differences in grid construction between numpy and ndarray.
       assert_abs_diff_eq!(actual, expected_qt, epsilon = 1e-8);
     }
 
@@ -178,7 +158,7 @@ mod tests {
   fn parse_input(input: &serde_json::Value) -> (usize, usize, Array1<f64>, Option<Array2<f64>>, Array2<f64>) {
     let n_states = input["n_states"].as_u64().unwrap() as usize;
     let seq_len = input["seq_len"].as_u64().unwrap() as usize;
-    let mu: Vec<f64> = serde_json::from_value(input["mu"].clone()).unwrap();
+    let mu: Vec<f64> = serde::Deserialize::deserialize(&input["mu"]).unwrap();
     let mu = Array1::from_vec(mu);
     let pi = value_to_array2(&input["pi"]);
     let W: Option<Array2<f64>> = if input["W"].is_null() {
