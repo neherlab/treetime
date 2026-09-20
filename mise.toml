@@ -24,6 +24,11 @@ taplo = "0.10.0"
 hadolint = "2.14.0"
 cargo-deny = "0.20.2"
 "github:astral-sh/hawk" = { version = "0.1.14", exe = "cargo-hawk" }
+# kache is the RUSTC_WRAPPER compiler cache the build, clippy, and dylint stores
+# share; the musl release is statically linked and runs on the Debian base image.
+"github:kunobi-ninja/kache" = { version = "0.13.0", asset_pattern = "kache-x86_64-unknown-linux-musl.tar.gz" }
+# cargo-llvm-cov backs the coverage report; the musl release runs on the base image.
+"github:taiki-e/cargo-llvm-cov" = { version = "0.9.1", asset_pattern = "cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz" }
 
 # nextest ships per-crate tags (cargo-nextest-<ver>), so the version is the full
 # tag. cargo-edit and the dylint binaries have no usable prebuilt for this glibc,
