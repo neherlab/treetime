@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
@@ -51,6 +46,7 @@ impl AlgorithmSummary {
     Self::new_from_name(&algorithm.to_string(), successes, failures)
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   /// Create a new AlgorithmSummary from test results using a string algorithm name
   pub fn new_from_name<T: TestCase>(
     algorithm_name: &str,

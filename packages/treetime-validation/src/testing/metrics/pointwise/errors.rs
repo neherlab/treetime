@@ -1,8 +1,3 @@
-#![allow(
-  clippy::integer_division,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
@@ -99,6 +94,7 @@ pub(super) fn compute_pointwise_errors(
   })
 }
 
+#[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn compute_median(sorted: &[f64]) -> f64 {
   if sorted.is_empty() {
     return 0.0;

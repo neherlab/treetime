@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::metrics::config::SpatialConfig;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
@@ -86,6 +81,7 @@ pub(super) fn compute_regional_metrics(
   })
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_region_stats(errors: &[f64]) -> RegionStats {
   if errors.is_empty() {
     return RegionStats {

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use serde::ser::SerializeSeq;
@@ -57,6 +52,7 @@ pub struct ToleranceSummary {
   pub support_mismatch_count: usize,
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub(super) fn compute_tolerance_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,

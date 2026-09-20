@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::plots::utils::{combined_range, expand_range, tolerance_label};
@@ -62,6 +57,7 @@ where
   Ok(())
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
@@ -118,6 +114,7 @@ where
   Ok(())
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,

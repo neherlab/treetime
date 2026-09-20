@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -17,6 +12,7 @@ use crate::testing::console::console::ValidationConsole;
 
 #[allow(clippy::multiple_inherent_impl)]
 impl ValidationConsole {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   /// Compute all metrics for the table
   pub(crate) fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,

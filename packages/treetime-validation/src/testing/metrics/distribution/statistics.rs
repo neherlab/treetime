@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
@@ -40,6 +35,7 @@ pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) ->
   })
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistics> {
   let mut sorted_errors: Vec<f64> = errors.iter().copied().filter(|x| x.is_finite()).collect();
   sorted_errors.sort_by_key(|&x| OrderedFloat(x));
@@ -88,6 +84,7 @@ pub(super) fn compute_std(data: &Array1<f64>) -> f64 {
   compute_std_from_sorted(&data.iter().copied().collect::<Vec<_>>(), mean)
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_std_from_sorted(sorted_data: &[f64], mean: f64) -> f64 {
   if sorted_data.len() <= 1 {
     return 0.0;
@@ -96,6 +93,7 @@ fn compute_std_from_sorted(sorted_data: &[f64], mean: f64) -> f64 {
   variance.sqrt()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub(super) fn compute_quantile(sorted: &[f64], q: f64) -> f64 {
   if sorted.is_empty() {
     return 0.0;
@@ -105,6 +103,7 @@ pub(super) fn compute_quantile(sorted: &[f64], q: f64) -> f64 {
   sorted[index.min(n - 1)]
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_skewness(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   if std <= 0.0 || sorted_data.len() < 3 {
     return 0.0;
@@ -114,6 +113,7 @@ fn compute_skewness(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   (n / ((n - 1.0) * (n - 2.0))) * skew_sum
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_kurtosis(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   if std <= 0.0 || sorted_data.len() < 4 {
     return 0.0;

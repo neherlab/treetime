@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
-)]
-
 use crate::testing::metrics::aggregate::domain_agreement::error_stats::{
   AbsoluteErrorStats, RelativeErrorStats, compute_absolute_error_statistics, compute_relative_error_statistics,
 };
@@ -52,6 +47,7 @@ impl DomainAgreementMetrics {
     Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   /// Creates new domain agreement metrics with custom tolerance thresholds
   pub fn new_with_thresholds(
     x: &Array1<f64>,
@@ -188,6 +184,7 @@ fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssess
 }
 
 impl fmt::Display for DomainAgreementMetrics {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let Self {
       total_points,
