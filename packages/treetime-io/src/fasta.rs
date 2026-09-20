@@ -45,8 +45,6 @@ impl FastaRecord {
 }
 
 impl From<FastaRecord> for AlignmentRecord {
-  /// Drop the parse-only fields (`desc`, `index`) and keep only the name and sequence the
-  /// reconstruction pipeline consumes.
   fn from(record: FastaRecord) -> Self {
     Self {
       name: record.seq_name,
@@ -95,7 +93,6 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     Self::from_paths(&[filepath], alphabet)
   }
 
-  /// Reads multiple files sequentially given a set of paths
   pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b A) -> Result<Self, Report> {
     let readers: Vec<Box<dyn BufRead + 'a>> = filepaths
       .iter()
@@ -113,24 +110,20 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     record.clear();
 
     if self.line.is_empty() {
-      // Read lines until we find the next record or EOF
       loop {
         self.line.clear();
         if self.reader.read_line(&mut self.line)? == 0 {
           if self.index > 0 {
-            // We have read at least one record  by the end of input - this is normal operation mode
             return Ok(());
           }
 
           if self.index == 0 && self.n_chars == 0 {
-            // We have read no records and no non-whitespace characters by the end of input
             warn!(
               "FASTA input is empty or consists entirely from whitespace: this is allowed but might not be what's intended"
             );
             return Ok(());
           }
 
-          // We have read some characters, but no records detected by the end of input
           return make_error!(
             "FASTA input is incorrectly formatted: expected at least one FASTA record starting with character '>', but none found"
           );
@@ -140,7 +133,7 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
         self.n_lines += 1;
         self.n_chars += trimmed.len();
         if trimmed.starts_with('>') {
-          break; // Found the header of the next record
+          break;
         }
       }
     }
@@ -154,14 +147,12 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     record.index = self.index;
     self.index += 1;
 
-    // Read sequence lines until the next header or EOF
     self.line.clear();
     while self.reader.read_line(&mut self.line)? > 0 {
       let trimmed = self.line.trim();
       self.n_lines += 1;
       self.n_chars += trimmed.len();
       if trimmed.starts_with('>') {
-        // We have reached the next record
         break;
       }
 
@@ -233,7 +224,6 @@ pub fn read_many_fasta_str<A: AlphabetLike>(
   read_many_fasta(reader)
 }
 
-// Writes sequences into given fasta file
 pub struct FastaWriter {
   writer: Box<dyn Write>,
 }

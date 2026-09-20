@@ -14,7 +14,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "First\nreader\n\nSecond\nreader\n\n");
+    assert_eq!("First\nreader\n\nSecond\nreader\n\n", result);
   }
 
   #[rstest]
@@ -25,7 +25,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "First\nreader\n\n");
+    assert_eq!("First\nreader\n\n", result);
   }
 
   #[rstest]
@@ -36,7 +36,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "First\nreader\nwithout\ntrailing\nnewline\n");
+    assert_eq!("First\nreader\nwithout\ntrailing\nnewline\n", result);
   }
 
   #[rstest]
@@ -47,7 +47,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "\n");
+    assert_eq!("\n", result);
   }
 
   #[rstest]
@@ -58,7 +58,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "\n\n");
+    assert_eq!("\n\n", result);
   }
 
   #[rstest]
@@ -70,7 +70,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "No\ntrailing\nnewline\nAnd\nneither\nhere\n");
+    assert_eq!("No\ntrailing\nnewline\nAnd\nneither\nhere\n", result);
   }
 
   #[rstest]
@@ -82,7 +82,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "\nSecond\n");
+    assert_eq!("\nSecond\n", result);
   }
 
   #[rstest]
@@ -94,7 +94,7 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "First\n\n");
+    assert_eq!("First\n\n", result);
   }
 
   #[rstest]
@@ -106,6 +106,6 @@ mod tests {
     let mut result = String::new();
     concat.read_to_string(&mut result).unwrap();
 
-    assert_eq!(result, "\n\n");
+    assert_eq!("\n\n", result);
   }
 }
