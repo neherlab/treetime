@@ -1,9 +1,5 @@
 //! Newick parser with automatic annotation dialect detection.
 #![allow(
-  clippy::wildcard_enum_match_arm,
-  reason = "matches the pest-generated Rule enum; the parser acts on the relevant rules and ignores the rest, and enumerating every grammar rule would break on grammar edits"
-)]
-#![allow(
   clippy::expect_used,
   reason = "structural invariants guaranteed by a successful pest parse against the inline grammar"
 )]
