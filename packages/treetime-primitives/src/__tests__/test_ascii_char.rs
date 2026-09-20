@@ -6,9 +6,6 @@ mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::io::json::json_read_str;
 
-  // Note: test_deserialize_invalid_fails uses serde_json directly to verify
-  // the raw deserialization error message content from the AsciiChar type.
-
   #[test]
   fn test_try_new_valid() -> Result<(), Report> {
     let actual = AsciiChar::try_new(127)?;

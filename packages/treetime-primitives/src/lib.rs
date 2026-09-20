@@ -11,8 +11,6 @@ pub use log_lh::LogLh;
 pub use seq::Seq;
 pub use seq_char::AsciiChar;
 
-/// Minimal trait for alphabet-like types used by I/O operations.
-/// Allows treetime-io to validate characters without depending on the full Alphabet type.
 pub trait AlphabetLike {
   fn contains(&self, c: AsciiChar) -> bool;
   fn chars(&self) -> impl Iterator<Item = AsciiChar>;

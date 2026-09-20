@@ -2,7 +2,6 @@ use crate::seq_char::AsciiChar;
 use eyre::Report;
 use treetime_utils::error::make_error;
 
-/// Represents genetic sequence (ASCII characters only)
 #[must_use]
 #[derive(Clone, PartialOrd, Ord, Default)]
 pub struct Seq {
@@ -25,23 +24,14 @@ impl Seq {
     Ok(Self { data: vec![ch; n] })
   }
 
-  /// Create a sequence from an ASCII string.
   #[allow(unsafe_code)]
   pub fn try_from_str(s: &str) -> Result<Self, Report> {
     if !s.is_ascii() {
       return make_error!("Seq: input contains non-ASCII characters");
     }
-    // SAFETY: We just validated that s.is_ascii() above
     Ok(unsafe { Self::from_str_unchecked(s) })
   }
 
-  /// Create a sequence from a pre-validated ASCII string.
-  ///
-  /// # Safety
-  ///
-  /// The caller must ensure that `s` contains only ASCII characters (bytes 0-127).
-  /// Passing non-ASCII input violates the type invariant and causes undefined behavior
-  /// when calling [`as_str`](Self::as_str).
   #[allow(unsafe_code)]
   pub unsafe fn from_str_unchecked(s: &str) -> Self {
     debug_assert!(
@@ -58,13 +48,11 @@ impl Seq {
     }
   }
 
-  /// Create a sequence from a vector of bytes.
   pub fn try_from_vec(vec: Vec<u8>) -> Result<Self, Report> {
     let data = vec.into_iter().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()?;
     Ok(Self { data })
   }
 
-  /// Create a sequence from a byte slice.
   pub fn try_from_slice(slice: &[u8]) -> Result<Self, Report> {
     let data = slice
       .iter()
@@ -112,14 +100,8 @@ impl Seq {
 
   #[allow(unsafe_code)]
   pub fn as_str(&self) -> &str {
-    // SAFETY: `self.data.as_ptr()` is guaranteed to be valid for reads and properly aligned
-    // because `data` is a `Vec<AsciiChar>`. The `AsciiChar` type ensures that each element is a valid
-    // single-byte ASCII character, making the conversion to a `u8` pointer valid.
     let byte_slice = unsafe { std::slice::from_raw_parts(self.data.as_ptr().cast::<u8>(), self.data.len()) };
 
-    // SAFETY: `from_utf8_unchecked` is safe here because `byte_slice` is guaranteed to contain only
-    // valid UTF-8 data. This is ensured by the invariant that `AsciiChar` can only hold valid ASCII characters,
-    // which are a subset of UTF-8.
     unsafe { std::str::from_utf8_unchecked(byte_slice) }
   }
 
@@ -193,17 +175,6 @@ impl Seq {
       data: self.data.split_off(at),
     }
   }
-
-  // pub fn splice<I>(
-  //   &mut self,
-  //   range: core::ops::Range<usize>,
-  //   replace_with: I,
-  // ) -> std::vec::Splice<'_, <I as IntoIterator>::IntoIter>
-  // where
-  //   I: IntoIterator<Item = u8>,
-  // {
-  //   self.data.splice(range, replace_with.into_iter().map(AsciiChar::from))
-  // }
 }
 
 impl PartialEq for Seq {
@@ -393,12 +364,6 @@ impl IntoIterator for Seq {
 impl std::io::Read for Seq {
   fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
     let len = std::cmp::min(buf.len(), self.len());
-    // SAFETY:
-    // 1. `self.data` is guaranteed to hold only ASCII characters because `Seq` enforces this invariant via `AsciiChar`.
-    // 2. The length `len` is calculated as the minimum of `buf.len()` and `self.len()`, ensuring no out-of-bounds access for either slice.
-    // 3. `std::ptr::copy_nonoverlapping` is safe to use here because:
-    //    a. Both `self.data` and `buf` are valid, properly aligned, and non-overlapping.
-    //    b. The memory regions are guaranteed to be accessible for `len` bytes.
     unsafe {
       std::ptr::copy_nonoverlapping(self.data.as_ptr().cast::<u8>(), buf.as_mut_ptr(), len);
     }
@@ -443,16 +408,10 @@ impl<'de> serde::Deserialize<'de> for Seq {
     if !s.is_ascii() {
       return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
     }
-    // SAFETY: We just validated that s.is_ascii() above
     Ok(unsafe { Seq::from_str_unchecked(&s) })
   }
 }
 
-/// Create a `Seq` from `AsciiChar` values.
-///
-/// - `seq!()` creates an empty sequence
-/// - `seq![ch; n]` creates a sequence with `n` copies of `AsciiChar` `ch`
-/// - `seq![ch1, ch2, ...]` creates a sequence from `AsciiChar` values
 #[macro_export]
 macro_rules! seq {
   () => (

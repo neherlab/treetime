@@ -53,7 +53,6 @@ impl<'de> Deserialize<'de> for AsciiChar {
 }
 
 impl AsciiChar {
-  /// Create an `AsciiChar` from a byte value.
   pub fn try_new(value: u8) -> Result<Self, Report> {
     if value >= 128 {
       return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
@@ -116,15 +115,6 @@ impl AsciiChar {
     Ok(Self(value as u8))
   }
 
-  /// Create an `AsciiChar` from a pre-validated byte value.
-  ///
-  /// # Precondition
-  ///
-  /// The caller must ensure that `value` is ASCII (< 128). Passing non-ASCII
-  /// input violates the type invariant and causes undefined behavior when
-  /// the resulting `AsciiChar` is used in a `Seq` and converted to `&str`.
-  ///
-  /// Use [`try_new`](Self::try_new) for untrusted input.
   pub const fn from_byte_unchecked(value: u8) -> Self {
     debug_assert!(value < 128, "AsciiChar::from_byte_unchecked: value >= 128");
     Self(value)

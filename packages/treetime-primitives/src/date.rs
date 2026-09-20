@@ -1,13 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// A single exact date, as a year fraction.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DateExact {
   pub value: f64,
 }
 
-/// A date interval, as year fractions.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DateRange {
   pub start: f64,
@@ -24,8 +22,6 @@ impl DateRange {
   }
 }
 
-/// The date value carried by a node's constraint: an exact point, an uncertain interval, or an
-/// explicit range.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DateValue {
@@ -48,8 +44,6 @@ impl DateValue {
   }
 }
 
-/// A node's date constraint: the domain value the inference reads plus `raw`, the original metadata
-/// string kept as parse provenance for output encoders (augur `raw_date`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DateConstraint {
   pub raw: String,
@@ -74,6 +68,4 @@ impl DateConstraint {
   }
 }
 
-/// Per-name date constraints, keyed by sample name. `None` marks a name present in the dates input but
-/// without a usable date.
 pub type DatesMap = BTreeMap<String, Option<DateConstraint>>;
