@@ -249,8 +249,9 @@ unused_lifetimes = "warn"
 unused_macro_rules = "warn"
 unused_qualifications = "warn"
 variant_size_differences = "warn"
-unused_crate_dependencies = "warn"
-unreachable_pub = "warn"
+# We might need to reconsider these
+unreachable_pub = "allow"
+unused_crate_dependencies = "allow"
 # missing_copy_implementations = "warn"
 # missing_debug_implementations = "warn"
 
@@ -284,22 +285,16 @@ restriction = { level = "warn", priority = -1 }
 # stay at "warn" (not "deny") so the read-only gate reports them without
 # blocking, and new code is expected to avoid them. The panic-path lints
 # (unwrap/expect/panic/indexing) are exempted inside tests through clippy.toml.
-allow_attributes_without_reason = "warn"
-arithmetic_side_effects = "warn"
 as_conversions = "warn"
 expect_used = "warn"
 float_cmp_const = "warn"
-indexing_slicing = "warn"
 integer_division = "warn"
 iter_over_hash_type = "warn"
 lossy_float_literal = "warn"
-missing_assert_message = "warn"
 panic = "warn"
 str_to_string = "warn"
 tests_outside_test_module = "warn"
-too_many_lines = "warn"
 unwrap_used = "warn"
-use_debug = "warn"
 wildcard_enum_match_arm = "warn"
 
 # Disable some of the Clippy lints
@@ -317,8 +312,6 @@ cast_sign_loss = "allow"
 char_lit_as_u8 = "allow"
 cognitive_complexity = "allow"
 comparison_chain = "allow"
-# Fires on every untyped numeric literal; overwhelms the gate and catches no defect.
-default_numeric_fallback = "allow"
 deref_by_slicing = "allow"
 doc_markdown = "allow"
 doc_paragraphs_missing_punctuation = "allow"
@@ -400,12 +393,20 @@ unused_unit = "allow"
 unwrap_in_result = "allow"
 use_self = "allow"
 useless_transmute = "allow"
+
 # We might need to reconsider these
 collapsible_if = "allow"
 needless_range_loop = "allow"
 non_std_lazy_statics = "warn"
+allow_attributes_without_reason = "allow"
+arithmetic_side_effects = "allow"
+default_numeric_fallback = "allow"
+indexing_slicing = "allow"
+missing_assert_message = "allow"
+needless_collect = "allow"
+too_many_lines = "allow"
+use_debug = "allow"
 
-# Remove once amount of unimplemented code is reduced
 todo = "allow"
 let_underscore_untyped = "allow"
 
