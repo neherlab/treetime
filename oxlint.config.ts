@@ -1,27 +1,64 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { defineConfig } from "oxlint";
 
-const PACKAGE_GRAPH: Record<string, readonly string[]> = {
-  "app-contracts": [],
-  "app-napi": [],
-  "app-ui": ["app-contracts"],
-  "app-web": ["app-contracts", "app-ui"],
-  "app-desktop": ["app-contracts", "app-napi", "app-ui"],
-};
+const PACKAGES_DIR = join(import.meta.dirname, "packages");
+const WORKSPACE_SCOPE = "@neherlab/";
 
 const PACKAGE_GRAPH_MESSAGE =
-  "This package may import only the workspace packages it declares. Add the dependency to package.json and PACKAGE_GRAPH, or route through an allowed package.";
+  "This package may import only the workspace packages it declares. Add the dependency to its package.json, or route through an allowed package.";
+
+interface WorkspacePackage {
+  dir: string;
+  name: string;
+  dependencies: string[];
+}
+
+interface PackageManifest {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+function workspacePackages(): WorkspacePackage[] {
+  const packages: WorkspacePackage[] = [];
+  for (const dir of readdirSync(PACKAGES_DIR)) {
+    let raw: string;
+    try {
+      raw = readFileSync(join(PACKAGES_DIR, dir, "package.json"), "utf8");
+    } catch {
+      continue;
+    }
+    const manifest: PackageManifest = JSON.parse(raw);
+    const name = manifest.name;
+    if (name === undefined || !name.startsWith(WORKSPACE_SCOPE)) {
+      continue;
+    }
+    const declared = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+      ...manifest.peerDependencies,
+    };
+    const dependencies = Object.keys(declared).filter((key) => key.startsWith(WORKSPACE_SCOPE));
+    packages.push({ dir, name, dependencies });
+  }
+  return packages;
+}
 
 function packageBoundaryOverrides() {
-  const names = Object.keys(PACKAGE_GRAPH);
-  return names.flatMap((name) => {
-    const allowed = new Set([name, ...(PACKAGE_GRAPH[name] ?? [])]);
-    const banned = names.filter((other) => !allowed.has(other)).map((other) => `@neherlab/${other}`);
+  const packages = workspacePackages();
+  const names = packages.map((entry) => entry.name);
+  return packages.flatMap((entry) => {
+    const allowed = new Set([entry.name, ...entry.dependencies]);
+    const banned = names.filter((other) => !allowed.has(other));
     if (banned.length === 0) {
       return [];
     }
     return [
       {
-        files: [`packages/${name}/**`],
+        files: [`packages/${entry.dir}/**`],
         rules: {
           "no-restricted-imports": ["error", { patterns: [{ group: banned, message: PACKAGE_GRAPH_MESSAGE }] }],
         },
