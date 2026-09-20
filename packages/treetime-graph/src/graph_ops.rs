@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph node/edge access crashes on a missing key by the project's node/edge access invariant"
+)]
+
 #[cfg(test)]
 mod __tests__;
 

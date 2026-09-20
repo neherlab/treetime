@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "graph edge endpoint access crashes on a missing key by the project's node/edge access invariant"
+)]
+
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use derive_more::Display;

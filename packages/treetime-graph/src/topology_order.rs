@@ -1,3 +1,11 @@
+#![allow(
+  clippy::expect_used,
+  clippy::unwrap_used,
+  clippy::as_conversions,
+  clippy::integer_division,
+  reason = "graph node access crashes on a missing key by the project invariant; score cross-multiplication widens to u128 losslessly; the median uses integer halving"
+)]
+
 #[cfg(test)]
 mod __tests__;
 
