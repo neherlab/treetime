@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "grid point count and index to f64 for mass-domain spacing"
+)]
+
 use crate::policy::{NegLog, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::expect_used,
+  reason = "grid alignment expects hold for the co-registered distributions being multiplied"
+)]
+
 use crate::Distribution;
 use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::function::DistributionFunction;

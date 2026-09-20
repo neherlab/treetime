@@ -1,3 +1,9 @@
+#![allow(
+  clippy::unwrap_used,
+  clippy::wildcard_enum_match_arm,
+  reason = "grid lookups and Float-to-f64 conversions are Some by construction, and boundary matches default the non-hard variants by design"
+)]
+
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use approx::UlpsEq;
 use eyre::Report;

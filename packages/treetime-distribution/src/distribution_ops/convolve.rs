@@ -1,3 +1,10 @@
+#![allow(
+  clippy::wildcard_enum_match_arm,
+  clippy::as_conversions,
+  clippy::integer_division,
+  reason = "grid index/offset/count to f64 for convolution coordinates, midpoint integer halving, and variant matches that default by design"
+)]
+
 use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;

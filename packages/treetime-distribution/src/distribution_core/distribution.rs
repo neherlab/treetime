@@ -1,3 +1,10 @@
+#![allow(
+  clippy::wildcard_enum_match_arm,
+  clippy::expect_used,
+  clippy::as_conversions,
+  reason = "variant matches pass non-Function distributions through unchanged, the Result expects hold for validated grids, and casts are grid index/count to f64"
+)]
+
 use crate::DistributionFunction;
 use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::point::DistributionPoint;

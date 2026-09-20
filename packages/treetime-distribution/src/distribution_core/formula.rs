@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "grid index and point count to f64 for coordinate evaluation"
+)]
+
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use eyre::Result;
 use ndarray::Array1;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "grid point count to f64 for the interval-count bound check"
+)]
+
 use crate::Distribution;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
