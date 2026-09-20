@@ -11,6 +11,7 @@ export default defineConfig({
     ".build",
     "coverage",
     "packages/app-contracts/src/generated",
+    "dev/lints/oxlint-anti-slop",
   ],
   printWidth: 120,
   tabWidth: 2,
