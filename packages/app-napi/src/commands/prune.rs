@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 //! N-API `prune` request shape and orchestration.
 
 use crate::commands::support::{default_output_plan, default_topology_order};
@@ -180,6 +174,7 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   )
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn gather_prune_output_maps(graph: &Graph, partitions: &[SparseReconstruction]) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
@@ -223,6 +218,7 @@ fn validate_args(args: &PruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn parse_node_names(
   prune_nodes_list: Option<&String>,
   prune_nodes_list_delimiter: char,
