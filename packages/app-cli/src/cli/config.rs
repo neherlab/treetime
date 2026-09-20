@@ -13,25 +13,6 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use treetime_utils::io::fs::read_file_to_string;
 
-/// Overlay a `--config` file onto CLI-parsed command args when `--config` was given.
-///
-/// Precedence, highest to lowest: an explicit command-line flag, then the config file, then the
-/// built-in default. The file holds the command's configuration object (JSON or YAML). It is layered
-/// over the serialized defaults, then explicit command-line leaves are layered on top, producing the
-/// effective configuration. That effective object is validated against the command's schema through
-/// the shared diagnostics layer, so a bad value renders a caret-annotated error pointing into the
-/// file (a leaf supplied only on the command line has no file span, so it falls back to a plain
-/// message). The typed value is materialized only after validation passes.
-///
-/// Two invariants of `T` keep the merge lossless:
-///
-/// - Symmetric serde round-trip: `from_value(to_value(x))` reproduces `x`. The merge serializes the
-///   defaults and the CLI args to JSON, layers them, and deserializes the result back, so an
-///   asymmetric field serializer would corrupt every load. The `test_config_*_round_trip` tests pin
-///   this per command.
-/// - Per-struct `#[serde(default)]`: the config file is partial, so every field the file omits must
-///   deserialize from the layered defaults rather than error as missing. Each command args struct and
-///   each nested arg group therefore carries `#[serde(default)]`.
 pub fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
   T: Serialize + DeserializeOwned + Default + JsonSchema,
@@ -40,8 +21,6 @@ where
     return Ok(());
   };
 
-  // Ids the user supplied on the command line, as opposed to defaults or the config file. Only these
-  // override the file.
   let explicit: BTreeSet<String> = matches
     .ids()
     .filter(|id| matches.value_source(id.as_str()) == Some(ValueSource::CommandLine))
@@ -52,8 +31,6 @@ where
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
   let mut file_value = parse_config_document(&source, &text)?;
 
-  // `$schema` is an editor-only association key (a path or URL to this command's schema). The loader
-  // ignores it; strip it before the strict merge so `deny_unknown_fields` does not reject it.
   if let Value::Object(map) = &mut file_value {
     map.remove(SCHEMA_KEY);
   }
@@ -69,8 +46,6 @@ where
   Ok(())
 }
 
-/// Layer `overlay` onto `base`, recursing through nested objects so a partial config overrides only
-/// the leaves it sets, leaving sibling defaults intact.
 fn merge_value(base: &mut Value, overlay: &Value) {
   match (base, overlay) {
     (Value::Object(base), Value::Object(overlay)) => {
@@ -82,12 +57,6 @@ fn merge_value(base: &mut Value, overlay: &Value) {
   }
 }
 
-/// Copy every explicitly-set command-line leaf from `cli` into `merged`, recursing through the
-/// nested objects that `clap(flatten)` produces so flattened arg groups are handled uniformly.
-///
-/// Arg ids are unique within a command, so a key in `explicit` always denotes a leaf the user set on
-/// the command line; such leaves replace the config value wholesale. Objects that are not themselves
-/// args are flatten containers, descended to reach the explicit leaves inside them.
 fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
   let (Value::Object(merged), Value::Object(cli)) = (merged, cli) else {
     return;
@@ -111,7 +80,6 @@ mod tests {
     names.iter().map(|s| (*s).to_owned()).collect()
   }
 
-  // An explicitly-set leaf overrides the config value; unset leaves keep the config value.
   #[test]
   fn test_config_apply_cli_overrides_explicit_leaf_wins() {
     let mut merged = json!({ "tree": "from-config.nwk", "seed": 1 });
@@ -120,8 +88,6 @@ mod tests {
     assert_eq!(json!({ "tree": "from-cli.nwk", "seed": 1 }), merged);
   }
 
-  // Explicit leaves inside a `clap(flatten)` container are reached by recursion; the container name
-  // itself is not an arg id.
   #[test]
   fn test_config_apply_cli_overrides_recurses_into_flatten_container() {
     let mut merged = json!({ "alignment": { "aln": "from-config.fasta", "vcf": null } });
@@ -130,7 +96,6 @@ mod tests {
     assert_eq!(json!({ "alignment": { "aln": "from-cli.fasta", "vcf": null } }), merged);
   }
 
-  // With nothing explicit, the config object is left untouched.
   #[test]
   fn test_config_apply_cli_overrides_no_explicit_keeps_config() {
     let config = json!({ "alignment": { "aln": "keep.fasta" }, "seed": 7 });
@@ -140,7 +105,6 @@ mod tests {
     assert_eq!(config, merged);
   }
 
-  // A whole-value leaf (array from `value_delimiter`) is replaced wholesale, not merged elementwise.
   #[test]
   fn test_config_apply_cli_overrides_replaces_array_leaf_wholesale() {
     let mut merged = json!({ "cdses": ["a", "b", "c"] });
@@ -168,8 +132,6 @@ mod tests {
     use tempfile::tempdir;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
-    // Drive the real parse path: full clap parse (which records value sources), then the `--config`
-    // overlay, exactly as `treetime_parse_cli_args` does for a subcommand.
     fn parse_timetree(argv: &[&str]) -> TreetimeTimetreeArgsRaw {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("timetree").unwrap();
@@ -179,7 +141,6 @@ mod tests {
     }
 
     fn write_config(dir: &Path) -> PathBuf {
-      // A partial YAML config: only two fields set, everything else must fall back to defaults.
       let path = dir.join("timetree.yaml");
       fs::write(
         &path,
@@ -192,18 +153,16 @@ mod tests {
       path
     }
 
-    // Without overriding flags, config values win over defaults and unspecified fields keep defaults.
     #[test]
     fn test_config_timetree_file_overrides_defaults() {
       let dir = tempdir().unwrap();
       let path = write_config(dir.path());
       let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
-      assert_eq!(4, args.skyline_n_points); // from config
-      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence); // from config
-      pretty_assert_ulps_eq!(50.0, args.gen_per_year); // default, untouched by config
+      assert_eq!(4, args.skyline_n_points);
+      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence);
+      pretty_assert_ulps_eq!(50.0, args.gen_per_year);
     }
 
-    // An explicit command-line flag overrides the config file; other config values remain in effect.
     #[test]
     fn test_config_timetree_cli_flag_overrides_file() {
       let dir = tempdir().unwrap();
@@ -216,11 +175,10 @@ mod tests {
         "--skyline-n-points",
         "8",
       ]);
-      assert_eq!(8, args.skyline_n_points); // explicit CLI beats config
-      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence); // still from config
+      assert_eq!(8, args.skyline_n_points);
+      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence);
     }
 
-    // Without `--config`, parsing is unaffected: defaults stand.
     #[test]
     fn test_config_timetree_absent_keeps_defaults() {
       let args = parse_timetree(&["treetime", "timetree"]);
@@ -228,8 +186,6 @@ mod tests {
       pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
     }
 
-    // Full resolve path for a command with a required argument: parse the raw args, overlay
-    // `--config`, then convert to the validated form (which enforces required-argument presence).
     fn resolve_ancestral(argv: &[&str]) -> Result<TreetimeAncestralArgs, Report> {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("ancestral").unwrap();
@@ -238,8 +194,6 @@ mod tests {
       TreetimeAncestralArgs::try_from(args)
     }
 
-    // The headline of Part 1: a required argument may be supplied entirely by the config file, with no
-    // corresponding command-line flag, and validation passes.
     #[test]
     fn test_config_ancestral_config_satisfies_required_tree() {
       let dir = tempdir().unwrap();
@@ -255,8 +209,6 @@ mod tests {
       assert_eq!(Path::new("from-config.nwk"), args.tree());
     }
 
-    // A top-level `$schema` association key is accepted and ignored: the strict schema declares it and
-    // the loader strips it, so a config that carries an editor `$schema` still loads.
     #[test]
     fn test_config_ancestral_accepts_schema_key() {
       let dir = tempdir().unwrap();
@@ -273,8 +225,6 @@ mod tests {
       assert_eq!(Path::new("from-config.nwk"), args.tree());
     }
 
-    // When a required argument is present in neither the command line nor the config file, validation
-    // errors with the clap-style message.
     #[test]
     fn test_config_ancestral_missing_tree_everywhere_errors() {
       let result = resolve_ancestral(&["treetime", "ancestral"]);
@@ -284,10 +234,6 @@ mod tests {
       );
     }
 
-    // Each test drives the real parse path for one command: a full clap parse, then the `--config`
-    // overlay, keeping the error so the rejection can be asserted. An unknown or misspelled top-level
-    // key is rejected with a rendered diagnostic instead of being silently ignored, guarding every
-    // command's strict schema.
     mod reject_unknown_key {
       use super::*;
 
@@ -403,8 +349,6 @@ mod tests {
         );
       }
 
-      // Strictness reaches into nested arg groups too, so a typo inside a flattened struct (here
-      // `model_args`) is caught, not just top-level keys.
       #[test]
       fn test_config_ancestral_rejects_unknown_nested_key() {
         let dir = tempdir().unwrap();
@@ -426,8 +370,6 @@ mod tests {
       }
     }
 
-    // C4: configs are parsed as YAML, and YAML is a superset of JSON, so a JSON document loads through
-    // the same path without any extension-based format selection.
     #[test]
     fn test_config_timetree_reads_json_document() {
       let dir = tempdir().unwrap();
@@ -437,7 +379,6 @@ mod tests {
       assert_eq!(4, args.skyline_n_points);
     }
 
-    // C4: a scientific-notation float keeps full f64 precision through the YAML parse and the merge.
     #[test]
     fn test_config_timetree_preserves_scientific_notation_precision() {
       let dir = tempdir().unwrap();
@@ -448,9 +389,6 @@ mod tests {
     }
   }
 
-  // C2/C3: the raw -> validated conversion enforces required-argument presence and reports every
-  // missing flag with the clap-style message, built from the command's clap metadata so a flag
-  // rename cannot desync it.
   mod required_args {
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
@@ -538,8 +476,6 @@ mod tests {
 
     #[test]
     fn test_config_required_homoplasy_missing_tree_errors() {
-      // Homoplasy has no required field of its own; its required `--tree` lives in the embedded
-      // ancestral args and is enforced through the nested conversion.
       assert_error!(
         TreetimeHomoplasyArgs::try_from(TreetimeHomoplasyArgsRaw::default()),
         "the following required arguments were not provided:\n  --tree <TREE>"
@@ -548,14 +484,10 @@ mod tests {
 
     #[test]
     fn test_config_required_timetree_defaults_ok() {
-      // Timetree has no required-only argument, so the conversion is infallible.
       TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()).unwrap();
     }
   }
 
-  // C5: the `--config` overlay serializes the args to JSON, layers the file, then deserializes back,
-  // so every raw args type must round-trip losslessly. A field with an asymmetric serializer, or a
-  // nested struct missing `#[serde(default)]`, fails here rather than corrupting a user's config load.
   mod round_trip {
     use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
     use crate::commands::clock::args::TreetimeClockArgsRaw;
@@ -567,56 +499,52 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::{Value, from_value, to_value};
 
-    // Each test serializes a command's defaults, deserializes back, and re-serializes: the two JSON
-    // values must match, which holds only if every field serializes and deserializes symmetrically. A
-    // lossy field fails the test named for its command.
-
     #[test]
     fn test_config_round_trip_ancestral() {
       let value: Value = to_value(TreetimeAncestralArgsRaw::default()).unwrap();
-      let back: TreetimeAncestralArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeAncestralArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_clock() {
       let value: Value = to_value(TreetimeClockArgsRaw::default()).unwrap();
-      let back: TreetimeClockArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeClockArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_homoplasy() {
       let value: Value = to_value(TreetimeHomoplasyArgsRaw::default()).unwrap();
-      let back: TreetimeHomoplasyArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeHomoplasyArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_mugration() {
       let value: Value = to_value(TreetimeMugrationArgsRaw::default()).unwrap();
-      let back: TreetimeMugrationArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeMugrationArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_optimize() {
       let value: Value = to_value(TreetimeOptimizeArgsRaw::default()).unwrap();
-      let back: TreetimeOptimizeArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeOptimizeArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_prune() {
       let value: Value = to_value(TreetimePruneArgsRaw::default()).unwrap();
-      let back: TreetimePruneArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimePruneArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_timetree() {
       let value: Value = to_value(TreetimeTimetreeArgsRaw::default()).unwrap();
-      let back: TreetimeTimetreeArgsRaw = from_value(value.clone()).unwrap();
+      let back: TreetimeTimetreeArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
       assert_eq!(value, to_value(back).unwrap());
     }
   }

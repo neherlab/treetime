@@ -11,14 +11,10 @@ mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::io::json::json_read_str;
 
-  // Oracle for N_e: N_e = T_c * gen_per_year, and the band scales by the same factor
-  // (packages/treetime/src/coalescent/population_size.rs).
   const GEN_PER_YEAR: f64 = 50.0;
 
   #[test]
   fn test_coalescent_output_rows_map_rich_to_flat() -> Result<(), Report> {
-    // Skyline: two segments with a band. The rich -> flat projection shifts the 0-based index to
-    // 1-based and flattens the nested segment/T_c/N_e objects to dotted scalar columns.
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
@@ -38,7 +34,6 @@ mod tests {
       },
     )?;
 
-    // Rich indices stay 0-based.
     assert_eq!(
       vec![0, 1],
       output.outputs.segments.iter().map(|s| s.index).collect::<Vec<_>>()
@@ -94,7 +89,6 @@ mod tests {
     )?;
 
     let segment = &output.outputs.segments[0];
-    // N_e = T_c * gen_per_year for the point and both band bounds.
     assert_eq!(Estimate::with_band(2.0, 1.0, 4.0), segment.tc);
     assert_eq!(Estimate::with_band(100.0, 50.0, 200.0), segment.ne);
     Ok(())
@@ -102,7 +96,6 @@ mod tests {
 
   #[test]
   fn test_coalescent_output_fixed_has_no_band() -> Result<(), Report> {
-    // A fixed, user-supplied T_c carries no band, so T_c and the derived N_e report a value only.
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Fixed,
@@ -180,7 +173,6 @@ mod tests {
     )?;
 
     let json = coalescent_json_str(&output)?;
-    // Serde renames apply: the rich document uses T_c/N_e, never the Rust field names.
     assert!(json.contains("\"inputs\""));
     assert!(json.contains("\"outputs\""));
     assert!(json.contains("\"segments\""));
@@ -213,8 +205,6 @@ mod tests {
     )?;
 
     let json = coalescent_json_str(&output)?;
-    // Fixed Tc: no band and no inference, so the confidence, skyline grid, and likelihood keys are
-    // all omitted.
     assert!(!json.contains("\"lower\""));
     assert!(!json.contains("\"upper\""));
     assert!(!json.contains("\"confidence_n_std\""));
@@ -226,8 +216,6 @@ mod tests {
 
   #[test]
   fn test_coalescent_output_json_skyline_records_grid_and_likelihood() -> Result<(), Report> {
-    // A skyline records its grid inputs (n_points, stiffness) and the fit likelihood. JSON carries
-    // the full document; the flat rows carry only the per-segment projection.
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
@@ -252,7 +240,6 @@ mod tests {
     assert!(json.contains("\"stiffness\": 2.0"));
     assert!(json.contains("\"log_likelihood\": -12.5"));
 
-    // The flat projection carries no inputs and no likelihood, only the per-segment columns.
     let csv = coalescent_delimited_str(&output, b',')?;
     assert!(!csv.contains("n_points"));
     assert!(!csv.contains("stiffness"));
@@ -296,7 +283,6 @@ mod tests {
 
   #[test]
   fn test_coalescent_output_delimited_rows_are_1_based_with_empty_band() -> Result<(), Report> {
-    // Constant: full band. Fixed: empty band columns (None serializes to an empty field).
     let constant = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
@@ -350,7 +336,7 @@ mod tests {
       },
       &CoalescentSolve {
         log_likelihood: None,
-        segment_boundaries: &[0.0, 5.0], // needs 3 boundaries for 2 segments
+        segment_boundaries: &[0.0, 5.0],
         tc_values: &[2.0, 3.0],
         band: None,
       },
@@ -376,7 +362,7 @@ mod tests {
         segment_boundaries: &[0.0, 5.0, 10.0],
         tc_values: &[2.0, 3.0],
         band: Some(CoalescentBand {
-          lower: &[1.0], // one bound for two segments
+          lower: &[1.0],
           upper: &[4.0, 6.0],
         }),
       },

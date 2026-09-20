@@ -5,22 +5,15 @@ mod tests {
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-  // --- Full output: per-node dates, branch metrics, confidence, and clock block ---
-  //
-  // Field semantics match augur refine (traced against TreeTime's final state):
-  //   mutation_length = ML divergence length (subs/site) = parent edge base length
-  //   branch_length   = clock_length = child.numdate - parent.numdate (years)
-
   #[test]
   fn test_augur_node_data_timetree_full_output() {
     let case = helpers::sample_case();
     let data = case.write_and_read();
 
-    // leaf_a: edge divergence 0.005, 5-year branch, exact date -> not inferred.
     let leaf_a = &data.nodes["leaf_a"];
-    assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005); // ML divergence (edge base length)
-    assert_relative_eq!(leaf_a.branch_length, 5.0); // child.time - parent.time = 2005 - 2000
-    assert_relative_eq!(leaf_a.clock_length.unwrap(), 5.0); // identical to branch_length
+    assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
+    assert_relative_eq!(leaf_a.branch_length, 5.0);
+    assert_relative_eq!(leaf_a.clock_length.unwrap(), 5.0);
     assert_relative_eq!(leaf_a.numdate.unwrap(), 2005.0);
     assert_eq!(leaf_a.date.as_deref(), Some("2005-01-01"));
     assert_eq!(leaf_a.raw_date.as_deref(), Some("2005"));
@@ -29,7 +22,6 @@ mod tests {
     assert_relative_eq!(ci[0], 2004.0);
     assert_relative_eq!(ci[1], 2006.0);
 
-    // leaf_b: edge divergence 0.010, 10-year branch, uncertain date -> inferred.
     let leaf_b = &data.nodes["leaf_b"];
     assert_relative_eq!(leaf_b.mutation_length.unwrap(), 0.010);
     assert_relative_eq!(leaf_b.branch_length, 10.0);
@@ -38,29 +30,23 @@ mod tests {
     assert_eq!(leaf_b.date_inferred, Some(true));
     assert!(leaf_b.num_date_confidence.is_none());
 
-    // clock block from the regression covariance.
     let clock = data.metadata.clock.as_ref().unwrap();
     assert_relative_eq!(clock.rate, 0.002);
     assert_relative_eq!(clock.intercept, -4.0);
-    assert_relative_eq!(clock.rtt_tmrca, 2000.0); // -(-4.0) / 0.002
+    assert_relative_eq!(clock.rtt_tmrca, 2000.0);
     let cov = clock.cov.as_ref().unwrap();
     assert_eq!(cov, &vec![vec![1e-8, 0.0], vec![0.0, 0.5]]);
-    assert_relative_eq!(clock.rate_std.unwrap(), 1e-4); // sqrt(cov[0,0])
+    assert_relative_eq!(clock.rate_std.unwrap(), 1e-4);
 
     assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
     assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
   }
-
-  // --- Mapping invariants that must never silently regress (augur parity) ---
 
   #[test]
   fn test_augur_node_data_timetree_branch_length_equals_clock_length() {
     let case = helpers::sample_case();
     let data = case.write_and_read();
 
-    // augur sets node.branch_length = node.clock_length (clock_tree.py:925). For
-    // every node with a clock_length the two fields are identical. Both leaves
-    // carry distinct non-zero values, so this is not a vacuous 0.0 == 0.0 check.
     let mut checked = 0;
     for node in data.nodes.values() {
       if let Some(clock_length) = node.clock_length {
@@ -68,7 +54,7 @@ mod tests {
         checked += 1;
       }
     }
-    assert_eq!(checked, 3); // leaf_a, leaf_b, and root (root's clock_length is 0.0)
+    assert_eq!(checked, 3);
   }
 
   #[test]
@@ -76,9 +62,6 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read();
 
-    // mutation_length is the ML divergence (parent edge base length), distinct
-    // from the time-valued branch_length. Asserting inequality guards against a
-    // regression to emitting the time value (or count/site) here.
     let leaf_a = &data.nodes["leaf_a"];
     assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
     assert!((leaf_a.mutation_length.unwrap() - leaf_a.branch_length).abs() > 1.0);
@@ -89,10 +72,6 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read();
 
-    // Root has no parent edge, so branch_length, clock_length, and mutation_length
-    // are all zero. augur `export v2` requires mutation_length on every node
-    // (including the root) to compute divergence. Internal/root nodes are always
-    // date_inferred.
     let root = &data.nodes["root"];
     assert_relative_eq!(root.branch_length, 0.0);
     assert_relative_eq!(root.clock_length.unwrap(), 0.0);
@@ -123,8 +102,6 @@ mod tests {
     assert_eq!(generated_by.version, env!("CARGO_PKG_VERSION"));
   }
 
-  // --- Divergence units: mutations mode ---
-
   #[test]
   fn test_augur_node_data_timetree_mutations_mode_mutation_length_is_count() {
     let case = helpers::sample_case();
@@ -148,8 +125,6 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
 
-    // The root has no parent edge, so its mutation_length is zero regardless of
-    // the mutations-mode counts, which apply only to child edges.
     assert_relative_eq!(data.nodes["root"].mutation_length.unwrap(), 0.0);
     assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
@@ -222,10 +197,6 @@ mod tests {
       }
     }
 
-    /// Build a 3-node tree (root -> leaf_a, root -> leaf_b) with node times, edge
-    /// divergence lengths (the `mutation_length` source), a regression clock model,
-    /// date constraints (exact for leaf_a, uncertain for leaf_b), and CIs for root
-    /// and leaf_a.
     pub fn sample_case() -> SampleCase {
       let mut graph = Graph::new();
       let mut names = BTreeMap::new();
@@ -286,9 +257,6 @@ mod tests {
       }
     }
 
-    /// Estimated-regression clock model (rate 0.002, intercept -4.0, rate variance cov[0,0] = 1e-8),
-    /// built from the public `ClockRegression` deserialize form and `ClockModel::from_regression`, so
-    /// the fixture comes from the public API rather than a crate-internal test constructor.
     fn sample_clock_model() -> ClockModel {
       let regression: ClockRegression = json_read_str(indoc! {r#"{
         "clock_rate": 0.002,
@@ -316,15 +284,11 @@ mod tests {
             TimetreeNodeOut {
               name: names.get(&key).cloned().flatten(),
               desc: None,
-              // This fixture builds its graph node by node with no input-tree branch support, so
-              // production's parse-time confidence map would surface None for every node here too.
               confidence: None,
               time: times.get(&key).copied().flatten(),
               div: 0.0,
               is_outlier: false,
               bad_branch: false,
-              // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
-              // value map; this fixture graph runs no such pass, so production surfaces None here too.
               rate_susceptibility_dates: None,
             },
           )
@@ -346,8 +310,6 @@ mod tests {
               branch_length: branch_lengths[&key],
               time_length: None,
               clock_branch_length: None,
-              // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
-              // what production reads from the threaded edge state.
               gamma: 1.0,
             },
           )
