@@ -1,30 +1,14 @@
 use ndarray::Array1;
 
-/// Exponential PDF: f(x) = rate * exp(-rate * x) for x >= 0, 0 otherwise.
-///
-/// # Preconditions
-///
-/// `rate` must be positive. Non-positive rates do not define a valid exponential distribution.
 pub fn exponential_pdf(rate: f64, x: f64) -> f64 {
   debug_assert!(rate > 0.0, "exponential_pdf: rate must be positive");
   if x < 0.0 { 0.0 } else { rate * (-rate * x).exp() }
 }
 
-/// Evaluate exponential PDF on grid.
 pub fn exponential_pdf_grid(rate: f64, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| exponential_pdf(rate, x))
 }
 
-/// Analytical convolution of two exponential distributions.
-///
-/// Given f(x) = a * exp(-a * x) and g(x) = b * exp(-b * x) for x >= 0,
-/// the convolution (f * g)(x) is:
-/// - For a != b: (a * b) / (a - b) * (1 - exp(-(a - b) * x)) * exp(-b * x)
-/// - For a = b (limit form): a * b * x * exp(-a * x)
-///
-/// # Preconditions
-///
-/// Both `a` and `b` must be positive. Non-positive rates do not define valid exponential distributions.
 pub fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
   debug_assert!(a > 0.0 && b > 0.0, "exponential_convolution: rates must be positive");
   if x < 0.0 {
@@ -36,7 +20,6 @@ pub fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
   }
 }
 
-/// Evaluate exponential convolution on grid.
 pub fn exponential_convolution_grid(a: f64, b: f64, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| exponential_convolution(a, b, x))
 }
@@ -70,8 +53,6 @@ mod tests {
 
   #[test]
   fn test_exponential_convolution_distinct_rates() {
-    // a=1, b=2, x=1: 2*(e-1)*e^(-2) = 0.46509...
-    // Independent derivation: integral from 0 to x of a*exp(-a*t) * b*exp(-b*(x-t)) dt
     let result = exponential_convolution(1.0, 2.0, 1.0);
     let expected = 2.0 * 1.0_f64.exp_m1() * (-2.0_f64).exp();
     assert_ulps_eq!(result, expected, max_ulps = 4);
@@ -79,8 +60,6 @@ mod tests {
 
   #[test]
   fn test_exponential_convolution_equal_rates() {
-    // a=b=1.5, x=2: 4.5 * e^(-3) = 0.22404...
-    // Limit form when a=b: a^2 * x * exp(-a*x)
     let result = exponential_convolution(1.5, 1.5, 2.0);
     let expected = 4.5 * (-3.0_f64).exp();
     assert_ulps_eq!(result, expected, max_ulps = 4);

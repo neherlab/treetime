@@ -16,7 +16,6 @@ pub struct GaussianChainMultiplicationTestCase {
 pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicationTestCase> {
   let mut cases = Vec::new();
 
-  // Helper to create identical factors
   let identical = |n: usize, mu: f64, sigma: f64, amp: f64| {
     vec![
       GaussianParams {
@@ -28,7 +27,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     ]
   };
 
-  // Two Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "two_identical",
     description: "Two identical Gaussians (baseline for chain).",
@@ -40,7 +38,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Three Shifted
   cases.push(GaussianChainMultiplicationTestCase {
     name: "three_shifted",
     description: "Three Gaussians with shifted means.",
@@ -68,7 +65,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 241,
   });
 
-  // Five Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "five_identical",
     description: "Five identical Gaussians testing moderate chain.",
@@ -80,7 +76,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Ten Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "ten_identical",
     description: "Ten identical Gaussians testing underflow resistance.",
@@ -92,7 +87,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Twenty Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "twenty_identical",
     description: "Twenty identical Gaussians for severe underflow stress.",
@@ -104,7 +98,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Fifty Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "fifty_identical",
     description: "Fifty identical Gaussians for extreme underflow stress.",
@@ -116,7 +109,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Five Mixed
   cases.push(GaussianChainMultiplicationTestCase {
     name: "five_mixed",
     description: "Five Gaussians with varied parameters.",
@@ -154,7 +146,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 321,
   });
 
-  // Small Amplitudes Chain
   cases.push(GaussianChainMultiplicationTestCase {
     name: "small_amplitudes_chain",
     description: "Chain of Gaussians with small amplitudes.",
@@ -166,7 +157,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Hundred Identical
   cases.push(GaussianChainMultiplicationTestCase {
     name: "hundred_identical",
     description: "One hundred identical Gaussians for stress testing.",
@@ -178,7 +168,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Single Factor
   cases.push(GaussianChainMultiplicationTestCase {
     name: "single_factor",
     description: "Single Gaussian (trivial case, result equals input).",
@@ -190,7 +179,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Empty Factors
   cases.push(GaussianChainMultiplicationTestCase {
     name: "empty_factors",
     description: "Empty factors list (edge case, returns identity).",
@@ -202,8 +190,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Tiny Amplitude Chain - at threshold
-  // amplitude=0.01, 50 factors: max ~ 0.01^50 = 1e-100 (at UNDERFLOW_THRESHOLD)
   cases.push(GaussianChainMultiplicationTestCase {
     name: "tiny_amplitude_chain",
     description: "50 Gaussians with amplitude=0.01 pushing max to ~1e-100 threshold.",
@@ -215,8 +201,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Small Amplitude Long Chain - below threshold
-  // amplitude=0.1, 120 factors: max ~ 0.1^120 = 1e-120 (below threshold)
   cases.push(GaussianChainMultiplicationTestCase {
     name: "small_amplitude_long_chain",
     description: "120 Gaussians with amplitude=0.1 pushing max below 1e-100 threshold.",
@@ -228,8 +212,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Very Small Amplitude Chain - severe stress
-  // amplitude=0.001, 40 factors: max ~ 0.001^40 = 1e-120 (severe underflow)
   cases.push(GaussianChainMultiplicationTestCase {
     name: "very_small_amplitude_chain",
     description: "40 Gaussians with amplitude=0.001 for severe underflow stress.",
@@ -241,7 +223,6 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
-  // Mixed Small Amplitudes - non-uniform distribution
   cases.push(GaussianChainMultiplicationTestCase {
     name: "mixed_small_amplitudes",
     description: "Chain with varied small amplitudes testing non-uniform underflow.",

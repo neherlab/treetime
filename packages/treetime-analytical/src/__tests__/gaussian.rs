@@ -128,7 +128,6 @@ mod tests {
     let grid = array![-3.0, 0.0, 3.0];
     let conv = gaussian_convolution(&a, &b, &grid);
 
-    // Peak should be at center (mu=0)
     assert!(conv[1] > conv[0]);
     assert!(conv[1] > conv[2]);
   }
