@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import { createWebBridge } from "./bridge-web";
 
+// oxlint-disable-next-line import/no-unassigned-import -- CSS side-effect import loads global styles
 import "./index.css";
 
 const bridge = createWebBridge();
