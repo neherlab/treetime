@@ -13,6 +13,7 @@ mod mutation_detailed {
   #![allow(
     dead_code,
     unnameable_types,
+    unknown_lints,
     no_comments,
     topological_ordering,
     clippy::all,
@@ -24,6 +25,7 @@ mod parsimony {
   #![allow(
     dead_code,
     unnameable_types,
+    unknown_lints,
     no_comments,
     topological_ordering,
     clippy::all,
@@ -35,6 +37,7 @@ mod taxodium {
   #![allow(
     dead_code,
     unnameable_types,
+    unknown_lints,
     no_comments,
     topological_ordering,
     clippy::all,
