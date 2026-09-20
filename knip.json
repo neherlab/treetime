@@ -8,12 +8,20 @@
         "dev/lints/oxlint/index.ts",
         "dev/lints/oxlint/web.ts",
         "dev/lints/oxlint/__tests__/*.ts",
+        "dev/lints/oxlint-anti-slop/index.ts",
+        "dev/lints/oxlint-anti-slop/effect/index.ts",
+        "dev/lints/oxlint-anti-slop/**/*.test.ts",
         "oxfmt.config.ts",
         "vitest.config.ts",
         "vitest.setup.ts",
         "test/**/*.test.ts"
       ],
-      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "test/**/*.ts"]
+      "project": [
+        "*.ts",
+        "dev/lints/oxlint/**/*.ts",
+        "dev/lints/oxlint-anti-slop/**/*.ts",
+        "test/**/*.ts"
+      ]
     },
     "packages/app-contracts": {
       "entry": ["src/index.ts!", "src/generated/index.ts", "scripts/codegen.ts"],

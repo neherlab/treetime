@@ -16,6 +16,9 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noPropertyAccessFromIndexSignature": true,
     "isolatedModules": true,
 
     "noUncheckedSideEffectImports": true,

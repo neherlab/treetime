@@ -106,7 +106,9 @@ export default defineConfig({
   categories: {
     correctness: "warn",
     suspicious: "warn",
+    pedantic: "warn",
     perf: "warn",
+    style: "warn",
   },
 
   options: {

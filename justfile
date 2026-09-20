@@ -889,7 +889,7 @@ js-install *args:
     #!/usr/bin/env bash
     set -euo pipefail
     cd '{{project_dir}}'
-    bun install "$@"
+    bun install --frozen-lockfile "$@"
     if [[ ! -f "node_modules/electron/dist/electron" ]]; then
       electron_zip="$(find .cache/electron -maxdepth 1 -name 'electron-v*-linux-x64.zip' -print -quit 2>/dev/null || true)"
       if [[ -n "${electron_zip}" ]]; then
