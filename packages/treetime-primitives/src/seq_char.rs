@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "byte/char encoding primitive: each cast is either a lossless widening from u8 or a narrowing of a value range-checked < 128, so every conversion is exact by construction"
-)]
-
 use eyre::Report;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -37,6 +32,7 @@ impl<'de> Deserialize<'de> for AsciiChar {
         }
       }
 
+      #[allow(clippy::as_conversions, reason = "narrowing to u8 is exact after the guard proves value < 128")]
       fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
       where
         E: de::Error,
@@ -62,6 +58,7 @@ impl AsciiChar {
     Ok(Self(value))
   }
 
+  #[allow(clippy::as_conversions, reason = "narrowing to u8 is exact after the guard proves value < 128")]
   pub fn try_from_u16(value: u16) -> Result<Self, Report> {
     if value >= 128 {
       return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
@@ -69,6 +66,7 @@ impl AsciiChar {
     Ok(Self(value as u8))
   }
 
+  #[allow(clippy::as_conversions, reason = "narrowing to u8 is exact after the guard proves value < 128")]
   pub fn try_from_u32(value: u32) -> Result<Self, Report> {
     if value >= 128 {
       return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
@@ -76,6 +74,7 @@ impl AsciiChar {
     Ok(Self(value as u8))
   }
 
+  #[allow(clippy::as_conversions, reason = "narrowing to u8 is exact after the guard proves value < 128")]
   pub fn try_from_u64(value: u64) -> Result<Self, Report> {
     if value >= 128 {
       return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
@@ -83,6 +82,7 @@ impl AsciiChar {
     Ok(Self(value as u8))
   }
 
+  #[allow(clippy::as_conversions, reason = "narrowing to u8 is exact after the guard proves value < 128")]
   pub fn try_from_usize(value: usize) -> Result<Self, Report> {
     if value >= 128 {
       return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
@@ -90,6 +90,7 @@ impl AsciiChar {
     Ok(Self(value as u8))
   }
 
+  #[allow(clippy::as_conversions, reason = "narrowing char to u8 is exact after the is_ascii guard")]
   pub fn try_from_char(value: char) -> Result<Self, Report> {
     if !value.is_ascii() {
       return make_error!("AsciiChar: '{value}' is not ASCII");
@@ -118,7 +119,7 @@ impl AsciiChar {
 
 impl core::fmt::Display for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    f.write_char(self.0 as char)
+    f.write_char(char::from(self.0))
   }
 }
 
@@ -136,30 +137,30 @@ impl From<AsciiChar> for u8 {
 
 impl From<AsciiChar> for u16 {
   fn from(item: AsciiChar) -> Self {
-    item.0 as u16
+    u16::from(item.0)
   }
 }
 
 impl From<AsciiChar> for u32 {
   fn from(item: AsciiChar) -> Self {
-    item.0 as u32
+    u32::from(item.0)
   }
 }
 
 impl From<AsciiChar> for u64 {
   fn from(item: AsciiChar) -> Self {
-    item.0 as u64
+    u64::from(item.0)
   }
 }
 
 impl From<AsciiChar> for usize {
   fn from(item: AsciiChar) -> Self {
-    item.0 as usize
+    usize::from(item.0)
   }
 }
 
 impl From<AsciiChar> for char {
   fn from(item: AsciiChar) -> Self {
-    item.0 as char
+    char::from(item.0)
   }
 }
