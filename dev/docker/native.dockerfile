@@ -136,10 +136,6 @@ COPY --link "dev/docker/files/install-dylint" "/"
 RUN set -euxo pipefail >/dev/null \
 && /install-dylint
 
-COPY --link "dev/docker/files/install-tob-toolchain" "dev/docker/files/tob-toolchain" "/"
-RUN set -euxo pipefail >/dev/null \
-&& /install-tob-toolchain
-
 COPY --link "dev/docker/files/install-hawk" "dev/docker/files/hawk-toolchain" "/"
 RUN set -euxo pipefail >/dev/null \
 && /install-hawk

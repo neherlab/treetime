@@ -30,6 +30,7 @@ exclude = ["dev/templates/rust-crate"]
 libraries = [
   { path = "dev/lints/dylint" },
   { path = "dev/lints/mordant" },
+  { path = "dev/lints/trailofbits" },
 ]
 
 

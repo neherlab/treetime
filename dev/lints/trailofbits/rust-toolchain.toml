@@ -1,0 +1,7 @@
+# Pinned nightly required to build against clippy_utils / rustc_private.
+# Must match the toolchain of the clippy_utils rev in Cargo.toml (the set that
+# dylint 6.0.3 is built and tested against).
+[toolchain]
+channel = "nightly-2026-05-28"
+components = ["llvm-tools-preview", "rustc-dev", "rust-src"]
+profile = "minimal"

@@ -445,26 +445,14 @@ hawk *args:
     toolchain="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain')"
     nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "$@"
 
-# Run the Trail of Bits dylint lint set (builds on its own pinned nightly)
+# Run the Trail of Bits dylint lint set (the six reviewed lints vendored under dev/lints/trailofbits)
 [group('lint')]
 dylint-tob *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     export CARGO_TARGET_DIR='{{build_dir}}/dylint-tob' RUST_BACKTRACE=0 DYLINT_RUSTFLAGS="-A unknown_lints"
-    tob=https://github.com/trailofbits/dylint
-    rev=747f4aeffa640576e8633e02b8e4e0c3b1a06a1a
-    # Exactly the six reviewed lints, one per pattern (dylint takes one pattern
-    # per invocation). Each is loaded from the pinned Trail of Bits revision.
-    for pat in \
-      examples/restriction/assert_eq_arg_misordering \
-      examples/general/await_holding_span_guard \
-      examples/general/crate_wide_allow \
-      examples/restriction/env_literal \
-      examples/restriction/try_io_result \
-      examples/supplementary/unnamed_constant; do
-      nicely cargo dylint --git "${tob}" --rev "${rev}" --pattern "${pat}" -- --quiet --locked --workspace --all-targets "$@"
-    done
+    nicely cargo dylint --path dev/lints/trailofbits -- --quiet --locked --workspace --all-targets "$@"
 
 # Run the mordant type-invariant lint set against its committed baseline
 [group('lint')]
@@ -632,11 +620,10 @@ _check mode:
       else
         skip "cargo-hawk" "cargo-hawk or its rustc ${hawk_tc:-?} not installed"
       fi
-      tob_tc="$(cat '{{project_dir}}/dev/docker/files/tob-toolchain' 2>/dev/null || true)"
-      if command -v cargo-dylint >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -qF "${tob_tc}"; then
+      if command -v cargo-dylint >/dev/null 2>&1; then
         run_check "dylint-tob" bash -c "just dylint-tob"
       else
-        skip "dylint-tob" "Trail of Bits toolchain ${tob_tc:-?} not installed"
+        skip "dylint-tob" "cargo-dylint not installed"
       fi
       if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
         run_check "mordant" bash -c "just mordant"
