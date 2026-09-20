@@ -1,3 +1,10 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  clippy::disallowed_methods,
+  reason = "calendar math: casts are small-integer or finite conversions, the expect covers dates valid in every supported year, and from_secs_f64 receives a finite non-negative duration bounded by the year length"
+)]
+
 use crate::datetime::date_range::DateRange;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;

@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "regexes assembled from internal constant date formats compile by construction, and named captures are guaranteed present by the pattern that matched"
+)]
+
 use crate::datetime::date_range::DateRange;
 use crate::datetime::datetime::days_in_month;
 use crate::datetime::format_to_regex::date_format_to_regex;

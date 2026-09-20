@@ -1,3 +1,10 @@
+#![allow(
+  clippy::unwrap_used,
+  clippy::expect_used,
+  clippy::as_conversions,
+  reason = "convenience constructors for known-valid ISO literals, documented out-of-range panics, validated 1-12 months, and year casts that fit i32"
+)]
+
 use crate::make_error;
 use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};

@@ -3,6 +3,7 @@ use regex::Regex;
 use std::fmt::Debug;
 use std::sync::LazyLock;
 
+#[allow(clippy::unwrap_used, reason = "compile-time-constant pattern; a malformed literal is a build-time bug")]
 static NDARRAY_METADATA_RE: LazyLock<Regex> = LazyLock::new(|| {
   Regex::new(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)").unwrap()
 });
@@ -294,8 +295,9 @@ macro_rules! assert_error {
 
 #[cfg(test)]
 mod tests {
+  use parking_lot::Mutex;
   use std::panic::{AssertUnwindSafe, catch_unwind, set_hook, take_hook};
-  use std::sync::{LazyLock, Mutex};
+  use std::sync::LazyLock;
 
   use crate::testing::assert::is_neg_inf;
 
@@ -330,10 +332,7 @@ mod tests {
   }
 
   fn catch_panic_silent(f: impl FnOnce()) -> std::thread::Result<()> {
-    let _guard = match PANIC_HOOK_LOCK.lock() {
-      Ok(guard) => guard,
-      Err(err) => err.into_inner(),
-    };
+    let _guard = PANIC_HOOK_LOCK.lock();
     let original_hook = take_hook();
     set_hook(Box::new(|_| {}));
     let result = catch_unwind(AssertUnwindSafe(f));

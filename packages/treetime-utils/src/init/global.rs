@@ -34,6 +34,7 @@ pub fn setup_logger(filter_level: LevelFilter) {
     .init();
 }
 
+#[allow(clippy::expect_used, reason = "one-time process init; a failed hook install is unrecoverable and must abort startup")]
 pub fn global_init() {
   color_eyre::config::HookBuilder::default()
     .theme(

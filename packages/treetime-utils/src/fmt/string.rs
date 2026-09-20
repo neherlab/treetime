@@ -7,6 +7,7 @@ macro_rules! o {
   };
 }
 
+#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "ASCII char sequence narrowed to bytes; the resulting buffer is valid UTF-8 by construction")]
 pub fn vec_to_string(v: Vec<char>) -> String {
   // Surprisingly, this is the fastest way, according to `benches/vec_char_to_string.rs`
   let bytes: Vec<u8> = v.into_iter().map(|c| c as u8).collect();
@@ -31,6 +32,7 @@ pub enum TruncateDirection {
 /// Truncates string to max_len bytes with ellipsis placement based on direction.
 /// Assumes ASCII input for performance.
 #[allow(clippy::string_slice)]
+#[allow(clippy::integer_division, reason = "intentional halving of the budget for middle truncation; the remainder is assigned to the right half")]
 pub fn truncate(s: impl AsRef<str>, max_len: usize, ellipsis: Option<&str>, direction: TruncateDirection) -> String {
   let s = s.as_ref();
   debug_assert!(s.is_ascii(), "Input to truncate must be ASCII");

@@ -145,6 +145,7 @@ impl Read for Decompressor<'_> {
   }
 }
 
+#[allow(clippy::unwrap_used, reason = "default compression level 2 is representable in every NumCast integer target")]
 fn get_comp_level<I: FromStr + Integer + NumCast>(ext: &str) -> I {
   let var_name = format!("{}_COMPRESSION", ext.to_uppercase());
   env::var(var_name)

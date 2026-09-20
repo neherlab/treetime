@@ -24,6 +24,11 @@ impl DateRange {
   }
 
   #[allow(deprecated)]
+  #[allow(
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    reason = "constructs a range from a caller-supplied valid (year, month, day); the year fits i32 and the components form a valid calendar instant"
+  )]
   pub fn from_ymd(begin: (u32, u32, u32), end: (u32, u32, u32)) -> Self {
     let begin = Utc
       .ymd_opt(begin.0 as i32, begin.1, begin.2)

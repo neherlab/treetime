@@ -4,6 +4,11 @@
   clippy::multiple_unsafe_ops_per_block,
   clippy::undocumented_unsafe_blocks
 )]
+#![allow(
+  clippy::unwrap_used,
+  clippy::as_conversions,
+  reason = "serializing a small info struct is infallible, and FFI thread/proc counts are C ints cast to i32"
+)]
 
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;

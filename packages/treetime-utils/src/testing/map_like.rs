@@ -1,3 +1,8 @@
+#![allow(
+  clippy::disallowed_types,
+  reason = "the MapLike abstraction is deliberately implemented for HashMap alongside BTreeMap and IndexMap"
+)]
+
 use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;

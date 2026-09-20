@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "fixed valid times of day, and regexes assembled from internal constant date patterns, are infallible by construction"
+)]
+
 use crate::datetime::date_range::DateRange;
 use crate::datetime::options::{DateParserOptions, TimeOfDay};
 use crate::datetime::year_fraction::year_fraction_to_date;

@@ -17,7 +17,7 @@ where
     .merge_join_by(iter2.into_iter().sorted().dedup(), |a, b| a.cmp(b))
     .filter_map(|pair| match pair {
       EitherOrBoth::Both(item, _) => Some(item),
-      _ => None,
+      EitherOrBoth::Left(_) | EitherOrBoth::Right(_) => None,
     })
 }
 
