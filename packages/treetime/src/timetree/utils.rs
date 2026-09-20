@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::clock::clock_state::ClockState;
 use crate::seq::div::{OnlyLeaves, compute_divs};
 use crate::timetree::timetree_state::TimetreeState;
@@ -61,6 +56,7 @@ pub fn extract_node_times(
     .collect()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Build the Poisson branch-length distribution for each edge, keyed by edge.
 ///
 /// Replicates v0 Python TreeTime's Poisson branch-length distribution:

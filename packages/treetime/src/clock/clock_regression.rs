@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockNodeState, ClockState};
@@ -53,6 +47,7 @@ pub struct ClockRerootResult {
 }
 
 impl ClockRerootResult {
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   pub fn into_clock_model(self) -> Result<ClockModel, Report> {
     if let Some(model) = self.clock_model {
       return Ok(model);
@@ -63,6 +58,7 @@ impl ClockRerootResult {
     ClockModel::from_regression(&regression)
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   /// Like `into_clock_model`, but permits a non-positive estimated rate (warning
   /// instead of error). Used by the clock command; see `from_regression_allow_negative`.
   pub fn into_clock_model_allow_negative(self) -> ClockModel {
@@ -75,6 +71,7 @@ impl ClockRerootResult {
     ClockModel::from_regression_allow_negative(&regression)
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   pub fn regression(&self) -> &ClockRegression {
     self
       .regression
@@ -104,6 +101,7 @@ pub fn clock_regression_backward(
   })
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn clock_regression_backward_node(
   options: &ClockVarianceParams,
   prev_clock_rate: Option<f64>,
@@ -156,6 +154,7 @@ fn clock_regression_backward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Runs forward clock regression pass.
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
@@ -196,6 +195,7 @@ pub fn clock_regression_forward(
   })
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 /// Estimates clock model with optional rerooting using explicit policy.
 ///
 /// `prev_clock_rate`: when `Some(rate)`, regression uses solver-updated time lengths
@@ -289,6 +289,7 @@ pub fn estimate_clock_model_with_reroot_policy(
   ))
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Compute divergence (substitutions/site) for an edge.
 ///
 /// In re-estimation mode (`prev_clock_rate` is `Some`), converts solver-updated time length

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
@@ -208,6 +203,7 @@ fn segment_index(boundaries: &[f64], t: f64) -> usize {
   above.saturating_sub(1).min(n_seg - 1)
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Computes `n_seg + 1` equally spaced ascending segment boundaries spanning
 /// `[t_min, t_max]`.
 ///
@@ -228,6 +224,7 @@ fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
   boundaries
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Accumulates the per-segment pairwise-rate integral `Iᵢ` and merger count `Mᵢ`.
 ///
 /// `Iᵢ` sums, over lineage-count intervals whose midpoint falls in segment `i`, the

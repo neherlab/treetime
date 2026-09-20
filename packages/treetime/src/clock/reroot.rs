@@ -1,10 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::panic,
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant; mandated crash on missing graph node/edge access"
-)]
-
 use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{
@@ -67,6 +60,7 @@ impl RerootParams {
   }
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 pub fn reroot_in_place(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
@@ -341,6 +335,7 @@ fn find_named_root_point(
   })
 }
 
+#[allow(clippy::panic, clippy::unwrap_used, reason = "panics on a violated internal invariant; unwrap on a value an upstream invariant guarantees is present")]
 /// Modify graph topology to make the newly identified root the actual root,
 /// then update clock-specific edge messages in the clock state.
 fn apply_reroot(

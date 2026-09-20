@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::indel::{InDel, InDelKind};
 use crate::{make_error, make_internal_error};
@@ -245,6 +239,7 @@ pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<
 impl FromStr for Sub {
   type Err = Report;
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Parses nucleotide substitution from string. Expects IUPAC notation commonly used in bioinformatics.
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     if let Some(captures) = regex!(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").captures(s) {

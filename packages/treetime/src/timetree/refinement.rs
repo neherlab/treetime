@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
@@ -116,6 +111,7 @@ impl Refinement<'_> {
       .sum()
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn apply_relaxed_clock(&mut self, total_length: usize) -> Result<(), Report> {
     if self.options.relax.is_empty() {
       return Ok(());
@@ -140,6 +136,7 @@ impl Refinement<'_> {
     )
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn refine_topology(&mut self, total_length: usize) -> Result<TopologyOutcome, Report> {
     if self.options.topology == TopologyRefinement::Disabled {
       return Ok(TopologyOutcome::Unchanged);

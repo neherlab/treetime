@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::partition::fitch::partition::PartitionFitch;
@@ -26,6 +21,7 @@ pub fn infer_gtr_fitch(
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Count mutations from Fitch substitutions on a compressed partition for GTR inference.
 ///
 /// Reads `fitch_subs()` directly. GTR inference runs before marginal inference

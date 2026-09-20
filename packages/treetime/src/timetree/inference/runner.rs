@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_state::ClockState;
 use crate::clock::date_constraints::DateConstraints;
@@ -179,6 +174,7 @@ pub fn commit_clock_branch_lengths(
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
   partitions: &[PartitionTimetree],

@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::as_conversions,
-  reason = "graph node/edge access crashes on a missing key by project invariant, and casts are edge/mutation counts to f64"
-)]
-
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -105,6 +99,7 @@ pub(crate) fn merge_single_polytomy(
   Ok(nodes_created)
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Collect outbound edge keys for a node.
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
   let node = graph.get_node(node_key).expect("Node must exist");
@@ -252,6 +247,7 @@ struct ChildEdgeData {
   remaining_indels: Vec<InDel>,
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Merge k >= 2 siblings under a new internal node.
 ///
 /// Creates a new node N between parent P and children C_0 ... C_{k-1}:

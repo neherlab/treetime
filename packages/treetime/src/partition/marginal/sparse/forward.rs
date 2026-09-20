@@ -1,10 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  clippy::unwrap_used,
-  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -76,6 +69,7 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -171,6 +165,7 @@ fn process_node_forward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
+#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
 fn compute_msg_to_child(
   child_obs: &SparseNodeObs,
   parent: &SparseNodeState,

@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::update::MarginalBackward;
@@ -44,6 +38,7 @@ pub fn process_backward_indexed(
   })
 }
 
+#[allow(clippy::expect_used, clippy::unwrap_used, reason = "expect on a value an upstream invariant guarantees is present; unwrap on a value an upstream invariant guarantees is present")]
 fn process_node_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,

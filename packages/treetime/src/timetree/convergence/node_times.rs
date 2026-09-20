@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::timetree::timetree_state::TimetreeState;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
@@ -31,6 +26,7 @@ pub fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnaps
     .collect()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Compare two snapshots over the nodes present and dated in both.
 ///
 /// Nodes appearing in only one snapshot are skipped: polytomy resolution introduces nodes that

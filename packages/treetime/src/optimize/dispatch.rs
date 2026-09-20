@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
@@ -73,6 +68,7 @@ pub fn run_optimize_mixed_with_indel_rate(
   Ok(())
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 #[allow(clippy::too_many_arguments)]
 pub fn run_optimize_mixed_inner(
   graph: &Graph,
@@ -278,6 +274,7 @@ impl BifurcatingRootState {
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Initial estimation of branch lengths for mixed partitions.
 ///
 /// Computes per-edge substitution count over canonical (non-ambiguous,

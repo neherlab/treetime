@@ -1,11 +1,7 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 #[cfg(test)]
 mod __tests__;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Compute the Jukes-Cantor evolutionary distance from observed p-distance.
 ///
 /// Under the Jukes-Cantor 1969 model (uniform equilibrium frequencies, equal

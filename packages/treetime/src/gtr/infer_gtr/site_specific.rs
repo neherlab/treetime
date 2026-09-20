@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
 use eyre::Report;
 use log::warn;
@@ -67,6 +62,7 @@ pub struct InferGtrSiteSpecificResult {
   pub mu: Array1<f64>,
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Infer site-specific GTR model parameters from per-site mutation statistics.
 ///
 /// Solves the equation n_ij,a = pi_i,a * W_ij * T_j,a * mu_a iteratively:

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::alignment::get_common_length;
 use crate::{make_error, make_report};
@@ -13,6 +8,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq, seq};
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Complete an alignment so every tree leaf has a sequence, matching v0 missing-tip semantics.
 ///
 /// Tips absent from the alignment are treated as fully ambiguous: each gets an all-`unknown`

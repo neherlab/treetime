@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::make_error;
 use eyre::Report;
 use indexmap::IndexSet;
@@ -19,6 +14,7 @@ pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   profile
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub(crate) fn uniform_profile(n_states: usize) -> Array2<f64> {
   Array2::from_elem((1, n_states), 1.0 / n_states as f64)
 }

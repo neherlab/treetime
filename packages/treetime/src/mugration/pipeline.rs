@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
@@ -234,6 +229,7 @@ fn gather_reconstruction_maps(
   (reconstructed_traits, confidences)
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn validate_weight_coverage(
   unique_values: &IndexSet<String>,
   weights_keys: &IndexSet<String>,
@@ -273,6 +269,7 @@ pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<Strin
   weights_arr / sum
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
   Array1::from_elem(n_states, 1.0 / n_states as f64)
 }

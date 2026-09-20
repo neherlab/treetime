@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::integer_division,
-  reason = "graph node/edge access crashes on a missing key by the project invariant; intentional integer halving or segmentation"
-)]
-
 use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::make_error;
@@ -23,6 +17,7 @@ pub struct ClockFilterResult {
   pub iqd: f64,
 }
 
+#[allow(clippy::expect_used, clippy::integer_division, reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division")]
 /// Filter outliers based on clock model residuals.
 ///
 /// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`

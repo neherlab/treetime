@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 //! Polytomy resolution for the timetree refinement loop.
 //!
 //! A polytomy is resolved by sampling a coalescent history for its children, conditioned on
@@ -206,6 +200,7 @@ struct ChildInfo {
   mutations: u32,
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn collect_children(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -238,6 +233,7 @@ fn collect_children(
     .collect()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Substitutions mapped to one branch.
 ///
 /// Prefers the reconstructed substitution list, which is exact. That list is repopulated by

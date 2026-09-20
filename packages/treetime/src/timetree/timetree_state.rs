@@ -1,5 +1,3 @@
-#![allow(clippy::panic, reason = "mandated crash on missing graph node/edge access")]
-
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use eyre::Report;
@@ -223,6 +221,7 @@ impl TimetreeState {
       .collect()
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node(&self, key: GraphNodeKey) -> &DateNodeState {
     self
@@ -231,6 +230,7 @@ impl TimetreeState {
       .unwrap_or_else(|| panic!("Timetree state is missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node_mut(&mut self, key: GraphNodeKey) -> &mut DateNodeState {
     self
@@ -239,6 +239,7 @@ impl TimetreeState {
       .unwrap_or_else(|| panic!("Timetree state is missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn edge(&self, key: GraphEdgeKey) -> &DateEdgeState {
     self
@@ -247,6 +248,7 @@ impl TimetreeState {
       .unwrap_or_else(|| panic!("Timetree state is missing edge {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn edge_mut(&mut self, key: GraphEdgeKey) -> &mut DateEdgeState {
     self

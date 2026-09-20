@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction"
-)]
-
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use maplit::btreemap;
@@ -15,6 +10,7 @@ use treetime_utils::collections::container::get_exactly_one;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct OnlyLeaves(pub bool);
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 /// Calculate mapping of node name to node divergence (accumulated by summing branch lengths).
 /// Only nodes with names are included in the result.
 pub fn compute_divs(

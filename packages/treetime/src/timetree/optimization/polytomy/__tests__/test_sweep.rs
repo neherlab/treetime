@@ -257,6 +257,7 @@ mod tests {
       assert_every_child_placed_once(&plan, children.len());
     }
 
+    #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
     #[test]
     fn test_prop_sweep_resolves_fully_with_generous_window(seed in any::<u64>()) {
       let n_children = 8;
@@ -320,6 +321,7 @@ mod tests {
     Ok(())
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   #[test]
   fn test_sweep_first_merger_waiting_time_matches_the_coalescent_rate() -> Result<(), Report> {
     // All children share a node time, so all are live from the start and the first merger

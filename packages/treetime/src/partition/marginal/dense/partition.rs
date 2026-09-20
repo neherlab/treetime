@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
@@ -43,6 +38,7 @@ pub struct PartitionMarginalDense {
 }
 
 impl PartitionMarginalDense {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   pub fn new(index: usize, alphabet: Alphabet, length: usize) -> Self {
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
     Self {

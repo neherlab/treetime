@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::coalescent::time_coordinate::CalendarTime;
 use eyre::Report;
 use itertools::Itertools;
@@ -13,6 +8,7 @@ use std::iter::once;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Computes k(t) distribution from tree events in calendar-year coordinates.
 ///
 /// k(t) is the number of concurrent lineages at time t.

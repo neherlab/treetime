@@ -20,6 +20,7 @@ mod tests {
     let rates = discrete_gamma_rates(alpha, n_categories).unwrap();
     assert_eq!(rates.len(), n_categories);
 
+    #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
     let mean = rates.sum() / n_categories as f64;
     assert_abs_diff_eq!(mean, 1.0, epsilon = 1e-10);
   }
@@ -106,6 +107,7 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
+    #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
     #[test]
     #[ignore = "flaky: discrete_gamma_rates fails for some alpha/K combinations"]
     fn test_prop_discrete_gamma_rates_mean_one(

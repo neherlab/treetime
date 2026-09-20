@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "counts and indices to f64 for normalization and coordinate math; graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
@@ -20,6 +14,7 @@ use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn combine_messages(
   composition: &Composition,
   messages: &[SparseSeqDistribution],
@@ -130,6 +125,7 @@ pub fn propagate_raw(
   message
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Propagate sparse message with per-site rate variation.
 ///
 /// For variable positions, computes a position-specific P(t) using the site rate
@@ -203,6 +199,7 @@ fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
   is_max_above(dis, 1.0 - epsilon)
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Normalize a 1D sparse-site distribution in place.
 ///
 /// Normalizes `dis` to sum to 1 and returns the log-likelihood contribution

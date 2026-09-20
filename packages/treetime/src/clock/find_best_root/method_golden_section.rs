@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "counts and indices to f64 for normalization and coordinate math; graph lookups and Float-to-f64 conversions are Some by construction"
-)]
-
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GoldenSectionParams;
@@ -16,6 +10,7 @@ use eyre::Report;
 use log::info;
 use treetime_graph::edge::GraphEdgeKey;
 
+#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
 /// Golden section search optimization for finding the best split point along an edge
 pub fn optimize_golden_section(
   edge: GraphEdgeKey,

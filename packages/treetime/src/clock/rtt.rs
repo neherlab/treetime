@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use eyre::Report;
@@ -27,6 +22,7 @@ pub struct ClockRegressionResult {
   pub is_leaf: bool,
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &Graph,

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::gtr::gtr::GTR;
@@ -61,6 +56,7 @@ pub fn indexed_backward(
   })
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn indexed_node_backward(
   gtr: &GTR,
   min_branch_length: f64,
@@ -200,6 +196,7 @@ struct DenseEdgeForwardOut {
   indels: Vec<crate::seq::indel::InDel>,
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 fn indexed_node_forward(
   gtr: &GTR,
   min_branch_length: f64,
@@ -251,6 +248,7 @@ fn indexed_node_forward(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Dense forward post-processing: reconstruct the node sequence from the parent's reconstructed
 /// sequence and gap structure and derive the branch indels. This keeps the per-node parent-sequence and
 /// gap dependency intact; indel work runs during the forward node visit, not after the whole pass.

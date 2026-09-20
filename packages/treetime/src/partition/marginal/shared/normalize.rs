@@ -1,13 +1,9 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use itertools::izip;
 use ndarray::prelude::*;
 use treetime_primitives::LogLh;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
   let n_cols = dis.ncols() as f64;

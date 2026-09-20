@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::clock::date_constraints::DateConstraints;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
@@ -94,6 +89,7 @@ enum Refinement {
   ContradictedGivenDate,
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Refine the node's time distribution with the message coming down from its parent.
 ///
 /// The message -- the rest of the tree's opinion, carried across the branch -- is multiplied into the

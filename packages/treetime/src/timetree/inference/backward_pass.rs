@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
@@ -72,6 +67,7 @@ fn propagate_distributions_backward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Gathers the backward messages from a node's good children.
 ///
 /// Children arrive in the graph's canonical `children_of` order, so the messages are gathered in that

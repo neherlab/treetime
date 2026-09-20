@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "graph node/edge access crashes on a missing key by the project invariant"
-)]
-
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GridSearchParams;
@@ -11,6 +6,7 @@ use log::{debug, info};
 use ndarray::Array1;
 use treetime_graph::edge::GraphEdgeKey;
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Grid search optimization for finding the best split point along an edge
 pub fn optimize_grid_search(
   edge: GraphEdgeKey,

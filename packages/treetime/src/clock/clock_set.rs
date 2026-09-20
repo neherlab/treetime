@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "graph lookups and Float-to-f64 conversions are Some by construction"
-)]
-
 use auto_ops::impl_op_ex;
 use getset::CopyGetters;
 use ndarray::Array2;
@@ -103,10 +98,12 @@ impl ClockSet {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn hessian(&self) -> Array2<f64> {
     Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn cov(&self) -> Array2<f64> {
     // parameter covariance matrix  = hessian^-1: calculate 2x2 matrix inverse explicitly
     let det_inv = 1.0 / self.determinant();

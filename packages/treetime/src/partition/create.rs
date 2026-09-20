@@ -1,8 +1,3 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  reason = "variant matches default the irrelevant variants by design"
-)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;

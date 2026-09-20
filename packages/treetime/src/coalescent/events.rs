@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "counts and indices to f64 for normalization and coordinate math"
-)]
-
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::time_coordinate::CalendarTime;
 use eyre::Report;
@@ -10,6 +5,7 @@ use ordered_float::OrderedFloat;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_error;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Collects tree merger events as (time, delta_branches) tuples sorted by increasing time.
 ///
 /// Returns present time, events sorted by increasing time (past to present), and

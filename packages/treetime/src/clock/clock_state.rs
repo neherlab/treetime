@@ -1,5 +1,3 @@
-#![allow(clippy::panic, reason = "mandated crash on missing graph node/edge access")]
-
 use crate::clock::clock_set::ClockSet;
 use eyre::Report;
 use smart_default::SmartDefault;
@@ -134,6 +132,7 @@ impl ClockInputs {
     self.edges = edges;
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node(&self, key: GraphNodeKey) -> &ClockNodeInput {
     self
@@ -142,6 +141,7 @@ impl ClockInputs {
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node_mut(&mut self, key: GraphNodeKey) -> &mut ClockNodeInput {
     self
@@ -150,6 +150,7 @@ impl ClockInputs {
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeInput {
     self
@@ -229,6 +230,7 @@ impl ClockState {
     self.edges = edges;
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node(&self, key: GraphNodeKey) -> &ClockNodeState {
     self
@@ -237,6 +239,7 @@ impl ClockState {
       .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node_mut(&mut self, key: GraphNodeKey) -> &mut ClockNodeState {
     self
@@ -245,6 +248,7 @@ impl ClockState {
       .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
   }
 
+  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeState {
     self
