@@ -1,6 +1,6 @@
 export type CommandName = "ancestral" | "clock" | "mugration" | "optimize" | "prune" | "timetree";
 
-export interface CommandInfo {
+interface CommandInfo {
   name: CommandName;
   label: string;
   description: string;
