@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "grid lookups resolve to an index located within bounds by the surrounding search, so the Option is Some by construction"
+)]
+
 use crate::InterpElem;
 use crate::grid_iter::GridIter;
 use approx::UlpsEq;

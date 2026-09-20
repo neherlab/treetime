@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
+)]
+
 use ndarray::Array1;
 
 /// Shared storage and validation for piecewise functions on non-uniform breakpoints.

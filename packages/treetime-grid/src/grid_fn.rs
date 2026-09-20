@@ -1,3 +1,9 @@
+#![allow(
+  clippy::unwrap_used,
+  clippy::integer_division,
+  reason = "grid lookups and Float-to-f64 conversions are Some by construction, and the median uses integer halving of the point count"
+)]
+
 use std::fmt::Debug;
 
 use crate::InterpElem;

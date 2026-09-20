@@ -1,3 +1,8 @@
+#![allow(
+  clippy::unwrap_used,
+  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
+)]
+
 use std::cmp::min;
 
 use eyre::Report;
