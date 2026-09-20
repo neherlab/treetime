@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
+)]
+
 use crate::testing::metrics::config::DistributionConfig;
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use ndarray::Array1;

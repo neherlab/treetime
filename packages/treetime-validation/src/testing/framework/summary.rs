@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
+)]
+
 use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;

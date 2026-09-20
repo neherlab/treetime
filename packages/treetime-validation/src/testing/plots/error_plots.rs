@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
+)]
+
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::plots::utils::{combined_range, expand_range, tolerance_label};

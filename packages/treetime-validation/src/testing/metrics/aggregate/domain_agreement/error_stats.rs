@@ -1,3 +1,9 @@
+#![allow(
+  clippy::as_conversions,
+  clippy::integer_division,
+  reason = "metrics and statistics: counts and indices to f64, integer division for averages, in-range histogram bin lookups, and default variant matches"
+)]
+
 use approx::ulps_eq;
 use itertools::izip;
 use ndarray::Array1;
