@@ -107,8 +107,6 @@ mod tests {
     }
   }
 
-  // The trait accessors are defaulted via `self.base()`; verify they forward
-  // the embedded `TestCaseBase` values rather than returning anything else.
   #[test]
   fn test_gaussian_test_case_accessors_forward_to_base() {
     let case = sample();
@@ -116,15 +114,12 @@ mod tests {
     assert_eq!("desc", case.description());
     assert_eq!("stress", case.stress_type());
     assert_eq!("caution", case.analytical_caution());
-    #[allow(clippy::float_cmp)] // 1.5 is exactly representable
+    #[allow(clippy::float_cmp)]
     {
       assert_eq!(1.5, case.slowness());
     }
   }
 
-  // `#[serde(flatten)]` keeps the metadata fields at the top level. A
-  // regression that drops the attribute would nest them under a `base` key and
-  // change the JSON written to result files and the console.
   #[test]
   fn test_gaussian_test_case_serializes_flat() -> Result<(), Report> {
     let actual = json_write_str(&sample(), JsonPretty(true))?;

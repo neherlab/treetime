@@ -170,12 +170,12 @@ mod tests {
     let errors = Array1::linspace(1e-6, 1e-3, 100);
     let histogram = compute_error_histogram(&errors, 10, HistogramMode::Unsigned { use_log_scale: true }).unwrap();
 
-    assert_eq!(histogram.bin_counts.len(), 10);
-    assert_eq!(histogram.bin_edges.len(), 11);
-    assert_eq!(histogram.bin_centers.len(), 10);
+    assert_eq!(10, histogram.bin_counts.len());
+    assert_eq!(11, histogram.bin_edges.len());
+    assert_eq!(10, histogram.bin_centers.len());
 
     let total_count: usize = histogram.bin_counts.iter().sum();
-    assert_eq!(total_count, 100);
+    assert_eq!(100, total_count);
   }
 
   #[test]
@@ -183,11 +183,11 @@ mod tests {
     let errors = Array1::linspace(0.01, 1.0, 50);
     let histogram = compute_error_histogram(&errors, 5, HistogramMode::Unsigned { use_log_scale: false }).unwrap();
 
-    assert_eq!(histogram.bin_counts.len(), 5);
-    assert_eq!(histogram.bin_edges.len(), 6);
+    assert_eq!(5, histogram.bin_counts.len());
+    assert_eq!(6, histogram.bin_edges.len());
 
     let total_count: usize = histogram.bin_counts.iter().sum();
-    assert_eq!(total_count, 50);
+    assert_eq!(50, total_count);
   }
 
   #[test]
@@ -195,11 +195,11 @@ mod tests {
     let errors = array![-2.0, -1.0, 0.0, 1.0, 2.0];
     let histogram = compute_error_histogram(&errors, 4, HistogramMode::Signed).unwrap();
 
-    assert_eq!(histogram.bin_counts.len(), 4);
-    assert_eq!(histogram.bin_edges.len(), 5);
+    assert_eq!(4, histogram.bin_counts.len());
+    assert_eq!(5, histogram.bin_edges.len());
 
     let total_count: usize = histogram.bin_counts.iter().sum();
-    assert_eq!(total_count, 5);
+    assert_eq!(5, total_count);
   }
 
   #[test]
@@ -208,7 +208,7 @@ mod tests {
     let histogram = compute_error_histogram(&errors, 2, HistogramMode::Unsigned { use_log_scale: false }).unwrap();
 
     let total_count: usize = histogram.bin_counts.iter().sum();
-    assert_eq!(total_count, 2);
+    assert_eq!(2, total_count);
   }
 
   #[test]
@@ -217,7 +217,7 @@ mod tests {
     let histogram = compute_error_histogram(&errors, 3, HistogramMode::Signed).unwrap();
 
     let total_count: usize = histogram.bin_counts.iter().sum();
-    assert_eq!(total_count, 3);
+    assert_eq!(3, total_count);
   }
 
   #[test]
@@ -232,7 +232,7 @@ mod tests {
     let errors = array![f64::NAN, f64::INFINITY];
     let histogram = compute_error_histogram(&errors, 5, HistogramMode::Signed).unwrap();
 
-    assert_eq!(histogram.bin_counts, vec![0; 5]);
-    assert_eq!(histogram.bin_edges, vec![0.0; 6]);
+    assert_eq!(vec![0; 5], histogram.bin_counts);
+    assert_eq!(vec![0.0; 6], histogram.bin_edges);
   }
 }

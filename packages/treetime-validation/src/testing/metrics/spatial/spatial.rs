@@ -54,7 +54,7 @@ mod tests {
     let y = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let result = SpatialMetrics::new(&x, &y, &y, 1.0).unwrap();
 
-    assert_eq!(result.total_points, 5);
+    assert_eq!(5, result.total_points);
     assert_ulps_eq!(result.cumulative.summary.final_value, 0.0, max_ulps = 4);
     assert_ulps_eq!(result.cumulative.summary.max_abs, 0.0, max_ulps = 4);
   }
@@ -67,7 +67,6 @@ mod tests {
 
     let result = SpatialMetrics::new(&x, &actual, &expected, 1.0).unwrap();
 
-    // Cumulative error: 5 points * 0.1 error * dx=1 = 0.5
     assert_ulps_eq!(result.cumulative.summary.final_value, 0.5, max_ulps = 4);
     assert_ulps_eq!(result.cumulative.summary.max_abs, 0.5, max_ulps = 4);
   }

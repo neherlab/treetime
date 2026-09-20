@@ -85,7 +85,7 @@ mod tests {
     let y = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let result = PointwiseMetrics::new(&x, &y, &y).unwrap();
 
-    assert_eq!(result.total_points, 5);
+    assert_eq!(5, result.total_points);
     assert_ulps_eq!(result.errors.summary.abs_max, 0.0, max_ulps = 4);
     assert_ulps_eq!(result.errors.summary.rel_max, 0.0, max_ulps = 4);
     assert_ulps_eq!(result.errors.summary.signed_bias, 0.0, max_ulps = 4);
