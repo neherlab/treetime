@@ -1,10 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  clippy::expect_used,
-  clippy::as_conversions,
-  reason = "convenience constructors for known-valid ISO literals, documented out-of-range panics, validated 1-12 months, and year casts that fit i32"
-)]
-
 use crate::make_error;
 use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
@@ -22,6 +15,7 @@ pub fn date_from_iso(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report>
   Ok(utc)
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 pub fn iso(date_str: impl AsRef<str>) -> DateTime<Utc> {
   date_from_iso(date_str).unwrap()
 }
@@ -39,6 +33,7 @@ pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
   datetime.timestamp() * 1000
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Convert millisecond timestamp to DateTime.
 ///
 /// # Panics
@@ -85,6 +80,7 @@ pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
   Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap()
 }
 
+#[allow(clippy::as_conversions, clippy::expect_used, reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present")]
 pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {
   if !(1..=12).contains(&month) {
     return make_error!("Invalid month: {month}");

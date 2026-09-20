@@ -1,15 +1,9 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  clippy::disallowed_methods,
-  reason = "calendar math: casts are small-integer or finite conversions, the expect covers dates valid in every supported year, and from_secs_f64 receives a finite non-negative duration bounded by the year length"
-)]
-
 use crate::datetime::date_range::DateRange;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
 use std::time::Duration as StdDuration;
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Convert DateTime object to a year-fraction number
 ///
 /// NOTE: the calculation is not reciprocal to `date_to_year_fraction()` due to precision loss in
@@ -27,6 +21,11 @@ pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
   (begin, end)
 }
 
+#[allow(
+  clippy::as_conversions,
+  clippy::disallowed_methods,
+  reason = "year and second counts cast to the width the chrono API needs; Duration::from_secs_f64 takes a within-year second span that is finite by construction"
+)]
 /// Convert year-fraction to DateTime object
 ///
 /// NOTE: the calculation is not reciprocal to `date_to_year_fraction()` due to precision loss in
@@ -44,6 +43,7 @@ pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Number of days in a proleptic-Gregorian year: the ordinal of its December 31 (365 or 366).
 fn days_in_year(year: i32) -> u32 {
   NaiveDate::from_ymd_opt(year, 12, 31)

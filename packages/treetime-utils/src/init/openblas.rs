@@ -4,11 +4,6 @@
   clippy::multiple_unsafe_ops_per_block,
   clippy::undocumented_unsafe_blocks
 )]
-#![allow(
-  clippy::unwrap_used,
-  clippy::as_conversions,
-  reason = "serializing a small info struct is infallible, and FFI thread/proc counts are C ints cast to i32"
-)]
 
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
@@ -44,10 +39,12 @@ pub fn print_openblas_info() {
   eprintln!("{}", get_openblas_info_str());
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 pub fn get_openblas_info_str() -> String {
   to_string_pretty(&get_openblas_info()).unwrap()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn get_openblas_info() -> OpenBlasInfo {
   unsafe {
     let config = get_c_string(openblas_get_config());
