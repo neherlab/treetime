@@ -22,21 +22,14 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
-  // Regression: run_optimize_mixed must not produce -inf/NaN when entering
-  // with branch_length=0 and mismatched certain states. Before the fix,
-  // the evaluator computed ln(0) and divided by zero at t=0.
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
-    // Tree with zero-length branches to force the edge case
     let nwk_parsed = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // Alignment with mismatches: leaf A differs from leaf B at multiple positions,
-    // so after marginal reconstruction some edges have sites where parent and child
-    // have disjoint support at t=0.
     let alphabet = Alphabet::default();
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -83,8 +76,6 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
-    // Do NOT call initial_guess_mixed -- leave branch lengths at 0.0
-    // to exercise the zero-branch mismatch code path.
     run_optimize_mixed(
       &graph,
       total_length,
@@ -94,7 +85,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // All branch lengths must be finite after optimization
     for edge_ref in graph.get_edges() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(

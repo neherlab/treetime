@@ -5,28 +5,14 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 use treetime_utils::make_error;
 
-/// Per-branch coalescent merger rate κ(t) = (k(t)-1)/(2·Tc(t)).
-///
-/// This is the rate for one branch to merge with any other branch. The lineage
-/// count is clamped as `max(0.5, k - 1)` (see [`compute_merger_rate_lineage_count`]).
 pub(super) fn compute_merger_rate_per_lineage_scalar(k: f64, tc: f64) -> f64 {
   compute_merger_rate_per_lineage(compute_merger_rate_lineage_count(k), tc)
 }
 
-/// Total coalescent merger rate λ(t) = k(t)·(k(t)-1)/(2·Tc(t)).
-///
-/// This is the rate for any pair of branches to merge. The lineage count is
-/// clamped as `max(0.5, k - 1)` (see [`compute_merger_rate_lineage_count`]).
 pub(super) fn compute_merger_rate_total_scalar(k: f64, tc: f64) -> f64 {
   compute_merger_rate_total(compute_merger_rate_lineage_count(k), tc)
 }
 
-/// Computes H(t) = ∫ₜᴾ κ(t') dt' in decimal calendar years.
-///
-/// This integral represents the expected number of merger events experienced by a branch.
-/// Uses the exact breakpoints from lineage_counts where the function has discontinuities.
-///
-/// The integral is zero at the most recent event P and increases into the past.
 pub fn compute_integral_merger_rate(
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
@@ -44,7 +30,6 @@ pub fn compute_integral_merger_rate(
     let t1 = breakpoints[i + 1];
     let dt = t1 - t0;
 
-    // k is constant between breakpoints, use value at midpoint
     let mid = f64::midpoint(t0, t1);
     let k = lineage_counts.eval(mid);
     let tc = tc_dist.eval(mid)?;
@@ -65,11 +50,6 @@ pub fn compute_integral_merger_rate(
   ))
 }
 
-/// Clamped effective lineage count `max(0.5, k - 1)`, matching TreeTime v0.
-///
-/// At the present boundary, `k` can be zero before the first sample event; v0
-/// documents that this clamped region is evaluated only when the tree changes.
-/// NaN lineage counts propagate as they do through v0's `numpy.maximum` call.
 fn compute_merger_rate_lineage_count(k: f64) -> f64 {
   let n_merge_candidates = k - 1.0;
   if n_merge_candidates.is_nan() {

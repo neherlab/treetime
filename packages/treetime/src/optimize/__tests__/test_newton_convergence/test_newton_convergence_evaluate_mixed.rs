@@ -7,7 +7,6 @@ mod tests {
 
   #[test]
   fn test_evaluate_mixed_returns_finite_values() {
-    // evaluate_mixed should return finite values for any valid coefficients
     let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
@@ -21,20 +20,17 @@ mod tests {
 
   #[test]
   fn test_evaluate_mixed_log_lh_negative() {
-    // Log-likelihood should be negative (probabilities < 1)
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
     let metrics = evaluate_mixed(&contributions, 0.1).expect("valid branch length");
 
-    // Log of a probability is negative or zero
     assert!(metrics.log_lh.value() <= 0.0);
   }
 
   #[test]
   fn test_evaluate_mixed_multiple_branch_lengths() {
-    // evaluate_mixed should work across a range of branch lengths
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];

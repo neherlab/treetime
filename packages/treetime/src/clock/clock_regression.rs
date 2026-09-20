@@ -32,13 +32,6 @@ pub struct ClockVarianceParams {
   pub variance_offset_leaf: f64,
 }
 
-/// Result of clock estimation with optional rerooting.
-///
-/// Contains either a raw regression result (estimated rate, any sign) or a
-/// validated `ClockModel` (fixed rate, positive). Callers that require a positive
-/// rate for time inference (timetree) call `into_clock_model()`, which errors on a
-/// non-positive rate. The clock command, which only reports the regression, calls
-/// `into_clock_model_allow_negative()`, which warns and continues.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
@@ -65,8 +58,6 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Like `into_clock_model`, but permits a non-positive estimated rate (warning
-  /// instead of error). Used by the clock command; see `from_regression_allow_negative`.
   pub fn into_clock_model_allow_negative(self) -> ClockModel {
     if let Some(model) = self.clock_model {
       return model;
@@ -93,10 +84,6 @@ impl ClockRerootResult {
   }
 }
 
-/// Runs backward clock regression pass.
-///
-/// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
-/// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
 pub fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -131,8 +118,6 @@ fn clock_regression_backward_node(
       ClockSet::leaf_contribution(date)
     }
   } else {
-    // Children arrive in the graph's canonical `children_of` order, so the moment sums fold in that
-    // order, keeping the floating-point result byte-for-byte identical.
     context.children.iter().fold(ClockSet::default(), |mut total, child| {
       let edge = child.edge.expect("Non-root indexed node must own its parent edge");
       total += &edge.clock_from_child;
@@ -170,10 +155,6 @@ fn clock_regression_backward_node(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Runs forward clock regression pass.
-///
-/// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
-/// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
 pub fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -214,10 +195,6 @@ pub fn clock_regression_forward(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Estimates clock model with optional rerooting using explicit policy.
-///
-/// `prev_clock_rate`: when `Some(rate)`, regression uses solver-updated time lengths
-/// converted to divergence (re-estimation mode). When `None`, uses input branch lengths.
 pub fn estimate_clock_model_with_reroot_policy(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
@@ -311,11 +288,6 @@ pub fn estimate_clock_model_with_reroot_policy(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Compute divergence (substitutions/site) for an edge.
-///
-/// In re-estimation mode (`prev_clock_rate` is `Some`), converts solver-updated time length
-/// back to divergence: `time_length * rate * gamma`. Falls back to input `branch_length`
-/// when `time_length` is not yet populated (initial estimation or pre-solver edges).
 fn edge_divergence(
   branch_length: Option<f64>,
   time_length: Option<f64>,

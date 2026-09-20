@@ -10,14 +10,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_primitives::Seq;
 
-/// Apply a reroot to the sparse inference state that survives it: rewrite the durable observations
-/// (Fitch substitutions, indels, root sequence, and the split node's observations), then reconcile the
-/// node-state map so the next marginal update sees exactly the current node set.
-///
-/// Takes the two values a reroot carries across and returns a reconstruction with no per-edge results:
-/// the messages and estimates of the previous update describe the pre-reroot topology, and the next
-/// marginal update rebuilds a complete set. The node states keep the leaf seeds and the derived root
-/// sequence, so they are reconciled rather than dropped.
 pub fn reroot_sparse(
   partition: PartitionMarginalSparse,
   gtr: GTR,
@@ -37,19 +29,11 @@ pub fn reroot_sparse(
   Ok(SparseReconstruction::seeded(partition, gtr, node_states))
 }
 
-// Phase 1: topology changes + root_sequence derivation + new node init.
-// Must complete before remove_trivial_root (phase 2) because derive_root_sequence reads the
-// parent_edge that phase 2 deletes.
-//
-// Note: root_composition + child-side fitch_subs + indels != child_composition. Non-char (N, gap)
-// differences between nodes are not encoded as Fitch subs - they are tracked through non_char ranges
-// on each node instead.
 fn apply_reroot_changes(
   partition: &mut PartitionMarginalSparse,
   node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
   changes: &RerootChanges,
 ) -> Result<(), Report> {
-  // Split edge: child-side gets all mutations, parent-side is empty
   if let Some(info) = &changes.edge_split {
     let old_edge_data = partition
       .obs_edges
@@ -61,7 +45,6 @@ fn apply_reroot_changes(
       .insert(info.parent_side_edge_key, SparseEdgeObs::default());
   }
 
-  // Invert edges on the reroot path (substitutions and indels reverse direction).
   for edge_key in &changes.inverted_edge_keys {
     let edge_data = partition
       .obs_edges
@@ -73,10 +56,8 @@ fn apply_reroot_changes(
     }
   }
 
-  // Derive root_sequence for the new root
   derive_root_sequence(partition, changes);
 
-  // Initialize the new split node's observations and node state from the finalized root_sequence.
   if let Some(info) = &changes.edge_split {
     partition.obs_nodes.insert(
       info.new_node_key,
@@ -150,9 +131,6 @@ fn apply_edge_to_sequence(seq: &mut Seq, edge: &SparseEdgeObs, alphabet: &Alphab
   }
 }
 
-/// Reconcile the node-state map to the partition's current node observations: seed a placeholder state
-/// for every node introduced by the reroot and drop the state of any node it removed. Leaf seeds and the
-/// derived root sequence are preserved; the marginal passes rebuild the evolving internal state.
 fn reconcile_node_states(
   partition: &PartitionMarginalSparse,
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,

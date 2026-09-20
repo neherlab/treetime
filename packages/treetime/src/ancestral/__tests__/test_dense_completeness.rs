@@ -84,7 +84,6 @@ NNGTACGTAC
   fn test_dense_completeness_non_char_tracked_on_leaves() -> Result<(), Report> {
     let (_, recon) = setup_dense_with_unknowns()?;
 
-    // Find leaf A's node (has "NN" at positions 4-5)
     let leaf_a = recon.node_states.values().find(|n| n.seq.unknown.contains(&(4, 6)));
     assert!(leaf_a.is_some(), "Leaf A should have unknown range (4,6)");
 
@@ -101,9 +100,6 @@ NNGTACGTAC
   fn test_dense_completeness_effective_length_subtracts_unknowns() -> Result<(), Report> {
     let (graph, recon) = setup_dense_with_unknowns()?;
 
-    // Every leaf has 2 N positions. Leaf edges have the leaf's unknowns in
-    // their non_char, reducing effective length below 10. Internal edges may
-    // still have effective length 10 if children's unknown positions don't overlap.
     let mut any_reduced = false;
     for edge in graph.get_edges() {
       let edge_key = edge.key();
@@ -130,7 +126,6 @@ NNGTACGTAC
     let (graph_d, recon_d) = setup_dense_with_unknowns()?;
     let (graph_s, recon_s) = setup_sparse_with_unknowns()?;
 
-    // Both graphs have same topology, edges in same order
     let dense_edges = graph_d.get_edges().collect::<Vec<_>>();
     let sparse_edges = graph_s.get_edges().collect::<Vec<_>>();
     assert_eq!(dense_edges.len(), sparse_edges.len());
@@ -188,16 +183,12 @@ ACGTACGTAC
   fn test_dense_completeness_indels_populated() -> Result<(), Report> {
     let (_graph, recon) = setup_dense_with_gaps()?;
 
-    // Alignment: A=ACGT--ACGT, B=ACGTACACGT, C=AC--ACGTAC, D=ACGTACGTAC
-    // A has gap at (4,6), C has gap at (2,4). B and D have no gaps.
-    // Indels should appear on edges connecting to A and C.
     let total_indels: usize = recon.edges.estimates.values().map(|e| e.indels.len()).sum();
     assert!(
       total_indels >= 2,
       "Expected at least 2 indels (one for A's gap, one for C's gap), got {total_indels}"
     );
 
-    // Verify indel directions exist (at least one deletion)
     let has_deletion = recon
       .edges
       .estimates

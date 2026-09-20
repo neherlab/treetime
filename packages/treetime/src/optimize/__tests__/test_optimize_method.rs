@@ -36,21 +36,13 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
-  /// At s=0, the first derivative is zero (chain rule factor 2s = 0) and
-  /// the second derivative equals 2 * dl_dt (the only surviving term).
   #[test]
   fn test_optimize_method_chain_rule_at_zero() {
     let (ds, d2s) = chain_rule_sqrt(0.0, 100.0, -500.0);
     assert_abs_diff_eq!(ds, 0.0, epsilon = 1e-15);
-    // d2l_ds2 = 4*0*(-500) + 2*100 = 200
     assert_abs_diff_eq!(d2s, 200.0, epsilon = 1e-15);
   }
 
-  /// Chain rule transform: known analytical values.
-  ///
-  /// s=0.3 (t=0.09), dl_dt=10.0, d2l_dt2=-100.0:
-  ///   dl_ds = 2 * 0.3 * 10.0 = 6.0
-  ///   d2l_ds2 = 4 * 0.09 * (-100.0) + 2 * 10.0 = -36 + 20 = -16
   #[test]
   fn test_optimize_method_chain_rule_analytical() {
     let s = 0.3;
@@ -59,11 +51,6 @@ mod tests {
     assert_abs_diff_eq!(d2s, -16.0, epsilon = 1e-14);
   }
 
-  /// Chain rule log transform: known analytical values.
-  ///
-  /// t=0.09, dl_dt=10.0, d2l_dt2=-100.0:
-  ///   dl_du = 0.09 * 10.0 = 0.9
-  ///   d2l_du2 = 0.09^2 * (-100.0) + 0.09 * 10.0 = -0.81 + 0.9 = 0.09
   #[test]
   fn test_optimize_method_chain_rule_log_analytical() {
     let t = 0.09;
@@ -72,20 +59,14 @@ mod tests {
     assert_abs_diff_eq!(d2u, 0.09, epsilon = 1e-14);
   }
 
-  /// At very small t, both log-space derivatives approach zero because
-  /// the t factor suppresses them.
   #[test]
   fn test_optimize_method_chain_rule_log_small_t() {
     let t = 1e-10;
     let (du, d2u) = chain_rule_log(t, 1e6, -1e12);
-    // dl_du = 1e-10 * 1e6 = 1e-4
     assert_abs_diff_eq!(du, 1e-4, epsilon = 1e-14);
-    // d2l_du2 = (1e-10)^2 * (-1e12) + 1e-10 * 1e6 = -1e-8 + 1e-4 ≈ 1e-4
     assert_abs_diff_eq!(d2u, -1e-8 + 1e-4, epsilon = 1e-14);
   }
 
-  /// u-space first derivative matches numerical central difference of the
-  /// combined (substitution + indel) log-likelihood evaluated at t = exp(u).
   #[rustfmt::skip]
   #[rstest]
   #[case::small(   0.01,  2, 10.0)]
@@ -119,13 +100,9 @@ mod tests {
     };
     let dl_du_numerical = (eval_u(u + h) - eval_u(u - h)) / (2.0 * h);
 
-    // Central-difference first derivative: leading O(h^2) truncation at h = |u| * 1e-5
-    // dominates round-off ~ eps_machine / h. 1e-4 is the tightest tolerance that holds
-    // across the indel-heavy cases in this matrix.
     assert_abs_diff_eq!(dl_du_analytical, dl_du_numerical, epsilon = 1e-4);
   }
 
-  /// u-space second derivative matches numerical central difference.
   #[rustfmt::skip]
   #[rstest]
   #[case::small(   0.01,  2, 10.0)]
@@ -159,16 +136,9 @@ mod tests {
     };
     let d2l_du2_numerical = (eval_u(u + h) - 2.0 * eval_u(u) + eval_u(u - h)) / (h * h);
 
-    // Central-difference second derivative: round-off ~ 4 * eps_machine * |f| / h^2.
-    // At h = |u| * 1e-4 ~ 1e-5 with indel Hessian magnitude ~ 2e4 (k / t^2 at t=0.01,
-    // k=2), the round-off bound is ~ 4 * 2.2e-16 * 2e4 / 1e-10 ~ 4e-2. 1e-2 is the
-    // tightest tolerance that holds across the matrix; loosening further would mask
-    // a real numerical defect.
     assert_abs_diff_eq!(d2l_du2_analytical, d2l_du2_numerical, epsilon = 1e-2);
   }
 
-  /// s-space first derivative matches numerical central difference of the
-  /// combined (substitution + indel) log-likelihood evaluated at t = s^2.
   #[rustfmt::skip]
   #[rstest]
   #[case::small(   0.01,  2, 10.0)]
@@ -202,13 +172,9 @@ mod tests {
     };
     let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
 
-    // Central-difference first derivative: leading O(h^2) truncation at h = s * 1e-5
-    // dominates round-off ~ eps_machine / h. 1e-4 is the tightest tolerance that holds
-    // across the indel-heavy cases in this matrix.
     assert_abs_diff_eq!(dl_ds_analytical, dl_ds_numerical, epsilon = 1e-4);
   }
 
-  /// s-space second derivative matches numerical central difference.
   #[rustfmt::skip]
   #[rstest]
   #[case::small(   0.01,  2, 10.0)]
@@ -242,16 +208,9 @@ mod tests {
     };
     let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
 
-    // Central-difference second derivative: round-off ~ 4 * eps_machine * |f| / h^2.
-    // At h = s * 1e-4 ~ 1e-5 with indel Hessian magnitude ~ 2e4 (k / t^2 at t=0.01,
-    // k=2), the round-off bound is ~ 4 * 2.2e-16 * 2e4 / 1e-10 ~ 4e-2. 1e-2 is the
-    // tightest tolerance that holds across the matrix; loosening further would mask
-    // a real numerical defect.
     assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
   }
 
-  /// All methods produce finite non-negative branch lengths on a
-  /// simple tree with no indels (well-conditioned substitution-only objective).
   #[rustfmt::skip]
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
@@ -284,11 +243,6 @@ mod tests {
     Ok(())
   }
 
-  /// C1: Local optimality. The combined log-likelihood at the reported
-  /// optimum must exceed the log-likelihood at nearby points.
-  ///
-  /// Uses the indel rate captured before optimization (same rate the
-  /// optimizer used) for consistent evaluation.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton(     BranchOptMethod::Newton)]
@@ -335,8 +289,6 @@ mod tests {
     Ok(())
   }
 
-  /// C2: Stationarity. The implied Newton step at the optimum should be
-  /// smaller than the Newton tolerance. Uses the optimizer's indel rate.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
@@ -362,9 +314,6 @@ mod tests {
     if metrics.second_derivative < 0.0 {
       let implied_step = (metrics.derivative / metrics.second_derivative).abs();
       let tol = newton_tolerance_t(bl);
-      // Allow 10x tolerance: the optimizer stops when the step is below
-      // tolerance, but the next step from the final position can be slightly
-      // larger due to nonlinearity of the objective.
       assert!(
         implied_step < tol * 10.0,
         "{method:?}: implied Newton step ({implied_step}) exceeds 10x tolerance ({tol}), \
@@ -376,9 +325,6 @@ mod tests {
     Ok(())
   }
 
-  /// C3: Cross-method agreement. NewtonSqrt and Brent achieve similar
-  /// combined log-likelihood values. Compares log-likelihood (not branch
-  /// lengths) because the objective can be flat near the optimum.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -420,8 +366,6 @@ mod tests {
     Ok(())
   }
 
-  /// C3b: Cross-method agreement. NewtonLog and Brent achieve similar
-  /// combined log-likelihood values.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -463,15 +407,6 @@ mod tests {
     Ok(())
   }
 
-  /// C3c: Full cross-method log-likelihood agreement.
-  ///
-  /// Each non-reference method's combined log-likelihood must agree with
-  /// `BrentSqrt`'s within 1e-3 on the same input. Compares log-likelihood
-  /// (not branch lengths) because the objective can be flat near the optimum.
-  ///
-  /// Parameterized one case per (method, n_indels) so a regression in any
-  /// single method on any single indel count fails its own case rather than
-  /// short-circuiting on the first failure across a manual loop.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton_k1(     BranchOptMethod::Newton,      1)]
@@ -494,8 +429,6 @@ mod tests {
     #[case] method: BranchOptMethod,
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
-    // Reference: run BrentSqrt (the v0-matching default) on a fresh graph
-    // and capture its post-optimization log-likelihood at the first edge.
     let lh_ref = {
       let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
       let graph_ref_names = nwk_parsed.names();
@@ -533,8 +466,6 @@ mod tests {
     Ok(())
   }
 
-  /// C5b: NewtonLog achieves equal or better log-likelihood than Newton
-  /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_log_improves_over_newton() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -603,8 +534,6 @@ mod tests {
     Ok(())
   }
 
-  /// C5: NewtonSqrt achieves equal or better log-likelihood than Newton
-  /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_sqrt_improves_over_newton() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -673,14 +602,6 @@ mod tests {
     Ok(())
   }
 
-  /// C5c: Cross-conditioning ordering for Newton variants on indel-bearing edges.
-  ///
-  /// Better-conditioned parameterizations find equal or better optima:
-  /// `lh_newton_log >= lh_newton_sqrt >= lh_newton` within tolerance.
-  ///
-  /// This documents the known Newton-t limitation: it is a correct implementation
-  /// of a limited algorithm, not a bug. If Newton-t produces better log-likelihood
-  /// than Newton-log, the implementation is wrong.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -724,7 +645,6 @@ mod tests {
     let bl_log = first_edge_bl(&graph_log, &bl_log);
     let lh_log = eval_combined_first_edge(&graph_log, &dense_partitions_log, &sparse_partitions_log, rate_log, bl_log)?;
 
-    // Verify ordering: lh_newton_log >= lh_newton_sqrt >= lh_newton
     let tol = 1e-10;
     assert!(
       lh_sqrt >= lh_newton - tol,
@@ -740,7 +660,6 @@ mod tests {
     Ok(())
   }
 
-  /// All Brent variants produce positive, finite branch lengths with indels.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent_k1(     BranchOptMethod::Brent,     1)]
@@ -775,7 +694,6 @@ mod tests {
     Ok(())
   }
 
-  /// NewtonLog produces positive, finite branch lengths with indels present.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -801,7 +719,6 @@ mod tests {
     Ok(())
   }
 
-  /// NewtonSqrt produces positive, finite branch lengths with indels present.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -827,7 +744,6 @@ mod tests {
     Ok(())
   }
 
-  /// Newton (t-space) produces positive, finite branch lengths with indels present.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1(1)]
@@ -853,7 +769,6 @@ mod tests {
     Ok(())
   }
 
-  /// All three Brent parameterizations achieve similar log-likelihood.
   #[test]
   fn test_optimize_method_brent_cross_parameterization_lh_agreement() -> Result<(), Report> {
     let n_indels = 3;
@@ -931,9 +846,6 @@ mod tests {
     Ok(())
   }
 
-  /// brent_sqrt_inner: the transform s=sqrt(t), evaluate at s^2, square
-  /// result back must produce a branch length in t-space that is a local
-  /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -965,7 +877,6 @@ mod tests {
       "brent_sqrt_inner result must be finite, got {result}"
     );
 
-    // Verify local optimality in t-space
     let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
       .expect("valid branch length")
       .value();
@@ -989,9 +900,6 @@ mod tests {
     Ok(())
   }
 
-  /// brent_log_inner: the transform u=ln(t), evaluate at exp(u), exponentiate
-  /// result back must produce a branch length in t-space that is a local
-  /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -1020,7 +928,6 @@ mod tests {
       "brent_log_inner result must be finite, got {result}"
     );
 
-    // Verify local optimality in t-space
     let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
       .expect("valid branch length")
       .value();
@@ -1042,12 +949,6 @@ mod tests {
     Ok(())
   }
 
-  /// C4: Brent bracket validity for all three parameterizations.
-  ///
-  /// The bracket used by production code is computed from the *input* branch
-  /// length (before optimization), not the optimized result. This test captures
-  /// the input BL first, computes the bracket from it, runs optimization, then
-  /// verifies the optimum beats both bracket endpoints.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent(     BranchOptMethod::Brent)]
@@ -1065,10 +966,6 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
     let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    // Capture input branch length and compute bracket BEFORE optimization
-    // (production code computes the bracket from the input BL). Calls the
-    // production helpers brent_bracket and min_branch_length_for_indels
-    // directly to avoid drift if either formula changes.
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length as f64;
     let min_bl = min_branch_length_for_indels(4, one_mutation);
@@ -1096,27 +993,18 @@ mod tests {
 
   mod generators {
     use proptest::prelude::*;
-    /// Strategy for `s = sqrt(t)` values used by `chain_rule_sqrt`.
-    /// Bounded above well below the catastrophic-cancellation regime of the
-    /// step-clamping invariants (production never sees `s` near these caps).
     pub fn gen_s() -> impl Strategy<Value = f64> {
       1e-6_f64..1e3_f64
     }
-    /// Strategy for `t > 0` values used by `chain_rule_log`.
     pub fn gen_t() -> impl Strategy<Value = f64> {
       1e-10_f64..1e3_f64
     }
-    /// Strategy for first-derivative magnitudes typical of substitution +
-    /// indel objectives at the per-edge scale.
     pub fn gen_dl_dt() -> impl Strategy<Value = f64> {
       -1e6_f64..1e6_f64
     }
-    /// Strategy for second-derivative magnitudes (Hessians can swing widely
-    /// on indel-heavy short branches).
     pub fn gen_d2l_dt2() -> impl Strategy<Value = f64> {
       -1e8_f64..1e8_f64
     }
-    /// Strategy for a non-zero scalar multiplier in the linearity invariant.
     pub fn gen_scalar() -> impl Strategy<Value = f64> {
       prop_oneof![-1e3_f64..-1e-3_f64, 1e-3_f64..1e3_f64]
     }
@@ -1125,9 +1013,6 @@ mod tests {
   use proptest::prelude::*;
 
   proptest! {
-    /// `chain_rule_sqrt(s, dl_dt, d2l_dt2)` must equal the closed-form
-    /// (2*s*dl_dt, 4*s^2*d2l_dt2 + 2*dl_dt). Pinning the formula identity
-    /// catches any algebraic regression in the chain rule.
     #[test]
     fn test_prop_optimize_method_chain_rule_sqrt_formula(
       s in generators::gen_s(),
@@ -1149,9 +1034,6 @@ mod tests {
       );
     }
 
-    /// `chain_rule_sqrt` is linear in `(dl_dt, d2l_dt2)`: scaling both inputs
-    /// by `k` scales both outputs by `k`. This is the homogeneity invariant
-    /// of a linear transform.
     #[test]
     fn test_prop_optimize_method_chain_rule_sqrt_linear(
       s in generators::gen_s(),
@@ -1173,8 +1055,6 @@ mod tests {
       );
     }
 
-    /// `chain_rule_log(t, dl_dt, d2l_dt2)` must equal the closed-form
-    /// (t*dl_dt, t^2*d2l_dt2 + t*dl_dt).
     #[test]
     fn test_prop_optimize_method_chain_rule_log_formula(
       t in generators::gen_t(),
@@ -1196,7 +1076,6 @@ mod tests {
       );
     }
 
-    /// `chain_rule_log` is linear in `(dl_dt, d2l_dt2)`.
     #[test]
     fn test_prop_optimize_method_chain_rule_log_linear(
       t in generators::gen_t(),
@@ -1222,14 +1101,6 @@ mod tests {
   mod helpers {
     use super::*;
 
-    /// Set up dense+sparse partitions from simple_alignment() (which has
-    /// real substitutions between taxa) and inject indels on the first edge.
-    /// Returns (mixed_partitions, indel_rate_before_optimization).
-    ///
-    /// The indel rate is captured BEFORE optimization because
-    /// `run_optimize_mixed` computes the rate once from initial branch
-    /// lengths and uses it as a constant throughout. Test evaluations must
-    /// use the same rate for consistent verification.
     pub(super) fn setup_with_indels(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -1251,7 +1122,6 @@ mod tests {
         p.partition.obs_edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
       }
 
-      // Capture indel rate at the same point run_optimize_mixed will
       let indel_rate = {
         let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
         estimate_indel_rate(graph, &indel_counts, branch_lengths)
@@ -1260,9 +1130,6 @@ mod tests {
       Ok((dense_partitions, sparse_partitions, indel_rate))
     }
 
-    /// Evaluate combined (substitution + indel) log-likelihood at branch
-    /// length t for the first edge, using a fixed indel rate (the rate
-    /// the optimizer used, not the post-optimization rate).
     pub(super) fn eval_combined_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
@@ -1286,8 +1153,6 @@ mod tests {
       Ok(sub_lh + indel_lh)
     }
 
-    /// Evaluate combined metrics at branch length t for the first edge,
-    /// using a fixed indel rate.
     pub(super) fn eval_metrics_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
@@ -1306,9 +1171,6 @@ mod tests {
       Ok(metrics)
     }
 
-    /// Branch length on the first edge after optimization, panicking if it
-    /// is missing or NaN. Captures the 5-line read chain that recurs across
-    /// tests in this file.
     pub(super) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
     }

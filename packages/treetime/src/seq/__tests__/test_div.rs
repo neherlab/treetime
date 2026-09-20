@@ -15,7 +15,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
-  // OnlyLeaves(false) - all nodes
   #[test]
   fn test_all_nodes() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
@@ -41,7 +40,6 @@ mod tests {
     Ok(())
   }
 
-  // OnlyLeaves(true) - leaves only
   #[test]
   fn test_only_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
@@ -64,7 +62,6 @@ mod tests {
     Ok(())
   }
 
-  // Unnamed internal nodes get auto-generated names
   #[test]
   fn test_unnamed_internals() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
@@ -87,7 +84,6 @@ mod tests {
     Ok(())
   }
 
-  // Single node tree
   #[test]
   fn test_single_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("A:0.5;")?;
@@ -104,7 +100,6 @@ mod tests {
     Ok(())
   }
 
-  // Linear chain (no branching)
   #[test]
   fn test_linear_chain() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
@@ -121,7 +116,6 @@ mod tests {
     Ok(())
   }
 
-  // Deep tree (20 levels)
   #[test]
   fn test_deep_tree() -> Result<(), Report> {
     let depth = 20;
@@ -143,13 +137,11 @@ mod tests {
 
     assert_eq!(1, actual.len());
     let expected = (depth - 1) as f64 * branch_len;
-    // 19 successive f64 additions of inexact 0.05; measured error 1.42e-8.
     assert_abs_diff_eq!(actual["A"], expected, epsilon = 1e-7);
 
     Ok(())
   }
 
-  // Zero branch lengths
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;

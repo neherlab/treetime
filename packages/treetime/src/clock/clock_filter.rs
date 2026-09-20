@@ -22,13 +22,6 @@ pub struct ClockFilterResult {
   clippy::integer_division,
   reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division"
 )]
-/// Filter outliers based on clock model residuals.
-///
-/// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`
-/// where IQD is the interquartile distance of clock deviations.
-///
-/// Accepts any `ClockLine` implementor: both validated `ClockModel` (positive
-/// rate) and raw `ClockRegression` (any rate sign, used in pre-filter path).
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace(
   graph: &Graph,
@@ -45,7 +38,6 @@ pub fn clock_filter_inplace(
     clock_line.intercept()
   );
 
-  // Assign divergence to each node: div = parent.div + branch_length, parents before children.
   state.map_forward(graph, |context| {
     let mut node = context.input.clone();
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
@@ -59,7 +51,6 @@ pub fn clock_filter_inplace(
     Ok(GraphPassNodeOutput { node, parent_message })
   })?;
 
-  // collect clock_deviation of leaf nodes into a vector
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()
     .collect::<Vec<_>>()
@@ -77,7 +68,6 @@ pub fn clock_filter_inplace(
     .map(OrderedFloat::into_inner)
     .collect();
 
-  // calculate the interquartile range by taking the difference between the 3/4 and 1/4 quantile
   let n = leaf_clock_deviations.len();
   if n == 0 {
     return make_error!("Clock filtering requires at least one dated leaf");
@@ -86,10 +76,6 @@ pub fn clock_filter_inplace(
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
-  // Compute each leaf's outlier decision in parallel from the clock state (read-only), then apply
-  // the results serially. A `BTreeMap` cannot be mutated concurrently, so the write phase is split
-  // out; the decisions are per-leaf independent and the count is order-free, so this is bit-identical
-  // to a serial per-node write.
   let outlier_updates: Vec<(GraphNodeKey, bool, i32)> = graph
     .get_leaves()
     .collect::<Vec<_>>()
@@ -125,7 +111,6 @@ pub fn clock_filter_inplace(
   Ok(ClockFilterResult { new_outliers, iqd })
 }
 
-/// Branch length of an edge (an input), read from the value map, defaulting to `0.0` when unset.
 fn edge_branch_length(edge_key: GraphEdgeKey, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
   branch_lengths[&edge_key].unwrap_or_default()
 }

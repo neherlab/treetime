@@ -1,19 +1,3 @@
-//! Polytomy resolution for the timetree refinement loop.
-//!
-//! A polytomy is resolved by sampling a coalescent history for its children, conditioned on
-//! the substitutions mapped to their branches: a lineage may only merge once every
-//! substitution on its branch has been placed in time. The sweep runs backwards from the most
-//! recent child toward the parent and stops when the parent's time is reached, so a polytomy
-//! with too little time above it is left partly or wholly unresolved.
-//!
-//! [`sweep`] holds the simulation, [`apply`] the graph surgery. This module wires them to the
-//! graph, collects the per-child inputs, and keeps the pre/post topology-change bookkeeping
-//! the refinement loop depends on.
-//!
-//! Replaces the greedy pairwise merger v1 previously used (v0's `_poly`), which v0 itself
-//! deprecates as unsuitable for large polytomies. Design and the v0 divergences are recorded
-//! in `kb/proposals/timetree-stochastic-polytomy-resolution.md`.
-
 pub mod apply;
 pub mod sweep;
 
@@ -37,10 +21,6 @@ use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
-/// Validate state required to rebuild inference after a topology change.
-///
-/// This runs before relaxed-clock estimation and polytomy resolution so invalid
-/// input leaves the complete previous inference state untouched.
 pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
   for node in graph.get_nodes() {
     if node.is_leaf() {
@@ -62,20 +42,6 @@ pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState
   Ok(())
 }
 
-/// Resolve every multifurcation in the tree by stochastic coalescent sampling.
-///
-/// The two rates driving the sweep are supplied by the caller, so this module holds no policy
-/// about where either comes from:
-///
-/// - `mutation_rate` is the expected number of substitutions per unit time across the whole
-///   alignment (`clock_rate * total_length`).
-/// - `merger_rate` is the per-branch coalescent merger rate $\kappa(t)$ at a calendar time.
-///
-/// `total_length` is the summed alignment length, used only to estimate a branch's
-/// substitution count when the reconstructed one cannot be read; see [`edge_mutation_count`].
-///
-/// Returns the number of internal nodes created. Output depends on `rng`: the same tree and
-/// the same generator state produce the same topology, and different states do not.
 pub fn resolve_polytomies(
   graph: &mut Graph,
   partitions: &[PartitionTimetree],
@@ -192,7 +158,6 @@ fn resolve_single_polytomy(
   Ok(created)
 }
 
-/// One child of a polytomy, with everything the sweep and the surgery need.
 struct ChildInfo {
   node_key: GraphNodeKey,
   edge_key: GraphEdgeKey,
@@ -240,12 +205,6 @@ fn collect_children(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Substitutions mapped to one branch.
-///
-/// Prefers the reconstructed substitution list, which is exact. That list is repopulated by
-/// the marginal forward pass and is unavailable before the first one has run, so fall back to
-/// v0's estimate from the observed branch length -- `round(mutation_length * L)` -- when it
-/// cannot be read.
 fn edge_mutation_count(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -280,10 +239,6 @@ fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, R
   Ok(time)
 }
 
-/// Remove single-child internal nodes left by polytomy resolution.
-///
-/// Uses `remove_node_if_trivial` which properly sums branch lengths into the
-/// merged edge and calls `graph.build()` per removal.
 fn remove_single_child_nodes(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -310,13 +265,6 @@ fn remove_single_child_nodes(
   Ok(removed_count)
 }
 
-/// Rebuild inference state after tree topology changes.
-///
-/// Internal nodes receive point constraints at their previously inferred times or
-/// the times assigned during polytomy resolution. Leaf nodes retain their observed
-/// date constraints and exclusion flags. Edge distributions, messages, and
-/// topology-dependent rate state are reset unconditionally. Branch lengths and
-/// time lengths remain valid inputs for the next inference pass.
 pub fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   validate_tree_before_topology_change(graph, state)?;
 
@@ -330,16 +278,9 @@ pub fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeSta
         "Topology rebuild requires an inferred time for every internal node, but node {key:?} has none"
       );
     };
-    // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1). The point
-    // distribution lives in the threaded date state, the home the passes read.
     let distribution = Arc::new(Distribution::point(time, 0.0));
     state.node_mut(key).time_distribution = Some(distribution);
   }
-
-  // Fields whose meaning depends on the previous edge topology (branch-length distribution, backward
-  // message, relaxed-clock rate multiplier) live in the threaded date state and are reset there by
-  // `TimetreeState::reset_date_edges_for_topology_change`. The observed branch length and inferred
-  // time length are kept: both seed the next pass.
 
   Ok(())
 }

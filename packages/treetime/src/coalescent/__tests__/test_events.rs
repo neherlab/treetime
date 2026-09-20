@@ -112,9 +112,6 @@ mod tests {
 
   #[test]
   fn test_collect_tree_events_rejects_node_without_time() -> Result<(), Report> {
-    // internal1 has no date constraint, so its time distribution stays unset and it
-    // cannot contribute its merger event. Event collection must reject this rather
-    // than silently drop the node (which would unbalance the lineage-count deltas).
     const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
     let dates = btreemap! {
       "root".to_owned() => Some(DateConstraint::exact(2000.0)),
@@ -146,8 +143,6 @@ mod tests {
     let (mut graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let new_key = graph.add_node();
     let mut node_times = coalescent_node_times(&graph, &constraints);
-    // The disconnected node is active (has a time) but unreachable from the root. Event collection is walked from the root, so this entry is
-    // never consumed; the incompleteness is detected by the node count.
     node_times.insert(
       new_key,
       CoalescentNodeTime {
@@ -208,8 +203,6 @@ mod tests {
 
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
 
-    // Oracle: v0 filters `bad_branch` nodes before constructing `tree_events`.
-    // packages/legacy/treetime/treetime/merger_models.py#L102-L105
     pretty_assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 1);
     assert_eq!(events, vec![(cal(2000.0), -2), (cal(2005.0), 1), (cal(2010.0), 1)]);

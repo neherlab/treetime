@@ -43,11 +43,6 @@ mod tests {
       .collect_vec()
   }
 
-  /// Verify that the ML branch-length pre-step modifies branch lengths.
-  ///
-  /// Sets up a sparse partition with JC69, runs marginal reconstruction,
-  /// then runs one pass of Brent optimization. The test asserts that at
-  /// least some branch lengths differ from their input values.
   #[rustfmt::skip]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
@@ -74,7 +69,6 @@ mod tests {
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
-    // Run one pass of ML optimization (matching v0's optimize_tree(max_iter=1))
     let total_length = timetree_total_sequence_length(&partitions);
     let contributions = gather_timetree_edge_contributions(&graph, &partitions)?;
     let indel_counts = gather_timetree_edge_indel_counts(&graph, &partitions);
@@ -89,7 +83,6 @@ mod tests {
 
     let after = extract_branch_lengths(&graph, &branch_lengths);
 
-    // At least some branch lengths should change
     let n_changed = before
       .iter()
       .zip(&after)
@@ -104,11 +97,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that the full timetree pipeline succeeds with the pre-optimization step.
-  ///
-  /// Runs the same pipeline as marginal sparse but with the pre-optimization step
-  /// inserted before time inference. Checks that the pipeline completes without
-  /// error and produces node times.
   #[rustfmt::skip]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
@@ -138,7 +126,6 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    // Pre-optimization step (matching v0 flow)
     let total_length = timetree_total_sequence_length(&partitions);
     let contributions = gather_timetree_edge_contributions(&graph, &partitions)?;
     let indel_counts = gather_timetree_edge_indel_counts(&graph, &partitions);
@@ -191,7 +178,6 @@ mod tests {
       "Expected node times to be populated after timetree inference with pre-optimization"
     );
 
-    // All internal nodes should have finite times
     for (name, time) in &actual {
       assert!(
         time.is_finite(),

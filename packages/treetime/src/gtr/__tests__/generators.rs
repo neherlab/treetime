@@ -1,26 +1,10 @@
 #[cfg(test)]
 pub mod tests {
   pub mod generators {
-    //! Proptest generators for GTR model parameters.
-    //!
-    //! Property-based testing (originating from Haskell's QuickCheck) defines logical
-    //! properties that functions should satisfy, then generates random inputs to find
-    //! counterexamples. Generators produce random values of specific types; when a test
-    //! fails, the framework shrinks inputs to a minimal reproducing case.
-    //!
-    //! - <https://en.wikipedia.org/wiki/Software_testing#Property_testing>
-    //! - <https://en.wikipedia.org/wiki/QuickCheck>
-    //! - <https://docs.rs/proptest>
-
     use crate::gtr::gtr::{GTR, GTRParams};
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
 
-    /// Generate valid nucleotide equilibrium frequencies: positive, sum to 1.
-    ///
-    /// Uses staggered base values (0.5, 0.75, 1.0, 1.25) plus random offsets to ensure
-    /// reasonable variation while avoiding extreme skew that causes numerical instability.
-    /// This gives pi values in roughly [0.1, 0.4] range after normalization.
     pub fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
       prop::collection::vec(0.0_f64..0.5, 4).prop_map(|offsets| {
         let bases = [0.5, 0.75, 1.0, 1.25];
@@ -30,7 +14,6 @@ pub mod tests {
       })
     }
 
-    /// Generate valid amino acid equilibrium frequencies: positive, sum to 1.
     pub fn arb_pi_aa() -> impl Strategy<Value = Array1<f64>> {
       prop::collection::vec(0.01_f64..10.0, 20).prop_map(|raw| {
         let sum: f64 = raw.iter().sum();
@@ -38,12 +21,6 @@ pub mod tests {
       })
     }
 
-    /// Generate valid nucleotide exchangeability matrix: symmetric, positive off-diagonal, zero diagonal.
-    /// Upper triangle has 6 values for 4x4 matrix.
-    ///
-    /// Uses staggered base values (1.0, 1.5, 2.0, 2.5, 3.0, 3.5) plus random offsets to ensure
-    /// eigenvalues are non-degenerate. Uniform W values create degenerate eigenspaces that
-    /// cause numerical instability in the eigendecomposition.
     pub fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(0.0_f64..1.0, 6).prop_map(|offsets| {
         let bases = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
@@ -51,7 +28,6 @@ pub mod tests {
         let mut idx = 0;
         for i in 0..4 {
           for j in (i + 1)..4 {
-            // Ensure non-uniform values: base + offset in [0, 1)
             w[[i, j]] = bases[idx] + offsets[idx];
             w[[j, i]] = w[[i, j]];
             idx += 1;
@@ -61,8 +37,6 @@ pub mod tests {
       })
     }
 
-    /// Generate valid amino acid exchangeability matrix: symmetric, positive off-diagonal, zero diagonal.
-    /// Upper triangle has 190 values for 20x20 matrix.
     pub fn arb_w_aa() -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(0.01_f64..10.0, 190).prop_map(|upper| {
         let mut w = Array2::zeros((20, 20));
@@ -78,14 +52,10 @@ pub mod tests {
       })
     }
 
-    /// Generate branch lengths with log-uniform distribution.
-    /// Covers both small (1e-10) and large (100) values.
     pub fn arb_branch_len() -> impl Strategy<Value = f64> {
       (-10.0_f64..2.0).prop_map(|exp| 10.0_f64.powf(exp))
     }
 
-    /// Generate probability profile: L positions, each a probability distribution over 4 states.
-    /// Uses range [0.1, 2.0] to avoid extreme skew that causes numerical instability.
     pub fn arb_profile_nuc(len: usize) -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(prop::collection::vec(0.1_f64..2.0, 4), len).prop_map(|raw| {
         let rows: Vec<Array1<f64>> = raw
@@ -99,7 +69,6 @@ pub mod tests {
       })
     }
 
-    /// Generate a valid nucleotide GTR model.
     pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
       (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
         GTR::new(GTRParams {
@@ -113,10 +82,6 @@ pub mod tests {
     }
 
     mod tests {
-      //! Validate that generators produce outputs satisfying required invariants.
-      //! Catches generator bugs at the source rather than as confusing numerical
-      //! failures in downstream GTR tests.
-
       use super::*;
       use ndarray::{Array1, Axis};
       use treetime_utils::{

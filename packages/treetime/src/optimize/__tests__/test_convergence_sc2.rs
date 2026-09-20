@@ -21,13 +21,6 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
 
-  /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
-  ///
-  /// This dataset exhibits a persistent likelihood 2-cycle without the three-condition convergence check.
-  /// The loop alternated between ~-143156 and ~-143157 from iteration ~15 onward,
-  /// exhausting all max_iter iterations. With the three-condition convergence check,
-  /// damping floor, restored indel rate estimation, and v0-aligned defaults, the loop
-  /// must stop via one of the three conditions before exhausting max_iter=50.
   #[test]
   fn test_convergence_sc2_sparse_converges_on_sc2_2844() -> Result<(), Report> {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -100,10 +93,6 @@ mod tests {
     Ok(())
   }
 
-  /// Regression test: flu/h3n2/20 converges normally (indel-free dataset).
-  ///
-  /// Verifies the fix does not regress convergence on a dataset where the
-  /// variable position set is stable (no oscillation).
   #[test]
   fn test_convergence_sc2_flu_h3n2_20_converges() -> Result<(), Report> {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))

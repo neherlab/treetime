@@ -16,17 +16,6 @@ use treetime_utils::{make_error, make_report};
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Poisson indel log-likelihood contribution for one edge.
-///
-/// Given $k$ observed indel events on a branch of length $t$ with indel rate $\mu$
-/// (indels per unit branch length), the Poisson log-likelihood and its derivatives are:
-///
-/// $$\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$$
-/// $$\frac{d\ell}{dt} = \frac{k}{t} - \mu$$
-/// $$\frac{d^2\ell}{dt^2} = -\frac{k}{t^2}$$
-///
-/// When $k = 0$: $\ell(t) = -\mu t$, $d\ell/dt = -\mu$, $d^2\ell/dt^2 = 0$.
-/// When $k > 0$ and $t \to 0^+$: $d\ell/dt \to +\infty$, forcing the optimum away from zero.
 pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
   validate_branch_length_value(t)?;
 
@@ -39,7 +28,6 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
   }
 
   if k == 0 {
-    // Poisson(0 | mu*t) = exp(-mu*t)
     return Ok(OptimizationMetrics::new(LogLh::new(-mu * t), -mu, 0.0));
   }
 
@@ -64,15 +52,6 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Estimate the global indel rate from the tree.
-///
-/// $\hat{\mu} = \frac{\sum_e k_e}{\sum_e t_e}$
-///
-/// where $k_e$ is the indel count on edge $e$ and $t_e$ is the branch length.
-/// Returns 0 when there are no indels or total branch length is zero.
-///
-/// The branch length of
-/// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
 pub fn estimate_indel_rate(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
@@ -99,12 +78,6 @@ pub fn estimate_indel_rate(
   }
 }
 
-/// Sum the Poisson indel log-likelihood over all edges in the graph.
-///
-/// Uses the same `edge_indel_count()` aggregation and `poisson_indel_log_lh()`
-/// evaluator as the per-edge branch-length optimizer, but evaluated at the
-/// tree's current branch lengths. For an indel-bearing edge at zero branch
-/// length, the Poisson log-likelihood is $-\infty$.
 pub fn total_indel_log_lh(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,

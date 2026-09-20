@@ -18,11 +18,6 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
-/// Compute effective time_marginal mode, promoting Never to OnlyFinal when
-/// confidence is requested with rate uncertainty prerequisites.
-///
-/// v0 (wrappers.py:478):
-///   time_marginal = 'confidence-only' if (calc_confidence and time_marginal == 'never') else time_marginal
 pub fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
   confidence: bool,
@@ -50,15 +45,6 @@ pub fn compute_effective_time_marginal(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Build covariation-aware ClockVarianceParams when covariation is enabled.
-///
-/// v0 (clock_tree.py:277-285):
-///   branch_variance = (max(0, clock_length) + tip_slack^2 * om) * om   [leaves]
-///   branch_variance = max(0, clock_length) * om                         [internal]
-/// where om = 1/seq_len, tip_slack = OVER_DISPERSION = 10 (config.py:8)
-///
-/// Mapping to v1 ClockVarianceParams:
-///   variance_factor = 1/seq_len, variance_offset = 0, variance_offset_leaf = tip_slack^2/seq_len^2
 pub fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,

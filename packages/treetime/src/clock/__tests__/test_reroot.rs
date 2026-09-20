@@ -19,12 +19,6 @@ mod tests {
 
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
-    // define tree with trivial node:
-    //        root
-    //        /  \
-    //      mid  B
-    //      /
-    //     A
     let nwk_parsed = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -171,8 +165,6 @@ mod tests {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().count();
 
-    // Both flags false: don't split edges AND don't remove old root
-    // This guarantees no new nodes created and no nodes removed
     let reroot_params = RerootParams {
       split_edge: false,
       remove_trivial_root: false,
@@ -253,9 +245,6 @@ mod tests {
     )?;
 
     let node_count_after = graph.get_nodes().count();
-    // With default policy, a new node may be created by edge split (count increases)
-    // or old trivial root may be removed (count stays same or decreases by 1 if split created one)
-    // The key is it should not crash and should complete successfully
     assert!(
       node_count_after >= node_count_before - 1,
       "Node count should be reasonable after reroot with default policy"

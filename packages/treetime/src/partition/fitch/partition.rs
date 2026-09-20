@@ -23,10 +23,6 @@ pub struct PartitionFitch {
 }
 
 impl PartitionFitch {
-  /// Hand the Fitch results off to the sparse marginal representation: split each node's Fitch data
-  /// into the durable observations the partition owns and the seed node state the marginal passes
-  /// evolve. Internal-node sequences are cleared (the forward pass rebuilds them); leaf and root
-  /// sequences are kept.
   pub fn into_marginal_sparse(
     self,
     graph: &Graph,
@@ -107,7 +103,6 @@ impl PartitionFitch {
     )
   }
 
-  /// The alphabet's ambiguous (unknown) character, used to fill masked positions in output sequences.
   pub fn ambiguous_char(&self) -> AsciiChar {
     self.alphabet.unknown()
   }

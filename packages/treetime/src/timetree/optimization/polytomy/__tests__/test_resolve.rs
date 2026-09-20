@@ -21,14 +21,10 @@ mod tests {
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
 
-  /// Expected substitutions per unit time over the whole alignment.
   const TEST_MUTATION_RATE: f64 = 0.1;
 
-  /// Per-branch coalescent merger rate. Chosen so that the fixtures' time windows comfortably
-  /// admit the mergers a full resolution needs, without making them a foregone conclusion.
   const TEST_MERGER_RATE: f64 = 0.15;
 
-  /// Set a node's committed time on the date state, the value `resolve_polytomies` reads.
   fn set_time(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -41,11 +37,6 @@ mod tests {
     Ok(key)
   }
 
-  /// `((A,B,C)ABC)root` with a wide time window above the polytomy.
-  ///
-  /// Returns the graph together with the date state seeded from the node times, the value
-  /// `resolve_polytomies` reads. The edge branch lengths are zeroed so no branch carries reconstructed
-  /// substitutions; the resolution timing comes from the node times alone.
   fn polytomy_tree() -> Result<
     (
       Graph,
@@ -76,7 +67,6 @@ mod tests {
     Ok((graph, names, state, branch_lengths))
   }
 
-  /// A 6-way polytomy, closer to what the sweep is meant for.
   fn wide_polytomy_tree() -> Result<
     (
       Graph,
@@ -143,11 +133,6 @@ mod tests {
     vec![]
   }
 
-  /// Resolve under a constant merger rate.
-  ///
-  /// These fixtures carry no partitions, so every branch has zero reconstructed substitutions
-  /// and the total alignment length never enters: the sampled history is shaped by the merger
-  /// rate alone.
   fn resolve(
     graph: &mut Graph,
     state: &mut TimetreeState,
@@ -155,7 +140,6 @@ mod tests {
     rng: &mut dyn RngCore,
   ) -> Result<usize, Report> {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
-    // `state` carries the node times `resolve_polytomies` reads, seeded as a value by the fixtures.
     resolve_polytomies(
       graph,
       &no_partitions(),
@@ -168,7 +152,6 @@ mod tests {
     )
   }
 
-  /// Names of the leaves reachable from `node_key`.
   fn leaf_names_under(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -245,8 +228,6 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_is_reproducible_under_the_same_seed() -> Result<(), Report> {
-    // Compare the resolved topology by the set of leaf-name clusters it induces, which is
-    // independent of node keys and traversal order.
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
       let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
@@ -297,7 +278,6 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_without_a_time_window_is_a_noop() -> Result<(), Report> {
-    // The polytomy sits at the same time as its children, so no merger fits above them.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -345,7 +325,6 @@ mod tests {
       );
     }
 
-    // Every edge in the resolved subtree runs forward in time.
     let mut stack = vec![parent_key];
     while let Some(key) = stack.pop() {
       let node = graph.get_node(key).expect("Node must exist");
@@ -408,9 +387,6 @@ mod tests {
     state.node_mut(abc_key).time_distribution = Some(Arc::new(Distribution::point(2010.0, 1.0)));
     state.node_mut(abc_key).bad_branch = true;
 
-    // `state` from the fixture already carries the internal-node times `prepare` reads; the value
-    // seeds above set up the date-state fields the assertions below verify `prepare` preserves or
-    // rebuilds.
     prepare_tree_after_topology_change(&graph, &mut state)?;
 
     for name in ["A", "B", "C"] {
@@ -443,10 +419,6 @@ mod tests {
 
     for edge in graph.get_edges() {
       let key = edge.key();
-      // The branch-length distribution, backward message, and relaxed-clock rate multiplier live in the
-      // date-state value now, reset by `TimetreeState::reset_date_edges_for_topology_change`;
-      // `prepare_tree_after_topology_change` leaves the branch-length value map untouched and preserves
-      // the inferred time length on the date state.
       pretty_assert_abs_diff_eq!(
         branch_lengths
           .get(&key)

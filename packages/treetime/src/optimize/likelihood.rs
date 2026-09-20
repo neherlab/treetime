@@ -5,14 +5,10 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
 use treetime_primitives::LogLh;
 
-/// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]
 pub struct OptimizationMetrics {
-  /// Log likelihood value
   pub log_lh: LogLh,
-  /// First derivative (gradient) of log likelihood with respect to branch length
   pub derivative: f64,
-  /// Second derivative (hessian) of log likelihood with respect to branch length
   pub second_derivative: f64,
 }
 
@@ -25,7 +21,6 @@ impl OptimizationMetrics {
     }
   }
 
-  /// Add another set of metrics to this one
   pub fn add(&mut self, other: &OptimizationMetrics) {
     self.log_lh += other.log_lh;
     self.derivative += other.derivative;
@@ -73,7 +68,6 @@ fn evaluate_mixed_impl(
   Ok(total_metrics)
 }
 
-/// Evaluate substitution + indel contributions for a given branch length.
 pub fn evaluate_with_indels(
   contributions: &[OptimizationContribution],
   indel_count: usize,
@@ -85,7 +79,6 @@ pub fn evaluate_with_indels(
   Ok(metrics)
 }
 
-/// Log-likelihood only (no derivatives) for substitution + indel contributions.
 pub fn evaluate_with_indels_log_lh_only(
   contributions: &[OptimizationContribution],
   indel_count: usize,

@@ -19,7 +19,6 @@ mod tests {
       let actual_b = exists_forward_path_between(&graph, keys[start_b], keys[finish_b]);
       let actual_a_second = exists_forward_path_between(&graph, keys[start_a], keys[finish_a]);
 
-      // A directed chain reaches exactly the nodes at or after the starting index.
       prop_assert_eq!(start_a <= finish_a, actual_a_first);
       prop_assert_eq!(start_b <= finish_b, actual_b);
       prop_assert_eq!(actual_a_first, actual_a_second);

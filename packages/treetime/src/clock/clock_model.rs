@@ -9,14 +9,12 @@ use treetime_utils::array::serde::{array2_as_vec, array2_from_vec};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-/// Shared interface for types that define a clock line: `div = rate * date + intercept`.
 pub trait ClockLine {
   fn clock_rate(&self) -> f64;
   fn intercept(&self) -> f64;
   fn clock_deviation(&self, date: f64, div: f64) -> f64;
 }
 
-/// Regression statistics from clock model estimation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegressionStats {
   pub chisq: f64,
@@ -27,11 +25,6 @@ pub struct RegressionStats {
   pub cov: Array2<f64>,
 }
 
-/// Raw regression result from root-to-tip analysis. Clock rate can be any sign.
-///
-/// Used by the estimation pipeline (clock filtering, root search diagnostics)
-/// where negative rates are acceptable. Consumers that require positive rates
-/// convert to `ClockModel` at their boundary.
 #[must_use]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockRegression {
@@ -105,26 +98,13 @@ impl ClockRegression {
   }
 }
 
-/// Clock model statistics - either estimated from data or fixed by user
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ClockModelStats {
-  /// Clock rate estimated from root-to-tip regression with full statistics
   Estimated(RegressionStats),
-  /// Clock rate fixed by user input (no regression statistics available)
   Fixed,
 }
 
-/// Fitted clock model: a root-to-tip line `div = rate * date + intercept`.
-///
-/// The rate sign depends on how the model is constructed:
-/// - `from_regression` / `with_fixed_rate` guarantee a positive rate. Time-scaled
-///   analysis (timetree) requires this because `time = divergence / rate` is only
-///   well-defined for a positive rate; a non-positive rate is rejected as an error.
-/// - `from_regression_allow_negative` permits a non-positive rate (with a warning)
-///   for the clock command, which only reports the root-to-tip regression and does
-///   not perform time inference. This matches v0, which continues with negative
-///   rates (e.g. under `--keep-root` or `--allow-negative-rate`).
 #[must_use]
 #[derive(Debug, Clone, Serialize, Deserialize, Getters)]
 pub struct ClockModel {
@@ -163,14 +143,6 @@ impl ClockModel {
     Ok(Self::from_regression_unchecked(regression))
   }
 
-  /// Builds a clock model from regression, permitting a non-positive rate.
-  ///
-  /// Emits a warning when the rate is non-positive but proceeds, unlike
-  /// `from_regression` which errors. Used by the clock command, which reports the
-  /// root-to-tip regression without performing time inference. A negative slope is
-  /// a legitimate (if temporally uninformative) regression result; rejecting it
-  /// would defeat `--allow-negative-rate` and `--keep-root`. See
-  /// `kb/decisions/timetree-rejects-negative-clock-rate.md`.
   pub fn from_regression_allow_negative(regression: &ClockRegression) -> Self {
     if regression.clock_rate <= 0.0 {
       warn!(
@@ -251,12 +223,10 @@ impl ClockModel {
     date * self.clock_rate() + self.intercept()
   }
 
-  /// Time of root (most recent common ancestor)
   pub fn t_mrca(&self) -> f64 {
     self.date(0.0)
   }
 
-  /// String showing line equation (for display)
   pub fn equation_str(&self) -> String {
     format!(
       "div = {:}t {:} {:}",
@@ -266,7 +236,6 @@ impl ClockModel {
     )
   }
 
-  /// Create a clock model with specified rate and intercept (for testing)
   #[cfg(test)]
   pub fn for_testing(clock_rate: f64, intercept: f64) -> Self {
     Self {
@@ -276,7 +245,6 @@ impl ClockModel {
     }
   }
 
-  /// Create a clock model with specified rate, intercept, and stats (for testing)
   #[cfg(test)]
   pub fn for_testing_with_stats(clock_rate: f64, intercept: f64, stats: ClockModelStats) -> Self {
     Self {

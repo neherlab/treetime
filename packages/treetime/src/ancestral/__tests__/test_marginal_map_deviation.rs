@@ -25,16 +25,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
-  /// A node whose marginal argmax disagrees with Fitch must not drag its whole subtree along.
-  ///
-  /// Tip `T1` sits on a zero-length branch below `X` and is the only tip carrying `T` at position 0.
-  /// Fitch puts the single `C1T` on the `T1` branch, but over a zero-length branch a mutation is far
-  /// less likely than `X` already being `T`, so the marginal argmax at `X` is `T` (P ~ 0.99). The
-  /// clade under `Z` is a tight bundle of `C` tips whose upward evidence is sharp enough that every
-  /// node in it stays `C` with P > 1 - 1e-4, i.e. sparse resolves position 0 out of their `variable`
-  /// maps. Those nodes therefore take position 0 from their parent's sequence, and used to inherit
-  /// `X`'s `T` - turning one node's legitimate state change into a whole flipped clade. Dense, which
-  /// keeps a profile at every position, is the oracle.
   #[test]
   fn test_marginal_map_deviation_does_not_leak_into_subtree() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -66,10 +56,8 @@ mod tests {
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln)?;
 
-    // The deviation is real and must be kept where it belongs.
     assert_eq!('T', nuc_at(&sparse, "X", 0), "X is the node whose argmax deviates");
 
-    // ...but must not propagate into the descendants that resolved the position.
     for node in ["Z", "Y1", "Y2", "Y3"] {
       assert_eq!(
         'C',
@@ -82,17 +70,6 @@ mod tests {
     Ok(())
   }
 
-  /// A deletion inherited from an ancestor must survive the posterior resolution.
-  ///
-  /// Position 0 is deleted in the whole `DEL` clade and polymorphic (`A`/`T`) in the sister clade, so
-  /// it is a variable position tree-wide. Resolving a posterior must never put a residue back at a
-  /// site the node reports as deleted, whether the gap is the node's own or inherited from further up.
-  ///
-  /// This is an invariant guard, not a reproduction: on this topology the deleted clade's nodes carry
-  /// no posterior at position 0, so it passes on the pre-parsimony-chain reconstruction too. A real
-  /// reproduction needs a node that is `non_char` at a position its own upward message still reports
-  /// as variable - see the `data/sc2/4500` positions 28369 and 23009, where the old code emitted a
-  /// residue at ~4500 internal nodes that both dense and the parsimony chain report as gaps.
   #[test]
   fn test_marginal_map_deviation_keeps_inherited_deletions() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -115,7 +92,6 @@ mod tests {
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln)?;
 
-    // `DD` sits below the edge that carries the deletion, so its gap is inherited rather than its own.
     for node in ["DEL", "DD"] {
       assert_eq!(
         '-',

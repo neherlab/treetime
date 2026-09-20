@@ -16,24 +16,16 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 pub enum MarginalPartition {
-  /// A sparse partition together with the seed node-state map derived from the Fitch handoff. The
-  /// caller owns and threads the node states; the partition holds only the durable inputs.
   Sparse(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>),
   Dense(PartitionMarginalDense),
 }
 
 pub struct PartitionCreated {
   pub partition: MarginalPartition,
-  /// The initial substitution model. The partition is an immutable source and does not own the model;
-  /// the caller threads it through the passes and refinement as a value.
   pub gtr: GTR,
   pub model_name: GtrModelName,
 }
 
-/// Create a marginal partition from alignment data, consolidating the 3-way branch:
-/// sparse, dense+infer GTR, dense+named GTR.
-///
-/// No file I/O. GTR JSON writing is the caller's responsibility.
 pub fn create_marginal_partition(
   graph: &Graph,
   index: usize,

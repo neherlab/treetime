@@ -12,7 +12,6 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Optimize the split position along an edge with Brent's method on `[0, 1]`.
 pub fn optimize_brent<S: RootStats>(
   edge: GraphEdgeKey,
   cost_fn: &EdgeCostFn<S>,

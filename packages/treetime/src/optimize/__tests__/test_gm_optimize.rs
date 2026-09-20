@@ -11,18 +11,8 @@ mod tests {
 
   use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
 
-  // Golden master: v1 brent-sqrt against v0 reference.
-  // v0 uses Brent in sqrt(t) space, so brent-sqrt is the matching v1 method.
-  // Total branch length compared within 5%.
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
-  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
-  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
-  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
-  // #[case::zika_20("zika_20_jc69_damped")] // slow
-  // #[case::rsv_a_20("rsv_a_20_jc69_damped")] // slow
-  // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
   fn test_gm_optimize(#[case] case_name: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
@@ -47,24 +37,6 @@ mod tests {
     Ok(())
   }
 
-  /// Per-branch GM comparison: walk each edge, look up the target node's name,
-  /// and check the optimized length against the v0-derived expected length
-  /// stored in `final_branch_lengths`. Branch-level checks catch regressions
-  /// that cancel out in the summed total checked by `test_gm_optimize`.
-  ///
-  /// Branches where v0 collapsed to "essentially zero" (below 1e-5 subs/site,
-  /// far below the smallest meaningful branch length 1/L) are skipped: v0's
-  /// `prune_short_branches` collapses any internal branch with
-  /// `bl < 0.1 * one_mutation && prob_t(parent, child, 0) > 0.1`, while v1's
-  /// optimize loop collapses only branches the optimizer drives to exact zero.
-  /// Comparing the two criteria on near-zero branches is out of scope for
-  /// this test; that divergence is tracked separately under the prune
-  /// command intentional-change docs.
-  ///
-  /// Currently expected to fail with the existing fixture: per-branch
-  /// divergences exceed 10% relative tolerance even after skipping
-  /// v0-collapsed branches. See
-  /// `docs/port-known-issues/M-optimize-gm-per-branch-divergence.md`.
   #[ignore = "Per-branch divergence with v0 fixture exceeds 10% relative tolerance; tracked in M-optimize-gm-per-branch-divergence.md"]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
@@ -108,17 +80,8 @@ mod tests {
     Ok(())
   }
 
-  // End-to-end: damped vs undamped on same dataset using BrentSqrt (v0-matching method).
-  // Damped should converge and show fewer sign flips.
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
-  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
-  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
-  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
-  // #[case::zika_20("zika_20_jc69_damped")] // slow
-  // #[case::rsv_a_20("rsv_a_20_jc69_damped")] // slow
-  // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
   fn test_gm_optimize_damped_vs_undamped(#[case] case_name: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let case = &inputs[case_name];
@@ -143,8 +106,6 @@ mod tests {
       case.max_iter
     );
 
-    // Damping should not increase oscillation. On well-conditioned datasets both
-    // converge equally; on poorly-conditioned ones damping reduces sign flips.
     assert!(
       damped_sign_flips <= undamped_sign_flips,
       "Damped ({damped_sign_flips}) has more sign flips than undamped ({undamped_sign_flips})"
@@ -317,9 +278,6 @@ mod tests {
       let dense_partitions = result.dense_partitions;
       let branch_lengths = result.branch_lengths;
 
-      // Append a trailing likelihood measurement so `lh_history.last()` reflects the state
-      // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
-      // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
       let (sparse_partitions, sparse_lh) =
         marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;

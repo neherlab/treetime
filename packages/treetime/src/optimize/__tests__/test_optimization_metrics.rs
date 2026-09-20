@@ -76,7 +76,6 @@ mod tests {
   fn test_optimization_metrics_add_preserves_precision() {
     let mut total = OptimizationMetrics::default();
 
-    // Add many small values to test precision preservation
     for i in 0..1000 {
       let small = OptimizationMetrics::new(LogLh::new(0.001), 0.0001 * (i as f64), -0.00001);
       total.add(&small);
@@ -86,7 +85,6 @@ mod tests {
     let expected_derivative: f64 = (0..1000).map(|i| 0.0001 * (i as f64)).sum();
     let expected_second_derivative = -0.01;
 
-    // Allow more tolerance for 1000 accumulated additions
     pretty_assert_ulps_eq!(total.log_lh.value(), expected_log_lh, max_ulps = 1000);
     pretty_assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 1000);
     pretty_assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 1000);

@@ -9,13 +9,6 @@ use treetime_utils::make_error;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Collects tree merger events as (time, delta_branches) tuples sorted by increasing time.
-///
-/// Returns present time, events sorted by increasing time (past to present), and
-/// the lineage count remaining after the latest retained sample. Each connected
-/// bad-branch subtree contributes one remaining lineage because all of its node
-/// events are excluded.
-/// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
 pub fn collect_tree_events(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
@@ -76,9 +69,6 @@ pub fn collect_tree_events(
       return Ok(());
     }
 
-    // Every retained node must contribute an event. Silently dropping a good node
-    // without an inferred time breaks the lineage-count balance and hides incomplete
-    // state after topology changes.
     let Some(t) = node_times.get(&node.key).and_then(|entry| entry.time_dist_likely) else {
       return make_error!(
         "Coalescent lineage count requires an inferred time for every node, but node (key={:?}) has none. \

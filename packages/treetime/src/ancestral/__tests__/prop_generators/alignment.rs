@@ -1,12 +1,7 @@
-//! Proptest generators for sequence alignments.
-
 use proptest::prelude::*;
 use treetime_primitives::AlignmentRecord;
 use treetime_primitives::seq::Seq;
 
-/// Generate a single nucleotide character.
-///
-/// 90% standard (ACGT), 10% ambiguous/gaps (N, -, R, Y).
 pub fn arb_nucleotide() -> impl Strategy<Value = char> {
   prop_oneof![
     9 => prop::sample::select(vec!['A', 'C', 'G', 'T']),
@@ -14,24 +9,18 @@ pub fn arb_nucleotide() -> impl Strategy<Value = char> {
   ]
 }
 
-/// Generate a nucleotide sequence of given length.
 pub fn arb_sequence(len: usize) -> impl Strategy<Value = String> {
   prop::collection::vec(arb_nucleotide(), len).prop_map(|chars| chars.into_iter().collect())
 }
 
-/// Generate a gap-free nucleotide (ACGT only).
 pub fn arb_nucleotide_no_gaps() -> impl Strategy<Value = char> {
   prop::sample::select(vec!['A', 'C', 'G', 'T'])
 }
 
-/// Generate a gap-free sequence (no ambiguous characters).
 pub fn arb_sequence_no_gaps(len: usize) -> impl Strategy<Value = String> {
   prop::collection::vec(arb_nucleotide_no_gaps(), len).prop_map(|chars| chars.into_iter().collect())
 }
 
-/// Generate an alignment (FASTA records) for given taxa names.
-///
-/// All sequences have the same length.
 pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence(seq_len), n).prop_map(move |sequences| {
@@ -46,7 +35,6 @@ pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value =
   })
 }
 
-/// Generate a gap-free alignment for given taxa names.
 pub fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence_no_gaps(seq_len), n).prop_map(move |sequences| {

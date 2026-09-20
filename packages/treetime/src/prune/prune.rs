@@ -17,10 +17,6 @@ pub fn prune_nodes(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  // `names` is the pre-prune node-name map propagated from the command entry: collapse removes nodes
-  // but never renames survivors, so the pre-prune label of every surviving node is its final label.
-  // `branch_lengths` is the value map the collapse producers read and update in place, and it exits
-  // reflecting the pruned tree.
   prune_internal_nodes(
     graph,
     partitions,
@@ -36,7 +32,6 @@ pub fn prune_nodes(
   Ok(())
 }
 
-/// Count current nucleotide mutations on one edge across all partitions.
 pub fn get_edge_num_muts(
   partitions: &[PartitionMarginalSparse],
   edge_key: GraphEdgeKey,

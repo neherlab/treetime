@@ -8,9 +8,6 @@ mod tests {
   use ndarray::array;
   use rstest::rstest;
 
-  // Parameterized Edge Case Tests
-
-  /// Test expQt at various branch lengths for stability.
   #[rstest]
   #[case::zero(0.0)]
   #[case::tiny(1e-15)]
@@ -30,7 +27,6 @@ mod tests {
 
     let p = gtr.expQt(t);
 
-    // No NaN or Inf
     assert!(
       !p.iter().any(|x| x.is_nan() || x.is_infinite()),
       "P(t={t}) contains NaN or Inf"
@@ -40,7 +36,6 @@ mod tests {
     Ok(())
   }
 
-  /// Test various kappa values for K80 model stability.
   #[rstest]
   #[case::very_small(0.001)]
   #[case::small(0.1)]
@@ -63,13 +58,11 @@ mod tests {
     Ok(())
   }
 
-  /// Test custom GTR with extreme but valid W values.
   #[test]
   fn test_gtr_extreme_w_values() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
 
-    // W with very different magnitudes
     #[rustfmt::skip]
     let w = array![
       [0.0,   0.01, 100.0, 0.1  ],

@@ -5,57 +5,24 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
 use num::clamp;
 
-/// Relative tolerance for Newton inner-loop convergence.
 pub(super) const NEWTON_REL_TOL: f64 = 0.001;
 
-/// Absolute tolerance floor for Newton inner-loop convergence (subs/site).
-/// Prevents the purely relative tolerance from degenerating to zero when
-/// the current branch length is zero or very small. The value 1e-8 is well
-/// below the smallest meaningful branch length (1/L ~ 1e-4 for L=10000)
-/// so it does not mask real convergence.
 const NEWTON_ABS_TOL: f64 = 1e-8;
 
-/// Maximum iterations for Newton inner loop.
 const NEWTON_MAX_ITER: usize = 10;
 
-/// Newton convergence tolerance in $t$-space.
-///
-/// A step $|\Delta t| \leq \eta t$ corresponds to relative tolerance $\eta$
-/// in branch-length space. The absolute floor prevents degeneration at $t = 0$.
 pub(super) fn newton_tolerance_t(t: f64) -> f64 {
   f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
 }
 
-/// Newton convergence tolerance in $\sqrt{t}$-space.
-///
-/// Since $\Delta t / t \approx 2 \Delta s / s$ for small steps, matching the
-/// target relative tolerance $\eta$ in branch-length space requires
-/// $|\Delta s| \leq \frac{\eta}{2} s$. The factor 0.5 corrects the
-/// coordinate-space scaling.
 pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
   f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
 }
 
-/// Newton convergence tolerance in $\ln(t)$-space.
-///
-/// Since $\Delta t / t \approx \Delta u$ for small steps, a constant tolerance
-/// $\eta$ in $u$-space directly corresponds to relative tolerance $\eta$ in
-/// branch-length space, regardless of $|u|$. No scaling by the current value.
 pub(super) fn newton_tolerance_log() -> f64 {
-  // ln(1 + η) ≈ η for small η; use the exact form for correctness
   NEWTON_REL_TOL.ln_1p()
 }
 
-/// Newton-Raphson inner loop in $t$-space.
-///
-/// Takes an initial `branch_length` and `metrics` (already evaluated at that point),
-/// runs up to `NEWTON_MAX_ITER` Newton steps with the convergence criterion
-/// $|t_{\text{new}} - t_{\text{old}}| < \text{tol}(t)$, and returns the optimized
-/// branch length. Falls through to grid search if the Hessian becomes non-negative.
-///
-/// **Convergence tolerance:** Step-size in $t$-space. Relative 0.1% of current $t$
-/// with absolute floor 1e-8 subs/site: $\text{tol}(t) = \max(0.001 \cdot t, 10^{-8})$.
-/// The tolerance is the same in both parameterized space and $t$-space (identity map).
 pub(super) fn newton_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -87,22 +54,6 @@ pub(super) fn newton_inner(
   }
 }
 
-/// Newton-Raphson inner loop in $\sqrt{t}$ space.
-///
-/// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies the
-/// chain rule to transform $t$-space derivatives into $s$-space:
-///
-///   $d\ell/ds = 2s \cdot d\ell/dt$
-///   $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$
-///
-/// This reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$,
-/// allowing Newton to make progress toward the combined (substitution + indel)
-/// optimum instead of stalling at the indel-only MLE.
-///
-/// **Convergence tolerance:** Step-size in $s$-space: $\text{tol}(s) = \max(0.0005 \cdot s, 10^{-8})$.
-/// Maps to tighter $t$-tolerance near zero because $ds/dt = 1/(2\sqrt{t})$ amplifies
-/// precision: a step $\Delta s$ in $s$-space corresponds to $\Delta t \approx 2s \cdot \Delta s$
-/// in $t$-space. At $s = 0.1$ ($t = 0.01$), tolerance 5e-5 in $s$ yields ~1e-5 in $t$.
 pub(super) fn newton_sqrt_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -115,7 +66,6 @@ pub(super) fn newton_sqrt_inner(
   let mut s = branch_length.sqrt();
   let min_s = min_branch_length.sqrt();
 
-  // Transform initial metrics to s-space
   let (ds, d2s) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
 
   if d2s >= 0.0 {
@@ -142,71 +92,26 @@ pub(super) fn newton_sqrt_inner(
   Ok(new_s * new_s)
 }
 
-/// Lower bound on the Newton step $\delta_s$ in $\sqrt{t}$-space.
-///
-/// Limits $t$-space increase to 1.0 subs/site per iteration.
-/// Derived from $(s - \delta_s)^2 - s^2 \leq 1$, giving
-/// $\delta_s \geq s - \sqrt{s^2 + 1}$.
-/// Always negative (permits $s$ to increase).
 pub(super) fn sqrt_step_lower_bound(s: f64) -> f64 {
   s - (s * s + 1.0).sqrt()
 }
 
-/// Lower bound on the Newton step $\delta_u$ in $\ln(t)$-space.
-///
-/// Limits $t$-space increase to 1.0 subs/site per iteration.
-/// Derived from $e^{u - \delta_u} - e^u \leq 1$, giving
-/// $\delta_u \geq -\ln(1 + 1/t)$. Uses `ln_1p` for accuracy at small $1/t$.
-/// Always negative for $t > 0$ (permits $u$ to increase).
 pub(super) fn log_step_lower_bound(t: f64) -> f64 {
   -(1.0 / t).ln_1p()
 }
 
-/// Transform $t$-space derivatives to $\sqrt{t}$-space via the chain rule.
-///
-/// Given $s = \sqrt{t}$:
-///   $d\ell/ds = 2s \cdot d\ell/dt$
-///   $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$
 pub(super) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
   let dl_ds = 2.0 * s * dl_dt;
   let d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
   (dl_ds, d2l_ds2)
 }
 
-/// Transform $t$-space derivatives to $\ln(t)$-space via the chain rule.
-///
-/// Given $u = \ln(t)$, the chain rule with $dt/du = t$ gives:
-///   $d\ell/du = t \cdot d\ell/dt$
-///   $d^2\ell/du^2 = t^2 \cdot d^2\ell/dt^2 + t \cdot d\ell/dt$
-///
-/// The Poisson indel Hessian in $u$-space becomes $-\mu t$ (bounded),
-/// eliminating the $O(1/t^2)$ singularity that dominates in $t$-space.
 pub(super) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
   let dl_du = t * dl_dt;
   let d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
   (dl_du, d2l_du2)
 }
 
-/// Newton-Raphson inner loop in $\ln(t)$ space.
-///
-/// Reparameterizes the optimization variable as $u = \ln(t)$ and applies the
-/// chain rule to transform $t$-space derivatives into $u$-space:
-///
-///   $d\ell/du = t \cdot d\ell/dt$
-///   $d^2\ell/du^2 = t^2 \cdot d^2\ell/dt^2 + t \cdot d\ell/dt$
-///
-/// This eliminates the indel Hessian singularity entirely: the Poisson indel
-/// Hessian in $u$-space is $-\mu t$ (bounded for all $t > 0$), compared to
-/// $-k/t^2$ in $t$-space and $-k/t$ in $\sqrt{t}$-space.
-///
-/// Step clamping in $u$-space:
-/// - Upper bound $u - u_{\min}$: prevents $u_{\text{new}} < u_{\min}$
-/// - Lower bound $-\ln(1 + 1/t)$: limits $t$-space increase to 1.0 subs/site
-///
-/// **Convergence tolerance:** Step-size in $u$-space: $\text{tol}(u) = \ln(1 + 0.001) \approx 0.001$.
-/// This is a natural relative tolerance in $t$-space because $dt/t \approx du$ for small steps.
-/// A step $\Delta u$ in $u$-space corresponds to $\Delta t \approx t \cdot \Delta u$ in $t$-space,
-/// so the same tolerance achieves ~0.1% relative precision regardless of $t$.
 pub(super) fn newton_log_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -225,16 +130,12 @@ pub(super) fn newton_log_inner(
   let mut u = branch_length.ln();
   let u_min = min_branch_length.max(1e-12).ln();
 
-  // Transform initial metrics to u-space
   let (du, d2u) = chain_rule_log(branch_length, metrics.derivative, metrics.second_derivative);
 
   if d2u >= 0.0 {
     return grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation);
   }
 
-  // Step clamping bounds in u-space:
-  // Lower: log_step_lower_bound(t) limits t-space increase to 1.0 subs/site
-  // Upper: u - u_min prevents u from going below u_min
   let step_lower = log_step_lower_bound(branch_length);
   let step_upper = u - u_min;
   let mut new_u = (u - clamp(du / d2u, step_lower, step_upper)).max(u_min);

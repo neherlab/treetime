@@ -10,7 +10,6 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
 
-  /// Star tree (4 leaves directly from root) with all identical states under JC69.
   #[test]
   fn test_star_tree_analytical_jc69_all_same() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -28,7 +27,6 @@ mod tests {
     Ok(())
   }
 
-  /// Star tree with all four distinct nucleotide states under JC69.
   #[test]
   fn test_star_tree_analytical_jc69_mixed_states() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -46,7 +44,6 @@ mod tests {
     Ok(())
   }
 
-  /// Star tree with non-uniform equilibrium frequencies (GTR model).
   #[test]
   fn test_star_tree_analytical_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;

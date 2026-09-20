@@ -29,7 +29,6 @@ pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: Asc
 
       let first_non_gap = slice.iter().position(|&ch| ch != gap);
       let Some(first) = first_non_gap else {
-        // All-gap sequence: fill everything with unknown
         for ch in slice.iter_mut() {
           *ch = unknown;
         }

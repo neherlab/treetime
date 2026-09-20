@@ -16,17 +16,14 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    // Verify graph structure
     assert_eq!(graph.get_nodes().count(), 7, "Should have 7 nodes");
     assert_eq!(graph.get_edges().count(), 6, "Should have 6 edges");
     assert_eq!(graph.get_leaves().count(), 4, "Should have 4 leaves");
 
-    // Verify root
     let root = graph.get_exactly_one_root()?;
     let root_name = names[&root.key()].clone();
     assert_eq!(root_name.as_deref(), Some("root"));
 
-    // Verify roundtrip
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(input, output);
     Ok(())
@@ -40,7 +37,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    // Verify structure is correct
     assert_eq!(graph.get_nodes().count(), 7);
     assert_eq!(graph.get_edges().count(), 6);
     assert_eq!(graph.get_leaves().count(), 4);
@@ -76,7 +72,6 @@ mod tests {
 
   #[test]
   fn test_nwk_roundtrip_polytomy() -> Result<(), Report> {
-    // Tree with polytomy: root has 3 children
     let input = "(A:0.1,B:0.2,C:0.3)root;";
     let nwk_parsed = nwk_read_str(input)?;
     let names = nwk_parsed.names();
@@ -87,7 +82,6 @@ mod tests {
     assert_eq!(graph.get_edges().count(), 3, "Should have 3 edges");
     assert_eq!(graph.get_leaves().count(), 3, "Should have 3 leaves");
 
-    // Verify root has 3 children (polytomy)
     let root = graph.get_exactly_one_root()?;
     let root_outbound = root.outbound().len();
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
@@ -99,7 +93,6 @@ mod tests {
 
   #[test]
   fn test_nwk_roundtrip_nested_polytomy() -> Result<(), Report> {
-    // Nested polytomies: internal node also has >2 children
     let input = "((A:0.1,B:0.2,C:0.3)ABC:0.4,D:0.5,E:0.6)root;";
     let nwk_parsed = nwk_read_str(input)?;
     let names = nwk_parsed.names();
@@ -126,7 +119,6 @@ mod tests {
     assert_eq!(graph.get_nodes().count(), 7);
     assert_eq!(graph.get_edges().count(), 6);
 
-    // Count zero-length branches
     let zero_branches: usize = graph
       .get_edges()
       .filter(|e| branch_lengths[&e.key()] == Some(0.0))
@@ -146,7 +138,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
 
-    // Collect branch lengths by finding edges to specific nodes
     let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
       let edge_ref = edge;

@@ -19,11 +19,6 @@ mod tests {
     jc69(JC69Params::default()).expect("JC69 creation failed")
   }
 
-  // Boundary: disjoint support profiles have zero coefficient sum at t=0.
-  // This is the singular case where ln(site_lh) = -inf at t=0.
-  // The evaluator handles this mathematically (produces -inf log_lh)
-  // but the optimizer must never reach this point (upstream guard in
-  // run_optimize_mixed bumps BL away from zero).
   #[test]
   fn test_coefficient_boundary_disjoint_support_zero_at_t0() {
     let gtr = test_gtr();
@@ -34,15 +29,12 @@ mod tests {
     let child_2d = child.insert_axis(Axis(0));
     let contribution = get_coefficients(&make_dense_seq_dis(parent_2d), &make_dense_seq_dis(child_2d), &gtr);
 
-    // Coefficient sum at t=0 is zero for disjoint support
     let coeff_sum: f64 = contribution.coefficients.row(0).sum();
     assert!(
       coeff_sum.abs() < 1e-14,
       "Disjoint support should have ~zero coefficient sum at t=0, got {coeff_sum}"
     );
 
-    // At positive branch length, site likelihood becomes positive
-    // (transition matrix allows state changes)
     let metrics = evaluate_dense_contribution(&contribution, 0.1).expect("valid branch length");
     assert!(
       metrics.log_lh.value().is_finite(),
@@ -55,10 +47,6 @@ mod tests {
     use ndarray::Array1;
     use proptest::prelude::*;
 
-    // Generate a valid probability vector of length 4 (nucleotide alphabet).
-    // Uses the Dirichlet-like approach: draw 4 positive values, normalize.
-    // Minimum component is 1e-6 to avoid exact zeros (which create the
-    // disjoint-support singularity tested separately).
     pub fn probability_vector() -> impl Strategy<Value = Array1<f64>> {
       prop::array::uniform4(1e-6..1.0_f64).prop_map(|raw| {
         let sum: f64 = raw.iter().sum();
@@ -66,12 +54,10 @@ mod tests {
       })
     }
 
-    // Generate a positive branch length spanning the biologically relevant range.
     pub fn branch_length() -> impl Strategy<Value = f64> {
       1e-6..2.0_f64
     }
 
-    // Generate a multiplicity in a realistic range.
     pub fn multiplicity() -> impl Strategy<Value = f64> {
       1.0..500.0_f64
     }
@@ -104,8 +90,6 @@ mod tests {
     }
 
     proptest! {
-      // Invariant 1: non-negative site likelihood at t=0 for overlapping probability vectors.
-      // With minimum component 1e-6, the inner product is always positive.
       #[test]
       fn test_prop_coefficient_nonneg_site_lh_at_zero(
         parent in generators::probability_vector(),
@@ -120,8 +104,6 @@ mod tests {
         );
       }
 
-      // Invariant 2: multiplicity linearity.
-      // sparse(multiplicity=m) == m * sparse(multiplicity=1) for all metrics.
       #[test]
       fn test_prop_coefficient_multiplicity_linearity(
         parent in generators::probability_vector(),
@@ -148,8 +130,6 @@ mod tests {
         prop_assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-9);
       }
 
-      // Invariant 3: dense-sparse equivalence.
-      // n identical dense rows == one sparse site with multiplicity n.
       #[test]
       fn test_prop_coefficient_dense_sparse_equivalence(
         parent in generators::probability_vector(),
@@ -181,8 +161,6 @@ mod tests {
         prop_assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-8);
       }
 
-      // Invariant 4: coefficient additivity.
-      // log_lh(site_a + site_b) == log_lh(site_a) + log_lh(site_b).
       #[test]
       fn test_prop_coefficient_additivity(
         parent_a in generators::probability_vector(),
@@ -216,10 +194,6 @@ mod tests {
         prop_assert_abs_diff_eq!(metrics_combined.second_derivative, metrics_a.second_derivative + metrics_b.second_derivative, epsilon = 1e-9);
       }
 
-      // Finite-difference derivative verification for dense evaluator.
-      // Uses a fixed step with a floor to stay above the roundoff-dominated
-      // regime: for `h < ~1e-8`, the `eps/h` rounding term dominates and the
-      // central difference becomes unreliable as a derivative oracle.
       #[test]
       fn test_prop_coefficient_dense_finite_difference_derivative(
         parent in generators::probability_vector(),
@@ -239,19 +213,6 @@ mod tests {
         prop_assert_relative_eq!(metrics.derivative, numerical_derivative, max_relative = 1e-4);
       }
 
-      // Finite-difference verification of the analytical Hessian against the
-      // central difference of the analytical FIRST derivative. This is far
-      // more precise than the second difference of `log_lh` (which has
-      // `O(eps / h^2)` rounding error in the numerator): a first-derivative
-      // central difference has only `O(eps / h)` rounding error and `O(h^2)`
-      // truncation error. With `h = 1e-4` the rounding floor is `~eps / h
-      // ~ 1e-12` of the derivative magnitude, giving ~8-9 digits of
-      // agreement -- well inside tolerance `max_relative = 1e-5`.
-      //
-      // Tight relative agreement here directly rules out catastrophic
-      // cancellation in the analytical formula: the naive difference form
-      // would miss it by 3-5 orders of magnitude on near-stationarity
-      // inputs.
       #[test]
       fn test_prop_coefficient_dense_hessian_matches_d1_finite_difference(
         parent in generators::probability_vector(),
@@ -273,21 +234,6 @@ mod tests {
     }
   }
 
-  // Regression guard for catastrophic cancellation in the Hessian formula.
-  //
-  // In the cancellation regime the posterior is concentrated at the nonzero
-  // eigenvalue class, so both `E[lambda^2]` and `E[lambda]^2` approach the
-  // same magnitude while their difference (the true variance) is small.
-  // With the naive `E[lambda^2] - E[lambda]^2` form this regime loses up to
-  // ~6 significant digits for `epsilon ~ 1e-6`; the centered (Welford) form
-  // preserves full double-precision accuracy.
-  //
-  // The construction sets `k = [1, 0, 0, epsilon]` directly (bypassing
-  // probability-vector coefficients so we can target the regime precisely).
-  // `eigh` returns eigenvalues in ascending order, so for JC69 the eigvals
-  // are `(-4/3, -4/3, -4/3, 0)` and this coefficient vector puts ~all
-  // posterior mass on the `lambda = -4/3` class (index 0), making both
-  // moments approach `16/9` while the variance is `O(epsilon)`.
   mod cancellation_regime {
     use super::*;
     use crate::optimize::sparse_eval::evaluate_sparse_contribution;
@@ -307,8 +253,6 @@ mod tests {
     fn test_hessian_stable_in_cancellation_regime(#[case] epsilon: f64) {
       let gtr = test_gtr();
       let branch_length = 0.01;
-      // k[0] sits on the lambda = -4/3 eigenvalue class (index 0 after
-      // ascending sort); k[3] sits on the lambda = 0 class (index 3).
       let site = SiteContribution {
         multiplicity: 1.0,
         coefficients: array![1.0, 0.0, 0.0, epsilon],
@@ -320,12 +264,6 @@ mod tests {
 
       let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
 
-      // Closed-form expected variance for this configuration.
-      //
-      //   `S      = e^{-4 t / 3} + epsilon`
-      //   `w_0    = e^{-4 t / 3} / S`,  `w_3 = epsilon / S`,  `w_1 = w_2 = 0`
-      //   `mean   = w_0 * (-4/3)`
-      //   `var    = w_0 * (-4/3 - mean)^2 + w_3 * (0 - mean)^2`
       let lambda = -4.0 / 3.0;
       let exp_lt = (lambda * branch_length).exp();
       let s = exp_lt + epsilon;
@@ -334,10 +272,6 @@ mod tests {
       let mean = w0 * lambda;
       let expected = w0 * (lambda - mean).powi(2) + w3 * mean * mean;
 
-      // Cross-check the analytical Hessian against the central difference of
-      // the analytical first derivative. The first-derivative central
-      // difference has only `O(eps/h)` rounding error, so `h = 1e-6` gives
-      // ~`1e-10` precision -- well below the assertion tolerance.
       let h = 1e-6;
       let d1_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length").derivative;
       let d1_minus = evaluate_sparse_contribution(&contribution, branch_length - h).expect("valid branch length").derivative;

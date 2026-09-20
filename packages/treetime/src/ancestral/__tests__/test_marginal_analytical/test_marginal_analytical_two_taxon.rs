@@ -10,11 +10,6 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
 
-  /// Two-taxon tree with identical leaf states under JC69 (Jukes-Cantor 1969).
-  ///
-  /// Tree: `(A:0.1, B:0.2)root;` both leaves observe state `A`.
-  ///
-  /// Analytical: `L = sum_s pi[s] * P(A | s, 0.1) * P(A | s, 0.2)`.
   #[test]
   fn test_two_taxon_analytical_jc69_same_state() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -32,9 +27,6 @@ mod tests {
     Ok(())
   }
 
-  /// Two-taxon tree with different leaf states under JC69.
-  ///
-  /// Tree: `(A:0.1, B:0.2)root;` leaf `A` observes `A`, leaf `B` observes `T`.
   #[test]
   fn test_two_taxon_analytical_jc69_different_states() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -52,7 +44,6 @@ mod tests {
     Ok(())
   }
 
-  /// Two-taxon tree with non-uniform equilibrium frequencies (GTR model).
   #[test]
   fn test_two_taxon_analytical_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -78,7 +69,6 @@ mod tests {
     Ok(())
   }
 
-  /// Two-taxon tree with a 3-position alignment under JC69.
   #[test]
   fn test_two_taxon_analytical_multiple_positions() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -105,7 +95,6 @@ mod tests {
     Ok(())
   }
 
-  /// Two-taxon tree with highly asymmetric branch lengths under JC69.
   #[test]
   fn test_two_taxon_analytical_asymmetric_branches() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;

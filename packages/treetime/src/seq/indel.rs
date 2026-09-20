@@ -75,22 +75,6 @@ impl fmt::Display for InDel {
   }
 }
 
-/// Compose indels from two consecutive edges into net indels.
-///
-/// When collapsing node B between parent A and child C, indels on edges A->B
-/// (`parent_indels`) and B->C (`child_indels`) are composed to produce the net
-/// A->C indels. This parallels `compose_substitutions()` for substitutions.
-///
-/// Composition rules by case:
-/// - Non-overlapping: both pass through unchanged
-/// - Adjacent deletions: merged into a single deletion spanning both ranges
-/// - Overlapping deletions (same or partial): unified using parent's seq content
-/// - Overlapping insertions (same range): child's seq wins
-/// - Deletion then insertion (same range, same content): cancel
-/// - Deletion then insertion (same range, different content): both kept
-///
-/// Both input slices must be sorted by `range.0` (ties broken by `range.1`).
-/// The output is sorted by `range.0`.
 pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<InDel> {
   debug_assert!(
     parent_indels
@@ -126,7 +110,6 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
     let adjacent = !overlaps && p.range.1 == c.range.0 && p.is_deletion() && c.is_deletion();
 
     if !overlaps && !adjacent {
-      // Case 7: no interaction
       if p.range.0 < c.range.0 || (p.range.0 == c.range.0 && p.range.1 <= c.range.1) {
         result.push(p.clone());
         pi += 1;
@@ -135,7 +118,6 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
         ci += 1;
       }
     } else if adjacent {
-      // Case 2: adjacent deletions - merge into one
       let merged_seq: Seq = p
         .seq
         .as_slice()
@@ -151,10 +133,8 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
       pi += 1;
       ci += 1;
     } else {
-      // Overlapping cases - both pointers always advance
       match (p.kind, c.kind) {
         (InDelKind::Deletion, InDelKind::Deletion) => {
-          // Cases 1, 6: overlapping deletions - use parent's seq for overlap region
           let merged_start = p.range.0.min(c.range.0);
           let merged_end = p.range.1.max(c.range.1);
 
@@ -168,7 +148,6 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
             merged_seq.extend(c.seq.as_slice()[..prefix_len].iter().copied());
           }
 
-          // Overlap region: parent's seq has the original content
           let p_overlap_offset = overlap_start - p.range.0;
           let p_overlap_len = overlap_end - overlap_start;
           merged_seq.extend(
@@ -192,12 +171,10 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
           });
         },
         (InDelKind::Insertion, InDelKind::Insertion) => {
-          // Case 3: overlapping insertions - child's seq wins
           result.push(c.clone());
         },
         (InDelKind::Deletion, InDelKind::Insertion) | (InDelKind::Insertion, InDelKind::Deletion) => {
           if !(p.range == c.range && p.seq == c.seq) {
-            // Emit in sorted order by range.0 to maintain output sortedness
             if p.range.0 <= c.range.0 {
               result.push(p.clone());
               result.push(c.clone());
@@ -216,7 +193,6 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
   result.extend_from_slice(&parent_indels[pi..]);
   result.extend_from_slice(&child_indels[ci..]);
 
-  // Merge adjacent deletions in a final pass (handles chains from multi-step composition)
   merge_adjacent_deletions(result)
 }
 
@@ -246,7 +222,6 @@ fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
   merged
 }
 
-/// Sort indels by range for use as input to `compose_indels`.
 pub fn sort_indels(indels: &mut [InDel]) {
   indels.sort_by_key(|i| i.range);
 }
@@ -313,8 +288,6 @@ pub fn resolve_indels_backward(
   let mut resolved_gaps: Vec<(usize, usize)> = Vec::new();
 
   for (lo, hi) in breakpoints.iter().copied().tuple_windows() {
-    // Classify each child's state at [lo, hi).
-    // Priority: gapped > variable_indel > unknown > char.
     let mut n_gapped: usize = 0;
     let mut n_variable: usize = 0;
     let mut n_unknown: usize = 0;
@@ -328,14 +301,12 @@ pub fn resolve_indels_backward(
       }
     }
 
-    // No gap evidence, or all children unknown: skip.
     if (n_gapped == 0 && (n_variable + n_unknown < n_children)) || n_unknown == n_children {
       continue;
     }
 
     let n_no_seq = n_gapped + n_unknown;
     if n_gapped > 0 && (n_no_seq + n_variable == n_children) {
-      // All children compatible with gap and at least one has explicit gap: resolved.
       if let Some(last) = resolved_gaps.last_mut() {
         if last.1 == lo {
           last.1 = hi;
@@ -384,7 +355,6 @@ pub fn resolve_indels_forward(
     let in_vi = interval_in_vi(variable_indel, lo, hi);
 
     if in_node && !in_parent {
-      // Node has gap, parent doesn't: deletion on this edge.
       if let Some(last) = deletions.last_mut().filter(|d| d.range.1 == lo) {
         last.range.1 = hi;
         last.seq.extend(parent_sequence[lo..hi].iter().copied());
@@ -401,7 +371,6 @@ pub fn resolve_indels_forward(
         new_node_gaps.push((lo, hi));
       }
     } else if in_parent && !in_node && !in_non_char && !in_vi {
-      // Parent has gap, node has sequence: insertion on this edge.
       if let Some(last) = insertions.last_mut().filter(|i| i.range.1 == lo) {
         last.range.1 = hi;
         last.seq.extend(node_sequence[lo..hi].iter().copied());
@@ -413,7 +382,6 @@ pub fn resolve_indels_forward(
         });
       }
     } else if in_parent {
-      // Parent has gap; node is gapped, non_char, or variable: inherit parent gap.
       if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
         last.1 = hi;
       } else {

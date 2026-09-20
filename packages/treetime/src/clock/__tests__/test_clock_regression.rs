@@ -79,8 +79,6 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    // Oracle: TreeTime root regression sums paired sampling-date and divergence
-    // observations (Sagulenko, Puller, and Neher 2018, Equation 6).
     let expected = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates)?;
     let actual = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates)?;
 

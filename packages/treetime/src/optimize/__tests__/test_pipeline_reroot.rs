@@ -166,8 +166,6 @@ mod tests {
     Ok(())
   }
 
-  // Keeping the root (the default) leaves the run unchanged relative to no reroot
-  // flags; both must complete and preserve the tree.
   #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;

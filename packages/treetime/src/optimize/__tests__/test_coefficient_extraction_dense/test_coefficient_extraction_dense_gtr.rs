@@ -7,8 +7,6 @@ mod tests {
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
-  /// Coefficients are computed via eigenvector decomposition:
-  /// k_c = (child . v)_c * (parent . v_inv^T)_c
   #[test]
   fn test_coefficients_use_eigenvector_decomposition() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
@@ -27,7 +25,6 @@ mod tests {
     pretty_assert_ulps_eq!(contribution.coefficients, expected, max_ulps = 10);
   }
 
-  /// PartitionContribution should store the GTR for later evaluation.
   #[test]
   fn test_coefficients_preserve_gtr_reference() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");

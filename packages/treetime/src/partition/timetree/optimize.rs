@@ -16,7 +16,6 @@ use treetime_graph::reroot::RerootChanges;
   reason = "PartitionTimetree's inherent impl is split by concern: the type definition in partition.rs, the timetree optimization methods here"
 )]
 impl PartitionTimetree {
-  /// The sequence length this partition represents.
   pub fn sequence_length(&self) -> usize {
     match self {
       Self::Dense(family) => family.sequence_length(),
@@ -24,7 +23,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The per-edge branch-length optimization contribution, built from the last update's messages.
   pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
       Self::Dense(family) => Ok(family.create_edge_contribution(edge_key)),
@@ -32,7 +30,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The number of indel events on one edge.
   pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     match self {
       Self::Dense(family) => family.edge_indel_count(edge_key),
@@ -40,10 +37,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// Apply a reroot at the structural operation, returning the partition over the rerooted topology.
-  ///
-  /// The partition is consumed: the reroot rewrites the durable observations and carries the node
-  /// states across, and the per-edge results of the previous update do not survive it.
   pub fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.gtr, family.node_states, changes)),
@@ -56,9 +49,6 @@ impl PartitionTimetree {
     })
   }
 
-  /// Reconcile the partition to the graph after a topology change (polytomy resolution): give the
-  /// observations and node states an entry for every current node, drop entries for nodes that are
-  /// gone, and carry no per-edge results across. The next marginal update recomputes the values.
   #[must_use]
   pub fn reconcile_topology(self, graph: &Graph) -> Self {
     let live_nodes = live_node_keys(graph);

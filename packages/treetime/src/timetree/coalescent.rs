@@ -3,12 +3,6 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-/// The rich coalescent output document: the run parameters that produced the result and the
-/// per-segment time scales.
-///
-/// This is the single source of truth for both serializations. JSON emits the whole document with
-/// nested `segment`/`T_c`/`N_e` objects; the delimited formats emit only [`Self::rows`], the flat
-/// per-segment projection.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentOutput {
   pub inputs: CoalescentInputs,
@@ -16,12 +10,6 @@ pub struct CoalescentOutput {
 }
 
 impl CoalescentOutput {
-  /// Builds the document from a coalescent solve.
-  ///
-  /// Consumes the optimized per-segment `T_c` values and the P1 confidence band, and derives the
-  /// effective population size `N_e = T_c * gen_per_year` (P2) for the point and, when present, for
-  /// each band bound. A fixed (user-supplied) `T_c` carries no band, so both `T_c` and `N_e` report
-  /// a value only.
   pub fn new(inputs: CoalescentInputs, solve: &CoalescentSolve) -> Result<Self, Report> {
     let n = solve.tc_values.len();
     if solve.segment_boundaries.len() != n + 1 {
@@ -74,11 +62,6 @@ impl CoalescentOutput {
     })
   }
 
-  /// Projects the rich segments to flat rows: the documented rich -> flat mapping.
-  ///
-  /// Each nested [`CoalescentSegment`] becomes one [`CoalescentSegmentRow`]: the 0-based JSON
-  /// `index` becomes 1-based, and the nested `segment`/`T_c`/`N_e` objects flatten to dotted
-  /// scalar columns. The projection is total, so `rows().len() == outputs.segments.len()`.
   pub fn rows(&self) -> Vec<CoalescentSegmentRow> {
     self
       .outputs
@@ -89,55 +72,35 @@ impl CoalescentOutput {
   }
 }
 
-/// The run parameters that produced a coalescent result.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentInputs {
   pub mode: CoalescentOutputMode,
-  /// Number of skyline segments. `Some` only for a skyline; a constant or fixed `T_c` configures no
-  /// grid.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub n_points: Option<usize>,
-  /// Skyline smoothing stiffness. `Some` only for a skyline.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub stiffness: Option<f64>,
-  /// Confidence level, in standard deviations, of the `T_c` band. `None` for a fixed `T_c`, which
-  /// carries no band.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence_n_std: Option<f64>,
-  /// Generations per year used to map `T_c` to `N_e`.
   pub gen_per_year: f64,
 }
 
-/// How the reported `T_c` was produced. The disabled mode reports no coalescent, so it has no
-/// variant here.
-///
-/// Named distinctly from the pipeline's inference `CoalescentMode` (which also carries `Disabled`
-/// and a `Fixed` payload): this is the serialization tag written to `inputs.mode`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum CoalescentOutputMode {
-  /// Fixed, user-supplied `T_c` (one segment, no band).
   Fixed,
-  /// Optimized constant `T_c` (one segment).
   Constant,
-  /// Optimized piecewise-constant skyline `T_c(t)`.
   Skyline,
 }
 
-/// The per-segment coalescent time scales.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentOutputs {
-  /// Coalescent log-likelihood at the reported `T_c`. `None` for a fixed `T_c`, which is not
-  /// inferred.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub log_likelihood: Option<f64>,
   pub segments: Vec<CoalescentSegment>,
 }
 
-/// One coalescent segment in rich (nested) form, as emitted to JSON.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentSegment {
-  /// 0-based segment index.
   pub index: usize,
   pub segment: SegmentInterval,
   #[serde(rename = "T_c")]
@@ -146,11 +109,8 @@ pub struct CoalescentSegment {
   pub ne: Estimate,
 }
 
-/// One coalescent segment in flat form, as emitted to CSV/TSV. Serde field renames produce the
-/// dotted column titles that mirror the nested JSON keys.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentSegmentRow {
-  /// 1-based segment index.
   pub index: usize,
   #[serde(rename = "segment.start")]
   pub segment_start: f64,
@@ -186,18 +146,12 @@ impl CoalescentSegmentRow {
   }
 }
 
-/// A half-open numeric-date span `[start, end)` for one coalescent segment.
-///
-/// Local stand-in for the shared numeric-date interval type. The wider unification onto
-/// `DateRangeNumeric` is deferred (see `kb/issues/N-datetime-date-and-range-representation-inconsistent.md`).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SegmentInterval {
   pub start: f64,
   pub end: f64,
 }
 
-/// A point estimate with an optional confidence band. `lower`/`upper` are absent only for a fixed
-/// `T_c` (and the `N_e` derived from it), which carries no band.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Estimate {
   pub value: f64,
@@ -208,7 +162,6 @@ pub struct Estimate {
 }
 
 impl Estimate {
-  /// A bare point estimate with no band.
   pub fn point(value: f64) -> Self {
     Self {
       value,
@@ -217,7 +170,6 @@ impl Estimate {
     }
   }
 
-  /// A point estimate with a confidence band.
   pub fn with_band(value: f64, lower: f64, upper: f64) -> Self {
     Self {
       value,
@@ -227,21 +179,13 @@ impl Estimate {
   }
 }
 
-/// A coalescent solve to serialize: the optimized per-segment `T_c` and its segment boundaries,
-/// plus the optional P1 confidence band.
 pub struct CoalescentSolve<'a> {
-  /// Segment boundaries in numeric date (length `tc_values.len() + 1`, ascending).
   pub segment_boundaries: &'a [f64],
-  /// Optimized `T_c` per segment.
   pub tc_values: &'a [f64],
-  /// Per-segment `T_c` confidence band, or `None` for a fixed `T_c`.
   pub band: Option<CoalescentBand<'a>>,
-  /// Coalescent log-likelihood at the reported `T_c`, or `None` for a fixed `T_c`.
   pub log_likelihood: Option<f64>,
 }
 
-/// Per-segment `T_c` confidence band bounds. Both bounds are present together, so a partial band is
-/// unrepresentable.
 pub struct CoalescentBand<'a> {
   pub lower: &'a [f64],
   pub upper: &'a [f64],

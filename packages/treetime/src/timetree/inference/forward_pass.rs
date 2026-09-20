@@ -15,11 +15,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_grid::Side;
 
-/// Refines node time distributions and commits point-estimate times forward from root to leaves.
-///
-/// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
-/// refining the posteriors and committing point-estimate times in place. The count of nodes
-/// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
 pub fn propagate_distributions_forward(
   graph: &Graph,
   constraints: &DateConstraints,
@@ -30,7 +25,6 @@ pub fn propagate_distributions_forward(
     propagate_distributions_forward_node(constraints, names, &context)
   })?;
 
-  // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
   if contradicted > 0 {
     warn!(
@@ -45,10 +39,6 @@ pub fn propagate_distributions_forward(
   Ok(())
 }
 
-/// Refines one node's posterior against its parent's message and commits its point-estimate time.
-///
-/// The forward pass only reads the parent edge (its branch length and backward message), so the edge
-/// is passed through unchanged; the root has no parent edge and yields `None`.
 fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -80,12 +70,9 @@ fn propagate_distributions_forward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-/// What [`refine_distribution_from_parent`] did to a node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Refinement {
-  /// Refined from the parent, or nothing to refine (root, exact date, or a missing operand).
   Done,
-  /// The parent message ruled out the given date; the date was kept unrefined.
   ContradictedGivenDate,
 }
 
@@ -93,11 +80,6 @@ enum Refinement {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Refine the node's time distribution with the message coming down from its parent.
-///
-/// The message -- the rest of the tree's opinion, carried across the branch -- is multiplied into the
-/// node's own subtree evidence. When the two have disjoint support the product is empty; the given
-/// date is then kept rather than refined away, and the caller told so it can report the disagreement.
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -106,10 +88,6 @@ fn refine_distribution_from_parent(
   edge: Option<&DateEdgeState>,
   node: &mut DateNodeState,
 ) -> Result<Refinement, Report> {
-  // Nothing to refine:
-  // - root -- no parent message
-  // - exact date -- observed, not inferred
-  // A leaf with an uncertain date is refined like any inferred node.
   let Some(parent) = parent else {
     return Ok(Refinement::Done);
   };
@@ -124,8 +102,6 @@ fn refine_distribution_from_parent(
     return Ok(Refinement::Done);
   };
 
-  // No distribution of its own: take the parent message across the branch as is (nothing to divide
-  // out, multiply back, or contradict).
   let Some(subtree_dist) = &node.time_distribution else {
     let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
     log_refinement(names, key, parent_time_dist, &dist_from_parent);
@@ -133,26 +109,15 @@ fn refine_distribution_from_parent(
     return Ok(Refinement::Done);
   };
 
-  // The parent sends its message down across the branch. This node's own contribution was folded
-  // into the parent's posterior during the backward pass, so it is divided back out first -- the
-  // cavity distribution -- then convolved across the branch. With no message on record there is
-  // nothing to divide out and the parent posterior is used as is.
   let parent_except_subtree = match edge.msg_to_parent.as_deref() {
     Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent)?,
     None => parent_time_dist.as_ref().clone(),
   };
-  // Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): parent time is a hard lower
-  // bound (left Hard); the node's time is unbounded forward, so the right tail is soft and fitted.
   let dist_from_parent = convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)?;
 
-  // Peak-normalize and store. The multiply is pointwise and does not resize the grid, so no further
-  // mass sizing is needed.
   let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
   log_refinement(names, key, parent_time_dist, &combined);
 
-  // Empty product: the parent message and the given date have disjoint support. Refining onto it
-  // would leave the node undated -- worse than the input date -- so keep the given date and report
-  // it. A node with no given date has nothing to fall back on and stays undated.
   if combined.likely_time().is_none() && date_constraint.is_some() {
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
     return Ok(Refinement::ContradictedGivenDate);
@@ -161,11 +126,6 @@ fn refine_distribution_from_parent(
   Ok(Refinement::Done)
 }
 
-/// Commit the node's point-estimate time from the peak of its refined time distribution.
-///
-/// Projected to be no earlier than the parent's committed time -- except for an exact date, which is
-/// kept so a clock conflict stays visible to `commit_clock_branch_lengths`. An empty distribution
-/// gets no time, and warns when the node was dateable.
 fn commit_node_time(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -174,17 +134,10 @@ fn commit_node_time(
   is_leaf: bool,
   node: &mut DateNodeState,
 ) {
-  // Project the inferred point estimate onto the committed parent time (an exact date keeps its
-  // own). This adjusts the estimate without recomputing the posterior; the statistical contract is
-  // open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
   let parent_time = (!has_exact_date(date_constraint))
     .then(|| parent_time(parent))
     .flatten();
 
-  // An empty distribution yields no time. Under NegLog (ordinate -ln p) even tiny posteriors survive
-  // exactly, so empty means genuinely disjoint hard domains -- the subtree disagrees with the rest of
-  // the tree. Surface that rather than drop the date silently. An undated leaf under an undated parent
-  // has nothing to infer from and was already reported when its date was found missing.
   let is_dateable = !is_leaf || date_constraint.is_some();
   if set_likely_time(node, parent_time).is_none() && is_dateable {
     let name = node_name(names, key);
@@ -197,22 +150,14 @@ fn commit_node_time(
   }
 }
 
-/// Whether the node was given an exact date, which pins it to a single time.
-///
-/// Anything else -- an uncertain or ranged date, or no date at all -- leaves the node's time to be
-/// inferred, and so to be refined by the message coming down from its parent.
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
   date_constraint.is_some_and(|dist| dist.is_point())
 }
 
-/// Committed time of the node's parent, if it has one and it is set.
 fn parent_time(parent: Option<&DateNodeState>) -> Option<f64> {
   parent?.time
 }
 
-/// Assign the node's committed time from the peak of its time distribution, clamped to be no
-/// earlier than the parent's committed time. Returns the assigned time, or `None` when the time
-/// distribution is empty or degenerate and no time could be determined (the node is left undated).
 pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>) -> Option<f64> {
   let time = node
     .time_distribution
@@ -224,16 +169,10 @@ pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>
   Some(time)
 }
 
-/// The name of the graph node with `key`, looked up in the name value map for a log message.
 fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> Option<String> {
   names[&key].clone()
 }
 
-/// Trace what the refinement of one node did to its grid, for `RUST_LOG=debug`.
-///
-/// The grid a node ends up on is set by the operands it was built from, so a grid that grows or a
-/// support that drifts is read off the pair: `parent` is the distribution the message came from and
-/// `refined` is what the node now carries.
 fn log_refinement(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -252,7 +191,6 @@ fn log_refinement(
   );
 }
 
-/// Name the node whose given date the rest of the tree contradicts, and what the tree implied.
 fn log_kept_given_date(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -272,10 +210,6 @@ fn log_kept_given_date(
   );
 }
 
-/// Grid size and support of a distribution: `n=<points>, [<t_min>, <t_max>]`.
-///
-/// The point count is what the distribution would be evaluated on: one for a point date, two for a
-/// range or a formula's end points, and the full grid for a function.
 fn describe_grid(dist: &Distribution<NegLog>) -> String {
   let n_points = dist.t().len();
   match dist.time_bounds() {

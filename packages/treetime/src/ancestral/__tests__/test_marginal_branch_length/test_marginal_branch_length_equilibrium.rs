@@ -8,7 +8,6 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
 
-  /// At very long branch lengths, Felsenstein site likelihood converges to the product of equilibrium frequencies (dense partition).
   #[test]
   fn test_equilibrium_convergence_dense() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -23,7 +22,6 @@ mod tests {
     Ok(())
   }
 
-  /// Equilibrium convergence test using sparse partition.
   #[test]
   fn test_equilibrium_convergence_sparse() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -38,7 +36,6 @@ mod tests {
     Ok(())
   }
 
-  /// Equilibrium convergence with non-uniform equilibrium frequencies (GTR model).
   #[test]
   fn test_equilibrium_convergence_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -61,7 +58,6 @@ mod tests {
     Ok(())
   }
 
-  /// Multi-position equilibrium convergence under JC69.
   #[test]
   fn test_equilibrium_convergence_multiple_positions() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -76,7 +72,6 @@ mod tests {
     Ok(())
   }
 
-  /// Equilibrium convergence on a 4-leaf star tree (polytomy) under JC69.
   #[test]
   fn test_equilibrium_star_tree() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -91,7 +86,6 @@ mod tests {
     Ok(())
   }
 
-  /// Numerical stability at extremely short branch lengths.
   #[test]
   fn test_branch_length_sensitivity_near_zero() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -113,7 +107,6 @@ mod tests {
     Ok(())
   }
 
-  /// Dense and sparse partitions produce identical Felsenstein log-likelihoods across branch lengths.
   #[test]
   fn test_dense_sparse_consistency_across_branch_lengths() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;

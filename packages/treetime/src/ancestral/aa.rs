@@ -17,14 +17,6 @@ use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::sync::random::get_random_number_generator;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-/// Reconstruct per-CDS amino-acid ancestral states for every plan and gather the augur node data.
-///
-/// Reconstruct one CDS partition at a time and consume its result before building the next. A marginal
-/// partition holds per-edge probability vectors over the ~20-symbol amino-acid alphabet, so keeping
-/// every CDS partition resident at once made peak memory scale with the CDS count. The RNG is created
-/// once and passed to each partition so sampled reconstruction draws in a fixed CDS order, independent
-/// of how many partitions are resident. `plans` must already carry parsed, sanitized, alphabet-mapped
-/// per-CDS sequences and any AA root-sequence override.
 pub fn reconstruct_aa(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -35,9 +27,6 @@ pub fn reconstruct_aa(
 ) -> Result<AaNodeData, Report> {
   let mut rng = get_random_number_generator(params.seed);
   let mut aa_node_data = AaNodeData::default();
-  // Announce the final topology once before any sequence is emitted, so the sink can resolve each key
-  // to an output name (core does not write names onto nodes). The AA reconstruction does not change the
-  // topology, so one notice before the per-CDS loop covers every emitted CDS.
   if let Some(sink) = seq_sink.as_mut() {
     sink.on_topology(graph)?;
   }
@@ -87,10 +76,6 @@ pub fn reconstruct_aa(
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaNodeData {
   pub reference: BTreeMap<String, String>,
-  // Keyed by graph node key, not node name: every amino-acid partition is reconstructed on the same
-  // shared tree as the nucleotide partition, so per-node results join by node identity (key) rather
-  // than by reconstructing identity from a synthesized node name across independent graphs. Held as
-  // mutation events; the output encoders render them to per-format strings.
   pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
   pub root_aa_sequences: BTreeMap<String, String>,
 }
@@ -198,8 +183,6 @@ fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> boo
   reff != gap && qry != gap && reff != unknown && qry != unknown
 }
 
-/// Total nucleotide length of a CDS annotation: the sum of its segment lengths, or the single
-/// `start..=end` span, in 1-based inclusive coordinates. `None` when the entry carries neither.
 pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
   if let Some(segments) = &entry.segments {
     Some(segments.iter().map(|segment| segment.end - segment.start + 1).sum())

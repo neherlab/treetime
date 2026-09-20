@@ -71,7 +71,6 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    // "C" has no matching tree leaf. Attachment warns and proceeds; matched leaves are unaffected.
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
     let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");

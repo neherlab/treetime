@@ -8,28 +8,16 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// Per-edge directional `DivStats` messages plus the aggregate at the current root.
 pub struct DivStatsField {
-  /// For each edge, `(to_parent, to_child)`: the child subtree as seen at the
-  /// child node, and the rest of the tree as seen at the parent node.
   pub edge_stats: BTreeMap<GraphEdgeKey, (DivStats, DivStats)>,
-  /// Aggregate statistics at the current root (the search baseline).
   pub root_stats: DivStats,
 }
 
-/// Compute `DivStats` messages for every edge by message passing over branch lengths.
-///
-/// Two passes mirror the clock regression: a leaves-to-root pass accumulates each
-/// subtree message at its child node (`to_parent`) and propagates it across the
-/// branch (`from_child`); a root-to-leaves pass derives the complementary
-/// rest-of-tree message (`to_child`) by subtracting a child's contribution from
-/// the node aggregate. Statistics are returned in maps.
 pub fn compute_div_stats(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
 ) -> Result<DivStatsField, Report> {
-  // Leaves-to-root order (children precede parents).
   let mut backward_order: Vec<GraphNodeKey> = Vec::new();
   graph.iter_breadth_first_backward(|n| {
     backward_order.push(n.key);
@@ -40,7 +28,6 @@ pub fn compute_div_stats(
   let mut from_child: BTreeMap<GraphEdgeKey, DivStats> = BTreeMap::new();
   let mut root_stats = DivStats::default();
 
-  // Backward pass.
   for &node_key in &backward_order {
     let NodeTopology {
       is_leaf,
@@ -62,8 +49,6 @@ pub fn compute_div_stats(
         parent_edge,
         DivStats::leaf(None, branch_length, variance.leaf_branch(branch_length)),
       );
-      // Unused by the cost function (leaf edges take the leaf path), but recorded
-      // so every edge has an entry: the leaf as seen at its own node, distance 0.
       to_parent.insert(parent_edge, DivStats::leaf(None, 0.0, variance.leaf_branch(0.0)));
     } else {
       let subtree = sum_children(&from_child, &child_edges)?;
@@ -75,7 +60,6 @@ pub fn compute_div_stats(
     }
   }
 
-  // Forward pass (root-to-leaves): complementary rest-of-tree messages.
   let mut to_child: BTreeMap<GraphEdgeKey, DivStats> = BTreeMap::new();
 
   for &node_key in backward_order.iter().rev() {
@@ -86,8 +70,6 @@ pub fn compute_div_stats(
       ..
     } = node_topology(graph, node_key)?;
 
-    // Full aggregate at this node: its own subtree plus the rest of the tree
-    // propagated down the parent branch.
     let full = if is_root {
       root_stats
     } else {

@@ -48,7 +48,6 @@ fn test_attach_ignore_missing_alns_bypasses_threshold() {
 
 #[test]
 fn test_attach_exactly_one_third_missing_does_not_abort() {
-  // v0 uses strict `>` with float division: 1 of 3 missing (1 > 3/3 == 1.0 is false) must not abort.
   let (graph, names) = helpers::three_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT")]);
@@ -79,12 +78,10 @@ fn test_sanitize_to_alphabet_folds_stop_into_unknown_for_no_stop_alphabet() {
   let aa_no_stop = Alphabet::new(AlphabetName::AaNoStop).unwrap();
   let seq = Seq::try_from_str("MC*X-").unwrap();
 
-  // The stop-inclusive alphabet keeps the stop codon `*` as a real state.
   let (kept, changed_aa) = sanitize_to_alphabet(&seq, &aa);
   assert_eq!(0, changed_aa);
   assert_eq!(seq, kept);
 
-  // The 20-amino-acid alphabet has no stop state, so `*` is folded into the unknown state `X`.
   let (folded, changed) = sanitize_to_alphabet(&seq, &aa_no_stop);
   assert_eq!(1, changed);
   assert_eq!(Seq::try_from_str("MCXX-").unwrap(), folded);

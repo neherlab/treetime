@@ -61,7 +61,6 @@ mod tests {
     let child_vis = [&empty0, &child1_vi];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
 
-    // Child 0 has gap, child 1 has variable_indel: both compatible with gap -> resolved.
     assert!(result.variable_indel.is_empty());
     assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }

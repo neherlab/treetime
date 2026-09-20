@@ -36,7 +36,6 @@ mod tests {
       helpers::partition_with_root_log_lh(root_key, -2.0)?,
       helpers::partition_with_root_log_lh(root_key, -3.5)?,
     ];
-    // Oracle: graph_log_lh() contract in packages/treetime/src/partition/traits.rs.
     let expected = -5.5;
 
     let actual = compute_sequence_log_lh(&graph, &partitions)
@@ -60,7 +59,6 @@ mod tests {
   #[test]
   fn test_likelihood_positional_log_lh_sums_log_probabilities() -> Result<(), Report> {
     let (graph, names) = helpers::positional_graph()?;
-    // Oracle: one edge with probability 0.25 contributes ln(0.25).
     let expected = 0.25_f64.ln();
 
     let state = helpers::positional_state(&graph, &names);
@@ -91,7 +89,6 @@ mod tests {
     let (graph, constraints) = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
     let node_times = helpers::coalescent_node_times(&graph, &constraints);
-    // Oracle: compute_coalescent_total_lh() is the coalescent model's whole-tree log-likelihood.
     let expected = compute_coalescent_total_lh(&graph, &tc, &node_times)?.value();
 
     let actual = compute_coalescent_log_lh(&graph, Some(&tc), &node_times)
@@ -171,8 +168,6 @@ mod tests {
       Ok((graph, names))
     }
 
-    /// The date state the positional-likelihood tests exercise, built as values: committed times on
-    /// the two nodes and a branch-length distribution on the single edge.
     pub fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
       let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
       let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
@@ -200,8 +195,6 @@ mod tests {
       Ok((graph, constraints))
     }
 
-    /// The coalescent node-time value the collectors consume, derived from the date constraints
-    /// [`load_date_constraints`] returns via the value seed.
     pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
       TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
     }

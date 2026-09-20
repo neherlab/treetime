@@ -80,8 +80,6 @@ mod tests {
 
   #[test]
   fn test_indel_compose_case6_partially_overlapping_deletions() {
-    // Overlap at 2..3. Parent provides seq for overlap, child for non-overlap suffix.
-    // Seq assembled from available data, not ground-truth ancestor content.
     let parent = vec![del(1, 3, "CG")];
     let child = vec![del(2, 5, "TAC")];
     let result = compose_indels(&parent, &child);
@@ -127,7 +125,6 @@ mod tests {
 
   #[test]
   fn test_indel_compose_mixed_overlap_output_sorted() {
-    // del at higher range, ins at lower range: output must be sorted
     let parent = vec![del(3, 7, "ACGT")];
     let child = vec![ins(1, 5, "TTTT")];
     let result = compose_indels(&parent, &child);
@@ -140,7 +137,6 @@ mod tests {
 
   #[test]
   fn test_indel_compose_child_before_parent_adjacent() {
-    // Child deletion ends where parent starts - merged by final pass
     let parent = vec![del(5, 8, "ACG")];
     let child = vec![del(3, 5, "TT")];
     let result = compose_indels(&parent, &child);

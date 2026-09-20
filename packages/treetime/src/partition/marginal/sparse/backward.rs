@@ -16,8 +16,6 @@ use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOut
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
-/// Run the sparse marginal backward pass over borrowed inputs and node states, returning updated node
-/// states and the per-edge backward messages as distinct owned values.
 pub fn process_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -85,8 +83,6 @@ fn process_node_backward_indexed(
   } else {
     let mut variable_pos = btreemap! {};
 
-    // Children arrive in the graph's canonical `children_of` order, so every child is fetched and
-    // folded in that order, keeping the floating-point result byte-for-byte identical.
     let n_children = context.children.len();
     let mut child_states = vec![btreemap! {}; n_children];
     let mut child_messages = Vec::with_capacity(n_children);

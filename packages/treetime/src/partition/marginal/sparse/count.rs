@@ -16,8 +16,6 @@ use treetime_utils::array::ndarray::argmax_first;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Count posterior-weighted transitions from sparse profiles, reading the backward and forward edge
-/// messages and the node states by their distinct owners.
 pub fn count_transitions_sparse(
   gtr: &GTR,
   length: usize,

@@ -4,8 +4,6 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use rstest::rstest;
 
-  // Oracle: the definition N_e = Tc * gen_per_year. Expected values are the products worked out by
-  // hand, not recomputed with the same expression the function uses.
   #[rustfmt::skip]
   #[rstest]
   #[case::default_factor(   2.0, 50.0, 100.0)]
@@ -21,9 +19,6 @@ mod tests {
     pretty_assert_ulps_eq!(expected, effective_population_size(tc, gen_per_year), max_ulps = 4);
   }
 
-  // A confidence band on Tc maps to a band on N_e by scaling each bound with the same factor, so
-  // the band still brackets the point estimate and its width scales linearly. Expected values are
-  // the hand-computed products for gen_per_year = 50.0.
   #[test]
   fn test_population_size_band_scales_linearly() {
     let gen_per_year = 50.0;
@@ -37,13 +32,10 @@ mod tests {
     pretty_assert_ulps_eq!(150.0, ne_value, max_ulps = 4);
     pretty_assert_ulps_eq!(300.0, ne_upper, max_ulps = 4);
 
-    // Band brackets the point estimate and its width is the Tc width scaled by the factor.
     assert!(ne_lower <= ne_value && ne_value <= ne_upper);
     pretty_assert_ulps_eq!(gen_per_year * (tc_upper - tc_lower), ne_upper - ne_lower, max_ulps = 4);
   }
 
-  // Fixed Tc has no confidence band, so the report carries only the point conversion. Here the
-  // default gen_per_year = 50.0 rescales a user-supplied Tc into a single N_e value.
   #[test]
   fn test_population_size_fixed_mode_value_only() {
     pretty_assert_ulps_eq!(60.0, effective_population_size(1.2, 50.0), max_ulps = 4);

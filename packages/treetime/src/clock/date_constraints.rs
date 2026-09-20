@@ -9,16 +9,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::{DateConstraint, DateValue, DatesMap};
 
-/// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
-///
-/// Returned as values so the timetree pipeline can seed [`TimetreeState`] from them directly
-/// (see [`TimetreeState::seed_from_values`]).
-/// `date_constraints` is the fixed input date per node, `time_distributions` its initial posterior
-/// (equal to the constraint before any date pass refines it), and `bad_branches` the exclusion flag.
-/// Every node of the tree has an entry in each map.
-///
-/// [`TimetreeState`]: crate::timetree::timetree_state::TimetreeState
-/// [`TimetreeState::seed_from_values`]: crate::timetree::timetree_state::TimetreeState::seed_from_values
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
   pub date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
@@ -27,9 +17,6 @@ pub struct DateConstraints {
 }
 
 pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
-  // A certain date carries probability 1, whose negative-log ordinate is `-ln(1) = 0`, the
-  // multiplicative identity under `NegLog`. Storing `1.0` here would add a spurious constant offset
-  // on every multiplication, so the ordinate is `0.0`.
   match &constraint.value {
     DateValue::Exact(d) => Distribution::point(d.value, 0.0),
     DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),
@@ -51,8 +38,6 @@ pub fn load_date_constraints(
   let mut internal_constraint_count = 0;
   let mut used_names = BTreeSet::new();
 
-  // The value maps returned to the caller; every node gets an entry. The timetree pipeline seeds
-  // [`TimetreeState`] straight from these maps (see [`TimetreeState::seed_from_values`]).
   let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
   let mut time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
   let mut bad_branches: BTreeMap<GraphNodeKey, bool> = BTreeMap::new();
@@ -73,8 +58,6 @@ pub fn load_date_constraints(
 
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
-      // The constraint is the input, kept as given for the whole run; the time distribution is the
-      // current estimate, which starts out as the input and is refined by every inference pass.
       date_constraints.insert(key, Some(Arc::clone(&dist)));
       time_distributions.insert(key, Some(dist));
       bad_branches.insert(key, false);
@@ -91,7 +74,6 @@ pub fn load_date_constraints(
       bad_branches.insert(key, true);
       bad_leaf_count += 1;
     } else {
-      // Postorder guarantees every child is already recorded in the map.
       let all_children_bad = node.child_keys.iter().all(|(child_key, _)| bad_branches[child_key]);
       date_constraints.insert(key, None);
       time_distributions.insert(key, None);

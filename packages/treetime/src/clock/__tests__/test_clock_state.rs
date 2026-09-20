@@ -9,9 +9,6 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
 
-  // Oracle: the value inputs passed to `seed_from_times` plus its documented contract -- the seeded
-  // date comes from `times` (`None` for a missing key), and `bad_branch` and every edge start at
-  // their defaults.
   #[test]
   fn test_clock_state_seed_from_times_sources_times_and_defaults_the_rest() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
@@ -21,7 +18,6 @@ mod tests {
     let key_of = helpers::key_by_name(&names, &graph);
     let (a, b, root) = (key_of["A"], key_of["B"], key_of["root"]);
 
-    // Seed A with a date, leave B explicitly dateless, and omit root entirely (a missing key).
     let times = btreemap! {
       a => Some(2000.0),
       b => None,

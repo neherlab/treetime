@@ -131,8 +131,6 @@ mod tests {
         graph: parse.graph,
       };
 
-      // Read the reconstructed sequences back off the partition in the walk's emission order, as the
-      // reconstructed-FASTA writer does. This exercises the same path the CLI streams to file.
       let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
       let partition = result.partition.expect("marginal reconstruction produces a partition");
       let captured: BTreeMap<String, String> = result

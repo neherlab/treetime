@@ -145,7 +145,6 @@ pub mod tests {
   fn test_initial_guess_mode_auto_fills_none_from_newick() -> Result<(), Report> {
     let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
 
-    // Before: all edges have None (pest parser returns None for missing branch lengths)
     for edge_ref in graph.get_edges() {
       let bl = branch_lengths[&edge_ref.key()];
       assert!(
@@ -169,7 +168,6 @@ pub mod tests {
       &mut branch_lengths,
     )?;
 
-    // After: all edges have finite non-negative values
     for edge_ref in graph.get_edges() {
       let bl = branch_lengths[&edge_ref.key()];
       assert!(
@@ -185,7 +183,6 @@ pub mod tests {
     let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let original_lengths = get_branch_lengths(&graph, &branch_lengths);
 
-    // Set one edge to NaN (simulating a missing branch length)
     let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
 
@@ -206,13 +203,11 @@ pub mod tests {
 
     let updated_lengths = get_branch_lengths(&graph, &branch_lengths);
 
-    // The previously-NaN edge now has a finite value
     assert!(
       updated_lengths[0].is_finite() && updated_lengths[0] >= 0.0,
       "Missing edge should be filled with finite value"
     );
 
-    // All other edges retain their original values
     for i in 1..original_lengths.len() {
       assert_abs_diff_eq!(original_lengths[i], updated_lengths[i], epsilon = 1e-15);
     }
@@ -509,9 +504,6 @@ pub mod tests {
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
-    /// Attach a single 3-base deletion indel to the partition's entry for
-    /// the first graph edge. Marginal initialization populates the edge
-    /// map, so the entry always exists by the time this helper is called.
     pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       for partition in partitions.iter_mut() {

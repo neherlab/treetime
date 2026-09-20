@@ -7,19 +7,6 @@ use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
-/// Computes the total coalescent log-likelihood of the tree under the given Tc.
-///
-/// For each non-root edge, evaluates the per-edge cost:
-///   cost = I(t_merger) - I(t_node) - log(λ(t_merger)) * (m-1)/m
-///
-/// and returns LH = -Σ cost.
-///
-/// Multiplicity m is the number of children of the parent merger node. This corrects a v0 erratum where
-/// `total_LH()` uses fixed multiplicity=2 for all edges (see
-/// `docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md`).
-///
-/// Accepts any `Distribution` for Tc (constant, skyline, or formula-based).
-/// Nonconstant distributions are evaluated in decimal calendar years.
 pub fn compute_coalescent_total_lh(
   graph: &Graph,
   tc_dist: &Distribution,

@@ -1,5 +1,3 @@
-//! Combined input generator for marginal reconstruction property tests.
-
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
@@ -11,7 +9,6 @@ use treetime_graph::graph::Graph;
 use treetime_io::nwk::nwk_read_str;
 use treetime_primitives::AlignmentRecord;
 
-/// Generate valid nucleotide equilibrium frequencies: positive, sum to 1.
 fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
   prop::collection::vec(0.0_f64..0.5, 4).prop_map(|offsets| {
     let bases = [0.5, 0.75, 1.0, 1.25];
@@ -21,7 +18,6 @@ fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
   })
 }
 
-/// Generate valid nucleotide exchangeability matrix: symmetric, positive off-diagonal, zero diagonal.
 fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
   prop::collection::vec(0.0_f64..1.0, 6).prop_map(|offsets| {
     let bases = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
@@ -38,7 +34,6 @@ fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
   })
 }
 
-/// Generate a valid nucleotide GTR model.
 pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
   (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
     let alphabet = Alphabet::new(AlphabetName::Nuc).expect("Nuc alphabet should be valid");
@@ -53,25 +48,15 @@ pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
   })
 }
 
-/// Combined input for marginal reconstruction property tests.
 #[derive(Debug, Clone)]
 pub struct MarginalTestInput {
-  /// Newick tree string
   pub newick: String,
-  /// Alignment with sequences for all leaf taxa
   pub alignment: Vec<AlignmentRecord>,
-  /// GTR substitution model
   pub gtr: GTR,
-  /// Number of taxa (leaves)
   pub n_taxa: usize,
-  /// Sequence length
   pub seq_len: usize,
 }
 
-/// Generate marginal test input with configurable parameters.
-///
-/// - `n_taxa`: number of leaf taxa (3-10)
-/// - `seq_len`: sequence length (1-50)
 pub fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
@@ -93,7 +78,6 @@ pub fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Str
     })
 }
 
-/// Generate marginal test input with gap-free alignment.
 pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
@@ -115,14 +99,10 @@ pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strateg
     })
 }
 
-/// Generate marginal test input with default parameters.
-///
-/// Uses 3-6 taxa and 5-20 positions for reasonable test coverage.
 pub fn arb_marginal_input() -> impl Strategy<Value = MarginalTestInput> {
   (3_usize..=6, 5_usize..=20).prop_flat_map(|(n_taxa, seq_len)| arb_marginal_input_with_params(n_taxa, seq_len))
 }
 
-/// Generate marginal test input with small trees for faster tests.
 pub fn arb_marginal_input_small() -> impl Strategy<Value = MarginalTestInput> {
   (3_usize..=4, 3_usize..=10).prop_flat_map(|(n_taxa, seq_len)| arb_marginal_input_with_params(n_taxa, seq_len))
 }
@@ -137,10 +117,8 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_valid(input in arb_marginal_input_small()) {
-      // Newick ends with semicolon
       prop_assert!(input.newick.ends_with(';'), "Invalid Newick: {}", input.newick);
 
-      // Alignment has correct number of sequences
       prop_assert_eq!(
         input.alignment.len(),
         input.n_taxa,
@@ -149,7 +127,6 @@ mod tests {
         input.n_taxa
       );
 
-      // All sequences have correct length
       for record in &input.alignment {
         prop_assert_eq!(
           record.seq.len(),
@@ -161,7 +138,6 @@ mod tests {
         );
       }
 
-      // GTR has valid pi (sums to 1)
       let pi_sum = input.gtr.pi.sum();
       prop_assert!(
         (pi_sum - 1.0).abs() < 1e-10,
@@ -171,7 +147,6 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_taxa_match(input in arb_marginal_input_small()) {
-      // All taxa names in alignment should appear in newick
       for record in &input.alignment {
         prop_assert!(
           input.newick.contains(&record.name),

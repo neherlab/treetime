@@ -64,9 +64,6 @@ mod tests {
   fn test_collect_aa_cds_node_data_keeps_inferred_root_sequence() {
     let (graph, names) = helpers::named_tree();
     let name_to_key = helpers::node_name_to_key(&names, &graph);
-    // Both leaves carry the same sequence, so Fitch places `AC` at every node and every edge carries no
-    // substitutions. The inferred root `AC` differs from the supplied reference `AA`, so only the root
-    // gets a mutation (the reference-to-root diff); the leaf edges stay empty.
     let partition = helpers::fitch_partition(&graph, &names, &["AC", "AC"]);
     let reference = Seq::try_from_str("AA").unwrap();
 
@@ -120,8 +117,6 @@ mod tests {
       (graph, names)
     }
 
-    /// Build a Fitch reconstruction whose leaves carry the given sequences (in the leaf order of the
-    /// tree), for exercising the amino-acid node-data gather over a concrete partition.
     pub fn fitch_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,

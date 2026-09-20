@@ -8,7 +8,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_finds_maximum_log_lh() {
-    // Grid search should find the branch length that maximizes log-LH
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04], [0.1, 0.1, 0.7, 0.1],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
@@ -18,7 +17,6 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    // Verify no other point in the grid has higher log-LH
     let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let best_log_lh = evaluate_mixed(&contributions, best_bl)
       .expect("valid branch length")
@@ -39,7 +37,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_result_in_range() {
-    // Result should be within the search range
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
@@ -59,7 +56,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_with_small_branch_length() {
-    // Grid search should work even with very small branch lengths
     let coefficients = array![[0.99, 0.003, 0.003, 0.004], [0.003, 0.99, 0.003, 0.004],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
@@ -75,7 +71,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_with_large_branch_length() {
-    // Grid search should work with larger branch lengths
     let coefficients = array![[0.5, 0.15, 0.15, 0.2], [0.15, 0.5, 0.15, 0.2],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];

@@ -8,11 +8,6 @@ use treetime_primitives::date::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
-/// Assign each node's observed date and bad-branch flag into `state`.
-///
-/// `bad_branch` is set bottom-up: a node is bad when it has no date and every child is bad (or it
-/// is a dateless leaf). The postorder walk visits children before parents, so each child's flag is
-/// already in `state` when the parent reads it.
 pub fn assign_dates(
   graph: &Graph,
   dates: &DatesMap,

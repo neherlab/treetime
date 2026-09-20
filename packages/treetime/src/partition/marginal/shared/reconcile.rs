@@ -2,15 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// The keys of every node the graph currently holds.
 pub fn live_node_keys(graph: &Graph) -> BTreeSet<GraphNodeKey> {
   graph.get_nodes().map(|node| node.key()).collect()
 }
 
-/// Reconcile a node-state map to a node set after a structural change: seed a placeholder state for
-/// every live node absent from the map and drop the states of nodes that are gone. Leaf seeds and
-/// other surviving states are carried across unchanged; the next marginal update recomputes the
-/// evolving values.
 pub fn reconcile_node_states<State>(
   node_states: BTreeMap<GraphNodeKey, State>,
   live_nodes: &BTreeSet<GraphNodeKey>,

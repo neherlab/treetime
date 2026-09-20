@@ -1,15 +1,3 @@
-/// Golden master tests for coalescent total log-likelihood.
-///
-/// Reference values captured from v0 `merger_model.total_LH()` with branch
-/// lengths overridden to calendar time durations (parent_tbp - child_tbp)
-/// to match v1's input semantics.
-///
-/// Capture script: `__fixtures__/gm_total_lh_capture`
-/// Fixture data: `__fixtures__/gm_total_lh.json`
-///
-/// Binary tree cases use v0's default multiplicity=2 (all formulas agree
-/// for binary trees). Polytomy cases use the correct parent-based Kingman
-/// formula: m = parent's child count at the merger node.
 #[cfg(test)]
 mod tests {
   use super::super::helpers::{coalescent_node_times, setup_graph};
@@ -42,8 +30,6 @@ mod tests {
     Ok((graph, constraints))
   }
 
-  // Binary tree: all formulas agree (m=2 for every edge).
-  // Reference: v0 total_LH() with time-based branch lengths.
   #[rustfmt::skip]
   #[rstest]
   #[case::tc_0_1(  0.1, -199.29621752330755)]
@@ -58,9 +44,6 @@ mod tests {
     Ok(())
   }
 
-  // Polytomy tree: internal node has 3 children. Multiplicity = parent's
-  // child count at each merger node (correct Kingman formula).
-  // Reference: v0 patched with m = len(node.up.clades).
   #[rustfmt::skip]
   #[rstest]
   #[case::tc_0_1(  0.1, -344.5087257790268)]

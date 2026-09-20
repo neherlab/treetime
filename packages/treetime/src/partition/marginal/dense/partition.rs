@@ -26,9 +26,6 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
-/// The dense marginal representation as durable, borrowed inputs: the substitution model and the
-/// alphabet/length metadata. The stage-filled node states, backward/forward messages, and edge
-/// estimates are owned separately by the values the passes return.
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDense {
   pub inputs: DenseInputs,
@@ -47,8 +44,6 @@ impl PartitionMarginalDense {
     Self {
       inputs: DenseInputs {
         min_branch_length,
-        // Nucleotide ancestral inference filters signal-free (gap-only) root
-        // columns out of the equilibrium-frequency prior.
         filter_uninformative_root: true,
       },
       index,
@@ -61,8 +56,6 @@ impl PartitionMarginalDense {
     self.length
   }
 
-  /// Build the initial dense node states by attaching each leaf's observed sequence. Internal-node
-  /// entries are created lazily by the backward pass; this returns the leaf-seeded node-state map.
   pub fn attach_sequences(
     &self,
     graph: &Graph,
@@ -178,16 +171,12 @@ impl PartitionMarginalDense {
     node_key: GraphNodeKey,
   ) -> Seq {
     if let Some(seq_info) = node_states.get(&node_key) {
-      // Convergence checks and other intermediate reads always use the deterministic most-likely
-      // state, independent of the user's output sampling mode.
       assign_sequence(seq_info, &self.alphabet)
     } else {
       seq! {}
     }
   }
 
-  /// Reconstruct the sequence for one node, recording it into the node state so the node-data serializer
-  /// reads back the flag-aware sequence. Returns `None` for a suppressed tip.
   pub fn reconstruct_node_sequence(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, DenseNodeState>,
@@ -200,11 +189,6 @@ impl PartitionMarginalDense {
     let seq = {
       let seq_info = node_states.get(&node.key)?;
       if node.is_leaf {
-        // The dense tip keeps its observed input (gaps and unknowns already stamped), so it never
-        // suffers the sparse tip corruption. Imputation resolves ambiguous/unknown positions (N and
-        // IUPAC codes, not gaps) to the argmax of the leaf marginal posterior. The forward pass folds
-        // the observed ambiguity mask into the leaf profile, so its argmax is the parent-informed
-        // most likely state, matching v0.
         let mut seq = seq_info.seq.sequence.clone();
         if impute && seq_info.profile.dis.nrows() == seq.len() {
           for pos in 0..seq.len() {
@@ -227,15 +211,10 @@ impl PartitionMarginalDense {
       }
     };
 
-    // Persist the reconstruction so the node-data serializer reads back this flag-aware sequence
-    // (the dense augur path returns `seq.sequence`), keeping the JSON and the reconstructed FASTA
-    // consistent and matching the sparse backend.
     if let Some(node_data) = node_states.get_mut(&node.key) {
       node_data.seq.sequence = seq.clone();
     }
 
-    // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
-    // sequence), but is not emitted to the reconstructed-FASTA visitor.
     if !include_leaves && node.is_leaf {
       return None;
     }
@@ -302,8 +281,6 @@ impl MarginalPasses for PartitionMarginalDense {
   }
 }
 
-/// Deterministic most-likely-state sequence assignment. Used by the forward pass and convergence
-/// reads, which must stay reproducible regardless of the user's output sampling mode.
 pub(crate) fn assign_sequence(seq_info: &DenseNodeState, alphabet: &Alphabet) -> Seq {
   assign_sequence_sampled(seq_info, alphabet, &mut Resolve::Argmax)
 }
@@ -327,5 +304,4 @@ fn prof2seq_sampled(profile: &DenseSeqDistribution, alphabet: &Alphabet, resolve
   seq
 }
 
-/// The per-edge results one dense marginal update returns.
 pub type DenseMarginalEdges = MarginalEdges<DenseEdgeBackward, DenseEdgeForward, DenseEdgeEstimate>;

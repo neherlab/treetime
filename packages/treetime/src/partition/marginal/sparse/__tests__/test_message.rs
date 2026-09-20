@@ -38,10 +38,6 @@ mod tests {
 
     let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
 
-    // JC69 closed-form (Jukes and Cantor 1969, DOI 10.1016/B978-1-4832-3211-9.50009-7):
-    //   P(t)_ii = (1/4)(1 + 3*exp(-4/3 * mu * r * t))
-    //   P(t)_ij = (1/4)(1 - exp(-4/3 * mu * r * t))
-    // mu = 0.75 after GTR normalization (avg_transition = pi^T W pi), r = site rate.
     let expected_0 = array![
       0.8094601846762877,
       0.06064424518648728,
@@ -94,7 +90,6 @@ mod tests {
 
     let result = propagate_raw_per_site(&gtr, t, true, &seq_dis, None);
 
-    // JC69 P(t) is symmetric, so P(t)^T = P(t). Same expected values as forward.
     let expected_0 = array![
       0.8094601846762877,
       0.06064424518648728,

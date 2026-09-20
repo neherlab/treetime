@@ -18,12 +18,6 @@ pub struct DenseSeqInfo {
   pub sequence: Seq,
 }
 
-/// The evolving per-node dense state: site information and the posterior profile.
-///
-/// This is a genuinely unified positional slot, not a stage split: `seq.sequence` is the observed
-/// residue at a leaf and the reconstructed residue at an internal node, and `profile` is refined by the
-/// backward and then the forward pass. Both passes borrow the durable inputs and return updated node
-/// states; nothing here is a durable input the partition owns.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DenseNodeState {
   pub seq: DenseSeqInfo,
@@ -66,22 +60,17 @@ impl MarginalNodeState for DenseNodeState {
   }
 }
 
-/// Backward-pass edge messages, produced by the backward pass and consumed by the forward pass and by
-/// transition counting. Distinct owner from the forward messages and the final estimates.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeBackward {
   pub msg_to_parent: DenseSeqDistribution,
   pub msg_from_child: DenseSeqDistribution,
 }
 
-/// Forward-pass edge message, produced by the forward pass and consumed by transition counting and the
-/// branch-length optimizer. Distinct owner from the backward messages and the final estimates.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeForward {
   pub msg_to_child: DenseSeqDistribution,
 }
 
-/// Final per-edge estimate produced by the forward pass: the indels placed on the branch.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeEstimate {
   pub indels: Vec<InDel>,
@@ -91,7 +80,6 @@ pub struct DenseEdgeEstimate {
 pub struct DenseSeqDistribution {
   pub dis: Array2<f64>,
 
-  /// Total log likelihood
   pub log_lh: LogLh,
 }
 

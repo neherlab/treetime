@@ -8,14 +8,11 @@ mod tests {
 
   #[test]
   fn test_coefficients_computed_via_eigenvector_decomposition() {
-    // k_c = (child · v)_c * (parent · v_inv^T)_c
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Parent and child probability distributions
     let parent_dis = array![0.4, 0.3, 0.2, 0.1];
     let child_dis = array![0.1, 0.2, 0.3, 0.4];
 
-    // Manually compute coefficients via eigenvector decomposition
     let child_v = child_dis.dot(&gtr.v);
     let parent_v_inv_t = parent_dis.dot(&gtr.v_inv.t());
     let expected_coefficients = child_v * parent_v_inv_t;
@@ -39,10 +36,8 @@ mod tests {
 
   #[test]
   fn test_matching_states_high_lh_at_zero() {
-    // When parent and child have same state, coefficient sum should be high
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Both certain of state A
     let parent_dis = array![1.0, 0.0, 0.0, 0.0];
     let child_dis = array![1.0, 0.0, 0.0, 0.0];
 
@@ -62,7 +57,6 @@ mod tests {
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
-    // Matching states at zero branch length should have high likelihood
     assert!(
       metrics.log_lh.value() > -1.0,
       "log-LH should be high for matching states"
@@ -71,10 +65,8 @@ mod tests {
 
   #[test]
   fn test_mismatched_states_low_lh_at_zero() {
-    // When parent and child have different states, coefficient sum at zero should be low
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    // Parent certain A, child certain C
     let parent_dis = array![1.0, 0.0, 0.0, 0.0];
     let child_dis = array![0.0, 1.0, 0.0, 0.0];
 
@@ -94,7 +86,6 @@ mod tests {
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
-    // Mismatched states at zero branch length should have very low likelihood
     assert!(
       metrics.log_lh.value() < -10.0 || metrics.log_lh.value() == f64::NEG_INFINITY,
       "log-LH should be very low for mismatched states at zero branch length"

@@ -20,58 +20,33 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// Scientific and algorithm policy for discrete-trait mugration inference.
 pub struct MugrationParams {
-  /// Marker value for missing discrete attributes, excluded from the model alphabet.
   pub missing_data: String,
-  /// Pseudo-count regularization for GTR inference. `None` uses the refinement default of `1.0`.
   pub pc: Option<f64>,
-  /// Maximum tolerated ratio of observed attributes absent from the weights file.
   pub missing_weights_threshold: f64,
-  /// Number of GTR re-estimation iterations.
   pub iterations: usize,
-  /// Optional sampling-bias correction applied to the inferred rate.
   pub sampling_bias_correction: Option<f64>,
-  /// When set, smooths the initial equilibrium prior with a pseudo-count before the first pass.
   pub smooth_initial_pi: bool,
-  /// When set, drops uninformative (uniform-posterior) roots from the equilibrium-frequency estimate.
   pub filter_uninformative_root: bool,
 }
 
-/// Parsed domain input for mugration inference.
 pub struct MugrationInput {
-  /// Tree topology.
   pub graph: Graph,
-  /// Observed discrete attribute per leaf, keyed by leaf name.
   pub traits: BTreeMap<String, String>,
-  /// Optional per-state weights (equilibrium-frequency prior), keyed by state name.
   pub weights: Option<BTreeMap<String, f64>>,
-  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-/// Aggregate result of mugration inference.
-///
-/// Holds the reconstructed discrete-trait value maps gathered from the pipeline-local partition
-/// before it is dropped, alongside the inferred model. The output writers project every response
-/// body, file, and wire form from these value maps; the partition never leaves the core.
 #[derive(Debug)]
 pub struct MugrationOutput {
-  /// Tree topology.
   pub graph: Graph,
-  /// The inferred discrete GTR model.
   pub gtr: GTR,
-  /// Discrete state names in order.
   pub states: DiscreteStates,
-  /// Number of real states (excludes the missing-data marker).
   pub n_states: usize,
-  /// Reconstructed discrete trait per node (argmax state name), or `None` when the node has no profile.
   pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
-  /// Confidence profile per node (raw, unfiltered), or `None` when the node has no profile.
   pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
 }
 
-/// Result of the weights-coverage check: the observed attributes absent from the weights file.
 #[derive(Debug)]
 pub struct WeightCoverageResult {
   pub missing_values: IndexSet<String>,
@@ -142,11 +117,6 @@ pub fn run(
 
   let fixed_pi = weights.map(|_| pi.clone());
 
-  // v0 builds the initial GTR from the raw equilibrium frequencies and reserves
-  // the pseudo-count for infer_gtr regularization. Smoothing the initial pi
-  // (a flatter prior for the first reconstruction pass) is opt-in v1 behavior.
-  // When enabled it uses the same effective pseudo-count as the refinement path
-  // (`pc.unwrap_or(1.0)`), so the two pi-smoothing paths stay consistent.
   let pi = if params.smooth_initial_pi {
     apply_pseudo_counts(pi, Some(params.pc.unwrap_or(1.0)))
   } else {
@@ -171,8 +141,6 @@ pub fn run(
   let update = partition.marginal_update(&gtr, &graph, &profile_lengths, node_states)?;
   info!("Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
-  // The partition is an immutable source; refinement threads the model through as a value and returns
-  // the refined model with its own reconstruction result maps. Mugration optimizes the rate.
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
     &partition,
     gtr,
@@ -185,10 +153,6 @@ pub fn run(
     &profile_lengths,
   )?;
 
-  // Gather the reconstructed value maps off the pipeline-local partition and its node states before
-  // they leave scope, taking the partition read out of the serialization path. The reads are keyed by
-  // node key and independent of node ordering, so the maps stay bit-identical regardless of any later
-  // topology ordering the adapter applies to the returned graph.
   let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);
 
   Ok(MugrationOutput {
@@ -201,9 +165,6 @@ pub fn run(
   })
 }
 
-/// Gather the per-node reconstructed trait (argmax state name) and confidence profile off the
-/// mugration discrete partition. Keyed over every node, so the adapter reads plain value maps instead
-/// of the partition during serialization.
 fn gather_reconstruction_maps(
   graph: &Graph,
   partition: &PartitionMarginalDiscrete,

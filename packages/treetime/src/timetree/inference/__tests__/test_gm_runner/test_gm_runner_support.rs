@@ -1,22 +1,5 @@
 #[cfg(test)]
 pub mod support {
-  //! Golden master tests for timetree inference runner.
-  //!
-  //! Compares Rust v1 timetree inference against Python v0 baseline node times.
-  //!
-  //! Three algorithms tested:
-  //! - Poisson (input branch-length mode): backward/forward pass with Poisson distributions
-  //! - Marginal dense: full timetree pipeline with dense sequence partition
-  //! - Marginal sparse: same as dense but with sparse representation (no direct v0 analog,
-  //!   validated against v0 marginal dense golden values)
-  //!
-  //! Golden outputs captured via `gm_runner_capture` script from v0 Python TreeTime.
-  //!
-  //! Tolerances are wide (3e-1 for poisson, 9e-1 for marginal) because v0 and v1 use
-  //! different numerical implementations. The root node dominates the max diff in all
-  //! cases - non-root nodes typically agree within 1e-2. These serve as regression
-  //! guards: any code change that significantly worsens agreement will be caught.
-
   use crate::alphabet::alphabet::Alphabet;
   use eyre::Report;
   use serde::Deserialize;
@@ -26,8 +9,6 @@ pub mod support {
   use std::sync::LazyLock;
   use treetime_io::dates_csv::{DatesMap, read_dates};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
-
-  // --- Fixture types and loading ---
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -95,8 +76,6 @@ pub mod support {
     metadata_path: String,
     name_column: Option<String>,
   }
-
-  // --- Helper functions ---
 
   pub fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
     let input = &INPUTS[dataset];

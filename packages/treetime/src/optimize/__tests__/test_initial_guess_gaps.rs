@@ -45,8 +45,6 @@ mod tests {
     )
   }
 
-  /// All four sequences share gaps at positions 4-7. Remaining 12 positions
-  /// are identical to `gap_free_alignment`.
   fn gappy_alignment_shared() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -64,7 +62,6 @@ mod tests {
     )
   }
 
-  /// B alone has gaps at positions 4-7. Other sequences have ACGT there.
   fn gappy_alignment_one_leaf() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -182,7 +179,6 @@ mod tests {
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
-      // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
     }
 
@@ -205,7 +201,6 @@ mod tests {
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
-      // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
     }
 
@@ -229,7 +224,6 @@ mod tests {
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
-      // At least one edge (B→AB) should have reduced effective length
       if effective < 16 {
         found_reduced = true;
       }
@@ -255,7 +249,6 @@ mod tests {
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
       let subs = partitions[0].edge_subs(&graph, edge_key)?;
-      // No substitution should involve a gap position (4-7)
       for sub in &subs {
         assert!(sub.pos() < 4 || sub.pos() >= 8);
       }
@@ -264,10 +257,6 @@ mod tests {
     Ok(())
   }
 
-  /// With shared gaps at positions 4-7 (which have identical nucleotides in
-  /// the gap-free version), the initial guess should produce the same
-  /// substitution rate per informative site. Branch lengths should be
-  /// proportionally adjusted: subs/12 for gappy vs subs/16 for gap-free.
   #[test]
   fn test_initial_guess_sparse_gap_adjusted_rate() -> Result<(), Report> {
     let aln_clean: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -321,9 +310,6 @@ mod tests {
     }
     let bl_gappy = get_branch_lengths(&graph_gappy, &branch_lengths_gappy);
 
-    // With 4 shared gap positions out of 16, the effective length is 12.
-    // Substitutions at non-gap positions are the same, so the per-site rate
-    // is higher by factor 16/12 = 4/3.
     let ratio = 16.0 / 12.0;
     for (clean, gappy) in bl_clean.iter().zip(bl_gappy.iter()) {
       if *clean > 0.0 {

@@ -17,7 +17,6 @@ mod tests {
   fn test_dense_sparse_initial_log_lh_equivalence() -> Result<(), Report> {
     let aln = super::super::test_dense_sparse_equivalence_support::tests::gap_free_alignment()?;
 
-    // Initialize dense
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
@@ -30,7 +29,6 @@ mod tests {
     )?;
     let log_lh_dense = log_lh_dense.value();
 
-    // Initialize sparse
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
@@ -43,7 +41,6 @@ mod tests {
     )?;
     let log_lh_sparse = log_lh_sparse.value();
 
-    // Initial log-LH should be equivalent (before any optimization)
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
 
     Ok(())
@@ -51,7 +48,6 @@ mod tests {
 
   #[test]
   fn test_dense_sparse_initial_log_lh_equivalence_with_mutations() -> Result<(), Report> {
-    // Alignment with more mutations
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
       >A
@@ -69,7 +65,6 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    // Initialize dense
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
@@ -82,7 +77,6 @@ mod tests {
     )?;
     let log_lh_dense = log_lh_dense.value();
 
-    // Initialize sparse
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
@@ -95,7 +89,6 @@ mod tests {
     )?;
     let log_lh_sparse = log_lh_sparse.value();
 
-    // Initial log-LH should be equivalent
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
 
     Ok(())

@@ -1,5 +1,3 @@
-//! Tests for Fitch GTR inference.
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;

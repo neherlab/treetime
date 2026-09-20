@@ -25,11 +25,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, Seq};
 
-  /// C3: a tip that is Fitch-equal to its parent must keep its own observed nucleotide.
-  ///
-  /// `A=ACGT`, `B=GCGT` on `(A,B)`. The root MAP at position 0 is `G`, so the old parent-chained
-  /// reconstruction emitted `A=GCGT` even though the reported mutation `G1A` was correct. The tip
-  /// must echo the observed `ACGT`, and both backends must agree.
   #[test]
   fn test_marginal_tip_c3_preserves_observed_leaf() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -47,16 +42,12 @@ mod tests {
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, false)?;
 
-    // Oracle: the observed input alignment. `A` retains its observed `ACGT`.
     assert_eq!("ACGT", sparse["A"]);
     assert_eq!("GCGT", sparse["B"]);
     assert_eq!(sparse, dense);
     Ok(())
   }
 
-  /// F7 invariant: on every edge, applying the reported substitutions to the parent's reconstructed
-  /// sequence reproduces the child's reconstructed sequence. The old tip corruption broke this on
-  /// tip edges (dropping real parent->tip substitutions).
   #[test]
   fn test_marginal_tip_parent_plus_muts_equals_child() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -97,8 +88,6 @@ mod tests {
     Ok(())
   }
 
-  /// F8/C1: a tip `N` and a tip `R` echo the observed input without imputation and resolve to the
-  /// parent-informed most likely state with imputation. Both backends must agree.
   #[test]
   fn test_marginal_tip_impute_resolves_n_and_iupac() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -115,14 +104,11 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // Without imputation the tip echoes its observed input (`N` and `R` preserved).
     let sparse_plain = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
     let dense_plain = reconstruct_dense(&graph, &branch_lengths, &names, &aln, false)?;
     assert_eq!("ANRT", sparse_plain["A"]);
     assert_eq!(sparse_plain, dense_plain);
 
-    // With imputation, `N`->`C` and `R`->`G` (position 1 is `C` in every other tip; position 2 is
-    // `G`, and `R={A,G}` resolves to `G`). Gaps would stay gaps; there are none here.
     let sparse_imputed = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;
     let dense_imputed = reconstruct_dense(&graph, &branch_lengths, &names, &aln, true)?;
     assert_eq!("ACGT", sparse_imputed["A"]);
@@ -130,10 +116,6 @@ mod tests {
     Ok(())
   }
 
-  /// Golden master vs TreeTime v0. With `--reconstruct-tip-states`, v0 imputes tip `A` of the
-  /// alignment below to `ACGT` (captured from
-  /// `./dev/docker/python treetime ancestral --reconstruct-tip-states`, which writes
-  /// `>A\nACGT` to `ancestral_sequences.fasta`). v0 rejects two-taxon trees, so this uses three.
   #[test]
   fn test_gm_marginal_tip_impute_matches_v0() -> Result<(), Report> {
     let aln = parse_aln(indoc! {r#"
@@ -153,7 +135,6 @@ mod tests {
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, true)?;
 
-    // Oracle: TreeTime v0 Python reference output.
     assert_eq!("ACGT", sparse["A"]);
     assert_eq!("ACGT", dense["A"]);
     Ok(())

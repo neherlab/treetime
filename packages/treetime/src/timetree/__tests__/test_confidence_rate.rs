@@ -7,9 +7,6 @@ mod tests {
   use rstest::rstest;
   use treetime_utils::assert_error;
 
-  // Probit function: z = sqrt(2) * erf_inv(2p - 1)
-  // Standard values: p=0.025 -> z=-1.959964, p=0.5 -> z=0, p=0.975 -> z=1.959964
-
   #[rustfmt::skip]
   #[rstest]
   #[case::lower_2_5pct(0.025,  -1.959964)]
@@ -24,10 +21,6 @@ mod tests {
     let z = quantile_to_zscore(p);
     assert_relative_eq!(z, expected, epsilon = 1e-4);
   }
-
-  // Converts [lower_date, center_date, upper_date] + quantile interval to CI.
-  // ci_lower = center + z(p_lo) * |lower - center|
-  // ci_upper = center + z(p_hi) * |upper - center|
 
   #[rustfmt::skip]
   #[rstest]
@@ -77,7 +70,6 @@ mod tests {
 
   #[test]
   fn test_determine_rate_std_from_covariance_matrix() {
-    // cov[0,0] = 1e-6, so rate_std = 1e-3
     let clock_model = ClockModel::for_testing_with_stats(
       0.003,
       0.0,

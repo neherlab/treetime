@@ -1,6 +1,5 @@
 use treetime_primitives::{AsciiChar, Seq};
 
-// Finds maximal contiguous ranges in the sequence where the predicate returns true for every character.
 #[inline]
 pub fn find_letter_ranges_by<F>(seq: &Seq, pred: F) -> Vec<(usize, usize)>
 where
@@ -23,7 +22,6 @@ where
   result
 }
 
-/// Finds contiguous ranges (segments) consisting of a given letter in the sequence.
 #[inline]
 pub fn find_letter_ranges(seq: &Seq, letter: AsciiChar) -> Vec<(usize, usize)> {
   find_letter_ranges_by(seq, |candidate: AsciiChar| candidate == letter)

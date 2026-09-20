@@ -28,42 +28,19 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
   pub graph: &'a mut Graph,
-  /// The sequence partitions this round starts from, taken by value like `state`. A successful round
-  /// returns them at their refreshed marginal reconstruction; a failed round returns an error and the
-  /// partitions die with the round rather than surviving half-updated.
   pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockVarianceParams,
   pub branch_params: &'a BranchPointOptimizationParams,
-  /// This round's per-branch coalescent merger-rate schedule.
   pub merger_rate: &'a PiecewiseConstantFn,
-  /// The same model, as the prior imposed on node times -- `None` for a run that carries no
-  /// coalescent prior, where the model exists only to give polytomy resolution a merger rate.
   pub prior: Option<&'a CoalescentModel>,
-  /// Shared across refinement rounds so polytomy resolution draws from one continuous
-  /// stream: re-seeding per round would correlate the sampled histories.
   pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
-  /// Durable date constraints the date passes borrow. Never mutated by refinement.
   pub constraints: &'a DateConstraints,
-  /// The date inference state this round starts from, taken by value. A successful round returns the
-  /// refined state; a failed round returns an error without publishing any partial accepted state, so
-  /// the caller keeps its pre-round value (A5).
   pub state: TimetreeState,
-  /// Persistent per-node/per-edge clock state routed across the whole pipeline. The node divergence
-  /// and outlier flag live here; the clock re-estimation reads them back
-  /// from it, and each `run_timetree` refreshes the divergence into it.
   pub clock_state: &'a mut ClockState,
-  /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
-  /// the previous round's value.
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
-  /// Raw per-edge branch lengths routed across the loop. Polytomy
-  /// resolution adds and merges edges and updates this map in place.
   pub branch_lengths: &'a mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  /// Per-node names routed across the loop. Polytomy resolution adds
-  /// nodes and re-runs `assign_node_names`; this map is refreshed from that call's return so every
-  /// later reader (this round's `run_timetree` and the pipeline's post-loop consumers) sees the
-  /// current labels.
   pub names: &'a mut BTreeMap<GraphNodeKey, Option<String>>,
 }
 
@@ -72,16 +49,11 @@ impl Refinement<'_> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
-    // Node times are what the round moves, so they are the primary convergence signal. The
-    // ancestral-state comparison is a hold-over from early v0, where internal node states were
-    // fixed; it survives only as the fallback for a tree with no comparable dated nodes.
     let previous_times = capture_node_times(self.graph, &self.state);
     let previous_states = capture_ancestral_states(self.graph, &self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
 
-    // Close the loop: the times just inferred become the lengths the next round's marginal
-    // reconstruction propagates along. Damped, because each pass re-infers every time at once.
     commit_clock_branch_lengths(
       self.graph,
       self.clock_model.clock_rate(),
@@ -148,7 +120,6 @@ impl Refinement<'_> {
       return Ok(TopologyOutcome::Unchanged);
     }
 
-    // Expected substitutions per unit time across the whole alignment.
     let total_mutation_rate = self.clock_model.clock_rate() * total_length as f64;
 
     let resolved_nodes = resolve_polytomies(
@@ -171,8 +142,6 @@ impl Refinement<'_> {
     propagate_bad_branches(self.graph, &mut self.state)?;
     prepare_tree_after_topology_change(self.graph, &mut self.state)
       .wrap_err("Failed to prepare tree after topology change")?;
-    // Reset the value-resident edge fields for the new topology, the counterpart of the reset
-    // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);
     let graph = &*self.graph;
     let partitions = std::mem::take(&mut self.partitions)
@@ -181,10 +150,6 @@ impl Refinement<'_> {
       .collect_vec();
     self.partitions = partitions;
 
-    // Re-parenting invalidates the committed lengths, which describe a parent-child pair that no
-    // longer exists. The sampled subtree dates every node it creates, so recommit from those
-    // times rather than falling back to ML lengths for the reconstruction that follows. Undamped:
-    // there is nothing meaningful to blend a moved edge with.
     commit_clock_branch_lengths(
       self.graph,
       self.clock_model.clock_rate(),
@@ -197,10 +162,6 @@ impl Refinement<'_> {
   }
 
   fn rebuild_inference(&mut self, topology_changed: bool) -> Result<(), Report> {
-    // Use the routed per-edge length and per-node name maps for every pass below; the marginal
-    // reconstruction and neither run_timetree call renames or re-lengths, so one read serves all.
-    // Topology resolution and its `assign_node_names` ran before `rebuild_inference` and updated both
-    // maps, so they reflect the current tree.
     let run_branch_lengths = &*self.branch_lengths;
     let run_names = &*self.names;
 
@@ -250,11 +211,6 @@ impl Refinement<'_> {
   }
 
   fn update_clock_model(&mut self) -> Result<(), Report> {
-    // Re-read the clock inputs while preserving the value-resident divergence and outlier flag, then
-    // re-estimate on the threaded state with the root kept (no reroot in the refinement loop). This
-    // matches the standalone `estimate_clock_model_with_reroot` convenience, except the outlier flag
-    // and the node dates come from the threaded values: the date passes have
-    // refined the times on the date state since the last clock call.
     let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = self
       .state
       .edges

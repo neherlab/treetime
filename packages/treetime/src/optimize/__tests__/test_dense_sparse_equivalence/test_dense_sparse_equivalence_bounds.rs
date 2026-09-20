@@ -25,7 +25,6 @@ mod tests {
   fn test_dense_sparse_log_lh_bounded_difference_after_optimization(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
-    // Run dense-only optimization
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
@@ -43,7 +42,6 @@ mod tests {
     let (dense_partitions, log_lh_dense) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
     let log_lh_dense = log_lh_dense.value();
 
-    // Run sparse-only optimization
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
@@ -61,7 +59,6 @@ mod tests {
     let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
     let log_lh_sparse = log_lh_sparse.value();
 
-    // Both modes should produce finite log-LH in expected range
     assert!(
       log_lh_dense > -100.0 && log_lh_dense < -10.0,
       "Dense log-LH {log_lh_dense} should be in range [-100, -10]"
@@ -71,9 +68,6 @@ mod tests {
       "Sparse log-LH {log_lh_sparse} should be in range [-100, -10]"
     );
 
-    // Dense and sparse should converge to similar values.
-    // Both use the unified optimizer; differences arise from coefficient
-    // representation (per-position dense vs multiplicity-weighted sparse)
     let diff = (log_lh_dense - log_lh_sparse).abs();
     assert!(
       diff < 0.5,
@@ -95,7 +89,6 @@ mod tests {
   fn test_dense_sparse_branch_lengths_bounded_difference(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
-    // Run dense-only optimization
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
@@ -112,7 +105,6 @@ mod tests {
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
 
-    // Run sparse-only optimization
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
@@ -129,10 +121,8 @@ mod tests {
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse, &bl_sparse);
 
-    // Both modes should produce same number of edges
     assert_eq!(branch_lengths_dense.len(), branch_lengths_sparse.len());
 
-    // All branch lengths should be valid and bounded
     assert!(
       branch_lengths_dense
         .iter()
@@ -146,8 +136,6 @@ mod tests {
       "All sparse branch lengths should be finite, non-negative, and < 10: {branch_lengths_sparse:?}"
     );
 
-    // Dense and sparse should produce similar branch lengths
-    // Compare total tree length as a summary statistic
     let total_dense: f64 = branch_lengths_dense.iter().sum();
     let total_sparse: f64 = branch_lengths_sparse.iter().sum();
     let total_diff = (total_dense - total_sparse).abs();
@@ -156,7 +144,6 @@ mod tests {
       "Total tree length should be similar: dense={total_dense}, sparse={total_sparse}, diff={total_diff}"
     );
 
-    // Individual branch lengths should also be close
     let max_diff = branch_lengths_dense
       .iter()
       .zip(branch_lengths_sparse.iter())

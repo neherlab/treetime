@@ -8,8 +8,6 @@ mod tests {
 
   #[test]
   fn test_lineage_dynamics_binary_tree_calendar_direction() -> Result<(), Report> {
-    // Oracle: one ancestral lineage exists before the root. Crossing a binary
-    // merger toward the present creates two lineages; sampling removes both.
     let events = vec![(calendar(2000.0), -1), (calendar(2010.0), 1), (calendar(2010.0), 1)];
 
     let actual = compute_lineage_count_distribution(&events, 0)?;
@@ -23,7 +21,6 @@ mod tests {
 
   #[test]
   fn test_lineage_dynamics_polytomy_uses_child_count_minus_one() -> Result<(), Report> {
-    // A four-child event changes the lineage count by three.
     let events = vec![
       (calendar(2000.0), -3),
       (calendar(2010.0), 1),
@@ -60,8 +57,6 @@ mod tests {
 
   #[test]
   fn test_lineage_dynamics_retains_lineage_for_excluded_subtree() -> Result<(), Report> {
-    // Oracle: filtering one bad leaf from a three-child root leaves one lineage
-    // after the latest retained sample in v0's `calc_branch_count()`.
     let events = vec![(calendar(2000.0), -2), (calendar(2005.0), 1), (calendar(2010.0), 1)];
 
     let actual = compute_lineage_count_distribution(&events, 1)?;

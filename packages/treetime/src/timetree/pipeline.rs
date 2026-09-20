@@ -89,12 +89,8 @@ pub struct TimetreeParams {
   pub coalescent_opt: bool,
   pub coalescent_skyline: bool,
   pub skyline_n_points: usize,
-  /// Skyline smoothing stiffness (penalizes changes in 1/Tc; units of time^2).
   pub skyline_stiffness: f64,
-  /// Confidence level (standard deviations) for inferred coalescent Tc bands.
   pub coalescent_confidence: f64,
-  /// Generations per year, used to report the coalescent effective population size
-  /// `N_e = Tc * gen_per_year`. Reporting only; does not enter the inference.
   pub gen_per_year: f64,
   pub n_branches_posterior: Option<usize>,
   pub time_marginal: TimeMarginalMode,
@@ -103,8 +99,6 @@ pub struct TimetreeParams {
   pub impute_missing_data: bool,
   pub report_ambiguous: bool,
   pub zero_based: bool,
-  /// Seed for the polytomy-resolution sampler. `None` draws one from entropy and logs it,
-  /// so a run can be reproduced after the fact.
   pub seed: Option<u64>,
 }
 
@@ -113,9 +107,6 @@ pub struct TimetreeInput {
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<AlignmentRecord>>,
   pub dates: Option<DatesMap>,
-  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The pipeline takes
-  /// ownership and maintains it in place: the ML pre-steps, reroots, and polytomy resolution update
-  /// it, and it exits as `TimetreeOutput.branch_lengths`.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -135,38 +126,18 @@ pub struct TimetreeOutput {
   pub gtr: Option<GTR>,
   #[serde(skip)]
   pub model_name: Option<GtrModelName>,
-  /// The inferred coalescent time scale, or `None` when the run asked for no coalescent.
   #[serde(skip)]
   pub coalescent: Option<CoalescentOutput>,
-  /// Per-node rate-susceptibility date triples from [`compute_rate_susceptibility`], keyed by node.
-  /// Empty when the run computed no rate susceptibility. The output gather reads each node's triple
-  /// from here.
   #[serde(skip)]
   pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
-  /// Committed clock-constrained branch lengths keyed by edge, routed through the pipeline as a value.
-  /// The output gather and the final reconstruction read each edge's
-  /// clock length from here.
   #[serde(skip)]
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-  /// Final raw per-edge branch lengths keyed by edge, maintained in place across the pipeline's ML
-  /// pre-steps, reroots, and polytomy resolution. The output gather and the tree writers read each
-  /// edge's raw length from here.
   #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  /// Persistent per-node clock state carrying the node divergence and outlier flag as values.
-  /// The output gather reads each node's divergence and outlier flag from
-  /// here.
   #[serde(skip)]
   pub clock_state: ClockState,
-  /// Persistent per-node/per-edge date state carrying the committed node times and time distributions
-  /// as values. The output gather reads each node's committed time
-  /// from here.
   #[serde(skip)]
   pub timetree_state: TimetreeState,
-  /// Final node names keyed by node, routed through the pipeline as a value.
-  /// Surviving nodes keep their parsed or previously assigned names; the caller completes it
-  /// with [`assign_node_names`](treetime_graph::assign_node_names::assign_node_names) to label any
-  /// node a reroot introduced after the last topology pass.
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
@@ -214,24 +185,10 @@ pub fn run(
     DateConstraints::default()
   };
 
-  // The persistent date state the whole pipeline shares, created right after the date constraints are
-  // loaded so it is the single home of the date inputs. Seeded directly from the value maps
-  // `load_date_constraints` returns. Every clock call reads the node
-  // dates back from it through `likely_times()`: before any date pass runs the time distribution equals
-  // the date constraint, so those dates match the input constraints. The date passes later refine the
-  // distributions and carry the branch-length distributions and backward messages here.
   let mut timetree_state = TimetreeState::seed_from_values(&input.graph, &date_constraints);
 
-  // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
-  // live here as values; `initialize_node_divergences` fills the
-  // divergence, the clock filter marks outliers into it, and every later clock call reads both back.
-  // The node dates come from the date state, and the clock set is recomputed by every backward
-  // regression.
   let mut clock_state = ClockState::new(&input.graph);
 
-  // The raw per-edge branch lengths, maintained in place for the whole pipeline: the parsed lengths,
-  // updated by the ML pre-steps, the reroots, and polytomy resolution. Every consumer reads its edge
-  // length from here.
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
   initialize_node_divergences(&input.graph, &mut clock_state, &branch_lengths, names)?;
@@ -245,9 +202,6 @@ pub fn run(
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
-  // Re-read the node dates from the date state into fresh clock inputs while keeping the
-  // value-resident divergence and outlier flag on the clock results. The estimate's clock outputs are
-  // not read by timetree's own downstream, so no repopulation is needed after this call.
   clock_state.reseed_transitional(&input.graph);
   let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times(&date_constraints));
   let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
@@ -325,16 +279,8 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    // Rebuild the date state for the current topology before the filter writes bad-branch flags into
-    // it: the pre-ancestral reroot may have added a split node and dropped a trivial one, so the state
-    // seeded before the reroot no longer covers every node the bad-branch propagation visits. Every
-    // surviving node keeps its value, so the node dates the clock reads are unchanged.
     timetree_state.reseed_from_values(&input.graph);
 
-    // Re-read the node dates from the date state while preserving the value-resident divergence and
-    // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
-    // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
-    // tree writers) reads the divergence and outlier flag from the threaded state.
     let given_dates = timetree_state.likely_times(&date_constraints);
     clock_state.reseed_transitional(&input.graph);
     let clock_inputs = ClockInputs::seed_from_times(&input.graph, &given_dates);
@@ -397,15 +343,8 @@ pub fn run(
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
-  // The committed clock lengths the whole pipeline shares: each M-step damps against the previous
-  // clock lengths held in the map.
   let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
-  // Post-reroot names for the rest of the pipeline. The pre-ancestral and post-ancestral reroots ran
-  // above; reproject the threaded names onto the current node set (a surviving node keeps its name,
-  // the `N::default` split node each reroot adds is absent and resolves to `None`, dropped nodes fall
-  // out). Held in an owned map from here: polytomy resolution in the loop refreshes it from
-  // `assign_node_names`, and the post-loop consumers read the current labels from it.
   let mut names: BTreeMap<GraphNodeKey, Option<String>> = input
     .graph
     .get_nodes()
@@ -415,8 +354,6 @@ pub fn run(
     })
     .collect();
 
-  // Initial time tree. Snapshot the current per-edge lengths for this pass; the branch-distribution
-  // construction and forward pass read them and the names map.
   timetree_state = run_timetree(
     &mut input.graph,
     &date_constraints,
@@ -430,7 +367,6 @@ pub fn run(
     &mut clock_state,
   )?;
 
-  // set up coalescent parameters and inference mode
   let skyline_params = SkylineParams {
     n_points: params.skyline_n_points,
     stiffness: params.skyline_stiffness,
@@ -445,27 +381,13 @@ pub fn run(
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
-  // The node times the coalescent reads, sourced from the value state.
-  // Built once here because nothing changes the times between the frozen lineage counts and the
-  // initial Tc estimate.
   let coalescent_node_times = timetree_state.coalescent_node_times();
 
-  // k(t) frozen for the whole run, read from the first timetree: the earliest point where node
-  // times give lineage counts, and before the optimization loop starts editing the topology.
-  // Held fixed because it is the prior's input; the statistic role keeps reading the live tree.
-  // See `CoalescentModel`.
   let lineage_counts = compute_lineage_counts(&input.graph, &coalescent_node_times)
     .wrap_err("Failed to compute coalescent lineage counts")?;
 
-  // Estimate the coalescent Tc (constant or skyline) from the rerooted tree, then re-infer node
-  // times under that prior. Estimated after the reroot because the lineage counts it reads are a
-  // property of the rooted tree the optimization loop starts from. There is no need to start
-  // from a constant Tc and switch to the skyline later: both are cheap analytic solves.
   let mut coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params, &coalescent_node_times)?;
 
-  // Whether that timescale is also a prior on node times. It is estimated either way, because
-  // polytomy resolution samples mergers at the per-branch coalescent rate and needs one even for
-  // a run that asked for no coalescent.
   let prior_wanted = coalescent != CoalescentMode::Disabled;
 
   if prior_wanted {
@@ -483,10 +405,6 @@ pub fn run(
       &mut clock_state,
     )?;
   }
-  // at this stage we have a consistent coalescent model and timed tree. Subsequence steps are refinement and post-processing.
-
-  // Seed the clock-constrained lengths the loop's first marginal reconstruction propagates along.
-  // Undamped: nothing has been committed yet, so there is nothing to blend with.
   commit_clock_branch_lengths(
     &input.graph,
     clock_model.clock_rate(),
@@ -514,15 +432,12 @@ pub fn run(
   };
   let max_iter = params.max_iter;
 
-  // One generator for the whole loop: polytomy resolution samples a coalescent history per
-  // round, and re-seeding per round would correlate them.
   let seed = params.seed.unwrap_or_else(rand::random);
   if params.resolve_polytomies {
     info!("Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)");
   }
   let mut rng = get_random_number_generator(Some(seed));
 
-  // OPTIMIZATION LOOP
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     cancel.check()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
@@ -532,9 +447,6 @@ pub fn run(
       &format!("iteration {}/{max_iter}", i + 1),
     );
 
-    // Tc is re-estimated from the live tree -- that is the statistic role, and it is what carries
-    // the run's ability to adapt. The lineage counts behind the model stay those of the tree the
-    // loop started from.
     if coalescent.is_optimized() {
       coalescent_tc = coalescent_timescale(
         coalescent,
@@ -544,7 +456,6 @@ pub fn run(
       )?;
     }
     let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
-    // Preserve every k(t) and Tc(t) discontinuity for event-sampler boundaries.
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
     let (new_timetree_state, new_partitions, outcome) = Refinement {
@@ -583,10 +494,6 @@ pub fn run(
       .wrap_err_with(|| format!("When running round {i}"))?;
   }
 
-  // Report the effective population size implied by the converged Tc on screen, for every mode that
-  // writes a coalescent output file so the two channels agree. This extends v0's constant/opt/skyline
-  // screen output to a fixed Tc; only the disabled mode reports nothing. N_e = Tc * gen_per_year is a
-  // reporting quantity and does not affect the inference.
   if coalescent.output_mode().is_some() {
     let tc_values = coalescent_tc.schedule.values();
     info!(
@@ -612,10 +519,6 @@ pub fn run(
     None
   };
 
-  // The prior the post-processing passes are inferred under, unchanged across all of them. The
-  // susceptibility runs in particular perturb the clock rate, and would otherwise each rebuild
-  // k(t) from their own perturbed times, confounding the sensitivity being measured with the
-  // prior's reaction to it.
   let final_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
   let final_prior = prior_wanted.then_some(&final_model);
 
@@ -655,8 +558,6 @@ pub fn run(
     )
     .wrap_err("Final timetree inference failed")?;
 
-    // Undamped: this reconstruction reports the final tree, so it runs on the lengths these
-    // final times imply rather than on a blend with the loop's last round.
     commit_clock_branch_lengths(
       &input.graph,
       clock_model.clock_rate(),
@@ -674,30 +575,14 @@ pub fn run(
     }
   }
 
-  // Confidence-interval labels read from the threaded names map, current after the loop's last
-  // `assign_node_names` (the last pass that could rename or re-parent a node), so each interval reads
-  // its label from the map.
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
   .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &names));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
-  // Name any unnamed internal node before the reconstruction and outputs read the tree. Rerooting
-  // introduces a fresh root the load-time naming never saw, and polytomy resolution only re-names on a
-  // topology change, so on a run without polytomy resolution the rerooted root would otherwise reach
-  // output unnamed. Every downstream reader (the reconstructed FASTA, the gathers, the tree and augur
-  // writers) reads each node's name from the returned map.
   let names = assign_node_names(names, &input.graph)?;
 
-  // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`. The
-  // pipeline computes marginal posteriors for branch-length optimization but never materializes the
-  // flag-aware per-node sequences, so this refreshes the posteriors against the final branch lengths
-  // (`marginal_update`) and then emits each node's stored sequence through the sink, keyed by graph
-  // node. The caller's sink resolves each key to an output name and description. `--include-leaves`
-  // gates whether tips are emitted; `--impute-missing-data` resolves ambiguous tip states. The pass is
-  // opt-in (FASTA requested via the sink, or a tip-state flag set); a run that asks for neither leaves
-  // all other outputs unchanged.
   if seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
     if partitions.is_empty() {
       if seq_sink.is_some() {
@@ -711,8 +596,6 @@ pub fn run(
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
     } else {
-      // Announce the final topology before the first sequence, so the sink can resolve names against
-      // the tree a late reroot or polytomy resolution produced (core does not write names onto nodes).
       if let Some(sink) = seq_sink.as_mut() {
         sink.on_topology(&input.graph).map_err(OperationError::SinkFailed)?;
       }
@@ -757,31 +640,19 @@ pub fn run(
   })
 }
 
-/// The coalescent Tc behavior requested for a run.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum CoalescentMode {
-  /// No coalescent prior.
   Disabled,
-  /// Fixed, user-supplied Tc.
   Fixed(f64),
-  /// Optimize a constant Tc each round via the exact analytic solve.
   Constant,
-  /// Optimize a piecewise-constant skyline Tc(t) each round.
   Skyline,
 }
 
 impl CoalescentMode {
-  /// Whether Tc is re-estimated from the tree, as opposed to fixed or disabled.
   fn is_optimized(self) -> bool {
     matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
   }
 
-  /// Serialization tag for the coalescent output document, or `None` only when the run writes no
-  /// coalescent output (`Disabled`). Every set coalescent is written -- a fixed user Tc as well as
-  /// an inferred constant or skyline. Emitting a fixed Tc diverges from v0, which writes nothing for
-  /// it, by explicit decision (see `kb/decisions/coalescent-output-schema.md`). The stderr `N_e`
-  /// report uses the same gate, so the file and screen agree. Sole mapping from the inference mode
-  /// to the output tag, so a new mode is one edit here.
   fn output_mode(self) -> Option<CoalescentOutputMode> {
     match self {
       CoalescentMode::Disabled => None,
@@ -804,20 +675,12 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
   }
 }
 
-/// Estimates the coalescent Tc prior for the current tree under `mode`.
-///
-/// Both the constant and skyline solves are exact and cheap, so this runs every
-/// round. They fail only on a tree that is degenerate for the coalescent (no time
-/// span or no mergers); such a failure is propagated so the run stops with a clear
-/// message rather than silently substituting an invented timescale.
 fn estimate_coalescent_tc(
   mode: CoalescentMode,
   graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
 ) -> Result<Option<CoalescentTimescale>, Report> {
-  // Both optimizing modes are the same solve: a constant Tc is just a one-segment
-  // skyline. They differ only in the number of segments.
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
     CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph, node_times).map(Some),
@@ -846,13 +709,6 @@ fn estimate_coalescent_tc(
   }))
 }
 
-/// Builds the timescale for a fixed, user-supplied Tc: a constant schedule plus a one-segment report
-/// spanning the tree's full time range.
-///
-/// The span is the range of the coalescent breakpoints -- the same node-time range the optimized
-/// modes report -- so a fixed Tc reports the whole tree as its single segment. No solve runs (a fixed
-/// Tc is the escape hatch for trees the optimizer rejects as degenerate), so the report carries no
-/// confidence band and no likelihood.
 fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<CoalescentTimescale, Report> {
   let lineage_counts =
     compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
@@ -872,12 +728,6 @@ fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> 
   })
 }
 
-/// The coalescent timescale a run works at, whether or not it asked for a coalescent prior.
-///
-/// Polytomy resolution samples mergers at the per-branch coalescent rate, so a Tc is needed even
-/// under [`CoalescentMode::Disabled`]. There it comes from the same one-segment analytic solve
-/// `--coalescent-opt` uses, rather than from v0's dummy rate, which is calibrated per polytomy to
-/// the very time window the sampled history has to fit into.
 fn coalescent_timescale(
   mode: CoalescentMode,
   graph: &Graph,
@@ -896,8 +746,6 @@ fn coalescent_timescale(
 struct CoalescentTimescale {
   distribution: Distribution,
   schedule: PiecewiseConstantFn,
-  /// Per-segment reporting data (boundaries and confidence band) from the analytic solve. `None`
-  /// for a fixed user Tc, which has no solve and no band.
   report: Option<CoalescentTcReport>,
 }
 
@@ -911,34 +759,17 @@ impl CoalescentTimescale {
   }
 }
 
-/// Per-segment reporting data carried out of the skyline/constant analytic solve, or synthesized for
-/// a fixed Tc, for the output document. Holds the segment boundaries and, for an inferred Tc, the
-/// confidence band and likelihood; the Tc values themselves come from
-/// [`CoalescentTimescale::schedule`].
 struct CoalescentTcReport {
-  /// Segment boundaries in numeric date (length `n_segments + 1`, ascending).
   segment_boundaries: Array1<f64>,
-  /// Per-segment confidence band, or `None` for a fixed Tc (no solve, no band).
   band: Option<CoalescentReportBand>,
-  /// Coalescent log-likelihood at the reported Tc, or `None` for a fixed Tc (not inferred).
   log_likelihood: Option<f64>,
 }
 
-/// Per-segment Tc confidence band carried out of the analytic solve. Both bounds are present
-/// together, so a partial band is unrepresentable.
 struct CoalescentReportBand {
-  /// Lower confidence bound per segment.
   lower: Array1<f64>,
-  /// Upper confidence bound per segment.
   upper: Array1<f64>,
 }
 
-/// Assembles the coalescent output document for the requested mode, or `None` when the run writes no
-/// coalescent output (disabled, per [`CoalescentMode::output_mode`]).
-///
-/// An inferred Tc (constant, skyline) carries the confidence band, likelihood, and per-segment
-/// boundaries from the analytic solve. A fixed Tc carries one segment over the tree span with no band
-/// and no likelihood. The skyline grid inputs are recorded only for a skyline.
 fn build_coalescent_output(
   requested: CoalescentMode,
   timescale: &CoalescentTimescale,
@@ -955,8 +786,6 @@ fn build_coalescent_output(
   let tc_values = timescale.schedule.values().to_vec();
   let boundaries = report.segment_boundaries.to_vec();
 
-  // The skyline grid and stiffness apply only to a skyline; the confidence width only when a band
-  // was estimated (a fixed Tc has neither).
   let (n_points, stiffness) = match mode {
     CoalescentOutputMode::Skyline => (Some(skyline_params.n_points), Some(skyline_params.stiffness)),
     CoalescentOutputMode::Fixed | CoalescentOutputMode::Constant => (None, None),
@@ -1018,14 +847,12 @@ fn initialize_partitions_from_params(
     &branch_lengths_or_zero(branch_lengths),
   )?;
 
-  // The model flows as a value: the reconstruction carries it, and the pipeline result reports a copy.
   let gtr = created.gtr.clone();
 
   let partition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
       PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, created.gtr, node_states))
     },
-    // Dense leaf states are attached later by `initialize_marginal_timetree`.
     MarginalPartition::Dense(partition) => {
       PartitionTimetree::Dense(DenseReconstruction::seeded(partition, created.gtr, BTreeMap::new()))
     },
@@ -1103,7 +930,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{o, pretty_assert_array_eq};
 
-  // N_e = T_c * gen_per_year (packages/treetime/src/coalescent/population_size.rs).
   const GEN_PER_YEAR: f64 = 50.0;
   const N_STD: f64 = 2.0;
 
@@ -1127,11 +953,6 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  // Oracle: the independently tested `CoalescentOutput::new`
-  // (packages/treetime/src/commands/timetree/output/__tests__/test_coalescent_output.rs). These
-  // tests fix the pipeline-to-output mapping: requested mode, band presence, and (for a fixed Tc)
-  // the single-segment span taken from the lineage-count breakpoints.
-
   #[test]
   fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
     let timescale = CoalescentTimescale::constant(1.0);
@@ -1148,9 +969,6 @@ mod tests {
 
   #[test]
   fn test_pipeline_build_coalescent_output_fixed_emits_one_segment_no_band() -> Result<(), Report> {
-    // A fixed user Tc now writes a single-segment, band-less document spanning the tree, diverging
-    // from v0 by explicit decision (kb/decisions/coalescent-output-schema.md). The span is the
-    // lineage-count breakpoint range, matching the tree's [2000, 2010] date span.
     let (graph, constraints) = dated_tree()?;
     let params = SkylineParams {
       n_std: N_STD,
@@ -1269,8 +1087,6 @@ mod tests {
   }
 
   fn dated_tree() -> Result<(Graph, DateConstraints), Report> {
-    // Small dated 3-tip tree spanning [2000, 2010] with two binary mergers, enough for a
-    // multi-segment skyline solve.
     let dates: DatesMap = btreemap! {
       o!("root") => Some(DateConstraint::exact(2000.0)),
       o!("x")    => Some(DateConstraint::exact(2005.0)),
@@ -1287,11 +1103,6 @@ mod tests {
 
   #[test]
   fn test_pipeline_estimate_coalescent_tc_report_carries_the_skyline_solve() -> Result<(), Report> {
-    // The end-to-end pipeline test is disabled on the mass-sizing bug, so the link from the
-    // optimizer result to the report struct has no running guard. This exercises exactly that
-    // copy: `estimate_coalescent_tc` must carry the solve's own boundaries and band into the
-    // `CoalescentTcReport`, unpermuted and unresized. The oracle is a direct `optimize_skyline`
-    // call with the same deterministic inputs, so any drop or transpose in the copy shows up.
     let (graph, constraints) = dated_tree()?;
     let params = SkylineParams {
       n_points: 3,

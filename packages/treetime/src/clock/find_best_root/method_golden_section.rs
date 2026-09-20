@@ -15,7 +15,6 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Golden section search optimization for finding the best split point along an edge
 pub fn optimize_golden_section(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
@@ -25,14 +24,11 @@ pub fn optimize_golden_section(
     "Starting Golden Section optimization on edge {:?} with max_iters={}, tolerance={:.2e}",
     edge, params.golden_max_iters, params.golden_tolerance
   );
-  // Set up Golden Section Search solver with bounds [0.0, 1.0]
-  // 0.0 means placing the root at the target node, 1.0 means placing it at the source node.
   let solver = GoldenSectionSearch::new(0.0, 1.0)
     .map_err(|e| make_report!("Failed to create GoldenSectionSearch: {}", e))?
     .with_tolerance(params.golden_tolerance)
     .map_err(|e| make_report!("Golden Section optimization failed: {}", e))?;
 
-  // Run optimization with initial guess at midpoint and observer
   let result = Executor::new(cost_fn, solver)
     .configure(|cfg| {
       cfg
@@ -58,7 +54,6 @@ pub fn optimize_golden_section(
     result.state.iter, best_split, best_chisq
   );
 
-  // Evaluate the cost function one more time to get the ClockSet data
   let best_clock_set = cost_fn.evaluate_clock_set(best_split)?;
 
   Ok(FindRootResult {

@@ -8,10 +8,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-  /// Build a ClockSet from two leaves whose regression produces the given clock_rate.
-  ///
-  /// Uses leaf_contribution_to_parent with unit variance, placing leaves at
-  /// dates t1=0, t2=10 with divergences chosen to produce the target rate.
   fn clock_set_with_rate(target_rate: f64) -> ClockSet {
     let t1 = 0.0;
     let t2 = 10.0;
@@ -22,8 +18,6 @@ mod tests {
     let cs2 = ClockSet::leaf_contribution_to_parent(Some(t2), d2, variance);
     &cs1 + &cs2
   }
-
-  // --- ClockRegression ---
 
   #[test]
   fn test_clock_regression_positive_rate() -> Result<(), Report> {
@@ -59,8 +53,6 @@ mod tests {
     Ok(())
   }
 
-  // --- ClockModel::from_regression ---
-
   #[test]
   fn test_clock_model_from_regression_positive_rate() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
@@ -88,11 +80,6 @@ mod tests {
     let msg = err.to_string();
     assert!(msg.contains("non-positive"), "expected 'non-positive' in: {msg}");
   }
-
-  // --- ClockModel::from_regression_allow_negative ---
-  // The clock command reports the regression without time inference, so a non-positive
-  // rate is a valid result: the lenient constructor builds a model (warning) instead of
-  // erroring. See kb/decisions/timetree-rejects-negative-clock-rate.md.
 
   #[test]
   fn test_clock_model_from_regression_allow_negative_builds_negative() -> Result<(), Report> {
@@ -122,8 +109,6 @@ mod tests {
     assert!(model.clock_rate() > 0.0);
     Ok(())
   }
-
-  // --- ClockModel::with_fixed_rate ---
 
   #[test]
   fn test_clock_model_with_fixed_rate_positive() -> Result<(), Report> {
@@ -155,8 +140,6 @@ mod tests {
     );
   }
 
-  // --- ClockLine trait ---
-
   #[test]
   fn test_clock_line_deviation_consistent_between_types() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
@@ -167,11 +150,6 @@ mod tests {
     assert!((reg.clock_deviation(date, div) - model.clock_deviation(date, div)).abs() < 1e-15);
     Ok(())
   }
-
-  // --- Serialization ---
-  // The clock model JSON output (`.n.json`) must present the `hessian` and `cov` matrices as
-  // readable nested arrays, not the internal ndarray representation (`{"v":1,"dim":..,"data":..}`).
-  // The `array2_as_vec`/`array2_from_vec` serde helpers produce the row-major nested-array form.
 
   fn estimated_model() -> ClockModel {
     let stats = ClockModelStats::Estimated(RegressionStats {

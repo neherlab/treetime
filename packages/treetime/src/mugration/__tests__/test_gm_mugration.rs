@@ -11,18 +11,6 @@ mod tests {
     trait_assignments_by_name,
   };
 
-  // Golden master tests for mugration discrete trait reconstruction.
-  //
-  // Validates Rust v1 implementation against Python v0 reference outputs.
-  // Inputs (gm_mugration_inputs.json) define dataset/attribute combinations and
-  // the exact capture parameters shared by the Python oracle and Rust replay.
-  // Outputs (gm_mugration_outputs.json) were captured from v0 using gm_mugration_capture.
-  //
-  // Both v0 and v1 use iterative GTR inference (5 iterations of rate matrix
-  // re-estimation followed by rate optimization via Brent's method).
-
-  // v0-parity datasets: v1 reproduces v0 trait assignments exactly with the
-  // default (v0) inference policy.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country(          "zika_20_country")]
@@ -51,13 +39,6 @@ mod tests {
     Ok(())
   }
 
-  // These datasets still diverge from v0 at a few ambiguous internal nodes.
-  // The cause is the residual ~1e-3 difference in the marginal confidence
-  // profiles (see test_gm_mugration_confidence_*), not the inference-policy
-  // toggles: it persists with the default v0 policy and for unweighted,
-  // informative-root datasets where both toggles are no-ops. The small profile
-  // difference tips the argmax at near-tied nodes. Tracked in
-  // kb/issues/M-mugration-iterative-gtr.md.
   #[rustfmt::skip]
   #[rstest]
   #[case::dengue_20_country(        "dengue_20_country")]
@@ -70,12 +51,6 @@ mod tests {
     test_gm_mugration_outputs(case)
   }
 
-  // Confidence profile comparison against v0 oracle. v1 reproduces v0 trait
-  // assignments for this dataset, but the marginal profiles still differ by
-  // ~1e-3 (e.g. 0.4812 vs 0.4800 at the root). The divergence is in the
-  // marginal/GTR numerics and is independent of the inference-policy toggles
-  // (this case has uniform pi and an informative root, so both are no-ops).
-  // See kb/issues/M-mugration-iterative-gtr.md.
   #[test]
   #[ignore = "v0 parity: residual ~1e-3 marginal-confidence divergence (kb/issues/M-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
@@ -99,9 +74,6 @@ mod tests {
     Ok(())
   }
 
-  // The same residual marginal-confidence divergence across the remaining
-  // datasets (independent of the inference-policy toggles). Tracked in
-  // kb/issues/M-mugration-iterative-gtr.md.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
@@ -199,14 +171,12 @@ mod tests {
     ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
 
-      // Read tree directly
       let tree_path = project_root.join(&fixture.tree_path);
       let nwk_parsed = nwk_read_file(&tree_path)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      // Read trait values using in-memory parsing
       let metadata_path = project_root.join(&fixture.metadata_path);
       let (attr_values, _attr_name) = read_discrete_attrs::<String>(
         &metadata_path,
@@ -218,7 +188,6 @@ mod tests {
       )?;
       let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
 
-      // Read weights if provided
       let weights = match &fixture.parameters.weights_path {
         Some(weights_path) => {
           let weights_filepath = project_root.join(weights_path);
@@ -254,13 +223,10 @@ mod tests {
       Ok((output, names))
     }
 
-    /// Discrete state names in order.
     pub fn states_vec(output: &MugrationOutput) -> Vec<String> {
       output.states.iter().map(|s| s.to_owned()).collect()
     }
 
-    /// Reconstructed trait assignments keyed by node name, falling back to `node_{key}` for unnamed
-    /// nodes and skipping nodes with no reconstructed trait.
     pub fn trait_assignments_by_name(
       output: &MugrationOutput,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -276,7 +242,6 @@ mod tests {
         .collect()
     }
 
-    /// Confidence profiles keyed by node name, skipping nodes with no profile.
     pub fn confidence_by_name(
       output: &MugrationOutput,
       names: &BTreeMap<GraphNodeKey, Option<String>>,

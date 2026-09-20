@@ -50,20 +50,16 @@ mod tests {
     let (partitions, final_lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let final_lh = final_lh.value();
 
-    // Final log-LH should be in expected range for this simple tree
-    // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
     assert!(
       final_lh > -100.0 && final_lh < -10.0,
       "Final log-LH {final_lh} should be in range [-100, -10]"
     );
 
-    // Optimization should improve or maintain likelihood
     assert!(
       final_lh >= initial_lh - 1.0,
       "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
     );
 
-    // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
       let bl = branch_lengths[&edge.key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");
@@ -110,20 +106,16 @@ mod tests {
     let (partitions, final_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let final_lh = final_lh.value();
 
-    // Final log-LH should be in expected range for this simple tree
-    // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
     assert!(
       final_lh > -100.0 && final_lh < -10.0,
       "Final log-LH {final_lh} should be in range [-100, -10]"
     );
 
-    // Optimization should improve or maintain likelihood
     assert!(
       final_lh >= initial_lh - 1.0,
       "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
     );
 
-    // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
       let bl = branch_lengths[&edge.key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");

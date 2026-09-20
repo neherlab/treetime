@@ -11,10 +11,6 @@ impl std::fmt::Display for CancelledError {
 
 impl std::error::Error for CancelledError {}
 
-/// Read-only cancellation signal an operation polls while it runs.
-///
-/// Kept separate from `ProgressSink` so cancellation is an input the operation reads, not an event
-/// channel it writes. Callers that never cancel pass `NoopCancel`.
 pub trait Cancel: Send + Sync {
   fn is_cancelled(&self) -> bool;
 

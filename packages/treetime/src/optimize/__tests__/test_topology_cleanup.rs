@@ -110,7 +110,6 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
-    // A has bl=0.0 but is a leaf: should NOT be collected
     let nwk_parsed = nwk_read_str("(A:0.0,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -124,7 +123,6 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
-    // I has bl=0.0 and is internal: should be collected
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -145,7 +143,6 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
-    // Both internal nodes have bl=0.0
     let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -187,12 +184,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_collapses_and_merges() -> Result<(), Report> {
-    // Tree: root -> I (bl=0.0) -> A (subs: A0T), B (subs: A0T)
-    //       root -> C (subs: A0T)
-    //       root -> D (subs: G5C)
-    //
-    // After collapse of I: root has 4 children (A, B, C, D) - polytomy
-    // A, B, C share sub A0T -> merge creates new internal node
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -232,7 +223,6 @@ mod tests {
     let sparse = vec![partition];
     let dense: Vec<DenseReconstruction> = vec![];
 
-    // Set bl to 0.0 and pass damped value (simulating damping override in prune_and_merge_in_loop)
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_12 = names.clone();
@@ -250,13 +240,10 @@ mod tests {
     let changed = cleanup.topology_changed;
     assert!(changed);
 
-    // I should be gone
     assert!(find_node_key_by_name(&graph, &names, "I").is_none());
 
-    // D remains directly under root
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());
 
-    // Root should have 2 children after merging A, B, C into a new subtree
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.degree_out(), 2);
@@ -274,9 +261,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_sparse(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // Tree with a zero-length internal branch that should be collapsed during optimization.
-    // After Fitch compression + marginal, the optimizer should detect the zero-optimal
-    // branch and the loop should collapse it.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -295,7 +279,6 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    // A and B are identical: the internal edge AB should be optimized to zero
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -317,7 +300,6 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().count();
 
-    // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let sparse_lh;
@@ -344,15 +326,12 @@ mod tests {
       lh_prev = total_lh;
     }
 
-    // A and B are identical sequences: the AB internal edge should have been
-    // collapsed, reducing the node count
     let final_node_count = graph.get_nodes().count();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
     );
 
-    // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
       let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
@@ -371,7 +350,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_no_collapse_when_branches_nonzero(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // All branches have genuine signal: no edges should be collapsed
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -436,7 +414,6 @@ mod tests {
       lh_prev = total_lh;
     }
 
-    // No edges should have been collapsed - all branches carry genuine signal
     assert_eq!(graph.get_nodes().count(), initial_node_count);
 
     Ok(())
@@ -444,15 +421,6 @@ mod tests {
 
   #[test]
   fn test_optimize_merge_then_marginal_finite_likelihood() -> Result<(), Report> {
-    // After merge creates new internal nodes, marginal_update must produce
-    // finite log-likelihood. This exercises the composition propagation fix:
-    // merge-created nodes inherit the parent's composition so the backward
-    // pass computes correct fixed-site contributions.
-    //
-    // Tree: star polytomy with 5 leaves. A and B share a derived state (T at
-    // pos 0) while C, D, E retain the ancestral state (A at pos 0). With 3-vs-2
-    // majority, the root's marginal MAP resolves to A. Edges to A and B carry
-    // the shared mutation A->T, triggering merge.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -492,8 +460,6 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().count();
 
-    // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority). The merge rewrites
-    // the durable observations alone, so the reconstructions are split around it.
     let (mut sparse_obs, sparse_gtrs, sparse_node_states): (Vec<_>, Vec<_>, Vec<_>) = sparse_partitions
       .into_iter()
       .map(|family| (family.partition, family.gtr, family.node_states))
@@ -507,10 +473,6 @@ mod tests {
       "merge should have created new internal nodes"
     );
 
-    // New caller contract: the topology mutator rewrites the sparse observations but leaves the node
-    // states keyed to the pre-merge topology. Reconcile them to the current node set (seeding
-    // placeholders for merge-created nodes) before the next marginal pass, exactly as the production
-    // optimize loop does after a topology batch.
     let live_nodes = live_node_keys(&graph);
     let sparse_partitions = izip!(sparse_obs, sparse_gtrs, sparse_node_states)
       .map(|(partition, gtr, node_states)| {
@@ -522,9 +484,6 @@ mod tests {
       })
       .collect_vec();
 
-    // The critical test: marginal_update after merge must produce finite log-likelihood.
-    // Before the composition fix, the merge-created node had zero composition,
-    // causing the backward pass to produce incorrect values.
     let (sparse_partitions, lh) =
       marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let lh = lh.value();
@@ -536,10 +495,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_hoists_reversion_without_collapse() -> Result<(), Report> {
-    // Reversion polytomy with no zero-optimal edge to collapse. The loop must still resolve
-    // it: merge C1+C2 (shared reversion), hoist the reverting group, retire the helper.
-    // Tree: root -> U -> V -> {C1, C2, C3}. U->V carries {A0T, C5G}; C1 and C2 revert A0T,
-    // C3 keeps it. Parsimony optimum is 2 mutations.
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -570,7 +525,6 @@ mod tests {
     let sparse = vec![partition];
     let dense: Vec<DenseReconstruction> = vec![];
 
-    // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
     let mut names_tt_9 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
@@ -605,12 +559,6 @@ mod tests {
 
   #[test]
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
-    // Parent and child internal edges are both zero-optimal.
-    // Tree: root -> I1 (bl=0.0) -> I2 (bl=0.0) -> A, B
-    //       root -> C
-    //
-    // Both I1 and I2 should be collapsed. The guard for already-removed edges
-    // must handle the case where collapsing I1 removes I2's inbound edge.
     let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -638,11 +586,9 @@ mod tests {
     let changed = cleanup.topology_changed;
     assert!(changed);
 
-    // Both I1 and I2 should be gone. A, B become children of root.
     assert!(find_node_key_by_name(&graph, &names, "I1").is_none());
     assert!(find_node_key_by_name(&graph, &names, "I2").is_none());
 
-    // root should have 3 children: A, B, C
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.degree_out(), 3);
@@ -660,8 +606,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_dense(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // Dense-mode integration test: identical sequences A and B should cause
-    // the AB internal edge to be collapsed during optimization.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -727,14 +671,12 @@ mod tests {
       lh_prev = dense_lh;
     }
 
-    // A and B are identical: AB edge should have been collapsed
     let final_node_count = graph.get_nodes().count();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
     );
 
-    // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
       let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
@@ -745,8 +687,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
-    // Collapse zero-length I, then merge A+B+C (shared sub A0T) under a new
-    // internal node. The new node must receive a NODE_NNNNNNN name.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -809,7 +749,6 @@ mod tests {
       .collect();
     names.sort();
 
-    // I collapsed, A+B+C merged under a new NODE_0000000
     assert_eq!(names, vec!["A", "B", "C", "D", "NODE_0000000", "root"]);
 
     Ok(())
@@ -817,9 +756,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_merge_disabled_keeps_polytomy() -> Result<(), Report> {
-    // Same setup as the collapse+merge test, but with merge-siblings disabled. Collapsing the
-    // zero-length internal edge still forms the polytomy; without merge, the shared-mutation
-    // siblings A, B, C stay as direct children of root rather than being grouped under a node.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -877,10 +813,8 @@ mod tests {
     let changed = cleanup.topology_changed;
     assert!(changed, "collapse still fires even with merge disabled");
 
-    // I collapsed away.
     assert!(find_node_key_by_name(&graph, &names, "I").is_none());
 
-    // Without merge, root keeps all four children A, B, C, D (no grouping under a new node).
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.degree_out(), 4);
@@ -890,8 +824,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
-    // Reversion polytomy. With flip-parent-child disabled, merge still groups the two reverting
-    // children, but the reverting mutation is not hoisted away, so it remains in the tree.
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -956,8 +888,6 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
-    // With every topology step disabled, the reversion polytomy is left untouched: no collapse,
-    // no merge, no hoist. The tree shape and its mutation content are unchanged.
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -1027,8 +957,6 @@ mod tests {
   #[case::newton(    BranchOptMethod::Newton)]
   #[trace]
   fn test_run_optimize_loop_collapse_disabled_keeps_zero_edge(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // A and B are identical, so the AB internal edge optimizes toward zero. With collapse
-    // disabled, run_optimize_loop must leave that edge in place: the node count is unchanged.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
@@ -1096,12 +1024,6 @@ mod tests {
     Ok(())
   }
 
-  // Rollback validation (T1.4 gate). When a topology change fires, the internal best-branch-length
-  // map is discarded (best is reset to `None`, best_lh to IMPOSSIBLE), so no rollback can restore
-  // lengths keyed to the superseded tree. The observable guarantee is that the returned map is
-  // keyed exactly by the post-change edge set, with no stale keys and no missing edges.
-  // Oracle: the topology-change branch in `run_optimize_loop` resets the best and the topology
-  // producers keep the map in step with the current edge set.
   #[test]
   fn test_run_optimize_loop_topology_change_map_matches_edge_set() -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
@@ -1174,13 +1096,11 @@ mod tests {
     let sparse_partitions = result.sparse_partitions;
     let dense_partitions = result.dense_partitions;
 
-    // A and B are identical, so the AB internal edge collapses: topology changed.
     assert!(
       graph.get_nodes().count() < initial_node_count,
       "expected a collapse (topology change) with collapse enabled"
     );
 
-    // The returned map is keyed exactly by the post-change edge set: no stale keys, no gaps.
     let map_keys: Vec<_> = result.branch_lengths.keys().copied().collect();
     let mut edge_keys: Vec<_> = graph.get_edges().map(|edge| edge.key()).collect();
     edge_keys.sort_unstable();

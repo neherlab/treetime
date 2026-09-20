@@ -20,7 +20,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_handles_zero_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // Tree with zero branch length on edge to A
     let tree_newick = "((A:0.0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(tree_newick)?;
@@ -34,18 +33,15 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
-    // Run multiple optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
-    // Final log-lh should be in reasonable range
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -100.0, "Log-LH should be reasonable: {final_lh}");
 
-    // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
       let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {
@@ -67,7 +63,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_handles_very_short_branches(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // Tree with very short branch lengths (all 0.0001)
     let tree_newick = "((A:0.0001,B:0.0001)AB:0.0001,(C:0.0001,D:0.0001)CD:0.0001)root:0.0001;";
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(tree_newick)?;
@@ -81,18 +76,15 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
-    // Run optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
-    // Final log-lh should be negative and reasonable
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -100.0, "Log-LH should be reasonable: {final_lh}");
 
-    // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
       let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {
@@ -114,7 +106,6 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_handles_long_branches(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    // Tree with longer branch lengths (some > 1 sub/site)
     let tree_newick = "((A:1.0,B:2.0)AB:1.0,(C:2.0,D:1.2)CD:0.5)root:0.1;";
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(tree_newick)?;
@@ -128,18 +119,15 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
-    // Run optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
-    // Final log-lh should be negative and reasonable
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -200.0, "Log-LH should be reasonable: {final_lh}");
 
-    // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
       let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {

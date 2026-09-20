@@ -14,9 +14,6 @@ use treetime_graph::graph::Graph;
 pub struct FindRootResult {
   pub edge: Option<GraphEdgeKey>,
 
-  /// The best root might be somewhere half-way on an existing edge.
-  /// The position of this best root is the split. If this is 0 or 1, then we reroot on either the parent (source) or
-  /// the child (target) of the edge. If this is 0 < x < 1, we put a new node at that point, and reroot on that new node.
   pub split: f64,
 
   pub clock_set: ClockSet,
@@ -24,7 +21,6 @@ pub struct FindRootResult {
   pub chisq: f64,
 }
 
-/// Find the best split point along an edge using the specified optimization method
 pub fn find_best_split(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -35,7 +31,6 @@ pub fn find_best_split(
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report> {
-  // Create cost function once
   let cost_fn = BranchPointCostFunction::new(graph, inputs, state, edge, branch_lengths, options, objective)?;
 
   match params {

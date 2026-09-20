@@ -15,11 +15,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlignmentRecord, Seq};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-/// A partition to reconstruct on the shared tree.
-///
-/// `name` is the key under which the partition appears in the augur node-data JSON (`nuc` for the
-/// nucleotide partition, the CDS name for amino-acid partitions). `sequences` are the per-leaf
-/// sequences for this partition only; different partitions can have different lengths and alphabets.
 pub struct PartitionPlan {
   pub name: String,
   pub alphabet: Alphabet,
@@ -29,7 +24,6 @@ pub struct PartitionPlan {
   pub reference_override: Option<Seq>,
 }
 
-/// Reconstruction parameters shared by every partition in a multi-partition run.
 pub struct MarginalPartitionParams {
   pub dense: Option<bool>,
   pub include_leaves: bool,
@@ -39,22 +33,6 @@ pub struct MarginalPartitionParams {
   pub ignore_missing_alns: bool,
 }
 
-/// Reconstruct one marginal partition on the shared tree and return its per-node results.
-///
-/// Each partition is independent: its GTR inference, backward and forward marginal passes, and node
-/// reconstruction touch only this partition's own message state, with no data shared across
-/// partitions (`marginal_update` and `ancestral_reconstruction_marginal` iterate partitions in a
-/// plain loop, so a single-element slice does the same work as a slice of many). Callers that
-/// reconstruct several partitions (per-CDS amino-acid alignments) therefore call this once per
-/// partition and consume each result before building the next, so the resident marginal state stays
-/// bounded to a single partition instead of scaling with the partition count.
-///
-/// `index` distinguishes partitions during construction. `rng` is passed in by the caller so that
-/// sampled reconstruction (`--sample-from-profile=root|all`) draws in a fixed partition order.
-///
-/// Inference is alphabet-agnostic and runs once during construction (`create_marginal_partition`
-/// with `--model infer`), matching augur's single `infer_gtr=True` inference; there is no outer
-/// GTR-refinement loop here.
 pub fn reconstruct_marginal_partition(
   graph: &Graph,
   index: usize,
@@ -87,10 +65,6 @@ pub fn reconstruct_marginal_partition(
   )?;
   let gtr = created.gtr;
 
-  // Each partition runs its own marginal passes and node reconstruction over its own role-typed result
-  // maps, then becomes the reconstruction the augur gather reads. The two representations reconstruct
-  // differently (sparse tip imputation reads the forward down-message), so each branch owns its
-  // reconstruction closure.
   let partition: AncestralPartition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate {
@@ -119,8 +93,6 @@ pub fn reconstruct_marginal_partition(
       let MarginalUpdate {
         mut node_states, edges, ..
       } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
-      // Dense reconstruction persists each node's flag-aware sequence into `seq.sequence` for the augur
-      // gather to read, so the walk materializes it and discards only the returned value.
       ancestral_reconstruction(graph, |node| {
         partition
           .reconstruct_node_sequence(
@@ -152,7 +124,6 @@ pub fn reconstruct_marginal_partition(
   })
 }
 
-/// A reconstructed partition and the metadata needed to serialize it into augur node data.
 pub struct ReconstructedPartition {
   pub name: String,
   pub partition: AncestralPartition,

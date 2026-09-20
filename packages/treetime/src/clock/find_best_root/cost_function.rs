@@ -9,7 +9,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_report;
 
-/// Cost function for branch point optimization using various optimization methods
 pub struct BranchPointCostFunction<'a> {
   pub to_parent: ClockSet,
   pub to_child: ClockSet,
@@ -56,9 +55,7 @@ impl<'a> BranchPointCostFunction<'a> {
     })
   }
 
-  /// Evaluate the clock set at a given position (used to get the final result)
   pub fn evaluate_clock_set(&self, x: f64) -> Result<ClockSet, Report> {
-    // determine contribution of child/target first -- terminal nodes need special handling
     let child_contribution = if self.is_leaf {
       ClockSet::leaf_contribution_to_parent(
         self.node_time,
@@ -89,12 +86,10 @@ impl CostFunction for &BranchPointCostFunction<'_> {
   type Output = f64;
 
   fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-    // Ensure x is within bounds
     if *x < 0.0 || *x > 1.0 {
       return Ok(f64::INFINITY);
     }
 
-    // Evaluate the clock set and return the configured objective value.
     let result = self
       .evaluate_clock_set(*x)
       .map_or(f64::INFINITY, |clock_set| self.score_clock_set(&clock_set));

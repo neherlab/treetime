@@ -39,9 +39,6 @@ use treetime_graph::reroot::RerootChanges;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::{make_error, make_report};
 
-/// Damping applied to the single pre-reroot branch-length pass, mirroring the
-/// timetree pre-step: new lengths are blended `0.25 * new + 0.75 * old` so the
-/// root search runs on stable distances without overshooting.
 const PRE_REROOT_DAMPING: f64 = 0.75;
 
 pub struct OptimizeParams {
@@ -53,9 +50,7 @@ pub struct OptimizeParams {
   pub opt_method: BranchOptMethod,
   pub initial_guess: InitialGuessMode,
   pub no_indels: bool,
-  /// Reroot policy before optimization. `None` keeps the input root.
   pub reroot_spec: Option<RerootSpec>,
-  /// Which per-iteration topology-cleanup steps run. All on by default.
   pub topology_ops: TopologyOps,
 }
 
@@ -63,9 +58,6 @@ pub struct OptimizeInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Vec<AlignmentRecord>,
-  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The optimize loop
-  /// takes ownership and makes it the source of truth: the initial guess, reroot, and per-edge
-  /// optimizer all update it, and it exits as `OptimizeOutput.branch_lengths`.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -80,12 +72,8 @@ pub struct OptimizeOutput {
   pub sparse_partitions: Vec<SparseReconstruction>,
   #[serde(skip)]
   pub dense_partitions: Vec<DenseReconstruction>,
-  /// Final optimized branch lengths, keyed by edge id. The optimize loop is the source of truth;
-  /// the command gather reads these.
   #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  /// Final node names, keyed by node id, captured after the optimize loop's topology cleanup
-  /// re-runs `assign_node_names`. The command gather and output writers read these.
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
@@ -129,16 +117,12 @@ pub fn run(
       dense_partitions = vec![];
     },
     MarginalPartition::Dense(partition) => {
-      // Dense leaf states are attached up front; the marginal passes then populate internal states.
       let node_states = partition.attach_sequences(&input.graph, &node_inputs)?;
       dense_partitions = vec![DenseReconstruction::seeded(partition, gtr, node_states)];
       sparse_partitions = vec![];
     },
   }
 
-  // `merge_siblings` and `flip_parent_child` operate on discrete per-edge mutation lists, which
-  // only sparse partitions carry. Under a dense build these steps never run, so disabling them
-  // has no effect; warn the user their flag did nothing rather than failing silently.
   if sparse_partitions.is_empty() {
     if !params.topology_ops.merge_siblings {
       warn!(
@@ -190,9 +174,6 @@ pub fn run(
   if let Some(spec) = &params.reroot_spec {
     info!("Rerooting before optimization: {spec:?}");
     progress.report("Rerooting", 0.2, "");
-    // Two-phase pattern (cf. timetree): optimize branch lengths first so the root
-    // search uses stable distances, reroot, then re-optimize in the main loop
-    // because the root move reshapes the optimization landscape.
     (sparse_partitions, dense_partitions) = pre_reroot_optimize(
       &input.graph,
       sparse_partitions,
@@ -211,10 +192,6 @@ pub fn run(
     )?;
   }
 
-  // Post-reroot names for the optimization loop. Reproject the threaded names onto the current node
-  // set: a rerooted tree drops the old trivial root and adds an `N::default` split node (absent from
-  // the map, so `None`); without a reroot the projection is the threaded map unchanged. The loop
-  // refreshes this from each `assign_node_names` its topology cleanup runs.
   let loop_names: BTreeMap<GraphNodeKey, Option<String>> = input
     .graph
     .get_nodes()
@@ -246,11 +223,6 @@ pub fn run(
   let (sparse_partitions, _) = marginal_update_sparse(&input.graph, &marginal_bl, loop_result.sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(&input.graph, &marginal_bl, loop_result.dense_partitions)?;
 
-  // Read the GTR back from the reconstruction the loop threaded, not from a snapshot taken at
-  // creation time. For `--gtr=infer` the model's `mu` is normalized to 1.0
-  // by `normalize_partition_rates` above (rate absorbed into branch lengths);
-  // a creation-time clone would still carry the raw inferred `mu` and disagree
-  // with the rate-scaled branch lengths shipped alongside it.
   let gtr = if let Some(family) = sparse_partitions.first() {
     family.gtr.clone()
   } else if let Some(family) = dense_partitions.first() {
@@ -261,10 +233,6 @@ pub fn run(
     )));
   };
 
-  // The loop's topology cleanup collapses edges, resolves polytomies, and re-runs `assign_node_names`
-  // (adding or removing node keys and naming new internal nodes); the loop refreshes and returns the
-  // node-name map from each such call, so the command gather and output writers read the final tree's
-  // names.
   let names = loop_result.names;
 
   Ok(OptimizeOutput {
@@ -278,7 +246,6 @@ pub fn run(
   })
 }
 
-/// Single damped branch-length pass run before rerooting.
 fn pre_reroot_optimize(
   graph: &Graph,
   sparse_partitions: Vec<SparseReconstruction>,
@@ -323,7 +290,6 @@ fn pre_reroot_optimize(
   Ok((sparse_partitions, dense_partitions))
 }
 
-/// Reroot the tree by the requested date-free policy and reconcile partitions.
 fn reroot_optimize(
   graph: &mut Graph,
   spec: &RerootSpec,

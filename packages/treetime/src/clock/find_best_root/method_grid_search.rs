@@ -10,7 +10,6 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Grid search optimization for finding the best split point along an edge
 pub fn optimize_grid_search(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
@@ -21,7 +20,6 @@ pub fn optimize_grid_search(
     edge, params.n_points
   );
 
-  // Grid search - interrogate different positions along the branch
   let mut best_chisq = f64::INFINITY;
   let mut best_split = f64::NAN;
   let mut best_clock_set = cost_fn

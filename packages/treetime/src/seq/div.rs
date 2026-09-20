@@ -14,15 +14,12 @@ pub struct OnlyLeaves(pub bool);
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Calculate mapping of node name to node divergence (accumulated by summing branch lengths).
-/// Only nodes with names are included in the result.
 pub fn compute_divs(
   graph: &Graph,
   only_leaves: OnlyLeaves,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<BTreeMap<String, f64>, Report> {
-  // Track divergence by node key (always available) for internal computation
   let mut divs_by_key: BTreeMap<GraphNodeKey, f64> = btreemap! {};
   let mut result: BTreeMap<String, f64> = btreemap! {};
 
@@ -49,10 +46,6 @@ pub fn compute_divs(
   Ok(result)
 }
 
-/// Count reconstructed substitutions per edge.
-///
-/// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous) substitutions on
-/// that edge, read from a pre-gathered per-edge substitution map.
 pub fn compute_edge_mutation_counts(
   graph: &Graph,
   edge_subs: &BTreeMap<GraphEdgeKey, Vec<Sub>>,

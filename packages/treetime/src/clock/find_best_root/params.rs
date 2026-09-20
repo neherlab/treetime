@@ -44,18 +44,14 @@ impl RootObjective {
   }
 }
 
-/// Configuration for branch point optimization methods
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
 #[serde(rename_all = "kebab-case")]
 pub enum BranchPointOptimizationParams {
-  /// Grid search with specified number of equally-spaced points
   #[default]
   Grid(GridSearchParams),
 
-  /// Brent's method for robust 1D optimization
   Brent(BrentParams),
 
-  /// Golden section search
   GoldenSection(GoldenSectionParams),
 }
 
@@ -73,32 +69,26 @@ pub enum OptimizationMethod {
 }
 
 impl BranchPointOptimizationParams {
-  /// Create Brent's method with default parameters
   pub fn brent() -> Self {
     Self::Brent(BrentParams::default())
   }
 
-  /// Create Brent's method with custom parameters
   pub fn brent_with(params: BrentParams) -> Self {
     Self::Brent(params)
   }
 
-  /// Create golden section search with default parameters
   pub fn golden_section() -> Self {
     Self::GoldenSection(GoldenSectionParams::default())
   }
 
-  /// Create golden section search with custom parameters
   pub fn golden_section_with(params: GoldenSectionParams) -> Self {
     Self::GoldenSection(params)
   }
 
-  /// Create grid search with default parameters
   pub fn grid() -> Self {
     Self::Grid(GridSearchParams::default())
   }
 
-  /// Create grid search with custom parameters
   pub fn grid_with(params: GridSearchParams) -> Self {
     Self::Grid(params)
   }

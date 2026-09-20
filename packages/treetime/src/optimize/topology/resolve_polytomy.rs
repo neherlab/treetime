@@ -14,21 +14,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// Resolve reversion-driven and shared-mutation polytomies across the whole tree.
-///
-/// Runs [`resolve_one`] over every polytomy and repeats until a full pass changes nothing.
-/// Each applied move (a shared-mutation merge, a reverting-child hoist, or a helper-node
-/// retirement) strictly decreases the lexicographic potential (total fitch mutation count,
-/// then node count), so the fixpoint is reached in a bounded number of rounds. Retirement can
-/// turn a former helper's parent into a new polytomy, which the outer loop then picks up.
-///
-/// Sparse-only: dense partitions carry no per-edge mutation lists, so the routine is inert
-/// when no sparse partition is present, matching [`merge_shared_mutation_branches`].
-///
-/// Returns the number of polytomies whose local structure changed, summed across rounds; a
-/// non-zero result means the caller must rebuild the graph and reassign node names.
-///
-/// [`merge_shared_mutation_branches`]: crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches
 pub fn resolve_polytomies(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -36,7 +21,6 @@ pub fn resolve_polytomies(
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
-  // Sparse-only, and skipped entirely when both moves this routine performs are disabled.
   if sparse.is_empty() || !(topology_ops.merge_siblings || topology_ops.flip_parent_child) {
     return Ok(0);
   }
@@ -63,22 +47,6 @@ pub fn resolve_polytomies(
   Ok(total_changed)
 }
 
-/// Apply the merge -> hoist -> retire routine at one polytomy until it stops changing.
-///
-/// 1. Merge siblings that share substitutions under helper nodes
-///    ([`merge_single_polytomy`]). This canonicalizes several children reverting the same
-///    position into a single reverting child.
-/// 2. Hoist the child with the largest reversion count against the node's parent edge
-///    ([`hoist_reverting_child`]), removing one mutation per reverted position. One child per
-///    round keeps the move greedy and deterministic (ties broken by edge key).
-/// 3. Retire helper nodes: collapse mutation-free edges whose target was created during this
-///    invocation ([`retire_created_helpers`]). This dissolves the empty helper the hoist
-///    leaves behind, turning its children into genuine siblings.
-///
-/// The routine skips the root (no parent edge to revert). Nodes created before this call are
-/// recorded so retirement never dissolves a pre-existing subtree root on a mutation-free edge.
-///
-/// Returns whether anything changed.
 fn resolve_one(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -91,8 +59,6 @@ fn resolve_one(
 
   let mut any_changed = false;
   loop {
-    // Each move is gated independently; retirement stays unconditional because it only ever
-    // collapses helper edges the enabled moves just created, so it is a no-op when neither ran.
     let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
     let hoisted = topology_ops.flip_parent_child
       && try_hoist_reverting_child(graph, sparse, node_states, node_key, branch_lengths)?;
@@ -107,15 +73,6 @@ fn resolve_one(
   Ok(any_changed)
 }
 
-/// Hoist the best reverting child of a node, if the node has a parent edge, at least two
-/// children, and any child reverts one of its substitutions. Returns whether a hoist applied.
-///
-/// The two-children requirement keeps the node a valid internal node: the hoist moves the
-/// reverting child under the new node `N`, so the node must retain at least one other child
-/// or it would become a childless stub. A node whose children all revert the same position is
-/// merged into a single reverting child first, dropping it below this threshold; the residual
-/// reversion on that single child is left in place (a greedy limitation, tracked in the
-/// knowledge base), rather than removing the pre-existing node the input asserted.
 fn try_hoist_reverting_child(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -130,16 +87,11 @@ fn try_hoist_reverting_child(
   if degree_out < 2 {
     return Ok(false);
   }
-  // A node under a bifurcating root may carry its distinguishing substitutions on the sibling
-  // edge; scoring and the slide look across the root when that is the case.
   let root_and_sibling = bifurcating_root_sibling_edge(graph, parent_edge_key);
   let sibling_edge_key = root_and_sibling.map(|(_, sibling_edge_key)| sibling_edge_key);
   let Some(child_edge_key) = best_reverting_child(graph, sparse, node_key, parent_edge_key, sibling_edge_key) else {
     return Ok(false);
   };
-  // Re-root the cross-root reverting positions onto the parent edge before hoisting, so the
-  // existing surgery consumes them. A no-op when the winning child reverts only parent-edge
-  // substitutions; never applied without the hoist that follows it.
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
     slide_bifurcating_root_for_child(
       sparse,
@@ -154,13 +106,6 @@ fn try_hoist_reverting_child(
   Ok(true)
 }
 
-/// The bifurcating (degree-2) root and the sibling child-edge of a node under it.
-///
-/// A degree-2 root is a reversible pass-through: the substitutions distinguishing its two
-/// subtrees may sit on either child edge, so the sibling edge participates in reversion
-/// detection and in the root slide. Returns `None` when the parent node is not the root or the
-/// root has other than two children, where every edge is a genuine tree edge and no slide
-/// applies.
 fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -> Option<(GraphNodeKey, GraphEdgeKey)> {
   let root_key = graph.get_source_node_key(parent_edge_key).ok()?;
   let root = graph.get_node(root_key)?;
@@ -175,11 +120,6 @@ fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -
   Some((root_key, sibling_edge_key))
 }
 
-/// Pick the child edge with the most reversions against the parent edge.
-///
-/// Chooses the largest reversion count, breaking ties by smallest edge key for determinism.
-/// Returns `None` when no child reverts any parent substitution. With `sibling_edge_key` set,
-/// reversions are counted across a bifurcating root (see [`count_child_reversions`]).
 fn best_reverting_child(
   graph: &Graph,
   sparse: &[PartitionMarginalSparse],
@@ -209,19 +149,6 @@ fn best_reverting_child(
   best.map(|(_, key)| key)
 }
 
-/// Collapse mutation-free edges whose target was created during the current [`resolve_one`].
-///
-/// The hoist leaves an empty edge to the reverting child exactly when that child consisted of
-/// nothing but reversions, which is the normal case after a merge. Collapsing it retires the
-/// helper node and makes its children genuine siblings.
-///
-/// Restricting the target to nodes created in this invocation is essential: a merge's helper
-/// edges to pre-existing subtree roots are frequently mutation-free too, and collapsing those
-/// would flatten topology the input asserted and discard its branch lengths. Within this scope
-/// the branch-length-zero requirement of the loop's zero-optimal collapse is relaxed, because
-/// these edges were synthesized moments earlier and carry no optimizer decision to override.
-///
-/// Returns whether any edge was retired.
 fn retire_created_helpers(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -258,7 +185,6 @@ fn retire_created_helpers(
   Ok(retired)
 }
 
-/// The single parent edge of a node, or `None` for the root.
 fn single_inbound_edge(graph: &Graph, node_key: GraphNodeKey) -> Option<GraphEdgeKey> {
   let node = graph.get_node(node_key)?;
   match node.inbound() {

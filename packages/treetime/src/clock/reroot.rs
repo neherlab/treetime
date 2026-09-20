@@ -24,28 +24,18 @@ use treetime_graph::reroot::{
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
 
-/// Controls reroot behavior for graph topology changes.
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
 pub struct RerootParams {
-  /// Root selection method.
   pub spec: RerootSpec,
 
-  /// Objective used to rank candidate root positions for least-squares rerooting.
   pub objective: RootObjective,
 
-  /// Allow creating a new node by splitting an edge during reroot.
-  /// When false, reroot will snap to the nearest existing node endpoint.
   #[default = true]
   pub split_edge: bool,
 
-  /// Remove the old root node if it becomes trivial (one parent, one child) after reroot.
-  /// When false, the old root is preserved even if trivial.
   #[default = true]
   pub remove_trivial_root: bool,
 
-  /// Only accept root positions with positive estimated clock rate.
-  /// When false, the best chi-squared root is accepted regardless of rate sign.
-  /// Use false for pre-filter steps where outliers may cause negative rates at all positions.
   #[default = true]
   pub force_positive_rate: bool,
 }
@@ -89,7 +79,6 @@ pub fn reroot_in_place(
 
   let old_root_key = { graph.get_exactly_one_root()?.key() };
   let Some(edge_key) = edge else {
-    // Already at the best root
     return Ok((
       state,
       RerootResult {
@@ -101,13 +90,11 @@ pub fn reroot_in_place(
     ));
   };
 
-  // Extract edge endpoints before the edge is removed by split_edge
   let (source_key, target_key) = {
     let edge = graph.get_edge(edge_key).expect("Edge not found");
     (edge.source(), edge.target())
   };
 
-  // split = 0 roots at the source (parent), split = 1 at the target (child).
   let (new_root_key, edge_split) = if ulps_eq!(split, 0.0, max_ulps = 5) {
     (source_key, None)
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
@@ -131,13 +118,9 @@ pub fn reroot_in_place(
       None
     };
 
-    // Remove edges consumed by the merge (they no longer exist in the graph)
     if let Some(merge) = &merge {
       inverted.retain(|k| *k != merge.parent_edge_key && *k != merge.child_edge_key);
       record_merge(branch_lengths, merge);
-      // Keep the clock state and inputs consistent with the mutated node/edge set: the removed node
-      // and the two edges it joined are gone; the merged edge takes their place with default messages
-      // (recomputed by the next backward pass; a keep-root pass never reads them).
       state.nodes.remove(&merge.removed_node_key);
       state.edges.remove(&merge.parent_edge_key);
       state.edges.remove(&merge.child_edge_key);
@@ -164,8 +147,6 @@ pub fn reroot_in_place(
   ))
 }
 
-/// Create new root node by splitting the edge into two, then recording clock data for the new node
-/// in the clock state.
 fn create_new_root_node(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
@@ -177,10 +158,6 @@ fn create_new_root_node(
 ) -> Result<EdgeSplitInfo, Report> {
   let split_info = split_edge(graph, edge_key, split, branch_length)?;
 
-  // Keep the clock state and inputs consistent with the mutated node/edge set: the split replaces one
-  // edge with two and inserts one node. The new node carries the evaluated clock set at the split
-  // point; its two edges start with default messages (recomputed by the next backward pass) and
-  // default inputs.
   state.edges.remove(&split_info.old_edge_key);
   state
     .edges
@@ -343,8 +320,6 @@ fn find_named_root_point(
   clippy::unwrap_used,
   reason = "panics on a violated internal invariant; unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Modify graph topology to make the newly identified root the actual root,
-/// then update clock-specific edge messages in the clock state.
 fn apply_reroot(
   graph: &mut Graph,
   state: &mut ClockState,

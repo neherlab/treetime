@@ -36,14 +36,8 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  /// 4-taxon balanced tree with moderate branch lengths (0.05-0.2 subs/site).
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// 16bp gap-free nucleotide alignment for 4 taxa (A, B, C, D).
-  ///
-  /// All sequences share a 15bp prefix `ACGTACGTACGTACG` and differ only at
-  /// position 16: A=T, B=A, C=G, D=C. This creates exactly one variable site,
-  /// isolating the effect of the substitution model on ancestral state inference.
   fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
       read_many_fasta_str(
@@ -65,12 +59,6 @@ mod tests {
     )
   }
 
-  /// 4-taxon alignment shaped like the sparse ambiguity bug.
-  ///
-  /// At position 1, leaf A is `R = {A,G}` while all other leaves are canonical `G`.
-  /// Fitch forward can resolve the A leaf canonically to `G` from its parent context,
-  /// but sparse marginal leaf encoding must not rebuild a false canonical `A` from
-  /// the ambiguous state set.
   fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
       read_many_fasta_str(
@@ -92,15 +80,6 @@ mod tests {
     )
   }
 
-  /// Run dense marginal ancestral reconstruction on the given tree and alignment.
-  ///
-  /// Dense representation stores full N x K probability matrices where N is the
-  /// alignment length and K is the alphabet size (4 for nucleotides). Runs
-  /// Felsenstein's pruning algorithm (backward pass, leaves to root) to compute
-  /// partial likelihoods and the total log-likelihood, then the forward pass
-  /// (root to leaves) to produce marginal posterior probabilities at every node.
-  ///
-  /// Returns the total log-likelihood and the populated partition.
   fn run_dense_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -117,19 +96,6 @@ mod tests {
     Ok((log_lh, recon))
   }
 
-  /// Run sparse marginal ancestral reconstruction on the given tree and alignment.
-  ///
-  /// Sparse representation stores only "variable" positions where the marginal
-  /// posterior differs from the fixed-character distribution. Positions where all
-  /// descendants agree on a single state are compressed away via Fitch parsimony,
-  /// storing only the Fitch-compressed reference and per-character fixed
-  /// distributions.
-  ///
-  /// The sparse path first runs `compress_sequences` (Fitch parsimony), then
-  /// `marginal_update` which performs the backward pass (leaves to root) and
-  /// forward pass (root to leaves) on the compressed representation.
-  ///
-  /// Returns the total log-likelihood and the populated partition.
   fn run_sparse_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -146,16 +112,6 @@ mod tests {
     Ok((log_lh, recon))
   }
 
-  /// Verify that dense and sparse marginal implementations produce the same
-  /// total log-likelihood on a gap-free alignment with JC69 model.
-  ///
-  /// Both representations compute the same quantity - the Felsenstein tree
-  /// likelihood evaluated at the root after the backward pass:
-  /// log L = sum over sites of log(sum over states s of pi[s] * L_root(s)),
-  /// where L_root(s) is the partial likelihood at the root for state s. Dense
-  /// operates on full NxK matrices; sparse compresses invariant sites and
-  /// operates only on variable positions. The log-likelihoods must agree to
-  /// floating-point precision.
   #[test]
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -182,16 +138,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that sparse variable-position distributions match the corresponding
-  /// rows in the dense marginal posterior matrix.
-  ///
-  /// At internal nodes (root, AB), for each position the sparse representation
-  /// marks as "variable", the probability vector must equal the corresponding row
-  /// of the dense NxK matrix. This checks profile-level consistency beyond the
-  /// aggregate log-likelihood: the per-position marginal posteriors must agree
-  /// between representations. At each node, the posterior combines the subtree
-  /// partial likelihood (from the backward pass) with the outgroup message (from
-  /// the forward pass), normalized to sum to 1.
   #[test]
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -232,22 +178,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify dense/sparse consistency and probability normalization in the
-  /// presence of IUPAC ambiguity codes (N = any nucleotide, R = A|G).
-  ///
-  /// Ambiguous characters assign equal probability to the states they represent
-  /// (e.g., N -> uniform over {A,C,G,T}, R -> uniform over {A,G}). Both dense
-  /// and sparse use the same tip-state encoding, but differ in how invariant
-  /// vs variable positions are stored and processed. This test checks three
-  /// properties:
-  ///
-  /// 1. Log-likelihood agreement: dense and sparse produce the same total
-  ///    log-likelihood despite different internal representations.
-  /// 2. Dense normalization: every row of every node's marginal posterior
-  ///    matrix sums to 1.0 (valid probability distribution).
-  /// 3. Sparse normalization: variable-position distributions, fixed-character
-  ///    distributions, and per-node log-likelihoods are all finite and
-  ///    distributions sum to 1.0.
   #[test]
   fn test_marginal_dense_sparse_ambiguous_character_expectations_documented() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -435,29 +365,12 @@ mod tests {
       .collect()
   }
 
-  /// Verify marginal posterior normalization under a highly skewed GTR model.
-  ///
-  /// Uses the tree, alignment, and GTR parameters from Python v0
-  /// `test_treetime.py:137-155`, but tests a different invariant. The Python
-  /// test checks that per-site likelihoods summed over all 4^3 = 64 data
-  /// patterns equal 1.0 (likelihood normalization over observable data). This
-  /// test checks that the marginal posterior at every node is a valid
-  /// probability distribution: sum_s P(s|data) = 1 for each position and node.
-  ///
-  /// The skewed equilibrium frequencies pi = [0.9, 0.06, 0.02, 0.02] with
-  /// uniform exchangeability (W_ij = 1 for i != j) create extreme asymmetry in
-  /// P(t) = exp(Q*t). Combined with long branches (A: 0.601, B: 0.301
-  /// subs/site) and a 64bp alignment covering all 4^3 three-taxon state
-  /// combinations, this stresses numerical stability of the backward and
-  /// forward passes.
   #[test]
   fn test_marginal_posteriors_sum_to_one_skewed_gtr() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    // Highly skewed equilibrium frequencies: A dominates at 90%
     let pi = array![0.9, 0.06, 0.02, 0.02];
 
-    // Uniform exchangeability (W_ij = 1 for i != j, zero diagonal)
     let W = array![
       [0.0, 1.0, 1.0, 1.0],
       [1.0, 0.0, 1.0, 1.0],
@@ -472,7 +385,6 @@ mod tests {
       pi,
     })?;
 
-    // 3-taxon tree with long branches (from v0 test, branch lengths rounded)
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
     let nwk_parsed = nwk_read_str(tree_newick)?;
     let names = nwk_parsed.names();
@@ -480,7 +392,6 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -502,7 +413,6 @@ mod tests {
 
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    // Verify all marginal posterior rows sum to 1.0
     for (node_key, node_data) in &recon.node_states {
       if node_data.profile.dis.is_empty() {
         continue;
@@ -520,9 +430,6 @@ mod tests {
     Ok(())
   }
 
-  /// G3: Uniform per-site rates produce the same sparse log-likelihood as
-  /// scalar mu. Verifies the per-site rate code path does not introduce new
-  /// divergence beyond the existing dense-sparse gap.
   #[test]
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -533,14 +440,12 @@ mod tests {
     let graph: Graph = graph;
     let seq_len = get_common_length(&aln)?;
 
-    // Run without site_rates (scalar mu)
     let gtr_scalar = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
     let (log_lh_scalar, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
-    // Run with uniform site_rates (all 1.0) - must produce identical results
     let mut gtr_uniform = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -553,7 +458,6 @@ mod tests {
     Ok(())
   }
 
-  /// G3b: Dense with uniform per-site rates matches dense with scalar mu.
   #[test]
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;

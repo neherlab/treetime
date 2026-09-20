@@ -16,25 +16,15 @@ use treetime_graph::reroot::{
   trivial_node_branch_lengths,
 };
 
-/// Topology options applied once a root position has been chosen.
 #[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
 pub struct RerootTopologyParams {
-  /// Insert a new node when the chosen root falls in the interior of an edge.
-  /// When false, snap to the nearer endpoint instead.
   #[default = true]
   pub split_edge: bool,
 
-  /// Remove the old root if it becomes a trivial degree-2 node after rerooting.
   #[default = true]
   pub remove_trivial_root: bool,
 }
 
-/// Search for the best root by `S` scoring and apply it to the graph topology.
-///
-/// `fixup` runs after edges are inverted, receiving the inverted edge keys, to
-/// repair domain-specific edge data. Objectives whose statistics are ephemeral
-/// (e.g. divergence-only rooting) pass a no-op; partition state is reconciled
-/// separately by the caller from the returned `RerootResult`.
 pub fn reroot_in_place<S, F>(
   graph: &mut Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
@@ -53,10 +43,6 @@ where
   apply_root_at_edge(graph, best.edge, best.split, topo, branch_lengths, fixup)
 }
 
-/// Reroot on the branch leading to `node_key` at its midpoint.
-///
-/// Used for tip- or MRCA-based rerooting, which needs no scoring. When the node
-/// is already the root, the tree is left unchanged.
 pub fn reroot_at_node<F>(
   graph: &mut Graph,
   node_key: GraphNodeKey,
@@ -100,7 +86,6 @@ where
     (edge.source(), edge.target())
   };
 
-  // split = 0 roots at the source (parent), split = 1 at the target (child).
   let (new_root_key, edge_split) = if ulps_eq!(split, 0.0, max_ulps = 5) {
     (source_key, None)
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {

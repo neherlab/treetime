@@ -46,17 +46,14 @@ impl AlphabetConfig {
 
     let eye = Array2::<f64>::eye(canonical.len());
 
-    // Add canonical to profile map
     let mut profile_map: ProfileMap = canonical
       .iter()
       .zip(eye.rows())
       .map(|(s, x)| -> Result<_, Report> { Ok((AsciiChar::try_new(*s)?, x.to_owned())) })
       .collect::<Result<_, _>>()?;
 
-    // Add unknown to profile map
     profile_map.insert(unknown, Array1::<f64>::ones(canonical.len()));
 
-    // Add ambiguous to profile map
     for (&key, values) in ambiguous {
       let profile = canonical
         .iter()
@@ -66,8 +63,6 @@ impl AlphabetConfig {
       profile_map.insert(AsciiChar::try_new(key)?, profile);
     }
 
-    // Gap carries no nucleotide information in a nogap alphabet (A/C/G/T).
-    // Map it to the same uniform profile as unknown, matching v0's nuc_nogap behavior.
     profile_map.insert(gap, profile_map[&unknown].clone());
 
     Ok(profile_map)

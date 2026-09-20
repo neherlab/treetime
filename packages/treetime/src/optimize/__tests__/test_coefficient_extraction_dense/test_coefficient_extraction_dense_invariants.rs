@@ -17,19 +17,16 @@ mod tests {
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
-  /// Build a JC69 GTR model for testing.
   fn test_gtr() -> GTR {
     jc69(JC69Params::default()).expect("JC69 creation failed")
   }
 
-  /// Build dense coefficients from raw 1D message profiles.
   fn dense_contribution(parent: Array1<f64>, child: Array1<f64>, gtr: &GTR) -> PartitionContribution {
     let parent_2d = parent.insert_axis(Axis(0));
     let child_2d = child.insert_axis(Axis(0));
     get_coefficients(&make_dense_seq_dis(parent_2d), &make_dense_seq_dis(child_2d), gtr)
   }
 
-  /// Build a sparse SiteContribution with given multiplicity and message profiles.
   fn sparse_site(
     parent: &Array1<f64>,
     child: &Array1<f64>,
@@ -42,12 +39,6 @@ mod tests {
       coefficients,
     }
   }
-
-  // Invariant 1: Non-negative site likelihood at t=0
-  //
-  // For valid probability messages (non-negative, summing to 1), the
-  // coefficient sum `sum_c k_c` equals the inner product of the two
-  // probability vectors and must be non-negative.
 
   #[rustfmt::skip]
   #[rstest]
@@ -64,15 +55,9 @@ mod tests {
   ) {
     let gtr = test_gtr();
     let contribution = dense_contribution(parent, child, &gtr);
-    // At t=0, exp(λ*0) = 1 for all eigenvalues, so site_lh = sum of coefficients
     let coeff_sum: f64 = contribution.coefficients.row(0).sum();
     assert!(coeff_sum >= 0.0, "Coefficient sum must be non-negative for valid probability messages, got {coeff_sum}");
   }
-
-  // Invariant 2: Multiplicity linearity
-  //
-  // Sparse contribution with multiplicity m must produce m times the
-  // single-site log-likelihood, derivative, and second derivative.
 
   #[rustfmt::skip]
   #[rstest]
@@ -87,14 +72,12 @@ mod tests {
     let child = array![0.3, 0.3, 0.2, 0.2];
     let branch_length = 0.05;
 
-    // Single site with multiplicity 1
     let single = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, 1.0)],
       gtr: gtr.clone(),
     };
     let single_metrics = evaluate_sparse_contribution(&single, branch_length).expect("valid branch length");
 
-    // Single site with multiplicity m
     let multi = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, multiplicity)],
       gtr: gtr.clone(),
@@ -105,11 +88,6 @@ mod tests {
     assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-12);
     assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-12);
   }
-
-  // Invariant 3: Dense-sparse equivalence
-  //
-  // m identical dense rows must produce the same log-likelihood as one
-  // sparse site with multiplicity m.
 
   #[rustfmt::skip]
   #[rstest]
@@ -123,7 +101,6 @@ mod tests {
     let child = array![0.3, 0.4, 0.2, 0.1];
     let branch_length = 0.1;
 
-    // Dense: n_rows identical rows
     let parent_2d = parent.view().insert_axis(Axis(0));
     let child_2d = child.view().insert_axis(Axis(0));
     let parents_stacked = concatenate(Axis(0), &vec![parent_2d; n_rows]).unwrap();
@@ -135,7 +112,6 @@ mod tests {
     );
     let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length).expect("valid branch length");
 
-    // Sparse: 1 site with multiplicity n_rows
     let sparse_contrib = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, n_rows as f64)],
       gtr: gtr.clone(),
@@ -147,12 +123,6 @@ mod tests {
     assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-10);
   }
 
-  // Invariant 4: Coefficient additivity
-  //
-  // Log-likelihood from two independent sites must equal the sum of the
-  // individual site log-likelihoods. This follows from the product rule
-  // of independent likelihoods: log(L1 * L2) = log(L1) + log(L2).
-
   #[test]
   fn test_coefficient_invariant_additivity() {
     let gtr = test_gtr();
@@ -163,13 +133,11 @@ mod tests {
     let parent_b = array![0.1, 0.1, 0.7, 0.1];
     let child_b = array![0.1, 0.1, 0.1, 0.7];
 
-    // Individual sites
     let contrib_a = dense_contribution(parent_a.clone(), child_a.clone(), &gtr);
     let contrib_b = dense_contribution(parent_b.clone(), child_b.clone(), &gtr);
     let metrics_a = evaluate_dense_contribution(&contrib_a, branch_length).expect("valid branch length");
     let metrics_b = evaluate_dense_contribution(&contrib_b, branch_length).expect("valid branch length");
 
-    // Combined: 2-row dense matrix
     let parents = concatenate(
       Axis(0),
       &[

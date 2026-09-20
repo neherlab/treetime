@@ -13,17 +13,12 @@ mod tests {
   use treetime_primitives::LogLh;
   use treetime_utils::{pretty_assert_abs_diff_eq, prop_assert_ulps_eq};
 
-  /// A matching degenerate scale belongs to the removed child factor and
-  /// therefore cancels from the cavity message. See
-  /// https://doi.org/10.1007/s00239-020-09982-w.
   #[test]
   fn test_marginal_shared_forward_log_lh_remove_child_cancels_matching_neg_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::IMPOSSIBLE).value();
     pretty_assert_abs_diff_eq!(0.0, actual, epsilon = 1e-12);
   }
 
-  /// A degenerate normalization corresponds to the uniform fallback and has no
-  /// finite scale contribution to a forward conditional message.
   #[test]
   fn test_marginal_shared_forward_log_lh_add_normalization_ignores_neg_infinity() {
     let expected = -3.0;
@@ -31,15 +26,12 @@ mod tests {
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
   }
 
-  /// Unexpected non-finite values remain visible instead of being treated as
-  /// the negative-infinity fallback sentinel.
   #[test]
   fn test_marginal_shared_forward_log_lh_add_normalization_propagates_nan() {
     let actual = forward_log_lh_add_normalization(LogLh::new(-3.0), f64::NAN).value();
     assert!(actual.is_nan(), "NaN normalization must propagate, got {actual}");
   }
 
-  /// Positive infinity is not the degenerate uniform-fallback sentinel.
   #[test]
   fn test_marginal_shared_forward_log_lh_add_normalization_propagates_positive_infinity() {
     let actual = forward_log_lh_add_normalization(LogLh::new(-3.0), f64::INFINITY).value();
@@ -49,7 +41,6 @@ mod tests {
     );
   }
 
-  /// A non-matching negative-infinity scale remains an impossible factor.
   #[test]
   fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_neg_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::new(-3.0)).value();
@@ -59,9 +50,6 @@ mod tests {
     );
   }
 
-  /// Removing a negative-infinity scale from a finite aggregate remains
-  /// observable as positive infinity rather than being mistaken for matching
-  /// fallback sentinels.
   #[test]
   fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_positive_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::new(-3.0), LogLh::IMPOSSIBLE).value();
@@ -74,7 +62,6 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// Finite forward normalization retains ordinary scale arithmetic.
     #[test]
     fn test_prop_marginal_core_forward_log_lh_matches_finite_arithmetic(
       node_log_lh in -1e6_f64..0.0,
@@ -87,8 +74,6 @@ mod tests {
       prop_assert_ulps_eq!(expected, actual, max_ulps = 0);
     }
 
-    /// The degenerate normalization sentinel is the additive identity for
-    /// forward conditional-message scales.
     #[test]
     fn test_prop_marginal_core_forward_log_lh_neg_infinity_is_neutral(log_lh in -1e6_f64..1e6_f64) {
       let actual = forward_log_lh_add_normalization(LogLh::new(log_lh), f64::NEG_INFINITY).value();
@@ -96,8 +81,6 @@ mod tests {
     }
   }
 
-  // Valid (positive, finite) norm: distribution is normalized to sum 1 and the
-  // contribution is weight * ln(norm).
   #[rustfmt::skip]
   #[rstest]
   #[case::unweighted(    array![1.0, 3.0],      1.0, array![0.25, 0.75],      4.0_f64.ln())]
@@ -117,8 +100,6 @@ mod tests {
     pretty_assert_abs_diff_eq!(expected_ll, ll, epsilon = 1e-12);
   }
 
-  // Non-positive or non-finite norm: fall back to a uniform distribution and
-  // contribute NEG_INFINITY (unweighted, regardless of the weight argument).
   #[rustfmt::skip]
   #[rstest]
   #[case::zero_norm(     array![0.0, 0.0, 0.0],          3.0)]

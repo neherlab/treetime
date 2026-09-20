@@ -44,7 +44,6 @@ pub mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
 
-  /// Inject indels onto the first edge in each partition (both dense and sparse).
   pub fn inject_indels_on_first_edge(
     graph: &Graph,
     dense_partitions: &mut [DenseReconstruction],
@@ -61,7 +60,6 @@ pub mod tests {
     first_edge_key
   }
 
-  /// Identical-sequence alignment: no substitutions on any edge.
   fn identical_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -70,7 +68,6 @@ pub mod tests {
     )
   }
 
-  /// Set up partitions with identical sequences (zero substitutions on every edge).
   pub fn setup_identical_partitions(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -118,7 +115,6 @@ pub mod tests {
     Ok((dense_partitions, sparse_partitions))
   }
 
-  /// `estimate_indel_rate` returns 0 when no edges have indels.
   #[test]
   fn test_optimize_indel_estimate_rate_no_indels() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -135,7 +131,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// `estimate_indel_rate` returns total_indels / total_branch_length.
   #[test]
   fn test_optimize_indel_estimate_rate_with_indels() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -152,7 +147,6 @@ pub mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
 
-    // 2 indels total (1 per partition: dense + sparse), divided by total branch length
     let total_bl: f64 = graph
       .get_edges()
       .map(|e| branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
@@ -316,8 +310,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// With identical sequences (zero subs on every edge), `initial_guess_mixed` uses
-  /// the Poisson maximum likelihood estimate (MLE) for indel-bearing edges.
   #[test]
   fn test_optimize_indel_initial_guess_nonzero_with_indels() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -354,9 +346,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// Regression: when ALL branch lengths are zero and the only signal is indels,
-  /// `initial_guess_mixed` must still bootstrap positive branch lengths. This exercises
-  /// the `indel_rate == 0` fallback path.
   #[test]
   fn test_optimize_indel_initial_guess_zero_bl_tree_with_indels() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
@@ -367,16 +356,13 @@ pub mod tests {
     let (mut dense_partitions, mut sparse_partitions) =
       setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
-    // Zero all branch lengths to simulate degenerate input
     for edge_ref in graph.get_edges() {
       branch_lengths.insert(edge_ref.key(), Some(0.0));
     }
 
-    // Inject indels on the first edge (after zeroing, so indel_rate starts at 0)
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
-    // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
@@ -400,8 +386,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// `run_optimize_mixed` assigns non-zero branch length when indels are present.
-  /// Verifies both positivity and local optimality of the result.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton(     BranchOptMethod::Newton)]
@@ -420,8 +404,6 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    // Inject indels AFTER setup (which includes marginal_update) to avoid being wiped
-    // by the backward pass that recreates DenseEdgePartition from scratch.
     let indels = vec![
       InDel::del((0, 3), Seq::try_from_str("ACG")?)?,
       InDel::del((5, 8), Seq::try_from_str("ACG")?)?,
@@ -472,8 +454,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// Full pipeline regression: zero all BLs, inject indels into sparse partition only
-  /// (production path), run initial_guess + optimize, verify escape from zero.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton(     BranchOptMethod::Newton)]
@@ -491,13 +471,10 @@ pub mod tests {
     let graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
-    // Zero all branch lengths
     for edge_ref in graph.get_edges() {
       branch_lengths.insert(edge_ref.key(), Some(0.0));
     }
 
-    // Inject indels into sparse partition only (production path: dense indels are wiped
-    // by marginal_update, so only sparse contributes in the real CLI flow)
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     sparse_partitions[0]
       .partition
@@ -521,14 +498,12 @@ pub mod tests {
       &mut branch_lengths,
     )?;
 
-    // After initial_guess, the indel-bearing edge should have positive BL (bootstrap)
     let bl_after_guess = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
       bl_after_guess > 0.0,
       "initial_guess should bootstrap positive BL for indel-bearing edge, got {bl_after_guess}"
     );
 
-    // Run marginal + optimize
     let (dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -542,8 +517,6 @@ pub mod tests {
     Ok(())
   }
 
-  /// The Poisson indel contribution makes the combined second derivative more negative
-  /// (more concave), aiding Newton convergence.
   #[rustfmt::skip]
   #[rstest]
   #[case::tiny(    0.01)]
@@ -557,7 +530,6 @@ pub mod tests {
     assert!(metrics.second_derivative < 0.0, "Poisson log-likelihood should be concave for k>0");
   }
 
-  /// The Poisson derivative at the MLE (t = k/mu) is zero.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1( 1)]
@@ -573,7 +545,6 @@ pub mod tests {
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
   }
 
-  /// The Poisson log-likelihood at the MLE is the maximum.
   #[rustfmt::skip]
   #[rstest]
   #[case::below_far(  -0.5 )]
@@ -595,7 +566,6 @@ pub mod tests {
     }
   }
 
-  /// Numerical derivative matches analytical derivative.
   #[test]
   fn test_optimize_indel_poisson_numerical_derivative() {
     let k = 3;
@@ -604,7 +574,6 @@ pub mod tests {
 
     let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
 
-    // First derivative: central difference
     let h1 = 1e-7;
     let lh_plus = poisson_indel_log_lh(k, mu, t + h1)
       .expect("valid Poisson parameters")
@@ -617,7 +586,6 @@ pub mod tests {
     let numerical_deriv = (lh_plus - lh_minus) / (2.0 * h1);
     assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
 
-    // Second derivative: central difference with larger step to avoid cancellation
     let h2 = 1e-4;
     let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2)
       .expect("valid Poisson parameters")
@@ -635,8 +603,6 @@ pub mod tests {
     assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
   }
 
-  /// When `indel_count == 0` and substitution derivative is negative,
-  /// `is_zero_branch_optimal` returns true (existing behavior preserved).
   #[test]
   fn test_optimize_indel_zero_branch_no_indels_unchanged() {
     let gtr = jc69(JC69Params::default()).unwrap();
@@ -646,15 +612,9 @@ pub mod tests {
     assert!(is_zero_branch_optimal(&[contribution]));
   }
 
-  /// Grid search zero-comparison must reject zero when indels are present.
-  /// Demonstrates the bug scenario: substitution-only likelihood prefers t=0
-  /// (pure-state site has maximum likelihood at zero branch length), but the
-  /// Poisson indel log-likelihood diverges to -infinity at t=0 for k > 0.
   #[test]
   fn test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels() {
     let gtr = jc69(JC69Params::default()).unwrap();
-    // Pure-state coefficients: substitution likelihood is maximized at t=0.
-    // At t=0, L(0) = sum(coefficients) = 1.0. At t>0, eigenvalue decay reduces L(t).
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
@@ -663,7 +623,6 @@ pub mod tests {
     let indel_count = 1_usize;
     let indel_rate = 5.0;
 
-    // Bug precondition: substitution-only comparison prefers zero
     let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
       .expect("valid branch length")
       .value();
@@ -675,7 +634,6 @@ pub mod tests {
       "Bug precondition: subs-only likelihood at zero ({sub_lh_zero}) should exceed positive ({sub_lh_best})"
     );
 
-    // Indel-aware comparison: Poisson log-lh diverges to -infinity near t=0
     let indel_lh_near_zero = poisson_indel_log_lh(indel_count, indel_rate, 1e-15)
       .expect("valid Poisson parameters")
       .log_lh
@@ -693,7 +651,6 @@ pub mod tests {
       "Indel-aware comparison should prefer positive t: at_best={combined_at_best}, near_zero={combined_near_zero}"
     );
 
-    // Production function: indel_count > 0 causes is_zero_better_than_grid_best to return false
     assert!(
       !is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive)
         .expect("valid branch length"),
@@ -701,8 +658,6 @@ pub mod tests {
     );
   }
 
-  /// Regression: without indels, the grid search zero-comparison still allows zero
-  /// when substitution likelihood prefers it.
   #[test]
   fn test_optimize_indel_grid_zero_comparison_allows_zero_without_indels() {
     let gtr = jc69(JC69Params::default()).unwrap();
@@ -710,17 +665,12 @@ pub mod tests {
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
-    // Production function: indel_count == 0 with pure-state coefficients selects zero
     assert!(
       is_zero_better_than_grid_best(&contributions, 0, 0.0, 0.01).expect("valid branch length"),
       "Production helper should return true when indel_count == 0 and zero is better for subs"
     );
   }
 
-  // Newton convergence to Poisson MLE when substitution contribution is zero.
-  // Use a flat coefficient (equal weight on all eigenvalues = uniform profile)
-  // so the substitution derivative is exactly zero at all branch lengths.
-  // The only signal is the Poisson indel term, whose MLE is k/mu.
   #[rustfmt::skip]
   #[rstest]
   #[case::k1_mu5( 1, 5.0)]
@@ -732,30 +682,23 @@ pub mod tests {
     #[case] k: usize,
     #[case] mu: f64,
   ) {
-    // Verify the Poisson MLE directly: at t = k/mu, the indel derivative
-    // is zero. Around that point, Newton's method converges.
     let t_mle = k as f64 / mu;
 
-    // Evaluate at the MLE: derivative should be zero
     let metrics_at_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics_at_mle.derivative, 0.0, epsilon = 1e-13);
     assert!(metrics_at_mle.second_derivative < 0.0, "Second derivative must be negative at MLE");
 
-    // Manual Newton step from a nearby point should converge toward the MLE
     let t_start = t_mle * 1.5;
     let metrics = poisson_indel_log_lh(k, mu, t_start).expect("valid Poisson parameters");
     let newton_step = metrics.derivative / metrics.second_derivative;
     let t_next = t_start - newton_step;
 
-    // One Newton step from 1.5*MLE should land closer to MLE
     assert!(
       (t_next - t_mle).abs() < (t_start - t_mle).abs(),
       "Newton step should converge toward MLE: t_next={t_next}, t_mle={t_mle}, t_start={t_start}"
     );
   }
 
-  // Min branch length clamping: when indels are present, the Newton loop
-  // should not allow the branch length to reach zero.
   #[rustfmt::skip]
   #[rstest]
   #[case::newton(     BranchOptMethod::Newton)]
@@ -776,7 +719,6 @@ pub mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     let _first_edge_key = inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
-    // Set a very small initial branch length to test clamping
     let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     branch_lengths.insert(edge_ref.key(), Some(1e-15));
 
@@ -796,10 +738,6 @@ pub mod tests {
     Ok(())
   }
 
-  // Poisson indel contribution: for k >= 0 and t > 0, adding indels
-  // changes the total log-likelihood. For k=0, indel term is -mu*t < 0.
-  // For k>0, indel term is finite. In both cases, the combined
-  // log-likelihood differs from substitution-only.
   #[rustfmt::skip]
   #[rstest]
   #[case::k0(0, 5.0, 0.1)]
@@ -822,10 +760,8 @@ pub mod tests {
     let combined = sub_only + indel_lh;
 
     if k == 0 {
-      // For k=0, indel term is -mu*t, always negative
       assert!(combined < sub_only, "k=0 indel term should reduce log-lh: combined={combined} < sub_only={sub_only}");
     } else {
-      // For k>0, indel term is finite and the combined differs from sub-only
       assert!(
         (combined - sub_only).abs() > 1e-10,
         "k={k} indel term should shift log-lh: combined={combined}, sub_only={sub_only}"
@@ -836,7 +772,6 @@ pub mod tests {
   mod generators {
     use proptest::prelude::*;
 
-    /// Generate valid Poisson parameters: k in [1, 200], mu in [0.1, 1000], t in [1e-8, 100].
     pub fn poisson_params() -> impl Strategy<Value = (usize, f64, f64)> {
       (1..200_usize, 0.1..1000.0_f64, 1e-8..100.0_f64)
     }
@@ -849,7 +784,6 @@ pub mod tests {
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 
     proptest! {
-      /// For k > 0, the second derivative is always negative (log-concavity).
       #[test]
       fn test_prop_optimize_indel_concavity((k, mu, t) in generators::poisson_params()) {
         let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
@@ -860,7 +794,6 @@ pub mod tests {
         );
       }
 
-      /// At the MLE t = k/mu, the derivative is zero.
       #[test]
       fn test_prop_optimize_indel_mle_derivative((k, mu, _t) in generators::poisson_params()) {
         let t_mle = k as f64 / mu;
@@ -868,8 +801,6 @@ pub mod tests {
         prop_assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-10);
       }
 
-      /// For any k > 0 near t=0, the Poisson derivative is positive,
-      /// confirming that the optimum is always at positive t (zero is never optimal).
       #[test]
       fn test_prop_optimize_indel_derivative_positive_near_zero((k, mu, _t) in generators::poisson_params()) {
         let near_zero = 1e-10;
@@ -881,7 +812,6 @@ pub mod tests {
         );
       }
 
-      /// Numerical first derivative matches analytical derivative.
       #[test]
       fn test_prop_optimize_indel_numerical_derivative((k, mu, t) in generators::poisson_params()) {
         let h = t * 1e-6;

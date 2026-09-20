@@ -1,29 +1,3 @@
-//! The likelihood of an edge length is the product of the likelihoods of all positions of all partitions:
-//!
-//!   Lh = prod_i prod_j \sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b
-//!
-//! The log likelihood is the sum of many terms:
-//!
-//!   logLh = sum_i sum_j \log(\sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b)
-//!
-//! To effectively calculate this, we need to reformulate the likelihood in terms of the eigenvectors of the GTR matrix. Dropping the {ij} superscripts for brevity, we can write the likelihood as:
-//!
-//!   s_a exp(Qt)_{ab} r_b = s_a \sum_c v_{ac} exp(\lambda_c t) vinv_{cb} r_b = g_c exp(\lambda_c t) h_c = k_c exp(\lambda_c t)
-//!
-//! The `k_c` can be reused for different iterations of the branch length optimization:
-//!
-//!   logLh = sum_i sum_j \log(\sum_c k_c exp(\lambda^i_c t))
-//!
-//! For compressed site patterns with multiplicity $m_i$, the derivatives are:
-//!
-//!   dlogLh/dt = sum_i m_i * (sum_c k_c \lambda_c exp(\lambda_c t)) / (sum_c k_c exp(\lambda_c t))
-//!
-//!   d^2logLh/dt^2 = sum_i m_i * [(sum_c k_c \lambda_c^2 exp(\lambda_c t)) / L_i
-//!                                 - ((sum_c k_c \lambda_c exp(\lambda_c t)) / L_i)^2]
-//!
-//! where L_i = sum_c k_c exp(\lambda_c t). The multiplicity is a linear factor on
-//! each site's contribution; the squared term applies only to the per-site ratio.
-//!
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use crate::seq::mutation::Sub;
@@ -55,7 +29,6 @@ pub fn get_coefficients(
   let msg_to_child = &forward.msg_to_child;
   let msg_to_parent = &backward.msg_to_parent;
 
-  // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = msg_to_child
     .variable
     .keys()
@@ -68,7 +41,6 @@ pub fn get_coefficients(
   let variable_states = variable_positions
     .iter()
     .map(|pos| -> Result<_, Report> {
-      // Check whether the position is in substitutions
       if let Some(sub) = edge_obs.fitch_subs().iter().find(|m| m.pos() == *pos) {
         Ok((sub.reff(), sub.qry()))
       } else {

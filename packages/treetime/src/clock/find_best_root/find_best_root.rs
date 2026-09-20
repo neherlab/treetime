@@ -12,10 +12,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::collections::container::get_exactly_one;
 
-/// Find the best new root node
-///
-// Loop over all nodes, pick the one with the lowest chisq (and positive clock rate
-// when force_positive is true), then optimize position along surrounding branches.
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -35,8 +31,6 @@ pub fn find_best_root(
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = root;
 
-  // Initialize with the current root, only accepting it if it has a positive clock rate
-  // (or if force_positive is false)
   let root_clock_set = state.node(root.key()).clock_set.clone();
   let root_acceptable = !force_positive || has_positive_clock_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
@@ -56,7 +50,6 @@ pub fn find_best_root(
     clock_set: root_clock_set,
   };
 
-  // Find best node (with positive clock rate when force_positive is true)
   let mut node_count = 0;
   let mut improvements = 0;
   let mut rejected_negative_rate = 0;
@@ -89,7 +82,6 @@ pub fn find_best_root(
      rejected {rejected_negative_rate} with negative rate, best chi-squared: {best_chisq:.6e}"
   );
 
-  // Check if some intermediate place on the parent branch is better
   if !best_root_node.is_root() {
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
@@ -110,7 +102,6 @@ pub fn find_best_root(
     }
   }
 
-  // Check if some place on a child branch is better
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
     let res = find_best_split(graph, inputs, state, *e, branch_lengths, options, params, objective)?;

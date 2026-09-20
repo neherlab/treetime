@@ -26,7 +26,6 @@ pub struct ClockRegressionResult {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -35,8 +34,6 @@ pub fn gather_clock_regression_results(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
-  // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  // `names` and `branch_lengths` are the post-reroot value maps threaded from the pipeline.
   state.map_forward(graph, |context| {
     let mut node = context.input.clone();
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
@@ -51,7 +48,6 @@ pub fn gather_clock_regression_results(
     Ok(GraphPassNodeOutput { node, parent_message })
   })?;
 
-  // One result per node, in node order.
   graph
     .get_nodes()
     .map(|node| {

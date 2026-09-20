@@ -16,7 +16,6 @@ mod tests {
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);
 
-  /// Run Fitch compression and return, per edge, the substitutions and deletion ranges.
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
@@ -75,14 +74,6 @@ mod tests {
       .collect_vec()
   }
 
-  /// Field-data shape: a single determined residue stranded inside a run of unknowns, with sibling
-  /// clades gapped across the whole region. This is the `PP_0012SSJ` / `PP_000ZH4A` pattern.
-  ///
-  /// `stray` has `G` at column 6 surrounded by `N`, so its `non_char` (union of unknown and gap
-  /// ranges) has a one-column hole at 6. That hole survives every ancestral intersection. At `X`
-  /// the column is only `variable_indel`; at `Y` a gapped sibling turns the whole block into a
-  /// resolved gap -- `variable_indel` counts as gap-compatible -- while `non_char` keeps the hole.
-  /// So column 6 is inside `Y`'s gap yet still carries `G`, and `G` is what gets substituted.
   #[test]
   fn stray_residue_in_unknown_run_does_not_create_sub_in_deletion() -> Result<(), Report> {
     let nwk = "(((stray:0.01,gapped:0.01)X:0.01,gapped2:0.01)Y:0.01,out:0.01)root:0.01;";
@@ -106,10 +97,6 @@ mod tests {
     Ok(())
   }
 
-  /// Gap-boundary variant: the descendants of `c2` disagree only about the *first* column of the
-  /// deleted block (4), and agree that 5..8 is gapped. `X` resolves the whole block 4..8 to a
-  /// gap, but `non_char` only covers 5..8, so column 4 keeps a canonical state and attracts a
-  /// substitution -- landing exactly on the site where the deletion begins.
   #[test]
   fn sub_never_lands_at_deletion_start() -> Result<(), Report> {
     let nwk = "(((g1:0.01,g2:0.01,g3:0.01)c2:0.01,c1:0.01)X:0.01,out:0.01)root:0.01;";
@@ -135,15 +122,6 @@ mod tests {
     Ok(())
   }
 
-  /// A Fitch substitution and a deletion on the same edge must not target the same site: the
-  /// child either has a character there (substitution) or a gap (deletion), never both.
-  ///
-  /// Minimal construction. Node `X` has one child that is gapped over 4..8 (`c1`) and one child
-  /// whose own descendants disagree about the gap (`c2`, giving it a `variable_indel` over
-  /// 4..8). `resolve_indels_backward` treats "gapped + variable" as consensus gap, so `X` gets
-  /// `gaps = [(4, 8)]` -- but `X.non_char` is the *intersection* of its children's `non_char`,
-  /// which is empty over 4..8 because `c2` is not `non_char` there. So 4..8 is gapped but not
-  /// masked, and the substitution machinery still sees canonical states there.
   #[test]
   fn sub_never_lands_inside_deletion_on_same_edge() -> Result<(), Report> {
     let nwk = "(((g1:0.01,g2:0.01,g3:0.01)c2:0.01,c1:0.01)X:0.01,out:0.01)root:0.01;";

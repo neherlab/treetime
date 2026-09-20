@@ -30,8 +30,6 @@ pub struct ClockParams {
 pub struct ClockInput {
   pub graph: Graph,
   pub dates: DatesMap,
-  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. Routed through
-  /// estimation (the reroot search updates it in place) and read by the regression gather.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -85,12 +83,6 @@ pub fn run(
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  // Estimation rerooted the tree in place: the best-root search updates `branch_lengths` for the new
-  // edge set (a split adds two edges and drops one; merging the old trivial root drops two and adds
-  // one), so the routed map is already current. Reproject the routed names onto the post-reroot node
-  // set: a surviving node keeps its name (no clock pass renames), and the `N::default` node the split
-  // adds is absent from the map and resolves to `None`. Clock, unlike timetree, does not name the new
-  // root, so the map must not synthesize a name for it.
   let names: BTreeMap<GraphNodeKey, Option<String>> = input
     .graph
     .get_nodes()
@@ -134,9 +126,6 @@ fn estimate_clock_model_with_prefilter(
 ) -> Result<(ClockState, ClockModel, Option<i32>), Report> {
   let mut delta = None;
   if clock_filter_threshold > 0.0 {
-    // Allow negative rates during pre-filter root finding. Some datasets (e.g. dengue/100)
-    // have negative estimated rate at ALL root positions when outliers are included.
-    // The pre-filter clock model only needs to be good enough for IQD-based outlier detection.
     let reroot_params = RerootParams {
       spec: reroot_spec.clone(),
       force_positive_rate: false,
@@ -158,9 +147,6 @@ fn estimate_clock_model_with_prefilter(
     state = new_state;
     let regression = result.regression();
     if regression.clock_rate() < 0.0 {
-      // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value
-      // comparison is slope-sign-invariant: outliers are identified by distance from the
-      // fitted line regardless of slope direction.
       log::warn!(
         "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
         regression.clock_rate()
@@ -192,10 +178,5 @@ fn estimate_clock_model_with_prefilter(
         "Clock model estimation failed".to_owned()
       }
     })?;
-  // The clock command reports the root-to-tip regression without performing time
-  // inference, so a non-positive rate is a valid (if temporally uninformative) result:
-  // warn and continue rather than error. This matches v0 and makes `--allow-negative-rate`
-  // and `--keep-root` usable. Timetree, which needs `time = div / rate`, still errors on a
-  // non-positive rate (kb/decisions/timetree-rejects-negative-clock-rate.md).
   Ok((state, result.into_clock_model_allow_negative(), delta))
 }

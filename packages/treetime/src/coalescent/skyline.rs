@@ -14,22 +14,12 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
 
-/// Parameters for skyline (piecewise-constant Tc) optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineParams {
-  /// Number of piecewise-constant Tc segments over the tree's time span.
   pub n_points: usize,
-  /// Smoothing penalty on adjacent log time scales: `(stiffness/2) * Σ (zᵢ₊₁ - zᵢ)²`
-  /// where `zᵢ = ln Tc_i`, i.e. it penalizes squared log-fold-changes of Tc and is
-  /// therefore scale-independent. Must be positive for more than one segment.
   pub stiffness: f64,
-  /// Newton convergence tolerance on the gradient infinity-norm.
   pub tolerance: f64,
-  /// Maximum Newton iterations.
   pub max_iter: u64,
-  /// Confidence level, in standard deviations, for the Tc(t) bands reported alongside
-  /// the optimized time scale. The band spans `Tc_i * exp(±n_std * σ_i)`, where `σ_i`
-  /// is the standard deviation of `ln Tc_i` recovered from the optimization curvature.
   pub n_std: f64,
 }
 
@@ -45,55 +35,18 @@ impl Default for SkylineParams {
   }
 }
 
-/// Result of skyline optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineResult {
-  /// Optimized piecewise-constant Tc(t).
   pub tc_distribution: Distribution,
-  /// Exact step schedule for consumers that integrate across every Tc change.
   pub tc_schedule: PiecewiseConstantFn,
-  /// Segment boundaries in calendar time (length `n_points + 1`, ascending).
   pub segment_boundaries: Array1<f64>,
-  /// Optimized Tc value per segment (length `n_points`).
   pub tc_values: Array1<f64>,
-  /// Diagonal of the inverse Hessian in `ln Tc` coordinates.
   pub log_tc_variances: Array1<f64>,
-  /// Lower confidence bound per segment.
   pub tc_lower_bounds: Array1<f64>,
-  /// Upper confidence bound per segment.
   pub tc_upper_bounds: Array1<f64>,
-  /// Coalescent log-likelihood at the optimized Tc(t).
   pub log_likelihood: LogLh,
 }
 
-/// Optimizes a piecewise-constant Tc(t) trajectory that maximizes the coalescent
-/// likelihood with a smoothness penalty.
-///
-/// # Algorithm
-///
-/// The tree's time span is split into `n_points` equal-width segments. Within
-/// segment `i`, Tc is constant; writing `zᵢ = ln Tc_i` (so the coalescent
-/// rate is `1/Tc_i = e^{-zᵢ}`), the negative log-likelihood plus penalty is
-///
-/// ```text
-///   C(z) = Σ_i (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) + (stiffness/2) Σ_i (zᵢ₊₁ - zᵢ)²
-/// ```
-///
-/// where `Iᵢ = ∫_seg_i k(k-1)/2 dt` (Tc-independent pairwise-rate integral) and
-/// `Mᵢ` is the merger count in segment `i`. Modeling `z = ln Tc` makes the penalty
-/// scale-independent — it charges squared *log-fold-changes* `zᵢ₊₁ - zᵢ =
-/// ln(Tc_{i+1}/Tc_i)` — and guarantees `Tc = e^z > 0` with no constraint. Every
-/// term is convex in `z`, so `C` has a unique minimizer, found with Newton's method
-/// on the symmetric tridiagonal Hessian, warm-started from the decoupled per-segment
-/// optimum `zᵢ = ln(Iᵢ / Mᵢ)` and globalized with an Armijo line search. A segment in
-/// a merger-sparse region may own no mergers (`Mᵢ = 0`); then the linear `Mᵢ zᵢ` term
-/// vanishes and `zᵢ` is pinned by the smoothing prior alone, so `stiffness > 0` is
-/// required for more than one segment to keep the Hessian positive-definite and every
-/// `zᵢ` finite (a lone data term `Iᵢ e^{-zᵢ}` would otherwise drive `Tc → ∞`).
-///
-/// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
-/// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
-/// with the maximizer of the model-evaluated likelihood.
 pub fn optimize_skyline(
   graph: &Graph,
   params: &SkylineParams,
@@ -134,12 +87,6 @@ pub fn optimize_skyline(
 
   let (i_seg, m_seg) = accumulate_segment_terms(&lineage_counts, &edges, &boundaries);
 
-  // The whole-tree pairwise-rate integral and merger count must be positive and
-  // finite for a coalescent Tc to exist. A tree with no time span or no internal
-  // mergers is degenerate for the coalescent; fail loudly rather than letting the
-  // per-segment pooled fallback silently substitute Tc = 1. (Per-segment emptiness
-  // is still handled inside `solve_log_tc`, and merger-quantile boundaries keep
-  // every segment non-empty in practice.)
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
   if !(m_tot > 0.0 && i_tot > 0.0 && i_tot.is_finite()) {
@@ -156,13 +103,11 @@ pub fn optimize_skyline(
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
   let confidence = skyline_confidence_band(&hessian, params.n_std, &tc_values)?;
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
-  // Internal segment boundaries are the exact discontinuities of the clamped Tc schedule.
   let tc_schedule = PiecewiseConstantFn::new(
     Array1::from(boundaries[1..boundaries.len() - 1].to_vec()),
     tc_values.clone(),
   );
 
-  // Report the likelihood via the shared model so it matches `compute_coalescent_total_lh`.
   let model = CoalescentModel::new(&lineage_counts, &tc_distribution)?;
   let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
 
@@ -193,10 +138,6 @@ pub fn optimize_skyline(
   })
 }
 
-/// Segment index containing calendar time `t`, clamped to `[0, n_seg - 1]`.
-///
-/// `boundaries` is ascending with length `n_seg + 1`; segment `i` covers
-/// `[boundaries[i], boundaries[i + 1])`.
 fn segment_index(boundaries: &[f64], t: f64) -> usize {
   let n_seg = boundaries.len() - 1;
   let above = boundaries.partition_point(|&b| b <= t);
@@ -207,21 +148,11 @@ fn segment_index(boundaries: &[f64], t: f64) -> usize {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Computes `n_seg + 1` equally spaced ascending segment boundaries spanning
-/// `[t_min, t_max]`.
-///
-/// Uniform widths give the smoothing penalty `Σ (zᵢ₊₁ - zᵢ)²` a clean, grid-
-/// independent meaning — a consistent discretization of the squared log-Tc gradient
-/// in time — so the stiffness has a well-defined scale. Unlike merger-quantile
-/// boundaries this does not guarantee every segment owns a merger: segments in
-/// merger-sparse regions can be empty (`Mᵢ = 0`) and are then pinned by the
-/// smoothing prior, which is why `stiffness > 0` is required for `n_seg > 1`.
 fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
   let n_seg = n_seg.max(1);
   let mut boundaries: Vec<f64> = (0..=n_seg)
     .map(|k| t_min + (t_max - t_min) * (k as f64 / n_seg as f64))
     .collect();
-  // Pin the endpoints exactly, guarding against floating-point drift at the edges.
   boundaries[0] = t_min;
   boundaries[n_seg] = t_max;
   boundaries
@@ -231,13 +162,6 @@ fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Accumulates the per-segment pairwise-rate integral `Iᵢ` and merger count `Mᵢ`.
-///
-/// `Iᵢ` sums, over lineage-count intervals whose midpoint falls in segment `i`, the
-/// interval's per-lineage merger integral (at Tc = 1) times the number of collected
-/// edges covering it — matching the model's per-edge survival term. `Mᵢ` sums
-/// `(n_siblings - 1)/n_siblings` over edges whose parent (merger) time lies in
-/// segment `i`.
 fn accumulate_segment_terms(
   lineage_counts: &PiecewiseConstantFn,
   edges: &[CoalescentEdgeData],
@@ -247,7 +171,6 @@ fn accumulate_segment_terms(
   let breakpoints = lineage_counts.breakpoints();
   let n_int = breakpoints.len() - 1;
 
-  // Per-interval midpoint and per-lineage integral (Tc = 1).
   let mids: Vec<f64> = (0..n_int)
     .map(|j| f64::midpoint(breakpoints[j], breakpoints[j + 1]))
     .collect();
@@ -259,12 +182,10 @@ fn accumulate_segment_terms(
     })
     .collect();
 
-  // Number of collected edges covering each interval, via a difference array.
   let mut coverage = vec![0_i64; n_int + 1];
   for edge in edges {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
-    // Intervals covered are those whose midpoint lies within the edge's span.
     let lo = mids.partition_point(|&m| m < parent_time);
     let hi = mids.partition_point(|&m| m < child_time);
     coverage[lo] += 1;
@@ -290,14 +211,6 @@ fn accumulate_segment_terms(
   (i_seg, m_seg)
 }
 
-/// Minimizes `C(z) = Σ (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) + (γ/2) Σ (zᵢ₊₁ - zᵢ)²` over `zᵢ = ln Tc_i`.
-///
-/// Convex in `z`, solved by Newton on the symmetric tridiagonal Hessian with an
-/// Armijo line search. `Tc = e^z` is positive by construction, so no step capping.
-///
-/// Returns the optimum `z` and the Hessian evaluated at that `z`. The confidence band
-/// is the inverse of this same operator, so returning it lets the band reuse the final
-/// Newton Hessian instead of rebuilding it.
 fn solve_log_tc(
   i_seg: &[f64],
   m_seg: &[f64],
@@ -307,9 +220,6 @@ fn solve_log_tc(
 ) -> Result<(Vec<f64>, Tridiagonal<f64>), Report> {
   let n = i_seg.len();
 
-  // Decoupled per-segment optimum zᵢ = ln(Iᵢ / Mᵢ), with a pooled fallback for
-  // empty/degenerate segments (where Iᵢ or Mᵢ is zero and the ratio's log is
-  // non-finite).
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
   let z_pooled = if i_tot > 0.0 && m_tot > 0.0 {
@@ -324,12 +234,10 @@ fn solve_log_tc(
     })
     .collect();
 
-  // Single segment or no smoothing: the decoupled solution is already optimal.
   if n == 1 {
     let hessian = skyline_hessian(&z, i_seg, stiffness)?;
     return Ok((z, hessian));
   }
-  // error if stiffness is non-positive, which would make the Hessian indefinite.
   if stiffness <= 0.0 {
     return make_error!(
       "Skyline optimization requires positive stiffness for more than one segment, got {}",
@@ -343,19 +251,14 @@ fn solve_log_tc(
 
     let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
     if g_norm < tolerance {
-      // Converged: this Hessian is evaluated at the returned `z`, so hand it back
-      // for the confidence band rather than rebuilding the same operator.
       return Ok((z, hessian));
     }
 
-    // Solve the Hessian system with the gradient, then negate in place: the
-    // Newton step is dz = -H⁻¹g.
     let mut dz = hessian
       .solve_tridiagonal(&g)
       .wrap_err("Failed to solve the skyline Hessian system")?;
     dz.mapv_inplace(|d| -d);
 
-    // Armijo backtracking line search; Tc = e^z stays positive for any step.
     let mut alpha: f64 = 1.0;
     let c0 = skyline_cost(&z, i_seg, m_seg, stiffness);
     let slope: f64 = g.iter().zip(&dz).map(|(&gi, &di)| gi * di).sum();
@@ -372,14 +275,11 @@ fn solve_log_tc(
     }
   }
 
-  // Reached the iteration cap without meeting the gradient tolerance. The last step
-  // advanced `z` past the loop's Hessian, so evaluate a fresh one at the final iterate.
   warn!("Skyline optimization did not converge within {max_iter} iterations");
   let hessian = skyline_hessian(&z, i_seg, stiffness)?;
   Ok((z, hessian))
 }
 
-/// Returns the objective gradient at `z`.
 fn skyline_gradient(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> Array1<f64> {
   let n = z.len();
   let mut gradient = Array1::from_iter((0..n).map(|i| -i_seg[i] * (-z[i]).exp() + m_seg[i]));
@@ -392,10 +292,6 @@ fn skyline_gradient(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> 
   gradient
 }
 
-/// Returns the symmetric tridiagonal objective Hessian at `z`.
-///
-/// Exposed to the crate so tests can build a known Hessian and check the marginal
-/// variance recovery against a hand-inverted oracle.
 pub(crate) fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Result<Tridiagonal<f64>, Report> {
   let n = z.len();
   let matrix_size = i32::try_from(n).wrap_err("Skyline segment count exceeds the linear algebra limit")?;
@@ -417,10 +313,6 @@ pub(crate) fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Resul
   })
 }
 
-/// Computes the local Gaussian confidence band from the Hessian at the optimum.
-///
-/// The inverse Hessian is the covariance of the Laplace approximation in `ln Tc`
-/// coordinates. See https://doi.org/10.1080/01621459.1986.10478240.
 fn skyline_confidence_band(
   hessian: &Tridiagonal<f64>,
   n_std: f64,
@@ -435,16 +327,9 @@ fn skyline_confidence_band(
   })
 }
 
-/// Per-segment marginal variances of `ln Tc`: the diagonal of the inverse Hessian.
-///
-/// Inverting the full tridiagonal Hessian against the identity keeps the off-diagonal
-/// stiffness coupling between adjacent segments, so each marginal variance is strictly
-/// larger than the diagonal-only `1/H_ii` it would carry in isolation whenever the
-/// smoothing couples the segments. Exposed to the crate for the analytic oracle test.
 pub(crate) fn marginal_log_tc_variances(hessian: &Tridiagonal<f64>) -> Result<Array1<f64>, Report> {
   let n = hessian.d.len();
   let log_tc_variances = if n == 1 {
-    // A 1x1 Hessian inverts to the scalar reciprocal.
     array![1.0 / hessian.d[0]]
   } else {
     hessian
@@ -468,18 +353,12 @@ struct SkylineConfidenceBand {
   tc_upper_bounds: Array1<f64>,
 }
 
-/// Value of the skyline objective `C(z)` (constants dropped).
 fn skyline_cost(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 {
   let data: f64 = (0..z.len()).map(|i| i_seg[i] * (-z[i]).exp() + m_seg[i] * z[i]).sum();
   let penalty: f64 = z.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
   data + penalty
 }
 
-/// Builds a piecewise-constant Tc(t) distribution from per-segment Tc values.
-///
-/// Uses the same segment lookup as the optimizer, so model evaluation reproduces
-/// the optimized per-segment rates. Times outside the grid clamp to the first/last
-/// segment.
 fn build_tc_distribution(boundaries: &[f64], tc_values: &Array1<f64>) -> Distribution {
   let t_min = boundaries[0];
   let t_max = boundaries[boundaries.len() - 1];

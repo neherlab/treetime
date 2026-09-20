@@ -6,13 +6,6 @@ use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
-/// Apply a reroot to the dense inference state that survives it. The dense representation carries no
-/// per-edge observation lists, so a reroot only changes the node set: it introduces the split node and
-/// removes the merged trivial-root node.
-///
-/// Takes the two values a reroot carries across and returns a reconstruction with no per-edge results:
-/// the messages and estimates of the previous update describe the pre-reroot topology, and the next
-/// marginal update rebuilds a complete set from the leaf-seeded node states.
 pub fn reroot_dense(
   partition: PartitionMarginalDense,
   gtr: GTR,

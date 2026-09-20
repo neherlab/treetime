@@ -11,7 +11,6 @@ mod tests {
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
-  /// A merger rate that ignores time, so tests can reason about the sweep alone.
   fn const_merger_rate(rate: f64) -> PiecewiseConstantFn {
     PiecewiseConstantFn::new(array![], array![rate])
   }
@@ -20,8 +19,6 @@ mod tests {
     Lineage { time, mutations }
   }
 
-  /// Every original child must appear exactly once in the forest the plan describes, either
-  /// as a root or beneath exactly one merger.
   fn assert_every_child_placed_once(plan: &SubtreePlan, n_children: usize) {
     let mut seen: Vec<usize> = plan.roots.clone();
     for merger in &plan.mergers {
@@ -56,7 +53,6 @@ mod tests {
   #[test]
   fn test_sweep_without_time_window_is_noop() -> Result<(), Report> {
     let mut rng = get_random_number_generator(Some(1));
-    // Every child is at or older than the parent, so there is nowhere to put a merger.
     let children = [lineage(5.0, 0), lineage(4.0, 0), lineage(3.0, 0)];
 
     let plan = simulate_subtree(&children, 5.0, 1.0, &const_merger_rate(1e6), &mut rng)?;
@@ -179,7 +175,6 @@ mod tests {
       &mut shifted_rng,
     )?;
 
-    // Translation oracle: all hazards and branch lengths depend only on time differences.
     let base_pairs: Vec<(usize, usize)> = base.mergers.iter().map(|merger| (merger.left, merger.right)).collect();
     let shifted_pairs: Vec<(usize, usize)> = shifted
       .mergers
@@ -217,7 +212,6 @@ mod tests {
 
       assert_every_child_placed_once(&plan, children.len());
 
-      // Time of every lineage the plan can name.
       let mut times: Vec<f64> = children.iter().map(|child| child.time).collect();
       times.extend(plan.mergers.iter().map(|merger| merger.time));
 
@@ -231,7 +225,6 @@ mod tests {
       });
       prop_assert!(all_references_valid, "seed {seed}: merger references are invalid: {:?}", plan.mergers);
 
-      // Sweep order requires merger times to decrease toward the parent.
       prop_assert!(
         plan.mergers.is_sorted_by(|first, second| first.time >= second.time),
         "seed {seed}: merger times are not monotone: {:?}",
@@ -241,7 +234,6 @@ mod tests {
 
     #[test]
     fn test_prop_sweep_preserves_mutated_lineages_when_mutation_rate_is_zero(seed in any::<u64>()) {
-      // With no mutation events, a mutated child is permanently ineligible to coalesce.
       let children = vec![
         lineage(10.0, 0),
         lineage(9.0, 0),
@@ -289,7 +281,6 @@ mod tests {
   #[test]
   fn test_sweep_integrates_across_merger_rate_boundary() -> Result<(), Report> {
     let children = [lineage(10.0, 0), lineage(10.0, 0), lineage(10.0, 0)];
-    // No merger hazard above year 5; a high hazard starts immediately below it.
     let merger_rate = PiecewiseConstantFn::new(array![5.0], array![1e6, 0.0]);
     let mut rng = get_random_number_generator(Some(3));
 
@@ -309,8 +300,6 @@ mod tests {
 
   #[test]
   fn test_sweep_terminates_when_no_event_is_possible() -> Result<(), Report> {
-    // No mutation rate and no merger rate: nothing can happen and nothing is pending once all
-    // children are live. The sweep must return rather than spin on a zero-rate draw.
     let children = [lineage(3.0, 0), lineage(2.0, 1), lineage(1.0, 0)];
     let mut rng = get_random_number_generator(Some(1));
 
@@ -327,8 +316,6 @@ mod tests {
   )]
   #[test]
   fn test_sweep_first_merger_waiting_time_matches_the_coalescent_rate() -> Result<(), Report> {
-    // All children share a node time, so all are live from the start and the first merger
-    // waits Exp((k - 1) * kappa).
     let k = 5;
     let kappa = 0.25;
     let expected_mean = 1.0 / ((k - 1) as f64 * kappa);
@@ -346,7 +333,6 @@ mod tests {
     }
     let mean = total / replicates as f64;
 
-    // Standard error of the mean is expected_mean / sqrt(replicates), about 0.7%.
     let relative_error = (mean - expected_mean).abs() / expected_mean;
     assert!(
       relative_error < 0.05,

@@ -11,7 +11,6 @@ mod tests {
   use eyre::Report;
   use itertools::Itertools;
 
-  /// Felsenstein site likelihood increases monotonically with branch length for mismatched leaf observations.
   #[test]
   fn test_likelihood_monotonic_increase_mismatched_sequences() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -48,7 +47,6 @@ mod tests {
     Ok(())
   }
 
-  /// Felsenstein site likelihood decreases monotonically with branch length for matched leaf observations.
   #[test]
   fn test_likelihood_maximized_near_zero_for_matched_sequences() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -78,7 +76,6 @@ mod tests {
     Ok(())
   }
 
-  /// Numerical stability: log-likelihood remains finite and non-positive across 4 orders of magnitude in branch length.
   #[test]
   fn test_likelihood_finite_across_branch_length_range() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -105,7 +102,6 @@ mod tests {
     Ok(())
   }
 
-  /// Monotonic decrease of Felsenstein likelihood for identical sequences on a three-taxon tree with an internal node.
   #[test]
   fn test_likelihood_monotonicity_three_taxon_tree() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -135,7 +131,6 @@ mod tests {
     Ok(())
   }
 
-  /// Monotonic decrease of Felsenstein likelihood for identical sequences using sparse representation.
   #[test]
   fn test_likelihood_monotonicity_sparse_partition() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;

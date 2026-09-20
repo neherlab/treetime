@@ -13,14 +13,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-/// Refine the GTR model at a fixed substitution rate: iterate model inference from posterior-weighted
-/// transition counts, then return the refined model together with the marginal update it produces. This
-/// is the ancestral-reconstruction refinement, which does not optimize the rate.
-///
-/// The partition is an immutable source; the model flows through as a value. The backward and forward
-/// messages from the caller's initial update stay frozen and feed every count; only the model iterates.
-/// Each count still recomputes because [`MarginalPasses::count_transitions`] reads the current model's
-/// `expQt`. The final update refreshes the messages under the converged model.
 pub fn refine_gtr_model<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
@@ -52,13 +44,6 @@ pub fn refine_gtr_model<P: MarginalPasses>(
   Ok((gtr, update))
 }
 
-/// Refine the GTR model and optimize the substitution rate: after each model inference, run a bracketed
-/// Brent search over the rate on independent per-candidate reconstructions. This is the mugration
-/// refinement.
-///
-/// The forward messages from the caller's initial update stay frozen and feed every count; the node
-/// states and backward messages are refreshed by each rate search. `fixed_pi` pins the equilibrium
-/// frequencies, and `sampling_bias_correction` scales the final rate.
 pub fn refine_gtr_model_and_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
@@ -84,8 +69,6 @@ where
     ..InferGtrOptions::default()
   };
 
-  // The count reads the frozen forward messages and the node states and backward messages from the
-  // previous rate search; the final update refreshes them under the converged model.
   let mut gtr = gtr;
   let mut nodes = node_states;
   let mut backward = backward;
@@ -106,7 +89,6 @@ where
   Ok((gtr, update))
 }
 
-/// Infer a GTR model from transition counts: the representation-independent estimation core.
 fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions, n_states: usize) -> Result<GTR, Report> {
   let result = infer_gtr_impl(counts, options)?;
   build_gtr_from_inference(n_states, &result)
@@ -130,14 +112,6 @@ fn log_final(gtr: &GTR, log_lh: LogLh) {
   );
 }
 
-/// Optimize only the substitution rate `mu` by a bracketed Brent search over `sqrt(mu)`, returning the
-/// model at the selected rate together with the node states and backward messages at that rate.
-///
-/// Each candidate rate is evaluated on an independent clone of the model and node states over the shared
-/// immutable partition, so a candidate never observes state from an earlier one. When no interior
-/// bracket is found, `mu` is restored to its original value while the node states and backward messages
-/// from the last (`hi`) evaluation are kept, matching the established behavior; when a bracket is found,
-/// the selected candidate's evaluation supplies both the rate and the reconstruction.
 fn optimize_gtr_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
@@ -161,12 +135,6 @@ where
   let lo = 0.01 * sqrt_old_mu;
   let hi = 100.0 * sqrt_old_mu;
 
-  // Evaluate one candidate `sqrt_mu` on an independent clone of the model and node states: set the rate,
-  // clear the carried-over profile log likelihoods, run the backward pass, and return the negative root
-  // log likelihood together with the evaluated model, node states, and backward messages. Clearing the
-  // log likelihoods keeps the cost the backward likelihood alone, so a forward pass's posterior log
-  // likelihood does not enter the rate search. A failed backward pass yields an infinite cost and no
-  // state, leaving the borrowed base observations intact for the next candidate.
   let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate_gtr = gtr.clone();
     candidate_gtr.mu = sqrt_mu * sqrt_mu;
@@ -213,11 +181,6 @@ where
   let (cost_hi, at_hi) = evaluate(hi);
 
   if cost_mid < cost_lo && cost_mid < cost_hi {
-    // Seed Brent at the interior estimate `sqrt_old_mu`, matching v0's
-    // scipy.optimize.brent with a length-3 bracket. argmin's BrentOpt instead
-    // seeds at the golden-section point of [lo, hi], which converges to a
-    // different optimum on flat likelihood surfaces. max_iters matches scipy's
-    // default (500).
     let solver = BrentBracketed::new(lo, sqrt_old_mu, hi);
     let res = Executor::new(&cost_fn, solver)
       .configure(|cfg| cfg.max_iters(500))
@@ -238,9 +201,6 @@ where
     );
     Ok((gtr, nodes, backward))
   } else {
-    // No interior bracket: keep the node states and backward messages from the last (`hi`) evaluation
-    // but restore the rate, exactly as before. A failed `hi` evaluation leaves the input observations
-    // untouched, so fall back to the input node states with the rate restored.
     let (mut restored_gtr, restored_nodes, restored_backward) =
       if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_hi {
         (gtr, nodes, backward)
@@ -255,15 +215,12 @@ where
   }
 }
 
-/// One evaluated rate candidate: the model at that rate together with the node states and backward
-/// messages its backward pass produced.
 struct GtrRateCandidate<P: MarginalPasses> {
   gtr: GTR,
   nodes: BTreeMap<GraphNodeKey, P::Node>,
   backward: BTreeMap<GraphEdgeKey, P::Backward>,
 }
 
-/// Adapter presenting the rate search's negative-log-likelihood closure to argmin's cost interface.
 struct GtrRateCostFn<'a, F> {
   neg_log_lh: &'a F,
 }

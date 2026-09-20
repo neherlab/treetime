@@ -4,33 +4,14 @@ use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
-/// Result of Tc optimization.
 pub struct OptimizeTcResult {
-  /// Optimized coalescence time scale.
   pub tc: f64,
-  /// Curvature-based variance of `ln Tc` at the optimum.
   pub log_tc_variance: f64,
-  /// Lower confidence bound for `Tc`.
   pub tc_lower_bound: f64,
-  /// Upper confidence bound for `Tc`.
   pub tc_upper_bound: f64,
-  /// Total coalescent likelihood at optimized Tc.
   pub likelihood: LogLh,
 }
 
-/// Computes the constant coalescence time scale Tc that maximizes the coalescent
-/// likelihood.
-///
-/// A constant Tc is exactly a one-segment skyline, so this is a thin wrapper over
-/// [`optimize_skyline`] with `n_points = 1`. For a single segment the smoothing
-/// penalty is inert and the skyline's decoupled per-segment optimum reduces to the
-/// closed form `Tc* = I / M` — the maximizer of the Kingman likelihood, where
-/// `I = ∫ k(k-1)/2 dt` is the pairwise-merger-rate integral over the tree and `M`
-/// is the total number of merger events.
-///
-/// See [`optimize_skyline`] for the shared machinery (per-edge `I`/`M` accumulation,
-/// self-consistent likelihood reporting) and the degenerate-tree error returned when
-/// the tree has no time span or no mergers.
 pub fn optimize_tc(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<OptimizeTcResult, Report> {
   let result = optimize_skyline(
     graph,

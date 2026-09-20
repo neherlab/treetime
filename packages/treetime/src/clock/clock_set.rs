@@ -55,20 +55,15 @@ impl ClockSet {
   pub fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
     let denom = 1.0 / (1.0 + branch_variance * self.norm);
 
-    // Eq. 11 in Neher 2018 -- contribution of children doesn't change
     let t_sum = self.t_sum * denom;
 
-    // Eq. 13
     let tsq_sum = self.tsq_sum - branch_variance * self.t_sum.powi(2) * denom;
 
-    // Eq. 12 -- add branch_value norm times
     let d_sum = (self.d_sum + branch_value * self.norm) * denom;
 
-    // Eq. 14
     let dt_sum = self.dt_sum + branch_value * self.t_sum
       - branch_variance * self.t_sum * (self.d_sum + self.norm * branch_value) * denom;
 
-    // Eq. A.2
     let dsq_sum = self.dsq_sum + 2.0 * branch_value * self.d_sum + branch_value.powi(2) * self.norm
       - branch_variance
         * (self.d_sum.powi(2) + 2.0 * branch_value * self.d_sum * self.norm + branch_value.powi(2) * self.norm.powi(2))
@@ -111,7 +106,6 @@ impl ClockSet {
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
   pub fn cov(&self) -> Array2<f64> {
-    // parameter covariance matrix  = hessian^-1: calculate 2x2 matrix inverse explicitly
     let det_inv = 1.0 / self.determinant();
     Array2::from_shape_vec(
       (2, 2),

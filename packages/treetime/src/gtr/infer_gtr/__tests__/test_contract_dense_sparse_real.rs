@@ -1,34 +1,3 @@
-//! Dense-sparse GTR cross-validation on real datasets.
-//!
-//! Dense (marginal posterior fractional counts) and sparse (Fitch parsimony integer counts)
-//! produce structurally different mutation counts. The inferred GTR models (W, pi, mu) should
-//! agree qualitatively on real data.
-//!
-//! Measured differences (2025-03, commit bba8c177, by running this test with assertions
-//! replaced by println! and collecting the table below):
-//!
-//! | dataset          | pi_cosine    | W_rel_frob | mu_rel_diff |
-//! |------------------|--------------|------------|-------------|
-//! | flu_h3n2_20      | 0.999998594  | 0.0173     | 0.0040      |
-//! | ebola_20         | 0.999999994  | 0.0180     | 0.0236      |
-//! | rsv_a_20         | 0.999991113  | 0.0070     | 0.0229      |
-//! | dengue_20        | 0.999786491  | 0.0080     | 0.0413      |
-//! | tb_20            | 0.999970946  | 0.0109     | 0.0247      |
-//! | lassa_L_50       | 0.998686724  | 0.1015     | 0.0196      |
-//! | mpox_clade_ii_20 | 0.999999989  | 0.0858     | 0.1126      |
-//!
-//! Outlier analysis:
-//! - lassa_L_50: highest W_rel_frob (0.1015), lowest pi_cosine (0.9987). 50-sequence dataset
-//!   with more internal branches amplifies parsimony vs marginal divergence on W shape.
-//! - mpox_clade_ii_20: highest mu_rel_diff (0.1126). Very long genome (~200k positions) with
-//!   few mutations between closely related sequences - parsimony and marginal diverge on
-//!   overall rate scale when mutation signal is sparse relative to genome size.
-//!
-//! Thresholds set at ~2x headroom over worst observed:
-//! - pi cosine > 0.997   (worst 0.9987, distance from 1.0 doubled)
-//! - W rel frob < 0.21   (worst 0.1015, doubled)
-//! - mu rel diff < 0.23  (worst 0.1126, doubled)
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -64,7 +33,6 @@ mod tests {
   #[case::dengue_20(         "data/dengue/20/tree.nwk",         "data/dengue/20/aln.fasta.xz")]
   #[case::tb_20(             "data/tb/20/tree.nwk",             "data/tb/20/aln.fasta.xz")]
   #[case::lassa_L_50(        "data/lassa/L/50/tree.nwk",        "data/lassa/L/50/aln.fasta.xz")]
-  // #[case::mpox_clade_ii_20(  "data/mpox/clade-ii/20/tree.nwk",  "data/mpox/clade-ii/20/aln.fasta.xz")] // Slow
   #[trace]
   fn test_contract_dense_sparse_real_gtr(
     #[case] tree_path: &str,

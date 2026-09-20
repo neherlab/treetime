@@ -5,9 +5,6 @@ mod tests {
   use crate::reroot::traits::RootStats;
   use approx::assert_ulps_eq;
 
-  // Oracle: divergence components of `ClockSet::leaf_contribution_to_parent`
-  // (clock_set.rs:41-51), with `count` taking the role of `norm` and always
-  // populated (no date gate).
   #[test]
   fn test_div_stats_leaf_contribution() {
     let stats = DivStats::leaf(None, 0.1, 1.0);
@@ -24,11 +21,6 @@ mod tests {
     assert_ulps_eq!(stats.dsq_sum(), 0.02, max_ulps = 4);
   }
 
-  // Oracle: half the weighted residual sum around the weighted mean. For two
-  // tips at distances d1, d2 with unit variance, score = (d1 - d2)^2 / 4;
-  // This is the documented fixed-zero-slope min-dev objective. The v0
-  // implementation retains an estimated-rate term; see
-  // kb/v0-errata/clock-min-dev-fixed-slope-score.md.
   #[test]
   fn test_div_stats_score_two_tips_analytical() {
     let d1 = 0.1;
@@ -40,15 +32,10 @@ mod tests {
 
   #[test]
   fn test_div_stats_score_zero_when_equidistant() {
-    // Two tips at identical distances => zero variance => zero score.
     let stats = DivStats::new(2.0, 0.4, 2.0 * 0.2_f64.powi(2));
     assert_ulps_eq!(stats.score(), 0.0, max_ulps = 4);
   }
 
-  // Oracle: `ClockSet::propagate_averages` (clock_set.rs:53-85). DivStats::propagate
-  // must equal it on the divergence fields when all time terms are zero. A ClockSet
-  // built from a tip with date 0 has t_sum = tsq_sum = dt_sum = 0 but norm = 1/var,
-  // matching DivStats's `count`.
   #[test]
   fn test_div_stats_propagate_matches_clockset_with_zero_time() {
     let div = DivStats::leaf(None, 0.15, 1.5);
@@ -62,13 +49,10 @@ mod tests {
     assert_ulps_eq!(div_p.count(), clock_p.norm(), max_ulps = 4);
     assert_ulps_eq!(div_p.d_sum(), clock_p.d_sum(), max_ulps = 4);
     assert_ulps_eq!(div_p.dsq_sum(), clock_p.dsq_sum(), max_ulps = 4);
-    // The time terms on the ClockSet side stay identically zero.
     assert_ulps_eq!(clock_p.t_sum(), 0.0, max_ulps = 4);
     assert_ulps_eq!(clock_p.dt_sum(), 0.0, max_ulps = 4);
   }
 
-  // With zero branch variance (the v0 internal-branch case), propagate reduces to
-  // plain distance accumulation: count unchanged, distances shifted by bl.
   #[test]
   fn test_div_stats_propagate_zero_variance_accumulates() {
     let stats = DivStats::new(2.0, 0.4, 0.10);

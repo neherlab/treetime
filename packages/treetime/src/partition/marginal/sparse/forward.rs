@@ -23,9 +23,6 @@ use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutp
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
-/// Run the sparse marginal forward pass over borrowed inputs, node states, and backward messages,
-/// returning updated node states, per-edge forward messages, and per-edge estimates (ML subs) as
-/// distinct owned values.
 pub fn process_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -61,8 +58,6 @@ pub fn process_forward_indexed(
   })
 }
 
-/// Combined per-edge output of the forward node visit, split by the driver into the distinct
-/// forward-message and estimate owners.
 struct SparseEdgeForwardOut {
   msg_to_child: SparseSeqDistribution,
   msg_from_parent: SparseSeqDistribution,
@@ -128,8 +123,6 @@ fn process_node_forward_indexed(
         edge_obs.transmission.as_deref(),
       )
     };
-    // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
-    // from it and has no branch length to recompute the propagation. Internal nodes never need it.
     let msg_from_parent_out = if context.is_leaf {
       msg_from_parent.clone()
     } else {
@@ -145,9 +138,6 @@ fn process_node_forward_indexed(
     )?;
     node.profile = profile;
 
-    // Extend the parsimony chain. Leaves already hold their observed sequence, which is their
-    // parsimony sequence; rebuilding it from the parent would discard the observed states a leaf
-    // shares with its parent under Fitch compression.
     if !context.is_leaf && !parent.sequence.is_empty() {
       node.sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
     }
@@ -261,10 +251,6 @@ fn compute_ml_subs_for_nodes(
     .dedup();
   positions
     .filter_map(|pos| {
-      // Parity with the dense `edge_subs()` (`marginal_dense.rs`), which skips any position that
-      // is `non_char` at either endpoint. A deleted position can still hold a `profile.variable`
-      // entry whose argmax is an ordinary residue, and reporting it would put a substitution and
-      // a deletion on the same edge at the same site.
       if range_contains(&parent_obs.non_char, pos) || range_contains(&child_obs.non_char, pos) {
         return None;
       }

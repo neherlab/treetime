@@ -9,25 +9,17 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Outcome of a root search: the winning edge (or `None` for the current root),
-/// the split fraction along it, the combined statistics, and the objective value.
 #[derive(Debug, Clone)]
 pub struct FindRootResult<S> {
-  /// Edge carrying the best root position, or `None` when the current root wins.
   pub edge: Option<GraphEdgeKey>,
 
-  /// Split fraction along the edge. `0` roots at the source (parent) node, `1`
-  /// at the target (child) node, `0 < x < 1` inserts a new node at that point.
   pub split: f64,
 
-  /// Combined statistics at the winning position.
   pub stats: S,
 
-  /// Objective value at the winning position (lower is better).
   pub score: f64,
 }
 
-/// Optimize the root position along a single edge using Brent's method.
 pub fn find_best_split<S>(
   graph: &Graph,
   edge: GraphEdgeKey,

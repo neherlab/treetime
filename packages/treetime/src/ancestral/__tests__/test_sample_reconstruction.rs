@@ -4,7 +4,6 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
-  /// Argmax reconstruction ignores the RNG entirely: different seeds yield identical sequences.
   #[test]
   fn test_sample_reconstruction_argmax_ignores_seed() -> Result<(), Report> {
     let run_a = helpers::reconstruct(SampleMode::Argmax, 1)?;
@@ -13,7 +12,6 @@ mod tests {
     Ok(())
   }
 
-  /// Sampling at every node is reproducible: the same seed reproduces the same draws and sequences.
   #[test]
   fn test_sample_reconstruction_all_seeded_reproducible() -> Result<(), Report> {
     let run_a = helpers::reconstruct(SampleMode::All, 12345)?;
@@ -22,7 +20,6 @@ mod tests {
     Ok(())
   }
 
-  /// Root-only sampling is reproducible under a fixed seed.
   #[test]
   fn test_sample_reconstruction_root_seeded_reproducible() -> Result<(), Report> {
     let run_a = helpers::reconstruct(SampleMode::Root, 777)?;
@@ -31,8 +28,6 @@ mod tests {
     Ok(())
   }
 
-  /// Root-only sampling perturbs at most the root: every non-root internal node is identical to the
-  /// deterministic argmax reconstruction.
   #[test]
   fn test_sample_reconstruction_root_only_leaves_nonroot_unchanged() -> Result<(), Report> {
     let argmax = helpers::reconstruct(SampleMode::Argmax, 0)?;
@@ -77,11 +72,6 @@ mod tests {
 
     const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-    /// Build a fresh sparse marginal partition, run the marginal passes, and reconstruct internal
-    /// node sequences with the given sampling mode and seed. Returns a name -> sequence map.
-    ///
-    /// A fresh partition is built on every call so that the seeded RNG is the only source of
-    /// variation between runs, making reproducibility assertions meaningful.
     pub fn reconstruct(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"

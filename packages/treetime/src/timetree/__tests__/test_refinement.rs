@@ -95,7 +95,6 @@ mod tests {
       })
       .sum::<Result<f64, Report>>()?;
 
-    // Kingman's node and edge factorizations telescope to the same objective.
     pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
     let (partitions, outcome) = refine(
@@ -316,21 +315,14 @@ mod tests {
     ))
   }
 
-  /// The state a failed round must leave untouched: the tree it borrows and the clock model it
-  /// refines. The partitions are not part of it because a round consumes them, so a failed round
-  /// returns none at all rather than returning them half-updated.
   fn serialize_state(graph: &Graph, clock_model: &ClockModel) -> Result<SerializedState, Report> {
     let graph = json_write_str(graph, JsonPretty(false))?;
     let clock_model = json_write_str(clock_model, JsonPretty(false))?;
     Ok(SerializedState { graph, clock_model })
   }
 
-  /// Polytomy resolution samples; pin the stream so refinement tests stay deterministic.
   const REFINEMENT_TEST_SEED: u64 = 0xC0FFEE;
 
-  /// Timescale behind the merger rate polytomy resolution is driven with. The pipeline
-  /// estimates one from the tree when a run carries no coalescent prior; these tests pin it, so
-  /// the rate is the same however `coalescent_tc` is set.
   const REFINEMENT_TEST_TC: f64 = 10.0;
 
   fn refine(
@@ -366,8 +358,6 @@ mod tests {
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
       constraints,
-      // Clone so a failed round leaves the caller's accepted state intact (A5): the refined result is
-      // written back only on success.
       state: state.clone(),
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,

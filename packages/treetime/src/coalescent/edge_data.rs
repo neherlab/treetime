@@ -7,7 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
-/// Per-edge inferred calendar dates and the parent node's child count.
 #[derive(Clone, Debug)]
 pub struct CoalescentEdgeData {
   child_time: CalendarTime,
@@ -32,19 +31,11 @@ impl CoalescentEdgeData {
     self.parent_time
   }
 
-  /// Number of children of the edge's parent node, i.e. this child and its
-  /// siblings (merger events = `n_siblings - 1`).
   pub fn n_siblings(&self) -> f64 {
     self.n_siblings
   }
 }
 
-/// Inferred time of a node for coalescent edge collection.
-///
-/// Prefers the committed `time`. A full forward pass projects non-leaf internal
-/// point estimates to their committed parent time, while leaves retain observed dates.
-/// Falls back to the raw marginal mode for graphs without a full inference pass;
-/// `collect_coalescent_edges()` validates ordering for either representation.
 fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
   entry.time.or(entry.time_dist_likely)
 }
@@ -53,9 +44,6 @@ fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Collects inferred child and parent dates for all non-root edges.
-///
-/// Node times and the `bad_branch` flag come from `node_times`, keyed by node.
 pub fn collect_coalescent_edges(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
@@ -111,8 +99,6 @@ pub fn collect_coalescent_edges(
   Ok(edges)
 }
 
-/// Sums the shared model's endpoint-derived edge contributions and negates to
-/// return the coalescent log-likelihood (higher is more likely).
 pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<LogLh, Report> {
   let total_contribution = edges
     .iter()

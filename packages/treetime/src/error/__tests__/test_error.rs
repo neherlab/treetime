@@ -5,14 +5,12 @@ mod tests {
   use eyre::{Report, WrapErr, eyre};
   use pretty_assertions::assert_eq;
 
-  /// The messages of a report and its transitive causes, outermost first, as color_eyre renders them.
   fn cause_chain(report: &Report) -> Vec<String> {
     report.chain().map(ToString::to_string).collect()
   }
 
   #[test]
   fn test_error_into_report_preserves_cause_chain() {
-    // A three-level report, the shape a pipeline `wrap_err` context produces.
     let original: Report = Err::<(), Report>(eyre!("inner cause"))
       .wrap_err("middle context")
       .wrap_err("outer context")
@@ -20,7 +18,6 @@ mod tests {
 
     let recovered = OperationError::InferenceFailed(original).into_report();
 
-    // The full chain survives classification: no flattening to the top-level message.
     assert_eq!(
       vec!["outer context", "middle context", "inner cause"],
       cause_chain(&recovered)

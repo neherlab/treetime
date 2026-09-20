@@ -13,16 +13,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
 
-/// Durable model inputs shared by the dense and discrete marginal representations: the substitution
-/// model and the numerical guards. The partition owns these; the stage-filled node and edge result
-/// maps are owned separately by the passes' returned values.
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseInputs {
   pub min_branch_length: f64,
-  /// When `true`, root positions whose posterior profile is essentially uniform
-  /// are excluded from the equilibrium-frequency prior in `count_transitions`.
-  /// v0 never filters (always folds in the root MAP state); the nucleotide
-  /// ancestral path enables filtering to drop signal-free gap-only columns.
   pub filter_uninformative_root: bool,
 }
 
@@ -32,10 +25,6 @@ impl DenseInputs {
   }
 }
 
-/// Count posterior-weighted transitions from dense profile matrices, reading the backward and forward
-/// edge messages and the node states by their distinct owners.
-///
-/// Shared by dense and discrete partitions (both store full profile matrices).
 pub fn count_transitions_dense(
   inputs: &DenseInputs,
   gtr: &GTR,

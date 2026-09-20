@@ -35,20 +35,8 @@ mod tests {
   use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-  /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  /// Assert that a sparse marginal posterior distribution is a valid probability distribution.
-  ///
-  /// Checks both variable positions (where leaf states differ, stored as individual probability
-  /// vectors per position) and fixed positions (grouped by conserved nucleotide character at the
-  /// node, each group sharing a single probability vector). For each distribution vector,
-  /// verifies:
-  /// - Finite log-likelihood
-  /// - All elements are finite and non-negative
-  /// - Elements sum to 1.0 within the given ULP tolerance
-  ///
-  /// Kolmogorov axioms: P(s) >= 0 for all states s, and sum_s P(s) = 1.
   fn assert_sparse_profile_normalized(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.value().is_finite(),
@@ -95,12 +83,6 @@ mod tests {
     }
   }
 
-  /// Create a GTR model with non-uniform equilibrium frequencies pi = [0.2, 0.3, 0.15, 0.35].
-  ///
-  /// Non-uniform pi breaks symmetries present in JC69 (where pi = [0.25, 0.25, 0.25, 0.25]),
-  /// exposing bugs that only manifest when nucleotide frequencies are unequal. The model
-  /// remains reversible with default symmetric exchangeabilities (W = None), satisfying
-  /// detailed balance: pi_i * Q_ij = pi_j * Q_ji.
   fn make_nonuniform_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
@@ -112,14 +94,6 @@ mod tests {
     })
   }
 
-  /// Run sparse marginal ancestral reconstruction on a pre-built graph with a given alignment
-  /// and GTR model.
-  ///
-  /// Performs Fitch parsimony compression (classifying sites as variable or invariant) followed
-  /// by two-pass sum-product message passing (backward pass computes partial likelihoods from
-  /// leaves to root, forward pass propagates outgroup information from root to leaves) in the
-  /// sparse representation. Returns the total log-likelihood and the partition for further
-  /// inspection of node/edge posteriors.
   fn run_sparse_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -136,11 +110,6 @@ mod tests {
     Ok((log_lh, recon))
   }
 
-  /// Parse a Newick tree string and compute the sparse marginal log-likelihood.
-  ///
-  /// Convenience wrapper for root-invariance tests that need to evaluate the same alignment
-  /// under different rootings of the same unrooted topology. Returns only the scalar
-  /// log-likelihood, discarding the partition data.
   fn run_sparse_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();
@@ -151,17 +120,6 @@ mod tests {
     Ok(log_lh)
   }
 
-  /// Verify that sparse marginal ancestral reconstruction infers the correct MAP (maximum a
-  /// posteriori) sequences at internal nodes.
-  ///
-  /// Uses a balanced 4-taxon tree ((A,B)AB,(C,D)CD)root with JC69 model. The alignment
-  /// contains gaps, ambiguous characters (N, R), and variable sites. At each internal node,
-  /// the marginal posterior P(s|data,tree,GTR) is computed via two-pass sum-product message
-  /// passing (backward pass for partial likelihoods, forward pass for outgroup messages),
-  /// then the MAP character argmax_s P(s|data,tree,GTR) is extracted at each position.
-  ///
-  /// Expected MAP sequences are pre-computed and compared character-by-character.
-  /// Also verifies the total log-likelihood matches the expected value.
   #[test]
   fn test_ancestral_reconstruction_marginal_sparse() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -212,7 +170,6 @@ mod tests {
     let (mut recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
 
-    // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
     {
       let SparseReconstruction {
@@ -242,10 +199,6 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
-    // `seq.composition` describes the stored parsimony sequence, not the emitted MAP sequence. That is
-    // the accounting `combine_messages` and `infer_gtr` both assume: the former subtracts one count
-    // per variable position keyed by that position's parsimony state, the latter pairs the counts with
-    // the edges' Fitch substitutions. Reconstruction must leave both untouched.
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let sequence = &recon.node_states[&node_key].sequence;
@@ -257,19 +210,10 @@ mod tests {
       assert_eq!(stored_composition, recon.partition.obs_nodes[&node_key].composition);
     }
 
-    // test overall likelihood
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
     Ok(())
   }
 
-  /// Verify that all posterior distributions produced by sparse marginal reconstruction
-  /// are valid probability distributions.
-  ///
-  /// After running Fitch compression and two-pass marginal reconstruction on a 4-taxon
-  /// tree with JC69 model, checks every node profile and every edge outgroup message
-  /// (msg_to_child). For each distribution vector, asserts sum_s P(s) = 1 and P(s) >= 0.
-  /// This validates the normalization step in both the backward (partial likelihood) and
-  /// forward (outgroup message) passes.
   #[test]
   fn test_marginal_sparse_probability_normalization() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -299,8 +243,6 @@ mod tests {
 
     let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
-    // Verify log-likelihood is in expected range (tree with 4 leaves, 16 sites)
-    // Matches test_ancestral_reconstruction_marginal_sparse value
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
 
     for node_data in recon.node_states.values() {
@@ -314,13 +256,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that `marginal_update()` is a fixed-point operation: calling it twice produces
-  /// the same log-likelihood.
-  ///
-  /// Sum-product message passing on a tree (acyclic graph) computes exact marginal posteriors
-  /// in a single backward + forward pass because the message-passing equations have a unique
-  /// fixed point on trees. A second invocation must not change any computed values. This tests
-  /// that no hidden mutable state accumulates across calls.
   #[test]
   fn test_marginal_sparse_update_is_idempotent() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -358,28 +293,13 @@ mod tests {
     let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
 
-    // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
 
-    // Verify idempotency
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
 
-  /// Verify Felsenstein's pulley principle: the total log-likelihood is invariant under
-  /// root placement for a time-reversible substitution model.
-  ///
-  /// For a reversible model, the rate matrix Q satisfies detailed balance:
-  /// pi_i * Q_ij = pi_j * Q_ji. This propagates to the transition probability matrix
-  /// P(t) = exp(Qt), making the likelihood of an unrooted tree independent of where the
-  /// root is placed - the root can be "pulled" along any edge without changing the product
-  /// of transition probabilities. The test re-roots the same 4-taxon unrooted topology at
-  /// three different internal edges and verifies all three rootings produce the same
-  /// log-likelihood.
-  ///
-  /// Uses a non-uniform GTR with pi = [0.2, 0.3, 0.15, 0.35] to ensure the invariance
-  /// holds for asymmetric equilibrium frequencies, not just JC69.
   #[test]
   fn test_marginal_sparse_log_lh_root_invariance_reversible_model() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -418,17 +338,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify specific marginal posterior values at root and internal node AB against Python
-  /// v0 reference values.
-  ///
-  /// Uses a non-uniform GTR with pi = [0.2, 0.3, 0.15, 0.35] on a 4-taxon tree with
-  /// ambiguous characters (N, R) and gaps. Checks the posterior distribution
-  /// P(s|data,tree,GTR) at position 0 for the root node and internal node AB, plus
-  /// position 3 for AB. These reference values come from the Python v0 TreeTime
-  /// implementation (test_scripts/ancestral_sparse.py).
-  ///
-  /// The log-likelihood differs slightly from the dense representation due to different
-  /// handling of ambiguous characters in the sparse representation.
   #[test]
   fn test_marginal_sparse_posterior_values_python_parity() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -458,23 +367,18 @@ mod tests {
 
     let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
-    // note that this LH is slightly different from dense or python treetime due to
-    // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
     pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
 
-    // test variable position distribution at the root (pos 0)
     let root_key = graph.get_exactly_one_root()?.key();
     let root_profile = &recon.node_states[&root_key].profile;
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     pretty_assert_ulps_eq!(&root_profile.variable[&0].dis, &pos_zero_root, epsilon = 1e-6);
 
-    // test variable position distribution at internal node AB (pos 0)
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node should exist");
     let ab_profile = &recon.node_states[&ab_key].profile;
     let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
     pretty_assert_ulps_eq!(&ab_profile.variable[&0].dis, &pos_zero_ab, epsilon = 1e-6);
 
-    // test variable position distribution at internal node AB (pos 3)
     let dis_ab_pos3 = array![
       0.0013914677323952813,
       0.002087201598592933,
@@ -486,25 +390,11 @@ mod tests {
     Ok(())
   }
 
-  /// Verify the probability axiom: the marginal likelihood over all possible leaf state
-  /// combinations sums to 1.0.
-  ///
-  /// For a 3-taxon tree with a 4-state nucleotide alphabet, enumerates all 4^3 = 64
-  /// possible single-site leaf state assignments (a, b, c) in {A, C, G, T}. For each
-  /// triplet, computes the site likelihood P(a, b, c | tree, GTR) via the backward pass
-  /// (Felsenstein's pruning algorithm), which marginalizes over all internal node states.
-  /// The sum over all leaf state triplets must equal 1 by the law of total probability:
-  ///
-  ///   sum_{a,b,c in {A,C,G,T}} P(a, b, c | tree, GTR) = 1
-  ///
-  /// Uses an asymmetric GTR with pi = [0.9, 0.06, 0.02, 0.02] to stress the computation
-  /// with extreme frequency imbalance.
   #[test]
   fn test_total_likelihood_marginal_sparse_all_triplets() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;
 
-    // Use asymmetric GTR model with non-uniform stationary distribution
     let mu = 1.0;
     let pi = array![0.9, 0.06, 0.02, 0.02];
     let gtr = GTR::new(GTRParams {
@@ -520,12 +410,10 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    // Generate all possible triplets (4^3 = 64 combinations)
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
       for &state_b in &states {
         for &state_c in &states {
-          // Create alignment with single position containing this triplet
           let aln: Vec<AlignmentRecord> =
             read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?
               .into_iter()
@@ -548,19 +436,10 @@ mod tests {
       }
     }
 
-    // since we test all possible triplets, the total likelihood should be 1
     pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
     Ok(())
   }
 
-  /// Verify that sparse `edge_subs()` reports current reconstructed branch
-  /// substitutions rather than raw Fitch substitutions.
-  ///
-  /// After marginal inference, the branch result should match the difference
-  /// between the reconstructed parent sequence and child sequence. Stored
-  /// `edge.subs` is only the initial sparse encoding. This test checks:
-  /// - `edge_subs()` matches the reconstructed parent-child diff on every edge
-  /// - the result differs from stored `edge.subs` on at least one edge
   #[test]
   fn test_sparse_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -602,8 +481,6 @@ mod tests {
         .collect::<Result<BTreeMap<_, _>, Report>>()?
     };
 
-    // Reconstruct node sequences, then turn parent-child sequence differences
-    // into the expected branch changes.
     let mut seqs_by_name = BTreeMap::new();
     {
       let SparseReconstruction {
@@ -639,7 +516,6 @@ mod tests {
     let expected = helpers::run_thread_determinism_case(1)?;
     let actual = helpers::run_thread_determinism_case(4)?;
 
-    // Parallel sequence compression and frontier scheduling must not affect messages or MAP state.
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -693,10 +569,6 @@ mod tests {
       })
     }
 
-    /// Convert reconstructed parent and child sequences into canonical substitutions.
-    ///
-    /// This stays simple on purpose: compare the two sequences site by site and
-    /// keep only nucleotide changes.
     pub fn diff_canonical_subs(alphabet: &Alphabet, parent_seq: &Seq, child_seq: &Seq) -> Result<Vec<Sub>, Report> {
       parent_seq
         .iter()
@@ -708,11 +580,6 @@ mod tests {
         .collect()
     }
 
-    /// Build the expected branch-mutation map from reconstructed node sequences.
-    ///
-    /// This keeps the expected result separate from the sparse edge logic under
-    /// test. First reconstruct node sequences, then compare parent and child for
-    /// each edge.
     pub fn expected_edge_subs_by_edge(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -733,7 +600,6 @@ mod tests {
         .collect()
     }
 
-    /// Retrieve one reconstructed node sequence by graph node.
     fn get_reconstructed_seq<'a>(
       _graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,

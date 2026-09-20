@@ -8,21 +8,6 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_primitives::AlignmentRecord;
 
-  /// Construct a deterministic test input: 4-taxon balanced binary tree with
-  /// JC69 model and a 16bp gap-free alignment.
-  ///
-  /// All four sequences share a 15bp invariant prefix and differ only at
-  /// position 16 (A=T, B=A, C=G, D=C), creating a single variable site with
-  /// all four nucleotide states represented. This exercises both the invariant-
-  /// site accumulation path and the per-site Felsenstein pruning at the
-  /// variable position.
-  ///
-  /// Branch lengths are asymmetric (0.05-0.2 subs/site), creating non-uniform
-  /// transition probability matrices P(t) = exp(Q*t) across edges.
-  ///
-  /// JC69 (Jukes-Cantor 1969: uniform equilibrium pi=1/4, equal
-  /// exchangeabilities) is the simplest GTR submodel, isolating dense/sparse
-  /// agreement from GTR parameterization effects.
   fn example_gap_free_input() -> Result<MarginalTestInput, Report> {
     let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
       "
@@ -50,29 +35,6 @@ ACGTACGTACGTACGC
     })
   }
 
-  /// Deterministic dense/sparse log-likelihood consistency test on a fixed input.
-  ///
-  /// Companion to the property-based test
-  /// `test_prop_marginal_dense_sparse_gap_free_consistency` which uses random
-  /// GTR models and tree topologies. This test uses a fixed 4-taxon tree, 16bp
-  /// alignment, and JC69 model to provide a stable, debuggable baseline. Fixed
-  /// inputs make failures reproducible without proptest shrinking.
-  ///
-  /// Both implementations compute the Felsenstein pruning algorithm (Felsenstein
-  /// 1981) via different code paths. Dense stores a K-state probability vector
-  /// (K=4 for nucleotides) at every alignment position for every tree node.
-  /// Sparse compresses invariant sites via Fitch parsimony and stores
-  /// probability vectors only at variable positions, accumulating invariant-site
-  /// contributions separately. The total log-likelihood
-  /// ln P(D|T) = sum_i ln(sum_x pi[x] * L_root_i(x)), where i indexes sites
-  /// and x indexes states, must agree between implementations.
-  ///
-  /// Gap-free alignment is required because sparse compression of gapped
-  /// positions follows a different code path.
-  ///
-  /// Tolerance: `epsilon = 1e-10` absolute difference OR <= 4 ULPs (the
-  /// `pretty_assert_ulps_eq!` default `max_ulps`). With JC69, both paths produce
-  /// near-identical floating-point results (operation ordering differences only).
   #[test]
   fn test_marginal_dense_sparse_example_gap_free_consistency() -> Result<(), Report> {
     let input = example_gap_free_input()?;

@@ -5,13 +5,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-/// Per-partition map of internal node keys to their reconstructed sequences.
 pub type AncestralStateSnapshot = Vec<BTreeMap<GraphNodeKey, Seq>>;
 
-/// Count positions where ancestral sequences differ between two snapshots.
-///
-/// Compares position-by-position across all internal nodes and partitions.
-/// Nodes present in only one snapshot are skipped (topology changes between snapshots).
 pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
   previous
     .iter()
@@ -42,7 +37,6 @@ pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &Ances
     .sum()
 }
 
-/// Snapshot current ancestral sequences for all internal nodes across partitions.
 pub fn capture_ancestral_states(graph: &Graph, partitions: &[PartitionTimetree]) -> AncestralStateSnapshot {
   if partitions.is_empty() {
     return vec![];

@@ -91,7 +91,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    // Serial traversal captures mutable outer state directly, with no Arc/Mutex.
     let mut visited = vec![];
     graph.iter_breadth_first_forward(|node| {
       visited.push(names[&node.key].clone().unwrap());
@@ -110,8 +109,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    // "AB" and "CD" both error, but "AB" is visited first in breadth-first order. The traversal
-    // must surface the "AB" error and stop before visiting "CD" or any deeper node.
     let mut visited = vec![];
     let result = graph.iter_breadth_first_forward(|node| {
       let name = names[&node.key].clone().unwrap();

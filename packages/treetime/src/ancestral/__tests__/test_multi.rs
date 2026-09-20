@@ -7,10 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::sync::random::get_random_number_generator;
 
-/// Two amino-acid partitions of different lengths reconstruct independently on one shared tree, one
-/// partition at a time. Each keeps its own length, and the stop codon `*` is carried as a real state
-/// rather than rejected (the bug when reconstruction used the 20-state no-stop alphabet). Fully
-/// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();

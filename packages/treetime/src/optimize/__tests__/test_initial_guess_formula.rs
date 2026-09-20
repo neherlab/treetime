@@ -34,9 +34,6 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Verify initial_guess_mixed sets branch_length = edge_subs().len() / edge_effective_length()
-  /// for sparse partitions. This is the defining formula: the initial branch length
-  /// is the fraction of non-gap positions with substitutions.
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -82,8 +79,6 @@ mod tests {
     Ok(())
   }
 
-  /// Same formula verification for dense partitions. This test would have caught
-  /// the soft Hamming override that was previously shadowing the sub count.
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();

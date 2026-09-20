@@ -24,8 +24,6 @@ mod tests {
     #[case] expected_per_lineage: f64,
     #[case] expected_total: f64,
   ) {
-    // Oracle: n=max(0.5, k-1), κ=n/(2Tc), and λ=n(n+1)/(2Tc),
-    // matching TreeTime v0 merger_models.py:194-213.
     pretty_assert_ulps_eq!(expected_per_lineage, compute_merger_rate_per_lineage_scalar(k, tc), max_ulps = 0);
     pretty_assert_ulps_eq!(expected_total, compute_merger_rate_total_scalar(k, tc), max_ulps = 0);
   }
@@ -42,15 +40,12 @@ mod tests {
     #[case] expected_per_lineage: f64,
     #[case] expected_total: f64,
   ) {
-    // Oracle: the analytical v0 formulas cited in the representable scalar cases.
     pretty_assert_ulps_eq!(expected_per_lineage, compute_merger_rate_per_lineage_scalar(k, tc));
     pretty_assert_ulps_eq!(expected_total, compute_merger_rate_total_scalar(k, tc));
   }
 
   #[test]
   fn test_integration_compute_merger_rates_scalar_preserves_v0_extreme_ordering() {
-    // Oracle: TreeTime v0 merger_models.py:194-213 evaluates 0.5 in the
-    // numerator before division, avoiding denominator overflow for large Tc.
     pretty_assert_ulps_eq!(
       2.781342323134e-309,
       compute_merger_rate_per_lineage_scalar(2.0, f64::MAX),
@@ -62,8 +57,6 @@ mod tests {
       max_ulps = 0
     );
 
-    // The same ordering halves n before multiplying n(n+1), keeping this
-    // representable case finite where multiplying n(n+1) first overflows.
     pretty_assert_ulps_eq!(
       1.1250000000000002e308,
       compute_merger_rate_total_scalar(1.5e154, 1.0),
@@ -73,8 +66,6 @@ mod tests {
 
   #[test]
   fn test_integration_compute_merger_rates_scalar_propagates_nan_lineage_count() {
-    // Oracle: numpy.maximum in TreeTime v0 merger_models.py:194-213
-    // propagates a NaN lineage count into both merger rates.
     assert!(compute_merger_rate_per_lineage_scalar(f64::NAN, 1.0).is_nan());
     assert!(compute_merger_rate_total_scalar(f64::NAN, 1.0).is_nan());
   }
@@ -85,7 +76,6 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&Distribution::constant(0.01), &lineage_counts)?;
 
-    // κ=50/year over ten years, so H(2000)=500 and H(2010)=0.
     pretty_assert_ulps_eq!(actual.values()[0], 500.0, max_ulps = 1000);
     pretty_assert_ulps_eq!(actual.values()[1], 0.0);
     Ok(())
@@ -97,7 +87,6 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&Distribution::constant(0.01), &lineage_counts)?;
 
-    // κ=25/year for five years plus κ=200/year for five years.
     pretty_assert_ulps_eq!(actual.values()[0], 1125.0, max_ulps = 1000);
     pretty_assert_ulps_eq!(actual.values()[1], 1000.0, max_ulps = 1000);
     pretty_assert_ulps_eq!(actual.values()[2], 0.0);
@@ -114,14 +103,11 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&tc, &lineage_counts)?;
 
-    // Current skyline contract: one midpoint evaluation, Tc(2005)=0.03.
     pretty_assert_ulps_eq!(actual.values()[0], 10.0 / 0.03, max_ulps = 1000);
     pretty_assert_ulps_eq!(actual.values()[1], 0.0);
     Ok(())
   }
 
-  // Production midpoint quadrature is inaccurate when Tc varies inside a lineage interval.
-  // See kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md.
   #[test]
   #[ignore = "varying-Tc midpoint quadrature error (kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md)"]
   fn test_integration_varying_tc_converges_with_refined_lineage_grid() -> Result<(), Report> {
@@ -137,7 +123,6 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&tc, &lineage_counts)?;
 
-    // Analytical oracle: ∫ 1/(0.01+0.004t) dt after shifting t to [0,10].
     let expected = 250.0 * 5.0_f64.ln();
     assert_abs_diff_eq!(expected, actual.values()[0], epsilon = 1e-6);
     Ok(())

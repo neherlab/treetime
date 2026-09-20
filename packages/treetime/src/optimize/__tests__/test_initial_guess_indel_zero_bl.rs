@@ -24,8 +24,6 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::seq::Seq;
 
-  /// All-zero branch length tree. Auto mode (overwrite_valid=false) treats
-  /// zero BL as "valid" and skips the edge - except when indels are present.
   const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 
   #[test]
@@ -47,7 +45,6 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // All edges should remain zero: no indels, zero is valid
     for edge_ref in graph.get_edges() {
       let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Without indels, Auto mode should preserve zero BL, got {bl}");
@@ -59,7 +56,6 @@ mod tests {
   fn test_initial_guess_auto_overrides_zero_bl_with_indels() -> Result<(), Report> {
     let (graph, mut partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    // Inject an indel on the first edge
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     {
       let partition = &mut partitions[0];
@@ -91,14 +87,12 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    // The indel-bearing edge should now have a positive BL
     let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     assert!(
       bl > 0.0,
       "Auto mode should override zero BL on indel-bearing edge, got {bl}"
     );
 
-    // Non-indel edges should remain zero
     for edge_ref in graph.get_edges().skip(1) {
       let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Non-indel edge should remain zero, got {bl}");

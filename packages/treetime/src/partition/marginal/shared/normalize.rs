@@ -37,12 +37,6 @@ pub fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   (dis, total_log_lh)
 }
 
-/// Remove a child's normalization scale from a forward cavity message.
-///
-/// A degenerate profile is represented by a uniform fallback with a
-/// `f64::NEG_INFINITY` scale. Matching sentinels refer to the same removed
-/// factor, so they cancel instead of performing the undefined IEEE-754
-/// operation `-inf - (-inf)`.
 pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
   if node_log_lh == LogLh::IMPOSSIBLE && child_log_lh == LogLh::IMPOSSIBLE {
     LogLh::ZERO
@@ -51,12 +45,6 @@ pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogL
   }
 }
 
-/// Add a normalization scale to a forward cavity message.
-///
-/// The `f64::NEG_INFINITY` value marks a distribution replaced by the uniform
-/// fallback. It has no finite scale to add to the conditional message. Other
-/// non-finite values still propagate so unexpected NaN and positive infinity
-/// remain observable.
 pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
   if normalization == f64::NEG_INFINITY {
     log_lh

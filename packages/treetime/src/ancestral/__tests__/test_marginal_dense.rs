@@ -31,15 +31,6 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-  /// Assert that every row of a dense probability matrix is a valid distribution.
-  ///
-  /// Checks per row:
-  /// - Row sums to 1.0 within the given ULP tolerance (normalization).
-  /// - Row sum is finite (redundant after the ULP check, but provides a clearer
-  ///   diagnostic message if the ULP assertion is ever removed).
-  /// - All values are finite (no NaN or infinity from numerical overflow).
-  /// - No significantly negative values (probabilities must be non-negative,
-  ///   with a small tolerance of -1e-15 for floating-point rounding).
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
@@ -58,13 +49,6 @@ mod tests {
     }
   }
 
-  /// Construct a GTR model with non-uniform equilibrium frequencies
-  /// pi = [0.2, 0.3, 0.15, 0.35].
-  ///
-  /// The asymmetric stationary distribution (A=20%, C=30%, G=15%, T=35%) ensures
-  /// the rate matrix Q = S * diag(pi) is not proportional to JC69, exercising
-  /// the full GTR eigendecomposition. Uses default exchangeability (W = None),
-  /// which produces equal off-diagonal rates before weighting by pi.
   fn make_nonuniform_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
@@ -76,15 +60,6 @@ mod tests {
     })
   }
 
-  /// Run dense marginal ancestral reconstruction and return the log-likelihood
-  /// and partition array.
-  ///
-  /// Initializes a `PartitionMarginalDense` with the given GTR model and
-  /// alignment, then runs `initialize_marginal` which performs two-pass
-  /// sum-product message passing (backward pass computes partial likelihoods
-  /// from leaves to root, forward pass propagates outgroup information from
-  /// root to leaves) to compute marginal posterior distributions P(s|data) at
-  /// every node and position.
   fn run_dense_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -101,11 +76,6 @@ mod tests {
     Ok((log_lh, recon))
   }
 
-  /// Parse a Newick tree string and compute the dense marginal log-likelihood.
-  ///
-  /// Convenience wrapper for root-invariance tests that need to evaluate the
-  /// same alignment under different rootings of the same unrooted topology.
-  /// Returns only the scalar log-likelihood, discarding the partition data.
   fn run_dense_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();
@@ -146,21 +116,6 @@ mod tests {
     .collect()
   });
 
-  /// Verify that dense marginal ancestral reconstruction infers the expected
-  /// ancestral sequences at internal nodes.
-  ///
-  /// Uses a 7-node tree ((A,B)AB,(C,D)CD)root where all nodes - both leaves
-  /// and internal - have input sequences in the alignment. The alignment
-  /// includes gaps, ambiguity codes (N, R), and all four nucleotides to
-  /// exercise diverse code paths in the marginal reconstruction. This
-  /// distinguishes the dense test from the sparse variant, which provides
-  /// sequences only for the 4 leaf taxa.
-  ///
-  /// Gaps are treated as fully ambiguous (equivalent to N). The test
-  /// compares inferred ancestral
-  /// sequences at root, AB, and CD against expected sequences using
-  /// `ancestral_reconstruction_marginal`, which picks the MAP (maximum a
-  /// posteriori) state argmax_s P(s|data) at each position.
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
     let expected = read_many_fasta_str(
@@ -212,19 +167,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that all marginal posterior distributions are properly normalized
-  /// after dense reconstruction.
-  ///
-  /// After two-pass sum-product message passing (Felsenstein's pruning
-  /// algorithm backward, then forward propagation), checks every node
-  /// profile and every edge message-to-child. For each row of the probability
-  /// matrix, asserts sum_s P(s|data) = 1 within 4 ULPs, all values finite,
-  /// and no significantly negative entries. This validates the normalization
-  /// property of marginal posterior distributions at every node and position.
-  ///
-  /// Also verifies the total log-likelihood against a known-good regression
-  /// value for this specific tree (7 nodes), alignment (16 sites), and JC69
-  /// model combination.
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_7_TAXON)?;
@@ -239,19 +181,16 @@ mod tests {
 
     let (log_lh, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
 
     let max_ulps = 4;
 
-    // Node profiles: marginal posterior P(s|data) at each position
     for node_data in recon.node_states.values() {
       if !node_data.profile.dis.is_empty() {
         assert_dense_rows_normalized(&node_data.profile.dis, max_ulps);
       }
     }
 
-    // Edge messages: outgroup message from parent toward child subtree
     for edge_data in recon.edges.forward.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
@@ -261,20 +200,6 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that `marginal_update` is idempotent: running it twice produces
-  /// the same log-likelihood.
-  ///
-  /// Two-pass sum-product message passing (belief propagation) on a tree
-  /// converges exactly in a single backward + forward pass - no iterative
-  /// refinement is needed. Calling `marginal_update` a second time must
-  /// produce identical results because the message-passing equations have a
-  /// unique fixed point on tree-structured factor graphs.
-  ///
-  /// This test first runs `initialize_marginal` (which includes one
-  /// `marginal_update` call), then calls `marginal_update` twice more and
-  /// verifies both calls return the same log-likelihood. Any deviation would
-  /// indicate state corruption, accumulating numerical drift, or incorrect
-  /// in-place mutation of node/edge profiles.
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(TREE_7_TAXON)?;
@@ -294,29 +219,12 @@ mod tests {
     let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
 
-    // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
 
-  /// Verify that the total log-likelihood is invariant under root placement
-  /// for a time-reversible GTR model (Felsenstein's pulley principle).
-  ///
-  /// For time-reversible models where Q = S * diag(pi), detailed balance holds:
-  /// pi[s] * P(s'|s,t) = pi[s'] * P(s|s',t). This implies the likelihood is
-  /// independent of where the root is placed on the unrooted tree, because the
-  /// root can be "pulled" along any edge without changing the product of
-  /// transition probabilities (the "pulley principle").
-  ///
-  /// Tests three different rootings of the same 4-taxon unrooted tree topology
-  /// {A,B,C,D} with a non-uniform GTR model (pi = [0.2, 0.3, 0.15, 0.35]):
-  /// - tree1: root between (A,B) and (C,D) clades
-  /// - tree2: root at the A-B ancestor (AB node becomes root)
-  /// - tree3: root at the C-D ancestor (CD node becomes root)
-  ///
-  /// All three must produce the same log-likelihood.
   #[test]
   fn test_marginal_dense_log_lh_root_invariance_reversible_model() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(
@@ -355,35 +263,11 @@ mod tests {
     Ok(())
   }
 
-  /// Verify the law of total probability: the total likelihood over all possible
-  /// leaf state combinations sums to 1.0.
-  ///
-  /// For a single alignment position on a 3-taxon tree ((A,B),C)root, the
-  /// likelihood summed over all 4^3 = 64 possible nucleotide triplets must
-  /// equal 1.0:
-  ///
-  ///   sum_{s_A, s_B, s_C} P(s_A, s_B, s_C | tree, GTR) = 1
-  ///
-  /// where for this topology (root has children: internal node I and leaf C):
-  ///
-  ///   P(s_A, s_B, s_C | tree, GTR) = sum_{s_root, s_I} pi[s_root]
-  ///     * P(s_I | s_root, t_I) * P(s_A | s_I, t_A) * P(s_B | s_I, t_B)
-  ///     * P(s_C | s_root, t_C)
-  ///
-  /// This is a consequence of the law of total probability applied to the
-  /// joint distribution over observable leaf states, with all internal node
-  /// states marginalized out via Felsenstein's pruning algorithm.
-  ///
-  /// Uses an asymmetric GTR model (pi = [0.9, 0.06, 0.02, 0.02]) with long
-  /// branches (up to 0.6 substitutions/site) to stress numerical precision.
-  /// Each of the 64 single-site alignments is evaluated independently, and the
-  /// exponentiated log-likelihoods are summed.
   #[test]
   fn test_total_likelihood_marginal_dense_all_triplets() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;
 
-    // Use asymmetric GTR model with non-uniform stationary distribution
     let mu = 1.0;
     let pi = array![0.9, 0.06, 0.02, 0.02];
     let gtr = GTR::new(GTRParams {
@@ -414,7 +298,6 @@ mod tests {
       }
     }
 
-    // since we test all possible triplets, the total likelihood should be 1
     pretty_assert_ulps_eq!(1.0, total_lh, max_ulps = 4);
     Ok(())
   }

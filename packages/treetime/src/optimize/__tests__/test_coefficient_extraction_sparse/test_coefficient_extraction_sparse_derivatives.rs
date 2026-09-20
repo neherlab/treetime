@@ -33,7 +33,6 @@ mod tests {
     let h = 1e-6;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
 
-    // Numerical first derivative: (f(t+h) - f(t-h)) / 2h
     let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length");
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h).expect("valid branch length");
     let numerical_d1 = (metrics_plus.log_lh.value() - metrics_minus.log_lh.value()) / (2.0 * h);
@@ -61,8 +60,6 @@ mod tests {
       gtr,
     };
 
-    // Numerical second derivative via central difference of first derivative:
-    // d2 ≈ (d1(t+h) - d1(t-h)) / 2h
     let h = 1e-5;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
     let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length");
@@ -72,9 +69,6 @@ mod tests {
     assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-9);
   }
 
-  /// Second derivative with high multiplicity must match numerical approximation.
-  /// Multiplicity is a linear factor on the per-site Hessian contribution;
-  /// the squared term applies only to the per-site derivative ratio.
   #[rustfmt::skip]
   #[rstest]
   #[case::short( 0.01)]
@@ -131,8 +125,6 @@ mod tests {
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1).expect("valid branch length");
     let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1).expect("valid branch length");
 
-    // All three quantities scale linearly with multiplicity:
-    // ℓ(t) = m * ln(L), ℓ'(t) = m * d1, ℓ''(t) = m * (d2 - d1^2)
     pretty_assert_ulps_eq!(metrics3.log_lh.value(), 3.0 * metrics1.log_lh.value(), max_ulps = 100);
     pretty_assert_ulps_eq!(metrics3.derivative, 3.0 * metrics1.derivative, max_ulps = 100);
     pretty_assert_ulps_eq!(
@@ -142,8 +134,6 @@ mod tests {
     );
   }
 
-  /// Sparse with multiplicity=1 must produce identical metrics to dense for the
-  /// same coefficients and eigenvalues.
   #[rustfmt::skip]
   #[rstest]
   #[case::short( 0.01)]
@@ -157,7 +147,6 @@ mod tests {
     let coefficients_a = array![0.4, 0.3, 0.2, 0.1];
     let coefficients_b = array![0.3, 0.3, 0.2, 0.2];
 
-    // Sparse: two sites with multiplicity 1
     let sparse_contribution = PartitionContribution {
       site_contributions: vec![
         SiteContribution {
@@ -172,7 +161,6 @@ mod tests {
       gtr: gtr.clone(),
     };
 
-    // Dense: same two sites as rows of a 2D array
     let coefficients_2d = Array2::from_shape_vec((2, 4), {
       let mut v = coefficients_a.to_vec();
       v.extend(coefficients_b.to_vec());

@@ -16,8 +16,6 @@ mod tests {
   const GAP: u8 = b'-';
   const UNK: u8 = b'N';
 
-  // --- GapFill::OnlyTerminal ---
-
   #[rustfmt::skip]
   #[rstest]
   #[case::leading_gaps(          "---ACGT",      "NNNACGT")]
@@ -46,8 +44,6 @@ mod tests {
     assert_eq!("", s.as_str());
   }
 
-  // --- GapFill::All ---
-
   #[rustfmt::skip]
   #[rstest]
   #[case::leading_gaps(          "---ACGT",      "NNNACGT")]
@@ -71,8 +67,6 @@ mod tests {
     assert_eq!("", s.as_str());
   }
 
-  // --- GapFill::None ---
-
   #[rustfmt::skip]
   #[rstest]
   #[case::leading_gaps(          "---ACGT",      "---ACGT")]
@@ -87,8 +81,6 @@ mod tests {
     assert_eq!(expected, s.as_str());
   }
 
-  // --- Amino acid alphabet (gap='-', unknown='X') ---
-
   #[rustfmt::skip]
   #[rstest]
   #[case::aa_terminal(       "---ARNDCQ---", "XXXARNDCQXXX")]
@@ -101,11 +93,8 @@ mod tests {
     assert_eq!(expected, s.as_str());
   }
 
-  // --- v0 parity: OnlyTerminal matches v0 seq2array(fill_overhangs=True) ---
-
   #[test]
   fn test_gap_fill_v0_parity_typical_sequence() {
-    // Simulates incomplete sequencing: leading and trailing gaps with internal variation
     let mut s = seq("----ACGTACGT--ACGT----");
     apply_gap_fill(&mut s, GapFill::OnlyTerminal, c(GAP), c(UNK));
     assert_eq!("NNNNACGTACGT--ACGTNNNN", s.as_str());

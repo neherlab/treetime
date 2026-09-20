@@ -26,9 +26,6 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Alignment where every position has A on leaves A/C and C on leaves B/D.
-  /// Internal node reconstructions are uncertain between A and C, making them
-  /// sensitive to equilibrium frequencies.
   fn biased_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -71,10 +68,6 @@ mod tests {
       .collect()
   }
 
-  /// Regression: after replacing the dummy JC69 with a non-uniform GTR,
-  /// marginal_update must be re-run before initial_guess_mixed. Stale JC69
-  /// node posteriors produce a different (biased) initial branch length guess
-  /// than fresh posteriors computed with the real model.
   #[test]
   fn test_stale_jc69_messages_bias_initial_guess() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = biased_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -83,8 +76,6 @@ mod tests {
       ..Default::default()
     })?;
 
-    // Scenario 1: stale JC69 messages (the bug)
-    // Replace GTR but do NOT re-run marginal_update.
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_stale_names = nwk_parsed.names();
     let graph_stale = nwk_parsed.graph;
@@ -114,8 +105,6 @@ mod tests {
     }
     let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
-    // Scenario 2: fresh F81 messages (the fix)
-    // Replace GTR AND re-run marginal_update.
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_fresh_names = nwk_parsed.names();
     let graph_fresh = nwk_parsed.graph;
@@ -158,9 +147,6 @@ mod tests {
     Ok(())
   }
 
-  /// After the initialization sequence with the fix, a redundant
-  /// marginal_update should not change the initial guess: the messages
-  /// are already computed with the real GTR.
   #[test]
   fn test_initial_guess_idempotent_after_gtr_update() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = biased_alignment()?.into_iter().map(AlignmentRecord::from).collect();
@@ -169,7 +155,6 @@ mod tests {
       ..Default::default()
     })?;
 
-    // Run full initialization with the fix: JC69, update, replace, update, guess
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -197,12 +182,6 @@ mod tests {
     }
     let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
-    // Run marginal_update + initial_guess again on the same graph.
-    // Branch lengths changed from initial_guess, so marginal_update
-    // recomputes messages with the new branch lengths. The resulting
-    // initial guess may differ from bl_first (new transition matrices).
-    // But running the SAME sequence twice from identical state must
-    // produce the same result.
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph2_names = nwk_parsed.names();
     let graph2 = nwk_parsed.graph;

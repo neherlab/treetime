@@ -12,7 +12,6 @@ pub struct Composition {
 }
 
 impl Composition {
-  /// Initialize counters with zeros, given an alphabet
   pub fn new<I>(alphabet_chars: I, gap: AsciiChar) -> Self
   where
     I: IntoIterator<Item = AsciiChar>,
@@ -21,7 +20,6 @@ impl Composition {
     Self { counts, gap }
   }
 
-  /// Construct a `Composition` directly from a precomputed map and a gap character.
   pub fn from_counts<I: IntoIterator<Item = (AsciiChar, usize)>>(counts: I, gap: AsciiChar) -> Self {
     Self {
       counts: counts.into_iter().collect(),
@@ -80,13 +78,11 @@ impl Composition {
     s.bytes().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()
   }
 
-  /// Reflect sequence mutation in the composition counts
   pub fn add_sub(&mut self, sub: &Sub) {
     self.adjust_count(sub.reff(), -1);
     self.adjust_count(sub.qry(), 1);
   }
 
-  /// Reflect sequence indel in the composition counts
   pub fn add_indel(&mut self, indel: &InDel) {
     let adjust_by = if indel.is_deletion() { -1 } else { 1 };
     for nuc in &indel.seq {

@@ -17,13 +17,6 @@ pub mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  /// Felsenstein site likelihood for a two-taxon rooted tree: `(A:t1,B:t2)root;`.
-  ///
-  /// Formula (Felsenstein 1981, degenerate case with no internal nodes besides root):
-  /// `L = sum_s pi[s] * P(obs_A | s, t1) * P(obs_B | s, t2)`.
-  ///
-  /// `P(i | j, t) = expQt[i, j]` is the transition probability from ancestral state `j`
-  /// to descendant state `i` over branch length `t` in the column-stochastic convention.
   pub fn analytical_two_taxon_likelihood(gtr: &GTR, obs_a: usize, obs_b: usize, t1: f64, t2: f64) -> f64 {
     let exp_qt1 = gtr.expQt(t1);
     let exp_qt2 = gtr.expQt(t2);
@@ -35,10 +28,6 @@ pub mod tests {
     likelihood
   }
 
-  /// Felsenstein site likelihood for a star tree `(A:t,B:t,C:t,D:t)root;`.
-  ///
-  /// Formula (generalization to multifurcation at root):
-  /// `L = sum_s pi[s] * prod_i P(obs_i | s, t)`.
   pub fn analytical_star_tree_likelihood(gtr: &GTR, observations: &[usize], t: f64) -> f64 {
     let exp_qt = gtr.expQt(t);
 
@@ -53,10 +42,6 @@ pub mod tests {
     likelihood
   }
 
-  /// Felsenstein site likelihood for a three-taxon tree `((A:t_a,B:t_b)AB:t_ab,C:t_c)root;`.
-  ///
-  /// Minimal topology with a non-trivial internal node, requiring the full recursive
-  /// Felsenstein pruning pass.
   pub fn analytical_three_taxon_likelihood(
     gtr: &GTR,
     obs_a: usize,
@@ -82,7 +67,6 @@ pub mod tests {
     likelihood
   }
 
-  /// Map a nucleotide character to its index in the state vector: `A=0`, `C=1`, `G=2`, `T=3`.
   pub fn state_index(c: char) -> usize {
     match c {
       'A' => 0,
@@ -93,11 +77,6 @@ pub mod tests {
     }
   }
 
-  /// Run dense marginal ancestral reconstruction and return the total log-likelihood.
-  ///
-  /// Convenience wrapper: parse the Newick tree and FASTA alignment from strings,
-  /// construct a single dense partition with the given GTR model, and run both passes via
-  /// `initialize_marginal`.
   pub fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();

@@ -41,9 +41,6 @@ pub(crate) fn validate_trait_names(
     );
   }
 
-  // Metadata naming samples absent from the tree is the common case: metadata files are shared
-  // across analyses and routinely list more samples than a pruned or subsampled tree. Warn for
-  // visibility (matching the dates subsystem) instead of rejecting the run.
   let missing_in_tree: IndexSet<String> = trait_names.difference(&leaf_names).cloned().collect();
   if !missing_in_tree.is_empty() {
     let sample = missing_in_tree.iter().take(10).join(", ");

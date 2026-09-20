@@ -7,8 +7,6 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_io::nwk::nwk_read_str;
 
-  /// A topology change clears the value-resident branch-length distribution and backward message on
-  /// every edge, so the next branch-distribution build starts each surviving edge from scratch.
   #[test]
   fn test_timetree_state_reset_date_edges_clears_distribution_and_message() -> Result<(), Report> {
     let graph = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?.graph;
@@ -32,8 +30,6 @@ mod tests {
     Ok(())
   }
 
-  /// Rebuilding the maps keeps the value-resident branch-length distribution and backward message for
-  /// edges already in the state, so they carry across passes.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
     let graph = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?.graph;

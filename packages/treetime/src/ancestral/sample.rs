@@ -15,10 +15,6 @@ pub enum SampleMode {
 }
 
 impl SampleMode {
-  /// Whether the given node samples its sequence from the posterior profile.
-  ///
-  /// `Argmax` never samples (deterministic most-likely state everywhere). `Root` samples only
-  /// at the root, matching augur's `sample_from_profile='root'`. `All` samples at every node.
   pub fn samples_node(self, is_root: bool) -> bool {
     match self {
       SampleMode::Argmax => false,

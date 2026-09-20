@@ -8,7 +8,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_multiple_partitions() {
-    // Grid search should work with multiple contributions
     let coefficients1 = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let coefficients2 = array![[0.8, 0.06, 0.06, 0.08], [0.06, 0.8, 0.06, 0.08],];
     let contribution1 = make_dense_contribution(coefficients1);
@@ -20,7 +19,6 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    // Verify combined log-LH is maximized across the grid
     let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let best_log_lh = evaluate_mixed(&contributions, best_bl)
       .expect("valid branch length")
@@ -38,8 +36,6 @@ mod tests {
 
   #[test]
   fn test_grid_search_uniform_coefficients() {
-    // With uniform coefficients, any branch length gives similar log-LH
-    // Grid search should still return a valid result
     let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];

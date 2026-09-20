@@ -16,8 +16,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::json_read_str;
 
-  /// Plain data holder for the per-node expected values compared against JSON. Node data lives in
-  /// value maps, so this is a test-local record, not a graph node type.
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
   struct TestNode {
     name: Option<String>,
@@ -29,13 +27,6 @@ mod tests {
 
   type TestGraph = Graph;
 
-  /// The returned date constraints projected per node and sorted by name, with the fixed date
-  /// constraint checked against the time distribution and then cleared: loading records the input in
-  /// both maps, so spelling it out a second time in every expected payload below would say nothing
-  /// new.
-  ///
-  /// A certain date carries probability one, whose stored ordinate under `NegLog` is `-ln(1) = 0`,
-  /// so every expected `ampl` below is `0.0` rather than `1.0` (see `date_constraint_to_distribution`).
   fn node_constraints(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     graph: &TestGraph,

@@ -1,15 +1,3 @@
-//! Pre-gathered per-edge value maps the branch-length optimizer consumes.
-//!
-//! The optimizer reads, per edge, each partition's substitution-likelihood contribution and indel
-//! count, and one run-level total sequence length. Gathering these into value maps once, off the
-//! reconstructions, lets the optimizer and the indel-likelihood evaluators operate on plain maps
-//! instead of reaching back into a partition edge by edge.
-//!
-//! Contribution order is significant: the mixed-partition evaluator folds per-site likelihoods across
-//! partitions, so the per-edge contribution vector is built dense entries first then sparse, matching
-//! the order the optimizer summed them before. Indel counts, substitution counts, and effective
-//! lengths are integer sums and so order-independent.
-
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::timetree::partition::PartitionTimetree;
@@ -19,8 +7,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Per-edge branch-length optimization contributions from every partition, dense entries first then
-/// sparse.
 pub fn gather_edge_contributions(
   graph: &Graph,
   dense: &[DenseReconstruction],
@@ -46,7 +32,6 @@ pub fn gather_edge_contributions(
     .collect()
 }
 
-/// Summed indel event count per edge across every partition.
 pub fn gather_edge_indel_counts(
   graph: &Graph,
   dense: &[DenseReconstruction],
@@ -71,7 +56,6 @@ pub fn gather_edge_indel_counts(
     .collect()
 }
 
-/// Summed substitution count per edge (`edge_subs().len()`) across every partition.
 pub fn gather_edge_sub_counts(
   graph: &Graph,
   dense: &[DenseReconstruction],
@@ -95,7 +79,6 @@ pub fn gather_edge_sub_counts(
     .collect()
 }
 
-/// Summed effective (canonical) alignment length per edge across every partition.
 pub fn gather_edge_effective_lengths(
   graph: &Graph,
   dense: &[DenseReconstruction],
@@ -119,13 +102,11 @@ pub fn gather_edge_effective_lengths(
     .collect()
 }
 
-/// Total sequence length across every partition.
 pub fn total_sequence_length(dense: &[DenseReconstruction], sparse: &[SparseReconstruction]) -> usize {
   dense.iter().map(DenseReconstruction::sequence_length).sum::<usize>()
     + sparse.iter().map(SparseReconstruction::sequence_length).sum::<usize>()
 }
 
-/// Per-edge optimization contributions from a timetree partition set, in partition order.
 pub fn gather_timetree_edge_contributions(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -147,7 +128,6 @@ pub fn gather_timetree_edge_contributions(
     .collect()
 }
 
-/// Summed indel event count per edge across a timetree partition set.
 pub fn gather_timetree_edge_indel_counts(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -169,7 +149,6 @@ pub fn gather_timetree_edge_indel_counts(
     .collect()
 }
 
-/// Total sequence length across a timetree partition set.
 pub fn timetree_total_sequence_length(partitions: &[PartitionTimetree]) -> usize {
   partitions.iter().map(PartitionTimetree::sequence_length).sum()
 }

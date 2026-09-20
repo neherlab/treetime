@@ -18,11 +18,6 @@ pub struct OutlierRecord {
   pub residual: f64,
 }
 
-/// Collect outlier records from the clock state for leaves marked as outliers.
-///
-/// The outlier flag and divergence come from the threaded [`ClockState`] value, and the given date
-/// from the date-state `given_dates` map (the same node dates the filter regressed on); the leaf name
-/// from the `names` map.
 pub fn collect_outliers(
   graph: &Graph,
   clock_state: &ClockState,
@@ -57,7 +52,6 @@ pub fn collect_outliers(
     .collect_vec()
 }
 
-/// Report outlier branches that violate molecular clock.
 pub fn report_bad_branches(
   graph: &Graph,
   clock_state: &ClockState,
@@ -87,14 +81,6 @@ pub fn report_bad_branches(
   }
 }
 
-/// Convert outlier flags to bad_branch flags for backward pass exclusion.
-///
-/// After clock_filter_inplace marks leaves as outliers (is_outlier=true in the clock state), this
-/// sets bad_branch=true on those leaves and propagates upward: an internal node
-/// is bad only when all its children are bad.
-///
-/// The outlier flag is read from the threaded [`ClockState`] value; the bad-branch flag is written
-/// into the threaded [`TimetreeState`] value, the home the coalescent and date passes read.
 pub fn apply_outlier_bad_branches(
   graph: &Graph,
   clock_state: &ClockState,
@@ -110,10 +96,6 @@ pub fn apply_outlier_bad_branches(
   propagate_bad_branches(graph, state)
 }
 
-/// Recompute internal bad-branch state from the current topology.
-///
-/// Each internal node's flag is the conjunction of its children's flags, read from the threaded
-/// [`TimetreeState`] value and written back into it.
 pub fn propagate_bad_branches(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   graph.iter_depth_first_postorder_forward(|node| {
     if node.is_leaf {

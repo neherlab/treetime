@@ -13,11 +13,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Unified optimization function for mixed partition types.
-///
-/// Main optimization loop that works with both sparse and dense partitions simultaneously. For each
-/// edge, it reads the pre-gathered per-partition contributions and indel count and optimizes the branch
-/// length using the selected method.
 pub fn run_optimize_mixed(
   graph: &Graph,
   total_length: usize,
@@ -89,10 +84,6 @@ pub fn run_optimize_mixed_inner(
 
   let one_mutation = 1.0 / total_length as f64;
 
-  // For a bifurcating root under reversible models, only the sum of root-edge branch
-  // lengths is identifiable (Pulley Principle). Capture the pre-optimization ratio of the
-  // two root edges; after the per-edge loop, redistribute the optimized total in this ratio.
-  // See kb/issues/M-optimize-root-bifurcating-independent-vs-joint.md
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.key();
     let branch_length = branch_lengths[&edge_key]
@@ -102,10 +93,6 @@ pub fn run_optimize_mixed_inner(
 
   let root_state = BifurcatingRootState::capture(graph, branch_lengths)?;
 
-  // Each per-edge optimum depends only on that edge's input length and its partition
-  // contributions, so the parallel map is order free; collect the results and write them into the
-  // shared branch-length map serially afterward (a `BTreeMap` cannot be mutated from parallel
-  // workers).
   let branch_lengths_in = &*branch_lengths;
   let optimized: Vec<(GraphEdgeKey, f64)> = graph
     .get_edges()
@@ -120,8 +107,6 @@ pub fn run_optimize_mixed_inner(
 
       let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
 
-      // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
-      // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
       if branch_length == 0.0 && indel_count > 0 {
         branch_length = if indel_rate > 0.0 {
           (indel_count as f64 / indel_rate).max(one_mutation)
@@ -130,23 +115,14 @@ pub fn run_optimize_mixed_inner(
         };
       }
 
-      // When branch length is zero and any site has non-positive likelihood at t=0
-      // (mismatched certain states), evaluating ln(site_lh) or dividing by site_lh
-      // produces -inf/inf. Bump to a small positive value so the evaluator operates
-      // in the well-defined domain.
       if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
         branch_length = one_mutation;
       }
 
-      // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
-      // so zero branch length is never optimal. Only check the substitution-based criterion
-      // when there are no indels.
       if indel_count == 0 && is_zero_branch_optimal(contributions) {
         return Ok((edge_key, 0.0));
       }
 
-      // Lower bound for Newton/Brent steps on indel-bearing edges. The Poisson derivative
-      // diverges at t=0, so we must prevent the optimizer from landing exactly at zero.
       let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
 
       let new_branch_length = match method {
@@ -199,7 +175,6 @@ pub fn run_optimize_mixed_inner(
           )
         },
         BranchOptMethod::NewtonLog => {
-          // ln(t) requires t > 0; bump zero branch lengths to one_mutation
           let bl = if branch_length == 0.0 {
             one_mutation
           } else {
@@ -218,10 +193,6 @@ pub fn run_optimize_mixed_inner(
         },
       }?;
 
-      // Post-optimization boundary reconciliation. See `reconcile_zero_boundary`
-      // for the full rationale. The input `branch_length` is used to size the
-      // verification grid (the optimizer's output may be clamped to zero or to a
-      // tiny floor like $10^{-12}$ and is unsuitable as an extent).
       let new_branch_length = reconcile_zero_boundary(
         new_branch_length,
         branch_length,
@@ -281,25 +252,6 @@ impl BifurcatingRootState {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Initial estimation of branch lengths for mixed partitions.
-///
-/// Computes per-edge substitution count over canonical (non-ambiguous,
-/// non-deletion) positions via `edge_subs().len()` for both sparse and
-/// dense partitions.
-///
-/// The denominator is the per-edge effective alignment length rather than the raw
-/// sequence length, so gap-heavy edges get correctly scaled rates.
-///
-/// For edges with indels but no substitutions, the Poisson maximum likelihood estimate (MLE) $\hat{t} = k / \mu$
-/// provides a non-zero initial estimate so Newton optimization starts from a
-/// reasonable point (the indel derivative diverges at $t = 0$).
-///
-/// When `overwrite_valid` is false, edges that already have a finite branch
-/// length are skipped, preserving calibrated input values while filling in
-/// edges with missing (`None`) or invalid (`NaN`) branch lengths.
-///
-/// When `no_indels` is true, indel counts and rates do not affect either
-/// branch validity or the estimated branch length.
 #[allow(clippy::too_many_arguments)]
 pub fn initial_guess_mixed(
   graph: &Graph,
@@ -329,10 +281,6 @@ pub fn initial_guess_mixed(
 
     if !overwrite_valid {
       if let Some(bl) = branch_lengths.get(&edge_key).copied().flatten() {
-        // A finite positive BL is always valid. A zero BL is valid only
-        // if the edge has no indels: with indels present, the Poisson
-        // derivative diverges at t=0 and estimate_indel_rate() needs
-        // positive total BL to produce a nonzero rate.
         if is_valid_branch_length_value(bl) && (bl > 0.0 || indel_count == 0) {
           continue;
         }
@@ -347,18 +295,14 @@ pub fn initial_guess_mixed(
       let sub_estimate = sub_count as f64 / effective_length as f64;
       if sub_estimate == 0.0 && indel_count > 0 {
         if indel_rate > 0.0 {
-          // Poisson MLE for indel-only branches: t = k / mu
           indel_count as f64 / indel_rate
         } else {
-          // Bootstrap: rate unknown (e.g. all-zero input tree), seed with one_mutation
-          // so that estimate_indel_rate produces a positive rate in run_optimize_mixed
           one_mutation
         }
       } else {
         sub_estimate
       }
     } else if indel_count > 0 {
-      // All positions are gaps/ambiguous but indels are present
       one_mutation
     } else {
       one_mutation * 0.1

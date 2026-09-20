@@ -9,8 +9,6 @@ mod tests {
   use std::sync::Arc;
   use std::sync::atomic::{AtomicUsize, Ordering};
 
-  /// No node is dated on both sides of the iteration, so no movement is measurable and the
-  /// criterion falls back to the ancestral-sequence count.
   #[test]
   fn test_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
     let graph = helpers::empty_graph();
@@ -27,8 +25,6 @@ mod tests {
     Ok(())
   }
 
-  /// Node times are the primary signal: a round that moved them is not converged even though the
-  /// reconstructed sequences are identical, which is the case `n_diff` alone cannot see.
   #[test]
   fn test_optimizer_continues_while_node_times_move() -> Result<(), Report> {
     let graph = helpers::empty_graph();
@@ -63,8 +59,6 @@ mod tests {
     Ok(())
   }
 
-  /// Settled times are not enough on their own: a round that resolved a polytomy changed the
-  /// tree, so the next round has to run whatever the times did.
   #[test]
   fn test_optimizer_settled_times_do_not_converge_while_polytomies_resolve() -> Result<(), Report> {
     let graph = helpers::empty_graph();
@@ -148,7 +142,6 @@ mod tests {
     Ok(())
   }
 
-  /// The optimizer emits one trace metric to the injected sink per recorded iteration.
   #[test]
   fn test_optimizer_trace_sink_receives_each_iteration() -> Result<(), Report> {
     let graph = helpers::empty_graph();
@@ -177,7 +170,6 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use treetime_graph::graph::Graph;
 
-    /// A trace sink that counts emissions, for asserting the optimizer emits once per iteration.
     pub struct CountingSink(pub Arc<AtomicUsize>);
 
     impl TraceSink for CountingSink {
@@ -187,7 +179,6 @@ mod tests {
       }
     }
 
-    /// A measured movement of `years`, as a single node moving that far would produce.
     pub fn moved_by(years: f64) -> NodeTimeChange {
       NodeTimeChange {
         max: Some(years),

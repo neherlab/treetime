@@ -198,11 +198,8 @@ mod tests {
     }
   }
 
-  // === Boundary unit tests ===
-
   #[test]
   fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
-    // Every child shares the same mutation. One group = all children.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -227,7 +224,6 @@ mod tests {
     assert_eq!(merged, 1);
     graph.build()?;
 
-    // Root has 1 child (the new node), which has all 5 original children.
     let root = graph.get_roots().next().expect("root");
     assert_eq!(root.degree_out(), 1);
 
@@ -241,8 +237,6 @@ mod tests {
 
   #[test]
   fn test_merge_overlapping_groups_greedy_selection() -> Result<(), Report> {
-    // A,B share {sub0}. B,C share {sub1}. B in both groups.
-    // Greedy picks one, second group excluded for this round.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -270,7 +264,6 @@ mod tests {
 
   #[test]
   fn test_merge_polytomy_reduced_to_binary_stops() -> Result<(), Report> {
-    // 3 children, 2 share. After merge: binary tree, loop stops.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -301,8 +294,6 @@ mod tests {
 
   #[test]
   fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
-    // Two independent polytomies: root has {I, D, E, F}, I has {A, B, C}.
-    // A,B share sub0 under I. D,E share sub1 under root.
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -333,8 +324,6 @@ mod tests {
 
   #[test]
   fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
-    // A,B share a sub. C,D share an indel. No overlap between groups.
-    // Both groups should merge (possibly in one round).
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -372,9 +361,6 @@ mod tests {
 
   #[test]
   fn test_merge_multi_partition_asymmetric_sharing() -> Result<(), Report> {
-    // Partition 1: A,B share sub at pos 0. Partition 2: A,C share sub at pos 50.
-    // Total shared(A,B) = 1 (from p1). Total shared(A,C) = 1 (from p2).
-    // Both groups have equal score. Greedy picks one.
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -412,7 +398,6 @@ mod tests {
     assert!(merged >= 1);
     graph.build()?;
 
-    // A must be in exactly one merged group, not both.
     let leaf_count = graph
       .get_leaves()
       .filter(|n| names.get(&n.key()).and_then(|x| x.as_ref()).is_some())

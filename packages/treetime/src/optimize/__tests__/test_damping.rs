@@ -40,14 +40,12 @@ mod tests {
     let graph: Graph = graph;
     let original = branch_lengths;
 
-    // Simulate optimization: double every branch length in the map.
     let mut optimized: BTreeMap<GraphEdgeKey, Option<f64>> =
       original.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 2.0))).collect();
     let after_optim = optimized.clone();
 
     apply_damping(&mut optimized, &original, 0.0, 0);
 
-    // damping=0.0 should leave the optimized values untouched
     assert_eq!(optimized, after_optim);
     Ok(())
   }
@@ -69,12 +67,10 @@ mod tests {
     let graph: Graph = graph;
     let old_bls = branch_lengths;
 
-    // Set all "optimized" branch lengths to zero.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
-    // bl = 0.0 * (1 - old_weight) + 1.0 * old_weight = old_weight
     for bl in bls.values() {
       assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
@@ -90,16 +86,11 @@ mod tests {
     let graph: Graph = graph;
     let old_bls = branch_lengths;
 
-    // Set "optimized" branch lengths to 3x the input.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
       old_bls.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 3.0))).collect();
 
     apply_damping(&mut bls, &old_bls, 0.75, 0);
 
-    // At iteration 0, damping_factor = 0.75, new_weight = 0.25
-    // Edge A: 0.3 * 0.25 + 0.1 * 0.75 = 0.075 + 0.075 = 0.15
-    // Edge B: 0.6 * 0.25 + 0.2 * 0.75 = 0.15 + 0.15 = 0.30
-    // Epsilon accounts for Newick float parsing roundtrip
     for (&key, &old) in &old_bls {
       let damped = bls[&key].unwrap();
       let expected = if (old.unwrap() - 0.1).abs() < 1e-9 { 0.15 } else { 0.30 };
@@ -128,7 +119,6 @@ mod tests {
 
       let damped = bls.values().next().unwrap().unwrap();
 
-      // Each subsequent iteration should give more weight to the optimized value
       assert!(
         damped > prev_damped || iteration == 0,
         "Iteration {iteration}: damped {damped} should be > previous {prev_damped}"
@@ -180,19 +170,11 @@ mod tests {
       "Damped optimization did not stop within {max_iter} iterations"
     );
 
-    // Final log-likelihood must be within a tight range around the observed fixed point.
-    // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Measure the likelihood from
-    // the loop's final branch-length map so `final_lh` reflects the state after the last
-    // branch-length update, not the pre-update measurement recorded in `lh_history`.
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh > -73.0 && final_lh < -72.0,
       "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
     );
-
-    // The three-condition convergence check (converged, oscillating, worsened) detects
-    // the 2-cycle on this toy tree. The loop stops via the oscillating or converged
-    // condition before sign flips accumulate.
 
     Ok(())
   }
@@ -217,9 +199,6 @@ mod tests {
 
     let (dense_partitions, sparse_partitions, initial_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
-    // Force all 10 iterations (never break on convergence) so the non-regression check
-    // exercises the full damping trajectory rather than possibly stopping after two
-    // near-identical likelihoods.
     let dp = 0.0;
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
@@ -236,9 +215,6 @@ mod tests {
     let sparse_partitions = result.sparse_partitions;
     let dense_partitions = result.dense_partitions;
 
-    // Strict non-regression: damped optimization must not degrade likelihood.
-    // Damping blends new and old branch lengths as a convex combination,
-    // so overall likelihood should improve or hold steady.
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh >= initial_lh,

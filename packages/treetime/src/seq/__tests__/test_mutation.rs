@@ -47,7 +47,6 @@ mod tests {
 
   #[test]
   fn test_mutation_compose_substitutions_chain() -> Result<(), Report> {
-    // Parent: A→G at pos 0, child: G→T at pos 0 => net: A→T
     let parent = vec![helpers::sub(b'A', 0, b'G')];
     let child = vec![helpers::sub(b'G', 0, b'T')];
     let result = compose_substitutions(&parent, &child)?;
@@ -57,7 +56,6 @@ mod tests {
 
   #[test]
   fn test_mutation_compose_substitutions_cancellation() -> Result<(), Report> {
-    // Parent: A→G at pos 0, child: G→A at pos 0 => cancel (back to original)
     let parent = vec![helpers::sub(b'A', 0, b'G')];
     let child = vec![helpers::sub(b'G', 0, b'A')];
     let result = compose_substitutions(&parent, &child)?;
@@ -67,10 +65,6 @@ mod tests {
 
   #[test]
   fn test_mutation_compose_substitutions_mixed() -> Result<(), Report> {
-    // pos 0: parent only (passthrough)
-    // pos 2: chain (A→G + G→T = A→T)
-    // pos 4: child only (passthrough)
-    // pos 6: cancellation (C→T + T→C = none)
     let parent = vec![
       helpers::sub(b'A', 0, b'T'),
       helpers::sub(b'A', 2, b'G'),
@@ -93,7 +87,6 @@ mod tests {
 
   #[test]
   fn test_mutation_compose_substitutions_output_sorted_by_position() -> Result<(), Report> {
-    // Interleaved positions to verify merge order
     let parent = vec![
       helpers::sub(b'A', 1, b'T'),
       helpers::sub(b'G', 3, b'C'),
@@ -119,7 +112,6 @@ mod tests {
 
   #[test]
   fn test_mutation_compose_substitutions_all_cancel() -> Result<(), Report> {
-    // Every position cancels
     let parent = vec![
       helpers::sub(b'A', 0, b'G'),
       helpers::sub(b'C', 1, b'T'),
@@ -137,7 +129,6 @@ mod tests {
 
   #[test]
   fn test_mutation_event_strings_expand_aligned_deletion() -> Result<(), Report> {
-    // Oracle: TreeTime v0 spells gap transitions as one-based per-position substitutions.
     let event = MutationEvent::Deletion(AlignedMutation::new((1, 3), seq![helpers::c(b'C'), helpers::c(b'G')])?);
     let actual = mutation_event_strings(&event)?;
     let expected = vec!["C2-".to_owned(), "G3-".to_owned()];

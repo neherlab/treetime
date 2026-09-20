@@ -9,13 +9,6 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
-  /// Build a fixed 4-taxon test input for marginal normalization verification.
-  ///
-  /// Tree topology: `((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01`
-  /// Alignment: 8-character nucleotide sequences with shared prefix ACGTACG and all four
-  /// nucleotides (T, A, G, C) at position 8, producing one variable site with maximum
-  /// state diversity and seven fixed (invariant) sites.
-  /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies (pi = 1/4).
   fn example_input() -> Result<MarginalTestInput, Report> {
     let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
       "
@@ -43,8 +36,6 @@ ACGTACGC
     })
   }
 
-  /// Validate that the example alignment has the expected shape: 4 sequences named
-  /// A, B, C, D, each of length 8. Guards against accidental corruption of test fixtures.
   fn assert_example_alignment_shape(alignment: &[AlignmentRecord]) -> Result<(), Report> {
     let expected_names = ["A", "B", "C", "D"];
     for (index, record) in alignment.iter().enumerate() {
@@ -67,28 +58,6 @@ ACGTACGC
     Ok(())
   }
 
-  /// Verify that Felsenstein's pruning algorithm (two-pass sum-product message passing on
-  /// the tree) produces normalized marginal posterior distributions in the dense
-  /// representation.
-  ///
-  /// The algorithm computes marginal posteriors P(x_k | D) at each node k via two passes:
-  /// 1. Backward (leaves to root): partial likelihoods propagate upward (ingroup messages).
-  /// 2. Forward (root to leaves): outgroup messages propagate downward.
-  ///    The marginal posterior at each node is the product of ingroup and outgroup messages,
-  ///    normalized to sum to 1 over all states at each alignment position.
-  ///
-  /// Checked invariants:
-  /// - Log-likelihood is finite and non-positive (L = sum_s ln P(D_s) <= 0, since each
-  ///   site likelihood P(D_s) <= 1).
-  /// - Every row of every node profile matrix sums to 1.0 within 1e-8 (valid marginal
-  ///   posterior distribution). Nodes without profiles (not yet populated) are skipped.
-  /// - Every row of every edge outgroup message matrix sums to 1.0 within 1e-8
-  ///   (normalized message from the rest of the tree toward the child subtree).
-  /// - All values are finite and non-negative (within -1e-14 tolerance for numerical
-  ///   noise from normalization).
-  ///
-  /// Example-based companion to `test_prop_marginal_normalization_dense`.
-  /// Uses a fixed 4-taxon tree with JC69 model.
   #[test]
   fn test_marginal_normalization_example_dense() -> Result<(), Report> {
     let input = example_input()?;
@@ -123,27 +92,6 @@ ACGTACGC
     Ok(())
   }
 
-  /// Verify that Felsenstein's pruning algorithm (two-pass sum-product message passing on
-  /// the tree) produces normalized marginal posterior distributions in the sparse
-  /// representation.
-  ///
-  /// The sparse representation uses Fitch parsimony compression to identify variable vs.
-  /// fixed positions before running the marginal algorithm. Variable positions store
-  /// individual probability vectors. Fixed positions are grouped by their conserved
-  /// nucleotide character (the character that is invariant across the subtree at that
-  /// node), each group sharing a single probability vector. Both components must be valid
-  /// probability distributions after the two-pass algorithm (backward + forward).
-  ///
-  /// Checked invariants:
-  /// - Log-likelihood is finite and non-positive (L = sum_s ln P(D_s) <= 0).
-  /// - Node and edge profile `log_lh` fields are finite.
-  /// - Every variable-position distribution sums to 1.0 within 1e-8.
-  /// - Every fixed-character distribution sums to 1.0 within 1e-8.
-  /// - All values are finite and non-negative (within -1e-14 tolerance for numerical
-  ///   noise from normalization).
-  ///
-  /// Example-based companion to `test_prop_marginal_normalization_sparse`.
-  /// Uses the same fixed 4-taxon tree and JC69 model as the dense variant.
   #[test]
   fn test_marginal_normalization_example_sparse() -> Result<(), Report> {
     let input = example_input()?;

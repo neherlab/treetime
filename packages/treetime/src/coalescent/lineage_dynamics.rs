@@ -12,13 +12,6 @@ use treetime_utils::make_error;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Computes k(t) distribution from tree events in calendar-year coordinates.
-///
-/// k(t) is the number of concurrent lineages at time t.
-/// The function is piecewise constant, stepping at each merger event.
-/// Events must be sorted by increasing time (past to present). Event deltas are
-/// expressed in the time-before-present direction, so they are subtracted while
-/// traversing calendar time toward the present.
 pub fn compute_lineage_count_distribution(
   events: &[(CalendarTime, i32)],
   terminal_lineage_count: i32,
@@ -30,14 +23,11 @@ pub fn compute_lineage_count_distribution(
     return make_error!("Terminal lineage count must be non-negative, got {terminal_lineage_count}");
   }
 
-  // Aggregate events at same time
   let mut aggregated = BTreeMap::new();
   for &(time, delta) in events {
     *aggregated.entry(OrderedFloat(time.value())).or_insert(0) += delta;
   }
 
-  // Older than the root, the sampled tree has one ancestral lineage. Moving
-  // toward the present reverses the event deltas collected for TBP traversal.
   let mut current_count = 1_i32;
   let (breakpoints, values): (Vec<_>, Vec<_>) = aggregated
     .into_iter()

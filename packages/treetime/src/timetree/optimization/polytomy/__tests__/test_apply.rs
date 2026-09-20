@@ -14,8 +14,6 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
-  /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
-  /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
   fn polytomy_graph() -> Result<(Graph, GraphNodeKey, Vec<ChildRef>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
     let names = nwk_parsed.names();
@@ -57,7 +55,6 @@ mod tests {
     let mut state = TimetreeState::new(&graph);
     let original_edges: Vec<GraphEdgeKey> = children.iter().map(|child| child.edge_key).collect();
 
-    // Merge A and B (lineages 0 and 1) at 2010; C stays a direct child of P.
     let plan = SubtreePlan {
       mergers: vec![Merger {
         time: 2010.0,
@@ -179,10 +176,8 @@ mod tests {
     let time_length_of =
       |edge_key: GraphEdgeKey| -> f64 { state.edge(edge_key).time_length.expect("time_length must be set") };
 
-    // A and B now hang off the merger at 2010.
     pretty_assert_abs_diff_eq!(time_length_of(children[0].edge_key), 10.0, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(time_length_of(children[1].edge_key), 8.0, epsilon = 1e-12);
-    // C still hangs off P at 2000.
     pretty_assert_abs_diff_eq!(time_length_of(children[2].edge_key), 16.0, epsilon = 1e-12);
 
     let merger_key = parent_of(&graph, children[0].node_key);
@@ -232,7 +227,6 @@ mod tests {
     let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
-    // ((A,B) at 2012, C) at 2005 -- the second merger consumes the first.
     let plan = SubtreePlan {
       mergers: vec![
         Merger {
@@ -280,7 +274,6 @@ mod tests {
     let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
-    // Lineage 4 is the second merger's own node, which does not exist yet.
     let plan = SubtreePlan {
       mergers: vec![
         Merger {

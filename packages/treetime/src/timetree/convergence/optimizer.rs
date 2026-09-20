@@ -10,10 +10,6 @@ use log::info;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 
-/// Sink for per-iteration timetree optimizer convergence metrics.
-///
-/// The optimizer emits one metric per iteration. The CLI supplies an implementation that encodes the
-/// trace (for example as CSV) outside the core, so the core holds no writer and no output format.
 pub trait TraceSink: Send {
   fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report>;
 }

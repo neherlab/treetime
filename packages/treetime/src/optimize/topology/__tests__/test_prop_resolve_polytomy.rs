@@ -11,10 +11,6 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
 
   proptest! {
-    /// The routine never increases the total mutation count, and when it changes anything
-    /// the count strictly decreases: the first component of the (mutation count, node count)
-    /// potential falls on every applied merge or hoist. This also exercises termination -
-    /// a non-decreasing potential would hang the test.
     #[test]
     fn test_prop_resolve_polytomy_potential_decreases(
       n_children in 3_usize..7,
@@ -35,9 +31,6 @@ mod tests {
       }
     }
 
-    /// Structural invariants hold after resolution: leaves are preserved, branch lengths stay
-    /// non-negative, and the result is still a single-rooted tree (each non-root node keeps
-    /// exactly one parent edge).
     #[test]
     fn test_prop_resolve_polytomy_preserves_tree(
       n_children in 3_usize..7,
@@ -70,13 +63,6 @@ mod tests {
       prop_assert_eq!(roots, 1, "expected exactly one root");
     }
 
-    /// A site whose distinguishing substitution is scattered across a bifurcating root reduces to
-    /// its reroot-invariant parsimony cost of one mutation. Under `root -> {V, S}`, V holds `a`
-    /// majority-A children and `g` children matching the sibling S's G state; the routine hoists
-    /// the G-group above V and leaves a single A->G change, independent of how many children carry
-    /// it (that is, independent of where the root sits relative to the bipartition). Independent
-    /// per-child substitutions at distinct sites are never touched, so the total settles at
-    /// `1 + own`, and the count still falls strictly whenever anything changes.
     #[test]
     fn test_prop_resolve_polytomy_bifurcating_root_reduces_to_bipartition_cost(
       g in 1_usize..5,
@@ -131,10 +117,6 @@ mod tests {
         .sum()
     }
 
-    /// Build a `root -> U -> V -> {C0..}` case. The parent edge U->V carries `k`
-    /// substitutions `A->C` at positions `0..k`. Each child reverts the M_v positions set in
-    /// its mask and adds its own distinct substitutions at high positions. Returns the graph,
-    /// the sparse partition, and the initial total mutation count.
     pub fn build_case(
       n_children: usize,
       k: usize,
@@ -160,7 +142,6 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
-      // M_v: k substitutions A->C at positions 0..k.
       let parent_subs: Vec<Sub> = (0..k).map(|pos| Sub::new(c(b'A'), pos, c(b'C')).unwrap()).collect();
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![("U".to_owned(), "V".to_owned(), parent_subs)];
@@ -171,7 +152,6 @@ mod tests {
         let mut subs: Vec<Sub> = Vec::new();
         for pos in 0..k {
           if mask & (1 << pos) != 0 {
-            // Revert the parent substitution: C->A.
             subs.push(Sub::new(c(b'C'), pos, c(b'A')).unwrap());
           }
         }
@@ -188,12 +168,6 @@ mod tests {
       (graph, node_names, partition, node_states, total, branch_lengths)
     }
 
-    /// Build a bifurcating-root case `root -> {V, S}`. V has `g` children in the sibling's G
-    /// state (each reverts the site across the root) and `a` children in the majority A state.
-    /// The single distinguishing site is position 0: the sibling edge root->S and every G-child
-    /// edge carry `A->G`, V's parent edge is empty there. Each child also carries `own_counts`
-    /// independent substitutions at distinct high positions, which no move removes. Returns the
-    /// graph, partition, the initial total, and the expected post-resolve total (`1 + own`).
     pub fn build_bifurcating_case(
       g: usize,
       a: usize,

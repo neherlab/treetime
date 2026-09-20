@@ -35,8 +35,6 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 
   for threads in [1, 2, 4, 8] {
     let (graph, recon, branch_lengths) = setup();
-    // The update consumes the reconstruction and returns the next one, so the bench carries it from
-    // iteration to iteration in a slot rather than updating one value in place.
     let mut slot = Some(recon);
     let pool = ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {

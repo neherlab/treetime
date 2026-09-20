@@ -16,10 +16,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
-/// Reroot tree for optimal temporal signal and update partition state.
-///
-/// Performs clock-based rerooting, then calls `apply_reroot` on each partition
-/// with bundled topology changes (edge split, edge merge, inverted edges).
 #[allow(clippy::too_many_arguments)]
 pub fn reroot_tree(
   graph: &mut Graph,
@@ -46,10 +42,6 @@ pub fn reroot_tree(
     reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 
-  // Perform clock-based rerooting on the threaded clock state. Re-read the node dates from the date
-  // state into fresh clock inputs while preserving the value-resident divergence and outlier flag on
-  // the clock results, so the regression excludes the leaves the clock filter marked. The reroot
-  // rebuilds the returned results and remaps the inputs to match the new topology.
   clock_state.reseed_transitional(graph);
   let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times(constraints));
   let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(

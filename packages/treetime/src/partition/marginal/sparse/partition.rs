@@ -23,10 +23,6 @@ use treetime_primitives::{Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
-/// The sparse marginal representation as durable, borrowed inputs: the substitution model, the
-/// alphabet/length/root metadata, and the Fitch-compressed per-node and per-edge observations. The
-/// stage-filled node states, backward/forward messages, and edge estimates are owned separately by the
-/// values the passes return.
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
@@ -73,10 +69,6 @@ impl PartitionMarginalSparse {
     let parent_non_char = &self.obs_nodes[&parent_key].non_char;
     let child_non_char = &self.obs_nodes[&child_key].non_char;
 
-    // non_char covers both gaps and unknowns (positions that do not evolve
-    // under the substitution model). For internal nodes, non_char is the
-    // intersection of children's non_char (Fitch backward pass), so a
-    // position is excluded only when all descendants lack data there.
     let non_char_positions: usize = range_union(&[parent_non_char.clone(), child_non_char.clone()])
       .iter()
       .map(|(start, end)| end - start)
@@ -112,8 +104,6 @@ impl PartitionMarginalSparse {
     self.node_sequence(node_states, node_key)
   }
 
-  /// Ensure the observation maps have entries for all nodes and edges in the graph, dropping stale
-  /// entries. Placeholder observations are created for nodes and edges introduced by topology edits.
   pub fn reconcile_topology(&mut self, graph: &Graph) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|n| n.key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().map(|e| e.key()).collect();
@@ -131,11 +121,6 @@ impl PartitionMarginalSparse {
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  /// Advance one node's reconstruction state during the preorder walk, recording only what the output
-  /// accessors cannot derive again: a posterior draw, or a tip whose observed ambiguity and optional
-  /// imputation are not a function of the parsimony chain and the posterior. A MAP internal node stays
-  /// derivable from the chain, so nothing is materialized for it here; [`Self::node_sequence`] rebuilds
-  /// it on demand. Returns `Some(())` when the node emits a sequence, `None` for a suppressed tip.
   pub fn advance_node_state(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -174,8 +159,6 @@ impl PartitionMarginalSparse {
       node_states.get_mut(&node.key)?.emitted = Some(seq);
     }
 
-    // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
-    // sequence), but is not emitted to the reconstructed FASTA.
     if !include_leaves && node.is_leaf {
       return None;
     }
@@ -183,11 +166,6 @@ impl PartitionMarginalSparse {
     Some(())
   }
 
-  /// Reconstruct one node's sequence, advancing its state and reading the result back off the partition.
-  ///
-  /// This is [`Self::advance_node_state`] composed with [`Self::node_sequence`]: sampled draws and tips
-  /// are read from the recorded `emitted` sequence, MAP internal nodes from the parsimony chain. Returns
-  /// `None` for a suppressed tip.
   pub fn reconstruct_node_sequence(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -243,5 +221,4 @@ impl MarginalPasses for PartitionMarginalSparse {
   }
 }
 
-/// The per-edge results one sparse marginal update returns.
 pub type SparseMarginalEdges = MarginalEdges<SparseEdgeBackward, SparseEdgeForward, Vec<Sub>>;

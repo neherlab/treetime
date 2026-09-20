@@ -14,7 +14,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
 
 impl PartitionTimetree {
-  /// Sequence length represented by this partition.
   pub fn get_sequence_length(&self) -> usize {
     match self {
       Self::Dense(family) => family.partition.length,
@@ -22,7 +21,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// Root-relative substitution log likelihood for one node, read from this partition's node states.
   pub fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
     match self {
       Self::Dense(family) => family.partition.get_log_lh(&family.node_states, node_key),
@@ -30,8 +28,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// Seed leaf node states for the dense representation from the alignment; a no-op for sparse, whose
-  /// node states are seeded from the Fitch handoff at construction.
   pub fn attach_sequences(
     &mut self,
     graph: &Graph,
@@ -43,8 +39,6 @@ impl PartitionTimetree {
     Ok(())
   }
 
-  /// Run a full marginal update, returning the partition at the refreshed node states, messages, and
-  /// estimates together with the substitution log likelihood.
   pub fn marginal_update(
     self,
     graph: &Graph,
@@ -62,7 +56,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The deterministic most-likely-state sequence for one node (convergence reads).
   pub fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Dense(family) => family
@@ -74,8 +67,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// Reconstruct one node's output sequence, recording it into the node state, or `None` for a
-  /// suppressed tip.
   pub fn reconstruct_node_sequence(
     &mut self,
     node: &GraphNodeForward,
@@ -105,7 +96,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// MAP-derived nucleotide substitutions on one edge (parent -> child).
   pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
       Self::Dense(family) => family.edge_subs(graph, edge_key),
@@ -113,7 +103,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// Grouped aligned insertions and deletions for one edge.
   pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Dense(family) => family.edge_indels(edge_key),
@@ -121,7 +110,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The reconstructed root sequence.
   pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     match self {
       Self::Dense(family) => family.root_sequence(graph),
@@ -129,7 +117,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The reconstructed sequence for one node.
   pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Dense(family) => family.node_sequence(node_key),
@@ -137,7 +124,6 @@ impl PartitionTimetree {
     }
   }
 
-  /// The substitutions and indels on one edge as one mutation list on the given track.
   pub fn edge_mutations(
     &self,
     graph: &Graph,
@@ -148,7 +134,6 @@ impl PartitionTimetree {
   }
 }
 
-/// Sum of per-partition root log-likelihoods after marginal reconstruction.
 pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
   let root_key = graph.get_exactly_one_root()?.key();
   let log_lh = partitions
@@ -160,8 +145,6 @@ pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<L
   Ok(log_lh)
 }
 
-/// Run a marginal update over every timetree partition, returning the updated partitions and the
-/// summed substitution log likelihood.
 pub fn marginal_update_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -176,7 +159,6 @@ pub fn marginal_update_timetree(
     })
 }
 
-/// Attach leaf sequences (dense) then run the initial marginal update over every timetree partition.
 pub fn initialize_marginal_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -189,9 +171,6 @@ pub fn initialize_marginal_timetree(
   marginal_update_timetree(graph, branch_lengths, partitions)
 }
 
-/// Walk the graph in preorder, reconstructing every node's sequence from the first partition,
-/// emitting each reconstructed sequence to `visitor`, and returning the reconstructed sequences keyed
-/// by node id. Mirrors the ancestral command's reconstruction walk for the timetree partitions.
 pub fn ancestral_reconstruction_timetree(
   graph: &Graph,
   include_leaves: bool,

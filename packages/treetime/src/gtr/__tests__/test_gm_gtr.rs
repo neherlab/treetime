@@ -10,17 +10,6 @@ mod tests {
 
   use helpers::{compare_gtr, load_gm_gtr_inputs, load_gm_gtr_outputs};
 
-  // Golden master tests for GTR models.
-  //
-  // Validates Rust v1 implementation against Python v0 reference outputs.
-  // Inputs (gm_gtr_inputs.json) define test parameters for each model.
-  // Outputs (gm_gtr_outputs.json) were captured from v0 using gm_gtr_capture.
-  // Tests load both files and verify v1 produces identical results.
-  //
-  // See also:
-  // - https://en.wikipedia.org/wiki/Characterization_test
-  // - https://en.wikipedia.org/wiki/Legacy_system
-
   #[rstest]
   #[case::default("default")]
   #[case::mu_0_5("mu_0.5")]
@@ -301,10 +290,8 @@ mod tests {
       assert_abs_diff_eq!(gtr.W, expected.w, epsilon = 1e-14);
       assert_abs_diff_eq!(gtr.Q(), expected.q, epsilon = 1e-14);
 
-      // Compare sorted eigenvalues (ordering may differ; near-zero values have sign noise)
       assert_abs_diff_eq!(sorted(&gtr.eigvals), sorted(&expected.eigenvals), epsilon = 1e-14);
 
-      // Compare expQt at test time points
       for entry in &expected.exp_qts {
         let actual = gtr.expQt(entry.time);
         assert_abs_diff_eq!(actual, entry.exp_qt, epsilon = 1e-14);

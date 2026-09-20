@@ -33,9 +33,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
-  /// Verifies the full timetree pipeline completes without panic when coalescent
-  /// is enabled. Before the Formula discretization fixes, this would panic on
-  /// Formula * Function multiplication or on Formula methods like likely_time().
   #[rustfmt::skip]
   #[rstest]
   #[case::tc_0_1( 0.1)]

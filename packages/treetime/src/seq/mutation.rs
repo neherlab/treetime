@@ -36,7 +36,6 @@ impl Mutation {
   }
 }
 
-/// Combine one edge's substitutions and indels into a single mutation list on the given track.
 pub fn combine_edge_mutations(
   subs: Vec<Sub>,
   indels: &[InDel],
@@ -165,24 +164,11 @@ impl Sub {
     }
   }
 
-  /// Invert the substitution direction by swapping ref and query
   pub fn invert(&mut self) {
     std::mem::swap(&mut self.reff, &mut self.qry);
   }
 }
 
-/// Compose substitutions from two consecutive edges into net substitutions.
-///
-/// When collapsing node B between parent A and child C, substitutions on
-/// edges A→B (`parent_subs`) and B→C (`child_subs`) are composed to produce
-/// the net A→C substitutions:
-///
-/// - Non-overlapping positions: kept as-is from whichever edge
-/// - Same position, chain: parent ref→X + child X→qry = net ref→qry
-/// - Same position, cancellation: parent ref→X + child X→ref = no net change
-///
-/// Both input slices must be sorted by position with at most one entry per
-/// position. The output is sorted by position.
 pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
@@ -219,11 +205,9 @@ pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<
           ps.qry(),
           cs.reff()
         );
-        // Compose: net change is parent.reff → child.qry
         if ps.reff() != cs.qry() {
           result.push(Sub::new(ps.reff(), ps.pos(), cs.qry())?);
         }
-        // parent.reff == child.qry: mutations cancel, no net change
         pi += 1;
         ci += 1;
       },
@@ -243,7 +227,6 @@ impl FromStr for Sub {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  /// Parses nucleotide substitution from string. Expects IUPAC notation commonly used in bioinformatics.
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     if let Some(captures) = regex!(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
@@ -262,7 +245,6 @@ impl FromStr for Sub {
   }
 }
 
-/// Parse position from 1-based bioinformatics notation to 0-based index.
 pub fn parse_pos(s: &str) -> Result<usize, Report> {
   let pos = to_eyre_error(s.parse::<usize>()).wrap_err_with(|| format!("Unable to parse position: '{s}'"))?;
   if pos < 1 {

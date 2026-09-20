@@ -15,7 +15,6 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Brent's method optimization for finding the best split point along an edge
 pub fn optimize_brent(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
@@ -26,11 +25,8 @@ pub fn optimize_brent(
     edge, params.brent_max_iters, params.brent_tolerance
   );
 
-  // Set up Brent solver with bounds [0.0, 1.0]
-  // 0.0 means placing the root at the target node, 1.0 means placing it at the source node.
   let solver = BrentOpt::new(0.0, 1.0);
 
-  // Run optimization with observer
   let result = Executor::new(cost_fn, solver)
     .configure(|cfg| {
       cfg
@@ -55,7 +51,6 @@ pub fn optimize_brent(
     result.state.iter, best_split, best_chisq
   );
 
-  // Evaluate the cost function one more time to get the ClockSet data
   let best_clock_set = cost_fn.evaluate_clock_set(best_split)?;
 
   Ok(FindRootResult {

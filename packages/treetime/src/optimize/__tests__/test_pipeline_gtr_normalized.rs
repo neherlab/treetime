@@ -15,13 +15,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
-  // `optimize --gtr=infer` must serialize the GTR after rate normalization.
-  // `normalize_partition_rates` rescales `mu` so the average substitution rate
-  // is 1 and absorbs the rate into branch lengths; for a single partition this
-  // drives `mu` to exactly 1.0. Reading a creation-time snapshot instead would
-  // report the raw inferred `mu` (essentially never 1.0) while shipping
-  // rate-scaled branch lengths, an internally inconsistent model. This test
-  // fails on that stale snapshot.
   #[test]
   fn test_optimize_pipeline_infer_gtr_mu_normalized() -> Result<(), Report> {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -65,11 +58,8 @@ mod tests {
 
     let output = run(&params, input, &names, &NoopCancel, &NoopProgress)?;
 
-    // Normalization contract: average rate 1 => mu == 1.0 for a single partition.
     assert_ulps_eq!(output.gtr.mu, 1.0, max_ulps = 4);
 
-    // Single source of truth: the serialized GTR is the partition's live model,
-    // not an independent snapshot.
     let partition_mu = output.sparse_partitions[0].gtr.mu;
     assert_ulps_eq!(output.gtr.mu, partition_mu, max_ulps = 4);
 

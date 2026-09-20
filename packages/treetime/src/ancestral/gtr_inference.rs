@@ -8,7 +8,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Infer GTR model from Fitch substitution counts on a compressed partition.
 pub fn infer_gtr_fitch(
   partition: &PartitionFitch,
   graph: &Graph,
@@ -25,11 +24,6 @@ pub fn infer_gtr_fitch(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Count mutations from Fitch substitutions on a compressed partition for GTR inference.
-///
-/// Reads `fitch_subs()` directly. GTR inference runs before marginal inference
-/// (the marginal pass needs the GTR model), so only Fitch-derived mutations
-/// are available at this point.
 pub fn get_mutation_counts_fitch(
   graph: &Graph,
   partition: &PartitionFitch,

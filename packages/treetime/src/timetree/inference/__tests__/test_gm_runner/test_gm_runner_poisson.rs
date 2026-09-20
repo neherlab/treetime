@@ -13,18 +13,10 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
-  // --- Poisson tests ---
-
   #[rustfmt::skip]
 #[rstest]
-  // #[case::dengue_20("dengue_20")]       // TODO: missing internal node times, leaf dates not refined
   #[case::ebola_20("ebola_20")]
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // #[case::lassa_l_20("lassa_L_20")]     // TODO: missing internal node times, leaf dates not refined
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: missing internal node times, leaf dates not refined
-  // #[case::rsv_a_20("rsv_a_20")]         // TODO: missing internal node times, leaf dates not refined
-  // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
-  // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
   #[ignore = "dense-vs-v0 discrepancy: max 0.27 years (grid-width limited, kb/issues/M-timetree-branch-grid-uniform-resolution.md)"]
   fn test_gm_runner_poisson(#[case] dataset: &str) -> Result<(), Report> {
@@ -47,8 +39,6 @@ mod tests {
       case.sequence_length(),
       GRID_POINTS,
     )?;
-    // Seed the node date state from the constraint values, then insert the Poisson branch-length
-    // distributions the builder returns into the edge state.
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     for (edge_key, dist) in branch_distributions {
       state.edge_mut(edge_key).branch_length_distribution = Some(dist);

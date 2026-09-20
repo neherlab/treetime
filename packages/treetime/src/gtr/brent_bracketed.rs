@@ -1,64 +1,24 @@
 use argmin::core::{CostFunction, Error, IterState, KV, Problem, Solver, State, TerminationReason};
 
-/// Golden-section ratio `(3 - sqrt(5)) / 2`, used for the fallback step when
-/// parabolic interpolation is rejected.
 const GOLDEN: f64 = 0.381_966_011_250_105;
 
-/// Brent's method for one-dimensional minimization, seeded with a three-point
-/// bracket.
-///
-/// Combines parabolic interpolation with golden-section fallback (Brent 1973).
-/// Unlike argmin's [`argmin::solver::brent::BrentOpt`], which seeds its first
-/// evaluation at the golden-section point of `[min, max]` and ignores any
-/// interior estimate, this solver is seeded at the interior bracket point `xb`
-/// with `f(xa) > f(xb) < f(xc)`. This reproduces `scipy.optimize.brent`
-/// (equivalently `scipy.optimize.minimize_scalar(method="brent")` with a
-/// length-3 `bracket`), which TreeTime v0 uses for GTR rate optimization
-/// (`treeanc.py: optimize_gtr_rate`).
-///
-/// The seeding difference is not cosmetic: on a flat likelihood surface the two
-/// strategies converge to measurably different optima, which flips ancestral
-/// state assignments at ambiguous nodes. The bounded golden-section start of
-/// `BrentOpt` lands far from the current estimate and converges elsewhere; the
-/// interior-seeded start stays near the current estimate, matching v0.
-///
-/// Default tolerances match scipy: `tol = sqrt(machine epsilon)` (scipy's
-/// `xtol = 1.48e-8`) and `zeps = 1e-11` (scipy's `_mintol`). The returned
-/// approximation `x` is accurate to about `2 * (tol * |x| + zeps)`.
 pub struct BrentBracketed {
-  /// Relative tolerance.
   tol: f64,
-  /// Absolute tolerance floor, preventing a vanishing tolerance near `x = 0`.
   zeps: f64,
-  /// Interior bracket point, used as the initial evaluation site.
   xb: f64,
-  /// Lower bound of the current interval.
   a: f64,
-  /// Upper bound of the current interval.
   b: f64,
-  /// Point with the lowest value of `f` seen so far.
   x: f64,
-  /// Point with the second lowest value of `f`.
   w: f64,
-  /// Previous value of `w`.
   v: f64,
-  /// `f(x)`.
   fx: f64,
-  /// `f(w)`.
   fw: f64,
-  /// `f(v)`.
   fv: f64,
-  /// Step size two iterations ago (scipy's `deltax`).
   e: f64,
-  /// Step size of the last iteration (scipy's `rat`).
   d: f64,
 }
 
 impl BrentBracketed {
-  /// Construct from a three-point bracket. `xa` and `xc` are the outer bounds
-  /// (any order); `xb` is an interior point that must satisfy
-  /// `f(xa) > f(xb) < f(xc)`. The caller is responsible for establishing the
-  /// bracket; this solver does not search for one.
   pub fn new(xa: f64, xb: f64, xc: f64) -> Self {
     let (a, b) = if xa < xc { (xa, xc) } else { (xc, xa) };
     Self {
@@ -133,12 +93,9 @@ where
       let old_e = self.e;
       self.e = self.d;
 
-      // Accept the parabolic step only if it stays inside the bracket and is
-      // smaller than half the step from two iterations ago.
       if p.abs() < (0.5 * q * old_e).abs() && p > q * (self.a - self.x) && p < q * (self.b - self.x) {
         self.d = p / q;
         let u = self.x + self.d;
-        // Keep evaluations away from the interval endpoints.
         if (u - self.a) < tol2 || (self.b - u) < tol2 {
           self.d = if m > self.x { tol1 } else { -tol1 };
         }
@@ -151,7 +108,6 @@ where
       self.d = GOLDEN * self.e;
     }
 
-    // Take a step of at least `tol1` to avoid evaluating `f` too close to `x`.
     let u = if self.d.abs() >= tol1 {
       self.x + self.d
     } else {
@@ -245,9 +201,6 @@ mod tests {
 
   #[test]
   fn test_brent_bracketed_seeds_at_interior_point() -> Result<(), Report> {
-    // The minimum sits at 5.0, far from the golden-section point of [0, 10]
-    // (~3.8) that a bounded Brent would evaluate first. Seeding at the interior
-    // bracket point 4.9 keeps the search near the true minimum.
     let xmin = minimize(|x| (x - 5.0) * (x - 5.0), 0.0, 4.9, 10.0)?;
     assert_abs_diff_eq!(xmin, 5.0, epsilon = 1e-7);
     Ok(())

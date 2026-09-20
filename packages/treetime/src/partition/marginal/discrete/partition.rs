@@ -18,9 +18,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
-/// The discrete marginal representation as durable, borrowed inputs: the model and the state alphabet.
-/// The stage-filled node states, backward/forward messages, and edge estimates are owned separately by
-/// the values the passes return.
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDiscrete {
   pub inputs: DenseInputs,
@@ -46,8 +43,6 @@ impl PartitionMarginalDiscrete {
     1
   }
 
-  /// Build the initial discrete node states by attaching each leaf's trait as a one-hot (or uniform)
-  /// profile. Returns the leaf-seeded node-state map.
   pub fn attach_traits(
     &self,
     graph: &Graph,
@@ -121,8 +116,6 @@ impl MarginalPasses for PartitionMarginalDiscrete {
     indexed_backward(
       &self.inputs,
       gtr,
-      // discrete carries no residue alphabet; the indexed driver only uses the alphabet on the dense
-      // leaf-profile branch, which discrete never takes.
       None,
       1,
       IndexedKind::Discrete,

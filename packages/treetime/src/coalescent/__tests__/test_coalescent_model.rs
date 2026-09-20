@@ -20,7 +20,6 @@ mod tests {
   fn test_coalescent_model_node_costs_follow_telescoped_objective() -> Result<(), Report> {
     let model = model(array![0.0, 5.0, 10.0], array![1.0, 2.0, 3.0, 0.0], 2.0)?;
 
-    // Analytical oracle: κ=1/4 on [0,5], κ=1/2 on [5,10].
     pretty_assert_ulps_eq!(-3.75, model.leaf_contribution(0.0), max_ulps = 4);
     pretty_assert_abs_diff_eq!(
       2.5 - 1.5_f64.ln(),
@@ -79,8 +78,6 @@ mod tests {
         + n_children as f64 * model.leaf_contribution(child_time);
       let edge_cost = n_children as f64 * model.edge_contribution(&edge).unwrap();
 
-      // Algebraic oracle: telescoping branch survival leaves the grouped
-      // leaf/internal/root objective exactly (Kingman 1982).
       prop_assert_abs_diff_eq!(node_cost, edge_cost, epsilon = 1e-10);
     }
   }

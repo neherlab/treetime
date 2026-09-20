@@ -29,9 +29,6 @@ pub struct PruneInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<AlignmentRecord>>,
-  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The collapse and
-  /// merge producers update it in place across the topology edits; it exits as
-  /// `PruneOutput.branch_lengths`.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -57,17 +54,9 @@ pub fn run(
 ) -> Result<PruneOutput, OperationError> {
   cancel.check()?;
 
-  // Entry maps propagated through the whole prune pipeline: every downstream name and branch length
-  // read comes from these maps. `names` comes from the parse; `assign_node_names`
-  // after a merge refreshes it to the post-topology labels; the collapse and merge producers maintain
-  // `branch_lengths` in place across the topology edits, so both maps exit reflecting the final pruned
-  // tree.
   let mut names = names.clone();
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
-  // Prune is a Fitch/parsimony operation over the durable observations alone: it never runs a marginal
-  // pass, so the topology moves take the observations and the node states the Fitch handoff seeded wait
-  // beside them until the output reconstructions are assembled.
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, gtrs, node_states): (Vec<_>, Vec<_>, Vec<_>) = if needs_sequences {
     let sequences = std::mem::take(&mut input.sequences).ok_or_else(|| {
@@ -112,8 +101,6 @@ pub fn run(
   )?;
 
   if params.merge_shared_mutations {
-    // The merge producer updates the branch-length map in place; refresh `names` from the post-merge
-    // topology so downstream name readers get the reassigned labels.
     merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)?;
     input.graph.build()?;
     names = assign_node_names(names, &input.graph)?;

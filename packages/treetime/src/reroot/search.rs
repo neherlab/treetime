@@ -7,13 +7,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Find the best root position over the whole tree.
-///
-/// Optimizes the split position on every edge and keeps the global minimum,
-/// using the current root score as the baseline so an already-optimal tree is
-/// left unchanged (`edge = None`). Optimizing each edge over `[0, 1]` covers
-/// rooting at any existing node as a split endpoint, so no separate per-node
-/// scan is needed.
 pub fn find_best_root<S>(
   graph: &Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,

@@ -22,16 +22,12 @@ mod tests {
   fn test_cost_function_evaluate_at_endpoints() {
     let cost_fn = two_tip_cost_fn();
 
-    // x=0: root at source. Parent message propagates 0, child propagates full bl.
     let at_source = cost_fn.evaluate(0.0);
-    // x=0: to_child propagates by 0 (stays at parent), to_parent propagates by bl.
     assert_ulps_eq!(at_source.count(), 2.0, max_ulps = 4);
 
-    // x=1: root at target. Parent propagates full bl, child propagates 0.
     let at_target = cost_fn.evaluate(1.0);
     assert_ulps_eq!(at_target.count(), 2.0, max_ulps = 4);
 
-    // The two endpoints should give different scores (asymmetric tips).
     let diff = (at_source.score() - at_target.score()).abs();
     assert!(diff > 1e-10, "expected different scores at endpoints, diff={diff}");
   }

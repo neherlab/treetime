@@ -3,7 +3,6 @@ use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::optimize;
 use eyre::Report;
 
-/// Evaluate dense contribution for a given branch length (with derivatives).
 pub fn evaluate_dense_contribution(
   contribution: &optimize::dense::PartitionContribution,
   branch_length: f64,
@@ -11,7 +10,6 @@ pub fn evaluate_dense_contribution(
   evaluate_dense_contribution_impl(contribution, branch_length, true)
 }
 
-/// Evaluate dense contribution for a given branch length (optional derivatives).
 pub fn evaluate_dense_contribution_impl(
   contribution: &optimize::dense::PartitionContribution,
   branch_length: f64,

@@ -20,18 +20,12 @@ use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForward
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 
-/// The two representations that ride the shared indexed (full-profile) marginal machinery. Dense
-/// carries sequences, gaps, and indels; discrete carries a single categorical site and no indel work.
-/// Representation is dispatched once, at the driver entry, and branches only at the three points where
-/// the two genuinely differ (leaf profile source, backward site-info, forward post-processing).
 #[derive(Clone, Copy, Debug)]
 pub enum IndexedKind {
   Dense,
   Discrete,
 }
 
-/// Run the indexed marginal backward pass over borrowed inputs and node states, returning the updated
-/// node states and the per-edge backward messages as distinct owned values.
 pub fn indexed_backward(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -88,8 +82,6 @@ fn indexed_node_backward(
       IndexedKind::Discrete => DenseSeqInfo::default(),
     };
 
-    // Children arrive in the graph's canonical `children_of` order, so the per-child log-space product
-    // folds in the same order regardless of thread count, keeping the result byte-for-byte identical.
     let child_edges = context
       .children
       .iter()
@@ -152,9 +144,6 @@ fn backward_internal_dense(children: &[&DenseNodeState], length: usize) -> Dense
   }
 }
 
-/// Run the indexed marginal forward pass over borrowed inputs, node states, and backward messages,
-/// returning the updated node states, the per-edge forward messages, and the per-edge estimates
-/// (indels) as distinct owned values.
 pub fn indexed_forward(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -192,8 +181,6 @@ pub fn indexed_forward(
   })
 }
 
-/// Combined per-edge output of the forward node visit, split by the driver into the distinct
-/// forward-message and estimate owners.
 struct DenseEdgeForwardOut {
   msg_to_child: DenseSeqDistribution,
   indels: Vec<crate::seq::indel::InDel>,
@@ -258,9 +245,6 @@ fn indexed_node_forward(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Dense forward post-processing: reconstruct the node sequence from the parent's reconstructed
-/// sequence and gap structure and derive the branch indels. This keeps the per-node parent-sequence and
-/// gap dependency intact; indel work runs during the forward node visit, not after the whole pass.
 fn forward_post_dense(
   is_root: bool,
   is_leaf: bool,

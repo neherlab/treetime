@@ -11,8 +11,6 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
-  // Root-to-tip distances {0.1, 0.3} => variance (0.1-0.3)^2/4 = 0.01 at the
-  // current root (default variance model: leaf var 1, internal var 0).
   #[test]
   fn test_search_root_stats_score_matches_analytical() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
@@ -28,8 +26,6 @@ mod tests {
     Ok(())
   }
 
-  // The unbalanced root is improvable: shifting the root toward the longer branch
-  // makes both tips equidistant (variance 0). Brent finds the interior optimum.
   #[test]
   fn test_search_finds_equidistant_root_on_unbalanced_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
@@ -53,7 +49,6 @@ mod tests {
     Ok(())
   }
 
-  // An already-equidistant root cannot be improved: the baseline (edge = None) wins.
   #[test]
   fn test_search_keeps_balanced_root() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.2,B:0.2)root;")?;
@@ -76,7 +71,6 @@ mod tests {
     Ok(())
   }
 
-  // A symmetric star tree is already optimal regardless of arity.
   #[test]
   fn test_search_keeps_balanced_star_root() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.2,B:0.2,C:0.2)root;")?;
@@ -99,7 +93,6 @@ mod tests {
     Ok(())
   }
 
-  // Every edge must receive both directional messages from the traversal.
   #[test]
   fn test_search_traversal_covers_all_edges() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)i:0.3,C:0.4)root;")?;

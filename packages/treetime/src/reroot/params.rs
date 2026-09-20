@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-/// Configuration for Brent's-method split optimization.
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
 #[serde(default)]
 pub struct BrentParams {

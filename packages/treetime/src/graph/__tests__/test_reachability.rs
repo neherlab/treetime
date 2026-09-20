@@ -15,7 +15,6 @@ mod tests {
     let internal_to_leaf = exists_forward_path_between(&graph, keys[1], keys[2]);
     let leaf_to_root = exists_forward_path_between(&graph, keys[2], keys[0]);
 
-    // Forward reachability follows edge directions; the reverse direction is not reachable.
     assert_eq!(
       (true, true, true, false),
       (root_to_leaf, root_to_internal, internal_to_leaf, leaf_to_root)

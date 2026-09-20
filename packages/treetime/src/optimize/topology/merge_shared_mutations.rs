@@ -13,19 +13,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::iterator::difference::iterator_difference;
 
-/// Merge sibling branches in polytomies that share identical substitutions.
-///
-/// Tree builders produce arbitrary binary resolutions of polytomies. When sibling branches
-/// carry identical substitutions, they represent redundant resolutions. This function groups
-/// such siblings (two or more) under a new internal node:
-///
-/// Before: P-A (subs: {G100T, A200C}), P-B (subs: {G100T, A200C, T300G}), P-C (subs: {G100T, A200C})
-/// After:  P-N (subs: {G100T, A200C}), N-A (subs: {}), N-B (subs: {T300G}), N-C (subs: {})
-///
-/// Each round finds groups of k >= 2 siblings whose mutation sets share a non-empty
-/// intersection, selects a disjoint set of groups, and merges each group under one new
-/// internal node. Repeats until no siblings share any mutations. Returns the total number
-/// of new internal nodes created.
 pub fn merge_shared_mutation_branches(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -49,17 +36,6 @@ pub fn merge_shared_mutation_branches(
   Ok(total_merged)
 }
 
-/// Resolve one polytomy by greedy batch merging of siblings sharing mutations.
-///
-/// Each round builds a mutation->edges index, finds all candidate groups of k >= 2 siblings
-/// whose mutation sets share a non-empty intersection, selects a disjoint set of groups
-/// (no edge in two groups), and merges each group under one new internal node. The number
-/// of children drops by at least one per round, so the loop always terminates.
-///
-/// Groups with k > 2 edges are handled directly in one merge, avoiding the chain of binary
-/// internal nodes that would result from repeated pairwise merging.
-///
-/// Returns number of new internal nodes created.
 pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -103,43 +79,26 @@ pub(crate) fn merge_single_polytomy(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Collect outbound edge keys for a node.
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
   let node = graph.get_node(node_key).expect("Node must exist");
   node.outbound().to_vec()
 }
 
-/// Unified key for the mutation index: a substitution or an exact-match indel.
-///
-/// Substitutions are keyed by their full (ref, pos, qry) triple. Indels are keyed by their
-/// exact (range, seq, deletion) value -- only identical indels count as shared. Partial
-/// overlaps are ignored; this is conservative but cheap.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum MutationKey {
   Sub(Sub),
   InDel(InDel),
 }
 
-/// A group of k >= 2 sibling edges whose mutation sets share a non-empty intersection.
 struct MergeGroup {
-  /// Sorted, deduplicated edge keys.
   edges: Vec<GraphEdgeKey>,
-  /// Shared substitutions per partition (index matches `partitions` slice).
   shared_subs: Vec<Vec<Sub>>,
-  /// Shared indels per partition.
   shared_indels: Vec<Vec<InDel>>,
-  /// Total shared mutations across all partitions.
   total_shared: usize,
 }
 
-/// Maps `(partition_index, MutationKey)` to the list of child edges carrying that mutation.
 type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
 
-/// Build the mutation index for the given set of child edges.
-///
-/// Each substitution and each indel on each edge is entered under its (partition, key) bucket.
-/// Buckets with a single entry contribute no pair scores; buckets with >= 2 entries contribute
-/// +1 to all pairwise scores within the bucket.
 fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[GraphEdgeKey]) -> MutationIndex {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
@@ -164,13 +123,6 @@ fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[G
   index
 }
 
-/// Find all candidate merge groups from the mutation index.
-///
-/// For each index bucket with k >= 2 edges, the full set of edges in that bucket is a
-/// candidate group. Duplicate candidate sets (same set of edges, different mutation) are
-/// collapsed into one by using the sorted edge list as a dedup key. Each surviving candidate
-/// is scored by intersecting all (partition, mutation) buckets that cover every edge in the
-/// group.
 fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGroup> {
   let mut seen: BTreeSet<Vec<GraphEdgeKey>> = BTreeSet::new();
   let mut groups = Vec::new();
@@ -200,10 +152,6 @@ fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGro
   groups
 }
 
-/// Collect per-partition shared substitutions and indels for a group of edges.
-///
-/// A mutation is shared by the group if every edge in `group` appears in the bucket for
-/// that (partition, mutation) key.
 fn shared_mutations_for_group(
   index: &MutationIndex,
   n_partitions: usize,
@@ -222,10 +170,6 @@ fn shared_mutations_for_group(
   (shared_subs, shared_indels)
 }
 
-/// Select a maximal disjoint set of merge groups in one round.
-///
-/// Sorts candidates by descending `total_shared`, breaking ties by descending group size.
-/// Greedily picks groups where no edge has been claimed yet.
 fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup> {
   groups.sort_unstable_by(|a, b| {
     b.total_shared
@@ -244,7 +188,6 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
   groups
 }
 
-/// Remaining mutations for one child edge after removing the shared mutations.
 struct ChildEdgeData {
   remaining_subs: Vec<Sub>,
   remaining_indels: Vec<InDel>,
@@ -254,23 +197,6 @@ struct ChildEdgeData {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Merge k >= 2 siblings under a new internal node.
-///
-/// Creates a new node N between parent P and children C_0 ... C_{k-1}:
-/// - Edge P->N carries the shared mutations.
-/// - Edges N->C_i carry only the remaining unique mutations.
-/// - Branch length of P->N is the Jukes-Cantor corrected distance from
-///   `total_shared / total_alignment_length`.
-/// - Branch lengths of N->C_i = JC(remaining_i / total_alignment_length).
-///
-/// # Model assumption
-///
-/// The `prune` command initialises all partitions with JC69 (`run_prune()`),
-/// so applying the Jukes-Cantor correction is exact. When this function is
-/// reused from `optimize` under a non-JC69 model, JC69 remains a strictly
-/// better approximation than the raw p-distance because any symmetric
-/// substitution process underestimates true evolutionary distance by the
-/// same mechanism (back-mutations and parallel substitutions).
 fn merge_sibling_group(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -340,7 +266,6 @@ fn merge_sibling_group(
 
   let new_node_key = graph.add_node();
 
-  // New edges carry their length in the branch-length map.
   let new_parent_edge_key = graph.add_edge(parent_key, new_node_key)?;
   branch_lengths.insert(new_parent_edge_key, Some(new_edge_bl));
 
@@ -352,8 +277,6 @@ fn merge_sibling_group(
   }
 
   for (pi, partition) in partitions.iter_mut().enumerate() {
-    // The new internal node inherits the parent's residue composition; the marginal passes rebuild
-    // its evolving state, and the caller reconciles the node-state map after the topology batch.
     let mut new_node = SparseNodeObs::empty(&partition.alphabet);
     new_node.composition = partition.obs_nodes[&parent_key].composition.clone();
     partition.obs_nodes.entry(new_node_key).or_insert(new_node);

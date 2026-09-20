@@ -1,5 +1,3 @@
-//! Tests for common GTR inference functions.
-
 #[cfg(test)]
 mod tests {
   use crate::gtr::gtr::avg_transition;

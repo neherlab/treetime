@@ -3,27 +3,12 @@ use getset::CopyGetters;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 
-/// Sufficient statistics for minimum-variance root-to-tip rooting.
-///
-/// These are the divergence components of the clock regression statistics, with
-/// `count` (sum of inverse branch variances over tips) replacing the
-/// date-gated `norm`: every tip contributes regardless of whether it has a
-/// date. The score is half the weighted residual sum around the weighted mean,
-/// proportional to weighted variance when total precision is fixed. It
-/// implements the documented `min_dev` objective (least-squares regression with
-/// a fixed zero slope). The v0 implementation instead retains the
-/// estimated-rate term; see `kb/v0-errata/clock-min-dev-fixed-slope-score.md`.
-/// Minimizing this score places the root so that tips are as equidistant as
-/// possible.
 #[must_use]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct DivStats {
-  /// Sum of inverse branch variances over contributing tips (`Σ 1/σ²`).
   count: f64,
-  /// Variance-weighted sum of root-to-tip distances (`Σ d/σ²`).
   d_sum: f64,
-  /// Variance-weighted sum of squared root-to-tip distances (`Σ d²/σ²`).
   dsq_sum: f64,
 }
 
@@ -43,8 +28,6 @@ impl RootStats for DivStats {
   }
 
   fn propagate(&self, branch_length: f64, variance: f64) -> Self {
-    // ClockSet::propagate_averages with all time terms (t_sum, tsq_sum, dt_sum)
-    // identically zero. `count` plays the role of `norm`.
     let denom = 1.0 / (1.0 + variance * self.count);
     Self {
       count: self.count * denom,
@@ -55,9 +38,6 @@ impl RootStats for DivStats {
   }
 
   fn score(&self) -> f64 {
-    // Half the weighted residual sum: (S_dd*W - S_d^2) / (2W).
-    // Equals ClockSet::chisq with the time-regression term removed. `count` is
-    // always positive (every tip contributes 1/variance > 0), so this is finite.
     (self.dsq_sum * self.count - self.d_sum.powi(2)) / (2.0 * self.count)
   }
 }

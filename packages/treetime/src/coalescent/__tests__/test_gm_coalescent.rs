@@ -79,8 +79,6 @@ mod tests {
       })
       .collect::<Result<_, Report>>()?;
 
-    // Oracle: packages/legacy/treetime/treetime/merger_models.py, captured by
-    // gm_coalescent_capture without rounding deterministic floating-point values.
     pretty_assert_map_abs_diff_eq!(&snapshot.node_contributions, &actual, epsilon = 1e-6);
     Ok(())
   }

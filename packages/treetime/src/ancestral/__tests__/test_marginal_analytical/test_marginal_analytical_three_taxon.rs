@@ -7,8 +7,6 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
 
-  /// Three-taxon tree with a single position, verified against closed-form Felsenstein
-  /// site likelihood with explicit summation over all internal node states.
   #[test]
   fn test_three_taxon_single_position_exhaustive() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -33,7 +31,6 @@ mod tests {
     Ok(())
   }
 
-  /// Exhaustive verification of all 64 single-position state combinations on a three-taxon tree under JC69.
   #[test]
   fn test_three_taxon_all_combinations() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;

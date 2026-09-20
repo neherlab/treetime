@@ -36,7 +36,6 @@ mod tests {
 
     let mut lh_history = Vec::with_capacity(20);
 
-    // Run optimization iterations
     for i in 0..20 {
       let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
       let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
@@ -52,7 +51,6 @@ mod tests {
 
       lh_history.push(lh);
 
-      // After each iteration, all branch lengths should be non-negative and bounded
       for edge in graph.get_edges() {
         let branch_length = branch_lengths[&edge.key()];
         if let Some(bl) = branch_length {
@@ -62,7 +60,6 @@ mod tests {
       }
     }
 
-    // Check convergence: variance over last 5 iterations should be small
     let last_5: Vec<f64> = lh_history.iter().rev().take(5).copied().collect();
     let mean = last_5.iter().sum::<f64>() / 5.0;
     let variance = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / 5.0;
@@ -71,7 +68,6 @@ mod tests {
       "Optimization should stabilize: variance of last 5 iterations = {variance}"
     );
 
-    // Final likelihood should be in expected range
     let final_lh = lh_history[19];
     assert!(final_lh < 0.0, "Final log-LH should be negative: {final_lh}");
     assert!(final_lh > -100.0, "Final log-LH unreasonably low: {final_lh}");
@@ -91,7 +87,6 @@ mod tests {
   fn test_second_optimization_produces_same_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
 
-    // Run optimization on first graph
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph1_names = nwk_parsed.names();
     let graph1 = nwk_parsed.graph;
@@ -109,7 +104,6 @@ mod tests {
 
     let (dense_partitions1, sparse_partitions1, lh1) = compute_total_lh(&graph1, dense_partitions1, sparse_partitions1, &branch_lengths1)?;
 
-    // Run optimization on second independent graph
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph2_names = nwk_parsed.names();
     let graph2 = nwk_parsed.graph;
@@ -127,7 +121,6 @@ mod tests {
 
     let (dense_partitions2, sparse_partitions2, lh2) = compute_total_lh(&graph2, dense_partitions2, sparse_partitions2, &branch_lengths2)?;
 
-    // Both runs should converge to same likelihood
     pretty_assert_ulps_eq!(lh1, lh2, max_ulps = 100);
 
     Ok(())

@@ -1,4 +1,3 @@
-/// Calendar time as a decimal year fraction (for example, 2013.5).
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct CalendarTime(f64);

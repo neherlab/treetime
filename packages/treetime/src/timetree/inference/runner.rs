@@ -22,35 +22,10 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
-///
-/// This is a minimum point count, not a fixed one: the mass re-window
-/// ([`rewindow_to_mass`](treetime_distribution::rewindow_to_mass)) resamples the mass domain at
-/// spacing `min(mass_width / (GRID_POINTS - 1), source_dx)`, so a stored grid holds at least this many
-/// points and is never coarser than the distribution it was re-windowed from. Changing this one
-/// constant changes the baseline stored-grid resolution everywhere (construction, backward fold,
-/// forward refinement).
 pub const GRID_POINTS: usize = 300;
 
-/// Per-side tail mass fraction trimmed when sizing a soft grid edge by probability mass (design D4,
-/// proposal Axis 2).
-///
-/// A soft side's grid edge is placed so that `EPS` of the total mass lies beyond it; the already-fitted
-/// tail law carries that mass rather than discarding it, so accuracy is bounded by tail-law fidelity,
-/// not by `EPS`. A grid therefore holds at least `1 - 2*EPS` of the mass across its two soft sides.
 pub const EPS: f64 = 5e-4;
 
-/// Infer node times.
-///
-/// `coalescent` is the prior imposed on those times, or `None` for a run that carries no
-/// coalescent prior. It is supplied rather than derived here because its lineage counts must be
-/// held fixed across passes; see [`CoalescentModel`].
-///
-/// `branch_lengths` and `names` are the per-edge branch-length and per-node name maps the caller
-/// snapshots from the current tree just before this pass. The branch-distribution construction reads
-/// each edge's length from `branch_lengths`, and the forward pass reads each node's label from
-/// `names`. The caller re-snapshots them after any length or
-/// topology change so each pass sees the current tree.
 #[allow(clippy::too_many_arguments)]
 pub fn run_timetree(
   graph: &mut Graph,
@@ -69,10 +44,6 @@ pub fn run_timetree(
   info!("## Calculating divergence distances");
   initialize_node_divergences(graph, clock_state, branch_lengths, names)?;
 
-  // Rebuild the state's maps for the current topology, carrying every value-resident date field
-  // forward. Times, distributions, bad-branch flags, and time lengths all live on the state
-  // (their producers write them straight into it); the fixed date constraints stay in the durable
-  // `constraints` the passes borrow.
   state.reseed_from_values(graph);
 
   info!("## Using clock model");
@@ -97,33 +68,8 @@ pub fn run_timetree(
   Ok(state)
 }
 
-/// Weight given to the freshly inferred value when a commit damps against the previous one.
-///
-/// Each pass re-infers every node time at once, so an undamped write-back oscillates: measured
-/// on `data/ebola/20` with the coalescent lineage counts held fixed, the per-round maximum time
-/// change repeated bit-identically from round 2 onward. Blending halves is the same remedy
-/// [`apply_damping`](crate::optimize::iteration::apply_damping) applies in the branch-length
-/// optimization loop. It changes the path, not the answer: `b = (1 - f) b + f b` for any `f`.
 pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 
-/// Commit each edge's clock-constrained branch length, `clock_rate * gamma * (t_child - t_parent)`.
-///
-/// This is the clock-constrained length the marginal reconstruction propagates sequence profiles
-/// along afterwards (see [`timetree_branch_lengths`]). It is the constrained M-step of
-/// the refinement loop: `branch_length` stays the free ML or input estimate, while profiles move
-/// along lengths the inferred times imply. v0 gets this for free by running the whole timetree in
-/// divergence units, where `branch_length = clock_length` is dimensionally a no-op; v1 works in
-/// calendar time, so the conversion is explicit.
-///
-/// `damping` is the weight given to the newly computed value, the rest carried over from the
-/// previous commit. Pass 1.0 wherever the previous value describes a different tree -- the first
-/// commit of a run, and the one after polytomy resolution has re-parented edges -- and
-/// [`CLOCK_BRANCH_LENGTH_DAMPING`] inside the refinement loop.
-///
-/// An edge whose duration is negative gets zero. The forward pass clamps internal children to
-/// their parent but leaves observed leaf dates alone, so a leaf dated before its parent reaches
-/// here; that is a real inconsistency in the input or the fit, and it is reported rather than
-/// silently floored. Edges whose endpoints are not both dated are left untouched.
 pub fn commit_clock_branch_lengths(
   graph: &Graph,
   clock_rate: f64,
@@ -133,9 +79,6 @@ pub fn commit_clock_branch_lengths(
 ) {
   let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
 
-  // The committed value blends against the previous one held in the routed map, so the fold builds
-  // the new values in parallel first (each reading its own previous value from the shared map) and
-  // inserts them serially, without a lock.
   let previous_lengths: &BTreeMap<GraphEdgeKey, f64> = clock_branch_lengths;
   let committed: Vec<(GraphEdgeKey, f64, bool)> = graph
     .get_edges()
@@ -205,10 +148,6 @@ fn compute_branch_distributions_marginal_mode(
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
-  // Compute each edge's branch-length distribution in parallel, reading its relaxed-clock rate from
-  // the value state, and carry the distribution out to insert into the value serially: the value's
-  // per-edge map cannot be written from parallel workers without a lock. The immutable reborrow ends
-  // at the `collect`, so the serial inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
@@ -259,11 +198,6 @@ pub(super) fn create_branch_distributions_input_mode(
   clock_rate: f64,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  // Build each edge's point branch-length distribution in parallel, reading its relaxed-clock rate
-  // from the value state, and carry the distribution out to insert into the value serially. An edge
-  // with neither a branch length nor a time length is left untouched: its previous value-side
-  // distribution and time length carry over unchanged. The immutable reborrow ends at the `collect`,
-  // so the serial inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
@@ -271,11 +205,7 @@ pub(super) fn create_branch_distributions_input_mode(
     .into_par_iter()
     .filter_map(|edge_ref| {
       let key = edge_ref.key();
-      // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
-      // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
       let time_duration = if let Some(branch_length) = branch_lengths[&key] {
-        // Convert branch length (substitutions/site) to time duration (years)
-        // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
         let effective_clock_rate = clock_rate * edge_states.edge(key).gamma;
         Some(branch_length / effective_clock_rate)
       } else {
@@ -283,7 +213,6 @@ pub(super) fn create_branch_distributions_input_mode(
       };
 
       time_duration.map(|time_duration| {
-        // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
         let distribution = Arc::new(Distribution::point(time_duration, 0.0));
         (key, time_duration, distribution)
       })
@@ -299,13 +228,6 @@ pub(super) fn create_branch_distributions_input_mode(
   Ok(())
 }
 
-/// The per-edge branch length each post-commit marginal reconstruction propagates sequence profiles
-/// along, keyed by edge, sourcing the clock-constrained length from the routed commit map.
-///
-/// The timetree counterpart of [`branch_lengths_or_zero`](crate::ancestral::marginal::branch_lengths_or_zero):
-/// the value is the committed clock length held in `clock_branch_lengths` when the edge has one, and
-/// the edge's own branch length otherwise. Used only after a commit, where the clock length has been
-/// established; before the first commit the two collectors agree, because no clock length exists yet.
 pub fn timetree_branch_lengths(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

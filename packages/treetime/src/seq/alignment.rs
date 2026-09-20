@@ -7,8 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlignmentRecord, Seq};
 
-/// The merged tree-and-alignment input the reconstruction pipeline consumes: the graph, the per-node
-/// input keyed by the graph's own node keys, and the per-edge input keyed by its edge keys.
 #[derive(Debug)]
 pub struct AncestralInput {
   pub graph: Graph,
@@ -17,14 +15,10 @@ pub struct AncestralInput {
 }
 
 impl AncestralInput {
-  /// The per-node name map, keyed by node id, as `assign_node_names`, the topology loops, and the
-  /// output writers consume it.
   pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
     self.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect()
   }
 
-  /// The per-edge branch-length map, keyed by edge id, as the reconstruction and output writers
-  /// consume it.
   pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     self
       .edges
@@ -34,28 +28,17 @@ impl AncestralInput {
   }
 }
 
-/// One node's reconstruction input: its name and its attached alignment sequence. `name` is `None`
-/// where a node has no name; `seq` is `None` for internal nodes and for leaves absent from the
-/// alignment.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NodeSeqInput {
   pub name: Option<String>,
   pub seq: Option<Seq>,
 }
 
-/// One edge's reconstruction input: the raw input-tree branch length, `None` where the edge carried
-/// no `:length`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct EdgeSeqInput {
   pub branch_length: Option<f64>,
 }
 
-/// Build the per-node reconstruction input map from node names and alignment records, matching each
-/// leaf to its record by name (first record wins on duplicate names).
-///
-/// Leaves with no matching record get `seq = None`; callers that require a sequence for every leaf
-/// complete the alignment first. Internal nodes always get `seq = None`. Extra records that match no
-/// leaf are ignored.
 pub fn node_seq_inputs(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -90,8 +73,6 @@ pub fn node_seq_inputs(
     .collect()
 }
 
-/// The common length of the attached leaf sequences in a node-input map, or `0` when none carry a
-/// sequence. Errors when leaves disagree on length, listing each length and its leaf names.
 pub fn get_common_length_of_node_inputs(node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>) -> Result<usize, Report> {
   let lengths = node_inputs
     .values()
