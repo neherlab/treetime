@@ -497,7 +497,7 @@ mod tests {
     use crate::commands::prune::args::TreetimePruneArgsRaw;
     use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use pretty_assertions::assert_eq;
-    use serde_json::{Value, from_value, to_value};
+    use serde_json::{Value, to_value};
 
     #[test]
     fn test_config_round_trip_ancestral() {
