@@ -1,6 +1,9 @@
 telemetry = false
 logLevel = "warn"
 
+[run]
+bun = true
+
 [install]
 exact = true
 minimumReleaseAge = 604800

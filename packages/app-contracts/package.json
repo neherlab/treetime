@@ -13,10 +13,10 @@
   },
   "scripts": {
     "generate": "openapi-ts",
-    "lint": "oxlint src/",
-    "lint:fix": "oxlint --fix src/",
-    "format": "oxfmt --write src/",
-    "format:check": "oxfmt --check src/",
+    "lint": "bun --bun oxlint src/",
+    "lint:fix": "bun --bun oxlint --fix src/",
+    "format": "bun --bun oxfmt --write src/",
+    "format:check": "bun --bun oxfmt --check src/",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run"
   },
