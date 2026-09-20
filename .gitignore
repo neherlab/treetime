@@ -9,7 +9,6 @@
 /.vscode*
 /data_dev
 /tmp*
-bun.lock
 node_modules
 target
 .turbo
