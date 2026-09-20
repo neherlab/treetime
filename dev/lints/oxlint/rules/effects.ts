@@ -10,7 +10,7 @@ export const SUBSCRIPTION_CALLEES = new Set([
   "requestAnimationFrame",
 ])
 
-export interface EffectRecord {
+interface EffectRecord {
   node: ESTree.CallExpression
   callback: FunctionNode
   deps: ESTree.Expression | ESTree.SpreadElement | undefined
