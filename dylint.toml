@@ -8,6 +8,80 @@
 # absorbed by the committed baseline so only new findings fail the mordant gate.
 [mordant]
 baseline = "mordant-baseline.toml"
+[[mordant.forbidden-reach]]
+from = "ancestral_reconstruction"
+never = [
+  "std::env::var",
+  "std::fs::File::create",
+  "std::fs::File::open",
+  "std::fs::read",
+  "std::fs::read_to_string",
+  "std::fs::write",
+  "std::process::Command::new",
+  "std::time::SystemTime::now",
+  "rand::random",
+  "rand::thread_rng",
+]
+
+[[mordant.forbidden-reach]]
+from = "ancestral_reconstruction_fitch"
+never = [
+  "std::env::var",
+  "std::fs::File::create",
+  "std::fs::File::open",
+  "std::fs::read",
+  "std::fs::read_to_string",
+  "std::fs::write",
+  "std::process::Command::new",
+  "std::time::SystemTime::now",
+  "rand::random",
+  "rand::thread_rng",
+]
+
+[[mordant.forbidden-reach]]
+from = "run_optimize_loop"
+never = [
+  "std::env::var",
+  "std::fs::File::create",
+  "std::fs::File::open",
+  "std::fs::read",
+  "std::fs::read_to_string",
+  "std::fs::write",
+  "std::process::Command::new",
+  "std::time::SystemTime::now",
+  "rand::random",
+  "rand::thread_rng",
+]
+
+[[mordant.forbidden-reach]]
+from = "run_timetree"
+never = [
+  "std::env::var",
+  "std::fs::File::create",
+  "std::fs::File::open",
+  "std::fs::read",
+  "std::fs::read_to_string",
+  "std::fs::write",
+  "std::process::Command::new",
+  "std::time::SystemTime::now",
+  "rand::random",
+  "rand::thread_rng",
+]
+
+[[mordant.forbidden-reach]]
+from = "compute_lineage_counts"
+never = [
+  "std::env::var",
+  "std::fs::File::create",
+  "std::fs::File::open",
+  "std::fs::read",
+  "std::fs::read_to_string",
+  "std::fs::write",
+  "std::process::Command::new",
+  "std::time::SystemTime::now",
+  "rand::random",
+  "rand::thread_rng",
+]
 
 # unnamed_constant (Trail of Bits, supplementary): flags integer literals that
 # should be named constants. Raised above the default of 10 because this is a
