@@ -5,6 +5,7 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set positional-arguments := true
+export CARGO_TERM_QUIET := "true"
 
 project_dir := justfile_directory()
 
