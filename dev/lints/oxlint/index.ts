@@ -9,6 +9,7 @@ import { noFocusedTestsRule } from "./rules/no-focused-tests.ts"
 import { noLeakyMocksRule } from "./rules/no-leaky-mocks.ts"
 import { noModuleLevelMutableRule } from "./rules/no-module-level-mutable.ts"
 import { noTautologicalAssertionRule } from "./rules/no-tautological-assertion.ts"
+import { noTestResourceAccessRule } from "./rules/no-test-resource-access.ts"
 import { noTypographicCharactersRule } from "./rules/no-typographic-characters.ts"
 import { noUnboundedSuppressionRule } from "./rules/no-unbounded-suppression.ts"
 import { noUppercaseTestTitleRule } from "./rules/no-uppercase-test-title.ts"
@@ -32,6 +33,7 @@ export default definePlugin({
     "no-leaky-mocks": noLeakyMocksRule,
     "no-module-level-mutable": noModuleLevelMutableRule,
     "no-tautological-assertion": noTautologicalAssertionRule,
+    "no-test-resource-access": noTestResourceAccessRule,
     "no-typographic-characters": noTypographicCharactersRule,
     "no-unbounded-suppression": noUnboundedSuppressionRule,
     "no-uppercase-test-title": noUppercaseTestTitleRule,

@@ -276,6 +276,7 @@ export default defineConfig({
         "import/no-nodejs-modules": "error",
         "treetime/no-fake-success": "error",
         "treetime/no-tautological-assertion": "error",
+        "treetime/no-test-resource-access": "error",
         "treetime/no-assertion-in-loop": "error",
         "treetime/no-uppercase-test-title": "error",
         "treetime/prefer-strict-equal": "error",
@@ -298,6 +299,19 @@ export default defineConfig({
             doMock: "Module mocking is banned. Inject collaborators instead.",
           },
         ],
+      },
+    },
+    {
+      files: [
+        "**/*.integration.test.ts",
+        "**/*.integration.test.tsx",
+        "**/*.process.test.ts",
+        "**/*.migration.test.ts",
+        "**/*.gm.test.ts",
+        "**/test_gm_*.ts",
+      ],
+      rules: {
+        "import/no-nodejs-modules": "off",
       },
     },
   ],
