@@ -2,7 +2,6 @@ use crate::InterpElem;
 use crate::grid::Grid;
 use num_traits::Float;
 
-/// Iterator over grid x coordinates
 pub struct GridIter<T: InterpElem> {
   grid: Grid<T>,
   index: usize,

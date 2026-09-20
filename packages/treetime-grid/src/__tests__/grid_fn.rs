@@ -50,10 +50,6 @@ mod tests {
     Ok(())
   }
 
-  // `resample_range_dx_clamped` holds the boundary value where grid-construction rounding pushes the
-  // final target point beyond the source support. `from_range_dx(0, 1, 0.4)` rounds to four points
-  // ending at 1.2, past x_max = 1.0. A plain resample rejects that overshoot under the default `Error`
-  // tail; the clamped resample clamps the query to x_max and reads the boundary ordinate there.
   #[test]
   fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
@@ -62,12 +58,10 @@ mod tests {
       "GridFn evaluated at 1.2000000000000002, above the support boundary 1.0, but no extrapolation policy is set for that side"
     );
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4)?;
-    // Target points 0.0, 0.4, 0.8, 1.2; the last clamps to x_max = 1.0, reading y = 10.0.
     assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
-  // Within the source support the clamp never fires, so a clamped resample matches a plain one.
   #[test]
   fn test_gridfn_resample_range_dx_clamped_matches_plain_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
@@ -79,7 +73,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  // Hard extrapolation: return 0.0 on either side (explicit opt-in)
   #[case::left((0.0, 1.0), array![2.0, 10.0], -1.0)]
   #[case::right((0.0, 1.0), array![2.0, 10.0], 2.0)]
   #[trace]
@@ -96,7 +89,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  // Default policy is Error: out-of-support evaluation fails on both sides.
   #[case::left(-1.0, "GridFn evaluated at -1.0, below the support boundary 0.0, but no extrapolation policy is set for that side")]
   #[case::right(2.0, "GridFn evaluated at 2.0, above the support boundary 1.0, but no extrapolation policy is set for that side")]
   #[trace]
@@ -171,8 +163,6 @@ mod tests {
     Ok(())
   }
 
-  /// A soft boundary continues the distribution past the grid edge (`Linear`); a hard
-  /// boundary terminates the domain (`Hard`: zero beyond; `Error`: undefined beyond).
   #[rustfmt::skip]
   #[rstest]
   #[case::linear(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), true)]

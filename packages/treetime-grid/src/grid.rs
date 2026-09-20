@@ -9,17 +9,6 @@ use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::make_error;
 
-/// Uniform grid parameters and indexing operations
-///
-/// Encapsulates grid parameters (x_min, dx, n_points) and provides methods for
-/// indexing, coordinate calculation, and iteration.
-///
-/// # Invariants
-///
-/// - Grid must be uniformly spaced with spacing `dx`
-/// - Grid starts at `x_min`
-/// - Must contain at least 2 points
-/// - `dx` must be positive
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Grid<T: InterpElem> {
   x_min: T,
@@ -140,7 +129,6 @@ impl<T: InterpElem> Grid<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  /// Computes x coordinate at given index
   pub fn x_at(&self, idx: usize) -> T
   where
     T: Float,
@@ -152,16 +140,6 @@ impl<T: InterpElem> Grid<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  /// Finds grid interval index containing given x value
-  ///
-  /// Returns index of the left endpoint of the interval containing x.
-  /// For x at or above grid maximum, returns n_points - 2 (last valid interval).
-  ///
-  /// # Out-of-bounds behavior
-  ///
-  /// For `x < x_min`, returns 0 (same as `x == x_min`). This is intentional
-  /// clamping, not validation. Callers requiring strict bounds checking must
-  /// verify `x >= x_min` before calling.
   pub fn find_interval_index(&self, x: T) -> usize
   where
     T: Float,
@@ -174,7 +152,6 @@ impl<T: InterpElem> Grid<T> {
     min(idx, self.n_points - 2)
   }
 
-  /// Generates array of all x coordinates
   pub fn to_array(&self) -> Array1<T>
   where
     T: Float,
@@ -182,7 +159,6 @@ impl<T: InterpElem> Grid<T> {
     self.iter().collect()
   }
 
-  /// Returns an iterator over grid x coordinates
   pub fn iter(&self) -> GridIter<T>
   where
     T: Float,

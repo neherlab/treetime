@@ -5,23 +5,6 @@ use ndarray::Array1;
 use num::Float;
 use treetime_utils::make_error;
 
-/// Performs piecewise linear interpolation on non-uniformly spaced data
-///
-/// Interpolates values from (x, y) pairs at query points using linear interpolation.
-/// Produces uniformly spaced output values regardless of input spacing.
-/// For query points outside the range of x, uses linear extrapolation based on the
-/// nearest two points.
-///
-/// # Arguments
-///
-/// * `x` - Non-uniform x coordinates (must be sorted ascending, at least 2 points)
-/// * `y` - Corresponding y values (same length as x)
-/// * `n_query` - Number of query points
-/// * `x_query_fn` - Closure that generates query point for given index
-///
-/// # Returns
-///
-/// Interpolated y values at query points
 pub fn interp_nonuniform<T, F>(x: &Array1<T>, y: &Array1<T>, n_query: usize, x_query_fn: F) -> Result<Array1<T>, Report>
 where
   T: Float,
@@ -59,18 +42,6 @@ where
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-/// Finds the interval index in a sorted array containing the query value
-///
-/// Uses binary search to find index i such that x[i] <= xi < x[i+1].
-///
-/// # Arguments
-///
-/// * `x` - Sorted array (ascending order, at least 2 points)
-/// * `xi` - Query value
-///
-/// # Returns
-///
-/// Index i where x[i] <= xi < x[i+1]. For xi >= x[n-1], returns n-2.
 fn find_interval<T>(x: &Array1<T>, xi: T) -> usize
 where
   T: Float,
