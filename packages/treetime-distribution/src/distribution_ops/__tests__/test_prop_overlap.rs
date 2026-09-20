@@ -68,7 +68,7 @@ mod tests {
     }
   }
 
-  #[allow(clippy::float_cmp)] // Point support requires exact analytical endpoint contact.
+  #[allow(clippy::float_cmp)]
   fn assert_intersection(actual: &Distribution, (start, end): (f64, f64)) -> Result<(), TestCaseError> {
     if start > end {
       prop_assert!(matches!(actual, Distribution::Empty));

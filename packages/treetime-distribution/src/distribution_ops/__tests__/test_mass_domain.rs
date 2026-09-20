@@ -12,28 +12,16 @@ mod tests {
   use ndarray::Array1;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 
-  /// Per-side tail mass fraction used across these tests (design D4, proposal Axis 2).
   const EPS: f64 = 5e-4;
   const GRID_POINTS: usize = 300;
 
-  /// Total mass of an `Exponential(lambda)` distribution is `1/lambda`.
-  ///
-  /// Oracle: analytic `integral_0^inf lambda*exp(-lambda t) dt / lambda = 1/lambda` for the
-  /// peak-relative density `exp(-lambda t)` (the neg-log peak sits at `t = 0`). The grid trapezoid
-  /// plus the closed-form right-tail mass must recover it.
   #[test]
   fn test_mass_domain_total_mass_exponential_matches_analytic() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    // 1/lambda = 1.0; trapezoid + tail closed form recover it to grid-refinement order.
     assert_abs_diff_eq!(total_mass(&f).unwrap(), 1.0 / lambda, epsilon = 1e-6);
   }
 
-  /// The right mass edge of an `Exponential(lambda)` truncated below its analytic `eps` quantile
-  /// extends into the fitted tail to `-ln(eps)/lambda`; the hard left edge stays at `0`.
-  ///
-  /// Oracle: `integral_hi^inf exp(-lambda t) dt = eps * Z` with `Z = 1/lambda` gives
-  /// `hi = -ln(eps)/lambda`. Here `t_max = 5 < hi`, so the edge is found in the closed-form tail.
   #[test]
   fn test_mass_domain_edge_extends_into_tail_to_analytic_quantile() {
     let lambda = 1.0;
@@ -43,10 +31,6 @@ mod tests {
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
 
-  /// The same analytic edge is recovered by trapezoid-CDF inversion when the grid already extends
-  /// past the `eps` quantile (`t_max = 10 > hi`), so the edge is trimmed inward rather than extended.
-  ///
-  /// Oracle: same `hi = -ln(eps)/lambda`.
   #[test]
   fn test_mass_domain_edge_trims_inward_to_analytic_quantile() {
     let lambda = 1.0;
@@ -56,10 +40,6 @@ mod tests {
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
 
-  /// A symmetric two-sided exponential (Laplace, slope `s`) trims both soft edges symmetrically.
-  ///
-  /// Oracle: `Z = 2/s`, and `integral_hi^inf exp(-s t) dt = eps * Z` gives `hi = -ln(2 eps)/s`; by
-  /// symmetry `lo = -hi`.
   #[test]
   fn test_mass_domain_symmetric_edges_hold_equal_tail_mass() {
     let slope = 1.0;
@@ -70,11 +50,6 @@ mod tests {
     assert_abs_diff_eq!(lo, -expected, epsilon = 1e-6);
   }
 
-  /// Re-windowing a fixed distribution repeatedly conserves total mass and holds the mode.
-  ///
-  /// Oracle: mass conservation is an invariant of the re-window (it re-fits the soft tail rather than
-  /// discarding it), so drift after the fixed point is bounded by the tail-fit residual, not by
-  /// arithmetic. Compares the once-windowed distribution against the 100-times-windowed one.
   #[test]
   fn test_mass_domain_rewindow_conserves_mass_and_mode() {
     let f = helpers::exponential_neglog(1.0, 5.0, 4001);
@@ -99,11 +74,6 @@ mod tests {
     );
   }
 
-  /// A distribution whose mode sits on a finite hard boundary keeps that mode on the lower edge after
-  /// re-windowing, with no `+inf` ordinate stored.
-  ///
-  /// Oracle: a nullary `Hard` lower boundary is the exact bound, so re-windowing leaves the lower edge
-  /// on it (probability is zero beyond, no `eps` trim) and the mode stays on the first grid point.
   #[test]
   fn test_mass_domain_rewindow_keeps_mode_on_hard_bound() {
     let f = helpers::hard_bound_mode_neglog(1.0, 5.0, 500);
@@ -120,14 +90,13 @@ mod tests {
           (0_usize, f64::INFINITY),
           |(best_i, best), (i, y)| if y < best { (i, y) } else { (best_i, best) },
         );
-    assert_eq!(mode_index.0, 0, "mode must sit on the lower hard edge");
+    assert_eq!(0, mode_index.0, "mode must sit on the lower hard edge");
     assert!(
       rewindowed.y().iter().all(|y| y.is_finite()),
       "no +inf ordinate may be stored"
     );
   }
 
-  /// The stored grid holds at least `grid_points` points (design D3 resolution floor).
   #[test]
   fn test_mass_domain_rewindow_holds_at_least_grid_points() {
     let f = helpers::exponential_neglog(1.0, 5.0, 50);
@@ -135,8 +104,6 @@ mod tests {
     assert!(rewindowed.len() >= GRID_POINTS, "got {} points", rewindowed.len());
   }
 
-  /// A non-`Function` distribution has no grid to re-window, so re-windowing is the shift-only
-  /// normalize: a `Point` keeps its location and its amplitude drops to the peak identity `0`.
   #[test]
   fn test_mass_domain_rewindow_point_is_shift_only_normalize() {
     let point: Distribution<NegLog> = Distribution::point(3.0, 7.5);
@@ -154,8 +121,6 @@ mod tests {
       }
     }
 
-    /// `Exponential(lambda)` on `[0, t_max]` in neg-log storage: `y(t) = -ln(lambda) + lambda*t`,
-    /// a hard left boundary at `t = 0`, and a fitted soft right tail (slope `lambda`).
     pub fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
@@ -167,8 +132,6 @@ mod tests {
         .unwrap()
     }
 
-    /// Symmetric two-sided exponential (Laplace, slope `s`) on `[-t_max, t_max]`: `y(t) = s*|t|`,
-    /// fitted soft tails on both sides.
     pub fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(-t_max, t_max, n);
       let y = t.mapv(|ti| slope * ti.abs());
@@ -181,9 +144,6 @@ mod tests {
         .unwrap()
     }
 
-    /// A density whose mode sits on a finite hard boundary at `t = 0`: `y(t) = slope*t` on
-    /// `[0, t_max]` with a nullary `Hard` left boundary (the grid edge is the exact hard bound,
-    /// carrying the mode) and a fitted soft right tail.
     pub fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
