@@ -817,6 +817,14 @@ dylint-lock:
       cargo generate-lockfile --manifest-path "${manifest}"
     done
 
+# Run tests for the project Dylint library
+[group('lint')]
+dylint-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd '{{project_dir}}/dev/lints/dylint'
+    cargo test
+
 # Generate the CLI reference docs
 [group('docs')]
 docs *args:

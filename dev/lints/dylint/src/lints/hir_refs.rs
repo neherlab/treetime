@@ -62,6 +62,19 @@ pub fn receiver_is_option_or_result<'tcx>(
     false
 }
 
+pub fn receiver_is_result<'tcx>(
+    cx: &LateContext<'tcx>,
+    typeck: &rustc_middle::ty::TypeckResults<'tcx>,
+    receiver: &Expr<'tcx>,
+) -> bool {
+    let recv_ty = typeck.expr_ty_adjusted(receiver).peel_refs();
+    matches!(recv_ty.kind(), ty::Adt(adt, _) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()))
+}
+
+pub fn expr_is_result<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
+    receiver_is_result(cx, cx.typeck_results(), expr)
+}
+
 /// If `expr` is a panicking `.unwrap()` or `.expect()` on `Option`/`Result`,
 /// returns the method-call span and a short description for diagnostics.
 pub fn panicking_unwrap_or_expect<'tcx>(

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_in_test;
-use rustc_hir::{Attribute, Expr};
+use rustc_hir::{Attribute, Expr, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 
 /// Returns `true` if the expression is in a test context:
@@ -12,7 +12,11 @@ use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 ///   Detected via `clippy_utils::is_in_test` (checks `#[rustc_test_marker]`).
 /// - **`#[cfg(test)]` module** -- also covered by `is_in_test`.
 pub fn is_in_test_zone(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.sess().is_test_crate() || is_in_test(cx.tcx, expr.hir_id)
+    is_hir_in_test_zone(cx, expr.hir_id)
+}
+
+pub fn is_hir_in_test_zone(cx: &LateContext<'_>, hir_id: HirId) -> bool {
+    cx.sess().is_test_crate() || is_in_test(cx.tcx, hir_id)
 }
 
 rustc_session::declare_lint! {

@@ -49,10 +49,10 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::code_hygiene::LOCAL_USE,
         lints::code_hygiene::NESTED_FUNCTION,
         lints::code_hygiene::VERSIONED_NAME,
-        lints::error_handling::DISCARDED_RESULT,
-        lints::error_handling::DEFAULT_MASKS_ERROR,
+        lints::error_dropped_by_pattern::ERROR_DROPPED_BY_PATTERN,
+        lints::result_defaulted::RESULT_DEFAULTED,
         lints::spawn_handle::SPAWN_HANDLE_DROPPED,
-        lints::clone_to_deserialize::VALUE_CLONED_TO_DESERIALIZE,
+        lints::value_cloned_to_deserialize::VALUE_CLONED_TO_DESERIALIZE,
         lints::handwritten_fmt::HANDWRITTEN_FMT_IMPL,
         lints::typographic::TYPOGRAPHIC_CHARACTERS,
         lints::test_hygiene::TEST_STDOUT_PRINT,
@@ -84,9 +84,14 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
     lint_store.register_late_pass(|_| Box::new(lints::suggest_builder::SuggestBuilder::new()));
     lint_store.register_late_pass(|_| Box::new(lints::needless_builder::NeedlessBuilder::new()));
     lint_store.register_late_pass(|_| Box::new(lints::code_hygiene::CodeHygiene::new()));
-    lint_store.register_late_pass(|_| Box::new(lints::error_handling::ErrorHandling::new()));
+    lint_store.register_late_pass(|_| {
+        Box::new(lints::error_dropped_by_pattern::ErrorDroppedByPattern::new())
+    });
+    lint_store.register_late_pass(|_| Box::new(lints::result_defaulted::ResultDefaulted::new()));
     lint_store.register_late_pass(|_| Box::new(lints::spawn_handle::SpawnHandle::new()));
-    lint_store.register_late_pass(|_| Box::new(lints::clone_to_deserialize::CloneToDeserialize::new()));
+    lint_store.register_late_pass(|_| {
+        Box::new(lints::value_cloned_to_deserialize::ValueClonedToDeserialize::new())
+    });
     lint_store.register_late_pass(|_| Box::new(lints::handwritten_fmt::HandwrittenFmt::new()));
     lint_store.register_late_pass(|_| Box::new(lints::typographic::Typographic::new()));
     lint_store.register_late_pass(|_| Box::new(lints::test_hygiene::TestHygiene::new()));

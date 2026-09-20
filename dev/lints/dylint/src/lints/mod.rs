@@ -1,8 +1,7 @@
 pub mod bon_builder_collector;
-pub mod clone_to_deserialize;
 pub mod code_hygiene;
 pub mod debug_remnants;
-pub mod error_handling;
+pub mod error_dropped_by_pattern;
 pub mod fallible_new;
 pub mod file_length;
 pub mod handwritten_fmt;
@@ -13,6 +12,7 @@ pub mod panic_in_drop;
 pub mod prefer_error_macros;
 pub mod proper_error_type;
 pub mod result_result;
+pub mod result_defaulted;
 pub mod serde_default_fn;
 pub mod spawn_handle;
 pub mod suggest_builder;
@@ -21,6 +21,7 @@ pub mod test_hygiene;
 pub mod topological_ordering;
 pub mod typographic;
 pub mod unclear_exports;
+pub mod value_cloned_to_deserialize;
 
 use core::cell::RefCell;
 use std::collections::{HashMap, HashSet};
