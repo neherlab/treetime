@@ -1,4 +1,7 @@
-#![allow(clippy::derive_partial_eq_without_eq)]
+#![allow(
+  clippy::derive_partial_eq_without_eq,
+  reason = "Prost messages derive PartialEq without Eq"
+)]
 
 use eyre::{Context, Report};
 use prost::Message;
@@ -7,18 +10,36 @@ use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
 mod mutation_detailed {
-  #![allow(dead_code, unnameable_types)]
-  #![allow(clippy::all)]
+  #![allow(
+    dead_code,
+    unnameable_types,
+    no_comments,
+    topological_ordering,
+    clippy::all,
+    reason = "Prost-generated module"
+  )]
   include!(concat!(env!("OUT_DIR"), "/mutation_detailed.rs"));
 }
 mod parsimony {
-  #![allow(dead_code, unnameable_types)]
-  #![allow(clippy::all)]
+  #![allow(
+    dead_code,
+    unnameable_types,
+    no_comments,
+    topological_ordering,
+    clippy::all,
+    reason = "Prost-generated module"
+  )]
   include!(concat!(env!("OUT_DIR"), "/parsimony.rs"));
 }
 mod taxodium {
-  #![allow(dead_code, unnameable_types)]
-  #![allow(clippy::all)]
+  #![allow(
+    dead_code,
+    unnameable_types,
+    no_comments,
+    topological_ordering,
+    clippy::all,
+    reason = "Prost-generated module"
+  )]
   include!(concat!(env!("OUT_DIR"), "/taxodium.rs"));
 }
 
