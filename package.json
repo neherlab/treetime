@@ -44,6 +44,7 @@
     "format:check": "turbo format:check --cache-dir=.turbo/cache --continue=always",
     "typecheck": "turbo typecheck --cache-dir=.turbo/cache --continue=always",
     "typecheck:tools": "tsc -p tsconfig.tools.json --noEmit",
+    "typecheck:vendor": "tsc -p tsconfig.vendor.json --noEmit",
     "test": "vitest run",
     "knip": "knip",
     "knip:production": "knip --production",

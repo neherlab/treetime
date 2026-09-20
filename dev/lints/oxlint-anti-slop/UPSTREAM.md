@@ -59,12 +59,12 @@ Local functional changes to the vendored tree require an entry in this file and 
 
 ## Style enforcement
 
-The vendored tree is excluded from Oxlint and Oxfmt style enforcement (see the `ignorePatterns` in `oxlint.config.ts` and `oxfmt.config.ts`). It is type-checked with `tsconfig.tools.json` and its tests run in the standard custom-rule test path.
+The vendored tree is excluded from Oxlint and Oxfmt style enforcement (see the `ignorePatterns` in `oxlint.config.ts` and `oxfmt.config.ts`). It is type-checked with its own `tsconfig.vendor.json`, which mirrors upstream's compiler options rather than TreeTime's stricter first-party flags, so the tree type-checks verbatim. Its rule tests run in the standard custom-rule test path.
 
 ## Verification
 
 - Rule tests: `./dev/docker/run just oxlint-test`
-- Type check: `./dev/docker/run just js-check`
+- Type check: `./dev/docker/run bun run typecheck:vendor`
 - Full read-only gate: `./dev/docker/run just check-all`
 
 ## Updating

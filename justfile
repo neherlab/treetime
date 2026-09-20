@@ -610,10 +610,12 @@ _check mode:
     if have_bun_project; then
       run_check "typescript" bash -c "cd '{{project_dir}}' && bun run typecheck"
       run_check "typescript-config" bash -c "cd '{{project_dir}}' && bun run typecheck:tools"
+      run_check "typescript-vendor" bash -c "cd '{{project_dir}}' && bun run typecheck:vendor"
       run_check "oxlint" bash -c "cd '{{project_dir}}' && bun run lint"
     else
       skip "typescript" "no node_modules; run just setup"
       skip "typescript-config" "no node_modules; run just setup"
+      skip "typescript-vendor" "no node_modules; run just setup"
       skip "oxlint" "no node_modules; run just setup"
     fi
 
@@ -654,8 +656,10 @@ _check mode:
       run_check "tests" cargo -q nextest run --locked --workspace --cargo-quiet --no-fail-fast --hide-progress-bar
       if have_bun_project; then
         run_check "js-tests" bash -c "cd '{{project_dir}}' && bun run test"
+        run_check "oxlint-rules" bash -c "cd '{{project_dir}}' && node --test \"dev/lints/oxlint/__tests__/test_*.ts\" \"dev/lints/oxlint-anti-slop/**/*.test.ts\""
       else
         skip "js-tests" "no node_modules"
+        skip "oxlint-rules" "no node_modules"
       fi
     fi
 
@@ -875,6 +879,7 @@ alias jf := js-format
 alias jfc := js-format-check
 alias jc := js-check
 alias jt := js-test
+alias jot := oxlint-test
 alias ji := js-install
 alias ju := js-upgrade
 
@@ -953,6 +958,11 @@ js-check *args: js-install
 [group('js')]
 js-test *args: js-install
     cd '{{project_dir}}' && bun run test "$@"
+
+# Run custom oxlint rule tests (Node 24; RuleTester is unsupported under Bun)
+[group('js')]
+oxlint-test *args: js-install
+    cd '{{project_dir}}' && node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts" "$@"
 
 # Upgrade JS dependencies (main checkout only)
 [group('js')]
