@@ -295,7 +295,6 @@ panic = "warn"
 str_to_string = "warn"
 tests_outside_test_module = "warn"
 unwrap_used = "warn"
-wildcard_enum_match_arm = "warn"
 
 # Disable some of the Clippy lints
 absolute_paths = "allow"
@@ -406,6 +405,7 @@ missing_assert_message = "allow"
 needless_collect = "allow"
 too_many_lines = "allow"
 use_debug = "allow"
+wildcard_enum_match_arm = "allow"
 
 todo = "allow"
 let_underscore_untyped = "allow"
