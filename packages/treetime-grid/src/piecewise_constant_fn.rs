@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
-)]
-
 use crate::piecewise_fn::PiecewiseFnBase;
 use itertools::Itertools;
 use ndarray::Array1;
@@ -100,6 +95,7 @@ impl PiecewiseConstantFn {
     Self::new(Array1::from(breakpoints), values)
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Evaluate at multiple points in a single sweep.
   ///
   /// Takes advantage of sorted queries to avoid repeated binary searches:

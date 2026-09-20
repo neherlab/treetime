@@ -1,8 +1,3 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  reason = "each match extracts one boundary variant's payload and defaults the rest; the catch-all is the intended default, not a missed variant"
-)]
-
 use crate::hard_approach_law::HardApproachLaw;
 use crate::soft_tail_law::SoftTailLaw;
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
-)]
-
 use ndarray::Array1;
 
 /// Shared storage and validation for piecewise functions on non-uniform breakpoints.
@@ -18,6 +13,7 @@ pub struct PiecewiseFnBase {
 }
 
 impl PiecewiseFnBase {
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(
       breakpoints.as_slice().unwrap().is_sorted_by(|a, b| a < b),
@@ -34,10 +30,12 @@ impl PiecewiseFnBase {
     &self.values
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn breakpoints_slice(&self) -> &[f64] {
     self.breakpoints.as_slice().unwrap()
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn values_slice(&self) -> &[f64] {
     self.values.as_slice().unwrap()
   }

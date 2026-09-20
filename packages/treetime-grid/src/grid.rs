@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "grid lookups resolve to an index located within bounds by the surrounding search, so the Option is Some by construction"
-)]
-
 use crate::InterpElem;
 use crate::grid_iter::GridIter;
 use approx::UlpsEq;
@@ -46,6 +41,7 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn from_range_n_points(x_min: T, x_max: T, n_points: usize) -> Result<Self, Report>
   where
     T: Float,
@@ -60,6 +56,7 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn from_range_dx(x_min: T, x_max: T, dx: T) -> Result<Self, Report>
   where
     T: Float,
@@ -99,6 +96,7 @@ impl<T: InterpElem> Grid<T> {
     self.x_min
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   pub fn x_max(&self) -> T
   where
     T: Float,
@@ -129,6 +127,7 @@ impl<T: InterpElem> Grid<T> {
     self.len() == 0
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Computes x coordinate at given index
   pub fn x_at(&self, idx: usize) -> T
   where
@@ -137,6 +136,7 @@ impl<T: InterpElem> Grid<T> {
     self.x_min + self.dx * T::from(idx).unwrap()
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Finds grid interval index containing given x value
   ///
   /// Returns index of the left endpoint of the interval containing x.

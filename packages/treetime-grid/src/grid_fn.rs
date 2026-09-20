@@ -1,9 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  clippy::integer_division,
-  reason = "grid lookups and Float-to-f64 conversions are Some by construction, and the median uses integer halving of the point count"
-)]
-
 use std::fmt::Debug;
 
 use crate::InterpElem;
@@ -86,6 +80,7 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y)
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Constructs GridFn from non-uniformly spaced arrays by resampling to uniform grid
   ///
   /// Takes non-uniform (x, y) arrays and resamples them to a uniform grid using linear
@@ -366,6 +361,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Array1::from_vec(values))
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// The live anchor at one grid edge: its coordinate and stored neg-log ordinate.
   ///
   /// This is the [`GridEdge`] the edge-relative boundary laws read on evaluation. The left edge is
@@ -384,6 +380,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
   where
     T: Float,
@@ -445,6 +442,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Scale all y-values by a multiplicative factor.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
@@ -489,6 +487,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(result)
   }
 
+  #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
   /// Negates the argument of the function in-place: f(x) -> f(-x).
   /// This reflects the function across the y-axis.
   /// The domain [x_min, x_max] becomes [-x_max, -x_min].
@@ -637,6 +636,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 /// Finds the smallest spacing between consecutive points in a sorted array
 ///
 /// Used to determine optimal grid spacing when resampling non-uniform data.

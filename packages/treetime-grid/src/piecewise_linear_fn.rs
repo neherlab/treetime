@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
-)]
-
 use crate::piecewise_fn::PiecewiseFnBase;
 use ndarray::Array1;
 
@@ -94,6 +89,7 @@ impl PiecewiseLinearFn {
     y0 + alpha * (y1 - y0)
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Evaluate at multiple points in a single sweep.
   ///
   /// Takes advantage of sorted queries to walk the breakpoint array in tandem,

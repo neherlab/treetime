@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "grid lookups resolve within bounds and Float-to-f64 conversions are infallible, so the Option is Some by construction"
-)]
-
 use std::cmp::min;
 
 use eyre::Report;
@@ -60,6 +55,7 @@ where
   Ok(result)
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 /// Finds the interval index in a sorted array containing the query value
 ///
 /// Uses binary search to find index i such that x[i] <= xi < x[i+1].
