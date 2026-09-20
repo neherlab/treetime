@@ -133,8 +133,10 @@ RUN set -euxo pipefail >/dev/null \
 && /install-rust "${HOST_TUPLE}" "${CARGO_HOME}"
 
 COPY --link "dev/docker/files/install-dylint" "/"
+COPY --link --chown="${UID}:${GID}" "dev/lints/dylint/rust-toolchain.toml" "/tmp/lints/dylint/rust-toolchain.toml"
 RUN set -euxo pipefail >/dev/null \
-&& /install-dylint
+&& /install-dylint \
+&& rm -rf "/tmp/lints"
 
 COPY --link "dev/docker/files/install-hawk" "dev/docker/files/hawk-toolchain" "/"
 RUN set -euxo pipefail >/dev/null \

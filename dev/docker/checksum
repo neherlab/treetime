@@ -9,6 +9,9 @@ file_hash \
   .dockerignore \
   .gitignore \
   rust-toolchain.toml \
+  dev/lints/dylint/rust-toolchain.toml \
+  dev/lints/mordant/rust-toolchain.toml \
+  dev/lints/trailofbits/rust-toolchain.toml \
   mise.toml \
   mise.lock \
   $(find dev/docker -type f | sort)

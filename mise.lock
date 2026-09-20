@@ -92,9 +92,9 @@ url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/carg
 url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471599057"
 
 [[tools."cargo:cargo-dylint"]]
-version = "6.0.3"
+version = "6.0.4"
 backend = "cargo:cargo-dylint"
-specifiers = ["6.0.3"]
+specifiers = ["6.0.4"]
 
 [[tools."cargo:cargo-edit"]]
 version = "0.13.7"
@@ -107,9 +107,9 @@ backend = "cargo:cargo-mutants"
 specifiers = ["27.1.0"]
 
 [[tools."cargo:dylint-link"]]
-version = "6.0.3"
+version = "6.0.4"
 backend = "cargo:dylint-link"
-specifiers = ["6.0.3"]
+specifiers = ["6.0.4"]
 
 [[tools."cargo:jscpd"]]
 version = "5.2.0"

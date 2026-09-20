@@ -11,7 +11,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 rustc_session::declare_lint! {
     /// Flags `let _ = <expr>` where the expression is a `Result`. Binding a
     /// fallible value to `_` drops the error without handling or propagating it.
-    pub DISCARDED_ERROR,
+    pub DISCARDED_RESULT,
     Warn,
     "`Result` bound to `_` -- handle the error or propagate it with `?`"
 }
@@ -33,7 +33,7 @@ impl ErrorHandling {
     }
 }
 
-rustc_session::impl_lint_pass!(ErrorHandling => [DISCARDED_ERROR, DEFAULT_MASKS_ERROR]);
+rustc_session::impl_lint_pass!(ErrorHandling => [DISCARDED_RESULT, DEFAULT_MASKS_ERROR]);
 
 impl<'tcx> LateLintPass<'tcx> for ErrorHandling {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) {
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorHandling {
         if is_result(cx, init) {
             span_lint_and_help(
                 cx,
-                DISCARDED_ERROR,
+                DISCARDED_RESULT,
                 stmt.span,
                 "`Result` value is bound to `_` and its error discarded",
                 None,

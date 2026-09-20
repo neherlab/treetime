@@ -1,11 +1,11 @@
 warning: `Result` value is bound to `_` and its error discarded
   --> $DIR/error_handling.rs:9:5
    |
-LL |     let _ = fallible(); // should warn: discarded_error
+LL |     let _ = fallible(); // should warn: discarded_result
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = help: handle the error, propagate it with `?`, or assert success with `.expect(...)`
-   = note: `#[warn(discarded_error)]` on by default
+   = note: `#[warn(discarded_result)]` on by default
 
 warning: `.unwrap_or()` replaces a `Result` error with a default value
   --> $DIR/error_handling.rs:10:29
@@ -38,7 +38,7 @@ warning: items are not ordered callers-before-callees in this module
 LL | fn fallible() -> Result<u32, String> {
    | ----------- `fn fallible` defined here
 ...
-LL |     let _ = fallible(); // should warn: discarded_error
+LL |     let _ = fallible(); // should warn: discarded_result
    |             ^^^^^^^^ `fn discards` references `fn fallible` but appears after it
 LL |     let _value = fallible().unwrap_or(0); // should warn: default_masks_error
    |                  -------- `fn discards` references `fn fallible` but appears after it
@@ -56,4 +56,3 @@ LL |     match fallible() {
    = note: `#[warn(topological_ordering)]` on by default
 
 warning: 5 warnings emitted
-

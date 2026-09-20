@@ -49,7 +49,7 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::code_hygiene::LOCAL_USE,
         lints::code_hygiene::NESTED_FUNCTION,
         lints::code_hygiene::VERSIONED_NAME,
-        lints::error_handling::DISCARDED_ERROR,
+        lints::error_handling::DISCARDED_RESULT,
         lints::error_handling::DEFAULT_MASKS_ERROR,
         lints::spawn_handle::SPAWN_HANDLE_DROPPED,
         lints::clone_to_deserialize::VALUE_CLONED_TO_DESERIALIZE,

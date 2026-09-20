@@ -15,9 +15,8 @@ build_dir := project_dir / ".build/docker"
 test_dir := build_dir / "test"
 
 # Isolated target dir for the dylint driver: the pinned nightly toolchain must
-# not overwrite the stable build cache. The lint library is built under lib/.
-dylint_check_dir := build_dir / "dylint/check"
-dylint_lib_dir := build_dir / "dylint/lib"
+# not overwrite the stable build cache.
+dylint_dir := build_dir / "dylint"
 
 # Show the grouped task list (default).
 default:
@@ -349,8 +348,8 @@ alias l := lint
 alias lf := lint-fix
 alias lc := lint-ci
 alias lD := lint-deps
-alias dy := dylint-self
-alias dyf := dylint-self-fix
+alias dy := dylint-all
+alias dyf := dylint-all-fix
 alias f := format
 alias fc := format-check
 alias q := quality
@@ -398,13 +397,13 @@ lint-extra *args:
     just clippy "$@"
     just dylint-all
 
-# Lint with autofix: clippy + dylint-self (mordant and tob have no autofix)
+# Lint with autofix: clippy + every machine-applicable Dylint fix
 [group('lint')]
 lint-extra-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     just clippy-fix "$@"
-    just dylint-self-fix
+    just dylint-all-fix
 
 # Lint: every Rust checker (clippy, dylint, hawk, deny, shear)
 [group('lint')]
@@ -425,7 +424,7 @@ lint-all-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     just clippy-fix "$@"
-    just dylint-self-fix
+    just dylint-all-fix
 
 # Clippy denying warnings (CI parity)
 [group('lint')]
@@ -445,44 +444,40 @@ lint-deps *args:
     source '{{project_dir}}/dev/lib/utils.sh'
     nicely cargo shear "$@"
 
-# Run the project-specific dylint lint library
+# Run every Dylint library declared in workspace metadata
 [group('lint')]
-dylint-self *args:
+dylint-all *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
-    # The dylint driver loads the library by a toolchain-suffixed filename
-    # (lib<name>@<toolchain>.so). dylint-link derives that suffix from
-    # RUSTUP_TOOLCHAIN, which the pinned-stable active toolchain leaves unset, and
-    # a warm compiler cache can replay the build and skip dylint-link's copy step.
-    # Build under the pinned nightly (from rust-toolchain.toml, the single source
-    # of truth) and produce the suffixed name from the plain cdylib directly.
-    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/lints/dylint/rust-toolchain.toml')"
-    dylint_toolchain="${nightly}-$(rustc -vV | sed -n 's/^host: //p')"
-    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/lints/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
-    so='{{dylint_lib_dir}}/release/libtreetime_lints@'"${dylint_toolchain}"'.so'
-    cp -f '{{dylint_lib_dir}}/release/libtreetime_lints.so' "${so}"
-    export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
+    unset RUSTFLAGS
+    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
     kache_use dylint
-    nicely cargo dylint --quiet --lib-path "${so}" -- --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --all -- --quiet --locked --workspace --all-targets --keep-going "$@"
+    if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
+      printf 'mordant: findings over the committed baseline:\n' >&2
+      cat '{{dylint_dir}}/mordant/over-baseline.txt' >&2
+      exit 1
+    fi
 
-# Run the project-specific dylint lint library with autofix
+# Apply every machine-applicable Dylint fix
 [group('lint')]
-dylint-self-fix *args:
+dylint-all-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
-    # See the `dylint` recipe: build under the pinned nightly and produce the
-    # toolchain-suffixed .so the driver loads from the plain cdylib.
-    nightly="$(yq -p toml -oy '.toolchain.channel' '{{project_dir}}/dev/lints/dylint/rust-toolchain.toml')"
-    dylint_toolchain="${nightly}-$(rustc -vV | sed -n 's/^host: //p')"
-    ( export RUSTUP_TOOLCHAIN="${dylint_toolchain}"; cd '{{project_dir}}/dev/lints/dylint' && nicely cargo -q build --release --target-dir '{{dylint_lib_dir}}' )
-    so='{{dylint_lib_dir}}/release/libtreetime_lints@'"${dylint_toolchain}"'.so'
-    cp -f '{{dylint_lib_dir}}/release/libtreetime_lints.so' "${so}"
-    export CARGO_TARGET_DIR='{{dylint_check_dir}}' RUSTFLAGS="$(rustflags_build)" RUST_BACKTRACE=0
+    unset RUSTFLAGS
+    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
     kache_use dylint
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
-    nicely cargo dylint --quiet --fix --lib-path "${so}" -- "${vcs_flag}" --quiet --locked --workspace --all-targets "$@"
+    nicely cargo dylint --quiet --all --fix -- "${vcs_flag}" --quiet --locked --workspace --all-targets --keep-going "$@"
+    if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
+      printf 'mordant: findings over the committed baseline:\n' >&2
+      cat '{{dylint_dir}}/mordant/over-baseline.txt' >&2
+      exit 1
+    fi
 
 # Report unnecessary public surface across the workspace (cargo-hawk)
 [group('lint')]
@@ -497,36 +492,6 @@ hawk *args:
     toolchain="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain')"
     nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "$@"
 
-# Run the Trail of Bits dylint lint set (the six reviewed lints vendored under dev/lints/trailofbits)
-[group('lint')]
-dylint-tob *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source '{{project_dir}}/dev/lib/utils.sh'
-    export CARGO_TARGET_DIR='{{build_dir}}/dylint-tob' RUST_BACKTRACE=0 DYLINT_RUSTFLAGS="-A unknown_lints"
-    nicely cargo dylint --path dev/lints/trailofbits -- --quiet --locked --workspace --all-targets "$@"
-
-# Run the mordant type-invariant lint set against its committed baseline
-[group('lint')]
-dylint-mordant *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source '{{project_dir}}/dev/lib/utils.sh'
-    # Build with a fixed (empty) RUSTFLAGS regardless of the caller's environment,
-    # so findings match the committed baseline whether run directly or from a gate
-    # that exports RUSTFLAGS.
-    unset RUSTFLAGS
-    target='{{build_dir}}/mordant'
-    export CARGO_TARGET_DIR="${target}" DYLINT_RUSTFLAGS="-A unknown_lints" CARGO_INCREMENTAL=0
-    rm -f "${target}/mordant/over-baseline.txt"
-    nicely cargo dylint --path dev/lints/mordant -- --keep-going --locked --workspace --all-targets "$@"
-    if [[ -s "${target}/mordant/over-baseline.txt" ]]; then
-      printf 'mordant: findings over the committed baseline:\n' >&2
-      cat "${target}/mordant/over-baseline.txt" >&2
-      exit 1
-    fi
-    printf 'mordant: no findings over the committed baseline\n'
-
 # Regenerate the committed mordant baseline (mordant-baseline.toml)
 [group('lint')]
 dylint-mordant-baseline *args:
@@ -536,25 +501,9 @@ dylint-mordant-baseline *args:
     # Match the mordant gate: fixed (empty) RUSTFLAGS so the seeded baseline and
     # the check run analyze the workspace identically.
     unset RUSTFLAGS
-    export CARGO_TARGET_DIR='{{build_dir}}/mordant' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 CARGO_INCREMENTAL=0
-    nicely cargo dylint --path dev/lints/mordant -- --keep-going --locked --workspace --all-targets "$@"
+    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 CARGO_INCREMENTAL=0
+    nicely cargo dylint --quiet --all -- --quiet --keep-going --locked --workspace --all-targets "$@"
     printf 'Regenerated mordant-baseline.toml\n'
-
-# Run all three dylint libraries (self, mordant, tob)
-[group('lint')]
-dylint-all:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    just dylint-self
-    just dylint-tob
-    just dylint-mordant
-
-# Autofix across all dylint libraries that support it (self only)
-[group('lint')]
-dylint-all-fix:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    just dylint-self-fix
 
 # Lint levels, allow/expect lists, mutation exclusions, ignored tests, and float
 # tolerances are changed rarely and reviewed separately from ordinary code.
@@ -640,7 +589,11 @@ _check mode:
     export KACHE_CACHE_DIR="${kache_base}"; kache_use clippy
 
     run_check "rust-format" cargo -q fmt --all --check
-    run_check "rust-clippy" cargo -q clippy -q --all-targets --all --locked
+    if [[ "{{mode}}" == "full" ]]; then
+      run_check "rust-lints" just lint-all
+    else
+      run_check "rust-clippy" just clippy
+    fi
     if have_bun_project; then
       run_check "typescript" bash -c "cd '{{project_dir}}' && bun run typecheck"
       run_check "typescript-config" bash -c "cd '{{project_dir}}' && bun run typecheck:tools"
@@ -674,39 +627,6 @@ _check mode:
         run_check "hadolint" hadolint '{{project_dir}}'/dev/docker/*.dockerfile
       else
         skip "hadolint" "hadolint not installed"
-      fi
-      if command -v cargo-dylint >/dev/null 2>&1; then
-        run_check "dylint-self" bash -c "just dylint-self"
-      else
-        skip "dylint-self" "cargo-dylint not installed"
-      fi
-      hawk_tc="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain' 2>/dev/null || true)"
-      if command -v cargo-hawk >/dev/null 2>&1 && rustup toolchain list 2>/dev/null | grep -qF "${hawk_tc}"; then
-        # `-W warnings` reports findings without failing (pre-existing unreachable
-        # public API is out of scope), so this is a real run whose findings show.
-        run_check "cargo-hawk" bash -c "just hawk -W warnings"
-      else
-        skip "cargo-hawk" "cargo-hawk or its rustc ${hawk_tc:-?} not installed"
-      fi
-      if command -v cargo-dylint >/dev/null 2>&1; then
-        run_check "dylint-tob" bash -c "just dylint-tob"
-      else
-        skip "dylint-tob" "cargo-dylint not installed"
-      fi
-      if command -v cargo-dylint >/dev/null 2>&1 && [[ -f '{{project_dir}}/mordant-baseline.toml' ]]; then
-        run_check "dylint-mordant" bash -c "just dylint-mordant"
-      else
-        skip "dylint-mordant" "no committed mordant baseline"
-      fi
-      if [[ -f '{{project_dir}}/deny.toml' ]] && command -v cargo-deny >/dev/null 2>&1; then
-        run_check "cargo-deny" cargo deny --locked check bans licenses sources
-      else
-        skip "cargo-deny" "no deny.toml"
-      fi
-      if command -v cargo-shear >/dev/null 2>&1; then
-        run_check "unused-deps" cargo shear
-      else
-        skip "unused-deps" "cargo-shear not installed"
       fi
       if have_bun_project && grep -q '"knip"' package.json 2>/dev/null; then
         run_check "knip" bash -c "cd '{{project_dir}}' && bun run knip"
@@ -887,6 +807,15 @@ tools-lock *args:
     require_main_checkout '{{project_dir}}' "tool lockfile updates"
     cd '{{project_dir}}'
     mise install "$@"
+
+# Regenerate lockfiles for the standalone Dylint libraries
+[group('deps')]
+dylint-lock:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for manifest in '{{project_dir}}'/dev/lints/{dylint,mordant,trailofbits}/Cargo.toml; do
+      cargo generate-lockfile --manifest-path "${manifest}"
+    done
 
 # Generate the CLI reference docs
 [group('docs')]

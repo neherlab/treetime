@@ -11,12 +11,11 @@
 # than the Debian base image provides. mise does not manage rustup toolchains,
 # so the nightly driver toolchain stays here.
 #
-# The nightly channel must match the clippy_utils rev in dev/lints/dylint/Cargo.toml;
-# the mise cargo-dylint version must match its dylint_linting dependency.
+# The copied toolchain file and the lint manifests are the version sources.
 #
 set -euxo pipefail
 
-DYLINT_TOOLCHAIN="nightly-2026-05-28"
-
-rustup toolchain install "${DYLINT_TOOLCHAIN}" --profile minimal -c rustc-dev -c llvm-tools-preview -c rust-src
-rustc "+${DYLINT_TOOLCHAIN}" --version --verbose
+pushd "/tmp/lints/dylint" >/dev/null
+rustup toolchain install
+rustc --version --verbose
+popd >/dev/null

@@ -6,7 +6,7 @@ fn fallible() -> Result<u32, String> {
 
 // FAILING: a Result bound to `_`, and a Result whose error is defaulted away.
 fn discards() {
-    let _ = fallible(); // should warn: discarded_error
+    let _ = fallible(); // should warn: discarded_result
     let _value = fallible().unwrap_or(0); // should warn: default_masks_error
     let _also = fallible().unwrap_or_default(); // should warn: default_masks_error
     let _lazy = fallible().unwrap_or_else(|_| 0); // should warn: default_masks_error

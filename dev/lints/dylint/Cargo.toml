@@ -15,12 +15,12 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "9fca3bc9fc2bc83c60bde26d18ed68f11564b228" }
-dylint_linting = "6.0"
+clippy_utils = "=0.1.98"
+dylint_linting = "=6.0.4"
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
-dylint_testing = "6.0"
+dylint_testing = "=6.0.4"
 
 [package.metadata.rust-analyzer]
 rustc_private = true
