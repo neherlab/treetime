@@ -31,7 +31,7 @@ pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report
 pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
   let mut buf = Vec::new();
   nexus_to_writer(&mut buf, trees, options)?;
-  Ok(String::from_utf8(buf).expect("Nexus output should be valid UTF-8"))
+  Ok(String::from_utf8(buf)?)
 }
 
 /// Write trees in Nexus format to an `impl Write` destination.
