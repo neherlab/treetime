@@ -4,7 +4,7 @@
 )]
 
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::sample::{SampleMode, resolve_profile};
+use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
@@ -219,8 +219,12 @@ impl PartitionMarginalDense {
         }
         seq
       } else {
-        let sample = sample_mode.samples_node(node.is_root);
-        assign_sequence_sampled(seq_info, &self.alphabet, sample, rng)
+        let mut resolve = if sample_mode.samples_node(node.is_root) {
+          Resolve::Sample(rng)
+        } else {
+          Resolve::Argmax
+        };
+        assign_sequence_sampled(seq_info, &self.alphabet, &mut resolve)
       }
     };
 
@@ -301,21 +305,12 @@ impl MarginalPasses for PartitionMarginalDense {
 
 /// Deterministic most-likely-state sequence assignment. Used by the forward pass and convergence
 /// reads, which must stay reproducible regardless of the user's output sampling mode.
-#[allow(
-  clippy::disallowed_methods,
-  reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature"
-)]
 pub(crate) fn assign_sequence(seq_info: &DenseNodeState, alphabet: &Alphabet) -> Seq {
-  assign_sequence_sampled(seq_info, alphabet, false, &mut rand::thread_rng())
+  assign_sequence_sampled(seq_info, alphabet, &mut Resolve::Argmax)
 }
 
-fn assign_sequence_sampled(
-  seq_info: &DenseNodeState,
-  alphabet: &Alphabet,
-  sample: bool,
-  rng: &mut dyn rand::RngCore,
-) -> Seq {
-  let mut seq = prof2seq_sampled(&seq_info.profile, alphabet, sample, rng);
+fn assign_sequence_sampled(seq_info: &DenseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
+  let mut seq = prof2seq_sampled(&seq_info.profile, alphabet, resolve);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
   }
@@ -325,15 +320,10 @@ fn assign_sequence_sampled(
   seq
 }
 
-fn prof2seq_sampled(
-  profile: &DenseSeqDistribution,
-  alphabet: &Alphabet,
-  sample: bool,
-  rng: &mut dyn rand::RngCore,
-) -> Seq {
+fn prof2seq_sampled(profile: &DenseSeqDistribution, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
   let mut seq = seq! {};
   for row in profile.dis.rows() {
-    seq.push(alphabet.char(resolve_profile(row, sample, rng)));
+    seq.push(alphabet.char(resolve_profile(row, resolve)));
   }
   seq
 }

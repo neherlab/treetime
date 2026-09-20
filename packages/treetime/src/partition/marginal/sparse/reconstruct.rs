@@ -14,7 +14,7 @@
 //! into every descendant that resolved the position.
 
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::sample::resolve_profile;
+use crate::ancestral::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -48,12 +48,8 @@ pub(crate) fn parsimony_seq(
 }
 
 /// The node's most likely sequence.
-#[allow(
-  clippy::disallowed_methods,
-  reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature"
-)]
 pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
-  map_seq_sampled(node, alphabet, false, &mut rand::thread_rng())
+  map_seq_sampled(node, alphabet, &mut Resolve::Argmax)
 }
 
 /// The node's most likely sequence, or one draw from its posterior when `sample` is set.
@@ -61,30 +57,25 @@ pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
 /// Gaps stay gaps: a gap marks missing data, not an uncertain base, so a variable position on a
 /// deletion is left alone. Unknown (`N`) positions are resolved from the posterior, which is the
 /// inference that fills them in.
-pub(crate) fn map_seq_sampled(
-  node: &SparseNodeState,
-  alphabet: &Alphabet,
-  sample: bool,
-  rng: &mut dyn rand::RngCore,
-) -> Seq {
+pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
   let mut seq = node.sequence.clone();
 
   for (&pos, var) in &node.profile.variable {
     if seq[pos] != alphabet.gap() {
-      seq[pos] = alphabet.char(resolve_profile(var.dis.view(), sample, rng));
+      seq[pos] = alphabet.char(resolve_profile(var.dis.view(), resolve));
     }
   }
 
   // Sampling draws every position, not only the variable ones: an invariant position is still a
   // distribution, just one shared across all positions holding that character. `fixed` is keyed by
   // canonical state, so gaps and unknowns find no entry and stay as they are.
-  if sample {
+  if matches!(resolve, Resolve::Sample(_)) {
     for pos in 0..seq.len() {
       if node.profile.variable.contains_key(&pos) {
         continue;
       }
       if let Some(fixed) = node.profile.fixed.get(&seq[pos]) {
-        seq[pos] = alphabet.char(resolve_profile(fixed.view(), true, rng));
+        seq[pos] = alphabet.char(resolve_profile(fixed.view(), resolve));
       }
     }
   }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::sample::{SampleMode, resolve_profile, sample_from_profile};
+  use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile, sample_from_profile};
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rand::SeedableRng;
@@ -62,8 +62,7 @@ mod tests {
   #[test]
   fn test_resolve_profile_argmax_when_not_sampling() {
     let profile = array![0.1, 0.3, 0.6, 0.0];
-    let mut rng = StdRng::seed_from_u64(42);
-    let idx = resolve_profile(profile.view(), false, &mut rng);
+    let idx = resolve_profile(profile.view(), &mut Resolve::Argmax);
     assert_eq!(2, idx);
   }
 
@@ -75,7 +74,7 @@ mod tests {
     let mut saw_zero = false;
     let mut saw_one = false;
     for _ in 0..100 {
-      match resolve_profile(profile.view(), true, &mut rng) {
+      match resolve_profile(profile.view(), &mut Resolve::Sample(&mut rng)) {
         0 => saw_zero = true,
         1 => saw_one = true,
         _ => {},

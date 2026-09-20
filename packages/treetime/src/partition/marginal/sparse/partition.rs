@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::sample::SampleMode;
+use crate::ancestral::sample::{Resolve, SampleMode};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
@@ -170,7 +170,7 @@ impl PartitionMarginalSparse {
       );
       node_states.get_mut(&node.key)?.emitted = Some(seq);
     } else if sample {
-      let seq = map_seq_sampled(node_data, &self.alphabet, true, rng);
+      let seq = map_seq_sampled(node_data, &self.alphabet, &mut Resolve::Sample(rng));
       node_states.get_mut(&node.key)?.emitted = Some(seq);
     }
 
