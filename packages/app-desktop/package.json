@@ -29,12 +29,10 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
     "electron": "42.2.0",
-    "electron-builder": "26.8.1",
     "typescript": "catalog:",
     "vite": "8.0.14",
     "vite-plugin-electron": "0.29.1",
-    "vitest": "catalog:",
-    "zod": "catalog:"
+    "vitest": "catalog:"
   },
   "build": {
     "appId": "org.neherlab.treetime",
