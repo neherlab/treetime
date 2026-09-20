@@ -8,30 +8,16 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use eyre::Report;
 use std::path::Path;
 
-/// Resolve a command's configured outputs into concrete file paths.
-///
-/// Each command maps its per-file output flags to the shared three-tier resolver in exactly one
-/// place, so the command runner and the pipeline runner (which needs a step's produced paths to
-/// resolve `{{ steps.x.outputs.* }}` chaining) never drift apart.
 pub trait ResolveOutputs {
-  /// Output taxonomy this command draws from.
   fn command_kind(&self) -> CommandKind;
 
-  /// Concrete output paths for this command's current configuration.
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
 }
 
-/// Convert a command's per-command `--output-selection` list into internal selections.
 fn selection<S: Copy + Into<OutputSelection>>(selection: &[S]) -> Vec<OutputSelection> {
   selection.iter().copied().map(Into::into).collect()
 }
 
-/// Implement [`ResolveOutputs`] for each listed type from one output-field mapping.
-///
-/// The mapping reads only the shared output fields, which are identical between a command's raw and
-/// validated args, so both get one input-independent implementation. Output resolution never touches
-/// required inputs: a pipeline step's outputs must resolve during planning, before its inputs are
-/// proven present.
 macro_rules! impl_resolve_outputs {
   ($kind:ident; $($ty:ty),+ $(,)?; |$s:ident| $files:expr) => {
     $(

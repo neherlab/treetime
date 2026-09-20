@@ -157,7 +157,6 @@ fn mugration_transition_label(
   }))
 }
 
-/// Build confidence map: state -> probability, sorted descending, filtered > 0.001.
 pub fn build_confidence_map(states: &DiscreteStates, profile: &ndarray::Array1<f64>) -> BTreeMap<String, f64> {
   let mut pairs: Vec<(&str, f64)> = states.iter().zip(profile.iter()).map(|(s, &p)| (s, p)).collect();
   pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -168,7 +167,6 @@ pub fn build_confidence_map(states: &DiscreteStates, profile: &ndarray::Array1<f
     .collect()
 }
 
-/// Shannon entropy: -sum(p * ln(p + 1e-12)) over real states (excludes missing).
 pub fn compute_entropy(profile: &ndarray::Array1<f64>) -> f64 {
   const TINY: f64 = 1e-12;
   -profile.iter().map(|&p| p * (p + TINY).ln()).sum::<f64>()

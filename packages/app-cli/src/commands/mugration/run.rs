@@ -36,7 +36,6 @@ pub fn run_mugration(
 
   let resolved = mugration_args.resolve_outputs()?;
 
-  // The attribute names the metadata column to read discrete states from.
   let attribute_column = Some(mugration_args.attribute().to_owned());
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
@@ -88,9 +87,6 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
-  // Project the canonical core output into the serializable per-file views the writers consume. The
-  // reconstructed value maps and the tree topology stay in `output`; the writers read the maps from it
-  // and the per-node/per-edge metadata from `result`.
   let result = MugrationResult::new(
     &output,
     &confidences,

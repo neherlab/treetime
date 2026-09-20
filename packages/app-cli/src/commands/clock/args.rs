@@ -161,10 +161,6 @@ pub struct TreetimeClockArgsRaw {
   pub clock_regression: ClockRegressionArgs,
 }
 
-/// Clock arguments with required inputs proven present.
-///
-/// Produced from [`TreetimeClockArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so the
-/// run code reads `metadata` without an `Option`.
 #[derive(Debug, Clone)]
 pub struct TreetimeClockArgs {
   pub alignment: AlignmentArgs,
@@ -198,7 +194,6 @@ pub struct TreetimeClockArgs {
 }
 
 impl TreetimeClockArgs {
-  /// Metadata (dates) path.
   pub fn metadata(&self) -> &Path {
     &self.metadata
   }
@@ -243,12 +238,6 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
     })
   }
 }
-
-// CLI mirrors of the core clock optimization parameter types. Core keeps these as plain domain
-// structs used by the branch-point optimizer; these adapter copies own the clap parsing and convert
-// back with `From`. Fields, docs, clap flag names, defaults, serde spellings, and the
-// `schemars(rename)` schema names are kept identical to the core types so `--help`, config parsing,
-// and the generated schema stay byte-identical.
 
 /// Optimization method selection
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]

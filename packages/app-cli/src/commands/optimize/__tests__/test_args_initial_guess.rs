@@ -14,8 +14,6 @@ mod tests {
     branch_length_initial_guess: InitialGuessModeCli,
   }
 
-  /// Each kebab-case label parses to the corresponding `InitialGuessModeCli` variant. Pins the
-  /// `#[serde(rename_all = "kebab-case")]`-derived `ValueEnum` mapping.
   #[rustfmt::skip]
   #[rstest]
   #[case::auto(  "auto",   InitialGuessModeCli::Auto)]
@@ -28,15 +26,12 @@ mod tests {
     assert_eq!(expected, args.branch_length_initial_guess);
   }
 
-  /// Omitting the flag selects `Auto`, the mode that estimates only edges with missing or invalid
-  /// branch lengths and preserves valid input values.
   #[test]
   fn test_args_initial_guess_default_is_auto() {
     let args = InitialGuessArgs::try_parse_from(["treetime"]).unwrap();
     assert_eq!(InitialGuessModeCli::Auto, args.branch_length_initial_guess);
   }
 
-  /// An unknown value is rejected at parse time. Pins the `value_enum` constraint.
   #[test]
   fn test_args_initial_guess_rejects_unknown() {
     let result = InitialGuessArgs::try_parse_from(["treetime", "--branch-length-initial-guess=sometimes"]);
@@ -46,8 +41,6 @@ mod tests {
     );
   }
 
-  /// Each mirror variant converts to the matching core `InitialGuessMode`. Pins the adapter-to-core
-  /// seam that replaced the core `ValueEnum` derive.
   #[rustfmt::skip]
   #[rstest]
   #[case::auto(  InitialGuessModeCli::Auto,   InitialGuessMode::Auto)]

@@ -6,10 +6,6 @@ mod tests {
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-  // optimize node data is the augur non-timetree refine shape: per-node
-  // branch_length (the ML-optimized divergence, subs/site) plus alignment and
-  // input_tree metadata. No clock, date, or confidence fields.
-
   #[test]
   fn test_augur_node_data_optimize_branch_lengths() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
@@ -23,8 +19,6 @@ mod tests {
   fn test_augur_node_data_optimize_only_branch_length_field() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
-    // Every timetree-only and confidence field must be omitted: optimize does no
-    // temporal inference and v1 does not parse input-tree branch support.
     for (name, node) in &data.nodes {
       assert!(node.confidence.is_none(), "{name}: confidence must be omitted");
       assert!(node.numdate.is_none(), "{name}: numdate must be omitted");
@@ -47,8 +41,6 @@ mod tests {
   fn test_augur_node_data_optimize_metadata() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
-    // clock is absent (no time-tree inference); alignment and input_tree carry
-    // the input file paths passed to the writer.
     assert!(data.metadata.clock.is_none());
     assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
     assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
@@ -72,8 +64,6 @@ mod tests {
 
     assert_eq!(original, roundtripped);
   }
-
-  // --- Confidence from input tree ---
 
   #[test]
   fn test_augur_node_data_optimize_confidence_from_float_label() {
@@ -103,8 +93,6 @@ mod tests {
       "Text-labeled internal node should not have confidence"
     );
   }
-
-  // --- Divergence units: mutations mode ---
 
   #[test]
   fn test_augur_node_data_optimize_mutations_mode_branch_length_is_count() {
@@ -280,8 +268,6 @@ mod tests {
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
-      // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map, the branch
-      // length from the loop result, and the input branch support from the parse-time confidence map.
       let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
         .graph
         .get_nodes()

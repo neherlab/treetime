@@ -1,10 +1,3 @@
-//! Server `ancestral` request shape and orchestration.
-//!
-//! Reads the tree and alignment, runs the core ancestral reconstruction, projects the result through
-//! the shared `app-output` encoders into the default `--output-all` file set, and returns the
-//! serializable result. The request is the openapi subset the browser client sends; it always writes
-//! the command's default output set into one directory.
-
 use crate::commands::support::{default_output_plan, default_topology_order};
 use app_output::EdgeMutationCommentProvider;
 use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut};
@@ -135,7 +128,6 @@ pub fn run_ancestral(
     emitted_nodes,
   } = output;
 
-  // Stream the reconstructed nucleotide FASTA one record at a time in the walk's emission order.
   if let Some(mut writer) = output_fasta {
     if let Some(partition) = partition.as_ref() {
       for &key in &emitted_nodes {

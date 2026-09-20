@@ -1,5 +1,3 @@
-//! Inspired by clap-verbosity-flag:
-//! https://github.com/rust-cli/clap-verbosity-flag
 use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{ArgAction, Args};
 use log::LevelFilter;

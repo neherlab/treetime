@@ -1,5 +1,3 @@
-//! N-API `optimize` request shape and orchestration.
-
 use crate::commands::support::{default_output_plan, default_topology_order};
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
@@ -29,8 +27,6 @@ use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
 
-/// Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
-/// valid, because optimize has no sampling dates.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
@@ -45,7 +41,6 @@ impl From<OptimizeRerootMethod> for RerootMethod {
   }
 }
 
-/// Branch-length optimization request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize)]
 #[serde(default)]
 pub struct OptimizeArgs {

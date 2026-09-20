@@ -1,5 +1,3 @@
-//! Server `prune` request shape and orchestration.
-
 use crate::commands::support::{default_output_plan, default_topology_order};
 use app_output::output_plan::CommandKind;
 use app_output::output_plan::OutputSelection;

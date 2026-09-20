@@ -38,10 +38,6 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub num_mut: usize,
 }
 
-/// Homoplasy arguments with required inputs proven present.
-///
-/// Produced from [`TreetimeHomoplasyArgsRaw`] by [`TryFrom`], which converts the embedded ancestral
-/// args and so enforces ancestral's required `tree`.
 #[derive(Debug, Clone)]
 pub struct TreetimeHomoplasyArgs {
   pub ancestral_args: TreetimeAncestralArgs,

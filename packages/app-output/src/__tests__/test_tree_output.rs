@@ -78,9 +78,6 @@ mod tests {
 
   #[test]
   fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
-    // Nucleotide indels are dropped from the Auspice nuc mutation list, which mirrors the
-    // substitution-only augur node-data muts. A branch whose only nucleotide change is a
-    // deletion therefore has no `nuc` entry.
     let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
@@ -272,7 +269,6 @@ mod tests {
       &CommentProviders::new(),
     )?;
     let actual: Value = json_read_file(&path)?;
-    // GraphJson serializes pure topology: the node and edge sets, with no command data slot.
     let nodes = actual["nodes"]
       .as_array()
       .expect("graph.json must carry the node topology");
@@ -299,8 +295,6 @@ mod tests {
     Ok(())
   }
 
-  // Oracle: Nextstrain Augur's dataset v2 schema at
-  // d8e38736037ba9474a809f9a5a63bc2b279d2407.
   #[test]
   fn test_tree_output_all_auspice_models_match_augur_v2_schema() -> Result<(), Report> {
     let documents = helpers::all_auspice_documents()?;
@@ -398,8 +392,6 @@ mod tests {
     Ok(())
   }
 
-  // Oracle: augur export_v2.format_number keeps `precision` significant figures in the
-  // fractional part while preserving integer digits.
   #[test]
   fn test_tree_output_format_number_fractional_precision() {
     assert_ulps_eq!(0.123457, format_number(0.12345678, 6), max_ulps = 0);
@@ -410,10 +402,6 @@ mod tests {
 
   #[test]
   fn test_tree_output_group_mutations_drops_nucleotide_indels_keeps_amino_acid_indels() -> Result<(), Report> {
-    // Auspice v2 mutation lists mirror the augur node-data `muts`: substitution-only for
-    // the nucleotide track (augur export copies node-data nuc muts verbatim), indels retained
-    // for amino-acid tracks (aa node-data emits them). Deletion of range (1, 3) over "CG"
-    // expands to per-position tokens "C2-", "G3-".
     let mutations = vec![
       Mutation::substitution(
         MutationTrack::Nucleotide,
@@ -483,9 +471,6 @@ mod tests {
       IndelAndAminoAcid,
     }
 
-    /// Build the ancestral output maps the auspice and MAT encoders read, from the partition's public
-    /// accessors. Mirrors what the core gather produces from the same reads, keeping the maps
-    /// constructible from public API without reaching the production gather.
     pub fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
       let Some(partition) = partition else {
         return AncestralOutputMaps::default();
@@ -509,8 +494,6 @@ mod tests {
       }
     }
 
-    /// The optimize fixtures carry no reconstruction partition, so the encoders read empty maps, exactly
-    /// what the core gather returns for an empty partition set.
     pub fn optimize_maps(_graph: &Graph) -> OptimizeOutputMaps {
       OptimizeOutputMaps::default()
     }
@@ -592,8 +575,6 @@ mod tests {
         );
         aa
       });
-      // The CDS annotation map the encoders consume, kept parallel to the AA node data (the core
-      // result no longer carries it). Present only for the amino-acid fixtures.
       let aa_annotations = if include_aa {
         btreemap! {
           "S".to_owned() => AugurNodeDataJsonAnnotationEntry {
@@ -638,9 +619,6 @@ mod tests {
         .collect()
     }
 
-    /// Input-tree branch support for the ancestral fixture: node `A` carries 0.9, every other node
-    /// none. Mirrors a Newick parse that annotated only `A`, so the output writers surface 0.9 on
-    /// `A` and nothing elsewhere.
     pub fn ancestral_confidences(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
@@ -977,8 +955,6 @@ mod tests {
         })
         .collect();
 
-      // Gather the reconstructed value maps from the partition's public accessors, mirroring what the
-      // core gather produces, then assemble the canonical core output the encoders read.
       let reconstructed_traits = graph
         .get_nodes()
         .map(|node| {
@@ -1039,8 +1015,6 @@ mod tests {
               div: index as f64 / 2.0,
               is_outlier: false,
               bad_branch: false,
-              // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
-              // value map; this fixture graph runs no such pass, so production surfaces None here too.
               rate_susceptibility_dates: None,
             },
           )

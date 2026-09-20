@@ -104,8 +104,6 @@ mod tests {
     AsciiChar::from_byte_unchecked(b)
   }
 
-  /// Gather the per-edge nucleotide mutation map the comment provider consumes off a completed
-  /// sparse reconstruction, mirroring how the tree writers gather it in production.
   fn edge_mutation_map(
     graph: &Graph,
     partition: &SparseReconstruction,
@@ -143,8 +141,6 @@ mod tests {
     }
 
     let mut obs_edges = btreemap! {};
-    // The MAP substitutions the comment provider reports come from the estimates map; the fixture seeds
-    // it directly (comment tests do not run a marginal pass).
     let mut estimates = btreemap! {};
     let edges = graph.get_edges().collect::<Vec<_>>();
     for (idx, subs) in edge_subs {

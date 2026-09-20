@@ -61,14 +61,11 @@ fn build_models(attribute: &str, output: &MugrationOutput) -> BTreeMap<String, A
   let gtr = &output.gtr;
   let n_states = output.n_states;
 
-  // Alphabet includes missing data marker "?" at the end (n_states+1 elements)
   let mut alphabet: Vec<String> = output.states.iter().map(|s| s.to_owned()).collect();
   alphabet.push("?".to_owned());
 
-  // Equilibrium probabilities exclude missing (n_states elements)
   let equilibrium_probabilities: Vec<f64> = (0..n_states).map(|i| gtr.pi[i]).collect();
 
-  // Transition matrix excludes missing (n_states x n_states)
   let transition_matrix: Vec<Vec<f64>> = (0..n_states)
     .map(|i| (0..n_states).map(|j| gtr.W[[i, j]]).collect())
     .collect();
@@ -152,7 +149,6 @@ fn build_branches(
     let child_trait = output.reconstructed_traits[&node_key].clone();
 
     let label = if Some(node_key) == root_key {
-      // Root gets just the state name (no arrow)
       child_trait.clone()
     } else {
       let parent_trait = parent_traits.get(&node_key).and_then(|t| t.as_deref());

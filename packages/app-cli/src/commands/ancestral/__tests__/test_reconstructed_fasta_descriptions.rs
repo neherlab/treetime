@@ -15,9 +15,6 @@ mod tests {
   use treetime::progress::NoopProgress;
   use treetime_io::fasta::read_many_fasta_path;
 
-  /// Run ancestral reconstruction with leaf sequences included and return each emitted record's
-  /// description keyed by sequence name. Leaf `A` carries a FASTA description, `B` does not, and the
-  /// internal `root` is not a leaf record.
   fn reconstructed_descriptions(
     method: MethodAncestralCli,
     dense: Option<bool>,

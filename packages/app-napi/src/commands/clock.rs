@@ -1,5 +1,3 @@
-//! N-API `clock` request shape and orchestration.
-
 use crate::commands::support::{default_output_plan, default_topology_order, reroot_spec};
 use app_output::clock_result::{ClockNodeOut, EdgeOut};
 use app_output::clock_tree_output::write_clock_tree_outputs;
@@ -31,7 +29,6 @@ use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 
-/// Clock estimation request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize)]
 #[serde(default)]
 pub struct ClockArgs {
@@ -62,8 +59,6 @@ pub struct ClockArgs {
   pub seed: Option<u64>,
 }
 
-/// Clock estimation result. Every field is a value the caller may read; the serialized response body
-/// carries none of them (they are internal to the run).
 #[derive(serde::Serialize)]
 pub struct ClockResult {
   #[serde(skip)]

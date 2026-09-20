@@ -10,27 +10,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime_utils::{make_error, make_report};
 
-/// Top-level keys a pipeline document may carry.
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
 
-/// Placeholders that mark a per-CDS output path template, which is not a single concrete file.
 pub(crate) const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
-/// A whole `{{ steps.<name>.outputs.<sel> }}` reference (or `.output_all`), in dotted or subscript
-/// form. Steps references are resolved by this regex pass rather than by the template engine so that
-/// hyphenated selection tags (e.g. `reconstructed-aa`) work: the engine would read the hyphen as a
-/// minus operator.
 pub(crate) fn step_ref() -> &'static Regex {
   regex!(
     r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#
   )
 }
 
-/// A parsed pipeline document with steps still raw (command payloads un-typed).
-///
-/// This is the loader's intermediate form: `vars`, `output_all`, and each step's outputs are
-/// resolved in a staged, backward-only pass afterwards, because interpolation of one leaf can depend
-/// on earlier results.
 pub struct PipelineDoc {
   pub schema_ref: Option<String>,
   pub vars: Map<String, Value>,
@@ -39,10 +28,6 @@ pub struct PipelineDoc {
 }
 
 impl PipelineDoc {
-  /// Parse the outer pipeline shape from a permissive JSON/YAML value.
-  ///
-  /// Unknown top-level keys (the common `step` for `steps`) and duplicate step names are rejected
-  /// here so the staged resolution never runs on a malformed document.
   pub fn from_value(value: Value) -> Result<Self, Report> {
     let Value::Object(mut map) = value else {
       return make_error!("a pipeline config must be a mapping with `steps`");
@@ -100,35 +85,22 @@ impl PipelineDoc {
   }
 }
 
-/// Concrete outputs produced by one resolved step.
 pub struct StepOutputs {
-  /// The step's resolved `--output-all` directory, if it has one.
   pub output_all: Option<PathBuf>,
-  /// Every produced file grouped by the selection it satisfies (a styled tree maps to several).
   pub by_selection: BTreeMap<OutputSelection, Vec<PathBuf>>,
 }
 
-/// One fully resolved step: a typed command plus the files it will produce.
 pub struct ResolvedStep {
   pub name: String,
   pub command: PipelineStepCommand,
   pub outputs: StepOutputs,
 }
 
-/// A pipeline whose vars, working directory, and per-step outputs are all resolved to concrete
-/// values, ready for validation, dry-run listing, or execution.
 pub struct ResolvedPipeline {
   pub workdir: Option<PathBuf>,
   pub steps: Vec<ResolvedStep>,
 }
 
-/// Resolve a pipeline document end to end.
-///
-/// Resolution is staged and backward-only: `vars` first (dependency ordered), then `output_all`
-/// (the working directory), then each step in list order. Chained `{{ steps.* }}` references are
-/// substituted from earlier steps first, then `{{ vars.* }}` and `{{ env.* }}` are rendered. Every
-/// step's outputs are resolved (even ones a later `--steps` selection may skip) so a selected step
-/// can still reference an earlier producer's path.
 pub fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
   let interp = Interpolator::default();
   let vars = resolve_vars(&interp, &doc.vars, env)?;
@@ -175,7 +147,6 @@ pub fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeli
   })
 }
 
-/// Interpolate a template that must resolve to a single string path.
 fn interpolate_to_path(interp: &Interpolator, template: &str, context: &Value, field: &str) -> Result<PathBuf, Report> {
   match interp.interpolate_str(template, context)? {
     Value::String(path) => Ok(PathBuf::from(path)),
@@ -183,7 +154,6 @@ fn interpolate_to_path(interp: &Interpolator, template: &str, context: &Value, f
   }
 }
 
-/// Replace every `{{ steps.* }}` reference in a value with the earlier step's concrete path.
 fn substitute_step_refs(
   value: &Value,
   resolved: &[ResolvedStep],
@@ -202,7 +172,6 @@ fn substitute_step_refs(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Replace step references in a single string leaf, validating each against earlier steps.
 fn substitute_step_refs_in_leaf(
   leaf: &str,
   resolved: &[ResolvedStep],
@@ -234,7 +203,6 @@ fn substitute_step_refs_in_leaf(
   Ok(result)
 }
 
-/// Look up an earlier producer step by name, rejecting forward, self, and unknown references.
 fn resolve_producer<'a>(
   producer: &str,
   resolved: &'a [ResolvedStep],
@@ -257,7 +225,6 @@ fn resolve_producer<'a>(
   )
 }
 
-/// Concrete output directory of an earlier producer, for `{{ steps.x.output_all }}`.
 fn producer_output_all(step: &str, producer: &ResolvedStep) -> Result<String, Report> {
   match &producer.outputs.output_all {
     Some(dir) => Ok(dir.to_string_lossy().into_owned()),
@@ -268,7 +235,6 @@ fn producer_output_all(step: &str, producer: &ResolvedStep) -> Result<String, Re
   }
 }
 
-/// Concrete file for `{{ steps.<producer>.outputs.<selection> }}`, enforcing the single-file rule.
 fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) -> Result<String, Report> {
   let by_selection = &producer.outputs.by_selection;
   let produced_tags: Vec<String> = by_selection.keys().map(|sel| selection_tag(*sel)).collect();
@@ -304,8 +270,6 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
   }
 }
 
-/// Set the top-level `output_all` to `dir` unless the step already configured its own output
-/// directory. `output_all` is a flattened field, so it sits at the top level of the step payload.
 fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
   let Value::Object(map) = payload else {
     return;
@@ -319,7 +283,6 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
   }
 }
 
-/// Kebab tag of an output selection, as used in `{{ steps.x.outputs.<tag> }}`.
 fn selection_tag(selection: OutputSelection) -> String {
   serde_json::to_value(selection)
     .ok()
@@ -327,18 +290,15 @@ fn selection_tag(selection: OutputSelection) -> String {
     .unwrap_or_default()
 }
 
-/// Parse a kebab output-selection tag, or `None` when it names no selection.
 fn parse_selection(tag: &str) -> Option<OutputSelection> {
   serde_json::from_value(Value::String(tag.to_owned())).ok()
 }
 
-/// Whether a path is a per-CDS template rather than a concrete file.
 pub(crate) fn is_template_path(path: &Path) -> bool {
   let path = path.to_string_lossy();
   CDS_PLACEHOLDERS.iter().any(|placeholder| path.contains(placeholder))
 }
 
-/// Prefix a step-scoped error with the step name.
 fn step_error(step: &str, err: &Report) -> Report {
   make_report!("in pipeline step `{step}`: {err}")
 }
@@ -375,7 +335,6 @@ mod tests {
       .expect("step present")
   }
 
-  // A single-file chained reference resolves to the producer step's concrete output path.
   #[test]
   fn test_resolve_chain_single_file_reference() {
     let config = json!({
@@ -389,7 +348,6 @@ mod tests {
     assert_eq!("tmp/run/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
   }
 
-  // With no top-level workdir, an explicit per-step output directory still drives chaining.
   #[test]
   fn test_resolve_chain_uses_explicit_step_output_all() {
     let config = json!({
@@ -402,7 +360,6 @@ mod tests {
     assert_eq!("out/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
   }
 
-  // A reference to a selection produced under several NWK styles is ambiguous and lists the files.
   #[test]
   fn test_resolve_chain_multi_style_reference_is_ambiguous() {
     let config = json!({
@@ -419,7 +376,6 @@ mod tests {
     );
   }
 
-  // A reference to the per-CDS amino-acid output is rejected because it is a template, not one file.
   #[test]
   fn test_resolve_chain_per_cds_template_reference_rejected() {
     let config = json!({
@@ -436,7 +392,6 @@ mod tests {
     );
   }
 
-  // A forward reference (to a later step) is rejected: steps may only reference earlier steps.
   #[test]
   fn test_resolve_chain_forward_reference_rejected() {
     let config = json!({
@@ -453,7 +408,6 @@ mod tests {
     );
   }
 
-  // An unknown step reference offers a did-you-mean among earlier step names.
   #[test]
   fn test_resolve_chain_unknown_step_reference_suggests() {
     let config = json!({
@@ -470,7 +424,6 @@ mod tests {
     );
   }
 
-  // A selection the producer does not output is rejected, listing what it does produce.
   #[test]
   fn test_resolve_chain_unproduced_selection_rejected() {
     let config = json!({
@@ -487,7 +440,6 @@ mod tests {
     );
   }
 
-  // Duplicate step names are rejected at parse time.
   #[test]
   fn test_resolve_duplicate_step_names_rejected() {
     let config = json!({
@@ -500,7 +452,6 @@ mod tests {
     assert_error!(result, "duplicate step name `tt`; step names must be unique");
   }
 
-  // An unknown top-level key (`step` for `steps`) is rejected with a did-you-mean.
   #[test]
   fn test_resolve_unknown_top_level_key_rejected() {
     let config = json!({ "step": [] });

@@ -117,10 +117,6 @@ pub struct TreetimePruneArgsRaw {
   pub prune_nodes_list_file_delimiter: char,
 }
 
-/// Prune arguments with required inputs proven present.
-///
-/// Produced from [`TreetimePruneArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so the
-/// run code reads `tree` without an `Option`.
 #[derive(Debug, Clone)]
 pub struct TreetimePruneArgs {
   pub alignment: AlignmentArgs,
@@ -140,7 +136,6 @@ pub struct TreetimePruneArgs {
 }
 
 impl TreetimePruneArgs {
-  /// Input tree path.
   pub fn tree(&self) -> &Path {
     &self.tree
   }

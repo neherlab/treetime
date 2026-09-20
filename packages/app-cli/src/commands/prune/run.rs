@@ -85,15 +85,6 @@ pub fn run_prune(
     branch_lengths: branch_lengths_opt,
   } = output;
 
-  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
-  // plain value maps the output writers consume, taking the partition read out of the serialization
-  // path. Only the auspice and MAT writers read these maps; prune's default Newick/Nexus
-  // outputs carry no mutation comments (empty comment provider), so they never read a mutation. Prune
-  // also applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
-  // following marginal pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering
-  // unconditionally would read those unpopulated edges for outputs that never serialize them, so
-  // gather only when a map-consuming tree output is requested. Node and edge keys stay stable through
-  // topology ordering, so gathering before it is bit-identical.
   let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
     gather_prune_output_maps(&graph, &partitions)?
   } else {
@@ -106,11 +97,6 @@ pub fn run_prune(
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   progress.report("Writing output", 0.8, "");
 
-  // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
-  // value maps the output writers consume. The name and branch length come from the post-topology
-  // maps the pipeline returns (topology ordering only permutes keys, so their values still match the
-  // pruned tree); the input branch support comes from the parse-time confidence map keyed by node,
-  // which holds `None` for any node the pipeline created after the parse.
   let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
     .get_nodes()
     .map(|node| {
@@ -170,10 +156,6 @@ pub fn run_prune(
   Ok(PruneResult { graph, nodes, edges })
 }
 
-/// Whether a tree-output kind reads the gathered prune value maps.
-///
-/// The auspice and MAT writers build their nodes and edges from the value maps; the Newick,
-/// Nexus, Graphviz, and internal-graph writers do not (prune supplies no mutation comment provider).
 fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   matches!(
     kind,
@@ -185,15 +167,6 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the prune
-/// partition.
-///
-/// The per-edge mutation map is keyed by the inbound edge of every node reached on a walk from the
-/// single root, i.e. exactly the output-tree edges the tree, MAT, and Newick-comment writers traverse.
-/// Prune applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
-/// following marginal pass, so the node and edge stores can still hold detached nodes and orphan edges
-/// whose `subs_ml` was never populated. Those never appear on the tree walk, so reading
-/// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
 pub(crate) fn gather_prune_output_maps(
   graph: &Graph,
   partitions: &[SparseReconstruction],

@@ -31,15 +31,6 @@ const COLORING_GENOTYPE: &str = "gt";
 pub(crate) const COLORING_NUM_DATE: &str = "num_date";
 pub(crate) const NUC_TRACK: &str = "nuc";
 
-/// Write every requested tree output for one command.
-///
-/// The per-command entry points build the node-name and edge-weight maps and supply closures that
-/// convert the graph into the structured document types. This function owns the file-format
-/// dispatch shared by all commands.
-///
-/// R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length for
-/// timetree, while the Graphviz weight stays the substitution branch length. The two writer paths
-/// therefore take distinct edge-weight maps.
 pub(crate) fn write_tree_outputs<A, M>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -95,7 +86,6 @@ where
         usher_mat_json_write_file(path, &to_mat()?, &UsherMatJsonOptions::default())?;
       },
       TreeWriteKind::GraphJson => {
-        // Graph JSON is an unstable debug dump of the concrete internal structs. It has no portable schema or input contract.
         json_write_file(path, graph, JsonPretty(true))?;
       },
       TreeWriteKind::Dot => graphviz_write_file(path, graph, names, graphviz_weights)?,
@@ -104,7 +94,6 @@ where
   Ok(())
 }
 
-/// Per-node conversion context passed to the graph-walk closures.
 #[allow(
   clippy::field_scoped_visibility_modifiers,
   reason = "crate-internal fields are the record interface"
@@ -114,7 +103,6 @@ pub(crate) struct GraphNodeContext {
   pub(crate) edge_key: Option<GraphEdgeKey>,
 }
 
-/// Reconstructed discrete trait for one attribute: the assigned state plus its confidence and entropy.
 #[derive(Clone, Debug, Default, PartialEq)]
 #[allow(
   clippy::field_scoped_visibility_modifiers,
@@ -194,8 +182,6 @@ pub(crate) fn auspice_node(
   }
 }
 
-/// Auspice node for the sequence-reconstruction commands (ancestral, optimize, prune): divergence,
-/// input-branch support, and grouped substitution mutations, with no date or trait attributes.
 pub(crate) fn sequence_auspice_node(
   name: &str,
   div: Option<f64>,
@@ -291,7 +277,6 @@ fn attach_auspice_children(
   Ok(())
 }
 
-/// Build a UShER MAT with no per-node mutations, for commands that do not reconstruct sequences.
 pub(crate) fn mutation_free_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -412,10 +397,6 @@ pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<Strin
         track.clone()
       },
     };
-    // The nucleotide auspice mutation list mirrors the augur node-data `muts`,
-    // which are substitution-only: augur export copies node-data muts verbatim
-    // into `branch_attrs.mutations.nuc`, so indels (a separate track) must not
-    // appear there. Amino-acid tracks keep indels to match their own node-data.
     if matches!(mutation.track, MutationTrack::Nucleotide) && !matches!(mutation.event, MutationEvent::Substitution(_))
     {
       continue;
@@ -456,9 +437,6 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
   )
 }
 
-/// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map.
-/// Matches `cumulative_branch_length` exactly: a missing (`None`) edge
-/// length short-circuits the whole sum to `None`.
 pub(crate) fn cumulative_branch_length_from(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -475,7 +453,6 @@ pub(crate) fn cumulative_branch_length_from(
   Ok(Some(total))
 }
 
-/// Node display name with the `node_{key}` fallback, resolved from a gathered name-map value.
 pub(crate) fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }

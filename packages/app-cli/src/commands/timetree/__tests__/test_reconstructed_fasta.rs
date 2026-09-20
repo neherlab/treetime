@@ -6,9 +6,6 @@ mod tests {
   use treetime::alphabet::alphabet::Alphabet;
   use treetime_primitives::AsciiChar;
 
-  // Without a tip-state flag the reconstructed FASTA holds internal nodes only, and every record
-  // carries a real name. Rerooting introduces a fresh root node, so this also guards that the root
-  // reaches output named (`NODE_<n>`) rather than as an empty FASTA header.
   #[test]
   fn test_timetree_reconstructed_fasta_internal_only_and_named() -> Result<(), Report> {
     let records = helpers::run_reconstructed_fasta("test-tt-recon-internal", |_| {})?;
@@ -33,8 +30,6 @@ mod tests {
     Ok(())
   }
 
-  // `--include-leaves` adds every leaf, and without imputation each reconstructed leaf echoes its
-  // observed input sequence exactly.
   #[test]
   fn test_timetree_reconstructed_fasta_include_leaves_echoes_observed() -> Result<(), Report> {
     let records = helpers::run_reconstructed_fasta("test-tt-recon-leaves", |args| args.include_leaves = true)?;
@@ -63,8 +58,6 @@ mod tests {
     Ok(())
   }
 
-  // `--reconstruct-tip-states` enables imputation: every ambiguous observed tip position resolves to
-  // an inferred canonical state, while gaps stay gaps.
   #[test]
   fn test_timetree_reconstructed_fasta_imputes_ambiguous_tips() -> Result<(), Report> {
     let records = helpers::run_reconstructed_fasta("test-tt-recon-impute", |args| args.reconstruct_tip_states = true)?;

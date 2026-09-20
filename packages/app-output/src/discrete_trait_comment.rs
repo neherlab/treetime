@@ -4,10 +4,6 @@ use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NodeCommentProvider;
 
-/// Newick/Nexus node-comment provider that reads a gathered per-node reconstructed-trait map.
-///
-/// Reads the trait from a value map instead of the partition, so the tree writers no longer touch the
-/// partition during serialization.
 pub struct DiscreteTraitCommentProvider<'a> {
   reconstructed_traits: &'a BTreeMap<GraphNodeKey, Option<String>>,
   attribute: &'a str,

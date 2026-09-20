@@ -139,10 +139,6 @@ pub struct TreetimeMugrationArgsRaw {
   pub topology_order: TopologyOrderArgs,
 }
 
-/// Mugration arguments with required inputs proven present.
-///
-/// Produced from [`TreetimeMugrationArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so
-/// the run code reads `metadata` and `attribute` without an `Option`.
 #[derive(Debug, Clone)]
 pub struct TreetimeMugrationArgs {
   pub tree: Option<PathBuf>,
@@ -168,12 +164,10 @@ pub struct TreetimeMugrationArgs {
 }
 
 impl TreetimeMugrationArgs {
-  /// Metadata (states) path.
   pub fn metadata(&self) -> &Path {
     &self.metadata
   }
 
-  /// Attribute to reconstruct.
   pub fn attribute(&self) -> &str {
     &self.attribute
   }

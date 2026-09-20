@@ -35,13 +35,6 @@ pub struct ClockResult {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
-/// Gather the per-node and per-edge clock outputs into keyed value maps the output writers consume.
-///
-/// Runs after clock estimation, rerooting, and topology ordering. Each node's divergence, time, and
-/// exclusion flags come from the `ClockState` value the pipeline routed through estimation and
-/// rerooting; each node's name from the post-reroot `names` map; each edge's branch length from the
-/// `branch_lengths` map. The maps are keyed by the final
-/// (post-reroot) node and edge set.
 fn gather_clock_outputs(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -53,10 +46,6 @@ fn gather_clock_outputs(
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      // Name comes from the post-reroot name map the pipeline returns; the fitted clock results
-      // (divergence, outlier flag) come from the clock state value, while the observed date and
-      // bad-branch flag come from the clock inputs value the pipeline routed through estimation and
-      // rerooting.
       let name = names[&key].clone();
       let node_state = state.node(key);
       let node_input = inputs.node(key);
@@ -177,9 +166,6 @@ pub fn run_clock(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
-  // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology
-  // ordering only permutes children, so the maps still match after `apply`. Both drive the gather
-  // and the tree-output writers below.
   let (nodes, edges) = gather_clock_outputs(&graph, &inputs, &state, &names, &branch_lengths);
 
   if !resolved.tree_outputs.is_empty() {

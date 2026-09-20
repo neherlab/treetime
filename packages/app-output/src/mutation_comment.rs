@@ -8,12 +8,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NodeCommentProvider;
 
-/// Supplies the `mutations` Newick and Nexus node comment from a gathered per-edge nucleotide
-/// mutation map, keyed by edge id.
-///
-/// A node's comment lists the substitutions and indels on its inbound edge, sorted by position and
-/// formatted with 1-based coordinates. The root, and any node whose inbound edge carries no
-/// mutations, has no comment. Shared by the ancestral, optimize, and timetree tree writers.
 pub struct EdgeMutationCommentProvider<'a> {
   edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   graph: &'a Graph,

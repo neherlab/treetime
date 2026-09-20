@@ -110,7 +110,6 @@ mod tests {
 
   #[test]
   fn test_output_args_rejects_out_of_command_selection_variant() {
-    // `tracelog` is timetree-only; the ancestral selection enum has no such variant.
     let result = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
@@ -207,7 +206,6 @@ mod tests {
 
   #[test]
   fn test_clock_rejects_augur_node_data_selection() {
-    // Clock does not produce augur node data; its selection enum has no such variant.
     let result = TreetimeClockArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",

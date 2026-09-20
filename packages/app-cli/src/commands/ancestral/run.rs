@@ -93,8 +93,6 @@ pub fn run_ancestral_reconstruction(
       progress,
     )?)
   } else {
-    // Prerequisite gating: reconstructed AA FASTA needs --translations. An explicit per-file flag
-    // is a hard error; the same output reached via selection or `--output-selection=all` is skipped.
     if aa_fasta_template.is_some() {
       if args.output_reconstructed_aa_fasta.is_some() {
         return make_error!("--output-reconstructed-aa-fasta requires --translations");
@@ -112,10 +110,6 @@ pub fn run_ancestral_reconstruction(
     emitted_nodes,
   } = output;
 
-  // Stream the reconstructed nucleotide FASTA one record at a time, reading each sequence back off the
-  // partition in the walk's emission order. `augur_node_sequence` returns the same flag-aware sequence
-  // the reconstruction produced (a posterior draw, a tip echo or imputation, or the MAP state), so the
-  // FASTA matches the augur node-data JSON and never holds every sequence in memory at once.
   if let Some(mut writer) = output_fasta {
     if let Some(partition) = partition.as_ref() {
       for &key in &emitted_nodes {
@@ -130,12 +124,6 @@ pub fn run_ancestral_reconstruction(
     }
   }
 
-  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
-  // plain value maps the output writers consume. This is the only place that reads sequences and
-  // mutations from the partition; the tree, node-data, and Newick-comment writers read the maps
-  // instead. Node and edge keys stay stable through topology ordering, so gathering before it is
-  // bit-identical. The collection runs once and only when a selected tree writer reads sequences, so
-  // a Graph-JSON-only, DOT-only, or GTR-only request never expands the sparse sequences.
   let tree_maps = collect_ancestral_tree_maps(&resolved.tree_outputs, || {
     gather_ancestral_output_maps(&input.graph, partition.as_ref())
   })?;
@@ -148,11 +136,6 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
-  // Project the per-node name/confidence and per-edge branch length from the input sidecar maps into
-  // the keyed value maps the tree writer and the result consume. The writers read sequences and model
-  // metadata from the graph data slot; these maps carry only the name, input-branch-support, and
-  // branch-length values. Node and edge keys are stable across topology ordering, so the `names` and
-  // `branch_lengths` maps gathered earlier stay valid and are reused for the augur and tree writers.
   let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = input
     .nodes
     .iter()
@@ -179,9 +162,6 @@ pub fn run_ancestral_reconstruction(
     })
     .collect();
 
-  // Split the AA reconstruction into the node-data result and the CDS annotation map: the annotations
-  // come from the CLI's GFF parse and are handed to the augur and tree encoders directly, rather than
-  // routed back through the core result.
   let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
   let empty_aa_annotations = BTreeMap::new();
   let aa_annotations = aa_result
@@ -237,16 +217,6 @@ pub fn run_ancestral_reconstruction(
   })
 }
 
-/// Read and gap-fill the alignment, parse the tree, complete the alignment so every leaf carries a
-/// sequence, compute the alignment mask, and merge everything into the reconstruction input.
-///
-/// The mask is computed over the completed alignment records (matching the reconstruction's view of
-/// the alignment) and returned alongside the merged input and the alphabet the pipeline reconstructs
-/// over.
-/// The parsed reconstruction input plus the CLI-side sidecars the output writers need but the slim
-/// core input drops: per-name leaf descriptions (for the reconstructed FASTA) and per-node
-/// input-tree branch support (for the tree and node-data writers), both keyed as the writers consume
-/// them.
 struct AncestralReadInputs {
   input: AncestralInput,
   mask: Vec<bool>,
@@ -278,10 +248,6 @@ fn read_nwk_fasta(
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
-  // Descriptions live only on the input leaf FASTA records and the slim core input drops them, so
-  // capture a name-keyed description map here (first record wins on a duplicate name) before the
-  // records convert. The reconstructed-FASTA writer rebuilds each node's description by matching the
-  // node name back to this map.
   let descs = aln.iter().fold(BTreeMap::new(), |mut descs, record| {
     descs
       .entry(record.seq_name.clone())
@@ -293,14 +259,8 @@ fn read_nwk_fasta(
   progress.report("Parsing tree", 0.1, "");
   let parse = nwk_read_file(args.tree())?;
 
-  // The input-tree branch support is a parse-time value the slim core input drops. Capture it keyed
-  // by node so the tree and node-data writers can project it; keys stay stable through ancestral
-  // reconstruction, which never re-roots.
   let confidences = parse.confidences();
 
-  // Tips absent from the alignment become fully-ambiguous sequences, once, before the mask and the
-  // merged input are built, so every leaf's node input carries a sequence and attachment finds one by
-  // node key.
   let names = parse.names();
   let aln = aln.into_iter().map(AlignmentRecord::from).collect();
   let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names)?;
@@ -334,9 +294,6 @@ fn write_tree_for_partition(
   resolved: &app_output::output_plan::ResolvedOutputs,
   partition: Option<&AncestralPartition>,
 ) -> Result<(), Report> {
-  // Sparse and dense reconstructions annotate Newick/Nexus nodes with their inbound mutations; Fitch
-  // parsimony and the partition-less case emit no such comments. The comment provider reads the
-  // gathered per-edge mutation map; the partition selects only whether to attach it.
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
   let providers = match partition {
     Some(AncestralPartition::Sparse(_) | AncestralPartition::Dense(_)) => CommentProviders::new().with(&provider),
@@ -354,12 +311,6 @@ fn write_tree_for_partition(
   )
 }
 
-/// Collect the reconstructed sequence and mutation maps once, gated on whether a selected tree writer
-/// reads them.
-///
-/// When only topology-only writers are selected (or no tree writer at all), `gather` is not called and
-/// empty maps are returned, so the sparse sequences are never expanded. The single collected result is
-/// shared across every selected tree writer.
 pub(crate) fn collect_ancestral_tree_maps<F>(
   tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   gather: F,
@@ -374,19 +325,12 @@ where
   }
 }
 
-/// Whether any selected tree output reads the reconstructed sequence and mutation maps.
-///
-/// Newick, Nexus, Auspice, and UShER MAT writers read the root sequence and per-edge
-/// mutations. The internal Graph JSON dump and the Graphviz DOT writer read only topology and branch
-/// lengths, so a selection limited to them needs no sequence collection.
 pub(crate) fn tree_outputs_need_sequences(tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>) -> bool {
   tree_outputs
     .keys()
     .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
 }
 
-/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the ancestral
-/// partition.
 pub(crate) fn gather_ancestral_output_maps(
   graph: &Graph,
   partition: Option<&AncestralPartition>,
@@ -408,8 +352,6 @@ pub(crate) fn gather_ancestral_output_maps(
   })
 }
 
-/// Gather the augur node-data sequences and substitutions for the partition in the graph data slot, or
-/// `None` when no partition exists.
 fn gather_augur_output_maps_opt(
   graph: &Graph,
   partition: Option<&AncestralPartition>,
@@ -420,7 +362,6 @@ fn gather_augur_output_maps_opt(
   Ok(Some(gather_augur_output_maps(graph, partition)?))
 }
 
-/// Gather the augur node-data sequences and substitutions from one partition.
 pub(crate) fn gather_augur_output_maps(
   graph: &Graph,
   partition: &AncestralPartition,
@@ -497,10 +438,6 @@ fn run_aa_reconstructions(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Read and sanitize each CDS translation FASTA, then build its reconstruction plan in CDS order.
-  // Sanitizing folds out-of-alphabet amino-acid characters (e.g. stop '*') into the reconstruction
-  // alphabet's unknown state, and gap-fill applies the same overhang policy as the nucleotide path.
-  // The core driver reconstructs the plans in this order.
   let mut plans = Vec::with_capacity(cdses.len());
   for cds in &cdses {
     let path = translation_path(translations, cds);
@@ -534,15 +471,9 @@ fn run_aa_reconstructions(
     });
   }
 
-  // Per-CDS reconstructed amino-acid FASTA sink: the core driver streams every node's sequence while
-  // its CDS partition is resident, and the sink opens a fresh output file when the CDS changes (the
-  // driver finishes one CDS before starting the next), writing each node in tree order.
   let seq_sink: Option<Box<dyn SeqSink>> = aa_fasta_template
     .map(|template| -> Box<dyn SeqSink> { Box::new(AaFastaSink::new(template.to_owned(), names.clone())) });
 
-  // The CDS annotation map the augur and tree encoders need, kept CLI-side: the reconstructed subset
-  // of the GFF-parsed annotations (one entry per reconstructed CDS that has an annotation). The core
-  // result no longer carries it.
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
     .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
@@ -552,13 +483,6 @@ fn run_aa_reconstructions(
   Ok((node_data, cds_annotations))
 }
 
-/// Per-CDS reconstructed amino-acid FASTA sink.
-///
-/// Opens a fresh output file when the emitted CDS changes and writes each node's sequence in tree
-/// order. Node names come from the parsed tree, with a `node_{key}` fallback for unnamed internal nodes
-/// (matching the augur node-data naming); amino-acid records carry no description. The amino-acid
-/// reconstruction does not change the topology, so the names captured at construction stay valid and
-/// `on_topology` needs no per-topology resolution.
 struct AaFastaSink {
   template: String,
   names: BTreeMap<GraphNodeKey, Option<String>>,

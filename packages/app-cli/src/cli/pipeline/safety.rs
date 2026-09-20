@@ -5,15 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime_utils::make_error;
 
-/// The stdin/stdout placeholder path, rejected inside a pipeline.
 const STDIO_PATH: &str = "-";
 
-/// Validate a resolved pipeline before any step runs.
-///
-/// These checks are cheap and fail the whole run up front, so no partial outputs are written before a
-/// structural problem surfaces: two steps writing the same file, a step truncating a file it reads,
-/// a selected step reading an absent output of an unselected upstream step, or a `-` (stdin/stdout)
-/// path that a single-process multi-step run cannot honor.
 pub fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   reject_stdio_paths(pipeline)?;
   reject_output_collisions(pipeline)?;
@@ -22,7 +15,6 @@ pub fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<Str
   Ok(())
 }
 
-/// Reject `-` used as an input or output path anywhere in the pipeline.
 fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   for step in &pipeline.steps {
     if input_paths(&step.command).iter().any(|path| path == STDIO_PATH) {
@@ -41,7 +33,6 @@ fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   Ok(())
 }
 
-/// Reject two steps that resolve to the same output file.
 fn reject_output_collisions(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   let mut owner: BTreeMap<String, &str> = BTreeMap::new();
   for step in &pipeline.steps {
@@ -59,7 +50,6 @@ fn reject_output_collisions(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   Ok(())
 }
 
-/// Reject a step that reads and writes the same file, which would truncate the input mid-read.
 fn reject_self_truncation(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   for step in &pipeline.steps {
     let outputs: BTreeSet<String> = output_paths(step).into_iter().collect();
@@ -75,11 +65,6 @@ fn reject_self_truncation(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   Ok(())
 }
 
-/// Reject a selected step that reads an absent output of an unselected upstream step (D8).
-///
-/// When every step runs there is nothing to check. With a `--steps` subset, a reference to an
-/// upstream step's output resolves to that step's path even if the step is skipped; the file must
-/// then already exist on disk, otherwise the selected step would read a missing input.
 fn reject_missing_upstream(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   let Some(selected) = selected else {
     return Ok(());
@@ -111,7 +96,6 @@ fn reject_missing_upstream(pipeline: &ResolvedPipeline, selected: Option<&BTreeS
   Ok(())
 }
 
-/// Concrete output file paths a step writes, excluding per-CDS templates.
 fn output_paths(step: &ResolvedStep) -> Vec<String> {
   step
     .outputs
@@ -136,7 +120,6 @@ mod tests {
     resolve_pipeline(&doc, &json!({})).unwrap()
   }
 
-  // Two steps writing the same explicit output file are rejected.
   #[test]
   fn test_safety_output_collision_rejected() {
     let pipeline = resolve(json!({
@@ -152,7 +135,6 @@ mod tests {
     );
   }
 
-  // A step that reads and writes the same file is rejected as a truncation.
   #[test]
   fn test_safety_self_truncation_rejected() {
     let pipeline = resolve(json!({
@@ -167,7 +149,6 @@ mod tests {
     );
   }
 
-  // A `-` input path is rejected: a multi-step single-process run has one stdin.
   #[test]
   fn test_safety_stdio_input_rejected() {
     let pipeline = resolve(json!({
@@ -182,7 +163,6 @@ mod tests {
     );
   }
 
-  // A selected step referencing an unselected upstream step's absent output is rejected.
   #[test]
   fn test_safety_missing_upstream_rejected() {
     let pipeline = resolve(json!({
@@ -199,7 +179,6 @@ mod tests {
     );
   }
 
-  // With every step selected, upstream outputs are produced by the run, so nothing is missing.
   #[test]
   fn test_safety_full_run_has_no_missing_upstream() {
     let pipeline = resolve(json!({

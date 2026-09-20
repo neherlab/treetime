@@ -15,13 +15,6 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonGeneratedBy,
 };
 
-/// Write augur-compatible node data JSON for the `ancestral` command.
-///
-/// Produces the nuc-only structure consumed by `augur export v2 --node-data`:
-/// top-level `annotations.nuc`, `reference.nuc` (unmasked reconstructed root),
-/// the per-position `mask` string, and per-node `muts` (mask-filtered) and
-/// `sequence` (masked positions set to the ambiguous character, matching augur's
-/// `collect_sequences`).
 pub fn write_augur_node_data_json(
   graph: &Graph,
   maps: &AugurOutputMaps,
@@ -66,7 +59,6 @@ pub fn build_augur_node_data_json(
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
-    // Root has no parent edge, so it carries no mutations (augur emits []).
     let muts = match graph.node_parent(node_key)? {
       Some((_parent_key, edge_key)) => maps.edge_subs[&edge_key]
         .iter()
@@ -77,8 +69,6 @@ pub fn build_augur_node_data_json(
       None => Vec::new(),
     };
 
-    // Masked positions (every tip ambiguous) are reported as the ambiguous
-    // character in the output sequence, matching augur.
     let mut sequence = maps.node_sequences[&node_key].clone();
     for (pos, &masked) in mask.iter().enumerate() {
       if masked && pos < sequence.len() {
@@ -142,9 +132,6 @@ pub fn write_augur_node_data_json_with_aa(
   Ok(())
 }
 
-/// Render per-CDS amino-acid mutation events to the augur `aa_muts` string form (substitutions as
-/// `A5T`, indels as `-5X` / `X5-`), keyed by CDS. Uses the shared event renderer so the strings match
-/// the nucleotide `muts` and the Newick/auspice mutation comments.
 fn aa_mutation_strings(tracks: &BTreeMap<String, Vec<MutationEvent>>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   tracks
     .iter()

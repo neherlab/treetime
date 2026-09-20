@@ -1,5 +1,3 @@
-//! Server `timetree` request shape and orchestration.
-
 use crate::commands::support::{default_topology_order, output_plan, reroot_spec};
 use app_output::DateCommentProvider;
 use app_output::EdgeMutationCommentProvider;
@@ -329,8 +327,6 @@ pub fn run_timetree(
     })
     .collect();
 
-  // The server always uses the default divergence units (mutations-per-site), so no per-edge
-  // mutation-count divergence is computed.
   let mutation_counts: Option<BTreeMap<GraphEdgeKey, usize>> = None;
 
   let pipeline::TimetreeOutput {
@@ -567,8 +563,6 @@ fn gather_timetree_output_maps(graph: &Graph, partitions: &[PartitionTimetree]) 
   })
 }
 
-/// Writes one coalescent output file, or reports the absence of a coalescent at debug level (the
-/// server never requests a coalescent file explicitly, so a missing coalescent is expected).
 fn write_coalescent_output(
   coalescent: Option<&CoalescentOutput>,
   path: &Path,

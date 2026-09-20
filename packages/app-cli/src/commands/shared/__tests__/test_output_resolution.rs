@@ -20,8 +20,6 @@ mod tests {
     TreeWriteKind::nexus(style)
   }
 
-  // --- Tier resolution behavior ---
-
   #[test]
   fn test_resolve_output_all_default_selection() {
     let dir = TempDir::new().unwrap();
@@ -163,8 +161,6 @@ mod tests {
     assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
   }
 
-  // --- All-selection expansion ---
-
   #[rustfmt::skip]
   #[rstest]
   #[case::ancestral(CommandKind::Ancestral)]
@@ -219,8 +215,6 @@ mod tests {
       &resolved.tree_outputs[&TreeWriteKind::Auspice]
     );
   }
-
-  // --- S2 interaction table (acceptance criteria) ---
 
   #[test]
   fn test_s2_row1_output_all_default_style() {
@@ -369,8 +363,6 @@ mod tests {
     };
     assert_eq!(resolved.tree_outputs, expected);
   }
-
-  // --- Coalescent outputs (timetree only) ---
 
   #[test]
   fn test_resolve_timetree_default_includes_coalescent_tsv_not_csv_json() {

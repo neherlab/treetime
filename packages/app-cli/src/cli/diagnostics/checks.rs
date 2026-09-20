@@ -10,13 +10,6 @@ use schemars::Schema;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Collect precise schema violations for every step's command payload.
-///
-/// Each step's command object is validated against that command's own strict schema rather than the
-/// whole-pipeline schema, so a bad `enum`/`type` value keeps its exact location and message instead of
-/// collapsing into the step's `oneOf` branch failure. Instance paths are prefixed with the step path
-/// so a caret lands on the offending leaf. A `{{ ... }}` template in a typed field is skipped: it is an
-/// interpolation slot resolved later, not a literal that must match the field type.
 pub fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
   let Some(steps) = value.get("steps").and_then(Value::as_array) else {
@@ -42,20 +35,10 @@ pub fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   diags
 }
 
-/// Collect every JSON-Schema violation of `value` against `schema` as a diagnostic.
-///
-/// `jsonschema` reports all structural problems in one pass, which is what makes the batch real
-/// (type, enum, required, and unknown-field errors together). With `skip_templates`, a leaf that
-/// holds a `{{ ... }}` template is left to the interpolation pass: it is an interpolation slot, not a
-/// literal that must match the field's type.
 pub fn schema_diagnostics(value: &Value, schema: &Schema, skip_templates: bool) -> Vec<RawDiagnostic> {
   schema_diagnostics_prefixed(value, schema, skip_templates, "")
 }
 
-/// Validate `value` against `schema`, prefixing every reported pointer with `base`.
-///
-/// `base` is empty for a whole-document validation and `/steps/<i>/<tag>` when validating a step's
-/// command payload in isolation, which keeps carets pointing at the original file location.
 fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: bool, base: &str) -> Vec<RawDiagnostic> {
   let schema_value = match serde_json::to_value(schema) {
     Ok(schema_value) => schema_value,
@@ -117,11 +100,6 @@ fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: b
   diags
 }
 
-/// Collect the pipeline's shape errors (keys, step names, command tags) as diagnostics.
-///
-/// Mirrors the fail-fast checks in the loader, but gathers every problem so the whole document is
-/// reported at once. Shape errors are checked before schema and interpolation because a malformed
-/// skeleton (missing `steps`, a non-mapping step) makes those later passes noisy.
 pub fn pipeline_structural_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
   let Value::Object(map) = value else {
@@ -165,7 +143,6 @@ pub fn pipeline_structural_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   diags
 }
 
-/// Collect one step's shape errors: name presence and type, duplicate names, and the command tag.
 fn structural_step_diagnostics(
   diags: &mut Vec<RawDiagnostic>,
   position: usize,
@@ -243,11 +220,6 @@ fn structural_step_diagnostics(
   }
 }
 
-/// Collect static interpolation-reference errors for every string leaf in the document.
-///
-/// This is a static check: it validates that each `{{ ... }}` reference names a known namespace, a
-/// declared `vars` entry, or an earlier step, and enforces backward-only step references. Output
-/// selections and `env` values are resolved later, so they are not checked here.
 pub fn interpolation_diagnostics(
   value: &Value,
   vars: &Map<String, Value>,
@@ -268,7 +240,6 @@ pub fn interpolation_diagnostics(
   diags
 }
 
-/// Validate the references in one string leaf, given the leaf's JSON pointer for scope and carets.
 fn leaf_reference_diagnostics(
   interp: &Interpolator,
   pointer: &str,
@@ -366,14 +337,12 @@ fn leaf_reference_diagnostics(
   }
 }
 
-/// The interpolation scope a leaf sits in, which governs whether `steps` references are allowed.
 enum Scope {
   Vars,
   Step(usize),
   Other,
 }
 
-/// Determine a leaf's interpolation scope from its JSON pointer.
 fn scope_of(pointer: &str) -> Scope {
   if let Some(rest) = pointer.strip_prefix("/steps/") {
     if let Some(index) = rest.split('/').next().and_then(|segment| segment.parse::<usize>().ok()) {
@@ -386,7 +355,6 @@ fn scope_of(pointer: &str) -> Scope {
   Scope::Other
 }
 
-/// The `vars` mapping of a config value, or an empty map when absent or mistyped.
 pub fn config_vars(value: &Value) -> Map<String, Value> {
   value
     .get("vars")
@@ -395,7 +363,6 @@ pub fn config_vars(value: &Value) -> Map<String, Value> {
     .unwrap_or_default()
 }
 
-/// The step names of a config value, in list order, skipping steps without a string name.
 pub fn config_step_names(value: &Value) -> Vec<String> {
   value
     .get("steps")
@@ -409,7 +376,6 @@ pub fn config_step_names(value: &Value) -> Vec<String> {
     .unwrap_or_default()
 }
 
-/// Visit every string leaf of a value, passing its JSON pointer and text to `visit`.
 fn walk_leaves(value: &Value, pointer: &str, visit: &mut impl FnMut(&str, &str)) {
   match value {
     Value::String(text) => visit(pointer, text),
@@ -427,7 +393,6 @@ fn walk_leaves(value: &Value, pointer: &str, visit: &mut impl FnMut(&str, &str))
   }
 }
 
-/// Extract the string entries of a JSON array (used for enum option lists).
 fn string_options(options: &Value) -> Vec<String> {
   options
     .as_array()
@@ -440,7 +405,6 @@ fn string_options(options: &Value) -> Vec<String> {
     .unwrap_or_default()
 }
 
-/// Render a JSON instance as a short string for an error message.
 fn instance_string(value: &Value) -> String {
   match value {
     Value::String(text) => text.clone(),
@@ -465,7 +429,6 @@ mod tests {
       .expect("diagnostic with code present")
   }
 
-  // The structural pass gathers every shape problem in one run rather than stopping at the first.
   #[test]
   fn test_checks_structural_batches_all_shape_errors() {
     let value = json!({
@@ -493,7 +456,6 @@ mod tests {
     );
   }
 
-  // An unknown top-level key is reported at its own pointer with a did-you-mean over the valid keys.
   #[test]
   fn test_checks_structural_unknown_top_level_key_suggests() {
     let value = json!({ "step": [], "steps": [] });
@@ -507,7 +469,6 @@ mod tests {
     );
   }
 
-  // The interpolation pass batches every static reference error, each pointed at its own leaf.
   #[test]
   fn test_checks_interpolation_batches_reference_errors() {
     let value = json!({
@@ -535,7 +496,6 @@ mod tests {
     );
   }
 
-  // A backward step reference (earlier step) is accepted; a forward one is not.
   #[test]
   fn test_checks_interpolation_allows_backward_step_reference() {
     let value = json!({
@@ -548,8 +508,6 @@ mod tests {
     assert!(diags.is_empty(), "a backward step reference must not be flagged");
   }
 
-  // Per-step schema validation reports precise type and enum errors on literal command values, each
-  // located at the offending leaf rather than collapsed into the step's command `oneOf`.
   #[test]
   fn test_checks_schema_reports_type_and_enum() {
     let value = json!({
@@ -574,7 +532,6 @@ mod tests {
     );
   }
 
-  // A whole-value template in a typed field is an interpolation slot, not a schema type error.
   #[test]
   fn test_checks_schema_skips_template_in_typed_field() {
     let value = json!({

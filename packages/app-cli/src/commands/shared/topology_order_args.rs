@@ -1,11 +1,3 @@
-//! Command-line tree-ordering arguments.
-//!
-//! Owns the `--ladderize`/`--topology-order*` flags and the reads they imply: a target-order source
-//! can name a reference-topology Newick file or a plain list file, and this module reads both. It
-//! parses the flags and file contents into a `treetime_graph::topology_order::TopologyOrderSpec`,
-//! which the command applies to the graph before the output writers serialize it. Ordering is a
-//! graph transform, not an output-encoding concern, so it lives with the adapter, not in `app-output`.
-
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::{Report, WrapErr};

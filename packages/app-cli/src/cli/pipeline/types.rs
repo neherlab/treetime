@@ -15,17 +15,8 @@ use serde_json::{Map, Value};
 use std::path::Path;
 use treetime_utils::make_error;
 
-/// Reserved top-level key that associates a JSON config with its schema in an editor.
-///
-/// Editors read it; the loader ignores it. It is neither a pipeline field nor a command tag, so it
-/// must be filtered out before the "exactly one command tag" and unknown-key checks run.
 pub const SCHEMA_KEY: &str = "$schema";
 
-/// Command tags accepted inside a pipeline step, in the pipeline's declared order.
-///
-/// This is the analysis-only subset of the CLI's commands (D2a): the utility commands
-/// (`completions`, `schema`, `help-markdown`, `debug`, `arg`) are deliberately absent because they
-/// produce no analysis outputs and would validate but do nothing inside a pipeline.
 pub const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
 
 /// A single analysis command invocation within a pipeline.
@@ -47,7 +38,6 @@ pub enum PipelineStepCommand {
 }
 
 impl PipelineStepCommand {
-  /// External tag as it appears in the config (kebab-case command name).
   pub fn tag(&self) -> &'static str {
     match self {
       Self::Timetree(_) => "timetree",
@@ -59,7 +49,6 @@ impl PipelineStepCommand {
     }
   }
 
-  /// Output taxonomy this command draws from, used to resolve `{{ steps.x.outputs.* }}` chaining.
   pub fn command_kind(&self) -> CommandKind {
     match self {
       Self::Timetree(_) => CommandKind::Timetree,
@@ -71,7 +60,6 @@ impl PipelineStepCommand {
     }
   }
 
-  /// Concrete output paths this command produces under its current configuration.
   pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
     match self {
       Self::Timetree(args) => args.resolve_outputs(),
@@ -83,7 +71,6 @@ impl PipelineStepCommand {
     }
   }
 
-  /// The command's argument object as a serde value, for reading input paths in the dry-run plan.
   pub fn args_value(&self) -> Value {
     let value = match self {
       Self::Timetree(args) => serde_json::to_value(args),
@@ -96,7 +83,6 @@ impl PipelineStepCommand {
     value.unwrap_or(Value::Null)
   }
 
-  /// The step's configured output directory (`--output-all`), if any.
   pub fn output_all(&self) -> Option<&Path> {
     let output = match self {
       Self::Timetree(args) => &args.output,
@@ -109,10 +95,6 @@ impl PipelineStepCommand {
     output.output_all.as_deref()
   }
 
-  /// Deserialize a command payload once its tag has been isolated.
-  ///
-  /// The tag is validated against the analysis set with a "did you mean?" hint, so a utility command
-  /// or a misspelling is rejected here rather than silently ignored.
   pub fn from_tag_and_value(tag: &str, payload: Value) -> Result<Self, Report> {
     match tag {
       "timetree" => Ok(Self::Timetree(serde_json::from_value(payload)?)),
@@ -138,7 +120,6 @@ pub struct PipelineStep {
 }
 
 impl PipelineStep {
-  /// Parse one step object into a name and a typed command.
   pub fn from_value(value: Value) -> Result<Self, Report> {
     let RawStep { name, tag, payload } = RawStep::from_value(value)?;
     let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
@@ -147,10 +128,6 @@ impl PipelineStep {
   }
 }
 
-/// One step with its command payload still raw (un-deserialized).
-///
-/// The staged loader needs the payload as a `serde_json::Value` so it can interpolate `{{ ... }}`
-/// leaves before typing the command; typing first would fail on template strings in numeric fields.
 pub struct RawStep {
   pub name: String,
   pub tag: String,
@@ -158,12 +135,6 @@ pub struct RawStep {
 }
 
 impl RawStep {
-  /// Extract a step's `name`, command tag, and raw payload without typing the command.
-  ///
-  /// Enforces the step shape directly, because `#[serde(deny_unknown_fields)]` is silently ignored
-  /// on flattened structs: an object must carry a string `name` and exactly one command tag (a
-  /// reserved `$schema` key is permitted and ignored). Zero tags means the command is missing; more
-  /// than one means the step tries to run several commands.
   pub fn from_value(value: Value) -> Result<Self, Report> {
     let Value::Object(mut map) = value else {
       return make_error!("a pipeline step must be a mapping with a `name` and one command");
@@ -218,7 +189,6 @@ pub struct Pipeline {
   pub steps: Vec<PipelineStep>,
 }
 
-/// Human-readable command list for error messages, in declared order.
 pub(crate) fn commands_list() -> String {
   COMMAND_TAGS.iter().map(|tag| format!("`{tag}`")).join(", ")
 }
@@ -237,8 +207,6 @@ mod tests {
     }
   }
 
-  // A well-formed ancestral step parses, snake_case fields land on the typed args, and the tag maps
-  // to the right command kind.
   #[test]
   fn test_types_step_parses_ancestral_with_snake_case_fields() {
     let value = json!({
@@ -252,16 +220,12 @@ mod tests {
     assert_eq!(Some("Marginal".to_owned()), method_anc(&step.command));
   }
 
-  // The kebab command tag is what selects the command; the same command may appear twice under
-  // different step names.
   #[test]
   fn test_types_step_parses_timetree_tag() {
     let step = PipelineStep::from_value(json!({ "name": "tt", "timetree": { "clock_rate": 0.003 } })).unwrap();
     assert_eq!("timetree", step.command.tag());
   }
 
-  // A utility command (not in the analysis set) is rejected with a did-you-mean among analysis
-  // commands, never silently accepted.
   #[test]
   fn test_types_step_rejects_utility_command_tag() {
     let result = PipelineStep::from_value(json!({ "name": "x", "debug": {} }));
@@ -271,7 +235,6 @@ mod tests {
     );
   }
 
-  // A misspelled command tag yields a "did you mean?" pointing at the closest analysis command.
   #[test]
   fn test_types_step_suggests_closest_command_for_typo() {
     let result = PipelineStep::from_value(json!({ "name": "x", "timtree": {} }));
@@ -281,7 +244,6 @@ mod tests {
     );
   }
 
-  // A step with two command tags is rejected: a step runs exactly one command.
   #[test]
   fn test_types_step_rejects_multiple_commands() {
     let result = PipelineStep::from_value(json!({ "name": "x", "timetree": {}, "clock": {} }));
@@ -291,7 +253,6 @@ mod tests {
     );
   }
 
-  // A step with no command tag is rejected.
   #[test]
   fn test_types_step_rejects_missing_command() {
     let result = PipelineStep::from_value(json!({ "name": "x" }));
@@ -301,14 +262,12 @@ mod tests {
     );
   }
 
-  // A step without a name is rejected.
   #[test]
   fn test_types_step_rejects_missing_name() {
     let result = PipelineStep::from_value(json!({ "timetree": {} }));
     assert_error!(result, "pipeline step is missing a `name`");
   }
 
-  // A reserved `$schema` key is ignored, not treated as a command tag.
   #[test]
   fn test_types_step_ignores_schema_key() {
     let value = json!({ "$schema": "./input-config-pipeline.schema.json", "name": "tt", "timetree": {} });

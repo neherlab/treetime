@@ -6,17 +6,8 @@ use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use treetime_utils::{make_error, make_report};
 
-/// Namespaces available to a template, as they appear at the root of a `{{ ... }}` expression.
 pub const NAMESPACES: [&str; 3] = ["vars", "env", "steps"];
 
-/// Renders `{{ ... }}` templates embedded in config string leaves.
-///
-/// Minijinja is used in substitution-only mode: `{% %}` statement blocks are never documented or
-/// used, and undefined names are a hard error (`UndefinedBehavior::Strict`) so a typo surfaces
-/// instead of silently rendering empty. Two rendering modes preserve types (the C-tension): a leaf
-/// that is exactly one expression (`"{{ vars.rate }}"`) is evaluated to a typed value (number, bool,
-/// or string), while an expression embedded in surrounding text (`"{{ vars.dir }}/tree.nwk"`) renders
-/// to a string.
 pub struct Interpolator {
   env: Environment<'static>,
 }
@@ -30,10 +21,6 @@ impl Default for Interpolator {
 }
 
 impl Interpolator {
-  /// Render one string leaf against `context`.
-  ///
-  /// A leaf with no `{{` is returned verbatim. A whole-value expression is evaluated to a typed
-  /// value; any other template renders to a string.
   pub fn interpolate_str(&self, leaf: &str, context: &Value) -> Result<Value, Report> {
     if !leaf.contains("{{") {
       return Ok(Value::String(leaf.to_owned()));
@@ -58,15 +45,10 @@ impl Interpolator {
     }
   }
 
-  /// Render every string leaf inside `value` against `context`, preserving structure and types.
   pub fn interpolate_value(&self, value: &Value, context: &Value) -> Result<Value, Report> {
     map_string_leaves(value, &mut |leaf| self.interpolate_str(leaf, context))
   }
 
-  /// Dotted references a leaf uses, e.g. `{"vars.data", "steps.tt.outputs.nwk"}`.
-  ///
-  /// Empty when the leaf has no template. `nested = true` yields the full dotted path so the caller
-  /// can validate each reference against the namespace it names.
   pub fn references(&self, leaf: &str) -> Result<BTreeSet<String>, Report> {
     if !leaf.contains("{{") {
       return Ok(BTreeSet::new());
@@ -79,12 +61,6 @@ impl Interpolator {
   }
 }
 
-/// Resolve the `vars` block in dependency order, then return the concrete values.
-///
-/// A var value may reference earlier-resolved vars and `env` (`workdir: "{{ vars.base }}/run"`),
-/// resolved in repeated passes until a fixed point. A var may not reference `steps` (steps are
-/// produced later). A set of vars that never becomes resolvable is a cycle (or an unknown reference)
-/// and is reported rather than looped forever.
 pub fn resolve_vars(
   interp: &Interpolator,
   raw: &Map<String, Value>,
@@ -119,7 +95,6 @@ pub fn resolve_vars(
   Ok(resolved)
 }
 
-/// Wrap the `vars` mapping and the process environment as a `{ vars, env }` template context.
 pub(crate) fn template_context(vars: &Map<String, Value>, env: &Value) -> Value {
   let mut context = Map::new();
   context.insert("vars".to_owned(), Value::Object(vars.clone()));
@@ -127,10 +102,6 @@ pub(crate) fn template_context(vars: &Map<String, Value>, env: &Value) -> Value 
   Value::Object(context)
 }
 
-/// Rebuild `value`, replacing every string leaf with the result of `f`, preserving structure.
-///
-/// Arrays and objects recurse; non-string scalars are cloned untouched. The one traversal is shared
-/// by typed interpolation and by the `{{ steps.* }}` substitution pass, which differ only in `f`.
 pub(crate) fn map_string_leaves(
   value: &Value,
   f: &mut impl FnMut(&str) -> Result<Value, Report>,
@@ -151,7 +122,6 @@ pub(crate) fn map_string_leaves(
   }
 }
 
-/// Names of other vars that `value` depends on, rejecting a `steps` reference from within `vars`.
 fn var_dependencies(interp: &Interpolator, name: &str, value: &Value) -> Result<BTreeSet<String>, Report> {
   let mut deps = BTreeSet::new();
   collect_var_dependencies(interp, name, value, &mut deps)?;
@@ -196,7 +166,6 @@ fn collect_var_dependencies(
   Ok(())
 }
 
-/// Convert a minijinja error into an eyre report naming the offending leaf.
 fn minijinja_error(kind: &str, leaf: &str, err: &minijinja::Error) -> Report {
   match err.range() {
     Some(range) => {
@@ -207,8 +176,6 @@ fn minijinja_error(kind: &str, leaf: &str, err: &minijinja::Error) -> Report {
   }
 }
 
-/// Extract the inner expression of a whole-value leaf `"{{ EXPR }}"`, or `None` when the leaf mixes
-/// a template with surrounding text or contains more than one expression.
 fn whole_value_expr(leaf: &str) -> Option<&str> {
   let trimmed = leaf.trim();
   let inner = trimmed.strip_prefix("{{")?.strip_suffix("}}")?;
@@ -229,8 +196,6 @@ mod tests {
     json!({})
   }
 
-  // A whole-value numeric reference evaluates to a JSON number, not the string "0.003", so a typed
-  // command field like `clock_rate` deserializes correctly.
   #[test]
   fn test_interpolate_whole_value_ref_preserves_number() {
     let interp = Interpolator::default();
@@ -239,7 +204,6 @@ mod tests {
     assert_eq!(json!(0.003), value);
   }
 
-  // A whole-value boolean reference stays a JSON boolean.
   #[test]
   fn test_interpolate_whole_value_ref_preserves_bool() {
     let interp = Interpolator::default();
@@ -248,7 +212,6 @@ mod tests {
     assert_eq!(json!(true), value);
   }
 
-  // An embedded reference renders to a string with the surrounding text intact.
   #[test]
   fn test_interpolate_embedded_ref_renders_string() {
     let interp = Interpolator::default();
@@ -257,7 +220,6 @@ mod tests {
     assert_eq!(json!("data/flu/tree.nwk"), value);
   }
 
-  // A leaf with no template is returned verbatim.
   #[test]
   fn test_interpolate_plain_leaf_unchanged() {
     let interp = Interpolator::default();
@@ -265,8 +227,6 @@ mod tests {
     assert_eq!(json!("data/flu/tree.nwk"), value);
   }
 
-  // Under strict undefined behavior, referencing a name absent from the context is an error. This is
-  // how backward-only step references are enforced: a step not yet in `steps` is undefined.
   #[test]
   fn test_interpolate_undefined_reference_errors() {
     let interp = Interpolator::default();
@@ -275,7 +235,6 @@ mod tests {
     assert!(result.is_err(), "undefined step reference must error under strict mode");
   }
 
-  // Vars resolve in dependency order: `workdir` uses `base` regardless of declaration order.
   #[test]
   fn test_resolve_vars_dependency_order() {
     let interp = Interpolator::default();
@@ -288,7 +247,6 @@ mod tests {
     assert_eq!(json!("tmp"), resolved["base"]);
   }
 
-  // A var may reference `env`.
   #[test]
   fn test_resolve_vars_uses_env() {
     let interp = Interpolator::default();
@@ -298,7 +256,6 @@ mod tests {
     assert_eq!(json!("/users/me/data"), resolved["home"]);
   }
 
-  // A cycle among vars is reported rather than looped forever.
   #[test]
   fn test_resolve_vars_cycle_errors() {
     let interp = Interpolator::default();
@@ -313,7 +270,6 @@ mod tests {
     );
   }
 
-  // A var that references `steps` is rejected: steps are produced later than vars.
   #[test]
   fn test_resolve_vars_rejects_steps_reference() {
     let interp = Interpolator::default();

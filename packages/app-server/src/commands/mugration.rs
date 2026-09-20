@@ -1,5 +1,3 @@
-//! Server `mugration` request shape and orchestration.
-
 use crate::commands::support::{default_topology_order, output_plan};
 use app_output::augur_node_data_mugration::write_augur_node_data_json;
 use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;

@@ -17,12 +17,6 @@ use std::path::{Path, PathBuf};
 use treetime_schema::{TreetimeSchemaFormat, generate_schema as generate_data_schema};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-/// A schema the `schema` subcommand can emit.
-///
-/// Three groups share one selector: the runtime data-type schemas (delegated to `treetime-schema`),
-/// the pipeline config schema, and the per-command config schemas. The pipeline and per-command
-/// schemas live here rather than in `treetime-schema` because they reference the command argument
-/// types, which `treetime-schema` cannot depend on without a crate cycle.
 #[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SchemaTarget {
@@ -41,7 +35,6 @@ pub enum SchemaTarget {
 }
 
 impl SchemaTarget {
-  /// The data-type schema this target delegates to `treetime-schema`, if any.
   const fn data_format(self) -> Option<TreetimeSchemaFormat> {
     match self {
       SchemaTarget::VersionInfo => Some(TreetimeSchemaFormat::VersionInfo),
@@ -51,7 +44,6 @@ impl SchemaTarget {
     }
   }
 
-  /// Default output filename for this target, or `None` for the `all` aggregate.
   const fn default_filename(self) -> Option<&'static str> {
     match self {
       SchemaTarget::All => None,
@@ -73,10 +65,6 @@ impl SchemaTarget {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Write the schema (or schemas) selected by `target` to `output`.
-///
-/// `all` writes every schema, using each one's default filename, into the directory `output` (the
-/// current directory when omitted). A single target writes to `output` when given, or to stdout.
 pub fn generate_schema(target: SchemaTarget, output: Option<&PathBuf>) -> Result<(), Report> {
   if matches!(target, SchemaTarget::All) {
     let dir = output.map_or_else(|| PathBuf::from("."), Clone::clone);
@@ -91,7 +79,6 @@ pub fn generate_schema(target: SchemaTarget, output: Option<&PathBuf>) -> Result
   generate_one(target, &path)
 }
 
-/// Every concrete (non-aggregate) target, in declared order.
 fn all_targets() -> impl Iterator<Item = SchemaTarget> {
   [
     SchemaTarget::VersionInfo,
@@ -108,7 +95,6 @@ fn all_targets() -> impl Iterator<Item = SchemaTarget> {
   .into_iter()
 }
 
-/// Emit one concrete target to `output`.
 fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   if let Some(format) = target.data_format() {
     let path = output.to_path_buf();
@@ -131,29 +117,18 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   write_schema(&schema, output)
 }
 
-/// The pipeline config schema, with every scalar leaf loosened to also accept a `{{ ... }}` template.
-///
-/// A whole-value template renders to a string even where the field is typed (`clock_rate: "{{ vars.rate }}"`),
-/// so the editor must accept a template string in place of any scalar. Only the pipeline schema is
-/// loosened this way; the per-command schemas stay strict, because interpolation is a pipeline feature.
 pub fn pipeline_schema() -> Schema {
   let mut schema = draft2020_generator().into_root_schema_for::<Pipeline>();
   AllowTemplateStrings.transform(&mut schema);
   schema
 }
 
-/// A strict per-command config schema (no template loosening).
-///
-/// The reserved `$schema` key is declared as an allowed optional property so an editor validating a
-/// config that carries a `$schema` association does not flag it against the strict
-/// `additionalProperties: false`. The loader itself strips `$schema` before validating.
 pub fn command_schema<T: JsonSchema>() -> Schema {
   let mut schema = draft2020_generator().into_root_schema_for::<T>();
   allow_schema_ref(&mut schema);
   schema
 }
 
-/// Declare the reserved `$schema` key as an allowed optional string property on a config schema.
 fn allow_schema_ref(schema: &mut Schema) {
   let object = schema.ensure_object();
   let properties = object.entry("properties").or_insert_with(|| json!({}));
@@ -168,12 +143,6 @@ fn allow_schema_ref(schema: &mut Schema) {
   }
 }
 
-/// The strict schema for the command a step names by its tag, or `None` for an unknown tag.
-///
-/// The diagnostics layer validates each step's command payload against this schema rather than the
-/// whole-pipeline schema: a step's `oneOf` over commands collapses a deep `enum`/`type` error into an
-/// opaque branch failure, whereas validating the payload directly against its command schema keeps the
-/// precise leaf error and its location.
 pub fn command_schema_for(tag: &str) -> Option<Schema> {
   Some(match tag {
     "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
@@ -186,12 +155,10 @@ pub fn command_schema_for(tag: &str) -> Option<Schema> {
   })
 }
 
-/// A draft 2020-12 generator, matching the dialect `jsonschema` validates against by default.
 fn draft2020_generator() -> SchemaGenerator {
   SchemaSettings::draft2020_12().into_generator()
 }
 
-/// Serialize a schema to `output` (a file, or stdout for `-`), creating parent directories as needed.
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
   let json = json_write_str(schema, JsonPretty(true))?;
   if output == Path::new("-") {
@@ -206,12 +173,6 @@ fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
   Ok(())
 }
 
-/// Rewrites every scalar leaf of a schema into `anyOf: [<original>, <template string>]`.
-///
-/// The template branch is a string constrained to contain a `{{ ... }}` expression, so an editor
-/// accepts a whole-value template in a numeric, boolean, or string field while still validating a
-/// literal value against the original type. Subschemas are transformed first so a wrapped leaf is
-/// never re-wrapped.
 struct AllowTemplateStrings;
 
 impl Transform for AllowTemplateStrings {
@@ -243,13 +204,8 @@ mod tests {
   use std::fs;
   use tempfile::tempdir;
 
-  /// The regex a template-string branch carries, as it appears in the schema value (one backslash).
   const TEMPLATE_PATTERN: &str = r"\{\{.*\}\}";
 
-  // The schemas committed under `packages/schemas` must match what the generator emits, so a change to
-  // a command's arguments or the pipeline shape cannot silently leave a stale schema on disk. The test
-  // regenerates every schema into a temp directory through the same path the `schema` subcommand uses
-  // and compares each committed document, parsed so formatting is irrelevant.
   #[test]
   fn test_schema_committed_files_match_generated() {
     let dir = tempdir().unwrap();
@@ -267,8 +223,6 @@ mod tests {
     }
   }
 
-  // The pipeline schema loosens scalar leaves so a whole-value template is accepted where a typed
-  // value is expected: the step `name` leaf becomes `anyOf: [string, template string]`.
   #[test]
   fn test_schema_pipeline_loosens_scalar_leaf_to_template() {
     let schema = serde_json::to_value(pipeline_schema()).unwrap();
@@ -282,8 +236,6 @@ mod tests {
     assert_eq!(vec![TEMPLATE_PATTERN], patterns);
   }
 
-  // A per-command schema stays strict: interpolation is a pipeline feature, so no scalar leaf is
-  // loosened and no template pattern appears anywhere in the document.
   #[test]
   fn test_schema_command_is_strict_without_templates() {
     let schema = serde_json::to_value(command_schema::<TreetimeAncestralArgsRaw>()).unwrap();
@@ -293,8 +245,6 @@ mod tests {
     );
   }
 
-  // The pipeline schema does apply the loosening (guards the negative test above against a transform
-  // that silently stopped firing).
   #[test]
   fn test_schema_pipeline_contains_template_pattern() {
     let schema = serde_json::to_value(pipeline_schema()).unwrap();
@@ -304,7 +254,6 @@ mod tests {
   mod helpers {
     use serde_json::Value;
 
-    /// Whether any node in the schema carries the template-string `pattern`.
     pub fn contains_template_pattern(value: &Value) -> bool {
       match value {
         Value::Object(map) => {

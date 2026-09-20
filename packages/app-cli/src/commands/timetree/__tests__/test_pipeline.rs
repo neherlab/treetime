@@ -40,18 +40,15 @@ mod tests {
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
-    // Verify tracelog was written and contains data
     let csv_content = read_to_string(&tracelog_path)?;
     let lines: Vec<&str> = csv_content.lines().collect();
     assert!(lines.len() >= 2, "Tracelog must have header + at least 1 data row");
 
-    // Verify the exact log-likelihood schema.
     let header = lines[0];
     let expected_header =
       "n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total";
     assert_eq!(expected_header, header);
 
-    // Verify first data row has non-empty likelihood values
     let data_row = lines[1];
     let fields: Vec<&str> = data_row.split(',').collect();
     let columns: Vec<&str> = header.split(',').collect();
@@ -85,7 +82,6 @@ mod tests {
       "Total log-likelihood must be negative, got {log_lh_total}"
     );
 
-    // Verify output tree files exist and are non-empty
     let nwk_path = outdir.join("timetree.nwk");
     let nex_path = outdir.join("timetree.nexus");
     assert!(nwk_path.exists(), "Output newick file must exist");
@@ -158,7 +154,6 @@ mod tests {
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
-    // The default `--output-all` set writes the coalescent TSV; the JSON is requested per file.
     let tsv_path = output.path().join("timetree.coalescent.tsv");
     assert!(tsv_path.exists(), "default --output-all must write the coalescent TSV");
 

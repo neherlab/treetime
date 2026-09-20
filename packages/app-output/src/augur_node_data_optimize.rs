@@ -14,34 +14,6 @@ use util_augur_node_data_json::{
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Write augur-compatible node data JSON for the `optimize` command.
-///
-/// Produces the structure consumed by `augur export v2 --node-data`, equivalent
-/// to `augur refine` run WITHOUT `--timetree`: top-level `alignment` and
-/// `input_tree` paths and a per-node `branch_length`. No clock, date, or
-/// confidence-interval fields, because `optimize` performs no temporal inference.
-///
-/// Augur builds this JSON itself from TreeTime tree-node attributes (it never
-/// calls the TreeTime CLI), so the contract is augur's `refine.py` traced against
-/// the non-timetree branch (`refine.py:233` `attributes = ['branch_length',
-/// 'confidence']`; the `if args.timetree:` block at `refine.py:243` is skipped).
-/// `collect_node_data` (`refine.py:94`) drops `None`-valued attributes, and under
-/// the default `--divergence-units=mutations-per-site` `branch_length` stays the
-/// float subs/site value.
-///
-/// Field semantics:
-///
-/// - `branch_length` = the ML-optimized branch length in substitutions/site, read
-///   from the `branch_lengths` value map for the parent edge (after the
-///   optimization loop). `augur export v2` `node_div()` (`export_v2.py:114`) consumes
-///   `branch_length` for cumulative divergence when `mutation_length` is absent.
-///   The root has no incoming edge, so it carries `0.0` (the field is
-///   non-optional; `export v2` sets the root divergence to 0 regardless).
-/// - `confidence` = input-tree branch support (bootstrap/posterior) parsed from bare
-///   numeric labels on internal nodes via the Biopython heuristic.
-///
-/// When `mutation_counts` is `Some`, `branch_length` is set to the per-edge
-/// mutation count instead of the ML branch length (subs/site).
 pub fn build_augur_node_data_json(
   graph: &Graph,
   node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
@@ -60,9 +32,6 @@ pub fn build_augur_node_data_json(
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
-    // branch_length comes from the parent edge. The root has no incoming branch,
-    // so it carries 0.0 (matching the timetree writer and `export v2`, which sets
-    // the root divergence to 0).
     let branch_length = match graph.node_parent(node_key)? {
       Some((_parent_key, edge_key)) => {
         if let Some(counts) = mutation_counts {
@@ -101,7 +70,6 @@ pub fn build_augur_node_data_json(
     metadata: AugurNodeDataJsonRefineMeta {
       alignment: alignment.map(|path| path.display().to_string()),
       input_tree: input_tree.map(|path| path.display().to_string()),
-      // No clock: optimize performs no molecular-clock or time-tree inference.
       clock: None,
       other: BTreeMap::new(),
     },

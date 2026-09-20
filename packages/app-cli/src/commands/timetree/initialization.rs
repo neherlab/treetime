@@ -16,22 +16,12 @@ use treetime_io::nwk::nwk_read_file;
 
 pub struct InputData {
   pub graph: Graph,
-  /// Per-node input-tree branch support read from the Newick annotations, keyed by node. The
-  /// output gather reads each node's input branch support from here;
-  /// a node the pipeline creates after the parse is absent and reads as `None`.
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-  /// Per-node names read from the parse (parsed labels plus the synthetic `NODE_<n>` names
-  /// `assign_node_names` gives internals), keyed by node. Threaded into the pipeline so every name
-  /// read comes from a value map.
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  /// Raw per-edge input-tree branch lengths, keyed by edge. Routed into the pipeline so every branch
-  /// length read comes from a value map.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<String>,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
-  /// Parsed date constraints, retained for node data JSON output (`raw_date`,
-  /// `date_inferred`). `None` when no dates file was provided.
   pub dates: Option<DatesMap>,
 }
 

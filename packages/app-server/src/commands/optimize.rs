@@ -1,5 +1,3 @@
-//! Server `optimize` request shape and orchestration.
-
 use crate::commands::support::{default_output_plan, default_topology_order};
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;

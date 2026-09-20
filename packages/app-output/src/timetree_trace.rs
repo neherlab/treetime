@@ -4,10 +4,6 @@ use treetime::timetree::convergence::metrics::ConvergenceMetrics;
 use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime_io::csv::CsvStructWriter;
 
-/// Encodes timetree optimizer convergence metrics as CSV.
-///
-/// One comma-delimited row per optimization iteration, with the columns of `ConvergenceMetrics`. The
-/// core optimizer emits metrics to this sink; the CSV format lives here rather than in the core.
 pub struct TraceCsvSink {
   writer: CsvStructWriter<Box<dyn Write + Send>>,
 }

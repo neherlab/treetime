@@ -1,10 +1,3 @@
-//! Output selection and path planning, shared by every application adapter.
-//!
-//! Turns a requested set of outputs plus a base destination into the concrete file paths and format
-//! dispatch tags the writers consume. This tier is pure computation: it takes already-parsed values
-//! (an [`OutputPlanRequest`]), opens no file, reads no input, and calls no format parser. An adapter
-//! parses its own flags into the request, chooses the base destination, and opens the planned paths.
-
 use eyre::Report;
 use maplit::btreeset;
 use schemars::JsonSchema;
@@ -28,7 +21,6 @@ use treetime_utils::make_error;
 pub enum OutputSelection {
   All,
 
-  // Tree formats
   Nwk,
   Nexus,
   Auspice,
@@ -37,7 +29,6 @@ pub enum OutputSelection {
   GraphJson,
   Dot,
 
-  // Non-tree outputs
   AugurNodeData,
   Gtr,
   ClockModel,
@@ -61,7 +52,6 @@ impl OutputSelection {
     )
   }
 
-  /// Tree formats whose serialization is parameterized by NWK annotation style.
   pub fn is_styled_tree(self) -> bool {
     matches!(self, Self::Nwk | Self::Nexus)
   }
@@ -96,8 +86,6 @@ impl OutputSelection {
     }
   }
 
-  /// Dispatch tag for the non-styled tree formats. Styled formats (`Nwk`, `Nexus`) carry a style
-  /// and are converted via `styled_tree_write_kind`, so they return `None` here.
   pub fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
     match self {
       Self::Auspice => Some(TreeWriteKind::Auspice),
@@ -142,8 +130,6 @@ impl std::fmt::Display for OutputSelection {
   }
 }
 
-/// Secondary filename extension that distinguishes style-specific tree files when more than one
-/// style is requested. Plain keeps the base name (no secondary extension).
 fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
   match style {
     NwkStyle::Plain => "",
@@ -152,7 +138,6 @@ fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
   }
 }
 
-/// The set of operations, each with its own selectable outputs and default file names.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CommandKind {
   Ancestral,
@@ -164,12 +149,10 @@ pub enum CommandKind {
 }
 
 impl CommandKind {
-  /// Full set selectable on this command.
   pub fn all_selectable(self) -> BTreeSet<OutputSelection> {
     &Self::available_tree_outputs() | &self.non_tree_outputs()
   }
 
-  /// Outputs produced by `--output-all` without an explicit `--output-selection`.
   #[allow(clippy::enum_glob_use)]
   pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
@@ -232,15 +215,11 @@ impl CommandKind {
     }
   }
 
-  /// Default NWK annotation styles when the adapter passes no style. Plain for all commands; this is
-  /// the extension point for per-command style defaults.
   pub fn default_nwk_styles(self) -> Vec<NwkStyle> {
     vec![NwkStyle::Plain]
   }
 }
 
-/// Insert a secondary filename extension before the final extension of a path.
-/// `my.nwk` + `.annotated` -> `my.annotated.nwk`. Empty secondary leaves the path unchanged.
 fn insert_secondary_ext(path: &Path, secondary: &str) -> PathBuf {
   if secondary.is_empty() {
     return path.to_path_buf();
@@ -266,10 +245,6 @@ fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWrit
   }
 }
 
-/// Expand a single per-file NWK/Nexus override path across the selected styles.
-///
-/// A single style uses the override path verbatim; multiple styles insert each style's secondary
-/// extension so the files do not collide.
 fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, PathBuf)> {
   let multi = styles.len() > 1;
   styles
@@ -285,7 +260,6 @@ fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, Pa
     .collect()
 }
 
-/// Expand an `--output-all` NWK/Nexus output across the selected styles, deriving `{stem}{sec}{ext}`.
 fn expand_outputall_styles(
   dir: &Path,
   stem: &str,
@@ -303,46 +277,26 @@ fn expand_outputall_styles(
     .collect()
 }
 
-/// A requested set of outputs plus the base destination, ready for [`plan`] to turn into paths.
-///
-/// The adapter parses its flags into this value: it picks the base directory (`output_all`), the
-/// requested annotation styles (empty means "use the command default"), the restricting selection,
-/// and the per-file tree and non-tree destination overrides. Planning reads only these values and
-/// performs no I/O.
 pub struct OutputPlanRequest {
-  /// Which command's output taxonomy and default file names apply.
   pub command: CommandKind,
 
-  /// Base directory for `--output-all` bulk output, if the adapter requested one.
   pub output_all: Option<PathBuf>,
 
-  /// Requested NWK/Nexus annotation styles. Empty means the command default.
   pub nwk_styles: Vec<NwkStyle>,
 
-  /// Restricting selection for `--output-all`. Empty means the command's default set; `All` means
-  /// the complete selectable set.
   pub selection: Vec<OutputSelection>,
 
-  /// Per-file tree destination overrides, honored unconditionally and above `--output-all`.
   pub tree_overrides: BTreeMap<OutputSelection, PathBuf>,
 
-  /// Per-file non-tree destination overrides, honored unconditionally and above `--output-all`.
   pub non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
 }
 
-/// Concrete output destinations, grouped by writer dispatch (tree formats) and selection (the rest).
 pub struct ResolvedOutputs {
   pub tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
   pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
 }
 
 impl ResolvedOutputs {
-  /// Group every produced file under the `OutputSelection` it satisfies.
-  ///
-  /// A styled tree format (`nwk`, `nexus`) expands to one path per requested annotation style, so a
-  /// selection can map to several files. The pipeline uses this to resolve `{{ steps.x.outputs.<sel>
-  /// }}` chaining and to reject a reference whose selection is ambiguous (more than one file). Paths
-  /// within a selection are sorted for deterministic diagnostics.
   pub fn paths_by_selection(&self) -> BTreeMap<OutputSelection, Vec<PathBuf>> {
     let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
     for (kind, path) in &self.tree_outputs {
@@ -361,7 +315,6 @@ impl ResolvedOutputs {
   }
 }
 
-/// Invert the tree write dispatch tag back to the style-agnostic selection it was produced for.
 fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
   match kind {
     TreeWriteKind::Nwk(_) => OutputSelection::Nwk,
@@ -378,18 +331,6 @@ fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Resolve the three-tier output request into concrete file paths.
-///
-/// Tier 1: `output_all` bulk directory with default file names.
-/// Tier 2: `selection` restricts which outputs tier 1 produces.
-/// Tier 3: per-file `tree_overrides`/`non_tree_overrides` override or supplement tiers 1-2.
-///
-/// Per-file overrides are honored unconditionally and take precedence over `output_all`. Every tree
-/// format is available to every command; runtime data prerequisites for non-tree outputs (e.g. a
-/// fitted GTR model) are checked by each command at write time, not here.
-///
-/// NWK annotation style expands every NWK/Nexus output across the selected styles. Topology ordering
-/// is a separate adapter concern applied to the graph before the writers run, not part of planning.
 pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let command = request.command;
   let stem = command.stem();
@@ -398,7 +339,6 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf> = BTreeMap::new();
   let mut non_tree_outputs: BTreeMap<OutputSelection, PathBuf> = BTreeMap::new();
 
-  // Tier 3a: per-file tree overrides, honored regardless of output_all.
   let mut overridden_tree: BTreeSet<OutputSelection> = BTreeSet::new();
   for (&variant, path) in &request.tree_overrides {
     overridden_tree.insert(variant);
@@ -412,12 +352,10 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
     }
   }
 
-  // Tier 3b: per-file non-tree overrides.
   for (&sel, path) in &request.non_tree_overrides {
     non_tree_outputs.insert(sel, path.clone());
   }
 
-  // Tier 1+2: output_all fills defaults or the explicit selection.
   if let Some(dir) = &request.output_all {
     let effective: BTreeSet<OutputSelection> = if request.selection.is_empty() {
       command.default_outputs()
@@ -470,7 +408,6 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   })
 }
 
-/// Selected styles, de-duplicated and order-preserving, falling back to the command default.
 fn effective_nwk_styles(command: CommandKind, requested: &[NwkStyle]) -> Vec<NwkStyle> {
   if requested.is_empty() {
     return command.default_nwk_styles();

@@ -1,5 +1,3 @@
-//! N-API `timetree` request shape and orchestration.
-
 use crate::commands::support::{default_topology_order, output_plan, reroot_spec};
 use app_output::DateCommentProvider;
 use app_output::EdgeMutationCommentProvider;
@@ -46,7 +44,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::create_file_or_stdout;
 
-/// Time-tree estimation request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize)]
 #[serde(default)]
 pub struct TimetreeArgs {
@@ -321,8 +318,6 @@ pub fn run_timetree(
     })
     .collect();
 
-  // The N-API client always uses the default divergence units (mutations-per-site), so no per-edge
-  // mutation-count divergence is computed.
   let mutation_counts: Option<BTreeMap<GraphEdgeKey, usize>> = None;
 
   let pipeline::TimetreeOutput {
@@ -559,8 +554,6 @@ fn gather_timetree_output_maps(graph: &Graph, partitions: &[PartitionTimetree]) 
   })
 }
 
-/// Writes one coalescent output file, or reports the absence of a coalescent at debug level (the
-/// N-API client never requests a coalescent file explicitly, so a missing coalescent is expected).
 fn write_coalescent_output(
   coalescent: Option<&CoalescentOutput>,
   path: &Path,

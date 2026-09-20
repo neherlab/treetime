@@ -14,9 +14,6 @@ mod tests {
     opt_method: BranchOptMethodCli,
   }
 
-  /// Each kebab-case label on `--opt-method` parses to the corresponding `BranchOptMethodCli` variant.
-  /// Pins the `#[serde(rename_all = "kebab-case")]`-derived `ValueEnum` mapping so a future variant
-  /// rename or deletion fails this test.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent(      "brent",       BranchOptMethodCli::Brent)]
@@ -31,25 +28,18 @@ mod tests {
     assert_eq!(expected, args.opt_method);
   }
 
-  /// Omitting `--opt-method` selects `BrentSqrt`. This is the v0-matching default carried by the
-  /// enum's `#[default]` annotation; a regression that moved it would silently route runs to the
-  /// wrong optimizer.
   #[test]
   fn test_args_opt_method_default_is_brent_sqrt() {
     let args = OptMethodArgs::try_parse_from(["treetime"]).unwrap();
     assert_eq!(BranchOptMethodCli::BrentSqrt, args.opt_method);
   }
 
-  /// An unknown `--opt-method` value is rejected at parse time. Pins the `value_enum` constraint and
-  /// prevents a typo from silently routing to a fallback variant.
   #[test]
   fn test_args_opt_method_rejects_unknown() {
     let result = OptMethodArgs::try_parse_from(["treetime", "--opt-method=brent-foo"]);
     assert!(result.is_err(), "expected parse error for unknown --opt-method value");
   }
 
-  /// Each mirror variant converts to the matching core `BranchOptMethod`. Pins the adapter-to-core
-  /// seam that replaced the core `ValueEnum` derive.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent(      BranchOptMethodCli::Brent,      BranchOptMethod::Brent)]

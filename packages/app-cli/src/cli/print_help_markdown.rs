@@ -34,7 +34,6 @@ If you have TreeTime CLI installed, you can type `treetime --help` to read the l
 }
 
 fn markdown_command() -> Command {
-  // clap-markdown 0.1.5 ignores Clap's hide_default_value setting.
   TreetimeArgs::command().mut_args(|arg| {
     if arg.get_id() == "jobs" {
       arg.default_value(None::<&str>)

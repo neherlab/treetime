@@ -32,7 +32,6 @@ pub fn validate_aa_args(
     return make_error!("--translations must contain a CDS placeholder ('{{cds}}' or '%GENE')");
   }
 
-  // The CDS set is either listed explicitly or derived from the annotation; require at least one source.
   if cdses.is_empty() && annotation.is_none() {
     return make_error!("--cdses must list at least one CDS, or pass --annotation to derive the CDS set");
   }
@@ -62,7 +61,6 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
   Ok(())
 }
 
-/// CDS placeholders accepted in path templates: `{cds}` (Nextclade) and `%GENE` (augur).
 const CDS_PLACEHOLDERS: &[&str] = &["{cds}", "%GENE"];
 
 pub fn template_has_cds_placeholder(template: &str) -> bool {
@@ -88,8 +86,6 @@ pub fn read_aa_root_sequences(
     return Ok(BTreeMap::new());
   };
 
-  // Read with the stop-inclusive alphabet, then fold out-of-alphabet characters into the unknown
-  // state of the reconstruction alphabet so the root sequence shares its alphabet with the partition.
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let records = read_many_fasta_path(&[path], &read_alphabet)?;
   let mut by_cds = BTreeMap::new();

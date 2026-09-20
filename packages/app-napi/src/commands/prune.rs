@@ -1,5 +1,3 @@
-//! N-API `prune` request shape and orchestration.
-
 use crate::commands::support::{default_output_plan, default_topology_order};
 use app_output::output_plan::CommandKind;
 use app_output::output_plan::OutputSelection;
@@ -29,7 +27,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
 
-/// Tree-pruning request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize)]
 #[serde(default)]
 pub struct PruneArgs {

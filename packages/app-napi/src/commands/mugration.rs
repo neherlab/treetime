@@ -1,5 +1,3 @@
-//! N-API `mugration` request shape and orchestration.
-
 use crate::commands::support::{default_topology_order, output_plan};
 use app_output::augur_node_data_mugration::write_augur_node_data_json;
 use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
@@ -22,7 +20,6 @@ use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_utils::io::file::create_file_or_stdout;
 
-/// Mugration inference request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize)]
 #[serde(default)]
 pub struct MugrationArgs {

@@ -6,8 +6,6 @@ mod tests {
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
-  // --- Full output, hand-built Fitch partition with one mutation ---
-
   #[test]
   fn test_augur_node_data_ancestral_full_output() {
     let (graph, names, partition) = helpers::mutation_case();
@@ -66,9 +64,6 @@ mod tests {
     assert_eq!(original, roundtripped);
   }
 
-  // --- Mask removes mutations at masked positions and masks output sequences,
-  //     while the reference (root) sequence stays unmasked ---
-
   #[test]
   fn test_augur_node_data_ancestral_mask_filters_mutations() {
     let (graph, names, partition) = helpers::mutation_case();
@@ -119,16 +114,9 @@ mod tests {
     let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
     let data: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
 
-    // Root has no parent edge: empty mutations. A non-root node carries the
-    // single mutation, confirming the empty-root assertion is not vacuous.
     assert_eq!(Vec::<String>::new(), data.nodes["root"].muts);
     assert_eq!(vec!["T4A".to_owned()], data.nodes["A"].muts);
   }
-
-  // --- End-to-end through each reconstruction path with identical leaf
-  //     sequences (deterministic: no mutations, root reconstructs to the
-  //     shared sequence). Exercises the partition trait impls and the
-  //     run.rs wiring for parsimony, marginal sparse, and marginal dense. ---
 
   #[test]
   fn test_augur_node_data_ancestral_parsimony_end_to_end() {
@@ -162,10 +150,6 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  // End-to-end through run.rs with two per-CDS translation files. Each CDS partition is reconstructed
-  // and consumed in turn, so this guards the sequential per-CDS wiring: both CDSes must reach the
-  // output (not just the first), with correct per-CDS root sequences. Leaves share sequences within
-  // each CDS, so reconstruction is deterministic with no amino-acid mutations.
   #[test]
   fn test_augur_node_data_ancestral_multi_cds_translations_end_to_end() {
     let data = helpers::reconstruct_json_with_translations();
@@ -220,8 +204,6 @@ mod tests {
       .unwrap()
     }
 
-    /// Two-leaf tree where leaf A differs from the root at one position.
-    /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
     pub fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
       let names = nwk_parsed.names();
@@ -328,9 +310,6 @@ mod tests {
       std::fs::read_to_string(node_data_path).unwrap()
     }
 
-    /// Run the full ancestral command with two per-CDS amino-acid translation files (`S`, `M`) and
-    /// return the parsed augur node data. Leaves share sequences within each CDS, so reconstruction is
-    /// deterministic with no amino-acid mutations.
     pub fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
@@ -376,8 +355,6 @@ mod tests {
       let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
 
-      // Leaf A carries a single amino-acid substitution C2D on CDS `S`; the encoder renders it to the
-      // augur `aa_muts` string form.
       aa_node_data.add_cds(
         "S",
         AaCdsNodeData {
@@ -482,8 +459,6 @@ mod tests {
       }
     }
 
-    /// Expected JSON when all leaves share the same sequence ACGT: every node
-    /// reconstructs to ACGT, no mutations anywhere, empty mask.
     pub fn expected_invariant_json() -> String {
       format!(
         r#"{{

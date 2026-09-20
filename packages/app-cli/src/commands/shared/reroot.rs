@@ -3,12 +3,6 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 
-// CLI mirror of core `RerootMethod` carrying the clap `ValueEnum` derive. Core keeps `RerootMethod` as
-// a plain domain enum; this adapter copy owns the `--reroot` value parsing and converts back with
-// `From`. Variants, the `best` and `clock-filter` value aliases, serde spellings, and the
-// `schemars(rename)` schema name are kept identical to the core enum so `--help`, config parsing, and
-// the generated schema stay byte-identical. The comment is non-doc on purpose: the core enum carries
-// no doc, so a doc comment here would add a `description` to the schema and break schema parity.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]

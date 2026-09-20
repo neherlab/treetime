@@ -10,7 +10,6 @@ mod tests {
     reroot_tips: Vec<String>,
     keep_root: bool,
   ) -> TreetimeOptimizeArgs {
-    // A tree is required to build the validated args; `reroot_spec` does not depend on it.
     TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
       tree: Some("tree.nwk".into()),
       reroot,

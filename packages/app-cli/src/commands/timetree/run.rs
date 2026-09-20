@@ -49,8 +49,6 @@ pub fn run_timetree_estimation(
   let confidences = input_data.confidences;
   let parse_names = input_data.names;
 
-  // Resolve outputs up front so the trace-sink path is known before the pipeline starts. Topology
-  // ordering is resolved separately, after the pipeline.
   let resolved = args.resolve_outputs()?;
   let trace_sink: Option<Box<dyn TraceSink>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog) {
     Some(path) => Some(Box::new(TraceCsvSink::new(create_file_or_stdout(path)?)?)),
@@ -94,11 +92,6 @@ pub fn run_timetree_estimation(
     seed: args.seed,
   };
 
-  // Description source for the reconstructed-FASTA writer and the node-output gather. Descriptions
-  // live only on the input leaf FASTA records; partition init keys them to leaves by matching each
-  // leaf name to its record (first record wins on a duplicate name). Capture that same name-keyed
-  // map here, before the alignment moves into the pipeline, so the consumers can rebuild a
-  // node-keyed description map from the final `names` map.
   let aln_descs = input_data
     .aln
     .iter()
@@ -120,10 +113,6 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  // Reconstructed ancestral-sequence FASTA sink. The pipeline reconstructs the flag-aware per-node
-  // sequences at its tail and streams each through this sink, so the whole set never resides in
-  // memory. A run that requests no reconstructed FASTA passes `None`; `--include-leaves` /
-  // `--impute-missing-data` still drive the reconstruction inside the pipeline for the other outputs.
   let reconstructed_nuc_fasta = resolved
     .non_tree_outputs
     .get(&OutputSelection::ReconstructedNucFasta)
@@ -143,15 +132,9 @@ pub fn run_timetree_estimation(
     info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
   }
 
-  // The pipeline names any node a late reroot introduced, so `output.names` is the post-mutation name
-  // map every downstream reader keys by.
   let names = std::mem::take(&mut output.names);
   let branch_lengths_opt = std::mem::take(&mut output.branch_lengths);
 
-  // Node-keyed descriptions for the node-output gather, rebuilt from the name-keyed `aln_descs`
-  // captured from the input alignment. A leaf resolves to its FASTA record's description; an internal
-  // node (including a reroot-introduced root, which matches no record) resolves to `None`. This
-  // reproduces what partition init wrote onto each leaf by the same name-to-record match.
   let descs: BTreeMap<GraphNodeKey, Option<String>> = names
     .iter()
     .map(|(&key, name)| {
@@ -197,10 +180,6 @@ pub fn run_timetree_estimation(
     timetree_state,
     ..
   } = output;
-  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
-  // plain value maps the tree writers consume, taking the partition read out of the serialization
-  // path. Node and edge keys stay stable through topology ordering, so gathering before it is
-  // bit-identical.
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
 
   progress.report("Writing output", 0.95, "");
@@ -284,14 +263,11 @@ pub fn run_timetree_estimation(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    // The `date` Newick/Nexus comment, supplied from the gathered node times as a value.
     let date_times: BTreeMap<GraphNodeKey, f64> = nodes
       .iter()
       .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
       .collect();
     let date_provider = DateCommentProvider::new(&date_times);
-    // The mutation comment provider now reads the gathered per-edge mutation map rather than the
-    // partition; the partition-less case emits only the date comment.
     if maps.root_sequence.is_some() {
       let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider).with(&date_provider);
@@ -349,13 +325,6 @@ pub fn run_timetree_estimation(
   Ok(TimetreeResult { graph, nodes, edges })
 }
 
-/// Reconstructed-nucleotide FASTA sink for the timetree pipeline.
-///
-/// Resolves each emitted graph key to its output name and description and writes one FASTA record.
-/// Names are re-derived from the final topology the pipeline delivers through `on_topology`: a late
-/// reroot or polytomy resolution can rename nodes, and core does not write the synthetic names onto the
-/// graph, so the sink reproduces the pipeline's own `assign_node_names` assignment from the same parsed
-/// prior names. Descriptions come from the input alignment, keyed by the resolved name.
 struct ReconstructedNucSink {
   writer: FastaWriter,
   parse_names: BTreeMap<GraphNodeKey, Option<String>>,
@@ -382,9 +351,6 @@ impl ReconstructedNucSink {
 
 impl SeqSink for ReconstructedNucSink {
   fn on_topology(&mut self, graph: &Graph) -> Result<(), Report> {
-    // Reproduce the pipeline's final node names on the delivered topology, then map each node to its
-    // input-alignment description by resolved name (a leaf resolves to its record's description; an
-    // internal or reroot-introduced node matches no record and resolves to `None`).
     self.names = assign_node_names(self.parse_names.clone(), graph)?;
     self.descs = self
       .names
@@ -414,26 +380,6 @@ impl SeqSink for ReconstructedNucSink {
   }
 }
 
-/// Gather the per-node and per-edge timetree outputs off the final tree into keyed value maps.
-///
-/// Runs after the pipeline and topology ordering, so it reads the final divergence, estimated time,
-/// exclusion flags, and per-edge branch lengths and relaxed-clock rates of the ordered node set. The
-/// value states carry the durable results as values; this step surfaces them as a standalone value
-/// the output writers consume.
-///
-/// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value;
-/// each node's triple is read from here. `clock_branch_lengths` likewise
-/// carries the committed clock branch length per edge as a value; each edge's clock length is read
-/// from here. `clock_state` carries each node's divergence and outlier
-/// flag as values; both are read from here. `timetree_state` carries each
-/// node's committed time as a value; the time is read from here. `names`
-/// and `branch_lengths` are the post-mutation node-name and per-edge branch-length maps captured
-/// after the final naming pass; each node's name and each edge's branch length is read from them.
-/// `descs` is the node-keyed description map rebuilt from the input
-/// alignment; each node's description is read from here. `confidences`
-/// carries the parse-time input-tree branch support per node; each node's input branch support is
-/// read from here, and a node the pipeline created after the parse is
-/// absent and reads as `None`.
 fn gather_timetree_outputs(
   graph: &Graph,
   clock_state: &ClockState,
@@ -485,8 +431,6 @@ fn gather_timetree_outputs(
   (nodes, edges)
 }
 
-/// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the timetree
-/// partition.
 pub(crate) fn gather_timetree_output_maps(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -508,12 +452,6 @@ pub(crate) fn gather_timetree_output_maps(
   })
 }
 
-/// Writes one coalescent output file, or reports the absence of a coalescent.
-///
-/// A coalescent output exists only when the run inferred one (`--coalescent`, `--coalescent-opt`,
-/// or `--coalescent-skyline`). An explicit per-file flag on a run without a coalescent is an error;
-/// a file selected only through `--output-all` or `--output-selection` is skipped with a warning.
-/// Mirrors the GTR and confidence-interval outputs.
 fn write_coalescent_output(
   coalescent: Option<&CoalescentOutput>,
   path: &Path,
@@ -531,9 +469,6 @@ fn write_coalescent_output(
          Use --coalescent, --coalescent-opt, or --coalescent-skyline."
       );
     },
-    // A coalescent is opt-in, so its absence under a plain `--output-all` run is expected. Unlike
-    // GTR and confidence outputs (near-universal in timetree, so worth a warning when missing),
-    // report the skip at debug level to avoid warning noise on every non-coalescent run.
     None => debug!(
       "Skipping coalescent output: no coalescent model was set \
        (use --coalescent, --coalescent-opt, or --coalescent-skyline)"

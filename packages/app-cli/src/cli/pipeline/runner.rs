@@ -26,13 +26,6 @@ use treetime::progress::ProgressSink;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
 
-/// Load a pipeline config file, diagnose it, and resolve it into concrete steps.
-///
-/// Both JSON and YAML are accepted (YAML is a superset, so one parser reads both). The raw text is
-/// kept so diagnostics can draw carets into the original file. Before anything runs, the document is
-/// checked (`check_pipeline`): structural, schema, and static interpolation errors are rendered as a
-/// batched, caret-annotated report and abort the load. Only then are vars, the working directory,
-/// per-step output directories, and chained `{{ steps.* }}` references resolved.
 pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
   let text = read_file_to_string(config)?;
   let source = ConfigSource::new(config.display().to_string(), text.clone());
@@ -44,7 +37,6 @@ pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
   resolve_pipeline(&doc, &process_env())
 }
 
-/// The process environment as a template context object of string values.
 fn process_env() -> Value {
   let env = std::env::vars()
     .map(|(key, value)| (key, Value::String(value)))
@@ -52,9 +44,6 @@ fn process_env() -> Value {
   Value::Object(env)
 }
 
-/// Select the steps to run, in list order, honoring an optional `--steps` subset.
-///
-/// An unknown selected name is rejected with a did-you-mean over the pipeline's step names.
 pub fn select_steps<'a>(
   pipeline: &'a ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
@@ -83,12 +72,6 @@ pub fn select_steps<'a>(
   )
 }
 
-/// Run a resolved pipeline, one step at a time, stopping at the first failure.
-///
-/// Steps run sequentially in the current process; the global thread pool set up by the caller is
-/// shared across all of them. When a step fails, no later step runs and the error names the failing
-/// step, lists the steps that completed with their output directories, and shows how to resume the
-/// remainder with `--steps`.
 pub fn run_pipeline(
   pipeline: &ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
@@ -108,10 +91,6 @@ pub fn run_pipeline(
   Ok(())
 }
 
-/// Run one step by dispatching to its command runner.
-///
-/// Mirrors the per-command dispatch in `main`, including writing the clock regression charts for a
-/// clock step. The interactive terminal chart is intentionally skipped: a pipeline is non-interactive.
 fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Report> {
   match &step.command {
     PipelineStepCommand::Timetree(args) => {
@@ -154,7 +133,6 @@ fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Repo
   }
 }
 
-/// Compose the mid-pipeline failure message: the failing step, completed steps, and how to resume.
 fn failure_report(failed: &ResolvedStep, completed: &[&ResolvedStep], remaining: &str) -> String {
   let done = if completed.is_empty() {
     "none".to_owned()
@@ -170,7 +148,6 @@ fn failure_report(failed: &ResolvedStep, completed: &[&ResolvedStep], remaining:
   )
 }
 
-/// A ` (outputs in <dir>)` suffix when the step has a known output directory.
 fn output_dir_hint(output_all: Option<&Path>) -> String {
   output_all.map_or_else(String::new, |dir| format!(" (outputs in {})", dir.display()))
 }
@@ -199,7 +176,6 @@ mod tests {
     })
   }
 
-  // With no subset, every step runs in list order.
   #[test]
   fn test_runner_select_all_steps_in_order() {
     let pipeline = resolve(config());
@@ -210,7 +186,6 @@ mod tests {
     );
   }
 
-  // A subset runs only the named steps, still in list order.
   #[test]
   fn test_runner_select_subset_keeps_list_order() {
     let pipeline = resolve(config());
@@ -221,7 +196,6 @@ mod tests {
     );
   }
 
-  // An unknown selected step name is rejected with a did-you-mean.
   #[test]
   fn test_runner_select_unknown_step_errors() {
     let pipeline = resolve(config());

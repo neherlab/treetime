@@ -1,11 +1,3 @@
-//! Command-line output arguments and their conversion into an output plan.
-//!
-//! Owns the CLI-facing output surface: the `--output-all`/`--output-selection`/`--output-tree-*`
-//! flags, the per-command selection enums clap validates against, the `--output-nwk-style` flag, and
-//! the `--divergence-units` flag. It parses these flags into an [`OutputPlanRequest`] and calls the
-//! client-agnostic planner in `app_output::output_plan`, which computes the concrete paths. Opening
-//! the planned files is each command's job.
-
 use app_output::output_plan::{self, CommandKind, OutputPlanRequest, OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -37,11 +29,6 @@ impl From<NwkStyleArg> for NwkStyle {
   }
 }
 
-/// Generates a per-command CLI selection enum plus its conversion to the internal `OutputSelection`.
-///
-/// Every command exposes the full tree-format surface (`Nwk`..`Dot`) plus `All`; the per-command
-/// extras are the non-tree outputs that command supports. The CLI enum is the validation layer:
-/// clap rejects values outside the command's variant set.
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -215,13 +202,6 @@ pub struct OutputCoreArgs {
 }
 
 impl OutputCoreArgs {
-  /// Resolve the three-tier output configuration into concrete file paths.
-  ///
-  /// `selection` is the command's `--output-selection` already converted to `OutputSelection`.
-  /// `non_tree_fields` carries the command's per-file non-tree flag values keyed by selection.
-  ///
-  /// Parses the CLI flags into an [`OutputPlanRequest`] and delegates the path computation to the
-  /// client-agnostic planner in `app_output::output_plan`.
   pub fn resolve(
     &self,
     command: CommandKind,
@@ -242,7 +222,6 @@ impl OutputCoreArgs {
     output_plan::plan(&request)
   }
 
-  /// Per-file tree destination overrides keyed by selection, one entry per `--output-tree-*` flag set.
   fn tree_overrides(&self) -> BTreeMap<OutputSelection, PathBuf> {
     [
       (OutputSelection::Nwk, self.output_tree_nwk.as_deref()),

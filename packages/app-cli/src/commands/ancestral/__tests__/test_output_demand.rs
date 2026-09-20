@@ -14,8 +14,6 @@ mod tests {
     kinds.iter().map(|kind| (kind.clone(), PathBuf::from("out"))).collect()
   }
 
-  /// The gather closure returns one non-empty edge-mutation entry so a collected result is
-  /// distinguishable from the empty default returned on a skip.
   fn marked_gather(calls: &mut usize) -> Result<AncestralOutputMaps, Report> {
     *calls += 1;
     Ok(AncestralOutputMaps {
@@ -91,7 +89,6 @@ mod tests {
     ])));
     assert!(!tree_outputs_need_sequences(&outputs(&[])));
 
-    // A topology-only selection mixed with a sequence writer still needs the collection.
     assert!(tree_outputs_need_sequences(&outputs(&[
       TreeWriteKind::GraphJson,
       TreeWriteKind::Auspice,

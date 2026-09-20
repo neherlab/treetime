@@ -159,7 +159,6 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
 }
 
 pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
-  // `get_matches` (not `parse`) so we can consult per-argument value sources when merging `--config`.
   let matches = TreetimeArgs::command().get_matches();
   let mut args = TreetimeArgs::from_arg_matches(&matches)?;
   setup_logger(args.verbosity.get_filter_level());
@@ -171,12 +170,6 @@ pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   Ok(args)
 }
 
-/// Merge a `--config` file into the selected command's raw args.
-///
-/// The overlay layers the config file over the CLI-parsed raw args with the right precedence.
-/// Required-argument presence is enforced later, when the raw args are converted to their validated
-/// form at dispatch. Commands without a configuration object (completions, schema, help) have no
-/// `--config` flag and are left untouched.
 fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
   match command {
     TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
@@ -190,7 +183,6 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
   }
 }
 
-/// Overlay the `--config` file onto the raw command args.
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
   T: Serialize + DeserializeOwned + Default + JsonSchema,
@@ -207,7 +199,6 @@ mod tests {
   use rstest::rstest;
   use treetime_utils::pretty_assert_ulps_eq;
 
-  // Timetree declares no clap-required arguments, so a bare invocation exercises defaults.
   fn parse_timetree(extra: &[&str]) -> Result<TreetimeTimetreeArgsRaw, clap::Error> {
     let argv = std::iter::once("timetree").chain(extra.iter().copied());
     TreetimeTimetreeArgsRaw::try_parse_from(argv)
@@ -215,7 +206,6 @@ mod tests {
 
   #[test]
   fn test_treetime_cli_coalescent_defaults() -> Result<(), clap::Error> {
-    // Defaults live in `TreetimeTimetreeArgsRaw` (SmartDefault) and clap reads them via `default_value_t`.
     let args = parse_timetree(&[])?;
     pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
     assert_eq!(20, args.skyline_n_points);
@@ -243,7 +233,6 @@ mod tests {
 
   #[test]
   fn test_treetime_cli_skyline_n_points_rejects_below_two() {
-    // The renamed `--skyline-n-points` keeps the >= 2 lower bound of the old `--n-skyline`.
     match parse_timetree(&["--skyline-n-points", "1"]) {
       Ok(_) => panic!("--skyline-n-points=1 must be rejected"),
       Err(err) => assert_eq!(ErrorKind::ValueValidation, err.kind()),
@@ -252,7 +241,6 @@ mod tests {
 
   #[test]
   fn test_treetime_cli_rejects_renamed_n_skyline_flag() {
-    // The old `--n-skyline` spelling is gone; only `--skyline-n-points` is accepted.
     match parse_timetree(&["--n-skyline", "5"]) {
       Ok(_) => panic!("removed --n-skyline flag must be rejected"),
       Err(err) => assert_eq!(ErrorKind::UnknownArgument, err.kind()),

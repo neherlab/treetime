@@ -31,9 +31,6 @@ pub fn write_timetree_tree_outputs(
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
     nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  // R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length, while
-  // the Graphviz weight stays the substitution branch length. These diverge for timetree, so the two
-  // writer paths take distinct edge-weight maps.
   let nwk_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
     edges.iter().map(|(key, edge)| (*key, edge.time_length)).collect();
   let graphviz_weights: BTreeMap<GraphEdgeKey, Option<f64>> =

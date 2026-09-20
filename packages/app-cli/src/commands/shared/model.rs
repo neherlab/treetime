@@ -4,11 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::gtr::get_gtr::GtrModelName;
 
-// CLI mirror of core `GtrModelName` carrying the clap `ValueEnum` derive. Core keeps `GtrModelName` as
-// a plain domain enum; this adapter copy owns the `--model` value parsing and converts back with
-// `From`. Variants, the per-variant serde spellings, the `jtt92` clap value name, the `Infer` doc that
-// schemars renders as a description, and the `schemars(rename)` schema name are kept identical to the
-// core enum so `--help`, config parsing, and the generated schema stay byte-identical.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -77,7 +72,6 @@ pub struct ModelArgs {
 }
 
 impl ModelArgs {
-  /// Selected substitution model as the core domain value.
   pub fn model_name(&self) -> GtrModelName {
     self.model.into()
   }

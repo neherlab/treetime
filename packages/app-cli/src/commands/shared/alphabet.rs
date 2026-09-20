@@ -4,12 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::alphabet::alphabet::AlphabetName;
 
-// CLI mirror of core `AlphabetName` carrying the clap `ValueEnum` derive. Core keeps `AlphabetName` as
-// a plain domain enum; this adapter copy owns the `--alphabet` value parsing and converts back with
-// `From`. Variants, the `aa-no-stop` value spelling, serde spellings, and the `schemars(rename)`
-// schema name are kept identical to the core enum so `--help`, config parsing, and the generated
-// schema stay byte-identical. The comment is non-doc on purpose: the core enum carries no doc, so a
-// doc comment here would add a `description` to the schema and break schema parity.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -53,7 +47,6 @@ pub struct AlphabetArgs {
 }
 
 impl AlphabetArgs {
-  /// Selected alphabet as the core domain value, or `None` for auto-detection.
   pub fn alphabet_name(&self) -> Option<AlphabetName> {
     self.alphabet.map(Into::into)
   }

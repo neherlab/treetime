@@ -27,11 +27,6 @@ pub enum AaModelName {
 }
 
 impl AaModelName {
-  /// Resolve to the concrete GTR model and the alphabet its reconstruction runs over.
-  ///
-  /// Inference is alphabet-agnostic, so `infer` runs over the 21-state stop-inclusive `Aa` alphabet
-  /// and treats the stop codon as a real state. Empirical matrices have a fixed dimension, so
-  /// `jtt92` runs over the 20-state `AaNoStop` alphabet and requires stops to be mapped to `X`.
   pub fn resolve(self) -> AaModelResolved {
     match self {
       AaModelName::Infer => AaModelResolved {

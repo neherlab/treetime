@@ -42,11 +42,6 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-//
-// CLI mirror of core `BranchOptMethod`. Core keeps the plain domain enum; this adapter copy owns the
-// `--opt-method` value parsing and converts back with `From`. Variants, docs, serde spellings, and
-// the `schemars(rename)` schema name are kept identical to the core enum so `--help` and the
-// generated schema stay byte-identical.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -118,8 +113,6 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
 /// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
 /// TreeTime run), preserving those values lets Newton converge from a
 /// better starting position.
-//
-// CLI mirror of core `InitialGuessMode`; see `BranchOptMethodCli` for the mirror rationale.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -337,10 +330,6 @@ pub struct TreetimeOptimizeArgsRaw {
   pub gap_fill_args: GapFillArgs,
 }
 
-/// Optimize arguments with required inputs proven present.
-///
-/// Produced from [`TreetimeOptimizeArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so
-/// the run code reads `tree` without an `Option`.
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
   pub alignment: AlignmentArgs,
@@ -368,15 +357,10 @@ pub struct TreetimeOptimizeArgs {
 }
 
 impl TreetimeOptimizeArgs {
-  /// Input tree path.
   pub fn tree(&self) -> &Path {
     &self.tree
   }
 
-  /// Resolve the requested reroot policy.
-  ///
-  /// Returns `None` when the input root is kept (the default, or `--keep-root`).
-  /// Returns `Some(spec)` when `--reroot` or `--reroot-tips` is given.
   pub fn reroot_spec(&self) -> Option<RerootSpec> {
     if self.keep_root {
       return None;

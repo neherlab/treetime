@@ -4,12 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::seq::gap_fill::GapFill;
 
-// CLI mirror of core `GapFill` carrying the clap `ValueEnum` derive. Core keeps `GapFill` as a plain
-// domain enum; this adapter copy owns the `--gap-fill` value parsing and converts back with `From`.
-// Variants, serde spellings, and the `schemars(rename)` schema name are kept identical to the core
-// enum so `--help`, config parsing, and the generated schema stay byte-identical. The comment is
-// non-doc on purpose: the core enum carries no doc, so a doc comment here would add a `description` to
-// the schema and break schema parity.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -57,7 +51,6 @@ pub struct GapFillArgs {
 }
 
 impl GapFillArgs {
-  /// Gap-fill mode after applying the deprecated `--keep-overhangs` override.
   pub fn effective_gap_fill(&self) -> GapFill {
     if self.keep_overhangs {
       GapFill::None

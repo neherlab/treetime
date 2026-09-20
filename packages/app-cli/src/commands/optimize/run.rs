@@ -78,11 +78,6 @@ pub fn run_optimize(
     names,
   } = output;
 
-  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
-  // plain value maps the output writers consume. This is the only place that reads sequences and
-  // mutations from the partition; the tree, node-data, and Newick-comment writers read the maps
-  // instead. Node and edge keys stay stable through topology ordering, so gathering before it is
-  // bit-identical.
   let maps = gather_optimize_output_maps(&graph, &sparse_partitions, &dense_partitions)?;
   let has_partitions = !sparse_partitions.is_empty() || !dense_partitions.is_empty();
 
@@ -90,10 +85,6 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
-  // Gather the per-node name/confidence into a keyed value map the output writers consume. The name
-  // comes from the pipeline's post-loop name map (`names`); topology ordering only permutes
-  // children, so the map still matches the ordered tree. The optimized per-edge branch lengths come
-  // from the loop result (`branch_lengths`); the writers read sequences from the gathered maps.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
     .map(|node| {
@@ -118,9 +109,6 @@ pub fn run_optimize(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    // Dense and sparse reconstructions annotate Newick/Nexus nodes with their inbound mutations; the
-    // partition-less case emits no such comments. The comment provider now reads the gathered per-edge
-    // mutation map rather than the partition.
     if maps.root_sequence.is_some() {
       let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider);
@@ -181,8 +169,6 @@ pub fn run_optimize(
   Ok(OptimizeResult { graph, nodes, edges })
 }
 
-/// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
-/// substitutions the output writers read off the optimize partition.
 pub(crate) fn gather_optimize_output_maps(
   graph: &Graph,
   sparse_partitions: &[SparseReconstruction],

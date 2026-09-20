@@ -1,9 +1,3 @@
-//! N-API exports.
-//!
-//! Deserializes each request into its command's openapi-subset request struct, runs the command
-//! orchestration in `crate::commands`, and returns the serialized result. Progress and cancellation
-//! flow through the process-global threadsafe sinks in `crate::progress`.
-
 use crate::commands::ancestral::{AncestralArgs, run_ancestral};
 use crate::commands::clock::{ClockArgs, run_clock};
 use crate::commands::mugration::{MugrationArgs, run_mugration};
@@ -104,9 +98,6 @@ macro_rules! define_task {
   };
 }
 
-// The async `ancestral` export runs without a threadsafe progress sink: emitting progress through the
-// callback triggers a ThreadsafeFunction segfault for this command, so it computes with a no-op sink
-// and the callback receives no events. The other commands emit progress normally.
 pub struct AncestralTask {
   args: AncestralArgs,
 }
