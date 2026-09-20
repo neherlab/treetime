@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "128-bit ASCII set: casts move between u8 bit indices, char code points, and the u128 mask, all within the < 128 domain the type is built for"
+)]
+
 use crate::seq_char::AsciiChar;
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use itertools::Itertools;
@@ -199,6 +204,7 @@ impl BitSet128 {
     self.first()
   }
 
+  #[allow(clippy::expect_used, reason = "crash-on-empty contract; get_one_maybe is the checked variant")]
   pub fn get_one(&self) -> AsciiChar {
     self.get_one_maybe().expect("BitSet128 is empty")
   }

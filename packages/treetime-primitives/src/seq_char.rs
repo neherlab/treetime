@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "byte/char encoding primitive: each cast is either a lossless widening from u8 or a narrowing of a value range-checked < 128, so every conversion is exact by construction"
+)]
+
 use eyre::Report;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
