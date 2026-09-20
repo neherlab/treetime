@@ -52,7 +52,10 @@ pub struct ToleranceSummary {
   pub support_mismatch_count: usize,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub(super) fn compute_tolerance_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,

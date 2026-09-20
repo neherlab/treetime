@@ -38,7 +38,10 @@ pub fn parse_date_with_formats(
   make_error!("Unrecognized date format: {date_str}")
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 pub fn parse_date_with_format(
   date_str: impl AsRef<str>,
   format: impl AsRef<str>,
@@ -98,7 +101,10 @@ pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Re
 
 static DATE_RANGE_REGEX: LazyLock<Vec<(Regex, String)>> = LazyLock::new(create_date_range_regexes);
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn create_date_range_regexes() -> Vec<(Regex, String)> {
   #[rustfmt::skip]
   const DATE_PATTERNS: &[(&str, &str)] = &[

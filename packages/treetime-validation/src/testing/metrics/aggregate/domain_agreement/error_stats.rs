@@ -37,7 +37,10 @@ pub struct RelativeErrorStats {
   pub median: f64,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Compute absolute error statistics with bias detection
 /// Calculates mean, maximum, standard deviation, and signed bias of absolute errors
 pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
@@ -54,7 +57,11 @@ pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1
   AbsoluteErrorStats { mean, max, std, bias }
 }
 
-#[allow(clippy::as_conversions, clippy::integer_division, reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division")]
+#[allow(
+  clippy::as_conversions,
+  clippy::integer_division,
+  reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"
+)]
 /// Compute relative error statistics
 /// Returns mean, max, MAPE, and median relative errors
 pub fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> RelativeErrorStats {

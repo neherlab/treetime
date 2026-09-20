@@ -6,7 +6,10 @@ use ndarray::Array1;
 use statrs::distribution::{ContinuousCDF, Gamma};
 use treetime_utils::{make_error, make_report};
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Compute K discrete rate categories approximating a Gamma(alpha, alpha) distribution.
 ///
 /// Returns K rate multipliers with mean 1.0 that approximate continuous gamma-distributed

@@ -5,7 +5,10 @@ use ordered_float::OrderedFloat;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_error;
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Collects tree merger events as (time, delta_branches) tuples sorted by increasing time.
 ///
 /// Returns present time, events sorted by increasing time (past to present), and

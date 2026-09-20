@@ -10,7 +10,11 @@ use eyre::Report;
 use log::info;
 use treetime_graph::edge::GraphEdgeKey;
 
-#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+)]
 /// Golden section search optimization for finding the best split point along an edge
 pub fn optimize_golden_section(
   edge: GraphEdgeKey,

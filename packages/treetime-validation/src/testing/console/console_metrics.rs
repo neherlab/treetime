@@ -12,7 +12,10 @@ use crate::testing::console::console::ValidationConsole;
 
 #[allow(clippy::multiple_inherent_impl)]
 impl ValidationConsole {
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Compute all metrics for the table
   pub(crate) fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,

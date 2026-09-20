@@ -67,7 +67,10 @@ pub struct GTRSiteSpecific {
 }
 
 impl GTRSiteSpecific {
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Construct a new site-specific GTR model.
   ///
   /// Performs per-site eigendecomposition of the rate matrix Q_a = f(W, pi_a) for each
@@ -196,7 +199,10 @@ impl GTRSiteSpecific {
     Ok(model)
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Generate a random site-specific GTR model from prior distributions.
   ///
   /// Samples per-site equilibrium frequencies from Dirichlet (via Gamma),
@@ -427,7 +433,10 @@ impl GTRSiteSpecific {
     result
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Build or rebuild the interpolation table.
   ///
   /// Pre-computes exp(Qt) on a non-uniform grid of t values, denser near t=0
@@ -524,7 +533,10 @@ impl ExpQtInterpolator {
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Generate linearly spaced values (inclusive of both endpoints).
 fn linspace(start: f64, end: f64, n: usize) -> Vec<f64> {
   if n <= 1 {

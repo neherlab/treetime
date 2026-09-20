@@ -174,7 +174,10 @@ pub fn commit_clock_branch_lengths(
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
   partitions: &[PartitionTimetree],

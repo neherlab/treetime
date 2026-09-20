@@ -68,7 +68,10 @@ pub fn run_optimize_mixed_with_indel_rate(
   Ok(())
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 #[allow(clippy::too_many_arguments)]
 pub fn run_optimize_mixed_inner(
   graph: &Graph,
@@ -274,7 +277,10 @@ impl BifurcatingRootState {
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Initial estimation of branch lengths for mixed partitions.
 ///
 /// Computes per-edge substitution count over canonical (non-ambiguous,

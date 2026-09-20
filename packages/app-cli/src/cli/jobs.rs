@@ -21,7 +21,10 @@ pub struct Jobs {
 }
 
 impl Serialize for Jobs {
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,

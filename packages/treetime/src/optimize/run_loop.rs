@@ -699,7 +699,10 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
   })
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Normalize substitution rates across partitions after GTR inference.
 ///
 /// Each inferred GTR model has a rate `mu` (expected substitutions per site per branch-length

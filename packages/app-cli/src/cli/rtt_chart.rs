@@ -68,7 +68,10 @@ pub fn write_clock_regression_chart_bitmap(
   Ok(DynamicImage::ImageRgb8(img))
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<(), Report> {
   let mut table = Table::new();
   table
@@ -132,7 +135,11 @@ pub(crate) struct PointsResult {
   pub(crate) y_max: f32,
 }
 
-#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+)]
 pub(crate) fn gather_points(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,

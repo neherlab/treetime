@@ -150,7 +150,10 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.grid()
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   pub fn interp(&self, x: T) -> Result<T, Report>
   where
     T: Float + UlpsEq,
@@ -173,7 +176,10 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Array1::from_vec(values))
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   fn is_beyond_hard_boundary(&self, x: T) -> bool
   where
     T: Float,
@@ -332,7 +338,10 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     extremum.ok().map(|idx| self.t()[idx])
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Create a new distribution function with y values scaled by factor.
   ///
   /// Preserves the grid parameters and transforms each stored boundary law in closed form.

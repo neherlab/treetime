@@ -220,7 +220,10 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
   merge_adjacent_deletions(result)
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
   if indels.len() <= 1 {
     return indels;

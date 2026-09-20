@@ -56,7 +56,10 @@ impl Composition {
     Ok(Self::with_seq(seq, alphabet_chars, gap))
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   pub fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
     let mut additions = [0; 128];
     for &c in sequence.as_ref() {

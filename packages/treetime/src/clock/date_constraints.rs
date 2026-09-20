@@ -36,7 +36,11 @@ pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribut
   }
 }
 
-#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+)]
 pub fn load_date_constraints(
   dates: &DatesMap,
   graph: &Graph,
@@ -162,7 +166,10 @@ fn validate_minimum_date_constraints(
   Ok(())
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn log_date_constraint_summary(
   good_leaf_count: usize,
   bad_leaf_count: usize,

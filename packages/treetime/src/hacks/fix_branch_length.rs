@@ -1,7 +1,10 @@
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use num_traits::clamp_min;
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Clamp minimum branch length to a fraction of "1 mutation" which depends on sequence length
 ///
 /// HACK: this is required to avoid NaNs when branch length is zero. Decide whether it is worth to fix

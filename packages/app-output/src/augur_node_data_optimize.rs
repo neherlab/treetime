@@ -10,7 +10,10 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonGeneratedBy, AugurNodeDataJsonRefine, AugurNodeDataJsonRefineMeta, AugurNodeDataJsonRefineNode,
 };
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Write augur-compatible node data JSON for the `optimize` command.
 ///
 /// Produces the structure consumed by `augur export v2 --node-data`, equivalent

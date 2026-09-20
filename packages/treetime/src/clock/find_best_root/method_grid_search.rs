@@ -6,7 +6,10 @@ use log::{debug, info};
 use ndarray::Array1;
 use treetime_graph::edge::GraphEdgeKey;
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Grid search optimization for finding the best split point along an edge
 pub fn optimize_grid_search(
   edge: GraphEdgeKey,

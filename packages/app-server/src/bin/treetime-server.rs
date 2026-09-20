@@ -94,7 +94,10 @@ async fn main() -> eyre::Result<()> {
   Ok(())
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 async fn shutdown_signal() {
   let ctrl_c = tokio::signal::ctrl_c();
   let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())

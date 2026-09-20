@@ -171,7 +171,10 @@ pub(crate) fn slide_bifurcating_root_for_child(
   Ok(())
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Insert a new node $N$ between $u$ and $v$ that groups $v$ and one reverting child $c$,
 /// hoisting the non-reverted substitutions above $N$.
 ///

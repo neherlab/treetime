@@ -171,7 +171,10 @@ pub struct TimetreeOutput {
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn run(
   params: &TimetreeParams,
   mut input: TimetreeInput,

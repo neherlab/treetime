@@ -69,7 +69,10 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -165,7 +168,11 @@ fn process_node_forward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_msg_to_child(
   child_obs: &SparseNodeObs,
   parent: &SparseNodeState,

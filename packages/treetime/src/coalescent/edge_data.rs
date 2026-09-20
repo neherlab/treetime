@@ -49,7 +49,10 @@ fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
   entry.time.or(entry.time_dist_likely)
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Collects inferred child and parent dates for all non-root edges.
 ///
 /// Node times and the `bad_branch` flag come from `node_times`, keyed by node.

@@ -198,7 +198,10 @@ fn substitute_step_refs(
   })
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Replace step references in a single string leaf, validating each against earlier steps.
 fn substitute_step_refs_in_leaf(
   leaf: &str,

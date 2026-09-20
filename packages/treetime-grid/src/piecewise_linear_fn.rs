@@ -89,7 +89,10 @@ impl PiecewiseLinearFn {
     y0 + alpha * (y1 - y0)
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Evaluate at multiple points in a single sweep.
   ///
   /// Takes advantage of sorted queries to walk the breakpoint array in tandem,

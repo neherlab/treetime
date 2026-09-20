@@ -44,7 +44,10 @@ pub(super) fn compute_windowed_metrics(
   })
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn compute_sliding_window_rms(errors: &Array1<f64>, half_width: usize) -> Array1<f64> {
   let n = errors.len();
   let mut rms = Array1::zeros(n);

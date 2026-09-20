@@ -12,7 +12,10 @@ use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 use treetime_utils::{make_error, make_report};
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Poisson indel log-likelihood contribution for one edge.
 ///
 /// Given $k$ observed indel events on a branch of length $t$ with indel rate $\mu$
@@ -57,7 +60,10 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
   ))
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Estimate the global indel rate from the tree.
 ///
 /// $\hat{\mu} = \frac{\sum_e k_e}{\sum_e t_e}$

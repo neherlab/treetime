@@ -80,7 +80,10 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y)
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Constructs GridFn from non-uniformly spaced arrays by resampling to uniform grid
   ///
   /// Takes non-uniform (x, y) arrays and resamples them to a uniform grid using linear
@@ -361,7 +364,10 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Array1::from_vec(values))
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// The live anchor at one grid edge: its coordinate and stored neg-log ordinate.
   ///
   /// This is the [`GridEdge`] the edge-relative boundary laws read on evaluation. The left edge is
@@ -380,7 +386,10 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
   where
     T: Float,
@@ -442,7 +451,10 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Scale all y-values by a multiplicative factor.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
@@ -636,7 +648,10 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 /// Finds the smallest spacing between consecutive points in a sorted array
 ///
 /// Used to determine optimal grid spacing when resampling non-uniform data.

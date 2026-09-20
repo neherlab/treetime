@@ -200,7 +200,10 @@ struct ChildInfo {
   mutations: u32,
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 fn collect_children(
   graph: &Graph,
   partitions: &[PartitionTimetree],
@@ -233,7 +236,10 @@ fn collect_children(
     .collect()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Substitutions mapped to one branch.
 ///
 /// Prefers the reconstructed substitution list, which is exact. That list is repopulated by

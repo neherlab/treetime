@@ -3,7 +3,10 @@ use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
 use std::time::Duration as StdDuration;
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Convert DateTime object to a year-fraction number
 ///
 /// NOTE: the calculation is not reciprocal to `date_to_year_fraction()` due to precision loss in
@@ -43,7 +46,10 @@ pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Number of days in a proleptic-Gregorian year: the ordinal of its December 31 (365 or 366).
 fn days_in_year(year: i32) -> u32 {
   NaiveDate::from_ymd_opt(year, 12, 31)

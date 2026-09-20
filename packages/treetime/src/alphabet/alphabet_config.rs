@@ -20,7 +20,10 @@ pub struct AlphabetConfig {
 }
 
 impl AlphabetConfig {
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   pub fn create_profile_map(&self) -> Result<ProfileMap, Report> {
     let AlphabetConfig {
       canonical,

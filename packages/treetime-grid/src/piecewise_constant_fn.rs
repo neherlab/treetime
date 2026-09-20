@@ -95,7 +95,10 @@ impl PiecewiseConstantFn {
     Self::new(Array1::from(breakpoints), values)
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Evaluate at multiple points in a single sweep.
   ///
   /// Takes advantage of sorted queries to avoid repeated binary searches:

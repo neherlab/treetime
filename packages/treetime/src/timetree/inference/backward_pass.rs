@@ -67,7 +67,10 @@ fn propagate_distributions_backward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Gathers the backward messages from a node's good children.
 ///
 /// Children arrive in the graph's canonical `children_of` order, so the messages are gathered in that

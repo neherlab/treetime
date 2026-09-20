@@ -88,7 +88,10 @@ fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
   let mean = errors.mean().unwrap_or(0.0);
   let std = compute_std(errors);

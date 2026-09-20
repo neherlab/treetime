@@ -12,7 +12,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Count posterior-weighted transitions from sparse profiles, reading the backward and forward edge
 /// messages and the node states by their distinct owners.
 pub fn count_transitions_sparse(
@@ -105,7 +108,10 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -
   dist.fixed.get(&var.state).unwrap_or(&var.dis)
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 #[allow(clippy::too_many_arguments)]
 fn accumulate_site_transition_weighted(
   pp: &Array1<f64>,
@@ -150,7 +156,10 @@ fn accumulate_site_transition_weighted(
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn aggregate_sparse_profile(profile: &SparseSeqDistribution, n_states: usize) -> Array1<f64> {
   let mut result = Array1::zeros(n_states);
   for var in profile.variable.values() {

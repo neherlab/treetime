@@ -87,7 +87,10 @@ fn build_models(attribute: &str, output: &MugrationOutput) -> BTreeMap<String, A
   models
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn build_nodes(
   attribute: &str,
   graph: &Graph,

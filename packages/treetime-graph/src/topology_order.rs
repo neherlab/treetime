@@ -48,7 +48,10 @@ impl TopologyOrderSpec {
     }
   }
 
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   /// Apply the requested logical topology order to a graph.
   ///
   /// All fallible computation and validation completes before the graph is
@@ -222,7 +225,10 @@ struct TargetScore {
 }
 
 impl Ord for TargetScore {
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   fn cmp(&self, other: &Self) -> Ordering {
     ((self.numerator as u128) * (other.denominator as u128))
       .cmp(&((other.numerator as u128) * (self.denominator as u128)))
@@ -235,7 +241,10 @@ impl PartialOrd for TargetScore {
   }
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut counts = BTreeMap::new();
   for &node_key in postorder {
@@ -251,7 +260,10 @@ fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTree
   counts
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut heights = BTreeMap::new();
   for &node_key in postorder {
@@ -263,7 +275,10 @@ fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphN
   heights
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_divergences(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -286,7 +301,10 @@ fn compute_divergences(
   divergences
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_labels(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -308,7 +326,10 @@ fn compute_labels(
   Ok(labels)
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 fn compute_target_scores(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -343,7 +364,10 @@ fn compute_target_scores(
   }
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_target_scores_mean(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -376,7 +400,10 @@ fn compute_target_scores_mean(
   Ok(scores)
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn compute_target_scores_median(
   graph: &Graph,
   postorder: &[GraphNodeKey],

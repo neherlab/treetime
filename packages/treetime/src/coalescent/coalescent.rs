@@ -65,7 +65,10 @@ impl CoalescentModel {
     -self.expected_mergers.eval(time)
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   pub fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     let n_mergers = n_children.saturating_sub(1) as f64;
     let total_merger_rate = self.total_merger_rate(time)?;

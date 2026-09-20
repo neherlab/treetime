@@ -8,7 +8,10 @@ use itertools::Itertools;
 use regex::Regex;
 use std::sync::LazyLock;
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 /// Try to read date with uncertain components, e.g. 2024-07-XX
 pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptions) -> Result<DateRange, Report> {
   for regex in DATE_UNCERTAIN_REGEXES.iter() {
@@ -80,7 +83,10 @@ fn resolve_uncertain_date_component(s: impl AsRef<str>, bounds: (u32, u32)) -> R
 
 static DATE_UNCERTAIN_REGEXES: LazyLock<Vec<Regex>> = LazyLock::new(create_date_uncertain_regexes);
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 fn create_date_uncertain_regexes() -> Vec<Regex> {
   #[rustfmt::skip]
   const FORMATS: &[&str] = &[

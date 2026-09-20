@@ -23,7 +23,10 @@ pub fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
   (min_value - padding, max_value + padding)
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn tolerance_label(value: f64) -> String {
   let idx = (value + 0.5).floor() as i32;
   match idx {

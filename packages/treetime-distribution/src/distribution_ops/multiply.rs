@@ -181,7 +181,10 @@ fn multiply_function_function<Y: YAxisPolicy>(
   multiply_functions(&[a, b])
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Product of N gridded densities co-located on one common grid: the shared core of both
 /// [`multiply_function_function`] and [`distribution_product`](crate::distribution_ops::product::distribution_product).
 ///
@@ -342,7 +345,10 @@ fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>)
   (hard, soft)
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Compose the per-side result tail of an N-ary product by folding the pairwise composition
 /// ([`compose_multiplication_tail`]): soft slopes add, a hard bound dominates, `Error` dominates all.
 /// Closed-form, with no re-fit from the summed grid.

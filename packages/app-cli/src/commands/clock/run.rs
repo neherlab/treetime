@@ -97,7 +97,10 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
   cancel: &dyn treetime::cancel::Cancel,

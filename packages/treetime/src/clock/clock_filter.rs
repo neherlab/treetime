@@ -17,7 +17,11 @@ pub struct ClockFilterResult {
   pub iqd: f64,
 }
 
-#[allow(clippy::expect_used, clippy::integer_division, reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division")]
+#[allow(
+  clippy::expect_used,
+  clippy::integer_division,
+  reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division"
+)]
 /// Filter outliers based on clock model residuals.
 ///
 /// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`

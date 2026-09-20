@@ -374,7 +374,10 @@ fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
   }
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Resolve the three-tier output request into concrete file paths.
 ///
 /// Tier 1: `output_all` bulk directory with default file names.

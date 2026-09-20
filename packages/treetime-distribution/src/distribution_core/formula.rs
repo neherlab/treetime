@@ -63,7 +63,10 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     self.t_max
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   pub fn likely_time(&self) -> f64 {
     let midpoint = f64::midpoint(self.t_min, self.t_max);
     let n_points = FORMULA_GRID_SIZE;

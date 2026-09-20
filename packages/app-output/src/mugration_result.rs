@@ -66,7 +66,10 @@ impl MugrationConfidenceOutput {
       .collect()
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Render as CSV content.
   pub fn render_csv(&self) -> String {
     let mut out = String::new();
@@ -98,7 +101,10 @@ impl MugrationTraitsOutput {
     }
   }
 
-  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
   /// Render as CSV content.
   pub fn render_csv(&self) -> String {
     let mut out = String::new();

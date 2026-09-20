@@ -44,7 +44,10 @@ mod tests {
     assert_abs_diff_eq!(metrics.second_derivative, -75.0, epsilon = 1e-12);
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   #[test]
   fn test_optimize_indel_poisson_mle_at_optimum() {
     // At the maximum likelihood estimate (MLE) t = k/mu, the derivative should be zero

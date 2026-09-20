@@ -32,7 +32,10 @@ pub struct HistogramSummary {
   pub spread_measure: f64,
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 pub(super) fn compute_histogram_metrics(
   pointwise_errors: &PointwiseErrors,
   config: &DistributionConfig,
@@ -88,7 +91,10 @@ pub(super) fn compute_histogram_metrics(
   })
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, mode: HistogramMode) -> eyre::Result<ErrorHistogram> {
   if num_bins == 0 {
     return make_error!("Number of histogram bins must be positive");

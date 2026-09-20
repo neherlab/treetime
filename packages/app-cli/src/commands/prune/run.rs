@@ -181,7 +181,10 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   )
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Gather the root sequence and per-edge nucleotide mutations the tree writers read off the prune
 /// partition.
 ///
@@ -249,7 +252,10 @@ fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> 
     .collect()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn parse_node_names(
   prune_nodes_list: Option<&String>,
   prune_nodes_list_delimiter: char,

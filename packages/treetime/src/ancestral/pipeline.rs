@@ -409,7 +409,10 @@ pub struct AncestralOutputFull {
   pub partition: Option<AncestralPartition>,
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 pub fn run(
   params: &AncestralParams,
   input: &AncestralInput,

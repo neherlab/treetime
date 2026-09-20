@@ -321,7 +321,10 @@ mod tests {
     Ok(())
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   #[test]
   fn test_sweep_first_merger_waiting_time_matches_the_coalescent_rate() -> Result<(), Report> {
     // All children share a node time, so all are live from the start and the first merger

@@ -78,7 +78,10 @@ pub struct ClockResult {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn run_clock(args: &ClockArgs, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<ClockResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");

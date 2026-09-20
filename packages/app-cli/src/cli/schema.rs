@@ -69,7 +69,10 @@ impl SchemaTarget {
   }
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Write the schema (or schemas) selected by `target` to `output`.
 ///
 /// `all` writes every schema, using each one's default filename, into the directory `output` (the

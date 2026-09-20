@@ -97,7 +97,10 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
   Ok(())
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 fn run_fitch_backward_indexed(
   alphabet: &Alphabet,
   length: usize,
@@ -198,7 +201,11 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
   Ok(())
 }
 
-#[allow(clippy::as_conversions, clippy::expect_used, reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
+)]
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
   context: &GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
@@ -325,7 +332,10 @@ pub fn ancestral_reconstruction_fitch(
   Ok(emitted_nodes)
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 /// Reconstruct one node's sequence into its partition state. Returns `true` when the node emits a
 /// sequence, `false` for a suppressed tip.
 fn run_fitch_reconstruction(

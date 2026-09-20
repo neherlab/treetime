@@ -16,7 +16,10 @@ use treetime_utils::collections::container::get_exactly_one;
 ///
 // Loop over all nodes, pick the one with the lowest chisq (and positive clock rate
 // when force_positive is true), then optimize position along surrounding branches.
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 pub fn find_best_root(
   graph: &Graph,
   inputs: &ClockInputs,

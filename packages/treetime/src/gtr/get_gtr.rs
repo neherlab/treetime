@@ -68,7 +68,10 @@ impl GtrOutput {
   }
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Log GTR model parameters as JSON.
 pub fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
   let output = GtrOutput::new(gtr, model_name);
@@ -159,7 +162,10 @@ pub struct K80Params {
   pub alphabet: AlphabetName,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Kimura 1980 model.
 ///
 /// Assumes equal concentrations across nucleotides, but
@@ -191,7 +197,10 @@ pub struct F81Params {
   pub alphabet: AlphabetName,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Felsenstein 1981 model.
 ///
 /// Assumes non-equal concentrations across nucleotides,
@@ -228,7 +237,10 @@ pub struct HKY85Params {
   pub alphabet: AlphabetName,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Hasegawa, Kishino and Yano 1985 model.
 ///
 /// Allows different concentrations of the nucleotides (as in F81) and distinguishes between transition/transversion
@@ -404,7 +416,10 @@ pub struct TN93Params {
   pub alphabet: AlphabetName,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Tamura-Nei 1993 model.
 ///
 /// Distinguishes between the two types of transitions: A<->G has rate 1 (reference),

@@ -39,12 +39,18 @@ pub fn print_openblas_info() {
   eprintln!("{}", get_openblas_info_str());
 }
 
-#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
 pub fn get_openblas_info_str() -> String {
   to_string_pretty(&get_openblas_info()).unwrap()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn get_openblas_info() -> OpenBlasInfo {
   unsafe {
     let config = get_c_string(openblas_get_config());

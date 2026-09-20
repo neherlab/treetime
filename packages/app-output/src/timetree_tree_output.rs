@@ -121,7 +121,10 @@ fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>)
     .unwrap_or_default()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn timetree_divergence(
   graph: &Graph,
   node_key: GraphNodeKey,

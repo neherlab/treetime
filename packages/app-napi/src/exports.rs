@@ -21,13 +21,19 @@ use treetime::cancel::{CancelledError, NoopCancel};
 use treetime::progress::NoopProgress;
 use treetime_schema::version_info;
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 #[napi]
 pub fn version() -> String {
   serde_json::to_string(&version_info()).expect("version_info serialization failed")
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 #[napi]
 pub fn datasets() -> String {
   let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".to_owned());

@@ -56,7 +56,10 @@ pub fn extract_node_times(
     .collect()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Build the Poisson branch-length distribution for each edge, keyed by edge.
 ///
 /// Replicates v0 Python TreeTime's Poisson branch-length distribution:

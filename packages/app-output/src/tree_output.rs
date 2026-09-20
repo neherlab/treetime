@@ -511,7 +511,11 @@ pub(crate) fn finite_number(
   Ok(value.map(|value| format_number(value, precision)))
 }
 
-#[allow(clippy::as_conversions, clippy::expect_used, reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::expect_used,
+  reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
+)]
 pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
   if number == 0.0 || !number.is_finite() {
     return number;

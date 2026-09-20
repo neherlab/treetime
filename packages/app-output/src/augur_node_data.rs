@@ -15,7 +15,10 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonRefineNode,
 };
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Write augur-compatible node data JSON for the `timetree` command.
 ///
 /// Produces the structure consumed by `augur export v2 --node-data`, equivalent

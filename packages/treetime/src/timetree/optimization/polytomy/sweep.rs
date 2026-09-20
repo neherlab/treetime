@@ -217,7 +217,10 @@ pub fn simulate_subtree(
   Ok(SubtreePlan { mergers, roots })
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn event_rates(alive: &[Tracked], mutation_rate: f64, kappa: f64, time: f64) -> Result<(f64, f64, u64), Report> {
   // A model rate must be valid before it enters event-rate arithmetic.
   if !kappa.is_finite() || kappa < 0.0 {
@@ -263,7 +266,10 @@ fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Res
   Ok(())
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Move every lineage whose arrival is at or before `elapsed` into the live set.
 ///
 /// `to_come` is ordered most-recent-first, so this is a prefix pop.

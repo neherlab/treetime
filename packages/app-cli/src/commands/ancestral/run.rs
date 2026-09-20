@@ -580,7 +580,10 @@ impl SeqSink for AaFastaSink {
     Ok(())
   }
 
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     let SeqTrack::Aa(cds) = item.track else {
       return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");

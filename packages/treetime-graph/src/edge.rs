@@ -40,7 +40,10 @@ impl Edge {
   }
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Invert direction of an edge.
 pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
   let (source_key, target_key) = {

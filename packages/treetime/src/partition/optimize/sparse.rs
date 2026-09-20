@@ -41,7 +41,11 @@ pub struct PartitionContribution {
   pub gtr: GTR,
 }
 
-#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::as_conversions,
+  clippy::unwrap_used,
+  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+)]
 pub fn get_coefficients(
   gtr: &GTR,
   backward: &SparseEdgeBackward,

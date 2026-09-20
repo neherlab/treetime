@@ -68,7 +68,10 @@ pub struct RerootChanges {
   pub inverted_edge_keys: Vec<GraphEdgeKey>,
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Split an edge by inserting a new node at `split_position` along it.
 ///
 /// The original edge is removed and replaced with two new edges:
@@ -136,7 +139,10 @@ pub fn apply_reroot_topology(
   Ok(inverted_edge_keys)
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Remove a node if it is trivial (exactly one parent and one child), merging the edges.
 ///
 /// Returns `Some(EdgeMergeInfo)` if the node was removed, `None` if the node was not trivial.
@@ -182,7 +188,10 @@ pub fn remove_node_if_trivial(
   }))
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// The branch lengths of a trivial node's parent-side and child-side edges, read from a value map.
 ///
 /// Returns `(None, None)` when the node is not trivial (not exactly one inbound and one outbound

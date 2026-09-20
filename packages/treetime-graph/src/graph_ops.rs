@@ -43,7 +43,10 @@ impl Graph {
     Ok((removed_node, removed_edges))
   }
 
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   /// Add a new edge to the graph.
   pub fn add_edge(&mut self, source_key: GraphNodeKey, target_key: GraphNodeKey) -> Result<GraphEdgeKey, Report> {
     if source_key == target_key {
@@ -87,7 +90,10 @@ impl Graph {
     Ok(edge_key)
   }
 
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   /// Move an edge to a new source node, keeping its key and target endpoint.
   ///
   /// The edge is unlinked from its current source's outbound list, linked into the new
@@ -173,7 +179,10 @@ impl Graph {
     Ok(())
   }
 
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   /// Collapse an edge, merging its target node into its source and returning the removed node, the
   /// removed edge, and the keys of the edges rerouted from the target onto the source.
   pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<GraphEdgeKey>), Report> {

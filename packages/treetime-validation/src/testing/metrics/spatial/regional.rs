@@ -81,7 +81,10 @@ pub(super) fn compute_regional_metrics(
   })
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 fn compute_region_stats(errors: &[f64]) -> RegionStats {
   if errors.is_empty() {
     return RegionStats {

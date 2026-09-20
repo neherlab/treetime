@@ -22,7 +22,10 @@ pub struct ClockRegressionResult {
   pub is_leaf: bool,
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &Graph,

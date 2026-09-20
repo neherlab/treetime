@@ -36,7 +36,10 @@ pub struct QualityMetrics {
   pub quantile_95_error: f64,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Compute root-mean-square error
 pub fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let squared_errors: f64 = (actual - expected).mapv(|x| x * x).sum();
@@ -169,7 +172,10 @@ pub fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Compute quantile error
 pub fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
   let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();

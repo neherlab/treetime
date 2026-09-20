@@ -99,7 +99,10 @@ pub(crate) fn merge_single_polytomy(
   Ok(nodes_created)
 }
 
-#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
 /// Collect outbound edge keys for a node.
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
   let node = graph.get_node(node_key).expect("Node must exist");
@@ -247,7 +250,10 @@ struct ChildEdgeData {
   remaining_indels: Vec<InDel>,
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Merge k >= 2 siblings under a new internal node.
 ///
 /// Creates a new node N between parent P and children C_0 ... C_{k-1}:

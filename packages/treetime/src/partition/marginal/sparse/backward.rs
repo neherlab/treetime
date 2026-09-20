@@ -38,7 +38,11 @@ pub fn process_backward_indexed(
   })
 }
 
-#[allow(clippy::expect_used, clippy::unwrap_used, reason = "expect on a value an upstream invariant guarantees is present; unwrap on a value an upstream invariant guarantees is present")]
+#[allow(
+  clippy::expect_used,
+  clippy::unwrap_used,
+  reason = "expect on a value an upstream invariant guarantees is present; unwrap on a value an upstream invariant guarantees is present"
+)]
 fn process_node_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,

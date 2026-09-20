@@ -47,7 +47,10 @@ impl DomainAgreementMetrics {
     Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Creates new domain agreement metrics with custom tolerance thresholds
   pub fn new_with_thresholds(
     x: &Array1<f64>,
@@ -184,7 +187,10 @@ fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssess
 }
 
 impl fmt::Display for DomainAgreementMetrics {
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let Self {
       total_points,

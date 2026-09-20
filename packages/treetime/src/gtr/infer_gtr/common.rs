@@ -166,7 +166,10 @@ pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Whether a profile is peaked above the uniform baseline (carries phylogenetic signal).
 pub fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
   let uniform_threshold = 1.0 / n_states as f64 + 1e-10;

@@ -63,7 +63,10 @@ mod tests {
     assert!((12.0..14.0).contains(&d_max_aa), "d_max aa = {d_max_aa}");
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   #[test]
   fn test_jukes_cantor_distance_always_at_least_p() {
     // JC69 correction never underestimates: d >= p for all valid p
@@ -78,7 +81,10 @@ mod tests {
     }
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   #[test]
   fn test_jukes_cantor_distance_monotonic_in_p() {
     // d(p) is strictly increasing on [0, p_sat)

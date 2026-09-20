@@ -66,7 +66,10 @@ impl TryFrom<AlphabetConfig> for Alphabet {
 }
 
 impl Default for Alphabet {
-  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
   fn default() -> Self {
     Self::new(AlphabetName::Nuc).expect("Failed to create default alphabet")
   }
@@ -249,7 +252,10 @@ impl Alphabet {
     self.index_to_char[index]
   }
 
-  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
   /// Get index of a character (indexed in the same order as given by `.chars()`)
   pub fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();

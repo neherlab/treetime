@@ -229,7 +229,10 @@ fn gather_reconstruction_maps(
   (reconstructed_traits, confidences)
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn validate_weight_coverage(
   unique_values: &IndexSet<String>,
   weights_keys: &IndexSet<String>,
@@ -269,7 +272,10 @@ pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<Strin
   weights_arr / sum
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 pub fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
   Array1::from_elem(n_states, 1.0 / n_states as f64)
 }

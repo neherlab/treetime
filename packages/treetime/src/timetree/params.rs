@@ -46,7 +46,10 @@ pub fn compute_effective_time_marginal(
   }
 }
 
-#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
 /// Build covariation-aware ClockVarianceParams when covariation is enabled.
 ///
 /// v0 (clock_tree.py:277-285):
