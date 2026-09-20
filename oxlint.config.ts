@@ -252,7 +252,6 @@ export default defineConfig({
         "treetime/no-disabled-tests": "error",
         "treetime/no-focused-tests": "error",
         "treetime/prefer-test-over-it": "error",
-        "treetime/no-uppercase-test-title": "error",
         "treetime/no-module-mocks": "error",
         "treetime/no-leaky-mocks": "error",
         "vitest/no-restricted-matchers": [
