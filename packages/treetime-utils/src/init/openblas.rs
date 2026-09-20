@@ -20,10 +20,10 @@ unsafe extern "C" {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ParallelMode {
-  Sequential,       // 0
-  ParallelPlatform, // 1
-  ParallelOpenMP,   // 2
-  Unknown(i32),     // For unsupported or undefined values
+  Sequential,
+  ParallelPlatform,
+  ParallelOpenMP,
+  Unknown(i32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

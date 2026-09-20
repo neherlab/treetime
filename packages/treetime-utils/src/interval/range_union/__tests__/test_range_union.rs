@@ -18,72 +18,50 @@ mod tests {
 
   #[rstest]
   fn test_range_union_with_empty() {
-    let actual = range_union(&[
-      vec![(1, 5)],
-      vec![], // Union with empty is the same as the non-empty set
-      vec![(15, 20)],
-    ]);
-    assert_eq!(actual, vec![(1, 5), (15, 20)]);
+    let actual = range_union(&[vec![(1, 5)], vec![], vec![(15, 20)]]);
+    assert_eq!(vec![(1, 5), (15, 20)], actual);
   }
 
   #[rstest]
   fn test_range_union_single_set() {
     let actual = range_union(&[vec![(1, 5), (8, 10)]]);
-    assert_eq!(actual, vec![(1, 5), (8, 10)]);
+    assert_eq!(vec![(1, 5), (8, 10)], actual);
   }
 
   #[rstest]
   fn test_range_union_multiple_sets_no_overlap() {
-    let actual = range_union(&[
-      vec![(1, 5)],   // No overlap with other sets
-      vec![(8, 10)],  // No overlap with other sets
-      vec![(15, 20)], // No overlap with other sets
-    ]);
-    assert_eq!(actual, vec![(1, 5), (8, 10), (15, 20)]);
+    let actual = range_union(&[vec![(1, 5)], vec![(8, 10)], vec![(15, 20)]]);
+    assert_eq!(vec![(1, 5), (8, 10), (15, 20)], actual);
   }
 
   #[rstest]
   fn test_range_union_multiple_sets_with_overlap() {
-    let actual = range_union(&[
-      vec![(1, 5), (3, 6)], // Overlaps with the second set
-      vec![(3, 6), (5, 8)], // Overlaps with the first and third set
-      vec![(4, 7), (6, 9)], // Overlaps with the first and second set
-    ]);
-    assert_eq!(actual, vec![(1, 9)]);
+    let actual = range_union(&[vec![(1, 5), (3, 6)], vec![(3, 6), (5, 8)], vec![(4, 7), (6, 9)]]);
+    assert_eq!(vec![(1, 9)], actual);
   }
 
   #[rstest]
   fn test_range_union_multiple_sets_with_nested_overlap() {
-    let actual = range_union(&[
-      vec![(1, 10), (15, 20)], // No overlaps
-      vec![(5, 8), (12, 18)],  // Overlaps with Set 1
-      vec![(2, 6), (16, 22)],  // Overlaps with Set 1 and Set 2
-    ]);
-    assert_eq!(actual, vec![(1, 10), (12, 22)]);
+    let actual = range_union(&[vec![(1, 10), (15, 20)], vec![(5, 8), (12, 18)], vec![(2, 6), (16, 22)]]);
+    assert_eq!(vec![(1, 10), (12, 22)], actual);
   }
 
   #[rstest]
   fn test_range_union_multiple_sets_with_same_ranges() {
     let actual = range_union(&[vec![(1, 5), (8, 10)], vec![(1, 5), (8, 10)], vec![(1, 5), (8, 10)]]);
-    assert_eq!(actual, vec![(1, 5), (8, 10)]);
+    assert_eq!(vec![(1, 5), (8, 10)], actual);
   }
 
   #[rstest]
   fn test_range_union_disjoint_sets() {
-    let actual = range_union(&[
-      vec![(1, 5), (8, 10)],    //
-      vec![(15, 20), (25, 30)], //
-    ]);
-    assert_eq!(actual, vec![(1, 5), (8, 10), (15, 20), (25, 30)]);
+    let actual = range_union(&[vec![(1, 5), (8, 10)], vec![(15, 20), (25, 30)]]);
+    assert_eq!(vec![(1, 5), (8, 10), (15, 20), (25, 30)], actual);
   }
 
   #[rstest]
   fn test_range_union_overlapping_sets_different_lengths() {
-    let actual = range_union(&[
-      vec![(1, 5), (8, 10)],  //
-      vec![(3, 6), (12, 15)], //
-    ]);
-    assert_eq!(actual, vec![(1, 6), (8, 10), (12, 15)]);
+    let actual = range_union(&[vec![(1, 5), (8, 10)], vec![(3, 6), (12, 15)]]);
+    assert_eq!(vec![(1, 6), (8, 10), (12, 15)], actual);
   }
 
   #[rstest]
@@ -134,7 +112,6 @@ mod tests {
     let input1 = vec![(1, 5), (10, 15)];
     let input2 = vec![(2, 4)];
     let union_result = range_union(&[input1.clone(), input2.clone()]);
-    // Since input2 is fully encompassed by input1, the union should be equal to input1
     assert_eq!(union_result, input1);
   }
 }

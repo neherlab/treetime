@@ -1,5 +1,4 @@
 use color_eyre::Report;
-use eyre::eyre;
 use std::str::FromStr;
 
 pub fn report_to_string(report: &Report) -> String {
@@ -8,7 +7,7 @@ pub fn report_to_string(report: &Report) -> String {
 }
 
 pub fn to_eyre_error<T, E: Into<eyre::Error>>(val_or_err: Result<T, E>) -> Result<T, Report> {
-  val_or_err.map_err(|report| eyre!(report))
+  val_or_err.map_err(|report| make_report!(report))
 }
 
 #[allow(
@@ -27,7 +26,6 @@ pub fn report_to_string_debug_only(report: &Report) -> String {
   report_to_string(report)
 }
 
-/// Preserves only the Result::Ok values in a given collection
 pub fn keep_ok<T, E>(results: &[Result<T, E>]) -> impl Iterator<Item = &T> {
   results.iter().filter_map(|r| r.as_ref().ok())
 }
