@@ -1,10 +1,3 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  clippy::as_conversions,
-  clippy::integer_division,
-  reason = "grid index/offset/count to f64 for convolution coordinates, midpoint integer halving, and variant matches that default by design"
-)]
-
 use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
@@ -206,6 +199,7 @@ fn convolution_function_function<Y: SupportsConvolution>(
 
 // Numerical routine: `a`/`b` operands, `t` grid, `n` trusted-point count follow the
 // convolution/interpolation conventions used throughout this module.
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 #[allow(clippy::many_single_char_names)]
 fn convolution_function_function_fine<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
@@ -283,6 +277,7 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   Ok(Distribution::Function(conv_distr))
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Coarsen the fine-grid convolution result back to the coarser operand spacing.
 ///
 /// The FFT runs on the finest operand spacing; coarsening the result to the coarser operand spacing
@@ -333,6 +328,7 @@ struct ReconstructedConv {
   neg_log: Array1<f64>,
 }
 
+#[allow(clippy::as_conversions, clippy::integer_division, reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division")]
 /// Reconstruct the convolution result in peak-relative negative-log space, rebuilding the tails that
 /// fall below the FFT roundoff floor by log-linear extrapolation.
 ///

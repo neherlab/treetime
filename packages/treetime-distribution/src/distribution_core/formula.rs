@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "grid index and point count to f64 for coordinate evaluation"
-)]
-
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use eyre::Result;
 use ndarray::Array1;
@@ -68,6 +63,7 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     self.t_max
   }
 
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   pub fn likely_time(&self) -> f64 {
     let midpoint = f64::midpoint(self.t_min, self.t_max);
     let n_points = FORMULA_GRID_SIZE;

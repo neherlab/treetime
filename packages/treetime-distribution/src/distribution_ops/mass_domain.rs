@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "grid point count and index to f64 for mass-domain spacing"
-)]
-
 use crate::policy::{NegLog, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
@@ -109,6 +104,7 @@ pub fn peak_normalized_if_mass_sizable(
     .then_some(normalized)
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Resample a peak-normalized neg-log distribution onto the mass window `[lo, hi]`.
 ///
 /// The resolution floor is `dx = min(mass_width / (grid_points - 1), input_dx)`, so the result holds
@@ -216,6 +212,7 @@ fn soft_edge(profile: &MassProfile, slope: f64, tail_mass: f64, target: f64, sid
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Trim a soft edge inward until the grid mass beyond it equals `grid_target`, by trapezoid-CDF
 /// inversion. Accumulates whole-cell masses from the edge inward, then solves the partial cell.
 fn trim_into_grid(profile: &MassProfile, grid_target: f64, side: Side) -> f64 {

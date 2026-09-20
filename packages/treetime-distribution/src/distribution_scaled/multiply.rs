@@ -1,8 +1,3 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  reason = "variant match passes non-Function distributions through unchanged"
-)]
-
 use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_ops::multiply::distribution_multiplication;

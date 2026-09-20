@@ -1,10 +1,3 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  clippy::expect_used,
-  clippy::as_conversions,
-  reason = "variant matches pass non-Function distributions through unchanged, the Result expects hold for validated grids, and casts are grid index/count to f64"
-)]
-
 use crate::DistributionFunction;
 use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::point::DistributionPoint;
@@ -407,6 +400,7 @@ impl Distribution<Plain> {
     }
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   pub fn to_neglog(&self) -> Distribution<NegLog> {
     match self {
       Self::Empty => Distribution::Empty,
@@ -462,6 +456,7 @@ impl Distribution<NegLog> {
     }
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   pub fn to_plain(&self) -> Distribution<Plain> {
     match self {
       Self::Empty => Distribution::Empty,
@@ -536,6 +531,7 @@ impl Distribution<NegLog> {
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
   let n_points = FORMULA_GRID_SIZE;
   let t = Array1::from_shape_fn(n_points, |i| {
@@ -700,6 +696,7 @@ fn interp_crossing_right(t: &Array1<f64>, y: &Array1<f64>, pidx: usize, threshol
   t[n - 1]
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Interpolate CDF value at an arbitrary position on a uniform grid.
 ///
 /// O(1) via direct index computation from uniform grid spacing.

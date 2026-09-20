@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "grid point count to f64 for the interval-count bound check"
-)]
-
 use crate::Distribution;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
@@ -81,6 +76,7 @@ pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) ->
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub(super) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -> Result<usize, Report> {
   // Round the interval count up (resolution floor): the realized spacing (end - start) / intervals is
   // then never coarser than the finest operand's dx, while `Array1::linspace` still lands both
