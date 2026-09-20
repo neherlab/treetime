@@ -143,7 +143,7 @@ rand = { version = "=0.8.5", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
 rayon = "=1.11.0"
-regex = { version = "=1.11.2", features = [] }
+regex = { version = "=1.13.1", features = [] }
 rgb = "=0.8.52"
 rstest = "=0.26.1"
 saphyr = "=0.0.12"
