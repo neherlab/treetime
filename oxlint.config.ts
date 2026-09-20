@@ -72,6 +72,9 @@ export default defineConfig({
 
   options: {
     typeAware: true,
+    denyWarnings: true,
+    reportUnusedDisableDirectives: "error",
+    respectEslintDisableDirectives: false,
   },
 
   rules: {
@@ -135,6 +138,8 @@ export default defineConfig({
     "typescript/await-thenable": "error",
     "typescript/no-for-in-array": "error",
     "typescript/require-await": "warn",
+
+    "import/no-cycle": "error",
 
     "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "error",
@@ -248,7 +253,7 @@ export default defineConfig({
       rules: {
         "import/no-nodejs-modules": "error",
         "treetime/no-fake-success": "error",
-        "treetime/no-always-true-assertion": "error",
+        "treetime/no-tautological-assertion": "error",
         "treetime/no-disabled-tests": "error",
         "treetime/no-focused-tests": "error",
         "treetime/prefer-test-over-it": "error",
