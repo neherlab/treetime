@@ -159,6 +159,8 @@ export default defineConfig({
     "treetime/use-class-name-helper": "error",
     "treetime/require-io-timeout": "error",
     "treetime/no-async-array-predicate": "error",
+    "treetime/require-suppression-reason": "error",
+    "treetime/no-unbounded-suppression": "error",
 
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
