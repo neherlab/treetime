@@ -29,7 +29,7 @@ disallowed-types = [
 # (e.g. for crates not yet depended on) are ignored until the crate is present.
 disallowed-methods = [
     { path = "rand::thread_rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible" },
-    { path = "rand::rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible" },
+    { path = "rand::rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible", allow-invalid = true },
     { path = "std::time::Duration::from_secs_f32", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f32" },
     { path = "std::time::Duration::from_secs_f64", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f64" },
     { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)" },
