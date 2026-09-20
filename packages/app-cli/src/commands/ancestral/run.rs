@@ -1,8 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use crate::commands::ancestral::aa_node_data::{
   read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
 };
@@ -585,6 +580,7 @@ impl SeqSink for AaFastaSink {
     Ok(())
   }
 
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     let SeqTrack::Aa(cds) = item.track else {
       return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");

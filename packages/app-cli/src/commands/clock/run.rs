@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::clock_result::{ClockNodeOut, EdgeOut};
@@ -102,6 +97,7 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
   }
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
   cancel: &dyn treetime::cancel::Cancel,

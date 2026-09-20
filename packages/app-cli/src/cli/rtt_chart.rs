@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use crate::cli::rtt_chart_render::draw_chart;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;
@@ -74,6 +68,7 @@ pub fn write_clock_regression_chart_bitmap(
   Ok(DynamicImage::ImageRgb8(img))
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<(), Report> {
   let mut table = Table::new();
   table
@@ -137,6 +132,7 @@ pub(crate) struct PointsResult {
   pub(crate) y_max: f32,
 }
 
+#[allow(clippy::as_conversions, clippy::unwrap_used, reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present")]
 pub(crate) fn gather_points(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,

@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::wildcard_enum_match_arm,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use crate::cli::pipeline::types::{Pipeline, SCHEMA_KEY};
 use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use crate::commands::clock::args::TreetimeClockArgsRaw;
@@ -75,6 +69,7 @@ impl SchemaTarget {
   }
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Write the schema (or schemas) selected by `target` to `output`.
 ///
 /// `all` writes every schema, using each one's default filename, into the directory `output` (the

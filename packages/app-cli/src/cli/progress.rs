@@ -1,9 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use indicatif::{ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, ProgressSink};
@@ -14,6 +8,7 @@ pub struct BarProgress {
 }
 
 impl BarProgress {
+  #[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
   pub fn new(min_level: LogLevel) -> Self {
     let bar = ProgressBar::new(1000);
     bar.set_style(
@@ -32,6 +27,7 @@ impl Drop for BarProgress {
 }
 
 impl ProgressSink for BarProgress {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn report(&self, stage: &str, fraction: f64, message: &str) {
     self.bar.set_position((fraction * 1000.0) as u64);
     if message.is_empty() {

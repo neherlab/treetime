@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use clap::Args;
 use serde::Serialize;
 use std::thread::available_parallelism;
@@ -26,6 +21,7 @@ pub struct Jobs {
 }
 
 impl Serialize for Jobs {
+  #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,

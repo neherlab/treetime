@@ -1,11 +1,7 @@
-#![allow(
-  clippy::integer_division,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI setup invariants, and default variant matches"
-)]
-
 use itertools::Itertools;
 use strsim::levenshtein;
 
+#[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
 /// Closest candidate to `input` for a "did you mean?" hint, or `None` when nothing is close enough.
 ///
 /// Uses Levenshtein edit distance with an input-length-proportional threshold so short tokens must
