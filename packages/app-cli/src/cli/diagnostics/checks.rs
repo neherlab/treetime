@@ -5,7 +5,7 @@
 
 use crate::cli::diagnostics::source::{RawDiagnostic, escape_pointer};
 use crate::cli::pipeline::interpolate::{Interpolator, NAMESPACES};
-use crate::cli::pipeline::resolve::{STEP_REF, TOP_LEVEL_KEYS};
+use crate::cli::pipeline::resolve::{TOP_LEVEL_KEYS, step_ref};
 use crate::cli::pipeline::suggest::suggestion_suffix;
 use crate::cli::pipeline::types::{COMMAND_TAGS, SCHEMA_KEY, commands_list};
 use crate::cli::schema::command_schema_for;
@@ -288,7 +288,7 @@ fn leaf_reference_diagnostics(
   }
   let scope = scope_of(pointer);
 
-  for captures in STEP_REF.captures_iter(leaf) {
+  for captures in step_ref().captures_iter(leaf) {
     let producer = &captures[1];
     match scope {
       Scope::Vars => diags.push(
@@ -333,7 +333,7 @@ fn leaf_reference_diagnostics(
     }
   }
 
-  let stripped = STEP_REF.replace_all(leaf, "_").into_owned();
+  let stripped = step_ref().replace_all(leaf, "_").into_owned();
   match interp.references(&stripped) {
     Ok(references) => {
       for reference in references {

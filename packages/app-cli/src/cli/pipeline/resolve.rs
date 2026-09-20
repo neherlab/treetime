@@ -10,11 +10,10 @@ use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use itertools::Itertools;
-use regex::Regex;
+use regex::{Regex, regex};
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
 use treetime_utils::{make_error, make_report};
 
 /// Top-level keys a pipeline document may carry.
@@ -27,12 +26,11 @@ pub(crate) const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 /// form. Steps references are resolved by this regex pass rather than by the template engine so that
 /// hyphenated selection tags (e.g. `reconstructed-aa`) work: the engine would read the hyphen as a
 /// minus operator.
-pub(crate) static STEP_REF: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(
-    r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#,
+pub(crate) fn step_ref() -> &'static Regex {
+  regex!(
+    r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#
   )
-  .expect("step reference regex is valid")
-});
+}
 
 /// A parsed pipeline document with steps still raw (command payloads un-typed).
 ///
@@ -216,7 +214,7 @@ fn substitute_step_refs_in_leaf(
 ) -> Result<String, Report> {
   let mut result = String::new();
   let mut last = 0;
-  for captures in STEP_REF.captures_iter(leaf) {
+  for captures in step_ref().captures_iter(leaf) {
     let whole = captures.get(0).expect("regex match has group 0");
     result.push_str(leaf.get(last..whole.start()).unwrap_or_default());
 

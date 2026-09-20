@@ -1,15 +1,6 @@
 use crate::testing::map_like::MapLike;
-use regex::Regex;
+use regex::regex;
 use std::fmt::Debug;
-use std::sync::LazyLock;
-
-#[allow(
-  clippy::unwrap_used,
-  reason = "compile-time-constant pattern; a malformed literal is a build-time bug"
-)]
-static NDARRAY_METADATA_RE: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)").unwrap()
-});
 
 #[macro_export]
 macro_rules! pretty_assert_eq {
@@ -81,7 +72,9 @@ pub fn format_map<M: Debug>(map: &M) -> String {
 }
 
 fn strip_ndarray_metadata(s: &str) -> String {
-  NDARRAY_METADATA_RE.replace_all(s, "").into_owned()
+  regex!(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)")
+    .replace_all(s, "")
+    .into_owned()
 }
 
 #[macro_export]

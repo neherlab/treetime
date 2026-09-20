@@ -5,17 +5,16 @@
 )]
 #![allow(
   clippy::expect_used,
-  reason = "structural invariants guaranteed by a successful pest parse against the inline grammar, plus the compile-time-constant HYBRID_RE pattern"
+  reason = "structural invariants guaranteed by a successful pest parse against the inline grammar"
 )]
 
 use crate::types::{NewickEdgeData, NewickGraph, NewickHybrid, NewickNodeData, NewickValue};
 use eyre::{Report, WrapErr};
 use pest::Parser;
 use pest_derive::Parser;
-use regex::Regex;
+use regex::regex;
 use std::collections::BTreeMap;
 use std::io::Read;
-use std::sync::LazyLock;
 
 #[derive(Parser)]
 #[grammar_inline = r#"
@@ -43,9 +42,6 @@ comment_inner = _{ (!"[" ~ !"]" ~ ANY | "[" ~ comment_inner ~ "]")* }
 WHITESPACE = _{ " " | "\t" | NEWLINE }
 "#]
 struct NewickParser;
-
-static HYBRID_RE: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^(.*?)(##|#)([A-Za-z]*)(\d+)$").expect("hybrid regex"));
 
 /// Parse a Newick string into a [`NewickGraph`], auto-detecting BEAST, NHX, and plain comment dialects.
 pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
@@ -307,7 +303,7 @@ fn extract_hybrid(name: Option<String>) -> HybridExtraction {
     };
   };
 
-  let Some(caps) = HYBRID_RE.captures(&name) else {
+  let Some(caps) = regex!(r"^(.*?)(##|#)([A-Za-z]*)(\d+)$").captures(&name) else {
     return HybridExtraction {
       clean_name: Some(name),
       hybrid: None,

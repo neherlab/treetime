@@ -9,19 +9,14 @@ use crate::seq::indel::{InDel, InDelKind};
 use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
-use regex::Regex;
+use regex::regex;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
 use std::str::FromStr;
-use std::sync::LazyLock;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::to_eyre_error;
-
-static NUC_MUT_RE: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").expect("NUC_MUT_RE regex compilation")
-});
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Mutation {
@@ -252,7 +247,7 @@ impl FromStr for Sub {
 
   /// Parses nucleotide substitution from string. Expects IUPAC notation commonly used in bioinformatics.
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    if let Some(captures) = NUC_MUT_RE.captures(s) {
+    if let Some(captures) = regex!(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
           let reff = AsciiChar::try_new(reff.as_str().bytes().next().unwrap())
