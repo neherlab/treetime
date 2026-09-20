@@ -4,18 +4,14 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-/// Adjacency-list representation of a Newick tree or eNewick network.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickGraph {
   pub nodes: Vec<NewickNodeData>,
   pub edges: Vec<NewickEdgeEntry>,
-  /// Node index of the tree root.
   pub root: usize,
-  /// `[&R]` -> `Some(true)`, `[&U]` -> `Some(false)`, absent -> `None`.
   pub rooted: Option<bool>,
 }
 
-/// Edge in the adjacency list, connecting parent to child by node index.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickEdgeEntry {
   pub parent: usize,
@@ -23,81 +19,55 @@ pub struct NewickEdgeEntry {
   pub data: NewickEdgeData,
 }
 
-/// Per-node data: name, structured annotations, raw comments, eNewick hybrid info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickNodeData {
   pub name: Option<String>,
-  /// Branch support / bootstrap / posterior probability parsed from a bare numeric
-  /// label on an internal node (Biopython heuristic: try parse label as float,
-  /// on success use as confidence and clear name).
   pub confidence: Option<f64>,
-  /// Structured annotations from `[&...]` or `[&&NHX:...]` before `:`.
   pub node_attrs: BTreeMap<String, NewickValue>,
-  /// Plain `[text]` comments without `&` prefix, preserved verbatim.
   pub raw_comments: Vec<String>,
   pub hybrid: Option<NewickHybrid>,
-  /// Edge indices into `NewickGraph.edges`, in insertion (parse) order.
   pub children: Vec<usize>,
 }
 
-/// Per-edge data: branch length, structured annotations, raw comments.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickEdgeData {
   pub branch_length: Option<f64>,
-  /// Structured annotations from after `:` (BEAST2 canonical or MrBayes position).
   pub branch_attrs: BTreeMap<String, NewickValue>,
-  /// Plain `[text]` comments on the branch.
   pub raw_comments: Vec<String>,
-  /// eNewick `##` (double-hash) marking this edge as the acceptor/main lineage.
   pub is_acceptor: bool,
 }
 
-/// eNewick hybrid marker parsed from `#TypeN` or `##TypeN` in node labels.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NewickHybrid {
-  /// Reticulation type: `H`, `LGT`, `R`, or custom. `None` when untyped (`#1`).
   pub kind: Option<String>,
   pub index: u32,
 }
 
-/// Annotation value from BEAST `[&k=v]` or NHX `[&&NHX:k=v]` comments.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NewickValue {
-  /// BEAST `TRUE`/`FALSE` (case-insensitive).
   Boolean(bool),
-  /// Bare numeric value, parsed as f64.
   Number(f64),
-  /// Unquoted or quoted string value. NHX values are always String.
   String(String),
-  /// BEAST `{v1,v2,v3}` array.
   Array(Vec<NewickValue>),
 }
 
-/// Output annotation style.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NwkStyle {
-  /// Name and branch length only, no annotations.
   Plain,
-  /// BEAST2 `[&k=v,k2=v2]` format (default).
   #[default]
   Beast,
-  /// NHX `[&&NHX:k=v:k2=v2]` format.
   Nhx,
 }
 
-/// Controls output format and float precision.
 #[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct NewickWriteOptions {
   pub style: NwkStyle,
-  /// Max significant digits for branch lengths. Default: None (full precision).
   pub significant_digits: Option<u8>,
-  /// Max decimal places for branch lengths. Default: None (unlimited).
   pub decimal_digits: Option<i8>,
 }
 
-/// Named tree from a Nexus TREES block.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NexusTree {
   pub name: String,
@@ -105,7 +75,6 @@ pub struct NexusTree {
 }
 
 impl NewickGraph {
-  /// Create an empty graph.
   pub fn new() -> Self {
     Self {
       nodes: Vec::new(),
@@ -115,14 +84,12 @@ impl NewickGraph {
     }
   }
 
-  /// Add a node, return its index.
   pub fn add_node(&mut self, data: NewickNodeData) -> usize {
     let idx = self.nodes.len();
     self.nodes.push(data);
     idx
   }
 
-  /// Add an edge from parent to child, return its index.
   pub fn add_edge(&mut self, parent: usize, child: usize, data: NewickEdgeData) -> usize {
     let idx = self.edges.len();
     self.edges.push(NewickEdgeEntry { parent, child, data });
@@ -130,7 +97,6 @@ impl NewickGraph {
     idx
   }
 
-  /// Compare two graphs with child-order sensitivity (unlike `PartialEq` which is order-insensitive).
   pub fn eq_ordered(&self, other: &NewickGraph) -> bool {
     if self.rooted != other.rooted {
       return false;
@@ -203,7 +169,6 @@ impl fmt::Display for NewickValue {
 }
 
 impl NewickNodeData {
-  /// Create a node with no name, no annotations, no children.
   pub fn new() -> Self {
     Self {
       name: None,
@@ -215,7 +180,6 @@ impl NewickNodeData {
     }
   }
 
-  /// Set the node name (builder pattern).
   #[must_use]
   pub fn with_name(mut self, name: impl Into<String>) -> Self {
     self.name = Some(name.into());
@@ -230,7 +194,6 @@ impl Default for NewickNodeData {
 }
 
 impl NewickEdgeData {
-  /// Create an edge with no branch length and no annotations.
   pub fn new() -> Self {
     Self {
       branch_length: None,
@@ -240,7 +203,6 @@ impl NewickEdgeData {
     }
   }
 
-  /// Set the branch length (builder pattern).
   #[must_use]
   pub fn with_length(mut self, length: f64) -> Self {
     self.branch_length = Some(length);
@@ -263,7 +225,7 @@ fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
   node.raw_comments.hash(&mut hasher);
   node.hybrid.hash(&mut hasher);
 
-  #[allow(clippy::collection_is_never_read)] // false positive: vec is read by .hash()
+  #[allow(clippy::collection_is_never_read)]
   let mut child_hashes: Vec<(u64, u64)> = node
     .children
     .iter()
@@ -301,7 +263,6 @@ fn eq_subtree_unordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize
     return true;
   }
 
-  // Compute (subtree_hash, edge_hash) for each child, sort, compare
   let mut hashes1: Vec<(u64, u64)> = nd1
     .children
     .iter()

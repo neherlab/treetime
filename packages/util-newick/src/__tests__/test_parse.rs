@@ -79,7 +79,6 @@ mod tests {
     assert_eq!(g.nodes.len(), 3);
     let root = &g.nodes[g.root];
     assert_eq!(root.children.len(), 2);
-    // Anonymous children
     for &ei in &root.children {
       let child_idx = g.edges[ei].child;
       assert_eq!(g.nodes[child_idx].name, None);
@@ -89,7 +88,7 @@ mod tests {
   #[test]
   fn test_parse_empty_branches_three() {
     let g = newick_from_string("(A,,B);").unwrap();
-    assert_eq!(g.nodes.len(), 4); // root + A + anonymous + B
+    assert_eq!(g.nodes.len(), 4);
     let root = &g.nodes[g.root];
     assert_eq!(root.children.len(), 3);
   }
@@ -118,7 +117,6 @@ mod tests {
     assert_eq!(g.rooted, None);
   }
 
-  // BEAST dialect tests
   #[test]
   fn test_parse_beast_node_attrs() {
     let g = newick_from_string("(A[&prob=0.95,rate=1.2],B);").unwrap();
@@ -192,7 +190,6 @@ mod tests {
     );
   }
 
-  // BEAST2 canonical branch attr placement
   #[test]
   fn test_parse_beast2_branch_attrs() {
     let g = newick_from_string("(A:[&rate=1.5]0.1,B:0.2);").unwrap();
@@ -205,7 +202,6 @@ mod tests {
     assert_eq!(a_edge.data.branch_length, Some(0.1));
   }
 
-  // MrBayes-style: branch attrs after length
   #[test]
   fn test_parse_mrbayes_branch_attrs() {
     let g = newick_from_string("(A:0.1[&prob=0.99],B:0.2);").unwrap();
@@ -217,7 +213,6 @@ mod tests {
     assert_eq!(a_edge.data.branch_attrs.get("prob"), Some(&NewickValue::Number(0.99)));
   }
 
-  // NHX dialect tests
   #[test]
   fn test_parse_nhx_attrs() {
     let g = newick_from_string("(A[&&NHX:S=human:B=90],B);").unwrap();
@@ -227,7 +222,6 @@ mod tests {
     assert_eq!(attrs.get("B"), Some(&NewickValue::String("90".to_owned())));
   }
 
-  // Raw comments
   #[test]
   fn test_parse_raw_comment() {
     let g = newick_from_string("(A[some comment],B);").unwrap();
@@ -243,27 +237,21 @@ mod tests {
     assert_eq!(g.nodes[a_idx].raw_comments, vec!["[outer[inner]]"]);
   }
 
-  // Malformed annotation falls back to raw
   #[test]
   fn test_parse_malformed_beast_fallback() {
     let g = newick_from_string("(A[&broken=],B);").unwrap();
     let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
-    // Even malformed, the BEAST parser attempts to parse it
-    // [&broken=] has key "broken" with empty value -> String("")
     assert!(g.nodes[a_idx].node_attrs.contains_key("broken"));
   }
 
-  // eNewick hybrid tests
   #[test]
   fn test_parse_enewick_hybrid() {
     let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
-    // x#H1 should appear as a single node with two parents
     let hybrid_nodes: Vec<_> = g.nodes.iter().filter(|n| n.hybrid.is_some()).collect();
     assert_eq!(hybrid_nodes.len(), 1);
     let h = hybrid_nodes[0].hybrid.as_ref().unwrap();
     assert_eq!(h.kind.as_deref(), Some("H"));
     assert_eq!(h.index, 1);
-    // Node x should have name "x"
     assert_eq!(hybrid_nodes[0].name.as_deref(), Some("x"));
   }
 
@@ -276,7 +264,6 @@ mod tests {
     assert_eq!(Some("LGT"), h.kind.as_deref());
     assert_eq!(1, h.index);
 
-    // Acceptor is edge-specific: exactly one of the two parent edges should be acceptor
     let hybrid_idx = g.nodes.iter().position(|n| n.hybrid.is_some()).unwrap();
     let parent_edges: Vec<_> = g.edges.iter().filter(|e| e.child == hybrid_idx).collect();
     assert_eq!(2, parent_edges.len());
@@ -373,7 +360,6 @@ mod tests {
     assert!(err.contains("Failed to parse Newick string"), "unexpected error: {err}");
   }
 
-  // PartialEq tests
   #[test]
   fn test_eq_order_insensitive() {
     let g1 = newick_from_string("(A,B,C);").unwrap();
@@ -423,7 +409,6 @@ mod tests {
     assert_ne!(g1, g2);
   }
 
-  // Whitespace handling
   #[test]
   fn test_parse_whitespace() {
     let g = newick_from_string("  ( A : 0.1 , B : 0.2 ) ; ").unwrap();
@@ -442,21 +427,18 @@ mod tests {
     assert_eq!(g.nodes.len(), 3);
   }
 
-  // Single-child internal node
   #[test]
   fn test_parse_single_child_internal() {
     let g = newick_from_string("((A));").unwrap();
     assert_eq!(g.nodes.len(), 3);
   }
 
-  // Deep nesting
   #[test]
   fn test_parse_deep_nesting() {
     let g = newick_from_string("((((A,B),C),D),E);").unwrap();
     assert_eq!(g.nodes.len(), 9);
   }
 
-  // Comment on edge with no length
   #[test]
   fn test_parse_comment_no_length() {
     let g = newick_from_string("(A[&note=yes],B);").unwrap();
@@ -466,8 +448,6 @@ mod tests {
       Some(&NewickValue::String("yes".to_owned()))
     );
   }
-
-  // Confidence parsing: Biopython heuristic on internal node labels
 
   #[rustfmt::skip]
   #[rstest]

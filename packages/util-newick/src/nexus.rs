@@ -1,5 +1,3 @@
-//! Nexus container format reader and writer.
-
 use crate::parse::newick_from_string;
 use crate::types::{NewickGraph, NewickWriteOptions, NexusTree};
 use crate::write::newick_to_writer;
@@ -7,7 +5,6 @@ use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
-/// Parse a Nexus string, returning all trees from TREES blocks.
 pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   let input = input.trim();
   let header = input.split_ascii_whitespace().next().unwrap_or("");
@@ -20,21 +17,18 @@ pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   extract_trees(&blocks, &translate_table)
 }
 
-/// Parse Nexus from an `impl Read` source.
 pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report> {
   let mut input = String::new();
   reader.read_to_string(&mut input)?;
   nexus_from_string(&input)
 }
 
-/// Write trees as a Nexus string with Taxa and Trees blocks.
 pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
   let mut buf = Vec::new();
   nexus_to_writer(&mut buf, trees, options)?;
   Ok(String::from_utf8(buf)?)
 }
 
-/// Write trees in Nexus format to an `impl Write` destination.
 pub fn nexus_to_writer(
   writer: &mut impl Write,
   trees: &[NexusTree],
@@ -43,7 +37,6 @@ pub fn nexus_to_writer(
   writeln!(writer, "#NEXUS")?;
   writeln!(writer)?;
 
-  // Collect all leaf names across all trees
   let mut taxa: Vec<String> = Vec::new();
   for tree in trees {
     collect_leaf_names(&tree.graph, &mut taxa);
@@ -51,7 +44,6 @@ pub fn nexus_to_writer(
   taxa.sort();
   taxa.dedup();
 
-  // Taxa block
   writeln!(writer, "Begin Taxa;")?;
   writeln!(writer, "  Dimensions ntax={};", taxa.len())?;
   writeln!(writer, "  TaxLabels")?;
@@ -66,7 +58,6 @@ pub fn nexus_to_writer(
   writeln!(writer, "End;")?;
   writeln!(writer)?;
 
-  // Trees block
   writeln!(writer, "Begin Trees;")?;
   for tree in trees {
     let name = &tree.name;
@@ -109,11 +100,10 @@ fn parse_nexus_blocks(input: &str) -> Vec<NexusBlock> {
   let mut pos = 0;
 
   while pos < input.len() {
-    // Find "begin <name>;"
     let Some(begin_pos) = lower[pos..].find("begin ") else {
       break;
     };
-    let begin_start = pos + begin_pos + 6; // after "begin "
+    let begin_start = pos + begin_pos + 6;
 
     let Some(semi_pos) = input[begin_start..].find(';') else {
       break;
@@ -121,7 +111,6 @@ fn parse_nexus_blocks(input: &str) -> Vec<NexusBlock> {
     let block_name = input[begin_start..begin_start + semi_pos].trim().to_ascii_lowercase();
     let content_start = begin_start + semi_pos + 1;
 
-    // Find "end;"
     let Some(end_pos) = lower[content_start..].find("end;") else {
       break;
     };
@@ -220,28 +209,24 @@ fn extract_trees(blocks: &[NexusBlock], translate_table: &BTreeMap<String, Strin
       continue;
     }
 
-    // Find all "tree <name> = <newick>;" entries
     let lower = block.content.to_ascii_lowercase();
     let mut search_pos = 0;
 
     while search_pos < block.content.len() {
-      // Skip past translate block if present
       let remaining_lower = &lower[search_pos..];
       let Some(tree_pos) = find_tree_command(remaining_lower) else {
         break;
       };
 
-      let abs_pos = search_pos + tree_pos + 4; // after "tree"
+      let abs_pos = search_pos + tree_pos + 4;
       let after_tree = &block.content[abs_pos..];
 
-      // Find "=" separating name from newick
       let Some(eq_pos) = after_tree.find('=') else {
         break;
       };
       let tree_name = after_tree[..eq_pos].trim();
       let tree_name = strip_nexus_quotes(tree_name);
 
-      // Find ";" terminating the newick string
       let after_eq = &after_tree[eq_pos + 1..];
       let Some(semi_pos) = find_newick_semicolon(after_eq) else {
         break;
@@ -267,12 +252,9 @@ fn find_tree_command(lower: &str) -> Option<usize> {
     let found = lower[pos..].find("tree")?;
     let abs = pos + found;
 
-    // Must be preceded by whitespace or start of string
     let before_ok = abs == 0 || lower.as_bytes()[abs - 1].is_ascii_whitespace() || lower.as_bytes()[abs - 1] == b';';
-    // Must be followed by whitespace
     let after_ok = abs + 4 < lower.len() && lower.as_bytes()[abs + 4].is_ascii_whitespace();
 
-    // Must not be inside "translate" keyword
     if before_ok && after_ok {
       let prefix = &lower[..abs].trim_end();
       if !prefix.ends_with("translat") {
@@ -310,7 +292,6 @@ fn parse_newick_with_translate(
     return Ok(graph);
   }
 
-  // Replace integer tokens with full taxon names
   for node in &mut graph.nodes {
     if let Some(name) = &node.name {
       if let Some(translated) = translate_table.get(name) {

@@ -1,4 +1,3 @@
-//! Newick parser with automatic annotation dialect detection.
 #![allow(
   clippy::expect_used,
   reason = "structural invariants guaranteed by a successful pest parse against the inline grammar"
@@ -39,7 +38,6 @@ WHITESPACE = _{ " " | "\t" | NEWLINE }
 "#]
 struct NewickParser;
 
-/// Parse a Newick string into a [`NewickGraph`], auto-detecting BEAST, NHX, and plain comment dialects.
 pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
   let pairs = NewickParser::parse(Rule::tree, input).wrap_err("Failed to parse Newick string")?;
 
@@ -68,7 +66,6 @@ pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
   Ok(graph)
 }
 
-/// Parse Newick from an `impl Read` source.
 pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> {
   let mut input = String::new();
   reader.read_to_string(&mut input)?;
@@ -90,9 +87,7 @@ fn visit_root_branch(
         let (idx, _acceptor) = visit_subtree(inner, graph, hybrid_map)?;
         root_idx = Some(idx);
       },
-      Rule::number => {
-        // Root branch length discarded (no parent edge to attach it to)
-      },
+      Rule::number => {},
       Rule::comment => {
         classify_comment(inner.as_str(), &mut root_attrs, &mut root_raw);
       },
@@ -186,8 +181,6 @@ fn visit_internal(
 
   let extraction = extract_hybrid(name);
 
-  // Biopython heuristic: bare numeric label on an internal node is branch support,
-  // not a taxon name. Try parse as float; on success, store as confidence and clear name.
   let (final_name, confidence) = match extraction.clean_name {
     Some(label) if label.parse::<f64>().is_ok() => (None, label.parse::<f64>().ok()),
     other => (other, None),
@@ -252,7 +245,6 @@ fn visit_branch(
     }
   }
 
-  // If no subtree was present, create an anonymous leaf node
   let child_idx = child_idx.unwrap_or_else(|| graph.add_node(NewickNodeData::new()));
 
   let mut branch_attrs = pre_colon_attrs;
@@ -371,8 +363,6 @@ fn classify_comment(comment_text: &str, attrs: &mut BTreeMap<String, NewickValue
 }
 
 fn parse_nhx_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
-  // NHX format: :key=value:key=value...
-  // Leading colon before first tag
   for tag in body.split(':') {
     let tag = tag.trim();
     if tag.is_empty() {
@@ -385,8 +375,6 @@ fn parse_nhx_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
 }
 
 fn parse_beast_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
-  // BEAST format: key=value,key=value,...
-  // Need to handle {array} values and "quoted strings"
   let pairs = split_beast_pairs(body);
   for pair_str in pairs {
     let pair_str = pair_str.trim();
@@ -398,7 +386,6 @@ fn parse_beast_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
       let value_str = value_str.trim();
       attrs.insert(key, parse_beast_value(value_str));
     } else {
-      // Bare key = boolean TRUE
       attrs.insert(strip_beast_quotes(pair_str), NewickValue::Boolean(true));
     }
   }
@@ -459,7 +446,6 @@ fn parse_beast_value(s: &str) -> NewickValue {
     return NewickValue::Array(elements);
   }
 
-  // Boolean: TRUE/FALSE (case-insensitive)
   if s.eq_ignore_ascii_case("true") {
     return NewickValue::Boolean(true);
   }
@@ -467,7 +453,6 @@ fn parse_beast_value(s: &str) -> NewickValue {
     return NewickValue::Boolean(false);
   }
 
-  // Number: starts with digit or '-', must be finite
   if s.starts_with(|c: char| c.is_ascii_digit() || c == '-') {
     if let Ok(n) = s.parse::<f64>() {
       if n.is_finite() {
@@ -476,6 +461,5 @@ fn parse_beast_value(s: &str) -> NewickValue {
     }
   }
 
-  // String (strip quotes if present)
   NewickValue::String(strip_beast_quotes(s))
 }
