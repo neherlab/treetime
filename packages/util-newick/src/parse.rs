@@ -1,11 +1,19 @@
 //! Newick parser with automatic annotation dialect detection.
+#![allow(
+  clippy::wildcard_enum_match_arm,
+  reason = "matches the pest-generated Rule enum; the parser acts on the relevant rules and ignores the rest, and enumerating every grammar rule would break on grammar edits"
+)]
+#![allow(
+  clippy::expect_used,
+  reason = "structural invariants guaranteed by a successful pest parse against the inline grammar, plus the compile-time-constant HYBRID_RE pattern"
+)]
 
 use crate::types::{NewickEdgeData, NewickGraph, NewickHybrid, NewickNodeData, NewickValue};
 use eyre::{Report, WrapErr};
 use pest::Parser;
 use pest_derive::Parser;
 use regex::Regex;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::io::Read;
 use std::sync::LazyLock;
 
@@ -44,7 +52,7 @@ pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
   let pairs = NewickParser::parse(Rule::tree, input).wrap_err("Failed to parse Newick string")?;
 
   let mut graph = NewickGraph::new();
-  let mut hybrid_map: HashMap<(Option<String>, u32), usize> = HashMap::new();
+  let mut hybrid_map: BTreeMap<(Option<String>, u32), usize> = BTreeMap::new();
 
   let mut rooted = None;
   let mut root = None;
@@ -78,7 +86,7 @@ pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> 
 fn visit_root_branch(
   pair: pest::iterators::Pair<Rule>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> Result<usize, Report> {
   let mut root_idx = None;
   let mut root_attrs = BTreeMap::new();
@@ -110,7 +118,7 @@ fn visit_root_branch(
 fn visit_subtree(
   pair: pest::iterators::Pair<Rule>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> Result<(usize, bool), Report> {
   let inner = pair.into_inner().next().expect("subtree must have leaf or internal");
   match inner.as_rule() {
@@ -123,7 +131,7 @@ fn visit_subtree(
 fn visit_leaf(
   pair: pest::iterators::Pair<Rule>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> Result<(usize, bool), Report> {
   let mut name = None;
   let mut raw_comments = Vec::new();
@@ -158,7 +166,7 @@ fn visit_leaf(
 fn visit_internal(
   pair: pest::iterators::Pair<Rule>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> Result<(usize, bool), Report> {
   let mut name = None;
   let mut raw_comments = Vec::new();
@@ -214,7 +222,7 @@ fn visit_internal(
 fn visit_branch(
   pair: pest::iterators::Pair<Rule>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> Result<(usize, NewickEdgeData), Report> {
   let mut child_idx = None;
   let mut branch_length = None;
@@ -336,7 +344,7 @@ fn resolve_hybrid_node(
   node_data: NewickNodeData,
   hybrid: Option<&NewickHybrid>,
   graph: &mut NewickGraph,
-  hybrid_map: &mut HashMap<(Option<String>, u32), usize>,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
 ) -> usize {
   let Some(h) = hybrid else {
     return graph.add_node(node_data);
