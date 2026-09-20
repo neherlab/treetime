@@ -13,7 +13,7 @@ mod tests {
   #[test]
   fn test_multiply_many_empty() {
     let result = multiply_many_lazy_normalize(&[]);
-    assert_eq!(result.normalized.len(), 0);
+    assert_eq!(0, result.normalized.len());
     assert!(result.log_scale.is_infinite() && result.log_scale.is_sign_negative());
   }
 

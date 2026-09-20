@@ -3,9 +3,6 @@ use eyre::Report;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode};
 
-/// Riemann sum convolution algorithm on uniform grids.
-///
-/// Simple O(n*m) algorithm suitable for small arrays.
 pub fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   let mut result = Array1::zeros(f_values.len() + g_values.len() - 1);
 
@@ -18,25 +15,18 @@ pub fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>)
   Ok(result)
 }
 
-/// Convolution using ndarray-conv library for uniform grids.
-///
-/// Uses direct convolution - good for small to medium arrays.
 pub fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
   let continuous_conv = &discrete_conv * dx;
   Ok(continuous_conv)
 }
 
-/// FFT-based convolution using ndarray-conv library.
-///
-/// Uses FFT for O(n log n) complexity - best for large arrays.
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   let discrete_conv = f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?;
   let continuous_conv = &discrete_conv * dx;
   Ok(continuous_conv)
 }
 
-/// Riemann sum convolution algorithm implementation.
 pub struct RiemannConvolve;
 
 impl ConvolveAlgo for RiemannConvolve {
@@ -49,7 +39,6 @@ impl ConvolveAlgo for RiemannConvolve {
   }
 }
 
-/// ndarray-conv based convolution algorithm implementation.
 pub struct NdarrayConvolve;
 
 impl ConvolveAlgo for NdarrayConvolve {
@@ -62,7 +51,6 @@ impl ConvolveAlgo for NdarrayConvolve {
   }
 }
 
-/// FFT-based ndarray-conv convolution algorithm implementation.
 pub struct FftConvolve;
 
 impl ConvolveAlgo for FftConvolve {
@@ -87,7 +75,7 @@ mod tests {
     let delta = array![0.0, 0.0, 1.0 / dx, 0.0, 0.0];
     let f = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let result = convolve_riemann(dx, &delta, &f).unwrap();
-    assert_eq!(result.len(), 9);
+    assert_eq!(9, result.len());
     assert_ulps_eq!(result[2], f[0], max_ulps = 4);
     assert_ulps_eq!(result[4], f[2], max_ulps = 4);
   }
