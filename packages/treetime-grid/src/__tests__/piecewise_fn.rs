@@ -8,15 +8,15 @@ mod tests {
     let base = PiecewiseFnBase::new(array![1.0, 5.0, 10.0], array![0.0, 1.0, 2.0, 3.0]);
     assert_eq!(base.breakpoints(), &array![1.0, 5.0, 10.0]);
     assert_eq!(base.values(), &array![0.0, 1.0, 2.0, 3.0]);
-    assert_eq!(base.breakpoints_slice(), &[1.0, 5.0, 10.0]);
-    assert_eq!(base.values_slice(), &[0.0, 1.0, 2.0, 3.0]);
+    assert_eq!(&[1.0, 5.0, 10.0], base.breakpoints_slice());
+    assert_eq!(&[0.0, 1.0, 2.0, 3.0], base.values_slice());
   }
 
   #[test]
   fn test_piecewise_fn_base_single_breakpoint() {
     let base = PiecewiseFnBase::new(array![5.0], array![0.0, 1.0]);
-    assert_eq!(base.breakpoints().len(), 1);
-    assert_eq!(base.values().len(), 2);
+    assert_eq!(1, base.breakpoints().len());
+    assert_eq!(2, base.values().len());
   }
 
   #[test]
