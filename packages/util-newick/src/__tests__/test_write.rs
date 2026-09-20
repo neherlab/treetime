@@ -14,7 +14,6 @@ mod tests {
     }
   }
 
-  // Plain style
   #[test]
   fn test_write_plain_simple() {
     let g = newick_from_string("(A:0.1,B:0.2)root;").unwrap();
@@ -36,7 +35,6 @@ mod tests {
     assert_eq!("(A:0.1,B:0.2);", s);
   }
 
-  // Beast style
   #[test]
   fn test_write_beast_node_attrs() {
     let mut g = NewickGraph::new();
@@ -168,7 +166,6 @@ mod tests {
     assert_eq!("A[some note];", s);
   }
 
-  // NHX style
   #[test]
   fn test_write_nhx_node_attrs() {
     let mut g = NewickGraph::new();
@@ -189,7 +186,6 @@ mod tests {
     assert_eq!("A[&&NHX:S=human:T=9606];", s);
   }
 
-  // Name quoting
   #[test]
   fn test_write_name_quoting_special_chars() {
     let mut g = NewickGraph::new();
@@ -217,7 +213,6 @@ mod tests {
     assert_eq!("simple_name;", s);
   }
 
-  // Rooting prefix
   #[test]
   fn test_write_rooted_prefix() {
     let mut g = newick_from_string("(A,B);").unwrap();
@@ -234,16 +229,13 @@ mod tests {
     assert_eq!("[&U](A,B);", s);
   }
 
-  // Float formatting
   #[test]
   fn test_write_significant_digits() {
     let g = newick_from_string("(A:0.123456789,B:0.2);").unwrap();
 
-    // Full precision by default
     let full = newick_to_string(&g, &NewickWriteOptions::default()).unwrap();
     assert_eq!("(A:0.123456789,B:0.2);", full);
 
-    // Explicit 3 significant digits
     let o = NewickWriteOptions {
       style: NwkStyle::Plain,
       significant_digits: Some(3),
@@ -253,7 +245,6 @@ mod tests {
     assert_eq!("(A:0.123,B:0.2);", s);
   }
 
-  // Empty branches
   #[test]
   fn test_write_empty_branches() {
     let g = newick_from_string("(,);").unwrap();
@@ -261,7 +252,6 @@ mod tests {
     assert_eq!("(,);", s);
   }
 
-  // No branch length
   #[test]
   fn test_write_no_branch_length() {
     let g = newick_from_string("(A,B);").unwrap();
@@ -269,17 +259,14 @@ mod tests {
     assert_eq!("(A,B);", s);
   }
 
-  // eNewick writer
   #[test]
   fn test_write_enewick_hybrid() {
     let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    // Should contain x#H1 marker twice but subtree only once
     let count = s.matches("x#H1").count();
     assert_eq!(count, 2, "hybrid marker should appear twice: {s}");
   }
 
-  // BEAST string that looks like boolean/number must round-trip via quoting
   #[test]
   fn test_write_beast_string_true_roundtrip() {
     let mut g = NewickGraph::new();
@@ -322,7 +309,6 @@ mod tests {
     assert_eq!(Some(&NewickValue::String("123".to_owned())), a.node_attrs.get("id"));
   }
 
-  // Embedded double quotes in BEAST strings are escaped by doubling
   #[test]
   fn test_write_beast_string_embedded_quote_roundtrip() {
     let mut g = NewickGraph::new();
@@ -347,7 +333,6 @@ mod tests {
     );
   }
 
-  // NHX rejects values containing reserved characters
   #[test]
   fn test_write_nhx_rejects_colon_in_value() {
     let mut g = NewickGraph::new();
@@ -375,7 +360,6 @@ mod tests {
     assert!(result.is_err(), "NHX writer should reject values containing ':'");
   }
 
-  // All three styles produce different output for same annotated graph
   #[test]
   fn test_write_all_styles_differ() {
     let g = newick_from_string("(A[&prob=0.9]:0.1,B:0.2);").unwrap();

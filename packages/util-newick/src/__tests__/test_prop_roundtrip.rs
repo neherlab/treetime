@@ -23,8 +23,6 @@ mod tests {
   }
 
   fn arb_leaf() -> impl Strategy<Value = (NewickNodeData, NewickEdgeData)> {
-    // Branch attrs require a branch length for unambiguous round-trip
-    // (without `:`, attrs written after the subtree are parsed as node attrs)
     (arb_branch_length(), arb_attrs()).prop_flat_map(|(bl, branch_attrs)| {
       let branch_attrs = if bl.is_some() { branch_attrs } else { BTreeMap::new() };
       let name_strat = "[A-Za-z][A-Za-z0-9_]{0,8}".prop_map(Some);
@@ -55,7 +53,6 @@ mod tests {
       let root = g.add_node(NewickNodeData::new());
       g.root = root;
       for (i, (mut node_data, edge_data)) in leaves.into_iter().enumerate() {
-        // Ensure unique names for deterministic order-insensitive comparison
         node_data.name = Some(format!("T{i}_{}", node_data.name.unwrap_or_default()));
         let child = g.add_node(node_data);
         g.add_edge(root, child, edge_data);
@@ -79,7 +76,6 @@ mod tests {
 
     #[test]
     fn test_prop_roundtrip_nhx(g in arb_tree()) {
-      // NHX converts typed values to strings, so we verify topology and branch lengths only
       let opts = NewickWriteOptions {
         style: NwkStyle::Nhx,
         significant_digits: None,
@@ -87,8 +83,6 @@ mod tests {
       };
       let written = newick_to_string(&g, &opts).unwrap();
       let parsed = newick_from_string(&written).unwrap();
-      // NHX round-trip: topology, names, branch lengths match.
-      // Attrs may differ in type (Number -> String) so we only check topology.
       prop_assert_eq!(g.nodes.len(), parsed.nodes.len());
       prop_assert_eq!(g.edges.len(), parsed.edges.len());
       for (e1, e2) in g.edges.iter().zip(parsed.edges.iter()) {

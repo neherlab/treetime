@@ -1,18 +1,14 @@
-//! Newick writer with configurable annotation style.
-
 use crate::types::{NewickEdgeData, NewickGraph, NewickNodeData, NewickValue, NewickWriteOptions, NwkStyle};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 
-/// Write a [`NewickGraph`] as a Newick string.
 pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, Report> {
   let mut buf = Vec::new();
   newick_to_writer(&mut buf, graph, options)?;
   Ok(String::from_utf8(buf)?)
 }
 
-/// Write a [`NewickGraph`] to an `impl Write` destination.
 pub fn newick_to_writer(
   writer: &mut impl Write,
   graph: &NewickGraph,
@@ -43,7 +39,6 @@ fn write_subtree(
 ) -> Result<(), Report> {
   let node = &graph.nodes[node_idx];
 
-  // For hybrid nodes: if already visited, write marker only (no subtree)
   if node.hybrid.is_some() && !visited_hybrids.insert(node_idx) {
     write_name(writer, node, is_acceptor)?;
     return Ok(());
@@ -161,25 +156,20 @@ fn write_edge(writer: &mut impl Write, edge: &NewickEdgeData, options: &NewickWr
   if has_length {
     write!(writer, ":")?;
 
-    // BEAST2 canonical: branch attrs between `:` and number
     if options.style == NwkStyle::Beast {
       write_beast_attrs(writer, &edge.branch_attrs)?;
     }
 
     write!(writer, "{}", format_float(edge.branch_length.unwrap_or(0.0), options))?;
 
-    // NHX and MrBayes: branch attrs after number
     if options.style == NwkStyle::Nhx {
       write_nhx_attrs(writer, &edge.branch_attrs)?;
     }
 
-    // Raw comments after number for both Beast and Nhx
     if options.style != NwkStyle::Plain {
       write_raw_comments(writer, &edge.raw_comments)?;
     }
   } else if options.style != NwkStyle::Plain && (has_branch_attrs || has_raw) {
-    // No length: emit attrs and raw comments without `:` prefix.
-    // These will be parsed back as pre-colon branch comments.
     match options.style {
       NwkStyle::Beast => write_beast_attrs(writer, &edge.branch_attrs)?,
       NwkStyle::Nhx => write_nhx_attrs(writer, &edge.branch_attrs)?,

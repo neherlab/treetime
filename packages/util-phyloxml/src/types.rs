@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-/// (Incomplete) representation of PhyloXML format, according to schema at http://www.phyloxml.org/1.20/phyloxml.xsd
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Phyloxml {
   pub phylogeny: Vec<PhyloxmlPhylogeny>,

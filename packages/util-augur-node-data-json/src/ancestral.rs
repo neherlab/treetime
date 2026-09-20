@@ -27,7 +27,6 @@ pub struct AugurNodeDataJsonAncestralNode {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub sequence: Option<String>,
 
-  // AA reconstruction (future: kb/proposals/node-data-json-aa-reconstruction.md)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub aa_muts: Option<BTreeMap<String, Vec<String>>>,
 
