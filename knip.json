@@ -5,13 +5,15 @@
     ".": {
       "entry": [
         "oxlint.config.ts",
-        "oxlint-plugins/index.js",
+        "dev/lints/oxlint/index.ts",
+        "dev/lints/oxlint/web.ts",
+        "dev/lints/oxlint/__tests__/*.ts",
         "oxfmt.config.ts",
         "vitest.config.ts",
         "vitest.setup.ts",
         "test/**/*.test.ts"
       ],
-      "project": ["*.ts", "oxlint-plugins/**/*.js", "test/**/*.ts"]
+      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "test/**/*.ts"]
     },
     "packages/app-contracts": {
       "entry": ["src/index.ts!", "src/generated/index.ts", "scripts/codegen.ts"],

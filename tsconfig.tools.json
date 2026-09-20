@@ -10,6 +10,7 @@
     "oxfmt.config.ts",
     "vitest.config.ts",
     "vitest.setup.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "dev/lints/oxlint/**/*.ts"
   ]
 }

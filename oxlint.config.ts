@@ -27,7 +27,7 @@ export default defineConfig({
     "vitest",
   ],
 
-  jsPlugins: ["./oxlint-plugins/index.js", "./oxlint-plugins/web.js"],
+  jsPlugins: ["./dev/lints/oxlint/index.ts", "./dev/lints/oxlint/web.ts"],
 
   categories: {
     correctness: "warn",
