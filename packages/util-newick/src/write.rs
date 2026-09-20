@@ -2,14 +2,14 @@
 
 use crate::types::{NewickEdgeData, NewickGraph, NewickNodeData, NewickValue, NewickWriteOptions, NwkStyle};
 use eyre::Report;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 
 /// Write a [`NewickGraph`] as a Newick string.
 pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, Report> {
   let mut buf = Vec::new();
   newick_to_writer(&mut buf, graph, options)?;
-  Ok(String::from_utf8(buf).expect("Newick output should be valid UTF-8"))
+  Ok(String::from_utf8(buf)?)
 }
 
 /// Write a [`NewickGraph`] to an `impl Write` destination.
@@ -26,7 +26,7 @@ pub fn newick_to_writer(
     }
   }
 
-  let mut visited_hybrids = HashSet::new();
+  let mut visited_hybrids = BTreeSet::new();
   write_subtree(writer, graph, graph.root, false, options, &mut visited_hybrids)?;
   write!(writer, ";")?;
 
@@ -39,7 +39,7 @@ fn write_subtree(
   node_idx: usize,
   is_acceptor: bool,
   options: &NewickWriteOptions,
-  visited_hybrids: &mut HashSet<usize>,
+  visited_hybrids: &mut BTreeSet<usize>,
 ) -> Result<(), Report> {
   let node = &graph.nodes[node_idx];
 
