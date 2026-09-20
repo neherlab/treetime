@@ -80,7 +80,10 @@ use ndarray_stats::QuantileExt;
 /// assert!((probs.sum() - 1.0).abs() < 1e-15);
 /// assert!(probs[0] > probs[1] && probs[1] > probs[2]);
 /// ```
-#[allow(clippy::as_conversions, reason = "element counts to f64 for uniform normalization; exact for any realistic length")]
+#[allow(
+  clippy::as_conversions,
+  reason = "element counts to f64 for uniform normalization; exact for any realistic length"
+)]
 pub fn softmax_with_log_norm(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64) {
   let n = log_vec.len();
 

@@ -11,7 +11,10 @@ pub fn to_eyre_error<T, E: Into<eyre::Error>>(val_or_err: Result<T, E>) -> Resul
   val_or_err.map_err(|report| eyre!(report))
 }
 
-#[allow(clippy::unwrap_used, reason = "E::from_str is expected to parse a formatted report string in this conversion helper")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "E::from_str is expected to parse a formatted report string in this conversion helper"
+)]
 pub fn from_eyre_error<T, E: FromStr>(val_or_err: Result<T, Report>) -> Result<T, E> {
   val_or_err.map_err(|report| E::from_str(&report_to_string(&report)).ok().unwrap())
 }

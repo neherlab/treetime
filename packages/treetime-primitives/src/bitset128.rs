@@ -204,7 +204,10 @@ impl BitSet128 {
     self.first()
   }
 
-  #[allow(clippy::expect_used, reason = "crash-on-empty contract; get_one_maybe is the checked variant")]
+  #[allow(
+    clippy::expect_used,
+    reason = "crash-on-empty contract; get_one_maybe is the checked variant"
+  )]
   pub fn get_one(&self) -> AsciiChar {
     self.get_one_maybe().expect("BitSet128 is empty")
   }

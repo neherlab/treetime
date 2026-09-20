@@ -21,7 +21,10 @@ impl LineFit {
   /// `intercept = mean(y)`).
   ///
   /// `xs` and `ys` must have the same non-zero length.
-  #[allow(clippy::as_conversions, reason = "sample count to f64; exact for any realistic input length")]
+  #[allow(
+    clippy::as_conversions,
+    reason = "sample count to f64; exact for any realistic input length"
+  )]
   pub fn least_squares(xs: &[f64], ys: &[f64]) -> LineFit {
     let n = xs.len() as f64;
     let sum_x: f64 = xs.iter().sum();

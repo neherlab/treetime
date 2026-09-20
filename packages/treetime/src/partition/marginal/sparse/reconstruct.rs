@@ -48,7 +48,10 @@ pub(crate) fn parsimony_seq(
 }
 
 /// The node's most likely sequence.
-#[allow(clippy::disallowed_methods, reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature")]
+#[allow(
+  clippy::disallowed_methods,
+  reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature"
+)]
 pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
   map_seq_sampled(node, alphabet, false, &mut rand::thread_rng())
 }

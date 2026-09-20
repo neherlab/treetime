@@ -55,7 +55,10 @@ pub fn ndarray_pad_zeros_right(input: &Array1<f64>, target_length: usize) -> Arr
 }
 
 /// Create uniform grid with specified start, spacing, and length
-#[allow(clippy::as_conversions, reason = "grid length to f64; exact for any representable grid size")]
+#[allow(
+  clippy::as_conversions,
+  reason = "grid length to f64; exact for any representable grid size"
+)]
 pub fn ndarray_uniform_grid(start: f64, spacing: f64, length: usize) -> Array1<f64> {
   Array1::linspace(start, start + spacing * ((length - 1) as f64), length)
 }
@@ -304,7 +307,10 @@ where
   }
 }
 
-#[allow(clippy::unwrap_used, reason = "0 and 1 are representable in every NumCast numeric target")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "0 and 1 are representable in every NumCast numeric target"
+)]
 pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
   shape: Sh,
   rng: &mut R,
@@ -327,7 +333,10 @@ pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T
 }
 
 /// Sort 1D float array in place
-#[allow(clippy::unwrap_used, reason = "an owned Array1 is contiguous, so as_slice_mut is always Some")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "an owned Array1 is contiguous, so as_slice_mut is always Some"
+)]
 pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
   arr.as_slice_mut().unwrap().sort_by_key(|x| OrderedFloat(*x));
 }

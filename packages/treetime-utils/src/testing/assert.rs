@@ -3,7 +3,10 @@ use regex::Regex;
 use std::fmt::Debug;
 use std::sync::LazyLock;
 
-#[allow(clippy::unwrap_used, reason = "compile-time-constant pattern; a malformed literal is a build-time bug")]
+#[allow(
+  clippy::unwrap_used,
+  reason = "compile-time-constant pattern; a malformed literal is a build-time bug"
+)]
 static NDARRAY_METADATA_RE: LazyLock<Regex> = LazyLock::new(|| {
   Regex::new(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)").unwrap()
 });

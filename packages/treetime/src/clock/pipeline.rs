@@ -115,7 +115,10 @@ pub fn run(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::useless_let_if_seq, reason = "the conditional branch runs fallible pre-filter root finding with ?; folding it into a let-if-else would nest a large fallible block in the initializer")]
+#[allow(
+  clippy::useless_let_if_seq,
+  reason = "the conditional branch runs fallible pre-filter root finding with ?; folding it into a let-if-else would nest a large fallible block in the initializer"
+)]
 fn estimate_clock_model_with_prefilter(
   graph: &mut Graph,
   inputs: &mut ClockInputs,

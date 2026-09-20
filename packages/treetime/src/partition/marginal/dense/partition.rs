@@ -301,7 +301,10 @@ impl MarginalPasses for PartitionMarginalDense {
 
 /// Deterministic most-likely-state sequence assignment. Used by the forward pass and convergence
 /// reads, which must stay reproducible regardless of the user's output sampling mode.
-#[allow(clippy::disallowed_methods, reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature")]
+#[allow(
+  clippy::disallowed_methods,
+  reason = "sample is false, so resolve_profile takes the deterministic argmax path and never draws from the rng; it is passed only to satisfy the signature"
+)]
 pub(crate) fn assign_sequence(seq_info: &DenseNodeState, alphabet: &Alphabet) -> Seq {
   assign_sequence_sampled(seq_info, alphabet, false, &mut rand::thread_rng())
 }

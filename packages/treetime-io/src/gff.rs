@@ -75,7 +75,10 @@ pub fn read_gff3_cds_features_filtered(path: &Path, cdses: &[String]) -> Result<
   )
 }
 
-#[allow(clippy::expect_used, reason = "each grouped feature has at least one row, so rows.first() is Some by construction")]
+#[allow(
+  clippy::expect_used,
+  reason = "each grouped feature has at least one row, so rows.first() is Some by construction"
+)]
 fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec<GffCdsFeature>, Report> {
   let mut raw_features: BTreeMap<String, Vec<RawCdsRow>> = BTreeMap::new();
 

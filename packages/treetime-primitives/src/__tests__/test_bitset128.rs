@@ -2,7 +2,6 @@
   clippy::as_conversions,
   reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
 )]
-
 #![allow(clippy::op_ref)]
 
 #[cfg(test)]

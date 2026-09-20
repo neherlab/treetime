@@ -1,7 +1,4 @@
-#![allow(
-  clippy::panic,
-  reason = "mandated crash on missing graph node/edge access"
-)]
+#![allow(clippy::panic, reason = "mandated crash on missing graph node/edge access")]
 
 use crate::clock::clock_set::ClockSet;
 use eyre::Report;
