@@ -4,3 +4,10 @@ rustflags = ["-C", "linker=dylint-link"]
 # For Rust versions 1.74.0 and onward, the following alternative can be used
 # (see https://github.com/rust-lang/cargo/pull/12535):
 # linker = "dylint-link"
+
+# A dylint plugin cdylib must unwind (the dylint driver relies on unwinding).
+# State it explicitly so the crate does not inherit the workspace release
+# profile, whose fat LTO otherwise links the unwind runtime against an abort
+# strategy and fails to compile.
+[profile.release]
+panic = "unwind"
