@@ -5,6 +5,7 @@ use std::fmt::Write as StdFmtWrite;
 use treetime_utils::error::make_error;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[repr(transparent)]
 pub struct AsciiChar(u8);
 
 impl<'de> Deserialize<'de> for AsciiChar {

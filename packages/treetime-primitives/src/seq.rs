@@ -24,20 +24,15 @@ impl Seq {
     Ok(Self { data: vec![ch; n] })
   }
 
-  #[allow(unsafe_code)]
   pub fn try_from_str(s: &str) -> Result<Self, Report> {
     if !s.is_ascii() {
       return make_error!("Seq: input contains non-ASCII characters");
     }
-    Ok(unsafe { Self::from_str_unchecked(s) })
+    Ok(Self::from_ascii_str(s))
   }
 
-  #[allow(unsafe_code)]
-  pub unsafe fn from_str_unchecked(s: &str) -> Self {
-    debug_assert!(
-      s.is_ascii(),
-      "Seq::from_str_unchecked: input contains non-ASCII characters"
-    );
+  fn from_ascii_str(s: &str) -> Self {
+    debug_assert!(s.is_ascii(), "Seq::from_ascii_str: input contains non-ASCII characters");
     Self {
       data: s
         .as_bytes()
@@ -98,7 +93,11 @@ impl Seq {
     self.data.reserve_exact(additional);
   }
 
-  #[allow(unsafe_code)]
+  #[allow(
+    unsafe_code,
+    clippy::undocumented_unsafe_blocks,
+    reason = "AsciiChar is transparent over a validated ASCII byte"
+  )]
   pub fn as_str(&self) -> &str {
     let byte_slice = unsafe { std::slice::from_raw_parts(self.data.as_ptr().cast::<u8>(), self.data.len()) };
 
@@ -360,7 +359,11 @@ impl IntoIterator for Seq {
   }
 }
 
-#[allow(unsafe_code)]
+#[allow(
+  unsafe_code,
+  clippy::undocumented_unsafe_blocks,
+  reason = "AsciiChar is transparent over a validated ASCII byte"
+)]
 impl std::io::Read for Seq {
   fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
     let len = std::cmp::min(buf.len(), self.len());
@@ -398,7 +401,6 @@ impl serde::Serialize for Seq {
   }
 }
 
-#[allow(unsafe_code)]
 impl<'de> serde::Deserialize<'de> for Seq {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -408,7 +410,7 @@ impl<'de> serde::Deserialize<'de> for Seq {
     if !s.is_ascii() {
       return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
     }
-    Ok(unsafe { Seq::from_str_unchecked(&s) })
+    Ok(Seq::from_ascii_str(&s))
   }
 }
 
