@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { createLogger, defineConfig } from "vite";
 
-const serverPort = process.env.PORT ?? "3100";
+const serverPort = process.env["PORT"] ?? "3100";
 
 const logger = createLogger("info", { allowClearScreen: false });
 const originalInfo = logger.info.bind(logger);

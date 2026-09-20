@@ -42,7 +42,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(args),
-        signal: options?.signal,
+        signal: options?.signal ?? null,
         onmessage(msg) {
           if (debug) console.debug("[TreeTime]", JSON.stringify(msg));
           if (msg.event === "progress") {
