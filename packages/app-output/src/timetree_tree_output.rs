@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node, coloring,
@@ -126,6 +121,7 @@ fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>)
     .unwrap_or_default()
 }
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 fn timetree_divergence(
   graph: &Graph,
   node_key: GraphNodeKey,

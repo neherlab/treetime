@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;
@@ -71,6 +66,7 @@ impl MugrationConfidenceOutput {
       .collect()
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Render as CSV content.
   pub fn render_csv(&self) -> String {
     let mut out = String::new();
@@ -102,6 +98,7 @@ impl MugrationTraitsOutput {
     }
   }
 
+  #[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
   /// Render as CSV content.
   pub fn render_csv(&self) -> String {
     let mut out = String::new();

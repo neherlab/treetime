@@ -1,9 +1,3 @@
-#![allow(
-  clippy::expect_used,
-  clippy::wildcard_enum_match_arm,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 //! Output selection and path planning, shared by every application adapter.
 //!
 //! Turns a requested set of outputs plus a base destination into the concrete file paths and format
@@ -380,6 +374,7 @@ fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
   }
 }
 
+#[allow(clippy::expect_used, reason = "expect on a value an upstream invariant guarantees is present")]
 /// Resolve the three-tier output request into concrete file paths.
 ///
 /// Tier 1: `output_all` bulk directory with default file names.

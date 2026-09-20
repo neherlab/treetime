@@ -1,8 +1,3 @@
-#![allow(
-  clippy::unwrap_used,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 use crate::mugration_result::MugrationResult;
 use crate::mugration_tree_output::{build_confidence_map, compute_entropy};
 use eyre::Report;
@@ -92,6 +87,7 @@ fn build_models(attribute: &str, output: &MugrationOutput) -> BTreeMap<String, A
   models
 }
 
+#[allow(clippy::unwrap_used, reason = "unwrap on a value an upstream invariant guarantees is present")]
 fn build_nodes(
   attribute: &str,
   graph: &Graph,

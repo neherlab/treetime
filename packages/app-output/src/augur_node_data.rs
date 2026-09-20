@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "application layer: counts and indices to f64, integer division for averaging, graph node access and CLI/config setup invariants, and default variant matches"
-)]
-
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -20,6 +15,7 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonRefineNode,
 };
 
+#[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
 /// Write augur-compatible node data JSON for the `timetree` command.
 ///
 /// Produces the structure consumed by `augur export v2 --node-data`, equivalent

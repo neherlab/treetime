@@ -1,10 +1,3 @@
-#![allow(
-  clippy::field_scoped_visibility_modifiers,
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "plain crate-internal output record: pub(crate) fields are the intended interface, casts are counts to f64, and node access expects hold by the graph invariant"
-)]
-
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -112,6 +105,10 @@ where
 }
 
 /// Per-node conversion context passed to the graph-walk closures.
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
 pub(crate) struct GraphNodeContext {
   pub(crate) node_key: GraphNodeKey,
   pub(crate) edge_key: Option<GraphEdgeKey>,
@@ -119,6 +116,10 @@ pub(crate) struct GraphNodeContext {
 
 /// Reconstructed discrete trait for one attribute: the assigned state plus its confidence and entropy.
 #[derive(Clone, Debug, Default, PartialEq)]
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
 pub(crate) struct TraitValue {
   pub(crate) value: String,
   pub(crate) confidence: BTreeMap<String, f64>,
@@ -510,6 +511,7 @@ pub(crate) fn finite_number(
   Ok(value.map(|value| format_number(value, precision)))
 }
 
+#[allow(clippy::as_conversions, clippy::expect_used, reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present")]
 pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
   if number == 0.0 || !number.is_finite() {
     return number;
