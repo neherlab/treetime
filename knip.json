@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6.35.1/schema.json",
   "ignoreWorkspaces": ["packages/app-server"],
+  "ignoreIssues": {
+    "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"]
+  },
   "workspaces": {
     ".": {
       "entry": [
@@ -24,16 +27,30 @@
       ]
     },
     "packages/app-contracts": {
-      "entry": ["src/index.ts!", "src/generated/index.ts", "scripts/codegen.ts"],
-      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+      "entry": ["src/index.ts!", "src/bridge.ts!", "src/generated/index.ts"],
+      "project": ["src/**/*.ts"]
     },
     "packages/app-ui": {
-      "entry": ["src/index.ts!"],
-      "project": ["src/**/*.{ts,tsx}"]
+      "entry": ["src/index.ts!", "src/App.tsx!"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": [
+        "@base-ui-components/react",
+        "@fontsource/ibm-plex-mono",
+        "@fontsource/lato",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "cn",
+        "lucide-react",
+        "next-themes",
+        "react-error-boundary",
+        "tailwindcss",
+        "zustand"
+      ]
     },
     "packages/app-web": {
-      "entry": ["index.html!", "src/main.tsx!", "vite.config.ts"],
-      "project": ["src/**/*.{ts,tsx}"]
+      "entry": ["index.html!", "src/main.tsx!", "src/bridge-web.ts!", "vite.config.ts!"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
     },
     "packages/app-desktop": {
       "entry": [
@@ -41,13 +58,14 @@
         "src/preload.ts!",
         "renderer/index.html!",
         "renderer/main.tsx!",
-        "vite.config.ts"
+        "vite.config.ts!"
       ],
-      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
     },
     "packages/app-napi": {
-      "entry": ["index.js!"],
-      "project": ["*.js"]
+      "entry": [],
+      "project": []
     }
   }
 }
