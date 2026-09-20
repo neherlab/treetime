@@ -1,5 +1,6 @@
 import { definePlugin } from "@oxlint/plugins"
 
+import { callersBeforeCalleesRule } from "./rules/callers-before-callees.ts"
 import { noAssertionInLoopRule } from "./rules/no-assertion-in-loop.ts"
 import { noAsyncArrayPredicateRule } from "./rules/no-async-array-predicate.ts"
 import { noDisabledTestsRule } from "./rules/no-disabled-tests.ts"
@@ -8,6 +9,7 @@ import { noFakeSuccessRule } from "./rules/no-fake-success.ts"
 import { noFocusedTestsRule } from "./rules/no-focused-tests.ts"
 import { noLeakyMocksRule } from "./rules/no-leaky-mocks.ts"
 import { noModuleLevelMutableRule } from "./rules/no-module-level-mutable.ts"
+import { noSideEffectsInGettersRule } from "./rules/no-side-effects-in-getters.ts"
 import { noTautologicalAssertionRule } from "./rules/no-tautological-assertion.ts"
 import { noTestResourceAccessRule } from "./rules/no-test-resource-access.ts"
 import { noTypographicCharactersRule } from "./rules/no-typographic-characters.ts"
@@ -24,6 +26,7 @@ import { useClassNameHelperRule } from "./rules/use-class-name-helper.ts"
 export default definePlugin({
   meta: { name: "treetime" },
   rules: {
+    "callers-before-callees": callersBeforeCalleesRule,
     "no-assertion-in-loop": noAssertionInLoopRule,
     "no-async-array-predicate": noAsyncArrayPredicateRule,
     "no-disabled-tests": noDisabledTestsRule,
@@ -32,6 +35,7 @@ export default definePlugin({
     "no-focused-tests": noFocusedTestsRule,
     "no-leaky-mocks": noLeakyMocksRule,
     "no-module-level-mutable": noModuleLevelMutableRule,
+    "no-side-effects-in-getters": noSideEffectsInGettersRule,
     "no-tautological-assertion": noTautologicalAssertionRule,
     "no-test-resource-access": noTestResourceAccessRule,
     "no-typographic-characters": noTypographicCharactersRule,

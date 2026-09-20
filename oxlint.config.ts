@@ -161,6 +161,8 @@ export default defineConfig({
     "treetime/no-async-array-predicate": "error",
     "treetime/require-suppression-reason": "error",
     "treetime/no-unbounded-suppression": "error",
+    "treetime/callers-before-callees": "error",
+    "treetime/no-side-effects-in-getters": "error",
 
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
