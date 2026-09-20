@@ -10,7 +10,6 @@ use treetime_utils::make_error;
 
 pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
 
-/// Available convolution algorithms for testing
 #[derive(
   Debug,
   Clone,
@@ -38,12 +37,10 @@ pub enum ConvolutionAlgorithm {
 }
 
 impl ConvolutionAlgorithm {
-  /// Get all available algorithms (excluding the All meta-variant)
   pub fn all() -> Vec<Self> {
     Self::iter().filter(|a| *a != Self::All).collect()
   }
 
-  /// Expand algorithm list, replacing All with actual algorithms
   pub fn expand(algorithms: &[Self]) -> Vec<Self> {
     if algorithms.contains(&Self::All) {
       Self::all()
@@ -52,9 +49,6 @@ impl ConvolutionAlgorithm {
     }
   }
 
-  /// Instantiate the algorithm implementation.
-  ///
-  /// Returns error if called on `All` meta-variant (use `expand()` first).
   pub fn instantiate(&self) -> Result<Box<dyn Algo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
@@ -65,7 +59,6 @@ impl ConvolutionAlgorithm {
   }
 }
 
-/// Available multiplication algorithms for testing
 #[derive(
   Debug,
   Clone,
@@ -105,9 +98,6 @@ impl MultiplicationAlgorithm {
     }
   }
 
-  /// Instantiate the algorithm implementation.
-  ///
-  /// Returns error if called on `All` meta-variant (use `expand()` first).
   pub fn instantiate(&self) -> Result<Box<dyn MultiplyAlgo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),

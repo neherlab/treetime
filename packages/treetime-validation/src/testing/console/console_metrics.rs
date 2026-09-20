@@ -16,7 +16,6 @@ impl ValidationConsole {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  /// Compute all metrics for the table
   pub(crate) fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,
     grouped_by_algorithm: &BTreeMap<String, Vec<&TestResult<T>>>,

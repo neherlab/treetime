@@ -3,25 +3,18 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-/// Tolerance counts for different threshold levels
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ToleranceCounts {
-  /// Count of points within absolute tolerance thresholds [strict, moderate, loose]
   pub within_abs_tolerances: [usize; 3],
-  /// Count of points within relative tolerance thresholds [strict, moderate, loose]
   pub within_rel_tolerances: [usize; 3],
 }
 
-/// Maximum error location information
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MaxErrorLocation {
-  /// Array index where maximum absolute error occurs
   pub idx: usize,
-  /// X-coordinate value where maximum absolute error occurs
   pub x_value: f64,
 }
 
-/// Count points within specified tolerance thresholds
 pub fn compute_tolerance_counts(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -52,7 +45,6 @@ pub fn compute_tolerance_counts(
   }
 }
 
-/// Find location of maximum absolute error
 pub fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> MaxErrorLocation {
   let abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   let max_idx = abs_errors

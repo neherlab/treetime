@@ -3,37 +3,19 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-/// Absolute error statistics including bias detection
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AbsoluteErrorStats {
-  /// Mean absolute error: $\frac{1}{N}\sum_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
-  /// Average magnitude of deviations across all points
   pub mean: f64,
-  /// Maximum absolute error: $\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
-  /// Largest deviation in absolute terms, indicates worst-case accuracy
   pub max: f64,
-  /// Standard deviation of absolute errors
-  /// Measures variability in error magnitudes across the domain
   pub std: f64,
-  /// Signed error bias: $\frac{1}{N}\sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))$
-  /// Detects systematic positive/negative bias in numerical methods
   pub bias: f64,
 }
 
-/// Relative error statistics with robust central tendency
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RelativeErrorStats {
-  /// Mean relative error: $\frac{1}{N}\sum_i \frac{y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)}{y_{\text{ref}}(x_i)}$
-  /// Average signed relative deviation, can indicate systematic scaling bias
   pub mean: f64,
-  /// Maximum relative error: $\max_i \frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|}$
-  /// Worst-case relative deviation, normalized by reference magnitude
   pub max: f64,
-  /// Mean Absolute Percentage Error: $\frac{100}{N}\sum_i \frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|}$
-  /// Average relative error magnitude as percentage, commonly used metric
   pub mape: f64,
-  /// Median relative error: more robust to outliers than mean
-  /// Uses $\frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\max(\left|y_{\text{ref}}(x_i)\right|, \epsilon)}$
   pub median: f64,
 }
 
@@ -41,8 +23,6 @@ pub struct RelativeErrorStats {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-/// Compute absolute error statistics with bias detection
-/// Calculates mean, maximum, standard deviation, and signed bias of absolute errors
 pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
   let abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   let signed_errors: Vec<f64> = (actual - expected).to_vec();
@@ -62,8 +42,6 @@ pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1
   clippy::integer_division,
   reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"
 )]
-/// Compute relative error statistics
-/// Returns mean, max, MAPE, and median relative errors
 pub fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> RelativeErrorStats {
   let mut rel_errors = Vec::new();
   let mut abs_rel_errors = Vec::new();

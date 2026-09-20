@@ -18,31 +18,20 @@ use std::fmt;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
-/// Comprehensive domain-wide agreement metrics between actual and expected solutions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainAgreementMetrics {
-  /// Total number of evaluation points
   pub total_points: usize,
-  /// Absolute error statistics including bias detection
   pub abs_error_stats: AbsoluteErrorStats,
-  /// Relative error statistics with robust central tendency measures
   pub rel_error_stats: RelativeErrorStats,
-  /// Global quality metrics including conservation properties
   pub quality_metrics: QualityMetrics,
-  /// Peak-specific accuracy metrics for distribution analysis
   pub peak_metrics: PeakMetrics,
-  /// Location information for the maximum absolute error
   pub max_error_location: MaxErrorLocation,
-  /// Fractions of points within absolute tolerance thresholds [0.0, 1.0]
   pub abs_tolerance_fractions: [f64; 3],
-  /// Fractions of points within relative tolerance thresholds [0.0, 1.0]
   pub rel_tolerance_fractions: [f64; 3],
-  /// Overall assessment based on R² value
   pub overall_assessment: AgreementAssessment,
 }
 
 impl DomainAgreementMetrics {
-  /// Creates new domain agreement metrics from actual and expected values
   pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
     Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
   }
@@ -51,7 +40,6 @@ impl DomainAgreementMetrics {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  /// Creates new domain agreement metrics with custom tolerance thresholds
   pub fn new_with_thresholds(
     x: &Array1<f64>,
     actual: &Array1<f64>,
@@ -130,12 +118,10 @@ impl DomainAgreementMetrics {
     })
   }
 
-  /// Returns the precomputed overall assessment based on R² value
   pub fn overall_assessment(&self) -> AgreementAssessment {
     self.overall_assessment
   }
 
-  /// Returns fraction of points within absolute tolerance at given level (0-2)
   pub fn abs_tolerance_fraction(&self, level: usize) -> f64 {
     if level >= 3 {
       return 0.0;
@@ -143,7 +129,6 @@ impl DomainAgreementMetrics {
     self.abs_tolerance_fractions[level]
   }
 
-  /// Returns fraction of points within relative tolerance at given level (0-2)
   pub fn rel_tolerance_fraction(&self, level: usize) -> f64 {
     if level >= 3 {
       return 0.0;
@@ -152,7 +137,6 @@ impl DomainAgreementMetrics {
   }
 }
 
-/// Assessment levels for domain agreement quality
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AgreementAssessment {
@@ -173,7 +157,6 @@ impl fmt::Display for AgreementAssessment {
   }
 }
 
-/// Compute overall assessment based on R² value and thresholds
 fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssessment {
   if r2 >= thresholds[0] {
     AgreementAssessment::Excellent

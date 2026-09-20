@@ -1,16 +1,11 @@
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-/// Performance metrics for numerical algorithm comparison
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
-  /// Signal-to-noise ratio in dB
   pub signal_to_noise_ratio: f64,
-  /// Normalized root mean square error
   pub normalized_rmse: f64,
-  /// Coefficient of determination (R²)
   pub coefficient_of_determination: f64,
-  /// Nash-Sutcliffe efficiency coefficient
   pub nash_sutcliffe_efficiency: f64,
 }
 

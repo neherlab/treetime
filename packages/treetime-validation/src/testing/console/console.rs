@@ -9,11 +9,9 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 const VERBOSE_LABEL_WIDTH: usize = 32;
 
-/// Console display functionality for convolution test framework
 pub struct ValidationConsole;
 
 impl ValidationConsole {
-  /// Print test configuration
   pub fn print_test_configuration<A: Display>(
     test_suite_name: &str,
     algorithms: &[A],
@@ -45,14 +43,12 @@ impl ValidationConsole {
     println!();
   }
 
-  /// Print test framework header
   pub fn print_header(test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
     println!("## Execution\n");
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n");
   }
 
-  /// Print progress table header
   pub fn print_progress_table_header() {
     println!(
       "| S  | {:^25} | {:^30} | {:^8} | {:^10} | {:^8} | {:^9} |",
@@ -64,7 +60,6 @@ impl ValidationConsole {
     );
   }
 
-  /// Print success row in progress table
   pub fn print_success_row<T: TestCase>(result: &TestResult<T>) {
     let elapsed_ms = result.execution_time_ms;
     let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
@@ -83,7 +78,6 @@ impl ValidationConsole {
     );
   }
 
-  /// Print failure row in progress table
   pub fn print_failure_row<T: TestCase, A: Display>(test_case: &T, algorithm: A, elapsed_ms: f64) {
     println!(
       "| !! | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
@@ -96,7 +90,6 @@ impl ValidationConsole {
     );
   }
 
-  /// Print verbose details for a single test result
   pub fn print_verbose_details<T: TestCase>(result: &TestResult<T>) {
     let w = VERBOSE_LABEL_WIDTH;
     let m = &result.metrics;
@@ -289,7 +282,6 @@ impl ValidationConsole {
     println!();
   }
 
-  /// Print error summary section
   pub fn print_error_summary<T: TestCase>(failures: &[&TestFailure<T>]) -> Result<(), Report> {
     if failures.is_empty() {
       return Ok(());
@@ -308,7 +300,6 @@ impl ValidationConsole {
     Ok(())
   }
 
-  /// Print comprehensive summary to console
   pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report> {
     println!("\n## Results\n");
 
@@ -318,7 +309,6 @@ impl ValidationConsole {
     Ok(())
   }
 
-  /// Print overall statistics section
   fn print_overall_statistics(summary: &TestSummary) {
     let total_tests = summary.total_tests;
     let total_successes = summary.total_successes;

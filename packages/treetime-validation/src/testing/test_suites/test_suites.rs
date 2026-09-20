@@ -66,9 +66,6 @@ impl TestSuiteName {
     matches!(self, Self::MultGaussianPairwise | Self::MultGaussianChain)
   }
 
-  /// Run tests for this suite.
-  ///
-  /// Returns error if called on `All` meta-variant (use `expand()` first).
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
       Self::All => make_error!("Cannot run All meta-variant; use expand() first"),

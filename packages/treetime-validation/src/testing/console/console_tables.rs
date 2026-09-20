@@ -10,7 +10,6 @@ use crate::testing::console::console::ValidationConsole;
 
 #[allow(clippy::multiple_inherent_impl)]
 impl ValidationConsole {
-  /// Print per-test-case algorithm comparison table
   pub(crate) fn print_per_test_case_comparison<T: TestCase>(outcomes: &[TestRunOutcome<T>]) {
     let successes: Vec<_> = outcomes
       .iter()
@@ -87,7 +86,6 @@ impl ValidationConsole {
     println!("\n(Values shown: R^2 error in ppm - lower is better)\n");
   }
 
-  /// Print comprehensive metrics table
   pub(crate) fn print_unified_metrics_table<T: TestCase>(
     summary: &TestSummary,
     outcomes: &[TestRunOutcome<T>],
@@ -119,7 +117,6 @@ impl ValidationConsole {
     Ok(())
   }
 
-  /// Print metrics table headers
   fn print_metrics_table_headers(
     algorithms: &[String],
     all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>,
@@ -146,7 +143,6 @@ impl ValidationConsole {
     println!();
   }
 
-  /// Print metrics table rows
   fn print_metrics_table_rows(algorithms: &[String], all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
     let mut algo_col_widths = BTreeMap::new();

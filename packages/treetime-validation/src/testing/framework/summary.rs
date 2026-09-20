@@ -18,7 +18,6 @@ pub struct TestSummary {
   pub algorithm_summaries: Vec<AlgorithmSummary>,
 }
 
-/// Summary for a specific algorithm across all test cases
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmSummary {
   pub algorithm_name: String,
@@ -37,7 +36,6 @@ pub struct AlgorithmSummary {
 }
 
 impl AlgorithmSummary {
-  /// Create a new AlgorithmSummary from test results
   pub fn new<T: TestCase>(
     algorithm: ConvolutionAlgorithm,
     successes: &[&&TestResult<T>],
@@ -50,7 +48,6 @@ impl AlgorithmSummary {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  /// Create a new AlgorithmSummary from test results using a string algorithm name
   pub fn new_from_name<T: TestCase>(
     algorithm_name: &str,
     successes: &[&&TestResult<T>],

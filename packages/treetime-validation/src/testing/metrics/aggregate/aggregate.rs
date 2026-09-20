@@ -5,17 +5,10 @@ use eyre::Result;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-/// Aggregate metrics combining domain agreement with performance assessment
-///
-/// These metrics provide domain-wide scalar summaries that give an overall
-/// assessment of algorithm accuracy across all evaluation points.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggregateMetrics {
-  /// Domain agreement metrics
   pub domain_agreement: DomainAgreementMetrics,
-  /// Performance assessment
   pub performance: PerformanceMetrics,
-  /// Execution time in milliseconds
   pub execution_time_ms: f64,
 }
 

@@ -28,12 +28,6 @@ pub trait TestCase: Clone + Send + Sync + Serialize {
   fn input_grid_n_points(&self) -> usize;
 }
 
-/// Metadata fields shared by every test case across all test suites.
-///
-/// Embedded in each concrete test case with `#[serde(flatten)]` so the
-/// serialized form stays flat (fields are not nested under a `base` key). The
-/// accessors here are the single implementation forwarded to by the `TestCase`
-/// trait defaults.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCaseBase {
   pub name: String,
