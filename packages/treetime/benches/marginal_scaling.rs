@@ -1,3 +1,9 @@
+#![allow(
+  clippy::expect_used,
+  clippy::unwrap_used,
+  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+)]
+
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
 use rayon::ThreadPoolBuilder;

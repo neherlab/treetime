@@ -1,3 +1,8 @@
+#![allow(
+  clippy::as_conversions,
+  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+)]
+
 //! Child-order invariance of the backward-pass message combination.
 //!
 //! The timetree backward pass combines a node's child parent-time messages by folding

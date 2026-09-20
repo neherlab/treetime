@@ -1,3 +1,8 @@
+#![allow(
+  clippy::disallowed_methods,
+  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+)]
+
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
