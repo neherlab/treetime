@@ -7,16 +7,9 @@
   "workspaces": {
     ".": {
       "entry": [
-        "oxlint.config.ts",
-        "dev/lints/oxlint/index.ts",
-        "dev/lints/oxlint/web.ts",
         "dev/lints/oxlint/__tests__/*.ts",
-        "dev/lints/oxlint-anti-slop/index.ts",
         "dev/lints/oxlint-anti-slop/effect/index.ts",
         "dev/lints/oxlint-anti-slop/**/*.test.ts",
-        "oxfmt.config.ts",
-        "vitest.config.ts",
-        "vitest.setup.ts",
         "test/**/*.test.ts"
       ],
       "project": [
@@ -27,41 +20,23 @@
       ]
     },
     "packages/app-contracts": {
-      "entry": ["src/index.ts!", "src/bridge.ts!", "src/generated/index.ts"],
+      "entry": ["src/bridge.ts!", "src/generated/index.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/app-ui": {
-      "entry": ["src/index.ts!", "src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx,css}"],
-      "ignoreDependencies": [
-        "@base-ui-components/react",
-        "@fontsource/ibm-plex-mono",
-        "@fontsource/lato",
-        "@tanstack/react-query",
-        "class-variance-authority",
-        "cn",
-        "lucide-react",
-        "next-themes",
-        "react-error-boundary",
-        "tailwindcss",
-        "zustand"
-      ]
+      "entry": ["src/App.tsx!"],
+      "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/app-web": {
-      "entry": ["index.html!", "src/main.tsx!", "src/bridge-web.ts!", "vite.config.ts!"],
-      "project": ["src/**/*.{ts,tsx,css}"],
-      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
+      "entry": ["index.html!", "src/bridge-web.ts!"],
+      "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/app-desktop": {
       "entry": [
-        "src/main.ts!",
         "src/preload.ts!",
-        "renderer/index.html!",
-        "renderer/main.tsx!",
-        "vite.config.ts!"
+        "renderer/index.html!"
       ],
-      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"],
-      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
+      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"]
     },
     "packages/app-napi": {
       "entry": [],
