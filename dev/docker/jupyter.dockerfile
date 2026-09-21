@@ -57,7 +57,7 @@ COPY --link "dev/docker/files/.jupyter/" "/.jupyter"
 COPY --link "dev/docker/files/start-jupyter" "/"
 RUN set -euxo pipefail >/dev/null \
 && cp -r /.conda "${CONDA_DIR}/" \
-&& sudo chown -R ${UID}:${GID} "${CONDA_DIR}"
+&& chown -R "${UID}:${GID}" "${CONDA_DIR}"
 
 
 USER ${USER}
