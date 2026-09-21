@@ -25,18 +25,32 @@
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": [
+        "@base-ui-components/react",
+        "@fontsource/ibm-plex-mono",
+        "@fontsource/lato",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "cn",
+        "lucide-react",
+        "next-themes",
+        "react-error-boundary",
+        "zustand"
+      ]
     },
     "packages/app-web": {
       "entry": ["index.html!", "src/bridge-web.ts!"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
     },
     "packages/app-desktop": {
       "entry": [
         "src/preload.ts!",
         "renderer/index.html!"
       ],
-      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
     },
     "packages/app-napi": {
       "entry": [],

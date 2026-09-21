@@ -38,7 +38,7 @@
     "typecheck:tools": "tsc -p tsconfig.tools.json --noEmit",
     "typecheck:vendor": "tsc -p tsconfig.vendor.json --noEmit",
     "test": "vitest run",
-    "knip": "knip",
+    "knip": "knip --no-config-hints",
     "knip:production": "knip --production",
     "coverage": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=text --coverage.reporter=html --coverage.all --coverage.include=\"packages/*/src/**/*.{ts,tsx}\"",
     "upgrade": "bun update --latest"
