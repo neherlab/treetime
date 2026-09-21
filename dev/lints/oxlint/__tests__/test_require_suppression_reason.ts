@@ -1,8 +1,9 @@
-import { requireSuppressionReasonRule } from "../rules/require-suppression-reason.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { requireSuppressionReasonRule } from "../rules/require-suppression-reason.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
-const error = { messageId: "missingReason" }
+const tester = ruleTester("ts");
+
+const error = { messageId: "missingReason" };
 
 tester.run("treetime/require-suppression-reason", requireSuppressionReasonRule, {
   valid: [
@@ -24,4 +25,4 @@ tester.run("treetime/require-suppression-reason", requireSuppressionReasonRule, 
     },
     { code: "// oxlint-disable-next-line treetime/foo --\nconst x = 1", errors: [error] },
   ],
-})
+});

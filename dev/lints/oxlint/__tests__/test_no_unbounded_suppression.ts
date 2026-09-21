@@ -1,8 +1,9 @@
-import { noUnboundedSuppressionRule } from "../rules/no-unbounded-suppression.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { noUnboundedSuppressionRule } from "../rules/no-unbounded-suppression.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
-const error = { messageId: "unbounded" }
+const tester = ruleTester("ts");
+
+const error = { messageId: "unbounded" };
 
 tester.run("treetime/no-unbounded-suppression", noUnboundedSuppressionRule, {
   valid: [
@@ -19,4 +20,4 @@ tester.run("treetime/no-unbounded-suppression", noUnboundedSuppressionRule, {
       errors: [error],
     },
   ],
-})
+});

@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { effectBodyFacts, hasNonEmptyDeps, makeEffectState } from "./effects.ts"
+import { effectBodyFacts, hasNonEmptyDeps, makeEffectState } from "./effects.ts";
 
 export const noChainedStateUpdatesRule = defineRule({
   meta: {
@@ -14,33 +14,35 @@ export const noChainedStateUpdatesRule = defineRule({
     },
   },
   createOnce(context) {
-    const { state, visitors } = makeEffectState()
+    const { state, visitors } = makeEffectState();
+
     return {
       ...visitors,
       "Program:exit"() {
         for (const effect of state.effects) {
           if (!hasNonEmptyDeps(effect.deps)) {
-            continue
+            continue;
           }
-          const { setterCalls, hasCleanup, statements } = effectBodyFacts(
-            effect.callback,
-            state.setterNames,
-          )
+
+          const { setterCalls, hasCleanup, statements } = effectBodyFacts(effect.callback, state.setterNames);
+
           if (hasCleanup || setterCalls.length === 0 || statements.length === 0) {
-            continue
+            continue;
           }
+
           const onlyStateUpdates = statements.every(
             (statement) =>
               statement.type === "ExpressionStatement" &&
               statement.expression.type === "CallExpression" &&
               statement.expression.callee.type === "Identifier" &&
               state.setterNames.has(statement.expression.callee.name),
-          )
+          );
+
           if (onlyStateUpdates) {
-            context.report({ node: effect.node, messageId: "chained" })
+            context.report({ node: effect.node, messageId: "chained" });
           }
         }
       },
-    }
+    };
   },
-})
+});

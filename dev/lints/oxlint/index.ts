@@ -1,27 +1,27 @@
-import { definePlugin } from "@oxlint/plugins"
+import { definePlugin } from "@oxlint/plugins";
 
-import { callersBeforeCalleesRule } from "./rules/callers-before-callees.ts"
-import { noAssertionInLoopRule } from "./rules/no-assertion-in-loop.ts"
-import { noAsyncArrayPredicateRule } from "./rules/no-async-array-predicate.ts"
-import { noDisabledTestsRule } from "./rules/no-disabled-tests.ts"
-import { noExecShellStringRule } from "./rules/no-exec-shell-string.ts"
-import { noFakeSuccessRule } from "./rules/no-fake-success.ts"
-import { noFocusedTestsRule } from "./rules/no-focused-tests.ts"
-import { noLeakyMocksRule } from "./rules/no-leaky-mocks.ts"
-import { noModuleLevelMutableRule } from "./rules/no-module-level-mutable.ts"
-import { noSideEffectsInGettersRule } from "./rules/no-side-effects-in-getters.ts"
-import { noTautologicalAssertionRule } from "./rules/no-tautological-assertion.ts"
-import { noTestResourceAccessRule } from "./rules/no-test-resource-access.ts"
-import { noTypographicCharactersRule } from "./rules/no-typographic-characters.ts"
-import { noUnboundedSuppressionRule } from "./rules/no-unbounded-suppression.ts"
-import { noUppercaseTestTitleRule } from "./rules/no-uppercase-test-title.ts"
-import { noVagueIdentifiersRule } from "./rules/no-vague-identifiers.ts"
-import { noVersionedNamesRule } from "./rules/no-versioned-names.ts"
-import { preferStrictEqualRule } from "./rules/prefer-strict-equal.ts"
-import { preferTestOverItRule } from "./rules/prefer-test-over-it.ts"
-import { requireIoTimeoutRule } from "./rules/require-io-timeout.ts"
-import { requireSuppressionReasonRule } from "./rules/require-suppression-reason.ts"
-import { useClassNameHelperRule } from "./rules/use-class-name-helper.ts"
+import { callersBeforeCalleesRule } from "./rules/callers-before-callees.ts";
+import { noAssertionInLoopRule } from "./rules/no-assertion-in-loop.ts";
+import { noAsyncArrayPredicateRule } from "./rules/no-async-array-predicate.ts";
+import { noDisabledTestsRule } from "./rules/no-disabled-tests.ts";
+import { noExecShellStringRule } from "./rules/no-exec-shell-string.ts";
+import { noFakeSuccessRule } from "./rules/no-fake-success.ts";
+import { noFocusedTestsRule } from "./rules/no-focused-tests.ts";
+import { noLeakyMocksRule } from "./rules/no-leaky-mocks.ts";
+import { noModuleLevelMutableRule } from "./rules/no-module-level-mutable.ts";
+import { noSideEffectsInGettersRule } from "./rules/no-side-effects-in-getters.ts";
+import { noTautologicalAssertionRule } from "./rules/no-tautological-assertion.ts";
+import { noTestResourceAccessRule } from "./rules/no-test-resource-access.ts";
+import { noTypographicCharactersRule } from "./rules/no-typographic-characters.ts";
+import { noUnboundedSuppressionRule } from "./rules/no-unbounded-suppression.ts";
+import { noUppercaseTestTitleRule } from "./rules/no-uppercase-test-title.ts";
+import { noVagueIdentifiersRule } from "./rules/no-vague-identifiers.ts";
+import { noVersionedNamesRule } from "./rules/no-versioned-names.ts";
+import { preferStrictEqualRule } from "./rules/prefer-strict-equal.ts";
+import { preferTestOverItRule } from "./rules/prefer-test-over-it.ts";
+import { requireIoTimeoutRule } from "./rules/require-io-timeout.ts";
+import { requireSuppressionReasonRule } from "./rules/require-suppression-reason.ts";
+import { useClassNameHelperRule } from "./rules/use-class-name-helper.ts";
 
 export default definePlugin({
   meta: { name: "treetime" },
@@ -49,4 +49,4 @@ export default definePlugin({
     "require-suppression-reason": requireSuppressionReasonRule,
     "use-class-name-helper": useClassNameHelperRule,
   },
-})
+});

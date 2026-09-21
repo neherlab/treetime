@@ -1,7 +1,8 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-const DISABLE_DIRECTIVE = /^\s*oxlint-disable(?:-next-line|-line)?\b/
-const HAS_REASON = /\s--\s+\S/
+const DISABLE_DIRECTIVE = /^\s*oxlint-disable(?:-next-line|-line)?\b/;
+
+const HAS_REASON = /\s--\s+\S/;
 
 export const requireSuppressionReasonRule = defineRule({
   meta: {
@@ -19,10 +20,10 @@ export const requireSuppressionReasonRule = defineRule({
       Program() {
         for (const comment of context.sourceCode.getAllComments()) {
           if (DISABLE_DIRECTIVE.test(comment.value) && !HAS_REASON.test(comment.value)) {
-            context.report({ loc: comment.loc, messageId: "missingReason" })
+            context.report({ loc: comment.loc, messageId: "missingReason" });
           }
         }
       },
-    }
+    };
   },
-})
+});

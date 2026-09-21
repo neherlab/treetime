@@ -1,10 +1,10 @@
-import { definePlugin } from "@oxlint/plugins"
+import { definePlugin } from "@oxlint/plugins";
 
-import { noChainedStateUpdatesRule } from "./rules/no-chained-state-updates.ts"
-import { noEventHandlerEffectRule } from "./rules/no-event-handler-effect.ts"
-import { noStateInEffectInitializerRule } from "./rules/no-state-in-effect-initializer.ts"
-import { tailwindClassesRule } from "./rules/tailwind-classes.ts"
-import { useThemedCnRule } from "./rules/use-themed-cn.ts"
+import { noChainedStateUpdatesRule } from "./rules/no-chained-state-updates.ts";
+import { noEventHandlerEffectRule } from "./rules/no-event-handler-effect.ts";
+import { noStateInEffectInitializerRule } from "./rules/no-state-in-effect-initializer.ts";
+import { tailwindClassesRule } from "./rules/tailwind-classes.ts";
+import { useThemedCnRule } from "./rules/use-themed-cn.ts";
 
 export default definePlugin({
   meta: { name: "web" },
@@ -15,4 +15,4 @@ export default definePlugin({
     "tailwind-classes": tailwindClassesRule,
     "use-themed-cn": useThemedCnRule,
   },
-})
+});

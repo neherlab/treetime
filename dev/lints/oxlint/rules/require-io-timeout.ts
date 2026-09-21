@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { calleeName } from "./ast.ts"
+import { calleeName } from "./ast.ts";
 
 export const requireIoTimeoutRule = defineRule({
   meta: {
@@ -16,22 +16,23 @@ export const requireIoTimeoutRule = defineRule({
     return {
       CallExpression(node) {
         if (calleeName(node) !== "fetch") {
-          return
+          return;
         }
-        const options = node.arguments[1]
+
+        const options = node.arguments[1];
+
         const hasSignal =
           options != null &&
           options.type === "ObjectExpression" &&
           options.properties.some(
             (property) =>
-              property.type === "Property" &&
-              property.key.type === "Identifier" &&
-              property.key.name === "signal",
-          )
+              property.type === "Property" && property.key.type === "Identifier" && property.key.name === "signal",
+          );
+
         if (!hasSignal) {
-          context.report({ node, messageId: "needSignal" })
+          context.report({ node, messageId: "needSignal" });
         }
       },
-    }
+    };
   },
-})
+});

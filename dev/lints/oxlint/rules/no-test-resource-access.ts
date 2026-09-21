@@ -1,8 +1,9 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { bindingVariable } from "./binding.ts"
+import { bindingVariable } from "./binding.ts";
 
-const EXEMPT_TEST_FILE = /(?:\.integration|\.process|\.migration|\.gm)\.test\.tsx?$|(?:^|[/\\])test_gm_/
+const EXEMPT_TEST_FILE = /(?:\.integration|\.process|\.migration|\.gm)\.test\.tsx?$|(?:^|[/\\])test_gm_/;
+
 const RESOURCE_GLOBALS = new Set([
   "setTimeout",
   "setInterval",
@@ -10,8 +11,9 @@ const RESOURCE_GLOBALS = new Set([
   "queueMicrotask",
   "requestAnimationFrame",
   "fetch",
-])
-const CLOCK_OWNERS = new Set(["performance", "Date"])
+]);
+
+const CLOCK_OWNERS = new Set(["performance", "Date"]);
 
 export const noTestResourceAccessRule = defineRule({
   meta: {
@@ -29,18 +31,19 @@ export const noTestResourceAccessRule = defineRule({
     return {
       CallExpression(node) {
         if (EXEMPT_TEST_FILE.test(context.filename)) {
-          return
+          return;
         }
-        const { callee } = node
+
+        const { callee } = node;
+
         if (callee.type === "Identifier") {
-          if (
-            RESOURCE_GLOBALS.has(callee.name) &&
-            bindingVariable(callee, context.sourceCode) === undefined
-          ) {
-            context.report({ node, messageId: "resource" })
+          if (RESOURCE_GLOBALS.has(callee.name) && bindingVariable(callee, context.sourceCode) === undefined) {
+            context.report({ node, messageId: "resource" });
           }
-          return
+
+          return;
         }
+
         if (
           callee.type === "MemberExpression" &&
           !callee.computed &&
@@ -50,9 +53,9 @@ export const noTestResourceAccessRule = defineRule({
           CLOCK_OWNERS.has(callee.object.name) &&
           bindingVariable(callee.object, context.sourceCode) === undefined
         ) {
-          context.report({ node, messageId: "resource" })
+          context.report({ node, messageId: "resource" });
         }
       },
-    }
+    };
   },
-})
+});

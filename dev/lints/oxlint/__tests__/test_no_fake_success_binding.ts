@@ -2,6 +2,7 @@ import { noFakeSuccessRule } from "../rules/no-fake-success.ts";
 import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts", { Promise: "readonly" });
+
 const swallowed = { messageId: "swallowedError" };
 
 tester.run("no_fake_success_binding", noFakeSuccessRule, {

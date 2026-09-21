@@ -1,8 +1,9 @@
-import { callersBeforeCalleesRule } from "../rules/callers-before-callees.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { callersBeforeCalleesRule } from "../rules/callers-before-callees.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
-const error = { messageId: "outOfOrder" }
+const tester = ruleTester("ts");
+
+const error = { messageId: "outOfOrder" };
 
 tester.run("treetime/callers-before-callees", callersBeforeCalleesRule, {
   valid: [
@@ -19,4 +20,4 @@ tester.run("treetime/callers-before-callees", callersBeforeCalleesRule, {
       errors: [error, error],
     },
   ],
-})
+});

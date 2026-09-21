@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { memberChain, rootCalleeName, TEST_CALLERS } from "./ast.ts"
+import { memberChain, rootCalleeName, TEST_CALLERS } from "./ast.ts";
 
 export const noDisabledTestsRule = defineRule({
   meta: {
@@ -15,15 +15,18 @@ export const noDisabledTestsRule = defineRule({
   createOnce(context) {
     return {
       CallExpression(node) {
-        const root = rootCalleeName(node)
+        const root = rootCalleeName(node);
+
         if (root === "xit" || root === "xdescribe" || root === "xtest") {
-          context.report({ node, messageId: "disabled" })
-          return
+          context.report({ node, messageId: "disabled" });
+
+          return;
         }
+
         if (TEST_CALLERS.has(root ?? "") && memberChain(node).includes("skip")) {
-          context.report({ node, messageId: "disabled" })
+          context.report({ node, messageId: "disabled" });
         }
       },
-    }
+    };
   },
-})
+});

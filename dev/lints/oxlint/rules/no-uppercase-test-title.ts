@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { rootCalleeName, TEST_CALLERS } from "./ast.ts"
+import { rootCalleeName, TEST_CALLERS } from "./ast.ts";
 
 export const noUppercaseTestTitleRule = defineRule({
   meta: {
@@ -15,14 +15,16 @@ export const noUppercaseTestTitleRule = defineRule({
   createOnce(context) {
     return {
       CallExpression(node) {
-        if (!TEST_CALLERS.has(rootCalleeName(node) ?? "") || node.arguments.length === 0) {
-          return
+        if (!TEST_CALLERS.has(rootCalleeName(node) ?? "")) {
+          return;
         }
-        const title = node.arguments[0]
-        if (title.type === "Literal" && typeof title.value === "string" && /^[A-Z]/.test(title.value)) {
-          context.report({ node: title, messageId: "uppercase" })
+
+        const title = node.arguments[0];
+
+        if (title?.type === "Literal" && typeof title.value === "string" && /^[A-Z]/.test(title.value)) {
+          context.report({ node: title, messageId: "uppercase" });
         }
       },
-    }
+    };
   },
-})
+});

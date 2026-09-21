@@ -1,4 +1,4 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
 const PREDICATE_METHODS = new Set([
   "filter",
@@ -10,7 +10,7 @@ const PREDICATE_METHODS = new Set([
   "findLastIndex",
   "sort",
   "toSorted",
-])
+]);
 
 export const noAsyncArrayPredicateRule = defineRule({
   meta: {
@@ -27,16 +27,19 @@ export const noAsyncArrayPredicateRule = defineRule({
   createOnce(context) {
     return {
       CallExpression(node) {
-        const { callee } = node
+        const { callee } = node;
+
         if (
           callee.type !== "MemberExpression" ||
           callee.computed ||
           callee.property.type !== "Identifier" ||
           !PREDICATE_METHODS.has(callee.property.name)
         ) {
-          return
+          return;
         }
-        const callback = node.arguments[0]
+
+        const callback = node.arguments[0];
+
         if (
           callback != null &&
           (callback.type === "ArrowFunctionExpression" || callback.type === "FunctionExpression") &&
@@ -46,9 +49,9 @@ export const noAsyncArrayPredicateRule = defineRule({
             node: callback,
             messageId: "asyncPredicate",
             data: { method: callee.property.name },
-          })
+          });
         }
       },
-    }
+    };
   },
-})
+});

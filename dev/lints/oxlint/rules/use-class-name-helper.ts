@@ -1,4 +1,4 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
 export const useClassNameHelperRule = defineRule({
   meta: {
@@ -13,11 +13,12 @@ export const useClassNameHelperRule = defineRule({
   createOnce(context) {
     return {
       ImportDeclaration(node) {
-        const source = node.source.value
+        const source = node.source.value;
+
         if (source === "clsx" || source === "tailwind-merge") {
-          context.report({ node, messageId: "useCn", data: { source } })
+          context.report({ node, messageId: "useCn", data: { source } });
         }
       },
-    }
+    };
   },
-})
+});

@@ -1,4 +1,4 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
 export const noModuleLevelMutableRule = defineRule({
   meta: {
@@ -16,17 +16,13 @@ export const noModuleLevelMutableRule = defineRule({
     return {
       Program(node) {
         for (const statement of node.body) {
-          const declaration =
-            statement.type === "ExportNamedDeclaration" ? statement.declaration : statement
-          if (
-            declaration != null &&
-            declaration.type === "VariableDeclaration" &&
-            declaration.kind !== "const"
-          ) {
-            context.report({ node: declaration, messageId: "moduleMutable" })
+          const declaration = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement;
+
+          if (declaration != null && declaration.type === "VariableDeclaration" && declaration.kind !== "const") {
+            context.report({ node: declaration, messageId: "moduleMutable" });
           }
         }
       },
-    }
+    };
   },
-})
+});

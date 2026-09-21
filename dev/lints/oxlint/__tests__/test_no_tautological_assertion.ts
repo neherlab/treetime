@@ -2,6 +2,7 @@ import { noTautologicalAssertionRule } from "../rules/no-tautological-assertion.
 import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts", { NaN: "readonly", undefined: "readonly", Infinity: "readonly" });
+
 const error = { messageId: "tautology" };
 
 tester.run("treetime/no-tautological-assertion", noTautologicalAssertionRule, {

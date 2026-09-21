@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-const CN_SOURCES = new Set(["clsx", "tailwind-merge", "cn"])
+const CN_SOURCES = new Set(["clsx", "tailwind-merge", "cn"]);
 
 export const useThemedCnRule = defineRule({
   meta: {
@@ -15,14 +15,16 @@ export const useThemedCnRule = defineRule({
   createOnce(context) {
     return {
       ImportDeclaration(node) {
-        const isThemedModule = context.filename.replace(/\\/g, "/").endsWith("app-ui/src/ui/cn.ts")
+        const isThemedModule = context.filename.replace(/\\/g, "/").endsWith("app-ui/src/ui/cn.ts");
+
         if (isThemedModule) {
-          return
+          return;
         }
+
         if (typeof node.source.value === "string" && CN_SOURCES.has(node.source.value)) {
-          context.report({ node, messageId: "themedCn", data: { source: node.source.value } })
+          context.report({ node, messageId: "themedCn", data: { source: node.source.value } });
         }
       },
-    }
+    };
   },
-})
+});

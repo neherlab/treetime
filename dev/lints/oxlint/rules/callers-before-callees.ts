@@ -1,7 +1,7 @@
-import { defineRule } from "@oxlint/plugins"
-import type { ESTree } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
+import type { ESTree } from "@oxlint/plugins";
 
-import { calleeName } from "./ast.ts"
+import { calleeName, isNode } from "./ast.ts";
 
 export const callersBeforeCalleesRule = defineRule({
   meta: {
@@ -17,83 +17,97 @@ export const callersBeforeCalleesRule = defineRule({
   createOnce(context) {
     return {
       Program(program) {
-        const position = new Map<string, number>()
-        const declaration = new Map<string, ESTree.Node>()
+        const position = new Map<string, number>();
+        const declaration = new Map<string, ESTree.Node>();
         program.body.forEach((statement, index) => {
           if (statement.type === "FunctionDeclaration" && statement.id !== null) {
-            position.set(statement.id.name, index)
-            declaration.set(statement.id.name, statement)
+            position.set(statement.id.name, index);
+            declaration.set(statement.id.name, statement);
           }
-        })
+        });
+
         if (position.size < 2) {
-          return
+          return;
         }
-        const edges = new Set<string>()
+
+        const edges = new Set<string>();
+
         for (const statement of program.body) {
           if (statement.type !== "FunctionDeclaration" || statement.id === null) {
-            continue
+            continue;
           }
-          const caller = statement.id.name
+
+          const caller = statement.id.name;
+
           for (const callee of callsWithin(statement, position)) {
             if (callee !== caller) {
-              edges.add(`${caller} ${callee}`)
+              edges.add(`${caller} ${callee}`);
             }
           }
         }
-        const reported = new Set<string>()
+
+        const reported = new Set<string>();
+
         for (const edge of edges) {
-          const [caller, callee] = edge.split(" ")
+          const [caller, callee] = edge.split(" ");
+
           if (caller === undefined || callee === undefined || reported.has(callee)) {
-            continue
+            continue;
           }
+
           if (edges.has(`${callee} ${caller}`)) {
-            continue
+            continue;
           }
+
           if ((position.get(caller) ?? 0) > (position.get(callee) ?? 0)) {
-            const node = declaration.get(callee)
+            const node = declaration.get(callee);
+
             if (node !== undefined) {
-              reported.add(callee)
-              context.report({ node, messageId: "outOfOrder", data: { caller, callee } })
+              reported.add(callee);
+              context.report({ node, messageId: "outOfOrder", data: { caller, callee } });
             }
           }
         }
       },
-    }
+    };
   },
-})
+});
 
 function callsWithin(root: ESTree.Node, names: Map<string, number>): Set<string> {
-  const found = new Set<string>()
-  const stack: ESTree.Node[] = [root]
+  const found = new Set<string>();
+  const stack: ESTree.Node[] = [root];
+
   while (stack.length > 0) {
-    const node = stack.pop()
+    const node = stack.pop();
+
     if (node === undefined) {
-      continue
+      continue;
     }
+
     if (node.type === "CallExpression") {
-      const name = calleeName(node)
+      const name = calleeName(node);
+
       if (name !== undefined && names.has(name)) {
-        found.add(name)
+        found.add(name);
       }
     }
+
     for (const [key, value] of Object.entries(node)) {
       if (key === "parent") {
-        continue
+        continue;
       }
+
       if (Array.isArray(value)) {
         for (const item of value) {
           if (isNode(item)) {
-            stack.push(item)
+            stack.push(item);
           }
         }
       } else if (isNode(value)) {
-        stack.push(value)
+        stack.push(value);
       }
     }
   }
-  return found
-}
 
-function isNode(value: unknown): value is ESTree.Node {
-  return typeof value === "object" && value !== null && typeof Reflect.get(value, "type") === "string"
+  return found;
 }

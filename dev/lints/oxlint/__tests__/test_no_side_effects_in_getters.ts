@@ -1,8 +1,9 @@
-import { noSideEffectsInGettersRule } from "../rules/no-side-effects-in-getters.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { noSideEffectsInGettersRule } from "../rules/no-side-effects-in-getters.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
-const error = { messageId: "sideEffect" }
+const tester = ruleTester("ts");
+
+const error = { messageId: "sideEffect" };
 
 tester.run("treetime/no-side-effects-in-getters", noSideEffectsInGettersRule, {
   valid: [
@@ -24,4 +25,4 @@ tester.run("treetime/no-side-effects-in-getters", noSideEffectsInGettersRule, {
       errors: [error],
     },
   ],
-})
+});

@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { memberRoot } from "./function-shape.ts"
+import { memberRoot } from "./function-shape.ts";
 
 export const preferStrictEqualRule = defineRule({
   meta: {
@@ -17,24 +17,23 @@ export const preferStrictEqualRule = defineRule({
   createOnce(context) {
     return {
       CallExpression(node) {
-        const { callee } = node
+        const { callee } = node;
+
         if (
           callee.type !== "MemberExpression" ||
           callee.computed ||
           callee.property.type !== "Identifier" ||
           callee.property.name !== "toEqual"
         ) {
-          return
+          return;
         }
-        const root = memberRoot(callee.object)
-        if (
-          root.type === "CallExpression" &&
-          root.callee.type === "Identifier" &&
-          root.callee.name === "expect"
-        ) {
-          context.report({ node: callee.property, messageId: "toEqual" })
+
+        const root = memberRoot(callee.object);
+
+        if (root.type === "CallExpression" && root.callee.type === "Identifier" && root.callee.name === "expect") {
+          context.report({ node: callee.property, messageId: "toEqual" });
         }
       },
-    }
+    };
   },
-})
+});

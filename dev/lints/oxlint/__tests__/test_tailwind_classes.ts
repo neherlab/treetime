@@ -1,7 +1,7 @@
-import { tailwindClassesRule } from "../rules/tailwind-classes.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { tailwindClassesRule } from "../rules/tailwind-classes.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("tsx")
+const tester = ruleTester("tsx");
 
 tester.run("web/tailwind-classes", tailwindClassesRule, {
   valid: ['const node = <div className="flex" />'],
@@ -15,4 +15,4 @@ tester.run("web/tailwind-classes", tailwindClassesRule, {
       errors: [{ messageId: "duplicate", data: { token: "flex" } }],
     },
   ],
-})
+});

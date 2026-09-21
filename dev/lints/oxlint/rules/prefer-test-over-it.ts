@@ -1,4 +1,4 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
 export const preferTestOverItRule = defineRule({
   meta: {
@@ -14,9 +14,9 @@ export const preferTestOverItRule = defineRule({
     return {
       CallExpression(node) {
         if (node.callee.type === "Identifier" && node.callee.name === "it") {
-          context.report({ node: node.callee, messageId: "useTest" })
+          context.report({ node: node.callee, messageId: "useTest" });
         }
       },
-    }
+    };
   },
-})
+});

@@ -1,8 +1,9 @@
-import { noTestResourceAccessRule } from "../rules/no-test-resource-access.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { noTestResourceAccessRule } from "../rules/no-test-resource-access.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
-const error = { messageId: "resource" }
+const tester = ruleTester("ts");
+
+const error = { messageId: "resource" };
 
 tester.run("treetime/no-test-resource-access", noTestResourceAccessRule, {
   valid: [
@@ -23,4 +24,4 @@ tester.run("treetime/no-test-resource-access", noTestResourceAccessRule, {
     { code: "performance.now()", filename: "widget.test.ts", errors: [error] },
     { code: "Date.now()", filename: "widget.test.ts", errors: [error] },
   ],
-})
+});

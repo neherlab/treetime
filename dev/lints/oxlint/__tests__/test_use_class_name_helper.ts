@@ -1,7 +1,7 @@
-import { useClassNameHelperRule } from "../rules/use-class-name-helper.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { useClassNameHelperRule } from "../rules/use-class-name-helper.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("ts")
+const tester = ruleTester("ts");
 
 tester.run("treetime/use-class-name-helper", useClassNameHelperRule, {
   valid: ["import { cn } from '@/ui/cn'", "import { useState } from 'react'"],
@@ -12,4 +12,4 @@ tester.run("treetime/use-class-name-helper", useClassNameHelperRule, {
       errors: [{ messageId: "useCn", data: { source: "tailwind-merge" } }],
     },
   ],
-})
+});

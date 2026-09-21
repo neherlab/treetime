@@ -1,6 +1,6 @@
-import { defineRule } from "@oxlint/plugins"
+import { defineRule } from "@oxlint/plugins";
 
-import { TYPOGRAPHIC } from "./ast.ts"
+import { TYPOGRAPHIC } from "./ast.ts";
 
 export const noTypographicCharactersRule = defineRule({
   meta: {
@@ -16,14 +16,14 @@ export const noTypographicCharactersRule = defineRule({
     return {
       Literal(node) {
         if (typeof node.value === "string" && TYPOGRAPHIC.test(node.value)) {
-          context.report({ node, messageId: "typographic" })
+          context.report({ node, messageId: "typographic" });
         }
       },
       TemplateElement(node) {
         if (typeof node.value.raw === "string" && TYPOGRAPHIC.test(node.value.raw)) {
-          context.report({ node, messageId: "typographic" })
+          context.report({ node, messageId: "typographic" });
         }
       },
-    }
+    };
   },
-})
+});

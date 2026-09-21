@@ -1,7 +1,7 @@
-import { useThemedCnRule } from "../rules/use-themed-cn.ts"
-import { ruleTester } from "./rule-tester.ts"
+import { useThemedCnRule } from "../rules/use-themed-cn.ts";
+import { ruleTester } from "./rule-tester.ts";
 
-const tester = ruleTester("tsx")
+const tester = ruleTester("tsx");
 
 tester.run("web/use-themed-cn", useThemedCnRule, {
   valid: ["import { cn } from '@/ui/cn'", "import { useState } from 'react'"],
@@ -12,4 +12,4 @@ tester.run("web/use-themed-cn", useThemedCnRule, {
       errors: [{ messageId: "themedCn", data: { source: "cn" } }],
     },
   ],
-})
+});
