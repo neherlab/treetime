@@ -4,7 +4,7 @@ export default defineConfig({
   input: "./openapi.yaml",
   output: "./src/generated",
   plugins: [
-    { name: "@hey-api/typescript", requests: false, responses: false },
+    { name: "@hey-api/typescript" },
     { name: "zod", compatibilityVersion: 4, requests: false, responses: false },
   ],
 });
