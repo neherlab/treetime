@@ -22,7 +22,7 @@ interface EffectRecord {
   deps: EffectDeps;
 }
 
-export interface EffectState {
+interface EffectState {
   setterNames: Set<string>;
   effects: EffectRecord[];
 }
