@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-: "${JUPYTER_PORT:-10000}"
+JUPYTER_PORT="${JUPYTER_PORT:-10000}"
 
 if [ ! -d "${HOME}/.jupyter/lab" ]; then
   cp -r "/.jupyter" "${HOME}/"
