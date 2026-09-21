@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+use std::env;
+use std::path::{Path, PathBuf};
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::{AttrKind, Attribute, Crate, Item, ItemKind, MetaItemInner, VariantData};
@@ -144,12 +146,14 @@ impl EarlyLintPass for HelpDocCollector {
 
 pub struct NoComments {
     explicit_docs: Vec<Span>,
+    out_dir: Option<PathBuf>,
 }
 
 impl NoComments {
     pub fn new() -> Self {
         Self {
             explicit_docs: Vec::new(),
+            out_dir: env::var_os("OUT_DIR").map(PathBuf::from),
         }
     }
 
@@ -199,7 +203,13 @@ impl EarlyLintPass for NoComments {
         let files = source_map
             .files()
             .iter()
-            .filter(|file| file.cnum == LOCAL_CRATE && matches!(file.name, FileName::Real(_)))
+            .filter(|file| file.cnum == LOCAL_CRATE)
+            .filter(|file| match &file.name {
+                FileName::Real(name) => name
+                    .local_path()
+                    .is_some_and(|path| !is_generated_path(path, self.out_dir.as_deref())),
+                _ => false,
+            })
             .cloned()
             .collect::<Vec<_>>();
         for file in &files {
@@ -218,6 +228,10 @@ impl EarlyLintPass for NoComments {
             report(cx, deletion_span(&file, src, start, end), true);
         }
     }
+}
+
+fn is_generated_path(path: &Path, out_dir: Option<&Path>) -> bool {
+    out_dir.is_some_and(|out_dir| path.starts_with(out_dir))
 }
 
 fn report(cx: &EarlyContext<'_>, delete: Span, doc: bool) {
