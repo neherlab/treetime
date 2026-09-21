@@ -13,30 +13,31 @@ has_error=0
 function run_for_linux() {
   : "${CROSS_SYSROOT:?}"
 
-  local LDD=$(printenv "LDD_${target_safe}" || printenv "LDD" || echo "ldd")
-  local OBJDUMP=$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")
-  local STRINGS=$(printenv "STRINGS_${target_safe}" || printenv "STRINGS" || echo "strings")
+  local LDD OBJDUMP STRINGS output dump glibc_version libgcc_version needs
+  LDD="$(printenv "LDD_${target_safe}" || printenv "LDD" || echo "ldd")"
+  OBJDUMP="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
+  STRINGS="$(printenv "STRINGS_${target_safe}" || printenv "STRINGS" || echo "strings")"
 
-  local output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
+  output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
   if ! echo "$output" | grep -qE 'statically linked|not a dynamic executable'; then
     echo "Not a static executable: '$1'" >&2
     has_error=1
   fi
 
-  local dump=$("${OBJDUMP}" -p "$1" 2>&1 || true)
-  local glibc_version=$(echo "${dump}" | grep 'GLIBC_' | awk '{print $NF}' | sed 's/GLIBC_//' | sort -V | tail -n 1)
+  dump=$("${OBJDUMP}" -p "$1" 2>&1 || true)
+  glibc_version=$(echo "${dump}" | grep 'GLIBC_' | awk '{print $NF}' | sed 's/GLIBC_//' | sort -V | tail -n 1)
   if [ -n "$glibc_version" ]; then
     echo "Depends on glibc $glibc_version" >&2
     has_error=1
   fi
 
-  local libgcc_version=$(echo "${dump}" | grep 'GCC_' | awk '{print $NF}' | sed 's/GCC_//' | sort -V | tail -n 1)
+  libgcc_version=$(echo "${dump}" | grep 'GCC_' | awk '{print $NF}' | sed 's/GCC_//' | sort -V | tail -n 1)
   if [ -n "${libgcc_version}" ]; then
     echo "Depends on libgcc ${libgcc_version}" >&2
     has_error=1
   fi
 
-  local needs=$("${OBJDUMP}" -p "${1}" | grep NEEDED | awk '{print $2}' | tr -s ' ' | sort)
+  needs=$("${OBJDUMP}" -p "${1}" | awk '$1 == "NEEDED" {print $2}' | tr -s ' ' | sort)
   if [ -n "$needs" ]; then
     echo "Needs:"
     echo "$needs" | while read -r lib_name; do
@@ -46,7 +47,7 @@ function run_for_linux() {
     done
   fi
 
-  local output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 | awk '/=>/ {print $(NF-1)}' | while read -r lib_path; do
+  output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 | awk '/=>/ {print $(NF-1)}' | while read -r lib_path; do
     version="$("${STRINGS}" "${CROSS_SYSROOT}$lib_path" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)' | sort -u | head -n 1)"
     if [ -n "$version" ]; then
       lib_name="$(basename "$lib_path")"
@@ -65,8 +66,9 @@ function run_for_linux() {
 }
 
 function run_for_windows() {
-  local OBJDUMP=$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")
-  local dump=$($OBJDUMP -p "${1}" | grep "DLL Name" | sed 's/^[ \t]*DLL Name: //;s/^/ * /' | sort)
+  local OBJDUMP dump
+  OBJDUMP="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
+  dump=$("${OBJDUMP}" -p "${1}" | grep "DLL Name" | sed 's/^[ \t]*DLL Name: //;s/^/ * /' | sort)
   if [ -n "$dump" ]; then
     echo "The executable '$1' depends on:"
     echo "$dump"
@@ -74,8 +76,9 @@ function run_for_windows() {
 }
 
 function run_for_mac() {
-  local OTOOL=$(printenv "OTOOL_${target_safe}" || printenv "OTOOL" || echo "objdump")
-  dump=$($OTOOL -L "${bin}" | awk 'NR>1 {print " * " $1}' | sort)
+  local OTOOL dump
+  OTOOL="$(printenv "OTOOL_${target_safe}" || printenv "OTOOL" || echo "objdump")"
+  dump=$("${OTOOL}" -L "${bin}" | awk 'NR>1 {print " * " $1}' | sort)
   if [ -n "$dump" ]; then
     echo "The executable '$1' depends on:"
     echo "$dump"

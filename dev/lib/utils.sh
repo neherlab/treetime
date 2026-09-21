@@ -80,7 +80,7 @@ function nicely() {
       saved_set["${key}"]=1
       saved_vals["${key}"]="${!key}"
     fi
-    export "${pair}"
+    export "${key}=${pair#*=}"
   done
 
   local cmd_exit_code=0
@@ -114,10 +114,11 @@ function fake_tty() {
 
 function file_hash() {
   local paths=("$@")
-  local uid=$(id -u)
-  local gid=$(id -g)
-  local user=$(id -un)
-  local group=$(id -gn)
+  local uid gid user group
+  uid="$(id -u)"
+  gid="$(id -g)"
+  user="$(id -un)"
+  group="$(id -gn)"
   echo -n "$uid $gid $user $group" | cat - "${paths[@]}" | md5sum | cut -f 1 -d " " | cut -c1-7
 }
 export -f file_hash
@@ -278,8 +279,9 @@ export -f get_final_bin_path
 function copy_bin_to_out() {
   local bin="${1:?}"
   local target="${2:-}"
-  local full_bin="$(get_full_bin_path "${bin}" "${target}")"
-  local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+  local full_bin final_bin
+  full_bin="$(get_full_bin_path "${bin}" "${target}")"
+  final_bin="$(get_final_bin_path "${bin}" "${target}")"
   mkdir -p "$(dirname "${final_bin}")"
   cp "${full_bin}" "${final_bin}"
 }
@@ -291,7 +293,7 @@ function load_env_maybe() {
   local line key
   while IFS= read -r line || [[ -n "${line}" ]]; do
     key="${line%%=*}"
-    [[ -z "${!key+x}" ]] && export "${line}"
+    [[ -z "${!key+x}" ]] && export "${key}=${line#*=}"
   done < <(grep -vE '^(#|$)' "${env_file}") || true
 }
 export -f load_env_maybe

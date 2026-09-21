@@ -688,7 +688,7 @@ sh-lint *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     mapfile -t files < <(dev_shell_files '{{project_dir}}')
-    nicely shellcheck "$@" "${files[@]}"
+    nicely shellcheck --source-path='{{project_dir}}/dev/cross:{{project_dir}}/dev/docker:{{project_dir}}/dev/lib:{{project_dir}}/dev' "$@" "${files[@]}"
 
 # Check dev/ shell script formatting (shfmt, read-only)
 [group('shell')]

@@ -11,13 +11,14 @@ target="${2:-"${CROSS_COMPILE:-}"}"
 final_bin="$(get_final_bin_path "${bin}" "${target}")"
 
 function strip() {
-  local STRIP=$(printenv "STRIP_${target}" || printenv "STRIP" || echo "strip")
+  local STRIP
+  STRIP="$(printenv "STRIP_${target}" || printenv "STRIP" || echo "strip")"
   if [[ "${target}" =~ (mingw|windows) ]]; then
-    ${STRIP} "${1}"
+    "${STRIP}" "${1}"
   elif [[ "${target}" =~ (apple|darwin) ]]; then
-    ${STRIP} "${1}"
+    "${STRIP}" "${1}"
   else
-    ${STRIP} --strip-debug --strip-unneeded "${1}"
+    "${STRIP}" --strip-debug --strip-unneeded "${1}"
   fi
 }
 

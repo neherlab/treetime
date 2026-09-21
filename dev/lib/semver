@@ -160,8 +160,8 @@ function compare_fields {
   local order=$((0))
 
   while true; do
-    [ $order -ne 0 ] && {
-      echo $order
+    [ "$order" -ne 0 ] && {
+      echo "$order"
       return
     }
 
@@ -424,7 +424,6 @@ function command_get {
 
   if [[ "$#" -ne "2" ]] || [[ -z "$1" ]] || [[ -z "$2" ]]; then
     usage_help
-    exit 0
   fi
 
   part="$1"

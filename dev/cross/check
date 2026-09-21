@@ -10,7 +10,8 @@ function check() {
 
   local bin="${1:?}"
   local target="${2:-"${CROSS_COMPILE:-}"}"
-  local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+  local final_bin
+  final_bin="$(get_final_bin_path "${bin}" "${target}")"
 
   (
     set -x

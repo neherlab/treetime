@@ -55,7 +55,8 @@ function build() {
   declare -x "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_common}"
   declare -x "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_common}"
 
-  local target_dir="$(get_build_dir "${target}")"
+  local target_dir
+  target_dir="$(get_build_dir "${target}")"
   nicely cargo -q build --release ${target:+--target="${target}"} --target-dir="${target_dir}" --bin="${bin}"
 
   if [ -n "${target}" ] && [ "${target}" != 'native' ]; then

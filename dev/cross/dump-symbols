@@ -12,11 +12,13 @@ final_bin="$(get_final_bin_path "${bin}" "${target}")"
 
 function dump_symbols() {
   if [[ "${target}" =~ (apple|darwin) ]]; then
-    local NM=$(printenv "NM_${target}" || printenv "NM" || echo "nm")
-    ${NM} -gU "${1}"
+    local NM
+    NM="$(printenv "NM_${target}" || printenv "NM" || echo "nm")"
+    "${NM}" -gU "${1}"
   else
-    local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
-    ${OBJDUMP} --syms "${1}"
+    local OBJDUMP
+    OBJDUMP="$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")"
+    "${OBJDUMP}" --syms "${1}"
   fi
 }
 

@@ -51,9 +51,11 @@ distros=(
 
 function run_one_distro() {
   local distro="${1}"
+  local -a command_args=()
+  read -r -a command_args <<<"${args}"
   info "Running '${args}' on '${distro}'"
   docker pull -q "$distro" >/dev/null
-  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" ${args} >/dev/null; then
+  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
     err "Failed running '${RUN_COMMAND}' on '$distro'"
     exit 1
   fi
