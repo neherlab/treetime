@@ -4,16 +4,6 @@ use crate::node::GraphNodeKey;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Assign synthetic `NODE_{counter:07}` names to unnamed nodes in DFS-preorder and return the
-/// completed node-keyed name map.
-///
-/// The input `names` supplies each node's known name: the parsed name for named nodes and the name a
-/// previous call assigned, with `None` (or an empty name) where a node still needs one. The result is
-/// keyed by exactly the graph's current nodes: entries for nodes that a topology change removed are
-/// dropped, and nodes a topology change introduced (absent from the input map) are named here. Each
-/// unnamed node takes the next free `NODE_xxxxx`, skipping any name already held by a current node, so
-/// the numbering is deterministic and stable across re-runs after a topology change. Names live in a
-/// value map keyed by node id.
 pub fn assign_node_names(
   mut names: BTreeMap<GraphNodeKey, Option<String>>,
   graph: &Graph,

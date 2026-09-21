@@ -17,11 +17,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_collects_returned_subtree_sums() -> Result<(), Report> {
-    // Tree `((A,B)AB,C)root` with distinct own-values per node:
-    //   A=1, B=2, C=3, AB=10, root=100.
-    // Each node returns NodeOut = own-value + sum of children NodeOut, and sends its NodeOut up as
-    // the message on its own parent edge. Derived by hand from the tree:
-    //   A=1, B=2, C=3 (leaves), AB=10+1+2=13, root=100+13+3=116 (= total of all own-values).
     let (graph, names) = fixture_tree()?;
     let outputs = run_backward_sum(&graph, &names, 4)?;
 
@@ -49,7 +44,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_is_thread_count_independent() -> Result<(), Report> {
-    // Publication must be race-free: identical outputs under a 1-thread and a 4-thread rayon pool.
     let (graph, names) = fixture_tree()?;
 
     let single = run_backward_sum(&graph, &names, 1)?;
@@ -62,9 +56,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_without_edge_messages_collects_nodes_only() -> Result<(), Report> {
-    // A node-only backward map: every visitor returns `parent_message: None` (here `EdgeOut = ()`), so
-    // no node emits an upward edge message. The map must complete without panic, collect every node
-    // output, and leave the per-edge map empty because no message travelled any edge.
     let (graph, names) = fixture_tree()?;
     let (nodes, edges) = own_value_pass_values(&graph, &names);
     let pass = GraphPass::new(&graph)?;
@@ -97,8 +88,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_forward_accumulates_root_to_leaf() -> Result<(), Report> {
-    // Root-to-leaf prefix sums over `((A,B)AB,C)root` with own-values A=1, B=2, C=3, AB=10, root=100:
-    //   root=100, AB=110, A=111, B=112, C=103.
     let (graph, names) = fixture_tree()?;
     let outputs = run_forward_sum(&graph, &names, 4)?;
 
@@ -138,9 +127,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_children_arrive_in_children_of_order() -> Result<(), Report> {
-    // The value engine must hand each visitor its children in the graph's canonical `children_of`
-    // (outbound-edge) order, which the ordered reductions depend on. The fixture is built so that
-    // outbound order differs from node-key order, so a pass that sorted children by key would fail.
     let (graph, parent_key) = fixture_ordering()?;
     let (nodes, edges) = pass_zeros(&graph);
 
@@ -162,7 +148,6 @@ mod tests {
     let actual = seen.lock().get(&parent_key).cloned().expect("Parent must be visited");
     let expected = child_order_by_parent(&graph, parent_key);
     assert_eq!(expected, actual);
-    // The two children are not in ascending key order, so the check is not vacuous.
     assert_ne!(expected, {
       let mut sorted = expected.clone();
       sorted.sort_unstable();
@@ -173,8 +158,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_chain_propagates_leaf_to_root() -> Result<(), Report> {
-    // A linear chain `root -> mid -> leaf`. Backward subtree sums with own-values leaf=1, mid=10,
-    // root=100 give leaf=1, mid=11, root=111.
     let (graph, keys) = fixture_chain()?;
     let nodes = keys.iter().copied().zip([100, 10, 1]).collect::<BTreeMap<_, _>>();
     let edges = zero_edges(&graph);
@@ -198,7 +181,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_single_root_only_node() -> Result<(), Report> {
-    // A single node that is both root and leaf: no children, no parent edge, no messages.
     let mut graph = Graph::new();
     let root = graph.add_node();
     graph.build()?;
@@ -225,14 +207,12 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_handles_deleted_key_gaps() -> Result<(), Report> {
-    // A removed node leaves a gap in the graph's node-key space (keys are never reused). The pass keys
-    // its topology by actual node key, so a non-contiguous key set must still map correctly.
     let mut graph = Graph::new();
     let root = graph.add_node();
     let child = graph.add_node();
-    let removed = graph.add_node(); // takes a key in the middle
+    let removed = graph.add_node();
     graph.add_edge(root, child)?;
-    graph.remove_node(removed)?; // leaves a gap at the removed node's key
+    graph.remove_node(removed)?;
     graph.build()?;
 
     assert!(
@@ -260,8 +240,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_identity_preserves_all_inputs() -> Result<(), Report> {
-    // A map whose visitor returns its input unchanged and its parent edge unchanged reproduces the
-    // input maps exactly (a value round-trip, replacing the in-place engine's restore round-trip).
     let (graph, _names) = fixture_tree()?;
     let (nodes, edges) = key_indices(&graph);
 
@@ -285,8 +263,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_failure_leaves_inputs_unchanged_and_retries() -> Result<(), Report> {
-    // A failing visitor returns the error, publishes no partial result, and leaves the borrowed input
-    // maps untouched, so the caller can retry from the same inputs and succeed.
     let (graph, names) = fixture_tree()?;
     let (nodes, edges) = own_value_pass_values(&graph, &names);
     let nodes_before = nodes.clone();
@@ -301,11 +277,9 @@ mod tests {
     );
     assert_error!(failed, "injected pass failure");
 
-    // Borrowed inputs are never mutated by a pass, so a failure leaves them exactly as supplied.
     assert_eq!(nodes_before, nodes);
     assert_eq!(edges_before, edges);
 
-    // Retry from the same inputs succeeds and produces the expected subtree sums.
     let outputs = pass.map_backward(
       &nodes,
       &edges,
@@ -324,9 +298,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_backward_failing_child_blocks_ancestors_not_sibling() -> Result<(), Report> {
-    // Tree `((A,B)AB,C)root`. Leaf B fails. Its parent AB depends on B, so AB never becomes ready and
-    // is never visited; root depends on AB, so it is never visited either. The ready sibling A and the
-    // independent leaf C may run. The error is returned and the inputs are left unchanged.
     let (graph, names) = fixture_tree()?;
     let (nodes, edges) = own_value_pass_values(&graph, &names);
     let nodes_before = nodes.clone();
@@ -418,11 +389,8 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_utils::o;
 
-    /// Node names threaded as a value map keyed by node key.
     pub type Names = BTreeMap<GraphNodeKey, String>;
 
-    /// `((A,B)AB,C)root`. Returns the graph and the node-name value map, keyed by node key in
-    /// creation order (`root`, `AB`, `A`, `B`, `C`).
     pub fn fixture_tree() -> Result<(Graph, Names), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
@@ -448,7 +416,6 @@ mod tests {
       Ok((graph, names))
     }
 
-    /// Linear chain `root -> mid -> leaf`. Returns the graph and keys `[root, mid, leaf]`.
     pub fn fixture_chain() -> Result<(Graph, Vec<GraphNodeKey>), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
@@ -460,28 +427,22 @@ mod tests {
       Ok((graph, vec![root, mid, leaf]))
     }
 
-    /// A single parent with two children whose outbound-edge order is the reverse of their key order:
-    /// the parent's second-added child has the lower key. Returns the graph and the parent key.
     pub fn fixture_ordering() -> Result<(Graph, GraphNodeKey), Report> {
       let mut graph = Graph::new();
       let parent = graph.add_node();
       let first_child = graph.add_node();
       let second_child = graph.add_node();
-      // Add the higher-key child's edge first, then the lower-key child's, so `children_of` order
-      // (outbound order: [second_child, first_child]) differs from ascending key order.
       graph.add_edge(parent, second_child)?;
       graph.add_edge(parent, first_child)?;
       graph.build()?;
       Ok((graph, parent))
     }
 
-    /// The child node keys of `parent` in the graph's `children_of` (outbound-edge) order.
     pub fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
       let node = graph.get_node(parent).expect("Parent must exist");
       graph.children_of(node).map(|(child, _)| child.key()).collect()
     }
 
-    /// Pass inputs with a distinct own-value per node (by name) and zero edge inputs.
     pub fn own_value_pass_values(
       graph: &Graph,
       names: &Names,
@@ -504,8 +465,6 @@ mod tests {
       (nodes, edges)
     }
 
-    /// Run the value-returning backward map on a pool of `threads` workers, computing each node's
-    /// subtree sum and sending it up as the parent-edge message.
     pub fn run_backward_sum(
       graph: &Graph,
       names: &Names,
@@ -529,8 +488,6 @@ mod tests {
       })
     }
 
-    /// Run the value-returning forward map on a pool of `threads` workers, computing each node's
-    /// root-to-leaf prefix sum and sending it down as the parent-edge message.
     pub fn run_forward_sum(
       graph: &Graph,
       names: &Names,
@@ -554,7 +511,6 @@ mod tests {
       })
     }
 
-    /// Map per-edge outputs to the name of the child node the edge points to.
     pub fn edge_values_by_child_name(
       graph: &Graph,
       names: &Names,

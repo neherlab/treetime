@@ -7,7 +7,6 @@ mod tests {
 
   #[test]
   fn test_dependency_queue_validate_accepts_acyclic_graph() -> Result<(), Report> {
-    // A fork: node 0 depends on 1 and 2; both are ready immediately.
     let prerequisites = [2, 0, 0];
     let successors = [vec![], vec![0], vec![0]];
     validate_dependency_graph(&prerequisites, &successors)?;
@@ -16,7 +15,6 @@ mod tests {
 
   #[test]
   fn test_dependency_queue_validate_rejects_cycle() {
-    // A two-node cycle: each node waits on the other, so neither is ever ready.
     let prerequisites = [1, 1];
     let successors = [vec![1], vec![0]];
     let result = validate_dependency_graph(&prerequisites, &successors);
@@ -28,7 +26,6 @@ mod tests {
 
   #[test]
   fn test_dependency_queue_failing_visit_stops_and_returns_error() -> Result<(), Report> {
-    // Node 1 depends on node 0. Node 0 fails, so node 1 must never be scheduled.
     let prerequisites = [0, 1];
     let successors = [vec![1], vec![]];
     let visited = AtomicUsize::new(0);

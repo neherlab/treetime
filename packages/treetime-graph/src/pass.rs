@@ -10,31 +10,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 use treetime_utils::make_internal_report;
 
-/// Frozen, immutable topology view of a graph, prepared once in the caller before any worker runs.
-///
-/// The view carries every topology fact a parallel worker needs -- node keys, each node's parent edge,
-/// and each node's children in the graph's own `children_of` (outbound) order -- so a worker never
-/// reads the graph (and never takes a graph lock) during a pass. Build it once with [`GraphPass::new`],
-/// then run [`GraphPass::map_backward`] or [`GraphPass::map_forward`] against borrowed input maps as
-/// many times as needed. After a structural change to the graph, rebuild the view.
 pub struct GraphPass {
-  /// Nodes in `graph.get_nodes()` traversal order.
   nodes: Vec<GraphPassNode>,
-  /// Node key -> index into `nodes`. A map (not a key-indexed vector) so deleted-key gaps in the
-  /// graph's node storage cost nothing.
   node_index: BTreeMap<GraphNodeKey, usize>,
-  /// Every edge key reachable as some node's parent edge, for input validation.
   edge_keys: BTreeSet<GraphEdgeKey>,
-  /// Parent node index per node (`None` at a root).
   parents: Vec<Option<usize>>,
-  /// Child node indices per node, in `children_of` (outbound edge) order. This is the canonical
-  /// numerical child order the reductions fold in, so it is thread-count independent.
   children: Vec<Vec<usize>>,
 }
 
 impl GraphPass {
-  /// Freeze the topology of `graph` into a reusable pass view and validate that it forms an acyclic
-  /// dependency graph (each node has at most one parent, no cycles, no duplicate readiness).
   pub fn new(graph: &Graph) -> Result<Self, Report> {
     let graph_nodes = graph.get_nodes().collect::<Vec<_>>();
     let mut nodes = Vec::with_capacity(graph_nodes.len());
@@ -59,8 +43,6 @@ impl GraphPass {
       .map(|node| node.parent_edge.map(|(parent_key, _)| node_index[&parent_key]))
       .collect::<Vec<_>>();
 
-    // Children in `children_of` (outbound) order, so the value the backward pass hands each visitor
-    // already folds in the same canonical order the graph exposes, without any per-node graph read.
     let mut children = vec![Vec::new(); nodes.len()];
     for &node in &graph_nodes {
       let parent_index = node_index[&node.key()];
@@ -75,8 +57,6 @@ impl GraphPass {
       .filter_map(|node| node.parent_edge.map(|(_, edge_key)| edge_key))
       .collect::<BTreeSet<_>>();
 
-    // Validate the backward schedule: a valid rooted forest is acyclic in both traversal directions,
-    // so this single check covers both maps.
     let prerequisites = children.iter().map(Vec::len).collect::<Vec<_>>();
     let successors = parents
       .iter()
@@ -97,12 +77,6 @@ impl GraphPass {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Run a value-returning backward map (children before parent) over borrowed input maps.
-  ///
-  /// Every node is visited exactly once, after all of its children have published their outputs, in a
-  /// thread-count-independent child fold order. The input maps are read immutably and never mutated,
-  /// so a failed visit leaves them intact and the caller may retry from the same inputs. Node keys the
-  /// graph has but `nodes` lacks are filled by `missing_node`; edges must match the graph exactly.
   pub fn map_backward<N, E, NodeOut, EdgeOut>(
     &self,
     nodes: &BTreeMap<GraphNodeKey, N>,
@@ -122,7 +96,6 @@ impl GraphPass {
   {
     let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
 
-    // Backward schedule: a node becomes ready once every child has completed, then unblocks its parent.
     let prerequisites = self.children.iter().map(Vec::len).collect::<Vec<_>>();
     let successors = self
       .parents
@@ -139,9 +112,6 @@ impl GraphPass {
       let input = self.resolve_node(nodes, &created, index);
       let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
 
-      // Every child has completed before this node is scheduled, so its output is published. Collect
-      // them in the fixed `children_of` order recorded in `self.children[index]` so the reduction the
-      // visitor folds does not depend on thread count.
       let children = self.children[index]
         .iter()
         .map(|&child_index| {
@@ -182,11 +152,6 @@ impl GraphPass {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Run a value-returning forward map (parent before children) over borrowed input maps.
-  ///
-  /// Every node is visited exactly once, after its single parent has published its output (roots run
-  /// first). The input maps are read immutably and never mutated, so a failed visit leaves them intact
-  /// and the caller may retry from the same inputs.
   pub fn map_forward<N, E, NodeOut, EdgeOut>(
     &self,
     nodes: &BTreeMap<GraphNodeKey, N>,
@@ -204,8 +169,6 @@ impl GraphPass {
   {
     let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
 
-    // Forward schedule: a node becomes ready once its parent has completed (roots are ready
-    // immediately), then unblocks its children.
     let prerequisites = self
       .parents
       .iter()
@@ -222,7 +185,6 @@ impl GraphPass {
       let input = self.resolve_node(nodes, &created, index);
       let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
 
-      // The parent has completed before this node is scheduled, so its output is published.
       let parent = self.parents[index].map(|parent_index| {
         &completed[parent_index]
           .get()
@@ -251,10 +213,6 @@ impl GraphPass {
     self.collect_map_outputs(completed)
   }
 
-  /// Validate the input maps against the frozen topology and create inputs for node keys the graph has
-  /// but `nodes` lacks. Stale node/edge keys, or an edge set that does not match the graph exactly, are
-  /// internal errors. Returns the created (missing) node inputs, owned so they can be borrowed by the
-  /// workers alongside `nodes`.
   fn validate_and_create_missing<N, E>(
     &self,
     nodes: &BTreeMap<GraphNodeKey, N>,
@@ -286,8 +244,6 @@ impl GraphPass {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Borrow the input for node `index`, from the caller's map when present or from the created
-  /// missing-node inputs otherwise.
   fn resolve_node<'a, N>(
     &self,
     nodes: &'a BTreeMap<GraphNodeKey, N>,
@@ -305,9 +261,6 @@ impl GraphPass {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Drain the per-index published outputs into key-addressed maps: each node output keyed by its node,
-  /// and each node's optional parent-edge message keyed by that parent edge. Duplicate keys signal a
-  /// scheduling bug, so they are reported as internal errors.
   fn collect_map_outputs<NodeOut, EdgeOut>(
     &self,
     completed: Vec<OnceLock<GraphPassNodeOutput<NodeOut, EdgeOut>>>,
@@ -339,9 +292,6 @@ impl GraphPass {
   }
 }
 
-/// One completed child seen by a backward-mapping visitor: the child's returned node output and the
-/// optional message it produced for the edge connecting it to the current (parent) node. Children are
-/// presented in the graph's `children_of` (outbound) order.
 pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub node_key: GraphNodeKey,
   pub edge_key: GraphEdgeKey,
@@ -349,8 +299,6 @@ pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub edge: Option<&'a EdgeOut>,
 }
 
-/// Input handed to a backward-mapping visitor for one node: the node's own borrowed input, its borrowed
-/// parent-edge input, and the already-completed outputs of its children (in `children_of` order).
 pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
@@ -360,9 +308,6 @@ pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
 }
 
-/// Input handed to a forward-mapping visitor for one node: the node's own borrowed input, its parent
-/// node key, its borrowed parent-edge input, and the already-completed forward output of its single
-/// parent.
 pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
@@ -373,23 +318,16 @@ pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
   pub parent: Option<&'a NodeOut>,
 }
 
-/// Output returned by a mapping visitor for one node: the node's output and the optional message it
-/// sends along its own parent edge (`None` at the root, which has no parent edge, or whenever the node
-/// produces no message for that edge).
 pub struct GraphPassNodeOutput<NodeOut, EdgeOut> {
   pub node: NodeOut,
   pub parent_message: Option<EdgeOut>,
 }
 
-/// Collected outputs of a graph map: node outputs keyed by node, and per-edge messages keyed by the
-/// edge each message travelled along.
 pub struct GraphMapOutputs<NodeOut, EdgeOut> {
   pub nodes: BTreeMap<GraphNodeKey, NodeOut>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
 
-/// A single node in the frozen pass topology: its key and, for a non-root, the parent node and the edge
-/// connecting them.
 struct GraphPassNode {
   key: GraphNodeKey,
   parent_edge: Option<(GraphNodeKey, GraphEdgeKey)>,

@@ -21,8 +21,6 @@ pub fn run_dependency_queue(
 
   let remaining = prerequisites.iter().copied().map(AtomicUsize::new).collect::<Vec<_>>();
   let completed = AtomicUsize::new(0);
-  // First-error reporting without a lock: one worker is elected atomically (see `run_worker`) and is
-  // the sole writer of this single-publication cell, so competing errors never contend on it.
   let error = OnceLock::new();
   let failed = AtomicBool::new(false);
   let workers = rayon::current_num_threads();
@@ -134,10 +132,6 @@ where
             continue;
           }
           if let Err(report) = (self.visit)(index) {
-            // Atomically elect a single error publisher: exactly one worker sees `false` here and
-            // becomes the sole writer of the single-publication `error` cell, then cancels the rest.
-            // Later failures observe `true` and drop their report, so no two workers ever race to
-            // initialize the cell.
             if !self.failed.swap(true, Ordering::AcqRel) {
               assert!(
                 self.error.set(report).is_ok(),

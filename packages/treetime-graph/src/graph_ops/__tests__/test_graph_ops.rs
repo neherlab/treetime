@@ -8,7 +8,6 @@ mod tests {
 
   type TestGraph = Graph;
 
-  /// `root -> {a, b}`, `a -> c`. Returns the graph and the keys in that order.
   fn fixture() -> Result<(TestGraph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
     let mut graph = TestGraph::new();
     let root = graph.add_node();
@@ -73,8 +72,6 @@ mod tests {
   #[test]
   fn test_reparent_edge_rejects_a_duplicate_connection() -> Result<(), Report> {
     let (mut graph, [root, _, _, c], a_to_c) = fixture()?;
-    // `root` already reaches `c` directly, so moving `a -> c` under `root` would create a
-    // second `root -> c` edge.
     graph.add_edge(root, c)?;
 
     assert!(graph.reparent_edge(a_to_c, root).is_err());

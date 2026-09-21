@@ -14,7 +14,6 @@ impl GraphNodeKey {
   }
 }
 
-/// Internal representation of a node in a graph
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Node {
   key: GraphNodeKey,
@@ -29,7 +28,6 @@ impl PartialEq<Self> for Node {
 }
 
 impl Node {
-  /// Create a new node.
   #[inline]
   pub fn new(key: GraphNodeKey) -> Node {
     Self {
@@ -39,37 +37,31 @@ impl Node {
     }
   }
 
-  /// Get node key.
   #[inline]
   pub const fn key(&self) -> GraphNodeKey {
     self.key
   }
 
-  /// Get node out-degree i.e. number of outbound edges.
   #[inline]
   pub fn degree_out(&self) -> usize {
     self.outbound().len()
   }
 
-  /// Get node in-degree i.e. number of inbound edges.
   #[inline]
   pub fn degree_in(&self) -> usize {
     self.inbound().len()
   }
 
-  /// Check if node is a leaf node, i.e. has no outbound edges.
   #[inline]
   pub fn is_leaf(&self) -> bool {
     self.outbound().is_empty()
   }
 
-  /// Check if node is a root node, i.e. has no inbound edges.
   #[inline]
   pub fn is_root(&self) -> bool {
     self.inbound().is_empty()
   }
 
-  /// Check if node is an internal node, i.e. has both inbound and outbound edges.
   #[inline]
   pub fn is_internal(&self) -> bool {
     !self.is_leaf() && !self.is_root()
@@ -105,25 +97,21 @@ impl Node {
     self.degree_out() <= 1
   }
 
-  /// Get read access to outbound edges of the node.
   #[inline]
   pub fn outbound(&self) -> &[GraphEdgeKey] {
     self.outbound_edges.as_slice()
   }
 
-  /// Get mutable access to the outbound edges of the node.
   #[inline]
   pub fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.outbound_edges
   }
 
-  /// Get read access to inbound edges of the node.
   #[inline]
   pub fn inbound(&self) -> &[GraphEdgeKey] {
     self.inbound_edges.as_slice()
   }
 
-  /// Get mutable access to the inbound edges of the node.
   #[inline]
   pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.inbound_edges

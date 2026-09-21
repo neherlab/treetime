@@ -52,10 +52,6 @@ impl TopologyOrderSpec {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Apply the requested logical topology order to a graph.
-  ///
-  /// All fallible computation and validation completes before the graph is
-  /// mutated. Node and edge keys and their slot storage remain unchanged.
   pub fn apply(
     &self,
     graph: &mut Graph,
@@ -92,7 +88,6 @@ impl TopologyOrderSpec {
       }
     }?;
 
-    // Validate every target node still exists before any mutation; keys and slot storage are unchanged.
     for &node_key in order.outbound_edges.keys() {
       if graph.get_node(node_key).is_none() {
         return make_error!("Node {node_key} disappeared while applying topology order");

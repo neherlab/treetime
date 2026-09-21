@@ -24,30 +24,22 @@ impl Graph {
     }
   }
 
-  /// Borrow the node with the given key, or `None` when the slot is empty.
   pub fn get_node(&self, key: GraphNodeKey) -> Option<&Node> {
     self.nodes.get(key.as_usize())?.as_ref()
   }
 
-  /// Mutably borrow the node with the given key, or `None` when the slot is empty.
   pub fn get_node_mut(&mut self, key: GraphNodeKey) -> Option<&mut Node> {
     self.nodes.get_mut(key.as_usize())?.as_mut()
   }
 
-  /// Borrow the edge with the given key, or `None` when the slot is empty.
   pub fn get_edge(&self, key: GraphEdgeKey) -> Option<&Edge> {
     self.edges.get(key.as_usize())?.as_ref()
   }
 
-  /// Mutably borrow the edge with the given key, or `None` when the slot is empty.
   pub fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
     self.edges.get_mut(key.as_usize())?.as_mut()
   }
 
-  /// Parent nodes of a node and the inbound edges connecting them, in inbound-edge order.
-  ///
-  /// Yields `(parent, edge)` pairs borrowed from the graph. Prefer [`Graph::parents_keys_of`] when the
-  /// result must outlive the borrow or survive a later mutation.
   pub fn parents_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
     node.inbound().iter().filter_map(move |&edge_key| {
       let edge = self.get_edge(edge_key)?;
@@ -55,10 +47,6 @@ impl Graph {
     })
   }
 
-  /// Keys of a node's parents and the inbound edges connecting them, in inbound-edge order.
-  ///
-  /// Yields `Copy` `(parent_key, edge_key)` pairs that hold no borrow of the graph beyond the node's
-  /// edge slice, so they can be collected and used across a later mutation.
   pub fn parents_keys_of<'a>(
     &'a self,
     node: &'a Node,
@@ -94,10 +82,6 @@ impl Graph {
     }
   }
 
-  /// Child nodes of a node and the outbound edges connecting them, in outbound-edge order.
-  ///
-  /// Yields `(child, edge)` pairs borrowed from the graph. Prefer [`Graph::children_keys_of`] when the
-  /// result must outlive the borrow or survive a later mutation.
   pub fn children_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
     node.outbound().iter().filter_map(move |&edge_key| {
       let edge = self.get_edge(edge_key)?;
@@ -105,10 +89,6 @@ impl Graph {
     })
   }
 
-  /// Keys of a node's children and the outbound edges connecting them, in outbound-edge order.
-  ///
-  /// Yields `Copy` `(child_key, edge_key)` pairs that hold no borrow of the graph beyond the node's
-  /// edge slice, so they can be collected and used across a later mutation.
   pub fn children_keys_of<'a>(
     &'a self,
     node: &'a Node,
@@ -145,12 +125,10 @@ impl Graph {
     self.leaves.len()
   }
 
-  /// All nodes, in storage order.
   pub fn get_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
     self.nodes.iter().filter_map(Option::as_ref)
   }
 
-  /// Keys of all nodes, in storage order.
   pub fn node_keys(&self) -> impl DoubleEndedIterator<Item = GraphNodeKey> + '_ {
     self.get_nodes().map(Node::key)
   }
@@ -167,47 +145,38 @@ impl Graph {
       .ok_or_else(|| make_internal_report!("Root node {} not found", self.roots[0]))
   }
 
-  /// All nodes having no parents.
   pub fn get_roots(&self) -> impl Iterator<Item = &Node> + '_ {
     self.roots.iter().filter_map(|key| self.get_node(*key))
   }
 
-  /// Keys of all root nodes.
   pub fn root_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
     self.roots.iter().copied()
   }
 
-  /// All nodes having no children.
   pub fn get_leaves(&self) -> impl Iterator<Item = &Node> + '_ {
     self.leaves.iter().filter_map(|key| self.get_node(*key))
   }
 
-  /// Keys of all leaf nodes.
   pub fn leaf_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
     self.leaves.iter().copied()
   }
 
-  /// All nodes which are not leaves.
   pub fn get_internal_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
     self.get_nodes().filter(|node| !node.is_leaf())
   }
 
-  /// All nodes which are neither leaves nor roots (i.e. internal which are not roots).
   pub fn get_inner_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
     self.get_nodes().filter(|node| !node.is_leaf() && !node.is_root())
   }
 
-  /// All edges, in storage order.
   pub fn get_edges(&self) -> impl DoubleEndedIterator<Item = &Edge> {
     self.edges.iter().filter_map(Option::as_ref)
   }
 
-  /// Keys of all edges, in storage order.
   pub fn edge_keys(&self) -> impl DoubleEndedIterator<Item = GraphEdgeKey> + '_ {
     self.get_edges().map(Edge::key)
   }
 
-  /// Keys of nodes on the path from the root to a given node (root first, target last).
   pub fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<GraphNodeKey>, Report> {
     let mut node = self
       .get_node(node_key)
@@ -225,8 +194,6 @@ impl Graph {
     Ok(path)
   }
 
-  /// Keys of nodes on the path from `start` up to `finish`, each paired with the inbound edge that
-  /// leads to its parent (`None` for the starting node's own entry).
   #[allow(clippy::type_complexity)]
   pub fn path_from_node_to_node(
     &self,
@@ -275,7 +242,6 @@ impl Graph {
     !self.is_leaf(node_key) && !self.is_root(node_key)
   }
 
-  /// Number of outbound edges (children) of a node
   pub fn degree_out(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
@@ -283,7 +249,6 @@ impl Graph {
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))
   }
 
-  /// Number of inbound edges (parents) of a node
   pub fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
@@ -315,7 +280,6 @@ impl Graph {
     self.get_node(node_key).is_some_and(Node::has_at_most_one_child)
   }
 
-  /// Returns the inbound edge from this node's parent, if any (None for roots).
   pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Result<Option<GraphEdgeKey>, Report> {
     let node = self
       .get_node(key)
@@ -323,7 +287,6 @@ impl Graph {
     Ok(node.inbound().first().copied())
   }
 
-  /// Return `(parent_node_key, child_node_key)` for one edge.
   pub fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
     let edge = self
       .get_edge(edge_key)
@@ -331,8 +294,6 @@ impl Graph {
     Ok((edge.source(), edge.target()))
   }
 
-  /// Return `Some((parent_node_key, parent_edge_key))` for a non-root node, or `None` when the node is
-  /// the root. Errors when the node has more than one parent (the algorithm only supports trees).
   pub fn node_parent(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
     let node = self
       .get_node(node_key)
@@ -340,7 +301,6 @@ impl Graph {
     self.one_parent_of(node)
   }
 
-  /// Return the key of the single root node. Errors when the graph has zero or more than one root.
   pub fn root_key(&self) -> Result<GraphNodeKey, Report> {
     Ok(self.get_exactly_one_root()?.key())
   }

@@ -5,66 +5,38 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Information about an edge split during reroot.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeSplitInfo {
-  /// The original edge that was split.
   pub old_edge_key: GraphEdgeKey,
-  /// The new node created at the split point.
   pub new_node_key: GraphNodeKey,
-  /// The edge from the original source to the new node.
   pub parent_side_edge_key: GraphEdgeKey,
-  /// The edge from the new node to the original target.
   pub child_side_edge_key: GraphEdgeKey,
-  /// Branch length of the parent-side edge (`split_position * original_length`).
   pub parent_side_length: Option<f64>,
-  /// Branch length of the child-side edge (`(1 - split_position) * original_length`).
   pub child_side_length: Option<f64>,
-  /// Position along the edge where the split occurred (0.0 = source, 1.0 = target).
   pub split_position: f64,
 }
 
-/// Information about an edge merge when removing a trivial node.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeMergeInfo {
-  /// The node that was removed.
   pub removed_node_key: GraphNodeKey,
-  /// The edge from parent to the removed node.
   pub parent_edge_key: GraphEdgeKey,
-  /// The edge from the removed node to its child.
   pub child_edge_key: GraphEdgeKey,
-  /// The new merged edge from parent to child.
   pub merged_edge_key: GraphEdgeKey,
-  /// Branch length of the merged edge: the sum when both sides carry a length, otherwise whichever
-  /// side has one, and `None` when neither does.
   pub merged_branch_length: Option<f64>,
 }
 
-/// Result of a reroot operation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RerootResult {
-  /// The key of the new root node.
   pub new_root_key: GraphNodeKey,
-  /// Information about edge split, if one occurred.
   pub edge_split: Option<EdgeSplitInfo>,
-  /// Information about edge merge, if a trivial node was removed.
   pub edge_merge: Option<EdgeMergeInfo>,
-  /// Keys of edges whose direction was inverted during rerooting.
-  /// Empty when root did not change.
   pub inverted_edge_keys: Vec<GraphEdgeKey>,
 }
 
-/// Bundles all topology changes from a reroot operation for partition updates.
-///
-/// Passed to each partition's reroot pass to update partition state in a single call.
 #[derive(Clone, Debug, Default)]
 pub struct RerootChanges {
-  /// Edge split info if a new node was created at the reroot point.
   pub edge_split: Option<EdgeSplitInfo>,
-  /// Edge merge info if the old root was removed as a trivial node.
   pub edge_merge: Option<EdgeMergeInfo>,
-  /// Keys of edges on the path from old root to new root (post-inversion direction).
-  /// Empty if root did not change or old root was removed.
   pub inverted_edge_keys: Vec<GraphEdgeKey>,
 }
 
@@ -72,16 +44,6 @@ pub struct RerootChanges {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Split an edge by inserting a new node at `split_position` along it.
-///
-/// The original edge is removed and replaced with two new edges:
-/// - parent-side: from original source to new node (length = `split_position * original_length`)
-/// - child-side: from new node to original target (length = `(1 - split_position) * original_length`)
-///
-/// The original branch length is supplied by the caller (`branch_length`, taken from its
-/// branch-length value map). The two new edges carry no branch length; their lengths are returned in
-/// [`EdgeSplitInfo`] for the caller to record in its map. A missing input length resolves to `0.0`
-/// for the split, matching the input-tree derivation.
 pub fn split_edge(
   graph: &mut Graph,
   edge_key: GraphEdgeKey,
@@ -115,11 +77,6 @@ pub fn split_edge(
   })
 }
 
-/// Invert edges along the path from old root to new root.
-///
-/// Returns the keys of all inverted edges (in old-root-to-new-root order).
-/// Only inverts graph topology (edge direction). Domain-specific edge data
-/// (clock messages, partition state) must be updated by the caller.
 pub fn apply_reroot_topology(
   graph: &mut Graph,
   old_root_key: GraphNodeKey,
@@ -143,14 +100,6 @@ pub fn apply_reroot_topology(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// Remove a node if it is trivial (exactly one parent and one child), merging the edges.
-///
-/// Returns `Some(EdgeMergeInfo)` if the node was removed, `None` if the node was not trivial.
-///
-/// The parent-side and child-side branch lengths are supplied by the caller (from its branch-length
-/// value map). The merged edge carries no branch length; the merged length is returned in
-/// [`EdgeMergeInfo`] for the caller to record in its map. Merge semantics: the sum when both sides
-/// carry a length, otherwise whichever side has one (never coerce `None` to `0.0` and sum).
 pub fn remove_node_if_trivial(
   graph: &mut Graph,
   node_key: GraphNodeKey,
@@ -192,11 +141,6 @@ pub fn remove_node_if_trivial(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-/// The branch lengths of a trivial node's parent-side and child-side edges, read from a value map.
-///
-/// Returns `(None, None)` when the node is not trivial (not exactly one inbound and one outbound
-/// edge), matching the guard in [`remove_node_if_trivial`]. A caller can therefore compute the merge
-/// inputs unconditionally and leave the triviality decision to the removal.
 pub fn trivial_node_branch_lengths(
   graph: &Graph,
   node_key: GraphNodeKey,
@@ -211,16 +155,12 @@ pub fn trivial_node_branch_lengths(
   (parent, child)
 }
 
-/// Record the two edges produced by [`split_edge`] into a branch-length value map, dropping the
-/// original edge's entry.
 pub fn record_split(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, info: &EdgeSplitInfo) {
   branch_lengths.remove(&info.old_edge_key);
   branch_lengths.insert(info.parent_side_edge_key, info.parent_side_length);
   branch_lengths.insert(info.child_side_edge_key, info.child_side_length);
 }
 
-/// Record the merged edge produced by [`remove_node_if_trivial`] into a branch-length value map,
-/// dropping the two consumed edges' entries.
 pub fn record_merge(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, info: &EdgeMergeInfo) {
   branch_lengths.remove(&info.parent_edge_key);
   branch_lengths.remove(&info.child_edge_key);

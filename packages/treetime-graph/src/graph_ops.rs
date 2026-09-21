@@ -47,7 +47,6 @@ impl Graph {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Add a new edge to the graph.
   pub fn add_edge(&mut self, source_key: GraphNodeKey, target_key: GraphNodeKey) -> Result<GraphEdgeKey, Report> {
     if source_key == target_key {
       return make_error!(
@@ -94,20 +93,6 @@ impl Graph {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Move an edge to a new source node, keeping its key and target endpoint.
-  ///
-  /// The edge is unlinked from its current source's outbound list, linked into the new
-  /// source's, and its stored source key updated. The target is untouched, so the target
-  /// node's inbound list stays valid.
-  ///
-  /// Preferred over `remove_edge` + `add_edge` when relocating a branch: those allocate a
-  /// fresh [`GraphEdgeKey`], which invalidates external maps keyed by edge key that hold the
-  /// edge's state. Reparenting keeps the same key, so those maps stay valid. `remove_edge` also
-  /// scans every node, so reparenting in a loop is quadratic.
-  ///
-  /// Reparenting to the current source is a no-op. Reparenting onto the edge's own target, or
-  /// onto a node already connected to the target, is an error: both would break the tree
-  /// invariants the graph traversals rely on.
   pub fn reparent_edge(&mut self, edge_key: GraphEdgeKey, new_source_key: GraphNodeKey) -> Result<(), Report> {
     let (old_source_key, target_key) = {
       let edge = self
@@ -159,13 +144,11 @@ impl Graph {
   }
 
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
-    // Remove the edge key from inbound/outbound lists of nodes
     for node in self.nodes.iter_mut().flatten() {
       node.outbound_mut().retain(|&e| e != edge_key);
       node.inbound_mut().retain(|&e| e != edge_key);
     }
 
-    // Remove the edge itself
     self
       .edges
       .get_mut(edge_key.as_usize())
@@ -183,8 +166,6 @@ impl Graph {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  /// Collapse an edge, merging its target node into its source and returning the removed node, the
-  /// removed edge, and the keys of the edges rerouted from the target onto the source.
   pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<GraphEdgeKey>), Report> {
     let (source_key, target_key) = {
       let edge = self

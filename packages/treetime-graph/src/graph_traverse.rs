@@ -6,7 +6,6 @@ use itertools::Itertools;
 use std::collections::{BTreeSet, VecDeque};
 use treetime_utils::make_internal_report;
 
-/// Represents graph node during forward traversal
 #[must_use]
 #[derive(Debug)]
 pub struct GraphNodeForward {
@@ -36,7 +35,6 @@ impl GraphNodeForward {
   }
 }
 
-/// Represents graph node during backwards traversal
 #[must_use]
 #[derive(Debug)]
 pub struct GraphNodeBackward {
@@ -71,7 +69,6 @@ impl GraphNodeBackward {
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
 impl Graph {
-  /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
   pub fn iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeForward) -> Result<(), Report>,
@@ -93,7 +90,6 @@ impl Graph {
     Ok(())
   }
 
-  /// Serial depth-first postorder forward traversal (children before parents).
   pub fn iter_depth_first_postorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeBackward) -> Result<(), Report>,
@@ -125,10 +121,6 @@ impl Graph {
     Ok(())
   }
 
-  /// Serial breadth-first forward traversal (roots to leaves, along edge directions).
-  ///
-  /// Use this (rather than the parallel pass engine [`GraphPass::map_forward`](crate::pass::GraphPass::map_forward)) when the
-  /// per-node work must capture mutable outer state, which a parallel callback cannot.
   pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeForward) -> Result<(), Report>,
@@ -151,10 +143,6 @@ impl Graph {
     Ok(())
   }
 
-  /// Serial breadth-first backward traversal (leaves to roots, against edge directions).
-  ///
-  /// Children are expanded in ascending node-key order, so a node's descendants precede it in the
-  /// visited order once reversed.
   pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeBackward) -> Result<(), Report>,

@@ -139,7 +139,6 @@ mod tests {
 
     let actual = child_names(ordered, &names, "root")?;
 
-    // A is leaf (height 0), shallow has height 1, deep has height 2
     assert_eq!(vec!["A", "shallow", "deep"], actual);
 
     Ok(())
@@ -165,10 +164,6 @@ mod tests {
 
   #[test]
   fn topology_order_divergence_sorts_by_total_branch_length() -> Result<(), Report> {
-    // root -> [short(0.1) -> [A(0.1), B(0.1)], long(0.5) -> [C(0.2)], D(0.3)]
-    // short: max divergence = 0.1 + 0.1 = 0.2
-    // long:  max divergence = 0.5 + 0.2 = 0.7
-    // D:     leaf, divergence = 0.0
     let (mut graph, names, __bl) = fixture_branch_length_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::Divergence,
@@ -216,7 +211,6 @@ mod tests {
 
     let actual = child_names(ordered, &names, "root")?;
 
-    // A has label "A", BC has min label "B", DEF has min label "D"
     assert_eq!(vec!["A", "BC", "DEF"], actual);
 
     Ok(())
@@ -243,8 +237,6 @@ mod tests {
   #[test]
   fn topology_order_target_order_median_uses_median_position() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
-    // Target order: D=0, E=1, F=2, B=3, C=4, A=5
-    // DEF median of [0,1,2] = 1, BC median of [3,4] = 3.5, A = 5
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
       target_order: vec!["D", "E", "F", "B", "C", "A"]
@@ -272,7 +264,6 @@ mod tests {
     let ordered = &graph;
 
     let deep_children = child_names(ordered, &names, "deep")?;
-    // mid (2 leaves) vs D (1 leaf): D first
     assert_eq!(vec!["D", "mid"], deep_children);
 
     let mid_children = child_names(ordered, &names, "mid")?;
@@ -384,7 +375,6 @@ mod tests {
     Ok(())
   }
 
-  /// root -> [deep -> [D, mid -> [E, F]], shallow -> [B, C], A]
   fn fixture_deep_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
     let mut graph = Graph::new();
     let root = graph.add_node();
@@ -424,7 +414,6 @@ mod tests {
     Ok((graph, names))
   }
 
-  /// root -> [short(0.1) -> [A(0.1), B(0.1)], long(0.5) -> [C(0.2)], D(0.3)]
   #[allow(clippy::type_complexity)]
   fn fixture_branch_length_tree() -> Result<
     (
@@ -529,7 +518,6 @@ mod tests {
     names[&key].clone().unwrap_or_default()
   }
 
-  /// Build the node-name value map the production parse threads to `TopologyOrderSpec::apply`.
   fn make_names(pairs: Vec<(GraphNodeKey, &str)>) -> BTreeMap<GraphNodeKey, Option<String>> {
     pairs
       .into_iter()
@@ -537,12 +525,10 @@ mod tests {
       .collect()
   }
 
-  /// Build the edge branch-length value map the production parse threads to `TopologyOrderSpec::apply`.
   fn make_branch_lengths(pairs: Vec<(GraphEdgeKey, f64)>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     pairs.into_iter().map(|(key, len)| (key, Some(len))).collect()
   }
 
-  /// The edge branch-length value map for a graph whose edges carry no length (all `None`).
   fn edge_branch_lengths(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     graph.get_edges().map(|edge| (edge.key(), None)).collect()
   }
