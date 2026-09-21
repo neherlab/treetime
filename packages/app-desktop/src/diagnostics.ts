@@ -12,7 +12,7 @@ export function initDiagnostics(title: string): void {
     console.warn(warning.stack ?? `${warning.name}: ${warning.message}`);
   });
 
-  const diagnosticDir = resolve(process.env.TREETIME_DIAGNOSTIC_DIR ?? resolve(process.cwd(), "tmp/diagnostics"));
+  const diagnosticDir = resolve(process.env["TREETIME_DIAGNOSTIC_DIR"] ?? resolve(process.cwd(), "tmp/diagnostics"));
   mkdirSync(diagnosticDir, { recursive: true });
 
   if (process.report) {

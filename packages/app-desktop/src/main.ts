@@ -5,7 +5,7 @@ import { initDiagnostics } from "./diagnostics";
 
 initDiagnostics("treetime-desktop");
 
-if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
+if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
@@ -13,7 +13,7 @@ function isThemeSource(value: string): value is "system" | "light" | "dark" {
   return value === "system" || value === "light" || value === "dark";
 }
 
-const projectRoot = process.env.TREETIME_PROJECT_ROOT;
+const projectRoot = process.env["TREETIME_PROJECT_ROOT"];
 if (projectRoot) {
   process.chdir(projectRoot);
 }
@@ -70,8 +70,9 @@ function createWindow() {
     },
   });
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL);
+  const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
+  if (devServerUrl) {
+    win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: "bottom" });
   } else {
     win.loadFile(path.join(__dirname, "../dist/index.html"));
