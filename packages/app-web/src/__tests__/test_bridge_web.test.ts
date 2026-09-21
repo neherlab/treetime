@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { createWebBridge } from "../bridge-web";
 
 type FetchEventSource = typeof fetchEventSource;
+
 type FetchEventSourceInit = Parameters<FetchEventSource>[1];
 
 interface StreamMessage {
@@ -13,14 +14,14 @@ interface StreamMessage {
   data: unknown;
 }
 
-const rejectingEventSource: FetchEventSource = () =>
-  Promise.reject(new DOMException("Aborted", "AbortError"));
+const rejectingEventSource: FetchEventSource = () => Promise.reject(new DOMException("Aborted", "AbortError"));
 
 function scriptedEventSource(messages: StreamMessage[]): FetchEventSource {
   return (_input, init: FetchEventSourceInit) => {
     for (const message of messages) {
       init.onmessage?.({ id: "", event: message.event, data: JSON.stringify(message.data) });
     }
+
     return Promise.resolve();
   };
 }
@@ -61,6 +62,7 @@ describe("bridge_web streaming command path", () => {
     const eventSource = scriptedEventSource([
       { event: "progress", data: { stage: "read", fraction: 0.5, message: "reading" } },
     ]);
+
     const bridge = createWebBridge({ fetchEventSourceFn: eventSource });
     await expect(bridge.ancestral({ tree: "t", outdir: "o" })).rejects.toThrow("no result received");
   });

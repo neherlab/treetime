@@ -25,11 +25,15 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   async function getJson(path: string): Promise<unknown> {
     if (debug) console.debug("[TreeTime] GET", path);
     const response = await fetchFn(`${apiBase}/${path}`);
+
     if (!response.ok) {
       throw new Error(`GET ${path}: ${response.status} ${response.statusText}`);
     }
+
     const data: unknown = await response.json();
+
     if (debug) console.debug("[TreeTime] GET", path, JSON.stringify(data));
+
     return data;
   }
 
@@ -45,6 +49,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
         signal: options?.signal ?? null,
         onmessage(msg) {
           if (debug) console.debug("[TreeTime]", JSON.stringify(msg));
+
           if (msg.event === "progress") {
             options?.onProgress?.(parseProgressEvent(JSON.parse(msg.data)));
           } else if (msg.event === "log") {
@@ -63,6 +68,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       if (err instanceof DOMException && err.name === "AbortError") {
         throw new CancelledError();
       }
+
       throw err;
     }
 
@@ -83,6 +89,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
 
 function readDebugFlag(): boolean {
   const env = import.meta.env;
+
   return env.TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.TREETIME_DEBUG_FETCH !== "false");
 }
 
