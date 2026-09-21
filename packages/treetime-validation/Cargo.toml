@@ -13,6 +13,9 @@ version.workspace = true
 [lib]
 doctest = false
 
+[package.metadata.cargo-shear]
+ignored = ["image"]
+
 [dependencies]
 # [internal]
 treetime-analytical = { workspace = true }
