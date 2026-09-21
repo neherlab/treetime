@@ -24,11 +24,7 @@ approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
 auto_ops = { workspace = true }
-chrono = { workspace = true }
 color-eyre = { workspace = true }
-crossbeam-channel = { workspace = true }
-crossbeam-queue = { workspace = true }
-crossbeam-skiplist = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
@@ -39,8 +35,6 @@ maplit = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
 ordered-float = { workspace = true }
-parking_lot = { workspace = true }
-percent-encoding = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 rayon = { workspace = true }
@@ -64,7 +58,6 @@ bio = { workspace = true }
 criterion = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
-jsonschema = { workspace = true }
 petgraph = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }

@@ -10,11 +10,6 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
-# `approx` is used only through the `pretty_assert_ulps_eq!` macro expansion in tests,
-# which cargo-shear cannot see without `--expand`; suppress the false positive.
-[package.metadata.cargo-shear]
-ignored = ["approx"]
-
 [dependencies]
 # [internal]
 app-output = { workspace = true }
@@ -56,7 +51,6 @@ schemars = { workspace = true }
 serde = { workspace = true }
 serde-saphyr = { workspace = true }
 serde_json = { workspace = true }
-serde_path_to_error = { workspace = true }
 smart-default = { workspace = true }
 strsim = { workspace = true }
 strum_macros = { workspace = true }

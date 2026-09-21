@@ -16,11 +16,9 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }
-eyre = { workspace = true }
 maplit = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
-rstest = { workspace = true }
 treetime-utils = { workspace = true }
 
 [lints]
