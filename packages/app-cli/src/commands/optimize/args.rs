@@ -105,14 +105,9 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
   }
 }
 
-/// Controls the initial branch length estimate that runs before Newton
-/// optimization.
-///
-/// The estimate computes `#substitutions / effective_alignment_length` per
-/// edge from the marginal reconstruction. When input trees already carry
-/// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
-/// TreeTime run), preserving those values lets Newton converge from a
-/// better starting position.
+/// Controls whether marginal reconstruction estimates initial branch lengths
+/// from substitutions divided by effective alignment length. Preserving valid
+/// input lengths can provide a better Newton starting point.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -229,17 +224,9 @@ pub struct TreetimeOptimizeArgsRaw {
   #[default = 0.1]
   pub dp: f64,
 
-  /// Damping factor for outer-loop branch length updates.
-  ///
-  /// Controls how aggressively new branch lengths replace old ones during
-  /// iterative optimization. At each iteration i, the update is:
-  ///   bl = bl_new * (1 - d) + bl_old * d
-  /// where d = max(damping^(i+1), 0.01). The 1% floor prevents fully
-  /// undamped late iterations on non-monotone objectives.
-  ///
-  /// Higher values are more conservative (slower convergence, less oscillation).
-  /// Set to 0.0 to disable damping (full update each iteration, no floor).
-  /// Must be in [0.0, 1.0).
+  /// Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
+  /// where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
+  /// zero disables damping. Must be in $[0,1)$.
   #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.75))]
   #[default = 0.75]
   pub damping: f64,
@@ -253,15 +240,9 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto))]
   pub branch_length_initial_guess: InitialGuessModeCli,
 
-  /// Per-edge branch length optimization method.
-  ///
-  /// Algorithm x parameterization:
-  /// - brent: Brent's method in t space (derivative-free)
-  /// - brent-sqrt: Brent's method in sqrt(t) space (default, matches v0)
-  /// - brent-log: Brent's method in ln(t) space
-  /// - newton: Newton-Raphson in t space
-  /// - newton-sqrt: Newton-Raphson in sqrt(t) space
-  /// - newton-log: Newton-Raphson in ln(t) space
+  /// Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
+  /// (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
+  /// `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
   #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default()))]
   pub opt_method: BranchOptMethodCli,
 

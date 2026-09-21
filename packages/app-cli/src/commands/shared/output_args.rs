@@ -90,15 +90,9 @@ per_command_output_selection!(MugrationOutputSelection {
 per_command_output_selection!(OptimizeOutputSelection { AugurNodeData, Gtr });
 per_command_output_selection!(PruneOutputSelection { Gtr });
 
-/// Three-tier output selection shared by every tree-writing command.
-///
-/// Tier 1: `--output-all` bulk directory with default file names.
-/// Tier 2: `--output-selection` (a per-command field) restricts which outputs tier 1 produces.
-/// Tier 3: Per-file `--output-tree-*` flags override or supplement tiers 1-2.
-///
-/// NWK annotation style (`--output-nwk-style`) is orthogonal and expands every NWK/Nexus output
-/// across the selected styles. Topology ordering is a separate concern (`TopologyOrderArgs`) that
-/// each command flattens independently.
+/// Output selection shared by every tree-writing command. `--output-all`
+/// chooses the directory, `--output-selection` restricts generated files, and
+/// per-file flags override or add paths. Style and topology order are separate.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

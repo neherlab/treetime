@@ -15,15 +15,9 @@ use std::path::PathBuf;
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// If no input files provided, the plain fasta input is read from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
+  /// Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+  /// `xz`, `zstd`) files and detects compression by extension. With no files,
+  /// reads uncompressed FASTA from standard input.
   #[cfg_attr(
     feature = "clap",
     clap(
