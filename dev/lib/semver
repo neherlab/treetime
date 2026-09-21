@@ -112,23 +112,35 @@ function validate_version {
 }
 
 function is_nat {
-    [[ "$1" =~ ^($NAT)$ ]]
+  [[ "$1" =~ ^($NAT)$ ]]
 }
 
 function is_null {
-    [ -z "$1" ]
+  [ -z "$1" ]
 }
 
 function order_nat {
-    [ "$1" -lt "$2" ] && { echo -1 ; return ; }
-    [ "$1" -gt "$2" ] && { echo 1 ; return ; }
-    echo 0
+  [ "$1" -lt "$2" ] && {
+    echo -1
+    return
+  }
+  [ "$1" -gt "$2" ] && {
+    echo 1
+    return
+  }
+  echo 0
 }
 
 function order_string {
-    [[ $1 < $2 ]] && { echo -1 ; return ; }
-    [[ $1 > $2 ]] && { echo 1 ; return ; }
-    echo 0
+  [[ $1 < $2 ]] && {
+    echo -1
+    return
+  }
+  [[ $1 > $2 ]] && {
+    echo 1
+    return
+  }
+  echo 0
 }
 
 # given two (named) arrays containing NAT and/or ALPHANUM fields, compare them
@@ -137,33 +149,56 @@ function order_string {
 # is considered greater-than the shorter if the shorter is a prefix of the longer.
 #
 function compare_fields {
-    local l="$1[@]"
-    local r="$2[@]"
-    local leftfield=( "${!l}" )
-    local rightfield=( "${!r}" )
-    local left
-    local right
+  local l="$1[@]"
+  local r="$2[@]"
+  local leftfield=("${!l}")
+  local rightfield=("${!r}")
+  local left
+  local right
 
-    local i=$(( -1 ))
-    local order=$(( 0 ))
+  local i=$((-1))
+  local order=$((0))
 
-    while true
-    do
-        [ $order -ne 0 ] && { echo $order ; return ; }
+  while true; do
+    [ $order -ne 0 ] && {
+      echo $order
+      return
+    }
 
-        : $(( i++ ))
-        left="${leftfield[$i]}"
-        right="${rightfield[$i]}"
+    : $((i++))
+    left="${leftfield[$i]}"
+    right="${rightfield[$i]}"
 
-        is_null "$left" && is_null "$right" && { echo 0  ; return ; }
-        is_null "$left"                     && { echo -1 ; return ; }
-                           is_null "$right" && { echo 1  ; return ; }
+    is_null "$left" && is_null "$right" && {
+      echo 0
+      return
+    }
+    is_null "$left" && {
+      echo -1
+      return
+    }
+    is_null "$right" && {
+      echo 1
+      return
+    }
 
-        is_nat "$left" &&  is_nat "$right" && { order=$(order_nat "$left" "$right") ; continue ; }
-        is_nat "$left"                     && { echo -1 ; return ; }
-                           is_nat "$right" && { echo 1  ; return ; }
-                                              { order=$(order_string "$left" "$right") ; continue ; }
-    done
+    is_nat "$left" && is_nat "$right" && {
+      order=$(order_nat "$left" "$right")
+      continue
+    }
+    is_nat "$left" && {
+      echo -1
+      return
+    }
+    is_nat "$right" && {
+      echo 1
+      return
+    }
+    {
+      order=$(order_string "$left" "$right")
+      continue
+    }
+  done
 }
 
 # shellcheck disable=SC2206     # checked by "validate"; ok to expand prerel id's into array
@@ -174,25 +209,37 @@ function compare_version {
 
   # compare major, minor, patch
 
-  local left=( "${V[0]}" "${V[1]}" "${V[2]}" )
-  local right=( "${V_[0]}" "${V_[1]}" "${V_[2]}" )
+  local left=("${V[0]}" "${V[1]}" "${V[2]}")
+  local right=("${V_[0]}" "${V_[1]}" "${V_[2]}")
 
   order=$(compare_fields left right)
-  [ "$order" -ne 0 ] && { echo "$order" ; return ; }
+  [ "$order" -ne 0 ] && {
+    echo "$order"
+    return
+  }
 
   # compare pre-release ids when M.m.p are equal
 
   local prerel="${V[3]:1}"
   local prerel_="${V_[3]:1}"
-  local left=( ${prerel//./ } )
-  local right=( ${prerel_//./ } )
+  local left=(${prerel//./ })
+  local right=(${prerel_//./ })
 
   # if left and right have no pre-release part, then left equals right
   # if only one of left/right has pre-release part, that one is less than simple M.m.p
 
-  [ -z "$prerel" ] && [ -z "$prerel_" ] && { echo 0  ; return ; }
-  [ -z "$prerel" ]                      && { echo 1  ; return ; }
-                      [ -z "$prerel_" ] && { echo -1 ; return ; }
+  [ -z "$prerel" ] && [ -z "$prerel_" ] && {
+    echo 0
+    return
+  }
+  [ -z "$prerel" ] && {
+    echo 1
+    return
+  }
+  [ -z "$prerel_" ] && {
+    echo -1
+    return
+  }
 
   # otherwise, compare the pre-release id's
 
@@ -203,12 +250,11 @@ function compare_version {
 #                  usage: render_prerel numeric [prefix-string]
 #
 function render_prerel {
-    if [ -z "$2" ]
-    then
-        echo "${1}"
-    else
-        echo "${2}${1}"
-    fi
+  if [ -z "$2" ]; then
+    echo "${1}"
+  else
+    echo "${2}${1}"
+  fi
 }
 
 # extract_prerel -- extract prefix and trailing numeric portions of a pre-release part
@@ -220,18 +266,18 @@ DIGITS='[0-9][0-9]*'
 EXTRACT_REGEX="^(${PREFIX_ALPHANUM})*(${DIGITS})$"
 
 function extract_prerel {
-    local prefix; local numeric;
+  local prefix
+  local numeric
 
-    if [[ "$1" =~ $EXTRACT_REGEX ]]
-    then                                        # found prefix and trailing numeric parts
-        prefix="${BASH_REMATCH[1]}"
-        numeric="${BASH_REMATCH[2]}"
-    else                                        # no numeric part
-        prefix="${1}"
-        numeric=
-    fi
+  if [[ "$1" =~ $EXTRACT_REGEX ]]; then # found prefix and trailing numeric parts
+    prefix="${BASH_REMATCH[1]}"
+    numeric="${BASH_REMATCH[2]}"
+  else # no numeric part
+    prefix="${1}"
+    numeric=
+  fi
 
-    eval "$2=(\"$prefix\" \"$numeric\")"
+  eval "$2=(\"$prefix\" \"$numeric\")"
 }
 
 # bump_prerel -- return the new pre-release part based on previous pre-release part
@@ -239,61 +285,68 @@ function extract_prerel {
 #                usage: bump_prerel proto previous
 #
 function bump_prerel {
-    local proto; local prev_prefix; local prev_numeric;
+  local proto
+  local prev_prefix
+  local prev_numeric
 
-    # case one: no trailing dot in prototype => simply replace previous with proto
-    if [[ ! ( "$1" =~ \.$ ) ]]
-    then
-        echo "$1"
-        return
-    fi
+  # case one: no trailing dot in prototype => simply replace previous with proto
+  if [[ ! ("$1" =~ \.$) ]]; then
+    echo "$1"
+    return
+  fi
 
-    proto="${1%.}"                              # discard trailing dot marker from prototype
+  proto="${1%.}" # discard trailing dot marker from prototype
 
-    extract_prerel "${2#-}" prerel_parts        # extract parts of previous pre-release
-#   shellcheck disable=SC2154
-    prev_prefix="${prerel_parts[0]}"
-    prev_numeric="${prerel_parts[1]}"
+  extract_prerel "${2#-}" prerel_parts # extract parts of previous pre-release
+  #   shellcheck disable=SC2154
+  prev_prefix="${prerel_parts[0]}"
+  prev_numeric="${prerel_parts[1]}"
 
-    # case two: bump or append numeric to previous pre-release part
-    if [ "$proto" == "+" ]                      # dummy "+" indicates no prototype argument provided
-    then
-        if [ -n "$prev_numeric" ]
-        then
-            : $(( ++prev_numeric ))             # previous pre-release is already numbered, bump it
-            render_prerel "$prev_numeric" "$prev_prefix"
-        else
-            render_prerel 1 "$prev_prefix"      # append starting number
-        fi
-        return
-    fi
-
-    # case three: set, bump, or append using prototype prefix
-    if [  "$prev_prefix" != "$proto" ]
-    then
-        render_prerel 1 "$proto"                # proto not same pre-release; set and start at '1'
-    elif [ -n "$prev_numeric" ]
-    then
-        : $(( ++prev_numeric ))                 # pre-release is numbered; bump it
-        render_prerel "$prev_numeric" "$prev_prefix"
+  # case two: bump or append numeric to previous pre-release part
+  if [ "$proto" == "+" ]; then # dummy "+" indicates no prototype argument provided
+    if [ -n "$prev_numeric" ]; then
+      : $((++prev_numeric)) # previous pre-release is already numbered, bump it
+      render_prerel "$prev_numeric" "$prev_prefix"
     else
-        render_prerel 1 "$prev_prefix"          # start pre-release at number '1'
+      render_prerel 1 "$prev_prefix" # append starting number
     fi
+    return
+  fi
+
+  # case three: set, bump, or append using prototype prefix
+  if [ "$prev_prefix" != "$proto" ]; then
+    render_prerel 1 "$proto" # proto not same pre-release; set and start at '1'
+  elif [ -n "$prev_numeric" ]; then
+    : $((++prev_numeric)) # pre-release is numbered; bump it
+    render_prerel "$prev_numeric" "$prev_prefix"
+  else
+    render_prerel 1 "$prev_prefix" # start pre-release at number '1'
+  fi
 }
 
 function command_bump {
-  local new; local version; local sub_version; local command;
+  local new
+  local version
+  local sub_version
+  local command
 
   case $# in
-    2) case $1 in
-        major|minor|patch|prerel|release) command=$1; sub_version="+."; version=$2;;
-        *) usage_help;;
-       esac ;;
-    3) case $1 in
-        prerel|build) command=$1; sub_version=$2 version=$3 ;;
-        *) usage_help;;
-       esac ;;
-    *) usage_help;;
+  2) case $1 in
+    major | minor | patch | prerel | release)
+      command=$1
+      sub_version="+."
+      version=$2
+      ;;
+    *) usage_help ;;
+    esac ;;
+  3) case $1 in
+    prerel | build)
+      command=$1
+      sub_version=$2 version=$3
+      ;;
+    *) usage_help ;;
+    esac ;;
+  *) usage_help ;;
   esac
 
   validate_version "$version" parts
@@ -305,13 +358,13 @@ function command_bump {
   local build="${parts[4]}"
 
   case "$command" in
-    major) new="$((major + 1)).0.0";;
-    minor) new="${major}.$((minor + 1)).0";;
-    patch) new="${major}.${minor}.$((patch + 1))";;
-    release) new="${major}.${minor}.${patch}";;
-    prerel) new=$(validate_version "${major}.${minor}.${patch}-$(bump_prerel "$sub_version" "$prere")");;
-    build) new=$(validate_version "${major}.${minor}.${patch}${prere}+${sub_version}");;
-    *) usage_help ;;
+  major) new="$((major + 1)).0.0" ;;
+  minor) new="${major}.$((minor + 1)).0" ;;
+  patch) new="${major}.${minor}.$((patch + 1))" ;;
+  release) new="${major}.${minor}.${patch}" ;;
+  prerel) new=$(validate_version "${major}.${minor}.${patch}-$(bump_prerel "$sub_version" "$prere")") ;;
+  build) new=$(validate_version "${major}.${minor}.${patch}${prere}+${sub_version}") ;;
+  *) usage_help ;;
   esac
 
   echo "$new"
@@ -319,14 +372,18 @@ function command_bump {
 }
 
 function command_compare {
-  local v; local v_;
+  local v
+  local v_
 
   case $# in
-    2) v=$(validate_version "$1"); v_=$(validate_version "$2") ;;
-    *) usage_help ;;
+  2)
+    v=$(validate_version "$1")
+    v_=$(validate_version "$2")
+    ;;
+  *) usage_help ;;
   esac
 
-  set +u                        # need unset array element to evaluate to null
+  set +u # need unset array element to evaluate to null
   compare_version "$v" "$v_"
   exit 0
 }
@@ -363,37 +420,37 @@ function command_diff {
 
 # shellcheck disable=SC2034
 function command_get {
-    local part version
+  local part version
 
-    if [[ "$#" -ne "2" ]] || [[ -z "$1" ]] || [[ -z "$2" ]]; then
-        usage_help
-        exit 0
-    fi
-
-    part="$1"
-    version="$2"
-
-    validate_version "$version" parts
-    local major="${parts[0]}"
-    local minor="${parts[1]}"
-    local patch="${parts[2]}"
-    local prerel="${parts[3]:1}"
-    local build="${parts[4]:1}"
-    local release="${major}.${minor}.${patch}"
-
-    case "$part" in
-        major|minor|patch|release|prerel|build) echo "${!part}" ;;
-        *) usage_help ;;
-    esac
-
+  if [[ "$#" -ne "2" ]] || [[ -z "$1" ]] || [[ -z "$2" ]]; then
+    usage_help
     exit 0
+  fi
+
+  part="$1"
+  version="$2"
+
+  validate_version "$version" parts
+  local major="${parts[0]}"
+  local minor="${parts[1]}"
+  local patch="${parts[2]}"
+  local prerel="${parts[3]:1}"
+  local build="${parts[4]:1}"
+  local release="${major}.${minor}.${patch}"
+
+  case "$part" in
+  major | minor | patch | release | prerel | build) echo "${!part}" ;;
+  *) usage_help ;;
+  esac
+
+  exit 0
 }
 
 function command_validate {
   if [[ "$#" -ne "1" ]]; then
-        usage_help
-  fi  
-  
+    usage_help
+  fi
+
   if [[ "$1" =~ $SEMVER_REGEX ]]; then
     echo "valid"
   else
@@ -404,16 +461,40 @@ function command_validate {
 }
 
 case $# in
-  0) echo "Unknown command: $*"; usage_help;;
+0)
+  echo "Unknown command: $*"
+  usage_help
+  ;;
 esac
 
 case $1 in
-  --help|-h) echo -e "$USAGE"; exit 0;;
-  --version|-v) usage_version ;;
-  bump) shift; command_bump "$@";;
-  get) shift; command_get "$@";;
-  compare) shift; command_compare "$@";;
-  diff) shift; command_diff "$@";;
-  validate) shift; command_validate "$@";;
-  *) echo "Unknown arguments: $*"; usage_help;;
+--help | -h)
+  echo -e "$USAGE"
+  exit 0
+  ;;
+--version | -v) usage_version ;;
+bump)
+  shift
+  command_bump "$@"
+  ;;
+get)
+  shift
+  command_get "$@"
+  ;;
+compare)
+  shift
+  command_compare "$@"
+  ;;
+diff)
+  shift
+  command_diff "$@"
+  ;;
+validate)
+  shift
+  command_validate "$@"
+  ;;
+*)
+  echo "Unknown arguments: $*"
+  usage_help
+  ;;
 esac

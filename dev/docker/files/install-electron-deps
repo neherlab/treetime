@@ -31,7 +31,7 @@ apt-get install -qq --no-install-recommends --yes \
   libgl1-mesa-glx \
   dbus \
   xdg-utils \
->/dev/null
+  >/dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get clean autoclean >/dev/null
 apt-get autoremove --yes >/dev/null

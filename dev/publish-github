@@ -15,7 +15,10 @@ trap "exit" INT
 trap 'echo "ERROR: $BASH_SOURCE:$LINENO $BASH_COMMAND" >&2' ERR
 
 # Directory where this script resides
-THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
+THIS_DIR="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  pwd
+)"
 
 artifacts_dir=
 repo=

@@ -58,10 +58,10 @@ sed -i'' \
   -e 's|^#includedir.*||g' \
   "/etc/sudoers"
 
-echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
-echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
+echo "%sudo ALL=(ALL) NOPASSWD:ALL" >>"/etc/sudoers"
+echo "${USER} ALL=(ALL) NOPASSWD:ALL" >>"/etc/sudoers"
 
-cat <<'EOF' >> "${HOME}/.bashrc"
+cat <<'EOF' >>"${HOME}/.bashrc"
 HISTSIZE=100000
 HISTFILESIZE=200000
 
@@ -80,7 +80,6 @@ alias egrep='egrep --color=auto'
 function mkcd() { mkdir -p "${1}" && cd "${1}" ; }
 
 EOF
-
 
 touch "${HOME}/.hushlogin"
 chown -R "${USER}:${GROUP}" "${HOME}"

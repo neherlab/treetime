@@ -58,7 +58,7 @@ fi
 
 if [ -n "$(git status -s)" ]; then
   echo "Uncommitted changes detected. Refusing to proceed." >/dev/stderr
-  echo "Stash or commit the changes and retry."  >/dev/stderr
+  echo "Stash or commit the changes and retry." >/dev/stderr
   exit 1
 fi
 
@@ -74,9 +74,9 @@ if [ "$1" == "cli" ]; then
   echo "Running \`cargo build\` to simulate CI build."
   cargo build --quiet --locked >/dev/null
   if [ -n "$(git status -s)" ]; then
-    echo "After running \`cargo build\`, your local 'Cargo.lock' is not identical to the committed 'Cargo.lock.'"  >/dev/stderr
-    echo "It likely means that the dependencies recorded in 'Cargo.lock' are different from the ones specified in one of the 'Cargo.toml'."  >/dev/stderr
-    echo "Update the lockfile, for example by rebuilding the project(s), then commit the changes to the lockfile, and retry."  >/dev/stderr
+    echo "After running \`cargo build\`, your local 'Cargo.lock' is not identical to the committed 'Cargo.lock.'" >/dev/stderr
+    echo "It likely means that the dependencies recorded in 'Cargo.lock' are different from the ones specified in one of the 'Cargo.toml'." >/dev/stderr
+    echo "Update the lockfile, for example by rebuilding the project(s), then commit the changes to the lockfile, and retry." >/dev/stderr
     exit 1
   fi
 

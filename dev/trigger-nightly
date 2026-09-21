@@ -30,13 +30,25 @@ main() {
   local force="false"
 
   # shfmt:off
-  while (( $# > 0 )); do
+  while (($# > 0)); do
     case "${1}" in
-      -h|--help) show_help; exit 0 ;;
-      -f|--force) force="true"; shift ;;
-      --) shift; break ;;
-      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
-      *) break ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    -f | --force)
+      force="true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf "Unknown option: %s\n" "${1}" >&2
+      exit 1
+      ;;
+    *) break ;;
     esac
   done
   # shfmt:on
@@ -44,8 +56,14 @@ main() {
   local source_repo
   source_repo=$(git -C "${THIS_DIR}" remote get-url origin | sed 's|.*github\.com[:/]||; s|\.git$||')
 
-  command -v gh >/dev/null || { printf "Required command not found: gh\n" >&2; exit 1; }
-  command -v git >/dev/null || { printf "Required command not found: git\n" >&2; exit 1; }
+  command -v gh >/dev/null || {
+    printf "Required command not found: gh\n" >&2
+    exit 1
+  }
+  command -v git >/dev/null || {
+    printf "Required command not found: git\n" >&2
+    exit 1
+  }
 
   local force_args=()
   local force_label=""

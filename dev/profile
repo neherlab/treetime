@@ -57,12 +57,12 @@ profile_perf() {
   perf record -F "${SAMPLE_RATE}" --call-graph dwarf -o "${output}" -- "${binary}" "$@"
 
   printf "\n===== Self-time (top 30, userspace) =====\n"
-  perf report -i "${output}" --stdio --no-children -g none 2>/dev/null \
-    | grep -vE '^\s*#' | head -30
+  perf report -i "${output}" --stdio --no-children -g none 2>/dev/null |
+    grep -vE '^\s*#' | head -30
 
   printf "\n===== Call graph (callers, >=1%%) =====\n"
-  perf report -i "${output}" --stdio -g graph,1,caller 2>/dev/null \
-    | grep -vE '^\s*#' | head -60
+  perf report -i "${output}" --stdio -g graph,1,caller 2>/dev/null |
+    grep -vE '^\s*#' | head -60
 
   printf "\nRecording saved: %s\n" "${output}" >&2
 }
@@ -84,17 +84,41 @@ main() {
   local output=""
 
   # shfmt:off
-  while (( $# > 0 )); do
+  while (($# > 0)); do
     case "${1}" in
-      -h|--help) show_help; exit 0 ;;
-      --perf) backend="perf"; shift ;;
-      --samply) backend="samply"; shift ;;
-      --rate) SAMPLE_RATE="${2}"; shift 2 ;;
-      --output) output="${2}"; shift 2 ;;
-      --no-build) do_build=false; shift ;;
-      --) shift; break ;;
-      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
-      *) break ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --perf)
+      backend="perf"
+      shift
+      ;;
+    --samply)
+      backend="samply"
+      shift
+      ;;
+    --rate)
+      SAMPLE_RATE="${2}"
+      shift 2
+      ;;
+    --output)
+      output="${2}"
+      shift 2
+      ;;
+    --no-build)
+      do_build=false
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf "Unknown option: %s\n" "${1}" >&2
+      exit 1
+      ;;
+    *) break ;;
     esac
   done
   # shfmt:on
@@ -127,8 +151,8 @@ main() {
   mkdir -p "$(dirname "${output}")"
 
   case "${backend}" in
-    perf) profile_perf "${binary}" "${output}" "$@" ;;
-    samply) profile_samply "${binary}" "${output}" "$@" ;;
+  perf) profile_perf "${binary}" "${output}" "$@" ;;
+  samply) profile_samply "${binary}" "${output}" "$@" ;;
   esac
 }
 

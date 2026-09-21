@@ -58,10 +58,16 @@ function run_one() {
     trap "exit" INT
     export CROSS_COMPILE="${target}"
     export BUILD_TIME="${build_time}"
-    ./dev/docker/run ./dev/cross/build "${bin[@]}" "${target}" || { printf "Build failed for %s\n" "${target}" >&2; exit 1; }
+    ./dev/docker/run ./dev/cross/build "${bin[@]}" "${target}" || {
+      printf "Build failed for %s\n" "${target}" >&2
+      exit 1
+    }
     ./dev/docker/run ./dev/cross/check "${bin[@]}" "${target}"
     if [[ -n "${run}" ]]; then
-      ./dev/docker/run ./dev/cross/run "${bin[@]}" "${target}" || { printf "Run failed for %s\n" "${target}" >&2; exit 1; }
+      ./dev/docker/run ./dev/cross/run "${bin[@]}" "${target}" || {
+        printf "Run failed for %s\n" "${target}" >&2
+        exit 1
+      }
     fi
   )
 }
@@ -131,24 +137,45 @@ function main() {
   local split="" serial="" single_target=""
 
   # shfmt:off
-  while (( $# > 0 )); do
+  while (($# > 0)); do
     case "${1}" in
-      -h|--help) show_help; exit 0 ;;
-      --split) split=1; shift ;;
-      --serial) serial=1; shift ;;
-      --parallel) shift ;;
-      --target=*) single_target="${1#--target=}"; shift ;;
-      --run) bin+=("--run"); shift ;;
-      --) shift; break ;;
-      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
-      *) break ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --split)
+      split=1
+      shift
+      ;;
+    --serial)
+      serial=1
+      shift
+      ;;
+    --parallel) shift ;;
+    --target=*)
+      single_target="${1#--target=}"
+      shift
+      ;;
+    --run)
+      bin+=("--run")
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf "Unknown option: %s\n" "${1}" >&2
+      exit 1
+      ;;
+    *) break ;;
     esac
   done
   # shfmt:on
 
   bin+=("$@")
 
-  if (( ${#bin[@]} == 0 )); then
+  if ((${#bin[@]} == 0)); then
     show_help >&2
     exit 1
   fi

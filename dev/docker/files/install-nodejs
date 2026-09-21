@@ -9,8 +9,8 @@ bin_dir="/usr/local/bin"
 
 mkdir -p "${node_dir}" "${bun_dir}" "${bin_dir}"
 
-curl -fsSL "https://nodejs.org/dist/v${node_version}/node-v${node_version}-linux-x64.tar.xz" \
-  | tar -xJ --strip-components=1 -C "${node_dir}"
+curl -fsSL "https://nodejs.org/dist/v${node_version}/node-v${node_version}-linux-x64.tar.xz" |
+  tar -xJ --strip-components=1 -C "${node_dir}"
 ln -sf "${node_dir}/bin/node" "${bin_dir}/node"
 ln -sf "${node_dir}/bin/npm" "${bin_dir}/npm"
 ln -sf "${node_dir}/bin/npx" "${bin_dir}/npx"

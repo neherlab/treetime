@@ -16,7 +16,10 @@ trap "exit" INT
 source "${BASH_SOURCE%/*}/lib/utils.sh"
 
 # Directory where this script resides
-THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
+THIS_DIR="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  pwd
+)"
 
 DOCKER_ORG="neherlab"
 PROJECT_NAME="treetime"

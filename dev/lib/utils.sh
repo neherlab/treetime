@@ -62,7 +62,7 @@ export -f run_with_signals
 # Run a command with lower (nicer) CPU and IO priority, time it and print the outcome
 function nicely() {
   local -a env_vars=()
-  while (( $# > 0 )) && [[ "${1}" == *=* ]]; do
+  while (($# > 0)) && [[ "${1}" == *=* ]]; do
     env_vars+=("${1}")
     shift
   done

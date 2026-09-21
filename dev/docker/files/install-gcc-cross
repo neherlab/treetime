@@ -7,9 +7,9 @@ mkdir -p "${dest}"
 
 URL="https://github.com/binarylandia/build_crosstool-ng/releases/download/2024-11-08_06-06-34/gcc-14.2.0-${triplet}-2024-11-08_06-06-34.tar.xz"
 
-curl -fsSL "${URL}" \
-  | pixz -dp "$(nproc)" \
-  | tar -C "${dest}" -x
+curl -fsSL "${URL}" |
+  pixz -dp "$(nproc)" |
+  tar -C "${dest}" -x
 
 ls "${dest}/bin/${triplet}-gcc"
 "${dest}/bin/${triplet}-gcc" -v
@@ -22,7 +22,7 @@ if [[ "${triplet}" =~ (mingw|windows) ]]; then
   # https://github.com/r-windows/rtools-packages/issues/185
   # https://github.com/skeeto/w64devkit/issues/52
   pushd "${dest}/lib/gcc/x86_64-w64-mingw32/14.2.0" >/dev/null
-    ln -s "libgcc.a" "libgcc_eh.a"
+  ln -s "libgcc.a" "libgcc_eh.a"
   popd >/dev/null
 
   # HACK: sysroot in MinGW GCC is nested under additional `mingw/` path segment, copy it upstairs to avoid having to

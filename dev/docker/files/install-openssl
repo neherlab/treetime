@@ -4,9 +4,9 @@ set -euxo pipefail
 dest=${1:-"/usr/local"}
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/staticbourg/releases/download/2024-12-03_21-25-53/openssl-3.4.0-static-x86_64-unknown-linux-gnu-2024-12-03_21-25-53.tar.xz" \
-  | pixz -dp "$(nproc)" \
-  | tar -C "${dest}" -x
+curl -fsSL "https://github.com/binarylandia/staticbourg/releases/download/2024-12-03_21-25-53/openssl-3.4.0-static-x86_64-unknown-linux-gnu-2024-12-03_21-25-53.tar.xz" |
+  pixz -dp "$(nproc)" |
+  tar -C "${dest}" -x
 
 ls "${dest}/include/openssl/evp.h"
 ls "${dest}/lib/libssl.a"
