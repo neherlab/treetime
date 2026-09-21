@@ -1,0 +1,3 @@
+[cache]
+explain_miss = false
+heartbeat_secs = 0

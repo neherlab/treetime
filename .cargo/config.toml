@@ -42,6 +42,8 @@ U = "upgrade-deps"
 
 [env]
 DYNAMIC_ARCH = "1" # https://github.com/xianyi/OpenBLAS#support-for-multiple-targets-in-a-single-library=
+KACHE_BASE_DIR = { value = ".", relative = true, force = true }
+KACHE_HEARTBEAT_SECS = { value = "0", force = true }
 
 [future-incompat-report]
 frequency = 'always'

@@ -6,6 +6,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set positional-arguments := true
 export CARGO_TERM_QUIET := "true"
+export KACHE_PROGRESS := "off"
 
 project_dir := justfile_directory()
 
