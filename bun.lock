@@ -19,6 +19,7 @@
         "turbo": "2.9.14",
         "typescript": "7.0.2",
         "vitest": "4.1.7",
+        "zod": "catalog:",
       },
     },
     "packages/app-contracts": {

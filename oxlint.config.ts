@@ -2,8 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { defineConfig } from "oxlint";
+import type { OxlintOverride } from "oxlint";
+import * as z from "zod";
 
 const PACKAGES_DIR = join(import.meta.dirname, "packages");
+
 const WORKSPACE_SCOPE = "@neherlab/";
 
 const PACKAGE_GRAPH_MESSAGE =
@@ -15,47 +18,25 @@ interface WorkspacePackage {
   dependencies: string[];
 }
 
-interface PackageManifest {
-  name?: string;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-}
+const packageManifestSchema = z.object({
+  name: z.string().optional(),
+  dependencies: z.record(z.string(), z.string()).optional(),
+  devDependencies: z.record(z.string(), z.string()).optional(),
+  peerDependencies: z.record(z.string(), z.string()).optional(),
+});
 
-function workspacePackages(): WorkspacePackage[] {
-  const packages: WorkspacePackage[] = [];
-  for (const dir of readdirSync(PACKAGES_DIR)) {
-    let raw: string;
-    try {
-      raw = readFileSync(join(PACKAGES_DIR, dir, "package.json"), "utf8");
-    } catch {
-      continue;
-    }
-    const manifest: PackageManifest = JSON.parse(raw);
-    const name = manifest.name;
-    if (name === undefined || !name.startsWith(WORKSPACE_SCOPE)) {
-      continue;
-    }
-    const declared = {
-      ...manifest.dependencies,
-      ...manifest.devDependencies,
-      ...manifest.peerDependencies,
-    };
-    const dependencies = Object.keys(declared).filter((key) => key.startsWith(WORKSPACE_SCOPE));
-    packages.push({ dir, name, dependencies });
-  }
-  return packages;
-}
-
-function packageBoundaryOverrides() {
+function packageBoundaryOverrides(): OxlintOverride[] {
   const packages = workspacePackages();
   const names = packages.map((entry) => entry.name);
+
   return packages.flatMap((entry) => {
     const allowed = new Set([entry.name, ...entry.dependencies]);
     const banned = names.filter((other) => !allowed.has(other));
+
     if (banned.length === 0) {
       return [];
     }
+
     return [
       {
         files: [`packages/${entry.dir}/**`],
@@ -65,6 +46,38 @@ function packageBoundaryOverrides() {
       },
     ];
   });
+}
+
+function workspacePackages(): WorkspacePackage[] {
+  const packages: WorkspacePackage[] = [];
+
+  for (const dir of readdirSync(PACKAGES_DIR)) {
+    let raw: string;
+
+    try {
+      raw = readFileSync(join(PACKAGES_DIR, dir, "package.json"), "utf8");
+    } catch {
+      continue;
+    }
+
+    const manifest = packageManifestSchema.parse(JSON.parse(raw));
+    const name = manifest.name;
+
+    if (name === undefined || !name.startsWith(WORKSPACE_SCOPE)) {
+      continue;
+    }
+
+    const declared = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+      ...manifest.peerDependencies,
+    };
+
+    const dependencies = Object.keys(declared).filter((key) => key.startsWith(WORKSPACE_SCOPE));
+    packages.push({ dir, name, dependencies });
+  }
+
+  return packages;
 }
 
 export default defineConfig({
@@ -185,10 +198,7 @@ export default defineConfig({
     "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "error",
     "typescript/consistent-type-assertions": ["error", { assertionStyle: "never" }],
-    "no-restricted-globals": [
-      "error",
-      { name: "Date", message: "Use luxon DateTime instead of the built-in Date." },
-    ],
+    "no-restricted-globals": ["error", { name: "Date", message: "Use luxon DateTime instead of the built-in Date." }],
 
     "treetime/no-vague-identifiers": "error",
     "treetime/no-exec-shell-string": "error",
@@ -225,18 +235,12 @@ export default defineConfig({
       {
         patterns: [
           {
-            group: [
-              "@neherlab/*/src/*",
-              "@neherlab/*/src/**",
-              "@neherlab/*/dist/*",
-              "@neherlab/*/dist/**",
-            ],
+            group: ["@neherlab/*/src/*", "@neherlab/*/src/**", "@neherlab/*/dist/*", "@neherlab/*/dist/**"],
             message: "Import a workspace package through its entry point, not a deep internal path.",
           },
           {
             group: ["../../*", "../../**"],
-            message:
-              "A relative path must not reach into a sibling package. Import it by its @neherlab/* name.",
+            message: "A relative path must not reach into a sibling package. Import it by its @neherlab/* name.",
           },
         ],
       },
@@ -246,11 +250,7 @@ export default defineConfig({
   overrides: [
     ...packageBoundaryOverrides(),
     {
-      files: [
-        "packages/app-web/src/**",
-        "packages/app-ui/src/**",
-        "packages/app-desktop/renderer/**",
-      ],
+      files: ["packages/app-web/src/**", "packages/app-ui/src/**", "packages/app-desktop/renderer/**"],
       rules: {
         "import/no-nodejs-modules": "error",
       },
@@ -294,27 +294,20 @@ export default defineConfig({
       },
     },
     {
-      files: [
-        "**/vite.config.ts",
-        "**/*.config.ts",
-        "**/scripts/**",
-        "packages/app-napi/**",
-      ],
+      files: ["**/vite.config.ts", "**/*.config.ts", "**/scripts/**", "packages/app-napi/**"],
       rules: {
         "import/no-nodejs-modules": "off",
         "treetime/no-module-level-mutable": "off",
       },
     },
     {
-      files: [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/*.spec.ts",
-        "**/*.spec.tsx",
-        "**/__tests__/**",
-      ],
+      files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "**/__tests__/**"],
       rules: {
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off",
         "import/no-nodejs-modules": "error",
+        "unicorn/consistent-function-scoping": "off",
         "treetime/no-fake-success": "error",
         "treetime/no-tautological-assertion": "error",
         "treetime/no-test-resource-access": "error",
@@ -353,6 +346,61 @@ export default defineConfig({
       ],
       rules: {
         "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      files: ["dev/lints/oxlint/**"],
+      rules: {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "import/no-nodejs-modules": "off",
+        "treetime/callers-before-callees": "off",
+      },
+    },
+    {
+      files: [
+        "packages/app-ui/src/App.tsx",
+        "packages/app-ui/src/ui/fonts.ts",
+        "packages/app-web/src/main.tsx",
+        "packages/app-desktop/renderer/main.tsx",
+      ],
+      rules: {
+        "import/no-unassigned-import": "off",
+      },
+    },
+    {
+      files: ["packages/app-ui/src/**"],
+      rules: {
+        "react-perf/jsx-no-jsx-as-prop": "off",
+        "react-perf/jsx-no-new-object-as-prop": "off",
+      },
+    },
+    {
+      files: [
+        "packages/app-contracts/src/bridge.ts",
+        "packages/app-desktop/src/desktop-bridge.ts",
+        "packages/app-desktop/src/main.ts",
+        "packages/app-web/src/bridge-web.ts",
+      ],
+      rules: {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+      },
+    },
+    {
+      files: ["test/property.test.ts"],
+      rules: {
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "vitest/no-standalone-expect": "off",
+      },
+    },
+    {
+      files: ["dev/lints/oxlint/rules/tailwind-classes.ts"],
+      rules: {
+        "unicorn/no-array-sort": "off",
       },
     },
   ],
