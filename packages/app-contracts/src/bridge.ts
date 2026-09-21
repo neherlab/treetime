@@ -31,6 +31,13 @@ import {
   zVersionInfo,
 } from "./generated/zod.gen";
 
+const zBridgeEvent = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("progress"), data: zProgressEvent }),
+  z.object({ type: z.literal("log"), data: zLogEvent }),
+]);
+
+export type BridgeEvent = z.infer<typeof zBridgeEvent>;
+
 export interface CommandOptions {
   onProgress?: (event: ProgressEvent) => void;
   signal?: AbortSignal;
@@ -94,4 +101,8 @@ export function parseProgressEvent(data: unknown): ProgressEvent {
 
 export function parseLogEvent(data: unknown): LogEvent {
   return zLogEvent.parse(data);
+}
+
+export function parseBridgeEvent(data: unknown): BridgeEvent {
+  return zBridgeEvent.parse(data);
 }

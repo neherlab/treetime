@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import {
   CancelledError,
   createBridge,
+  parseBridgeEvent,
   parseLogEvent,
   parseProgressEvent,
   type BridgeTransport,
@@ -52,6 +53,7 @@ describe("bridge streaming and cancellation", () => {
       for (const event of progress) {
         options?.onProgress?.(event);
       }
+
       return Promise.resolve({ model_name: "JC69" });
     };
 
@@ -68,7 +70,7 @@ describe("bridge streaming and cancellation", () => {
     await expect(bridge.clock({ dates: "d", outdir: "o" })).rejects.toBeInstanceOf(CancelledError);
   });
 
-  test("CancelledError is an Error with a stable name", () => {
+  test("cancelled error has a stable Error name", () => {
     const err = new CancelledError();
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe("CancelledError");
@@ -77,10 +79,13 @@ describe("bridge streaming and cancellation", () => {
   test("the abort signal is passed through to the transport", async () => {
     const controller = new AbortController();
     let captured: Parameters<BridgeTransport["command"]> | undefined;
+
     const command: BridgeTransport["command"] = (...args) => {
       captured = args;
+
       return Promise.resolve({});
     };
+
     const bridge = createBridge(stubTransport({ command }));
 
     await bridge.optimize({ tree: "t", outdir: "o" }, { signal: controller.signal });
@@ -90,6 +95,15 @@ describe("bridge streaming and cancellation", () => {
 });
 
 describe("bridge streaming event parsers", () => {
+  test("parseBridgeEvent accepts a well-formed progress event", () => {
+    const event = { type: "progress", data: { stage: "read", fraction: 0.5, message: "half" } };
+    expect(parseBridgeEvent(event)).toStrictEqual(event);
+  });
+
+  test("parseBridgeEvent rejects an unknown event type", () => {
+    expect(() => parseBridgeEvent({ type: "result", data: {} })).toThrow(ZodError);
+  });
+
   test("parseProgressEvent accepts a well-formed event", () => {
     const event = { stage: "read", fraction: 0.5, message: "half" };
     expect(parseProgressEvent(event)).toStrictEqual(event);

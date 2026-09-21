@@ -41,7 +41,7 @@ describe("zod_schemas optional fields", () => {
     expect(schema.safeParse({}).success).toBe(true);
   });
 
-  test("AncestralArgs accepts optional fields when present", () => {
+  test("ancestral args accept optional fields when present", () => {
     const parsed = zAncestralArgs.safeParse({
       tree: "t.nwk",
       outdir: "out",
@@ -49,10 +49,11 @@ describe("zod_schemas optional fields", () => {
       dense: true,
       seed: 7,
     });
+
     expect(parsed.success).toBe(true);
   });
 
-  test("AncestralArgs rejects a wrong type in an optional field", () => {
+  test("ancestral args reject a wrong type in an optional field", () => {
     expect(zAncestralArgs.safeParse({ tree: "t.nwk", outdir: "out", dense: "yes" }).success).toBe(false);
   });
 });
@@ -66,9 +67,19 @@ interface IntCase {
 }
 
 const INT_CASES: IntCase[] = [
-  { name: "AncestralArgs.gtr_iterations", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "gtr_iterations" },
+  {
+    name: "AncestralArgs.gtr_iterations",
+    schema: zAncestralArgs,
+    base: { tree: "t", outdir: "o" },
+    field: "gtr_iterations",
+  },
   { name: "AncestralArgs.seed", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "seed", int64: true },
-  { name: "ClockArgs.sequence_length", schema: zClockArgs, base: { dates: "d", outdir: "o" }, field: "sequence_length" },
+  {
+    name: "ClockArgs.sequence_length",
+    schema: zClockArgs,
+    base: { dates: "d", outdir: "o" },
+    field: "sequence_length",
+  },
   { name: "TimetreeArgs.max_iter", schema: zTimetreeArgs, base: { outdir: "o" }, field: "max_iter" },
   {
     name: "MugrationArgs.iterations",
@@ -84,9 +95,12 @@ describe("zod_schemas integer fields", () => {
     expect(schema.safeParse({ ...base, [field]: 4 }).success).toBe(true);
   });
 
-  test.each(INT_CASES)("$name rejects a negative whole number because the Rust type is unsigned", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: -3 }).success).toBe(false);
-  });
+  test.each(INT_CASES)(
+    "$name rejects a negative whole number because the Rust type is unsigned",
+    ({ schema, base, field }) => {
+      expect(schema.safeParse({ ...base, [field]: -3 }).success).toBe(false);
+    },
+  );
 
   test.each(INT_CASES)("$name rejects a fractional number", ({ schema, base, field }) => {
     expect(schema.safeParse({ ...base, [field]: 2.5 }).success).toBe(false);
@@ -109,21 +123,21 @@ describe("zod_schemas integer fields", () => {
 });
 
 describe("zod_schemas number fields keep fractional values", () => {
-  test("ClockArgs.clock_filter accepts a fractional number", () => {
+  test("clock args accept a fractional clock filter", () => {
     expect(zClockArgs.safeParse({ dates: "d", outdir: "o", clock_filter: 2.5 }).success).toBe(true);
   });
 
-  test("MugrationArgs.pc accepts a fractional number", () => {
+  test("mugration args accept a fractional pseudocount", () => {
     expect(zMugrationArgs.safeParse({ attribute: "a", states: "s", outdir: "o", pc: 0.01 }).success).toBe(true);
   });
 });
 
 describe("zod_schemas error and enum shapes", () => {
-  test("ErrorResponse accepts a well-formed error", () => {
+  test("error response accepts a well-formed error", () => {
     expect(zErrorResponse.safeParse({ code: "E_BAD", message: "bad input" }).success).toBe(true);
   });
 
-  test("ErrorResponse rejects a missing message", () => {
+  test("error response rejects a missing message", () => {
     expect(zErrorResponse.safeParse({ code: "E_BAD" }).success).toBe(false);
   });
 
@@ -131,15 +145,15 @@ describe("zod_schemas error and enum shapes", () => {
     expect(zLogLevel.safeParse(level).success).toBe(true);
   });
 
-  test("LogLevel rejects an unknown level", () => {
+  test("log level rejects an unknown level", () => {
     expect(zLogLevel.safeParse("Fatal").success).toBe(false);
   });
 
-  test("LogEvent rejects an out-of-alphabet level", () => {
+  test("log event rejects an out-of-alphabet level", () => {
     expect(zLogEvent.safeParse({ level: "Verbose", message: "x" }).success).toBe(false);
   });
 
-  test("VersionInfo rejects a non-string version", () => {
+  test("version info rejects a non-string version", () => {
     expect(zVersionInfo.safeParse({ version: 1 }).success).toBe(false);
   });
 });
