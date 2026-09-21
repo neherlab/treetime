@@ -32,7 +32,6 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "6.1.5",
-    "tailwindcss": "4.3.0",
     "zustand": "5.0.13"
   },
   "devDependencies": {
