@@ -37,12 +37,15 @@ function applyDataset(
   setSelectedDataset(datasetName);
   const info = datasets?.find((d) => d.name === datasetName);
   const files = info?.files ?? [];
+
   if (files.includes("tree.nwk")) {
     setFile("tree", { name: `${datasetName}/tree.nwk`, size: 0 });
   }
+
   if (files.includes("aln.fasta.xz")) {
     setFile("alignment", { name: `${datasetName}/aln.fasta.xz`, size: 0 });
   }
+
   if (files.includes("metadata.tsv")) {
     setFile("dates", { name: `${datasetName}/metadata.tsv`, size: 0 });
     setFile("states", { name: `${datasetName}/metadata.tsv`, size: 0 });
@@ -69,6 +72,7 @@ export function FileInputPanel() {
   const handleDatasetChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const dataset = e.target.value;
+
       if (dataset) {
         applyDataset(dataset, datasets, setSelectedDataset, setFile);
       }
@@ -127,6 +131,7 @@ export function FileInputPanel() {
         {FILE_SLOTS.map((slot) => {
           const required = reqs.required.includes(slot.kind);
           const optional = reqs.optional.includes(slot.kind);
+
           return <FileSlot key={slot.kind} config={slot} relevant={required || optional} required={required} />;
         })}
       </div>
@@ -146,6 +151,7 @@ function QuickDatasetButton({
   onSelect: (name: string) => void;
 }) {
   const handleClick = useCallback(() => onSelect(name), [name, onSelect]);
+
   return (
     <button
       type="button"

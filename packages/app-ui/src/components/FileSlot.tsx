@@ -19,6 +19,7 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = e.target.files?.[0];
+
       if (selected) {
         setFile(config.kind, { name: selected.name, size: selected.size });
       }
@@ -28,6 +29,7 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
 
   const handleClear = useCallback(() => {
     setFile(config.kind, undefined);
+
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -37,6 +39,7 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       const dropped = e.dataTransfer.files[0];
+
       if (dropped) {
         setFile(config.kind, { name: dropped.name, size: dropped.size });
       }
@@ -102,6 +105,8 @@ export function FileSlot({ config, relevant, required }: FileSlotProps) {
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
+
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

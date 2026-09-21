@@ -3,7 +3,9 @@ import { Tooltip as BaseTooltip } from "@base-ui-components/react/tooltip";
 import { cn } from "./cn";
 
 const TooltipProvider = BaseTooltip.Provider;
+
 const TooltipRoot = BaseTooltip.Root;
+
 const TooltipTrigger = BaseTooltip.Trigger;
 
 function TooltipPopup({ className, children, ...props }: BaseTooltip.Popup.Props) {

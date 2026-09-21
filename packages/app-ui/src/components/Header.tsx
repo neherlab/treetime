@@ -1,5 +1,6 @@
 import { Monitor, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useCallback } from "react";
 
 import { useVersion } from "../hooks";
 import { useAppStore } from "../store/app-store";
@@ -17,11 +18,13 @@ const THEME_META: Record<ThemeChoice, { label: string; icon: React.ReactNode }> 
 
 function nextTheme(current: string | undefined): ThemeChoice {
   const index = THEME_CYCLE.findIndex((choice) => choice === current);
+
   return THEME_CYCLE[(index + 1) % THEME_CYCLE.length] ?? "system";
 }
 
 function themeMeta(theme: string | undefined): { label: string; icon: React.ReactNode } {
   const choice = THEME_CYCLE.find((candidate) => candidate === theme);
+
   return choice ? THEME_META[choice] : THEME_META.system;
 }
 
@@ -32,6 +35,7 @@ export function Header() {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   const meta = themeMeta(theme);
+  const toggleTheme = useCallback(() => setTheme(nextTheme(theme)), [setTheme, theme]);
 
   return (
     <header className="border-line bg-surface-1 flex h-12 shrink-0 items-center gap-3 border-b px-4">
@@ -56,7 +60,7 @@ export function Header() {
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <Button variant="ghost" size="icon" onClick={() => setTheme(nextTheme(theme))}>
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
               {meta.icon}
             </Button>
           }

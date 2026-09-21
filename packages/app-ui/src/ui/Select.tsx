@@ -4,7 +4,9 @@ import { ChevronsUpDown } from "lucide-react";
 import { cn } from "./cn";
 
 const SelectRoot = BaseSelect.Root;
+
 const SelectValue = BaseSelect.Value;
+
 const SelectGroup = BaseSelect.Group;
 
 function SelectTrigger({ className, children, ...props }: BaseSelect.Trigger.Props) {

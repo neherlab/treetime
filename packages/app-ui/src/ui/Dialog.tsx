@@ -3,9 +3,13 @@ import { Dialog as BaseDialog } from "@base-ui-components/react/dialog";
 import { cn } from "./cn";
 
 const DialogRoot = BaseDialog.Root;
+
 const DialogTrigger = BaseDialog.Trigger;
+
 const DialogClose = BaseDialog.Close;
+
 const DialogTitle = BaseDialog.Title;
+
 const DialogDescription = BaseDialog.Description;
 
 function DialogPopup({ className, children, ...props }: BaseDialog.Popup.Props) {

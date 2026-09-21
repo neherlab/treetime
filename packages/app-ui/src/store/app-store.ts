@@ -39,6 +39,7 @@ export const useAppStore = create<AppState>((set) => ({
   resetRun: () =>
     set((state) => {
       state.abortController?.abort();
+
       return {
         showResults: false,
         runStatus: "idle",
@@ -58,6 +59,7 @@ export const useAppStore = create<AppState>((set) => ({
   resetForm: () =>
     set((state) => {
       state.abortController?.abort();
+
       return {
         files: {},
         selectedDataset: "",
@@ -77,6 +79,7 @@ export const useAppStore = create<AppState>((set) => ({
   cancelRun: () =>
     set((state) => {
       state.abortController?.abort();
+
       return { runStatus: "idle", progress: undefined, abortController: undefined };
     }),
 

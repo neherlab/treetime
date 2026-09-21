@@ -3,7 +3,9 @@ import { Menu as BaseMenu } from "@base-ui-components/react/menu";
 import { cn } from "./cn";
 
 const MenuRoot = BaseMenu.Root;
+
 const MenuTrigger = BaseMenu.Trigger;
+
 const MenuGroup = BaseMenu.Group;
 
 function MenuPopup({ className, children, ...props }: BaseMenu.Popup.Props) {

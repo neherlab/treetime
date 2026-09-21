@@ -1,6 +1,6 @@
 import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useActiveCommand } from "../hooks/useActiveCommand";
 import type { CommandName } from "../types";
@@ -9,6 +9,11 @@ import { Button, Menu, cn } from "../ui";
 interface TabDef {
   key: string;
   label: string;
+}
+
+interface TableData {
+  columns: string[];
+  rows: string[][];
 }
 
 const COMMAND_TABS: Record<CommandName, TabDef[]> = {
@@ -90,7 +95,8 @@ export function ResultsPanel() {
 }
 
 function TabButton({ tab, active, onSelect }: { tab: TabDef; active: boolean; onSelect: (key: string) => void }) {
-  const handleClick = () => onSelect(tab.key);
+  const handleClick = useCallback(() => onSelect(tab.key), [onSelect, tab.key]);
+
   return (
     <button
       type="button"
@@ -107,12 +113,19 @@ function TabButton({ tab, active, onSelect }: { tab: TabDef; active: boolean; on
 
 function TabContent({ command, tab }: { command: CommandName; tab: string }) {
   if (tab === "tree") return <MockTree />;
+
   if (tab === "regression") return <MockRegressionPlot />;
+
   if (tab === "table" || tab === "traits" || tab === "confidence") return <MockDataTable tab={tab} />;
+
   if (tab === "sequences") return <MockFastaViewer />;
+
   if (tab === "model") return <MockModelPanel command={command} />;
+
   if (tab === "summary") return <MockPruneSummary />;
+
   if (tab === "auspice") return <MockAuspiceLink />;
+
   return <div className="text-ink-muted text-sm">Unknown tab</div>;
 }
 
@@ -283,7 +296,7 @@ function MockDataTable({ tab }: { tab: string }) {
   );
 }
 
-function getMockTableData(tab: string): { columns: string[]; rows: string[][] } {
+function getMockTableData(tab: string): TableData {
   if (tab === "table") {
     return {
       columns: ["Name", "Divergence", "Date", "Predicted", "Deviation", "Outlier"],
@@ -297,6 +310,7 @@ function getMockTableData(tab: string): { columns: string[]; rows: string[][] } 
       ]),
     };
   }
+
   if (tab === "traits") {
     return {
       columns: ["Node", "Trait", "Confidence"],
@@ -318,6 +332,7 @@ function getMockTableData(tab: string): { columns: string[]; rows: string[][] } 
       ],
     };
   }
+
   if (tab === "confidence") {
     return {
       columns: ["Node", "Date", "Lower CI", "Upper CI"],
@@ -331,6 +346,7 @@ function getMockTableData(tab: string): { columns: string[]; rows: string[][] } 
       ],
     };
   }
+
   return { columns: ["Column"], rows: [["No data"]] };
 }
 
@@ -387,19 +403,6 @@ const GTR_FREQUENCIES = [
 
 const FREQ_HUES = [200, 150, 70, 25];
 
-function freqColor(index: number, isDark: boolean): string {
-  const hue = FREQ_HUES[index] ?? 200;
-  return isDark ? `oklch(0.5 0.08 ${hue})` : `oklch(0.82 0.08 ${hue})`;
-}
-
-function rateHeatmapColor(value: number, maxValue: number, isDark: boolean): string {
-  const t = Math.min(value / maxValue, 1);
-  const lightness = isDark ? 0.3 + 0.15 * (1 - t) : 0.92 - 0.15 * t;
-  const chroma = 0.04 + 0.08 * t;
-  const hue = 200 - 175 * t;
-  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} ${hue.toFixed(0)})`;
-}
-
 function MockModelPanel({ command }: { command: CommandName }) {
   const showGtr = command !== "clock";
   const { resolvedTheme } = useTheme();
@@ -442,6 +445,7 @@ function RateMatrix({ maxRate, isDark }: { maxRate: number; isDark: boolean }) {
   const cell = 34;
   const pad = 18;
   const size = pad + cell * NUC_LABELS.length;
+
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[220px] font-mono">
       {NUC_LABELS.map((label, j) => (
@@ -469,8 +473,9 @@ function RateMatrix({ maxRate, isDark }: { maxRate: number; isDark: boolean }) {
       {NUC_LABELS.map((_, i) =>
         (GTR_RATE_MATRIX[i] ?? []).map((val, j) => {
           const isDiag = i === j;
+
           return (
-            <g key={`${i}-${j}`}>
+            <g key={`${NUC_LABELS[i]}-${NUC_LABELS[j]}`}>
               <rect
                 x={pad + cell * j + 1}
                 y={pad + cell * i + 1}
@@ -495,12 +500,22 @@ function RateMatrix({ maxRate, isDark }: { maxRate: number; isDark: boolean }) {
   );
 }
 
+function rateHeatmapColor(value: number, maxValue: number, isDark: boolean): string {
+  const t = Math.min(value / maxValue, 1);
+  const lightness = isDark ? 0.3 + 0.15 * (1 - t) : 0.92 - 0.15 * t;
+  const chroma = 0.04 + 0.08 * t;
+  const hue = 200 - 175 * t;
+
+  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} ${hue.toFixed(0)})`;
+}
+
 function FrequencyBar({ isDark }: { isDark: boolean }) {
   return (
     <svg viewBox="0 0 100 12" className="h-5 w-full" preserveAspectRatio="none">
       {GTR_FREQUENCIES.map(({ nuc, freq }, index) => {
         const x = GTR_FREQUENCIES.slice(0, index).reduce((sum, g) => sum + g.freq * 100, 0);
         const width = freq * 100;
+
         return (
           <g key={nuc}>
             <rect x={x} y={0} width={width} height={12} fill={freqColor(index, isDark)} />
@@ -512,6 +527,12 @@ function FrequencyBar({ isDark }: { isDark: boolean }) {
       })}
     </svg>
   );
+}
+
+function freqColor(index: number, isDark: boolean): string {
+  const hue = FREQ_HUES[index] ?? 200;
+
+  return isDark ? `oklch(0.5 0.08 ${hue})` : `oklch(0.82 0.08 ${hue})`;
 }
 
 function KV({ label, value }: { label: string; value: string }) {

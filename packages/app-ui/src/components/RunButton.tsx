@@ -11,9 +11,11 @@ import { Button } from "../ui";
 
 function buildDataPath(files: Partial<Record<FileSlotKind, { name: string }>>, slot: FileSlotKind): string {
   const file = files[slot];
+
   if (!file) {
     throw new Error(`Missing required file: ${slot}`);
   }
+
   return `data/${file.name}`;
 }
 
@@ -71,6 +73,7 @@ export function RunButton() {
           await bridge.prune({ tree, outdir, ...aln }, options);
           break;
       }
+
       setRunStatus("completed");
       setShowResults(true);
     } catch {
@@ -88,6 +91,7 @@ export function RunButton() {
 
   if (runStatus === "running") {
     const percent = Math.round((progress?.fraction ?? 0) * 100);
+
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">

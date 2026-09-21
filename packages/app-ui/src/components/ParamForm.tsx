@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
+import type { ChangeEvent } from "react";
 
 import { useActiveCommand } from "../hooks/useActiveCommand";
 import type { CommandName } from "../types";
@@ -305,6 +306,9 @@ export function ParamForm() {
 
 function ParamField({ param }: { param: ParamDef }) {
   const [value, setValue] = useState(param.defaultValue);
+  const handleSelect = useCallback((next: string | null) => setValue(next ?? ""), []);
+  const handleNumber = useCallback((event: ChangeEvent<HTMLInputElement>) => setValue(Number(event.target.value)), []);
+  const handleText = useCallback((event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value), []);
 
   return (
     <Field.Root className="flex items-center gap-3">
@@ -314,7 +318,7 @@ function ParamField({ param }: { param: ParamDef }) {
 
       {param.type === "select" && (
         <div className="flex-1">
-          <Select.Root value={String(value)} onValueChange={(next: string | null) => setValue(next ?? "")}>
+          <Select.Root value={String(value)} onValueChange={handleSelect}>
             <Select.Trigger className="h-8 text-xs">
               <Select.Value />
             </Select.Trigger>
@@ -334,7 +338,7 @@ function ParamField({ param }: { param: ParamDef }) {
           type="number"
           step="any"
           value={String(value)}
-          onChange={(e) => setValue(Number(e.target.value))}
+          onChange={handleNumber}
           className="h-8 flex-1 font-mono text-xs"
         />
       )}
@@ -343,23 +347,25 @@ function ParamField({ param }: { param: ParamDef }) {
         <Field.Control
           type="text"
           value={String(value)}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleText}
           placeholder={param.tooltip}
           className="h-8 flex-1 text-xs"
         />
       )}
 
-      {param.type === "toggle" && <Toggle value={Boolean(value)} onChange={setValue} />}
+      {param.type === "toggle" && <Toggle label={param.label} value={Boolean(value)} onChange={setValue} />}
     </Field.Root>
   );
 }
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (next: boolean) => void }) {
   const handleClick = useCallback(() => onChange(!value), [value, onChange]);
+
   return (
     <button
       type="button"
       role="switch"
+      aria-label={label}
       aria-checked={value}
       onClick={handleClick}
       className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", value ? "bg-accent" : "bg-surface-3")}

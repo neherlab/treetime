@@ -32,6 +32,7 @@ export function CommandNav() {
     >
       {COMMANDS.map((cmd) => {
         const active = activeCommand === cmd.name;
+
         return (
           <Link
             key={cmd.name}

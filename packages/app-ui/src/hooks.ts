@@ -20,6 +20,7 @@ import { useBridge } from "./BridgeContext";
 
 export function useVersion() {
   const bridge = useBridge();
+
   return useQuery<VersionInfo>({
     queryKey: ["version"],
     queryFn: () => bridge.version(),
@@ -29,6 +30,7 @@ export function useVersion() {
 
 export function useDatasets() {
   const bridge = useBridge();
+
   return useQuery<DatasetInfo[]>({
     queryKey: ["datasets"],
     queryFn: () => bridge.datasets(),
@@ -38,6 +40,7 @@ export function useDatasets() {
 
 export function useAncestral() {
   const bridge = useBridge();
+
   return useMutation<AncestralResult, Error, AncestralArgs>({
     mutationFn: (args) => bridge.ancestral(args),
   });
@@ -45,6 +48,7 @@ export function useAncestral() {
 
 export function useClock() {
   const bridge = useBridge();
+
   return useMutation<ClockResult, Error, ClockArgs>({
     mutationFn: (args) => bridge.clock(args),
   });
@@ -52,6 +56,7 @@ export function useClock() {
 
 export function useTimetree() {
   const bridge = useBridge();
+
   return useMutation<TimetreeResult, Error, TimetreeArgs>({
     mutationFn: (args) => bridge.timetree(args),
   });
@@ -59,6 +64,7 @@ export function useTimetree() {
 
 export function useMugration() {
   const bridge = useBridge();
+
   return useMutation<MugrationResult, Error, MugrationArgs>({
     mutationFn: (args) => bridge.mugration(args),
   });
@@ -66,6 +72,7 @@ export function useMugration() {
 
 export function useOptimize() {
   const bridge = useBridge();
+
   return useMutation<OptimizeResult, Error, OptimizeArgs>({
     mutationFn: (args) => bridge.optimize(args),
   });
@@ -73,6 +80,7 @@ export function useOptimize() {
 
 export function usePrune() {
   const bridge = useBridge();
+
   return useMutation<PruneResult, Error, PruneArgs>({
     mutationFn: (args) => bridge.prune(args),
   });
