@@ -13,6 +13,9 @@ version.workspace = true
 [lib]
 doctest = false
 
+[package.metadata.cargo-shear]
+ignored = ["approx"]
+
 [dependencies]
 # [internal]
 treetime-utils = { workspace = true }
@@ -24,6 +27,7 @@ itertools = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
