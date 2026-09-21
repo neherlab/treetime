@@ -25,7 +25,7 @@
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/app-web": {
       "entry": ["index.html!", "src/bridge-web.ts!"],
