@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+
 import { DETERMINISTIC_SEED } from "./test/seed";
 
 export default defineConfig({
