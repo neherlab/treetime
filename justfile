@@ -623,7 +623,7 @@ _check mode:
     if [[ "{{mode}}" == "full" ]]; then
       if command -v shellcheck >/dev/null 2>&1; then
         mapfile -t sh_files < <(dev_shell_files '{{project_dir}}')
-        run_check "shellcheck" shellcheck "${sh_files[@]}"
+        run_check "shellcheck" shellcheck --source-path='{{project_dir}}/dev/cross:{{project_dir}}/dev/docker:{{project_dir}}/dev/lib:{{project_dir}}/dev' "${sh_files[@]}"
       else
         skip "shellcheck" "shellcheck not installed"
       fi
