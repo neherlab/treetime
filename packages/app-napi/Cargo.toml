@@ -12,6 +12,7 @@ version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
+doctest = false
 
 [dependencies]
 app-datasets = { workspace = true }

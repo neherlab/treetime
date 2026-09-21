@@ -10,6 +10,9 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+[lib]
+doctest = false
+
 [dependencies]
 eyre = { workspace = true }
 pest = { workspace = true }

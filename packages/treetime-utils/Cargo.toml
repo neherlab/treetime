@@ -10,6 +10,9 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+[lib]
+doctest = false
+
 [dependencies]
 approx = { workspace = true }
 chrono = { workspace = true }
