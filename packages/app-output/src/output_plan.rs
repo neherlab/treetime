@@ -9,13 +9,9 @@ use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::make_error;
 
-/// Internal resolution and lookup key for every selectable output.
-///
-/// This is the lingua franca of the output system: per-command adapter selection enums convert into
-/// it (`From<XxxOutputSelection>`), [`plan`] maps it to concrete paths, and command code looks up
-/// produced files by it. NWK annotation style is orthogonal and lives on the adapter's
-/// `--output-nwk-style` flag, so the tree variants here are style-agnostic (`Nwk`, `Nexus`), not
-/// per-style.
+/// Canonical lookup key for selectable outputs. Command adapters convert their
+/// selection enums into this type, and [`plan`] resolves each key to a path.
+/// Tree variants do not encode the separately selected Newick style.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutputSelection {
