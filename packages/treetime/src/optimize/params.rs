@@ -20,26 +20,17 @@ pub enum BranchLengthMode {
   Marginal,
 }
 
-/// Per-edge branch length optimization method.
-///
-/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
-/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
-/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+/// Per-edge maximum-likelihood branch-length optimizer. Variants combine an
+/// algorithm with a parameterization ($t$, $\sqrt{t}$, or $\ln(t)$).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum BranchOptMethod {
-  /// Brent's method in $t$ space (derivative-free, bracket-based).
-  ///
-  /// Finds the maximum within a bracket derived from the grid search bounds.
-  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
-  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
+  /// Brent's derivative-free method in $t$ space, with a bracket from the grid
+  /// bounds. Its convergence does not depend on Hessian conditioning.
   Brent,
 
-  /// Brent's method in $\sqrt{t}$ space.
-  ///
-  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
-  /// reparameterization smooths the objective, giving parabolic interpolation
-  /// a better fit. Default method for golden master comparison against v0.
+  /// Brent's method in $\sqrt{t}$ space. This default matches v0's algorithm
+  /// and parameterization.
   #[default]
   BrentSqrt,
 
@@ -49,38 +40,22 @@ pub enum BranchOptMethod {
   /// interpolation. Requires a finite lower bound in log-space.
   BrentLog,
 
-  /// Newton-Raphson in $t$ space.
-  ///
-  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
-  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
-  /// branches, causing the step-size convergence criterion to fire before
-  /// the combined gradient reaches zero.
+  /// Newton-Raphson in $t$ space. On short branches, the Poisson indel Hessian
+  /// can make step-size convergence precede a zero combined gradient.
   Newton,
 
-  /// Newton-Raphson in $\sqrt{t}$ space.
-  ///
-  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
-  /// the chain rule to transform derivatives. Reduces the indel Hessian
-  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
-  /// cases ($t < 0.001$, $k > 10$).
+  /// Newton-Raphson in $\sqrt{t}$ space. The chain-rule transformation reduces
+  /// the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$.
   NewtonSqrt,
 
-  /// Newton-Raphson in $\ln(t)$ space.
-  ///
-  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
-  /// bounded). Natural relative tolerance. Best conditioning of all Newton
-  /// variants.
+  /// Newton-Raphson in $\ln(t)$ space. This removes the indel singularity and
+  /// gives a natural relative tolerance.
   NewtonLog,
 }
 
-/// Controls the initial branch length estimate that runs before Newton
-/// optimization.
-///
-/// The estimate computes `#substitutions / effective_alignment_length` per
-/// edge from the marginal reconstruction. When input trees already carry
-/// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
-/// TreeTime run), preserving those values lets Newton converge from a
-/// better starting position.
+/// Controls whether marginal reconstruction estimates initial branch lengths
+/// from substitutions divided by effective alignment length. Preserving valid
+/// input lengths can provide a better Newton starting point.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum InitialGuessMode {
