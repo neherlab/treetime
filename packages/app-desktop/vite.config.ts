@@ -6,6 +6,7 @@ import electron from "vite-plugin-electron/simple";
 import { defineConfig } from "vite";
 
 const projectRoot = resolve(__dirname, "../..");
+
 const napiNode = resolve(__dirname, "../app-napi/app-napi.linux-x64-gnu.node");
 
 process.env["ELECTRON_OVERRIDE_DIST_PATH"] ??= resolve(projectRoot, "node_modules/electron/dist");
@@ -13,6 +14,7 @@ process.env["ELECTRON_OVERRIDE_DIST_PATH"] ??= resolve(projectRoot, "node_module
 if (existsSync(napiNode)) {
   process.env["LD_PRELOAD"] = [process.env["LD_PRELOAD"], napiNode].filter(Boolean).join(":");
 }
+
 process.env["TREETIME_PROJECT_ROOT"] ??= projectRoot;
 
 export default defineConfig({
@@ -30,8 +32,8 @@ export default defineConfig({
             },
           },
         },
-        onstart(args) {
-          args.startup([".", "--no-sandbox", "--enable-logging", "--remote-debugging-port=9229"]);
+        async onstart(args) {
+          await args.startup([".", "--no-sandbox", "--enable-logging", "--remote-debugging-port=9229"]);
         },
       },
       preload: {

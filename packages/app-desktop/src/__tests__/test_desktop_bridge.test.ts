@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { createDesktopBridge, createDesktopTransport, type IpcRendererLike } from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
+
 type OnInvoke = (ipc: FakeIpc, channel: string, argsJson: unknown) => Promise<unknown>;
 
 interface FakeIpc extends IpcRendererLike {
@@ -15,6 +16,7 @@ interface FakeIpc extends IpcRendererLike {
 function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
   const handlers = new Map<string, Listener[]>();
   const sent: string[] = [];
+
   const fake: FakeIpc = {
     invoke: (channel, ...args) => onInvoke(fake, channel, args[0]),
     on(channel, listener) {
@@ -23,7 +25,10 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
       handlers.set(channel, list);
     },
     removeListener(channel, listener) {
-      handlers.set(channel, (handlers.get(channel) ?? []).filter((l) => l !== listener));
+      handlers.set(
+        channel,
+        (handlers.get(channel) ?? []).filter((l) => l !== listener),
+      );
     },
     send(channel) {
       sent.push(channel);
@@ -38,6 +43,7 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
     },
     sent,
   };
+
   return fake;
 }
 
@@ -59,8 +65,10 @@ describe("desktop_bridge streaming command path", () => {
       if (channel === "treetime:ancestral") {
         ipc.emit("treetime:progress", { stage: "infer", fraction: 1, message: "done" });
         ipc.emit("treetime:log", { level: "Info", message: "ok" });
+
         return Promise.resolve({ model_name: "JC69" });
       }
+
       return Promise.resolve(undefined);
     });
 
@@ -81,9 +89,13 @@ describe("desktop_bridge streaming command path", () => {
 
   test("aborting the signal sends the cancel channel and cleans up listeners", async () => {
     let resolveInvoke: (value: unknown) => void = () => undefined;
-    const fake = makeFakeIpc(() => new Promise<unknown>((resolve) => {
-      resolveInvoke = resolve;
-    }));
+
+    const fake = makeFakeIpc(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveInvoke = resolve;
+        }),
+    );
 
     const controller = new AbortController();
     const transport = createDesktopTransport(fake);

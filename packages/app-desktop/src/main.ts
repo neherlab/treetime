@@ -1,5 +1,8 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 import * as path from "path";
+
+import { parseBridgeEvent } from "@neherlab/app-contracts";
+import * as addon from "@neherlab/app-napi";
+import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 
 import { initDiagnostics } from "./diagnostics";
 
@@ -9,16 +12,20 @@ if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
-function isThemeSource(value: string): value is "system" | "light" | "dark" {
-  return value === "system" || value === "light" || value === "dark";
-}
-
 const projectRoot = process.env["TREETIME_PROJECT_ROOT"];
+
 if (projectRoot) {
   process.chdir(projectRoot);
 }
 
-function registerThemeHandler() {
+async function main(): Promise<void> {
+  await app.whenReady();
+  registerThemeHandler();
+  registerIpcHandlers();
+  await createWindow();
+}
+
+function registerThemeHandler(): void {
   ipcMain.on("treetime:theme", (_event, theme: string) => {
     if (isThemeSource(theme)) {
       nativeTheme.themeSource = theme;
@@ -26,10 +33,11 @@ function registerThemeHandler() {
   });
 }
 
-function registerIpcHandlers() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const addon = require("@neherlab/app-napi");
+function isThemeSource(value: string): value is "system" | "light" | "dark" {
+  return value === "system" || value === "light" || value === "dark";
+}
 
+function registerIpcHandlers(): void {
   ipcMain.handle("treetime:version", () => {
     return addon.version();
   });
@@ -43,23 +51,26 @@ function registerIpcHandlers() {
   });
 
   const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
+
   for (const cmd of commands) {
     ipcMain.handle(`treetime:${cmd}`, (event: Electron.IpcMainInvokeEvent, argsJson: string) => {
       console.log(`[TreeTime IPC] ${cmd} called`);
+
       return addon[cmd](argsJson, (err: Error | null, eventJson: string) => {
         if (err || event.sender.isDestroyed()) return;
+
         try {
-          const parsed = JSON.parse(eventJson) as { type: string; data: unknown };
+          const parsed = parseBridgeEvent(JSON.parse(eventJson));
           event.sender.send(`treetime:${parsed.type}`, parsed.data);
-        } catch {
-          // Window closed during computation
+        } catch (error: unknown) {
+          console.error(`[TreeTime IPC] ${cmd} event failed`, error);
         }
       });
     });
   }
 }
 
-function createWindow() {
+async function createWindow(): Promise<void> {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -71,18 +82,18 @@ function createWindow() {
   });
 
   const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
+
   if (devServerUrl) {
-    win.loadURL(devServerUrl);
+    await win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: "bottom" });
   } else {
-    win.loadFile(path.join(__dirname, "../dist/index.html"));
+    await win.loadFile(path.join(__dirname, "../dist/index.html"));
   }
 }
 
-app.whenReady().then(() => {
-  registerThemeHandler();
-  registerIpcHandlers();
-  createWindow();
+main().catch((error: unknown) => {
+  console.error(error);
+  app.quit();
 });
 
 app.on("window-all-closed", () => {

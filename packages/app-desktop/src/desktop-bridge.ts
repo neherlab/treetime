@@ -28,9 +28,11 @@ export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
     const progressHandler = (_event: unknown, data: unknown) => {
       options?.onProgress?.(parseProgressEvent(data));
     };
+
     const logHandler = (_event: unknown, data: unknown) => {
       logToConsole(parseLogEvent(data));
     };
+
     const abortHandler = () => {
       ipc.send("treetime:cancel");
     };
@@ -45,6 +47,7 @@ export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
       if (err instanceof Error && err.message.includes("cancelled")) {
         throw new CancelledError();
       }
+
       throw err;
     } finally {
       ipc.removeListener("treetime:progress", progressHandler);
@@ -60,7 +63,9 @@ function decode(value: unknown): unknown {
   if (typeof value !== "string") {
     return value;
   }
+
   const parsed: unknown = JSON.parse(value);
+
   return parsed;
 }
 

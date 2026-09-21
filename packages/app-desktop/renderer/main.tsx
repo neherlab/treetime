@@ -14,6 +14,7 @@ declare global {
 const bridge = window.treetime;
 
 const root = document.getElementById("root");
+
 if (root) {
   createRoot(root).render(
     <StrictMode>
