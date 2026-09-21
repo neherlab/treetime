@@ -125,7 +125,7 @@
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -1266,7 +1266,7 @@
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -1512,7 +1512,7 @@
         "damping": {
           "anyOf": [
             {
-              "description": "Damping factor for outer-loop branch length updates.\n\nControls how aggressively new branch lengths replace old ones during\niterative optimization. At each iteration i, the update is:\n  bl = bl_new * (1 - d) + bl_old * d\nwhere d = max(damping^(i+1), 0.01). The 1% floor prevents fully\nundamped late iterations on non-monotone objectives.\n\nHigher values are more conservative (slower convergence, less oscillation).\nSet to 0.0 to disable damping (full update each iteration, no floor).\nMust be in [0.0, 1.0).",
+              "description": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,\nwhere $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;\nzero disables damping. Must be in $[0,1)$.",
               "type": "number",
               "format": "double",
               "default": 0.75
@@ -1529,7 +1529,7 @@
           "default": "auto"
         },
         "opt_method": {
-          "description": "Per-edge branch length optimization method.\n\nAlgorithm x parameterization:\n- brent: Brent's method in t space (derivative-free)\n- brent-sqrt: Brent's method in sqrt(t) space (default, matches v0)\n- brent-log: Brent's method in ln(t) space\n- newton: Newton-Raphson in t space\n- newton-sqrt: Newton-Raphson in sqrt(t) space\n- newton-log: Newton-Raphson in ln(t) space",
+          "description": "Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`\n(default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and\n`newton-log`; suffixes select $\\sqrt{t}$ or $\\ln(t)$.",
           "$ref": "#/$defs/BranchOptMethod",
           "default": "brent-sqrt"
         },
@@ -1671,7 +1671,7 @@
       ]
     },
     "InitialGuessMode": {
-      "description": "Controls the initial branch length estimate that runs before Newton\noptimization.\n\nThe estimate computes `#substitutions / effective_alignment_length` per\nedge from the marginal reconstruction. When input trees already carry\nwell-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous\nTreeTime run), preserving those values lets Newton converge from a\nbetter starting position.",
+      "description": "Controls whether marginal reconstruction estimates initial branch lengths\nfrom substitutions divided by effective alignment length. Preserving valid\ninput lengths can provide a better Newton starting point.",
       "oneOf": [
         {
           "anyOf": [
@@ -1817,7 +1817,7 @@
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -2100,7 +2100,7 @@
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -2636,7 +2636,7 @@
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [

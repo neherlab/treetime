@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+      "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
       "type": "array",
       "items": {
         "type": "string"
