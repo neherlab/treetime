@@ -19,7 +19,7 @@ pub struct BitSet128 {
 }
 
 impl BitSet128 {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self { bits: 0 }
   }
 
@@ -51,7 +51,7 @@ impl BitSet128 {
     (self.bits & (1 << c)) != 0
   }
 
-  pub fn insert<T: Into<u32>>(&mut self, c: T) {
+  pub(crate) fn insert<T: Into<u32>>(&mut self, c: T) {
     let c = c.into();
     debug_assert!(c < 128, "BitSet128::insert requires c < 128, got {c}");
     self.bits |= 1 << c;
@@ -63,7 +63,7 @@ impl BitSet128 {
     self.bits &= !(1 << c);
   }
 
-  pub fn union(&self, other: &Self) -> Self {
+  pub(crate) fn union(&self, other: &Self) -> Self {
     Self {
       bits: self.bits | other.bits,
     }
@@ -81,7 +81,7 @@ impl BitSet128 {
     }
   }
 
-  pub fn symmetric_difference(&self, other: &Self) -> Self {
+  fn symmetric_difference(&self, other: &Self) -> Self {
     Self {
       bits: self.bits ^ other.bits,
     }
@@ -157,7 +157,7 @@ impl BitSet128 {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn first(&self) -> Option<AsciiChar> {
+  fn first(&self) -> Option<AsciiChar> {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
   }
 
@@ -169,7 +169,7 @@ impl BitSet128 {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.ilog2() as u8))
   }
 
-  pub fn get_one_maybe(&self) -> Option<AsciiChar> {
+  fn get_one_maybe(&self) -> Option<AsciiChar> {
     self.first()
   }
 

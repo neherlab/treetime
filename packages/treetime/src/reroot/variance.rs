@@ -14,11 +14,11 @@ pub struct VarianceModel {
 }
 
 impl VarianceModel {
-  pub fn branch(&self, branch_length: f64) -> f64 {
+  pub(crate) fn branch(&self, branch_length: f64) -> f64 {
     self.variance_factor * branch_length + self.variance_offset
   }
 
-  pub fn leaf_branch(&self, branch_length: f64) -> f64 {
+  pub(crate) fn leaf_branch(&self, branch_length: f64) -> f64 {
     self.branch(branch_length) + self.variance_offset_leaf
   }
 }

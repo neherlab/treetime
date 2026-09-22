@@ -54,7 +54,7 @@ pub fn write_clock_regression_chart_png(
 }
 
 #[cfg(feature = "png")]
-pub fn write_clock_regression_chart_bitmap(
+fn write_clock_regression_chart_bitmap(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
 ) -> Result<DynamicImage, Report> {

@@ -62,15 +62,15 @@ impl MultiplicationTestSuite for GaussianPairwiseMultiplicationTestSuite {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianPairwiseMultiplicationTestCase {
   #[serde(flatten)]
-  pub base: TestCaseBase,
-  pub mu_f: f64,
-  pub sigma_f: f64,
-  pub amplitude_f: f64,
-  pub mu_g: f64,
-  pub sigma_g: f64,
-  pub amplitude_g: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
+  base: TestCaseBase,
+  mu_f: f64,
+  sigma_f: f64,
+  amplitude_f: f64,
+  mu_g: f64,
+  sigma_g: f64,
+  amplitude_g: f64,
+  input_grid_domain: (f64, f64),
+  input_grid_n_points: usize,
 }
 
 impl From<&AnalyticalCase> for GaussianPairwiseMultiplicationTestCase {

@@ -355,7 +355,7 @@ pub fn run(
     .collect();
 
   timetree_state = run_timetree(
-    &mut input.graph,
+    &input.graph,
     &date_constraints,
     &partitions,
     &branch_lengths,
@@ -393,7 +393,7 @@ pub fn run(
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
     timetree_state = run_timetree(
-      &mut input.graph,
+      &input.graph,
       &date_constraints,
       &partitions,
       &branch_lengths,
@@ -525,7 +525,7 @@ pub fn run(
   let rate_susceptibility_dates = if let Some(rate_std) = rate_std {
     info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
     compute_rate_susceptibility(
-      &mut input.graph,
+      &input.graph,
       &date_constraints,
       &partitions,
       &clock_model,
@@ -545,7 +545,7 @@ pub fn run(
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
     timetree_state = run_timetree(
-      &mut input.graph,
+      &input.graph,
       &date_constraints,
       &partitions,
       &branch_lengths,

@@ -20,6 +20,6 @@ pub fn auspice_write_str(tree: &AuspiceTree) -> Result<String, Report> {
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn auspice_write(writer: &mut impl Write, tree: &AuspiceTree) -> Result<(), Report> {
+fn auspice_write(writer: &mut impl Write, tree: &AuspiceTree) -> Result<(), Report> {
   json_write(writer, tree, JsonPretty(true)).wrap_err("When writing Auspice v2 JSON")
 }

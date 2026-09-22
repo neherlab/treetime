@@ -12,7 +12,7 @@ pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
     .collect()
 }
 
-pub fn ancestral_reconstruction(
+pub(crate) fn ancestral_reconstruction(
   graph: &Graph,
   mut advance: impl FnMut(&GraphNodeForward) -> Option<()>,
 ) -> Result<Vec<GraphNodeKey>, Report> {

@@ -29,7 +29,7 @@ impl PartialEq<Self> for Node {
 
 impl Node {
   #[inline]
-  pub fn new(key: GraphNodeKey) -> Node {
+  pub(crate) fn new(key: GraphNodeKey) -> Node {
     Self {
       key,
       outbound_edges: Vec::new(),
@@ -48,7 +48,7 @@ impl Node {
   }
 
   #[inline]
-  pub fn degree_in(&self) -> usize {
+  pub(crate) fn degree_in(&self) -> usize {
     self.inbound().len()
   }
 
@@ -93,7 +93,7 @@ impl Node {
   }
 
   #[inline]
-  pub fn has_at_most_one_child(&self) -> bool {
+  pub(crate) fn has_at_most_one_child(&self) -> bool {
     self.degree_out() <= 1
   }
 
@@ -103,7 +103,7 @@ impl Node {
   }
 
   #[inline]
-  pub fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+  pub(crate) fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.outbound_edges
   }
 
@@ -113,7 +113,7 @@ impl Node {
   }
 
   #[inline]
-  pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+  pub(crate) fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.inbound_edges
   }
 }

@@ -47,23 +47,23 @@ pub mod support {
   }
 
   impl DatasetOutputs {
-    pub fn rerooted_tree_nwk(&self) -> &str {
+    pub(crate) fn rerooted_tree_nwk(&self) -> &str {
       &self.rerooted_tree_nwk
     }
 
-    pub fn clock_rate(&self) -> f64 {
+    pub(crate) fn clock_rate(&self) -> f64 {
       self.clock_rate
     }
 
-    pub fn sequence_length(&self) -> usize {
+    pub(crate) fn sequence_length(&self) -> usize {
       self.sequence_length
     }
 
-    pub fn poisson(&self) -> &BTreeMap<String, f64> {
+    pub(crate) fn poisson(&self) -> &BTreeMap<String, f64> {
       &self.poisson
     }
 
-    pub fn marginal_dense(&self) -> &BTreeMap<String, f64> {
+    pub(crate) fn marginal_dense(&self) -> &BTreeMap<String, f64> {
       &self.marginal_dense
     }
   }

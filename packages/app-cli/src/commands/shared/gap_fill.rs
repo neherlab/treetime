@@ -43,15 +43,15 @@ pub struct GapFillArgs {
     feature = "clap",
     clap(long, value_enum, default_value_t = GapFillCli::default(), conflicts_with = "keep_overhangs")
   )]
-  pub gap_fill: GapFillCli,
+  gap_fill: GapFillCli,
 
   /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
-  pub keep_overhangs: bool,
+  keep_overhangs: bool,
 }
 
 impl GapFillArgs {
-  pub fn effective_gap_fill(&self) -> GapFill {
+  pub(crate) fn effective_gap_fill(&self) -> GapFill {
     if self.keep_overhangs {
       GapFill::None
     } else {

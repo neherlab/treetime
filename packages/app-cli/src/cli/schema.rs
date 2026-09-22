@@ -117,13 +117,13 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   write_schema(&schema, output)
 }
 
-pub fn pipeline_schema() -> Schema {
+fn pipeline_schema() -> Schema {
   let mut schema = draft2020_generator().into_root_schema_for::<Pipeline>();
   AllowTemplateStrings.transform(&mut schema);
   schema
 }
 
-pub fn command_schema<T: JsonSchema>() -> Schema {
+pub(crate) fn command_schema<T: JsonSchema>() -> Schema {
   let mut schema = draft2020_generator().into_root_schema_for::<T>();
   allow_schema_ref(&mut schema);
   schema
@@ -143,7 +143,7 @@ fn allow_schema_ref(schema: &mut Schema) {
   }
 }
 
-pub fn command_schema_for(tag: &str) -> Option<Schema> {
+pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
   Some(match tag {
     "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
     "optimize" => command_schema::<TreetimeOptimizeArgsRaw>(),

@@ -5,7 +5,7 @@ use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
-pub fn write_confidence_intervals(
+pub(crate) fn write_confidence_intervals(
   intervals: &[NodeConfidenceInterval],
   writer: impl Write + Send,
 ) -> Result<(), Report> {

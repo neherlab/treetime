@@ -12,9 +12,9 @@ use std::fmt::Display;
 use strum_macros::Display;
 use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, StateSet, stateset};
 
-pub const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
-pub const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
-pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
+pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
+pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
+pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
 #[derive(
   Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
@@ -29,26 +29,26 @@ pub enum AlphabetName {
 
 pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
 pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
-pub type CharToSet = IndexMap<AsciiChar, StateSet>;
-pub type SetToChar = IndexMap<StateSet, AsciiChar>;
+type CharToSet = IndexMap<AsciiChar, StateSet>;
+type SetToChar = IndexMap<StateSet, AsciiChar>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(try_from = "AlphabetConfig")]
 pub struct Alphabet {
-  all: StateSet,
-  canonical: StateSet,
-  ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
-  ambiguous_keys: StateSet,
-  determined: StateSet,
-  undetermined: StateSet,
-  unknown: AsciiChar,
-  gap: AsciiChar,
-  profile_map: ProfileMap,
-  char_to_set: IndexMap<AsciiChar, StateSet>,
-  set_to_char: IndexMap<StateSet, AsciiChar>,
-  char_to_index: Vec<Option<usize>>,
-  index_to_char: Vec<AsciiChar>,
-  config: AlphabetConfig,
+  pub all: StateSet,
+  pub canonical: StateSet,
+  pub ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
+  pub ambiguous_keys: StateSet,
+  pub determined: StateSet,
+  pub undetermined: StateSet,
+  pub unknown: AsciiChar,
+  pub gap: AsciiChar,
+  pub profile_map: ProfileMap,
+  pub char_to_set: IndexMap<AsciiChar, StateSet>,
+  pub set_to_char: IndexMap<StateSet, AsciiChar>,
+  pub char_to_index: Vec<Option<usize>>,
+  pub index_to_char: Vec<AsciiChar>,
+  pub config: AlphabetConfig,
 }
 
 impl Serialize for Alphabet {
@@ -122,7 +122,7 @@ impl Alphabet {
     }
   }
 
-  pub fn with_config(config: &AlphabetConfig) -> Result<Self, Report> {
+  pub(crate) fn with_config(config: &AlphabetConfig) -> Result<Self, Report> {
     let AlphabetConfig {
       canonical,
       ambiguous,
@@ -191,7 +191,7 @@ impl Alphabet {
   }
 
   #[inline]
-  pub fn get_profile(&self, c: AsciiChar) -> Result<&Array1<f64>, Report> {
+  pub(crate) fn get_profile(&self, c: AsciiChar) -> Result<&Array1<f64>, Report> {
     self.profile_map.get(&c).ok_or_else(|| {
       make_report!(
         "When accessing profile map: Unknown character: '{c}'. Known characters: {}",
@@ -200,7 +200,7 @@ impl Alphabet {
     })
   }
 
-  pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
+  pub(crate) fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
   where
     I: IntoIterator<Item = T>,
     T: Borrow<AsciiChar> + Display,
@@ -225,7 +225,7 @@ impl Alphabet {
   }
 
   #[allow(single_use_lifetimes)]
-  pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
+  pub(crate) fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let profiles = chars
       .into_iter()
       .map(|&c| self.get_profile(c))
@@ -235,15 +235,15 @@ impl Alphabet {
     Ok(prof)
   }
 
-  pub fn set_to_char(&self, c: StateSet) -> AsciiChar {
+  pub(crate) fn set_to_char(&self, c: StateSet) -> AsciiChar {
     self.set_to_char[&c]
   }
 
-  pub fn char_to_set(&self, c: impl Into<AsciiChar>) -> StateSet {
+  pub(crate) fn char_to_set(&self, c: impl Into<AsciiChar>) -> StateSet {
     self.char_to_set[&c.into()]
   }
 
-  pub fn char(&self, index: usize) -> AsciiChar {
+  pub(crate) fn char(&self, index: usize) -> AsciiChar {
     self.index_to_char[index]
   }
 
@@ -251,7 +251,7 @@ impl Alphabet {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
+  pub(crate) fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();
     self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
       let c = AsciiChar::try_new(idx as u8).map_or_else(|_| '?'.to_string(), |c| c.to_string());
@@ -263,19 +263,19 @@ impl Alphabet {
     self.all.len()
   }
 
-  pub fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+  pub(crate) fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.canonical.iter()
   }
 
-  pub fn first_canonical(&self, set: StateSet) -> Option<AsciiChar> {
+  pub(crate) fn first_canonical(&self, set: StateSet) -> Option<AsciiChar> {
     self.index_to_char.iter().copied().find(|c| set.contains(*c))
   }
 
-  pub fn is_canonical(&self, c: AsciiChar) -> bool {
+  pub(crate) fn is_canonical(&self, c: AsciiChar) -> bool {
     self.canonical.contains(c)
   }
 
-  pub fn n_canonical(&self) -> usize {
+  pub(crate) fn n_canonical(&self) -> usize {
     self.canonical.len()
   }
 
@@ -291,11 +291,11 @@ impl Alphabet {
     self.ambiguous.len()
   }
 
-  pub fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+  pub(crate) fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.determined.iter()
   }
 
-  pub fn is_determined(&self, c: AsciiChar) -> bool {
+  pub(crate) fn is_determined(&self, c: AsciiChar) -> bool {
     self.determined.contains(c)
   }
 

@@ -107,7 +107,7 @@ mod tests {
     use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
     use treetime_primitives::Seq;
 
-    pub fn project_root() -> PathBuf {
+    fn project_root() -> PathBuf {
       PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())

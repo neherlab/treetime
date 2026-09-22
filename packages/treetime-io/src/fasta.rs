@@ -25,7 +25,7 @@ impl FastaRecord {
     Self::default()
   }
 
-  pub fn clear(&mut self) {
+  fn clear(&mut self) {
     self.seq_name.clear();
     self.desc = None;
     self.seq.clear();
@@ -36,7 +36,7 @@ impl FastaRecord {
     self.seq_name.is_empty() && self.seq.is_empty() && self.desc.is_none() && self.index == 0
   }
 
-  pub fn header(&self) -> String {
+  fn header(&self) -> String {
     match &self.desc {
       Some(desc) => format!(">{} {}", self.seq_name, desc),
       None => format!(">{}", self.seq_name),
@@ -74,7 +74,7 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     }
   }
 
-  pub fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b A) -> Result<Self, Report> {
+  fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b A) -> Result<Self, Report> {
     let reader = contents.as_ref().as_bytes();
     Ok(Self::new(Box::new(reader), alphabet))
   }
@@ -93,7 +93,7 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     Self::from_paths(&[filepath], alphabet)
   }
 
-  pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b A) -> Result<Self, Report> {
+  fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b A) -> Result<Self, Report> {
     let readers: Vec<Box<dyn BufRead + 'a>> = filepaths
       .iter()
       .map(|filepath| -> Result<Box<dyn BufRead + 'a>, Report> { open_file_or_stdin(&Some(filepath)) })

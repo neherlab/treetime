@@ -25,25 +25,25 @@ use utoipa::ToSchema;
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct MugrationArgs {
-  pub tree: Option<String>,
+  tree: Option<String>,
   #[default(_code = r#""country".to_owned()"#)]
-  pub attribute: String,
-  pub states: String,
-  pub weights: Option<String>,
-  pub name_column: Option<String>,
-  pub confidence: Option<String>,
-  pub pc: Option<f64>,
+  attribute: String,
+  states: String,
+  weights: Option<String>,
+  name_column: Option<String>,
+  confidence: Option<String>,
+  pc: Option<f64>,
   #[default(_code = r#""?".to_owned()"#)]
-  pub missing_data: String,
+  missing_data: String,
   #[default = 0.5]
-  pub missing_weights_threshold: f64,
+  missing_weights_threshold: f64,
   #[default = 5]
-  pub iterations: usize,
-  pub sampling_bias_correction: Option<f64>,
-  pub outdir: String,
+  iterations: usize,
+  sampling_bias_correction: Option<f64>,
+  outdir: String,
 }
 
-pub fn run_mugration(
+pub(crate) fn run_mugration(
   args: &MugrationArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,

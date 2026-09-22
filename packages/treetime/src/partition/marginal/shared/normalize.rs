@@ -37,7 +37,7 @@ pub fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   (dis, total_log_lh)
 }
 
-pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
+pub fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
   if node_log_lh == LogLh::IMPOSSIBLE && child_log_lh == LogLh::IMPOSSIBLE {
     LogLh::ZERO
   } else {
@@ -45,7 +45,7 @@ pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogL
   }
 }
 
-pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
+pub fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
   if normalization == f64::NEG_INFINITY {
     log_lh
   } else {

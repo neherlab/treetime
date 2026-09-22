@@ -494,15 +494,15 @@ mod tests {
       }
     }
 
-    pub fn optimize_maps(_graph: &Graph) -> OptimizeOutputMaps {
+    fn optimize_maps(_graph: &Graph) -> OptimizeOutputMaps {
       OptimizeOutputMaps::default()
     }
 
-    pub fn prune_maps(_graph: &Graph) -> PruneOutputMaps {
+    fn prune_maps(_graph: &Graph) -> PruneOutputMaps {
       PruneOutputMaps::default()
     }
 
-    pub fn timetree_maps(_graph: &Graph) -> TimetreeOutputMaps {
+    fn timetree_maps(_graph: &Graph) -> TimetreeOutputMaps {
       TimetreeOutputMaps::default()
     }
 
@@ -787,7 +787,7 @@ mod tests {
       AsciiChar::from_byte_unchecked(value)
     }
 
-    pub fn optimize_nodes(
+    fn optimize_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -822,7 +822,7 @@ mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub fn prune_nodes(
+    fn prune_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -872,7 +872,7 @@ mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub fn clock_nodes(
+    fn clock_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
     ) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
@@ -895,7 +895,7 @@ mod tests {
         .collect()
     }
 
-    pub fn mugration_nodes(
+    fn mugration_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -995,7 +995,7 @@ mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub fn timetree_nodes(
+    fn timetree_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,

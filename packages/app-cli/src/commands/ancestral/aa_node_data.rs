@@ -14,10 +14,10 @@ use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
 pub fn validate_aa_args(
-  translations: &Option<String>,
+  translations: Option<&str>,
   cdses: &[String],
-  annotation: &Option<PathBuf>,
-  aa_root_sequence: &Option<PathBuf>,
+  annotation: Option<&Path>,
+  aa_root_sequence: Option<&Path>,
 ) -> Result<(), Report> {
   if translations.is_none() && cdses.is_empty() && annotation.is_none() && aa_root_sequence.is_none() {
     return Ok(());
@@ -36,8 +36,8 @@ pub fn validate_aa_args(
     return make_error!("--cdses must list at least one CDS, or pass --annotation to derive the CDS set");
   }
 
-  validate_file_arg("--annotation", annotation.as_deref())?;
-  validate_file_arg("--aa-root-sequence", aa_root_sequence.as_deref())?;
+  validate_file_arg("--annotation", annotation)?;
+  validate_file_arg("--aa-root-sequence", aa_root_sequence)?;
 
   let mut seen = BTreeSet::new();
   for cds in cdses {

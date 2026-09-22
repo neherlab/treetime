@@ -39,7 +39,7 @@ impl PartitionMarginalDense {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn new(index: usize, alphabet: Alphabet, length: usize) -> Self {
+  pub(crate) fn new(index: usize, alphabet: Alphabet, length: usize) -> Self {
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
     Self {
       inputs: DenseInputs {
@@ -56,7 +56,7 @@ impl PartitionMarginalDense {
     self.length
   }
 
-  pub fn attach_sequences(
+  pub(crate) fn attach_sequences(
     &self,
     graph: &Graph,
     node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -76,7 +76,7 @@ impl PartitionMarginalDense {
     Ok(node_states)
   }
 
-  pub fn edge_subs(
+  pub(crate) fn edge_subs(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     graph: &Graph,
@@ -109,7 +109,7 @@ impl PartitionMarginalDense {
     Ok(subs)
   }
 
-  pub fn edge_indels(
+  pub(crate) fn edge_indels(
     &self,
     estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
     edge_key: GraphEdgeKey,
@@ -117,7 +117,7 @@ impl PartitionMarginalDense {
     estimates[&edge_key].indels.clone()
   }
 
-  pub fn root_sequence(
+  pub(crate) fn root_sequence(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     graph: &Graph,
@@ -129,7 +129,7 @@ impl PartitionMarginalDense {
     assign_sequence(&node_states[&node_key], &self.alphabet)
   }
 
-  pub fn edge_effective_length(
+  pub(crate) fn edge_effective_length(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     graph: &Graph,
@@ -147,7 +147,7 @@ impl PartitionMarginalDense {
     Ok(self.length.saturating_sub(non_char_positions))
   }
 
-  pub fn create_edge_contribution(
+  pub(crate) fn create_edge_contribution(
     &self,
     gtr: &GTR,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
@@ -157,7 +157,7 @@ impl PartitionMarginalDense {
     OptimizationContribution::from_dense(gtr, &backward[&edge_key], &forward[&edge_key])
   }
 
-  pub fn edge_indel_count(
+  pub(crate) fn edge_indel_count(
     &self,
     estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
     edge_key: GraphEdgeKey,
@@ -165,7 +165,7 @@ impl PartitionMarginalDense {
     estimates[&edge_key].indels.len()
   }
 
-  pub fn extract_ancestral_sequence(
+  pub(crate) fn extract_ancestral_sequence(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     node_key: GraphNodeKey,
@@ -177,7 +177,7 @@ impl PartitionMarginalDense {
     }
   }
 
-  pub fn reconstruct_node_sequence(
+  pub(crate) fn reconstruct_node_sequence(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, DenseNodeState>,
     node: &GraphNodeForward,

@@ -12,13 +12,13 @@ use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
 pub struct OutlierRecord {
-  pub name: String,
-  pub given_date: f64,
-  pub apparent_date: f64,
-  pub residual: f64,
+  name: String,
+  given_date: f64,
+  apparent_date: f64,
+  residual: f64,
 }
 
-pub fn collect_outliers(
+fn collect_outliers(
   graph: &Graph,
   clock_state: &ClockState,
   clock_model: &ClockModel,
@@ -52,7 +52,7 @@ pub fn collect_outliers(
     .collect_vec()
 }
 
-pub fn report_bad_branches(
+pub(crate) fn report_bad_branches(
   graph: &Graph,
   clock_state: &ClockState,
   clock_model: &ClockModel,
@@ -81,7 +81,7 @@ pub fn report_bad_branches(
   }
 }
 
-pub fn apply_outlier_bad_branches(
+pub(crate) fn apply_outlier_bad_branches(
   graph: &Graph,
   clock_state: &ClockState,
   state: &mut TimetreeState,
@@ -96,7 +96,7 @@ pub fn apply_outlier_bad_branches(
   propagate_bad_branches(graph, state)
 }
 
-pub fn propagate_bad_branches(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
+pub(crate) fn propagate_bad_branches(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   graph.iter_depth_first_postorder_forward(|node| {
     if node.is_leaf {
       return Ok(());

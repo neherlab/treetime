@@ -72,7 +72,7 @@ pub struct ModelArgs {
 }
 
 impl ModelArgs {
-  pub fn model_name(&self) -> GtrModelName {
+  pub(crate) fn model_name(&self) -> GtrModelName {
     self.model.into()
   }
 }

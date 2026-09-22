@@ -43,7 +43,7 @@ impl PartitionMarginalDiscrete {
     1
   }
 
-  pub fn attach_traits(
+  pub(crate) fn attach_traits(
     &self,
     graph: &Graph,
     traits: &BTreeMap<String, String>,

@@ -73,7 +73,9 @@ pub fn node_seq_inputs(
     .collect()
 }
 
-pub fn get_common_length_of_node_inputs(node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>) -> Result<usize, Report> {
+pub(crate) fn get_common_length_of_node_inputs(
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+) -> Result<usize, Report> {
   let lengths = node_inputs
     .values()
     .filter_map(|node| node.seq.as_ref().map(|seq| (seq.len(), node)))

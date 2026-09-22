@@ -26,7 +26,7 @@ pub struct GridFn<T: InterpElem> {
 }
 
 impl<T: InterpElem> GridFn<T> {
-  pub fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
+  fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
     if grid.n_points() != y.len() {
       return make_error!(
         "Grid has {} points but y array has {} elements",
@@ -37,7 +37,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Self { grid, y })
   }
 
-  pub fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
+  fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
   where
     T: Float,
     F: Fn(T) -> T,
@@ -191,7 +191,7 @@ impl<T: InterpElem> GridFn<T> {
     self.grid.x_range()
   }
 
-  pub fn n_points(&self) -> usize {
+  pub(crate) fn n_points(&self) -> usize {
     self.grid.n_points()
   }
 
@@ -307,7 +307,7 @@ impl<T: InterpElem> GridFn<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn edge(&self, side: Side) -> GridEdge
+  fn edge(&self, side: Side) -> GridEdge
   where
     T: Float,
   {
@@ -441,7 +441,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(())
   }
 
-  pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
+  fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {

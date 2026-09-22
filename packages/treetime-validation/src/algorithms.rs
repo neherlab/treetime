@@ -37,11 +37,11 @@ pub enum ConvolutionAlgorithm {
 }
 
 impl ConvolutionAlgorithm {
-  pub fn all() -> Vec<Self> {
+  pub(crate) fn all() -> Vec<Self> {
     Self::iter().filter(|a| *a != Self::All).collect()
   }
 
-  pub fn expand(algorithms: &[Self]) -> Vec<Self> {
+  pub(crate) fn expand(algorithms: &[Self]) -> Vec<Self> {
     if algorithms.contains(&Self::All) {
       Self::all()
     } else {
@@ -49,7 +49,7 @@ impl ConvolutionAlgorithm {
     }
   }
 
-  pub fn instantiate(&self) -> Result<Box<dyn Algo>, Report> {
+  pub(crate) fn instantiate(self) -> Result<Box<dyn Algo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
       Self::Riemann => Ok(Box::new(RiemannConvolve)),
@@ -86,11 +86,11 @@ pub enum MultiplicationAlgorithm {
 }
 
 impl MultiplicationAlgorithm {
-  pub fn all() -> Vec<Self> {
+  pub(crate) fn all() -> Vec<Self> {
     Self::iter().filter(|a| *a != Self::All).collect()
   }
 
-  pub fn expand(algorithms: &[Self]) -> Vec<Self> {
+  pub(crate) fn expand(algorithms: &[Self]) -> Vec<Self> {
     if algorithms.contains(&Self::All) {
       Self::all()
     } else {
@@ -98,7 +98,7 @@ impl MultiplicationAlgorithm {
     }
   }
 
-  pub fn instantiate(&self) -> Result<Box<dyn MultiplyAlgo>, Report> {
+  pub(crate) fn instantiate(self) -> Result<Box<dyn MultiplyAlgo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
       Self::Pointwise => Ok(Box::new(PointwiseMultiply)),

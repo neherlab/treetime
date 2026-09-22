@@ -182,11 +182,11 @@ fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec<GffCdsFeat
     .collect()
 }
 
-pub fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
+fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
   NAME_ATTRS_CDS.iter().find_map(|key| attrs.get(*key).cloned())
 }
 
-pub fn parse_gff_attributes(raw: &str) -> Result<BTreeMap<String, String>, Report> {
+fn parse_gff_attributes(raw: &str) -> Result<BTreeMap<String, String>, Report> {
   raw
     .split(';')
     .filter(|attr| !attr.is_empty())

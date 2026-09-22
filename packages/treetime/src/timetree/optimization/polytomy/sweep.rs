@@ -45,7 +45,7 @@ struct Pending {
   elapsed: f64,
 }
 
-pub fn simulate_subtree(
+pub(crate) fn simulate_subtree(
   children: &[Lineage],
   t_stop: f64,
   mutation_rate: f64,

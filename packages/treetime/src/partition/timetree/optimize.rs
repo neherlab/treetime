@@ -16,28 +16,28 @@ use treetime_graph::reroot::RerootChanges;
   reason = "PartitionTimetree's inherent impl is split by concern: the type definition in partition.rs, the timetree optimization methods here"
 )]
 impl PartitionTimetree {
-  pub fn sequence_length(&self) -> usize {
+  pub(crate) fn sequence_length(&self) -> usize {
     match self {
       Self::Dense(family) => family.sequence_length(),
       Self::Sparse(family) => family.sequence_length(),
     }
   }
 
-  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
       Self::Dense(family) => Ok(family.create_edge_contribution(edge_key)),
       Self::Sparse(family) => family.create_edge_contribution(edge_key),
     }
   }
 
-  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     match self {
       Self::Dense(family) => family.edge_indel_count(edge_key),
       Self::Sparse(family) => family.edge_indel_count(edge_key),
     }
   }
 
-  pub fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
+  pub(crate) fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.gtr, family.node_states, changes)),
       Self::Sparse(family) => Self::Sparse(reroot_sparse(
@@ -50,7 +50,7 @@ impl PartitionTimetree {
   }
 
   #[must_use]
-  pub fn reconcile_topology(self, graph: &Graph) -> Self {
+  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
     let live_nodes = live_node_keys(graph);
     match self {
       Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(

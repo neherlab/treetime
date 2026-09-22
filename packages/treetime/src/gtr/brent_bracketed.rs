@@ -19,7 +19,7 @@ pub struct BrentBracketed {
 }
 
 impl BrentBracketed {
-  pub fn new(xa: f64, xb: f64, xc: f64) -> Self {
+  pub(crate) fn new(xa: f64, xb: f64, xc: f64) -> Self {
     let (a, b) = if xa < xc { (xa, xc) } else { (xc, xa) };
     Self {
       tol: f64::EPSILON.sqrt(),

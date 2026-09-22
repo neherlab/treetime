@@ -10,7 +10,7 @@ pub struct PeakMetrics {
   pub location_error: f64,
 }
 
-pub fn compute_peak_metrics(
+pub(crate) fn compute_peak_metrics(
   x: &Array1<f64>,
   actual: &Array1<f64>,
   expected: &Array1<f64>,

@@ -25,7 +25,7 @@ pub mod rtt;
 pub mod timetree_result;
 pub mod timetree_trace;
 pub mod timetree_tree_output;
-pub mod tree_output;
+pub(crate) mod tree_output;
 
 pub use date_comment::DateCommentProvider;
 pub use mutation_comment::EdgeMutationCommentProvider;

@@ -16,7 +16,7 @@ pub struct ConfigSource {
 }
 
 impl ConfigSource {
-  pub fn new(name: impl Into<String>, text: impl Into<String>) -> Self {
+  pub(crate) fn new(name: impl Into<String>, text: impl Into<String>) -> Self {
     let name = name.into();
     let text = text.into();
     let mut spans = BTreeMap::new();
@@ -29,15 +29,15 @@ impl ConfigSource {
     Self { name, text, spans }
   }
 
-  pub fn span_for(&self, pointer: &str) -> Option<SourceSpan> {
+  fn span_for(&self, pointer: &str) -> Option<SourceSpan> {
     self.spans.get(pointer).map(|node| node.value)
   }
 
-  pub fn key_span_for(&self, pointer: &str) -> Option<SourceSpan> {
+  fn key_span_for(&self, pointer: &str) -> Option<SourceSpan> {
     self.spans.get(pointer).map(|node| node.key.unwrap_or(node.value))
   }
 
-  pub fn named_source(&self) -> NamedSource<String> {
+  fn named_source(&self) -> NamedSource<String> {
     NamedSource::new(&self.name, self.text.clone())
   }
 }
@@ -53,7 +53,7 @@ pub struct RawDiagnostic {
 
 impl RawDiagnostic {
   #[must_use]
-  pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+  pub(crate) fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
     Self {
       pointer: None,
       use_key_span: false,
@@ -65,19 +65,19 @@ impl RawDiagnostic {
   }
 
   #[must_use]
-  pub fn at(mut self, pointer: impl Into<String>) -> Self {
+  pub(crate) fn at(mut self, pointer: impl Into<String>) -> Self {
     self.pointer = Some(pointer.into());
     self
   }
 
   #[must_use]
-  pub fn key_span(mut self) -> Self {
+  pub(crate) fn key_span(mut self) -> Self {
     self.use_key_span = true;
     self
   }
 
   #[must_use]
-  pub fn help(mut self, help: impl Into<String>) -> Self {
+  pub(crate) fn help(mut self, help: impl Into<String>) -> Self {
     self.help = Some(help.into());
     self
   }
@@ -271,7 +271,7 @@ fn byte_of(table: &[usize], char_index: usize) -> usize {
     .unwrap_or_else(|| table.last().copied().unwrap_or(0))
 }
 
-pub(crate) fn escape_pointer(segment: &str) -> String {
+pub fn escape_pointer(segment: &str) -> String {
   segment.replace('~', "~0").replace('/', "~1")
 }
 

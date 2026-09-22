@@ -132,7 +132,7 @@ impl YAxisPolicy for NegLog {
 pub struct PolicyMarker<Y: YAxisPolicy>(#[serde(skip)] PhantomData<Y>);
 
 impl<Y: YAxisPolicy> PolicyMarker<Y> {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self(PhantomData)
   }
 }

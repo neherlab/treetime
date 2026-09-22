@@ -48,7 +48,7 @@ impl Serialize for Verbosity {
 }
 
 impl Verbosity {
-  pub const fn get_filter_level(&self) -> LevelFilter {
+  pub(crate) const fn get_filter_level(&self) -> LevelFilter {
     if self.silent {
       LevelFilter::Off
     } else {

@@ -4,7 +4,7 @@ pub mod grid_edge;
 pub mod grid_fn;
 pub mod grid_iter;
 pub mod hard_approach_law;
-pub mod interp_nonuniform;
+pub(crate) mod interp_nonuniform;
 pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
 pub mod piecewise_linear_fn;

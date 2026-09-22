@@ -11,7 +11,7 @@ impl PiecewiseFnBase {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
+  pub(crate) fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(
       breakpoints.as_slice().unwrap().is_sorted_by(|a, b| a < b),
       "breakpoints must be strictly ascending"
@@ -19,11 +19,11 @@ impl PiecewiseFnBase {
     Self { breakpoints, values }
   }
 
-  pub fn breakpoints(&self) -> &Array1<f64> {
+  pub(crate) fn breakpoints(&self) -> &Array1<f64> {
     &self.breakpoints
   }
 
-  pub fn values(&self) -> &Array1<f64> {
+  pub(crate) fn values(&self) -> &Array1<f64> {
     &self.values
   }
 
@@ -31,7 +31,7 @@ impl PiecewiseFnBase {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn breakpoints_slice(&self) -> &[f64] {
+  pub(crate) fn breakpoints_slice(&self) -> &[f64] {
     self.breakpoints.as_slice().unwrap()
   }
 
@@ -39,7 +39,7 @@ impl PiecewiseFnBase {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn values_slice(&self) -> &[f64] {
+  pub(crate) fn values_slice(&self) -> &[f64] {
     self.values.as_slice().unwrap()
   }
 }

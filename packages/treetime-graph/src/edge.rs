@@ -10,7 +10,7 @@ use std::hash::Hash;
 pub struct GraphEdgeKey(pub usize);
 
 impl GraphEdgeKey {
-  pub const fn as_usize(self) -> usize {
+  pub(crate) const fn as_usize(self) -> usize {
     self.0
   }
 
@@ -32,7 +32,7 @@ pub struct Edge {
 }
 
 impl Edge {
-  pub fn new(key: GraphEdgeKey, source: GraphNodeKey, target: GraphNodeKey) -> Edge {
+  pub(crate) fn new(key: GraphEdgeKey, source: GraphNodeKey, target: GraphNodeKey) -> Edge {
     Edge { key, source, target }
   }
 }

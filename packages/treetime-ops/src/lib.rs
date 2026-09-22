@@ -26,7 +26,7 @@ impl ScaledArray {
     Self { normalized, log_scale }
   }
 
-  pub fn empty(len: usize) -> Self {
+  fn empty(len: usize) -> Self {
     Self {
       normalized: Array1::zeros(len),
       log_scale: f64::NEG_INFINITY,

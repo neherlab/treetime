@@ -101,7 +101,7 @@ pub struct AaCdsNodeData {
   pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
 }
 
-pub fn collect_aa_cds_node_data(
+pub(crate) fn collect_aa_cds_node_data(
   graph: &Graph,
   partition: &AncestralPartition,
   cds: &str,
@@ -183,7 +183,7 @@ fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> boo
   reff != gap && qry != gap && reff != unknown && qry != unknown
 }
 
-pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
+pub(crate) fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
   if let Some(segments) = &entry.segments {
     Some(segments.iter().map(|segment| segment.end - segment.start + 1).sum())
   } else if let (Some(start), Some(end)) = (entry.start, entry.end) {

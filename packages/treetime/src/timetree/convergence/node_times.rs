@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
+pub(crate) type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct NodeTimeChange {
@@ -11,7 +11,7 @@ pub struct NodeTimeChange {
   pub rms: Option<f64>,
 }
 
-pub fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
+pub(crate) fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
   graph
     .get_nodes()
     .filter_map(|node| {
@@ -26,7 +26,7 @@ pub fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnaps
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &NodeTimeSnapshot) -> NodeTimeChange {
+pub(crate) fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &NodeTimeSnapshot) -> NodeTimeChange {
   let changes: Vec<f64> = previous
     .iter()
     .filter_map(|(key, prev)| current.get(key).map(|curr| (curr - prev).abs()))

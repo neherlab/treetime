@@ -44,7 +44,7 @@ fn process_env() -> Value {
   Value::Object(env)
 }
 
-pub fn select_steps<'a>(
+pub(crate) fn select_steps<'a>(
   pipeline: &'a ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
 ) -> Result<Vec<&'a ResolvedStep>, Report> {

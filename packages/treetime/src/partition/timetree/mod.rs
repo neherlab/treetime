@@ -1,3 +1,3 @@
 pub mod marginal;
-pub mod optimize;
+pub(crate) mod optimize;
 pub mod partition;

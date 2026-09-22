@@ -28,7 +28,7 @@ pub fn distribution_subtraction<Y: SupportsSubtraction>(
   }
 }
 
-fn subtraction_result_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
+pub fn subtraction_result_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   let zero_beyond = |tail| matches!(tail, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_));
   if zero_beyond(a) && zero_beyond(b) {
     BoundaryBehavior::Hard

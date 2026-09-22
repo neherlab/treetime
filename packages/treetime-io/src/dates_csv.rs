@@ -13,14 +13,14 @@ use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
-pub type DateRecord = (String, Option<DateConstraint>);
+type DateRecord = (String, Option<DateConstraint>);
 
-pub fn read_dates_from_reader(
+fn read_dates_from_reader(
   reader: impl Read,
   delimiter: u8,
   name_candidates: &[String],
-  name_column: &Option<String>,
-  date_column: &Option<String>,
+  name_column: Option<&str>,
+  date_column: Option<&str>,
 ) -> Result<DatesMap, Report> {
   let mut reader = CsvReaderBuilder::new()
     .trim(Trim::All)
@@ -54,7 +54,13 @@ pub fn read_dates_from_str(
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let reader = content.as_bytes();
-  read_dates_from_reader(reader, delimiter, name_candidates, name_column, date_column)
+  read_dates_from_reader(
+    reader,
+    delimiter,
+    name_candidates,
+    name_column.as_deref(),
+    date_column.as_deref(),
+  )
 }
 
 pub fn read_dates(
@@ -68,15 +74,21 @@ pub fn read_dates(
   let mut file =
     open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
   let delimiter = detect_csv_delimiter(&mut *file, filepath, delimiters, |headers| {
-    get_col_name(headers, name_candidates, name_column).is_ok()
-      && get_col_name(headers, &vec_of_owned!["date"], date_column).is_ok()
+    get_col_name(headers, name_candidates, name_column.as_deref()).is_ok()
+      && get_col_name(headers, &vec_of_owned!["date"], date_column.as_deref()).is_ok()
   })
   .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
-  read_dates_from_reader(file, delimiter, name_candidates, name_column, date_column)
-    .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
+  read_dates_from_reader(
+    file,
+    delimiter,
+    name_candidates,
+    name_column.as_deref(),
+    date_column.as_deref(),
+  )
+  .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
 }
 
-pub fn convert_record(
+fn convert_record(
   index: usize,
   record: &StringRecord,
   name_column_idx: usize,
@@ -96,7 +108,7 @@ pub fn convert_record(
   Ok((name, date))
 }
 
-pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateConstraint>, Report> {
+pub(crate) fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateConstraint>, Report> {
   let trimmed = date_str.trim();
 
   if let Ok(year_fraction) = trimmed.parse::<f64>()

@@ -431,10 +431,7 @@ fn gather_timetree_outputs(
   (nodes, edges)
 }
 
-pub(crate) fn gather_timetree_output_maps(
-  graph: &Graph,
-  partitions: &[PartitionTimetree],
-) -> Result<TimetreeOutputMaps, Report> {
+fn gather_timetree_output_maps(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(TimetreeOutputMaps::default());
   };

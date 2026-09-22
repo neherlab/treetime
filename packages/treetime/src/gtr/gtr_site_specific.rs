@@ -25,8 +25,8 @@ pub struct GTRSiteSpecific {
   pub W: Array2<f64>,
   pub pi: Array2<f64>,
   pub eigvals: Array2<f64>,
-  pub v: Array3<f64>,
-  pub v_inv: Array3<f64>,
+  v: Array3<f64>,
+  v_inv: Array3<f64>,
   interpolator: Option<ExpQtInterpolator>,
 }
 
@@ -35,7 +35,7 @@ impl GTRSiteSpecific {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn new(
+  pub(crate) fn new(
     GTRSiteSpecificParams {
       n_states,
       seq_len,
@@ -219,7 +219,7 @@ impl GTRSiteSpecific {
     Ok(model)
   }
 
-  pub fn average_rate(&self) -> Array1<f64> {
+  pub(crate) fn average_rate(&self) -> Array1<f64> {
     let mut rates = Array1::zeros(self.seq_len);
     for a in 0..self.seq_len {
       let pi_a = self.pi.column(a);
@@ -240,7 +240,7 @@ impl GTRSiteSpecific {
     Ok(self.expQt_raw(t))
   }
 
-  pub fn expQt_raw(&self, t: f64) -> Array3<f64> {
+  pub(crate) fn expQt_raw(&self, t: f64) -> Array3<f64> {
     let n = self.eigvals.nrows();
     let mut result = Array3::zeros((n, n, self.seq_len));
 
@@ -340,16 +340,16 @@ impl GTRSiteSpecific {
 }
 
 #[derive(Clone, Debug)]
-struct ExpQtInterpolator {
-  t_grid: Array1<f64>,
-  data: Array4<f64>,
-  rate_scale: f64,
+pub struct ExpQtInterpolator {
+  pub t_grid: Array1<f64>,
+  pub data: Array4<f64>,
+  pub rate_scale: f64,
 }
 
 impl ExpQtInterpolator {
-  const MAX_INTERP_RANGE: f64 = 10.0;
+  pub const MAX_INTERP_RANGE: f64 = 10.0;
 
-  fn interpolate(&self, t: f64) -> Array3<f64> {
+  pub fn interpolate(&self, t: f64) -> Array3<f64> {
     let n = self.t_grid.len();
     debug_assert!(n >= 2);
 

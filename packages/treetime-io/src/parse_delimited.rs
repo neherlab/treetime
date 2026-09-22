@@ -9,7 +9,7 @@ use std::{
 use treetime_utils::error::make_report;
 use treetime_utils::io::file::open_file_or_stdin;
 
-pub fn parse_delimited<R: BufRead>(reader: R, delimiter: u8) -> impl Iterator<Item = Result<String, Report>> {
+fn parse_delimited<R: BufRead>(reader: R, delimiter: u8) -> impl Iterator<Item = Result<String, Report>> {
   reader.split(delimiter).map(|chunk| {
     let bytes = chunk.map_err(|e| make_report!("Failed to read chunk: {e}"))?;
     String::from_utf8(bytes).map_err(|e| make_report!("Invalid UTF-8 in input: {e}"))

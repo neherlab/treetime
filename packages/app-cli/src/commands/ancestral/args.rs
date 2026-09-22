@@ -290,12 +290,12 @@ pub struct TreetimeAncestralArgs {
 }
 
 impl TreetimeAncestralArgs {
-  pub fn tree(&self) -> &Path {
+  pub(crate) fn tree(&self) -> &Path {
     &self.tree
   }
 }
 
-pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
+pub(crate) fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
     model: args.model_args.model_name(),

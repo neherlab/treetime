@@ -36,7 +36,7 @@ pub fn merge_shared_mutation_branches(
   Ok(total_merged)
 }
 
-pub(crate) fn merge_single_polytomy(
+pub fn merge_single_polytomy(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   node_key: GraphNodeKey,

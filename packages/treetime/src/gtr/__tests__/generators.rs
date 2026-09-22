@@ -14,7 +14,7 @@ pub mod tests {
       })
     }
 
-    pub fn arb_pi_aa() -> impl Strategy<Value = Array1<f64>> {
+    fn arb_pi_aa() -> impl Strategy<Value = Array1<f64>> {
       prop::collection::vec(0.01_f64..10.0, 20).prop_map(|raw| {
         let sum: f64 = raw.iter().sum();
         Array1::from_vec(raw.iter().map(|x| x / sum).collect())
@@ -37,7 +37,7 @@ pub mod tests {
       })
     }
 
-    pub fn arb_w_aa() -> impl Strategy<Value = Array2<f64>> {
+    fn arb_w_aa() -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(0.01_f64..10.0, 190).prop_map(|upper| {
         let mut w = Array2::zeros((20, 20));
         let mut idx = 0;

@@ -42,7 +42,7 @@ pub struct RerootParams {
 
 impl RerootParams {
   #[must_use]
-  pub fn with_objective(&self, objective: RootObjective) -> Self {
+  pub(crate) fn with_objective(&self, objective: RootObjective) -> Self {
     Self {
       objective,
       ..self.clone()
@@ -54,7 +54,7 @@ impl RerootParams {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn reroot_in_place(
+pub(crate) fn reroot_in_place(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
   mut state: ClockState,

@@ -19,7 +19,7 @@ impl SpatialMetrics {
     Self::new_with_config(x, actual, expected, dx, &SpatialConfig::default())
   }
 
-  pub fn new_with_config(
+  pub(crate) fn new_with_config(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,

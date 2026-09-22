@@ -43,12 +43,12 @@ impl ConvolutionTestSuite for GaussianTestSuite {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianTestCase {
   #[serde(flatten)]
-  pub base: TestCaseBase,
-  pub sigma_f: f64,
-  pub sigma_g: f64,
-  pub mu: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
+  base: TestCaseBase,
+  sigma_f: f64,
+  sigma_g: f64,
+  mu: f64,
+  input_grid_domain: (f64, f64),
+  input_grid_n_points: usize,
 }
 
 impl From<&GaussianConvolutionTestCase> for GaussianTestCase {

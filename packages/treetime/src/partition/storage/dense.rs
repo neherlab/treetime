@@ -25,7 +25,7 @@ pub struct DenseNodeState {
 }
 
 impl DenseNodeState {
-  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
+  pub(crate) fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
     let unknown = find_letter_ranges(seq, alphabet.unknown());
     let non_char = range_union(&[unknown.clone(), gaps.clone()]);
@@ -42,7 +42,7 @@ impl DenseNodeState {
     })
   }
 
-  pub fn empty() -> Self {
+  pub(crate) fn empty() -> Self {
     Self {
       seq: DenseSeqInfo::default(),
       profile: DenseSeqDistribution::default(),

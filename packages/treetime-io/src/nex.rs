@@ -81,7 +81,7 @@ pub fn nex_write(
   nex_write_with(w, graph, names, weights, options, &providers)
 }
 
-pub fn nex_write_with(
+fn nex_write_with(
   w: &mut impl Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

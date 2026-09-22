@@ -49,75 +49,75 @@ use utoipa::ToSchema;
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct TimetreeArgs {
-  pub input_fastas: Vec<String>,
-  pub tree: Option<String>,
-  pub vcf_reference: Option<String>,
-  pub dates: Option<String>,
-  pub name_column: Option<String>,
-  pub date_column: Option<String>,
-  pub sequence_length: Option<usize>,
-  pub clock_rate: Option<f64>,
-  pub clock_std_dev: Option<f64>,
+  input_fastas: Vec<String>,
+  tree: Option<String>,
+  vcf_reference: Option<String>,
+  dates: Option<String>,
+  name_column: Option<String>,
+  date_column: Option<String>,
+  sequence_length: Option<usize>,
+  clock_rate: Option<f64>,
+  clock_std_dev: Option<f64>,
   #[default(BranchLengthMode::default())]
   #[schema(value_type = String)]
-  pub branch_length_mode: BranchLengthMode,
+  branch_length_mode: BranchLengthMode,
   #[default(TimeMarginalMode::default())]
   #[schema(value_type = String)]
-  pub time_marginal: TimeMarginalMode,
-  pub confidence: bool,
-  pub keep_polytomies: bool,
-  pub resolve_polytomies: bool,
-  pub relax: Vec<f64>,
+  time_marginal: TimeMarginalMode,
+  confidence: bool,
+  keep_polytomies: bool,
+  resolve_polytomies: bool,
+  relax: Vec<f64>,
   #[default = 2]
-  pub max_iter: usize,
-  pub coalescent: Option<f64>,
-  pub coalescent_opt: bool,
-  pub coalescent_skyline: bool,
+  max_iter: usize,
+  coalescent: Option<f64>,
+  coalescent_opt: bool,
+  coalescent_skyline: bool,
   #[default = 20]
-  pub skyline_n_points: usize,
+  skyline_n_points: usize,
   #[default = 2.0]
-  pub skyline_stiffness: f64,
+  skyline_stiffness: f64,
   #[default = 2.0]
-  pub coalescent_confidence: f64,
+  coalescent_confidence: f64,
   #[default = 50.0]
-  pub gen_per_year: f64,
-  pub n_branches_posterior: Option<usize>,
-  pub tip_labels: bool,
-  pub no_tip_labels: bool,
-  pub clock_filter: f64,
-  pub n_iqd: Option<f64>,
+  gen_per_year: f64,
+  n_branches_posterior: Option<usize>,
+  tip_labels: bool,
+  no_tip_labels: bool,
+  clock_filter: f64,
+  n_iqd: Option<f64>,
   #[schema(value_type = Option<String>)]
-  pub reroot: Option<RerootMethod>,
-  pub reroot_tips: Vec<String>,
-  pub keep_root: bool,
-  pub allow_negative_rate: bool,
-  pub tip_slack: Option<f64>,
-  pub covariation: bool,
+  reroot: Option<RerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
+  allow_negative_rate: bool,
+  tip_slack: Option<f64>,
+  covariation: bool,
   #[default(GtrModelName::default())]
   #[schema(value_type = String)]
-  pub gtr: GtrModelName,
-  pub gtr_params: Vec<String>,
+  gtr: GtrModelName,
+  gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
   #[schema(value_type = String)]
-  pub method_anc: MethodAncestral,
+  method_anc: MethodAncestral,
   #[default(AlphabetName::default())]
   #[schema(value_type = String)]
-  pub alphabet: AlphabetName,
-  pub dense: Option<bool>,
-  pub aa: bool,
+  alphabet: AlphabetName,
+  dense: Option<bool>,
+  aa: bool,
   #[default(GapFill::default())]
   #[schema(value_type = String)]
-  pub gap_fill: GapFill,
-  pub keep_overhangs: bool,
-  pub zero_based: bool,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub reconstruct_tip_states: bool,
-  pub report_ambiguous: bool,
-  pub no_indels: bool,
-  pub outdir: String,
-  pub tracelog: Option<String>,
-  pub seed: Option<u64>,
+  gap_fill: GapFill,
+  keep_overhangs: bool,
+  zero_based: bool,
+  include_leaves: bool,
+  impute_missing_data: bool,
+  reconstruct_tip_states: bool,
+  report_ambiguous: bool,
+  no_indels: bool,
+  outdir: String,
+  tracelog: Option<String>,
+  seed: Option<u64>,
 }
 
 impl TimetreeArgs {
@@ -250,7 +250,7 @@ fn load_input_data(args: &TimetreeArgs) -> Result<InputData, Report> {
   })
 }
 
-pub fn run_timetree(
+pub(crate) fn run_timetree(
   args: &TimetreeArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,

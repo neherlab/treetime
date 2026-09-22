@@ -169,7 +169,7 @@ pub fn run_optimize(
   Ok(OptimizeResult { graph, nodes, edges })
 }
 
-pub(crate) fn gather_optimize_output_maps(
+fn gather_optimize_output_maps(
   graph: &Graph,
   sparse_partitions: &[SparseReconstruction],
   dense_partitions: &[DenseReconstruction],

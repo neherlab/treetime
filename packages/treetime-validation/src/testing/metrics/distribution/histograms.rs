@@ -27,9 +27,9 @@ pub struct ErrorHistogram {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistogramSummary {
-  pub total_count: usize,
-  pub modal_range: (f64, f64),
-  pub spread_measure: f64,
+  total_count: usize,
+  modal_range: (f64, f64),
+  spread_measure: f64,
 }
 
 #[allow(

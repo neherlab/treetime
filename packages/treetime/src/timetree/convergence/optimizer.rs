@@ -23,7 +23,7 @@ pub struct TimetreeOptimizer {
 }
 
 impl TimetreeOptimizer {
-  pub fn new(max_iter: usize, suppress_convergence: bool) -> Self {
+  pub(crate) fn new(max_iter: usize, suppress_convergence: bool) -> Self {
     Self {
       trace: vec![],
       trace_sink: None,
@@ -34,12 +34,12 @@ impl TimetreeOptimizer {
   }
 
   #[must_use]
-  pub fn with_trace_sink(mut self, sink: Box<dyn TraceSink>) -> Self {
+  pub(crate) fn with_trace_sink(mut self, sink: Box<dyn TraceSink>) -> Self {
     self.trace_sink = Some(sink);
     self
   }
 
-  pub fn next_iter(&mut self) -> Option<IterationContext> {
+  pub(crate) fn next_iter(&mut self) -> Option<IterationContext> {
     if self.has_converged() || self.has_reached_max_iterations() {
       return None;
     }
@@ -50,7 +50,7 @@ impl TimetreeOptimizer {
     Some(IterationContext { i: self.i })
   }
 
-  pub fn record(
+  pub(crate) fn record(
     &mut self,
     n_diff: usize,
     n_resolved: usize,
@@ -116,6 +116,6 @@ impl TimetreeOptimizer {
   }
 }
 
-pub struct IterationContext {
+pub(crate) struct IterationContext {
   pub i: usize,
 }

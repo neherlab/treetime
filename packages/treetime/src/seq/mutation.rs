@@ -36,7 +36,7 @@ impl Mutation {
   }
 }
 
-pub fn combine_edge_mutations(
+pub(crate) fn combine_edge_mutations(
   subs: Vec<Sub>,
   indels: &[InDel],
   track: &MutationTrack,
@@ -88,7 +88,7 @@ pub struct AlignedMutation {
 }
 
 impl AlignedMutation {
-  pub fn new(range: (usize, usize), sequence: Seq) -> Result<Self, Report> {
+  pub(crate) fn new(range: (usize, usize), sequence: Seq) -> Result<Self, Report> {
     if range.0 >= range.1 {
       return make_error!(
         "Aligned mutation range must be non-empty and ordered, but found {}..{}",
@@ -148,7 +148,7 @@ impl Sub {
     Ok(Self { pos, qry, reff })
   }
 
-  pub fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
+  pub(crate) fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
     if !alphabet.is_determined(self.qry()) || !alphabet.is_determined(self.reff()) {
       make_internal_error!("Substitution is not determined: '{self}'")
     } else {
@@ -156,7 +156,7 @@ impl Sub {
     }
   }
 
-  pub fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
+  pub(crate) fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
     if !alphabet.is_canonical(self.qry()) || !alphabet.is_canonical(self.reff()) {
       make_internal_error!("Substitution is not canonical: '{self}'")
     } else {
@@ -164,12 +164,12 @@ impl Sub {
     }
   }
 
-  pub fn invert(&mut self) {
+  pub(crate) fn invert(&mut self) {
     std::mem::swap(&mut self.reff, &mut self.qry);
   }
 }
 
-pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
+pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
     "parent_subs not sorted by unique position"
@@ -245,7 +245,7 @@ impl FromStr for Sub {
   }
 }
 
-pub fn parse_pos(s: &str) -> Result<usize, Report> {
+fn parse_pos(s: &str) -> Result<usize, Report> {
   let pos = to_eyre_error(s.parse::<usize>()).wrap_err_with(|| format!("Unable to parse position: '{s}'"))?;
   if pos < 1 {
     return make_error!("Mutation position is expected to be >= 1");

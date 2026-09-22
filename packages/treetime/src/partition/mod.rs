@@ -1,5 +1,5 @@
-pub mod algo;
-pub mod create;
+pub(crate) mod algo;
+pub(crate) mod create;
 pub mod fitch;
 pub mod likelihood;
 pub mod marginal;

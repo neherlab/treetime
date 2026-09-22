@@ -3,13 +3,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
-  pub signal_to_noise_ratio: f64,
-  pub normalized_rmse: f64,
-  pub coefficient_of_determination: f64,
-  pub nash_sutcliffe_efficiency: f64,
+  signal_to_noise_ratio: f64,
+  normalized_rmse: f64,
+  coefficient_of_determination: f64,
+  nash_sutcliffe_efficiency: f64,
 }
 
-pub fn compute_performance_metrics(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<PerformanceMetrics> {
+pub(crate) fn compute_performance_metrics(
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
+) -> eyre::Result<PerformanceMetrics> {
   let errors = actual - expected;
   let squared_errors = errors.mapv(|x| x * x);
 

@@ -48,10 +48,10 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianChainTestCase {
   #[serde(flatten)]
-  pub base: TestCaseBase,
-  pub factors: Vec<GaussianParams>,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
+  base: TestCaseBase,
+  factors: Vec<GaussianParams>,
+  input_grid_domain: (f64, f64),
+  input_grid_n_points: usize,
 }
 
 impl From<AnalyticalCase> for GaussianChainTestCase {

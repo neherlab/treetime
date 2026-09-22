@@ -48,7 +48,7 @@ impl AlgorithmSummary {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn new_from_name<T: TestCase>(
+  pub(crate) fn new_from_name<T: TestCase>(
     algorithm_name: &str,
     successes: &[&&TestResult<T>],
     failures: &[&&TestFailure<T>],

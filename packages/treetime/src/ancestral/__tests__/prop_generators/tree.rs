@@ -164,7 +164,7 @@ pub fn arb_tree_topology(taxa: Vec<String>) -> BoxedStrategy<String> {
   .boxed()
 }
 
-pub fn arb_newick(n_taxa: usize) -> impl Strategy<Value = String> {
+fn arb_newick(n_taxa: usize) -> impl Strategy<Value = String> {
   let taxa: Vec<String> = (0..n_taxa).map(|i| format!("T{i}")).collect();
   arb_tree_topology(taxa).prop_map(|tree| format!("({tree})root:0.001;"))
 }

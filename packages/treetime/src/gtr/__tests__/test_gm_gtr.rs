@@ -235,24 +235,24 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub struct ExpQtEntry {
-      pub time: f64,
+      time: f64,
       #[serde(rename = "expQt", deserialize_with = "array2_from_vec")]
-      pub exp_qt: Array2<f64>,
+      exp_qt: Array2<f64>,
     }
 
     #[derive(Debug, Deserialize)]
     pub struct GtrOutput {
-      pub mu: f64,
+      mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
-      pub pi: Array1<f64>,
+      pi: Array1<f64>,
       #[serde(rename = "W", deserialize_with = "array2_from_vec")]
-      pub w: Array2<f64>,
+      w: Array2<f64>,
       #[serde(rename = "Q", deserialize_with = "array2_from_vec")]
-      pub q: Array2<f64>,
+      q: Array2<f64>,
       #[serde(deserialize_with = "array1_from_vec")]
-      pub eigenvals: Array1<f64>,
+      eigenvals: Array1<f64>,
       #[serde(rename = "expQts")]
-      pub exp_qts: Vec<ExpQtEntry>,
+      exp_qts: Vec<ExpQtEntry>,
     }
 
     #[derive(Debug, Deserialize)]

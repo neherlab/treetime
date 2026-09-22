@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
+pub fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   let mut profile = Array2::zeros((1, n_states));
   profile[[0, index]] = 1.0;
   profile
@@ -18,11 +18,11 @@ pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub(crate) fn uniform_profile(n_states: usize) -> Array2<f64> {
+pub fn uniform_profile(n_states: usize) -> Array2<f64> {
   Array2::from_elem((1, n_states), 1.0 / n_states as f64)
 }
 
-pub(crate) fn validate_trait_names(
+pub fn validate_trait_names(
   graph: &Graph,
   traits: &BTreeMap<String, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

@@ -8,12 +8,12 @@ pub struct PartitionContribution {
 }
 
 impl PartitionContribution {
-  pub fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
+  pub(crate) fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
     Self { coefficients, gtr }
   }
 }
 
-pub fn get_coefficients(
+pub(crate) fn get_coefficients(
   msg_to_parent: &DenseSeqDistribution,
   msg_to_child: &DenseSeqDistribution,
   gtr: &GTR,

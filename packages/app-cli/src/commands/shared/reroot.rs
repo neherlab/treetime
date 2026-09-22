@@ -36,18 +36,18 @@ pub struct RerootArgs {
   ///
   /// Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
   #[cfg_attr(feature = "clap", clap(long = "reroot", value_enum, conflicts_with = "reroot_tips"))]
-  pub reroot: Option<RerootMethodCli>,
+  reroot: Option<RerootMethodCli>,
 
   /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
   #[cfg_attr(
     feature = "clap",
     clap(long = "reroot-tips", value_delimiter = ',', conflicts_with = "reroot")
   )]
-  pub reroot_tips: Vec<String>,
+  reroot_tips: Vec<String>,
 }
 
 impl RerootArgs {
-  pub fn spec(&self) -> RerootSpec {
+  pub(crate) fn spec(&self) -> RerootSpec {
     if self.reroot_tips.is_empty() {
       RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default())
     } else {

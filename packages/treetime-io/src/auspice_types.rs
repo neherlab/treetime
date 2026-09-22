@@ -6,20 +6,20 @@ use traversal::{Bft, DftPost, DftPre};
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct AuspiceGraphMeta {
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub auspice_tree_version: Option<String>,
+  auspice_tree_version: Option<String>,
 
-  pub meta: AuspiceTreeMeta,
+  meta: AuspiceTreeMeta,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  other: serde_json::Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTreeNodeAttr {
-  pub value: String,
+  value: String,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  other: serde_json::Value,
 }
 
 impl AuspiceTreeNodeAttr {
@@ -33,10 +33,10 @@ impl AuspiceTreeNodeAttr {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTreeNodeAttrF64 {
-  pub value: f64,
+  value: f64,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  other: serde_json::Value,
 }
 
 impl AuspiceTreeNodeAttrF64 {
@@ -81,7 +81,7 @@ pub struct AuspiceTreeBranchAttrs {
 
 impl AuspiceTreeBranchAttrs {
   #[inline]
-  pub fn is_default(&self) -> bool {
+  fn is_default(&self) -> bool {
     self == &Self::default()
   }
 }
@@ -163,7 +163,7 @@ pub struct AuspiceDisplayDefaults {
 }
 
 impl AuspiceDisplayDefaults {
-  pub fn is_empty(&self) -> bool {
+  fn is_empty(&self) -> bool {
     self == &Self::default()
   }
 }

@@ -16,7 +16,7 @@ pub struct ClockSet {
 }
 
 impl ClockSet {
-  pub fn leaf_contribution(date: Option<f64>) -> Self {
+  pub(crate) fn leaf_contribution(date: Option<f64>) -> Self {
     Self {
       t_sum: date.unwrap_or(0.0),
       tsq_sum: date.unwrap_or(0.0).powi(2),
@@ -27,7 +27,7 @@ impl ClockSet {
     }
   }
 
-  pub fn outlier_contribution() -> Self {
+  pub(crate) fn outlier_contribution() -> Self {
     Self {
       t_sum: 0.0,
       tsq_sum: 0.0,
@@ -38,7 +38,7 @@ impl ClockSet {
     }
   }
 
-  pub fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
+  pub(crate) fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
     let Some(date) = date else {
       return Self::outlier_contribution();
     };
@@ -52,7 +52,7 @@ impl ClockSet {
     }
   }
 
-  pub fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
+  pub(crate) fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
     let denom = 1.0 / (1.0 + branch_variance * self.norm);
 
     let t_sum = self.t_sum * denom;
@@ -81,15 +81,15 @@ impl ClockSet {
     }
   }
 
-  pub fn determinant(&self) -> f64 {
+  pub(crate) fn determinant(&self) -> f64 {
     self.tsq_sum() * self.norm() - self.t_sum().powi(2)
   }
 
-  pub fn clock_rate(&self, det: f64) -> f64 {
+  pub(crate) fn clock_rate(&self, det: f64) -> f64 {
     (self.dt_sum() * self.norm() - self.t_sum() * self.d_sum()) / det
   }
 
-  pub fn intercept(&self, rate: f64) -> f64 {
+  pub(crate) fn intercept(&self, rate: f64) -> f64 {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
@@ -97,7 +97,7 @@ impl ClockSet {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn hessian(&self) -> Array2<f64> {
+  pub(crate) fn hessian(&self) -> Array2<f64> {
     Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
   }
 
@@ -105,7 +105,7 @@ impl ClockSet {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn cov(&self) -> Array2<f64> {
+  pub(crate) fn cov(&self) -> Array2<f64> {
     let det_inv = 1.0 / self.determinant();
     Array2::from_shape_vec(
       (2, 2),
@@ -119,7 +119,7 @@ impl ClockSet {
     .unwrap()
   }
 
-  pub fn chisq(&self) -> f64 {
+  pub(crate) fn chisq(&self) -> f64 {
     let det = self.determinant();
     0.5
       * (self.dsq_sum() * self.norm()
@@ -128,14 +128,14 @@ impl ClockSet {
       / self.norm()
   }
 
-  pub fn chisq_fixed_rate(&self, rate: f64) -> f64 {
+  pub(crate) fn chisq_fixed_rate(&self, rate: f64) -> f64 {
     0.5
       * (self.dsq_sum() - 2.0 * rate * self.dt_sum() + rate.powi(2) * self.tsq_sum()
         - (self.d_sum() - rate * self.t_sum()).powi(2) / self.norm())
       / self.norm()
   }
 
-  pub fn r_val(&self) -> f64 {
+  pub(crate) fn r_val(&self) -> f64 {
     (self.dt_sum * self.norm() - self.t_sum * self.d_sum)
       / ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) * (self.tsq_sum * self.norm() - self.t_sum.powi(2))).sqrt()
   }

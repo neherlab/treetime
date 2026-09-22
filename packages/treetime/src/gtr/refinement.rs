@@ -13,7 +13,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-pub fn refine_gtr_model<P: MarginalPasses>(
+pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
@@ -44,7 +44,7 @@ pub fn refine_gtr_model<P: MarginalPasses>(
   Ok((gtr, update))
 }
 
-pub fn refine_gtr_model_and_rate<P: MarginalPasses>(
+pub(crate) fn refine_gtr_model_and_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,

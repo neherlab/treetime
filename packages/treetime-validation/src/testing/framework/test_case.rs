@@ -38,23 +38,23 @@ pub struct TestCaseBase {
 }
 
 impl TestCaseBase {
-  pub fn name(&self) -> &str {
+  fn name(&self) -> &str {
     &self.name
   }
 
-  pub fn description(&self) -> &str {
+  fn description(&self) -> &str {
     &self.description
   }
 
-  pub fn stress_type(&self) -> &str {
+  fn stress_type(&self) -> &str {
     &self.stress_type
   }
 
-  pub fn analytical_caution(&self) -> &str {
+  fn analytical_caution(&self) -> &str {
     &self.analytical_caution
   }
 
-  pub fn slowness(&self) -> f64 {
+  fn slowness(&self) -> f64 {
     self.slowness
   }
 }

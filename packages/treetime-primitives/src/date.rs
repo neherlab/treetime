@@ -32,14 +32,14 @@ pub enum DateValue {
 
 impl DateValue {
   #[inline]
-  pub fn mean(&self) -> f64 {
+  fn mean(&self) -> f64 {
     match self {
       DateValue::Exact(d) => d.value,
       DateValue::Uncertain(r) | DateValue::Range(r) => f64::midpoint(r.start, r.end),
     }
   }
 
-  pub fn is_exact(&self) -> bool {
+  fn is_exact(&self) -> bool {
     matches!(self, DateValue::Exact(_))
   }
 }

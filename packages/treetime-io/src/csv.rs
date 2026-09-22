@@ -126,10 +126,10 @@ pub fn default_metadata_delimiters() -> Vec<char> {
   vec![',', '\t', ';']
 }
 
-pub fn get_col_name(
+pub(crate) fn get_col_name(
   headers: &[String],
   possible_names: &[String],
-  provided_name: &Option<String>,
+  provided_name: Option<&str>,
 ) -> Result<usize, Report> {
   if let Some(provided_name) = provided_name {
     match headers.iter().position(|header| header == provided_name) {
@@ -158,7 +158,7 @@ pub fn get_col_name(
   }
 }
 
-pub fn detect_csv_delimiter<R: BufRead + ?Sized>(
+pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
   reader: &mut R,
   filepath: impl AsRef<Path>,
   delimiters: &[char],
@@ -208,7 +208,7 @@ pub fn detect_csv_delimiter<R: BufRead + ?Sized>(
   }
 }
 
-pub fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
+pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
   headers
     .iter()
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())

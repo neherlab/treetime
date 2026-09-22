@@ -54,23 +54,23 @@ impl ClockLine for ClockRegression {
 
 #[allow(clippy::same_name_method)]
 impl ClockRegression {
-  pub fn clock_rate(&self) -> f64 {
+  pub(crate) fn clock_rate(&self) -> f64 {
     self.clock_rate
   }
 
-  pub fn intercept(&self) -> f64 {
+  pub(crate) fn intercept(&self) -> f64 {
     self.intercept
   }
 
-  pub fn chisq(&self) -> f64 {
+  pub(crate) fn chisq(&self) -> f64 {
     self.chisq
   }
 
-  pub fn r_val(&self) -> f64 {
+  pub(crate) fn r_val(&self) -> f64 {
     self.r_val
   }
 
-  pub fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
+  pub(crate) fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
     let det = clock_set.determinant();
     if det <= 0.0 {
       debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
@@ -89,7 +89,7 @@ impl ClockRegression {
     })
   }
 
-  pub fn hessian(&self) -> &Array2<f64> {
+  pub(crate) fn hessian(&self) -> &Array2<f64> {
     &self.hessian
   }
 
@@ -143,7 +143,7 @@ impl ClockModel {
     Ok(Self::from_regression_unchecked(regression))
   }
 
-  pub fn from_regression_allow_negative(regression: &ClockRegression) -> Self {
+  pub(crate) fn from_regression_allow_negative(regression: &ClockRegression) -> Self {
     if regression.clock_rate <= 0.0 {
       warn!(
         "Estimated clock rate is non-positive ({:.6e}). The root-to-tip regression found no positive \
@@ -169,7 +169,7 @@ impl ClockModel {
     }
   }
 
-  pub fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {
+  pub(crate) fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {
     if clock_rate <= 0.0 {
       return make_error!(
         "Specified clock rate must be positive, got {clock_rate:.6e}.\n\n\
@@ -215,7 +215,7 @@ impl ClockModel {
     }
   }
 
-  pub fn date(&self, div: f64) -> f64 {
+  pub(crate) fn date(&self, div: f64) -> f64 {
     (div - self.intercept()) / self.clock_rate()
   }
 
@@ -237,7 +237,7 @@ impl ClockModel {
   }
 
   #[cfg(test)]
-  pub fn for_testing(clock_rate: f64, intercept: f64) -> Self {
+  pub(crate) fn for_testing(clock_rate: f64, intercept: f64) -> Self {
     Self {
       clock_rate,
       intercept,
@@ -246,7 +246,7 @@ impl ClockModel {
   }
 
   #[cfg(test)]
-  pub fn for_testing_with_stats(clock_rate: f64, intercept: f64, stats: ClockModelStats) -> Self {
+  pub(crate) fn for_testing_with_stats(clock_rate: f64, intercept: f64, stats: ClockModelStats) -> Self {
     Self {
       clock_rate,
       intercept,

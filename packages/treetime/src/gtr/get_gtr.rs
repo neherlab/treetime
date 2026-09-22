@@ -67,7 +67,7 @@ impl GtrOutput {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
+pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
   let output = GtrOutput::new(gtr, model_name);
   let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
   info!("GTR model initialized:\n{json}");
@@ -97,7 +97,7 @@ pub enum GtrModelName {
   Jtt92,
 }
 
-pub fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
+pub(crate) fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
     GtrModelName::JC69 => jc69(JC69Params::default()),
@@ -145,7 +145,7 @@ pub struct K80Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
+pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
@@ -169,7 +169,7 @@ pub struct F81Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
+pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
@@ -198,7 +198,7 @@ pub struct HKY85Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn hky85(
+pub(crate) fn hky85(
   HKY85Params {
     mu,
     kappa,
@@ -228,7 +228,7 @@ pub struct T92Params {
   pub alphabet: AlphabetName,
 }
 
-pub fn t92(
+pub(crate) fn t92(
   T92Params {
     mu,
     kappa,
@@ -250,14 +250,14 @@ pub fn t92(
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct Jtt92Params {
   #[default = 1.0]
-  pub mu: f64,
+  mu: f64,
 
   #[default(AlphabetName::AaNoStop)]
-  pub alphabet: AlphabetName,
+  alphabet: AlphabetName,
 }
 
 #[allow(clippy::excessive_precision)]
-pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
+pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
 
   #[rustfmt::skip]
@@ -344,7 +344,7 @@ pub struct TN93Params {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn tn93(
+pub(crate) fn tn93(
   TN93Params {
     mu,
     kappa1,

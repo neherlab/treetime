@@ -21,7 +21,7 @@ use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
-pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
+fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
   for node in graph.get_nodes() {
     if node.is_leaf() {
       continue;
@@ -42,7 +42,7 @@ pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState
   Ok(())
 }
 
-pub fn resolve_polytomies(
+pub(crate) fn resolve_polytomies(
   graph: &mut Graph,
   partitions: &[PartitionTimetree],
   mutation_rate: f64,
@@ -265,7 +265,7 @@ fn remove_single_child_nodes(
   Ok(removed_count)
 }
 
-pub fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
+pub(crate) fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   validate_tree_before_topology_change(graph, state)?;
 
   for node in graph.get_nodes() {

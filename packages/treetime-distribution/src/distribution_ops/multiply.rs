@@ -414,10 +414,7 @@ fn with_composed_tails<Y: YAxisPolicy>(
     .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1)?)
 }
 
-pub(super) fn compose_multiplication_tail(
-  a: BoundaryBehavior,
-  b: BoundaryBehavior,
-) -> Result<BoundaryBehavior, Report> {
+fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Result<BoundaryBehavior, Report> {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => Ok(BoundaryBehavior::Error),
     (BoundaryBehavior::Hard, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))

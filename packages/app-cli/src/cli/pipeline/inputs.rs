@@ -1,7 +1,7 @@
 use crate::cli::pipeline::types::PipelineStepCommand;
 use serde_json::Value;
 
-pub const INPUT_FIELDS: [(&str, &[&str]); 5] = [
+const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("tree", &["tree"]),
   ("alignment", &["alignment"]),
   ("metadata", &["metadata"]),

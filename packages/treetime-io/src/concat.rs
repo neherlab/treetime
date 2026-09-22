@@ -20,7 +20,7 @@ where
     Self::with_delimiter(iter, None)
   }
 
-  pub fn with_delimiter(mut iter: I, delimiter: Option<Vec<u8>>) -> Concat<I> {
+  pub(crate) fn with_delimiter(mut iter: I, delimiter: Option<Vec<u8>>) -> Concat<I> {
     let curr = iter.next();
     Concat { iter, curr, delimiter }
   }

@@ -40,7 +40,7 @@ mod tests {
     #[case] expected_idx: usize,
   ) -> Result<(), Report> {
     let candidates = default_name_candidates();
-    let actual = get_col_name(&headers, &candidates, &None)?;
+    let actual = get_col_name(&headers, &candidates, None)?;
     assert_eq!(expected_idx, actual);
     Ok(())
   }
@@ -49,7 +49,7 @@ mod tests {
   fn test_csv_get_col_name_provided_name() -> Result<(), Report> {
     let headers = vec![o!("accession"), o!("date"), o!("strain")];
     let candidates = default_name_candidates();
-    let actual = get_col_name(&headers, &candidates, &Some(o!("strain")))?;
+    let actual = get_col_name(&headers, &candidates, Some("strain"))?;
     assert_eq!(2, actual);
     Ok(())
   }
@@ -58,7 +58,7 @@ mod tests {
   fn test_csv_get_col_name_no_match() {
     let headers = vec![o!("region"), o!("country"), o!("date")];
     let candidates = default_name_candidates();
-    let result = get_col_name(&headers, &candidates, &None);
+    let result = get_col_name(&headers, &candidates, None);
     assert_error!(
       result,
       "Unable to find column:\n  Looking for: strain, name, accession\n  Available columns are: region, country, date"

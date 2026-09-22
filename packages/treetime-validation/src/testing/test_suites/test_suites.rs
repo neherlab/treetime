@@ -31,7 +31,7 @@ pub enum TestSuiteName {
 }
 
 impl TestSuiteName {
-  pub fn all() -> Vec<Self> {
+  pub(crate) fn all() -> Vec<Self> {
     Self::iter().filter(|s| *s != Self::All).collect()
   }
 
@@ -47,7 +47,7 @@ impl TestSuiteName {
     vec![Self::MultGaussianPairwise, Self::MultGaussianChain]
   }
 
-  pub fn expand(suites: &[Self]) -> Vec<Self> {
+  pub(crate) fn expand(suites: &[Self]) -> Vec<Self> {
     if suites.contains(&Self::All) {
       Self::all()
     } else {
@@ -66,7 +66,7 @@ impl TestSuiteName {
     matches!(self, Self::MultGaussianPairwise | Self::MultGaussianChain)
   }
 
-  pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
+  pub(crate) fn run_tests(self, args: &Args) -> Result<(), Report> {
     match self {
       Self::All => make_error!("Cannot run All meta-variant; use expand() first"),
       Self::ConvGaussianGaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),

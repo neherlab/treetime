@@ -14,7 +14,7 @@ pub struct OnlyLeaves(pub bool);
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-pub fn compute_divs(
+pub(crate) fn compute_divs(
   graph: &Graph,
   only_leaves: OnlyLeaves,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

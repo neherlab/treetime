@@ -66,27 +66,27 @@ impl PartitionFitch {
     Ok((partition, node_states))
   }
 
-  pub fn into_marginal_dense(self) -> PartitionMarginalDense {
+  pub(crate) fn into_marginal_dense(self) -> PartitionMarginalDense {
     PartitionMarginalDense::new(self.index, self.alphabet, self.length)
   }
 
-  pub fn sequence_length(&self) -> usize {
+  pub(crate) fn sequence_length(&self) -> usize {
     self.length
   }
 
-  pub fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  pub(crate) fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
     self.edges[&edge_key].indels.clone()
   }
 
-  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+  pub(crate) fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     Ok(self.nodes[&graph.root_key()?].seq.sequence.clone())
   }
 
-  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub(crate) fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.nodes[&node_key].seq.sequence.clone()
   }
 
@@ -103,7 +103,7 @@ impl PartitionFitch {
     )
   }
 
-  pub fn ambiguous_char(&self) -> AsciiChar {
+  pub(crate) fn ambiguous_char(&self) -> AsciiChar {
     self.alphabet.unknown()
   }
 }

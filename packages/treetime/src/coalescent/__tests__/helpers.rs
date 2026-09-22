@@ -10,7 +10,7 @@ use treetime_io::dates_csv::DateConstraint;
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::o;
 
-pub const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
+const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
 
 pub fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
   let dates = btreemap! {

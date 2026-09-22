@@ -20,7 +20,7 @@ pub struct PartitionContribution {
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
-pub fn get_coefficients(
+pub(crate) fn get_coefficients(
   gtr: &GTR,
   backward: &SparseEdgeBackward,
   forward: &SparseEdgeForward,

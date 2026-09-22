@@ -2,22 +2,22 @@ use proptest::prelude::*;
 use treetime_primitives::AlignmentRecord;
 use treetime_primitives::seq::Seq;
 
-pub fn arb_nucleotide() -> impl Strategy<Value = char> {
+fn arb_nucleotide() -> impl Strategy<Value = char> {
   prop_oneof![
     9 => prop::sample::select(vec!['A', 'C', 'G', 'T']),
     1 => prop::sample::select(vec!['N', '-', 'R', 'Y']),
   ]
 }
 
-pub fn arb_sequence(len: usize) -> impl Strategy<Value = String> {
+fn arb_sequence(len: usize) -> impl Strategy<Value = String> {
   prop::collection::vec(arb_nucleotide(), len).prop_map(|chars| chars.into_iter().collect())
 }
 
-pub fn arb_nucleotide_no_gaps() -> impl Strategy<Value = char> {
+fn arb_nucleotide_no_gaps() -> impl Strategy<Value = char> {
   prop::sample::select(vec!['A', 'C', 'G', 'T'])
 }
 
-pub fn arb_sequence_no_gaps(len: usize) -> impl Strategy<Value = String> {
+fn arb_sequence_no_gaps(len: usize) -> impl Strategy<Value = String> {
   prop::collection::vec(arb_nucleotide_no_gaps(), len).prop_map(|chars| chars.into_iter().collect())
 }
 

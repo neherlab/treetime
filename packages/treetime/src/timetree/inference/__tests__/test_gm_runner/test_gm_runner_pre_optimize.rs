@@ -161,7 +161,7 @@ mod tests {
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     state = run_timetree(
-      &mut graph,
+      &graph,
       &constraints,
       &partitions,      &run_branch_lengths,
       &run_names,

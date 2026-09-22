@@ -42,7 +42,7 @@ impl HardApproachLaw {
     Ok(HardApproachLaw { t_hard, b })
   }
 
-  pub fn eval(&self, edge: GridEdge, t: f64) -> f64 {
+  pub(crate) fn eval(&self, edge: GridEdge, t: f64) -> f64 {
     let dt = (t - self.t_hard).abs();
     if dt == 0.0 {
       return if self.b == 0.0 { edge.y } else { f64::INFINITY };

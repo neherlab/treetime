@@ -12,7 +12,7 @@ pub struct Composition {
 }
 
 impl Composition {
-  pub fn new<I>(alphabet_chars: I, gap: AsciiChar) -> Self
+  pub(crate) fn new<I>(alphabet_chars: I, gap: AsciiChar) -> Self
   where
     I: IntoIterator<Item = AsciiChar>,
   {
@@ -27,15 +27,15 @@ impl Composition {
     }
   }
 
-  pub fn get(&self, c: AsciiChar) -> Option<usize> {
+  pub(crate) fn get(&self, c: AsciiChar) -> Option<usize> {
     self.counts.get(&c).copied()
   }
 
-  pub fn counts(&self) -> &BTreeMap<AsciiChar, usize> {
+  pub(crate) fn counts(&self) -> &BTreeMap<AsciiChar, usize> {
     &self.counts
   }
 
-  pub fn with_seq(
+  pub(crate) fn with_seq(
     sequence: impl AsRef<[AsciiChar]>,
     alphabet_chars: impl IntoIterator<Item = AsciiChar>,
     gap: AsciiChar,
@@ -58,7 +58,7 @@ impl Composition {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
+  pub(crate) fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
     let mut additions = [0; 128];
     for &c in sequence.as_ref() {
       additions[usize::from(c)] += 1;
@@ -74,16 +74,16 @@ impl Composition {
     Ok(())
   }
 
-  fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
+  pub fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
     s.bytes().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()
   }
 
-  pub fn add_sub(&mut self, sub: &Sub) {
+  pub(crate) fn add_sub(&mut self, sub: &Sub) {
     self.adjust_count(sub.reff(), -1);
     self.adjust_count(sub.qry(), 1);
   }
 
-  pub fn add_indel(&mut self, indel: &InDel) {
+  pub(crate) fn add_indel(&mut self, indel: &InDel) {
     let adjust_by = if indel.is_deletion() { -1 } else { 1 };
     for nuc in &indel.seq {
       self.adjust_count(*nuc, adjust_by);
@@ -91,7 +91,7 @@ impl Composition {
     }
   }
 
-  pub fn adjust_count(&mut self, nuc: AsciiChar, change: isize) {
+  pub(crate) fn adjust_count(&mut self, nuc: AsciiChar, change: isize) {
     let count = self.counts.entry(nuc).or_default();
     *count = count.saturating_add_signed(change);
   }

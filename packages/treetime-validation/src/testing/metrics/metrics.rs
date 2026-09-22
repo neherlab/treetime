@@ -25,7 +25,7 @@ pub struct ValidationMetrics {
 }
 
 impl ValidationMetrics {
-  pub fn new(
+  pub(crate) fn new(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,
@@ -34,7 +34,7 @@ impl ValidationMetrics {
     Self::new_with_config(x, actual, expected, execution_time_ms, &MetricsConfig::default())
   }
 
-  pub fn new_with_config(
+  fn new_with_config(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,

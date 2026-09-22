@@ -10,6 +10,6 @@ pub struct ProgressEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ErrorResponse {
-  pub code: String,
-  pub message: String,
+  code: String,
+  message: String,
 }

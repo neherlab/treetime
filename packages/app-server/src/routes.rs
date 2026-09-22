@@ -25,7 +25,7 @@ use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
-pub fn api_routes(config: ServerConfig) -> Router {
+pub(crate) fn api_routes(config: ServerConfig) -> Router {
   let (router, _api) = api_router().with_state(Arc::new(config)).split_for_parts();
   router
     .route("/api/health", get(handle_health))

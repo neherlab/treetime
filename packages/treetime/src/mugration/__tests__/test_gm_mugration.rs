@@ -122,11 +122,11 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub struct GmMugrationInput {
-      pub tree_path: String,
-      pub metadata_path: String,
-      pub attribute: String,
-      pub name_column: Option<String>,
-      pub parameters: GmMugrationParameters,
+      tree_path: String,
+      metadata_path: String,
+      attribute: String,
+      name_column: Option<String>,
+      parameters: GmMugrationParameters,
     }
 
     #[derive(Debug, Deserialize)]

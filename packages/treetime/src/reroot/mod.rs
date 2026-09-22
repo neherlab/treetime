@@ -1,10 +1,10 @@
 pub mod cost_function;
 pub mod div_stats;
-pub mod div_stats_traversal;
-pub mod method_brent;
+pub(crate) mod div_stats_traversal;
+pub(crate) mod method_brent;
 pub mod orchestrate;
 pub mod params;
-pub mod search;
+pub(crate) mod search;
 pub mod split;
 pub mod traits;
 pub mod variance;

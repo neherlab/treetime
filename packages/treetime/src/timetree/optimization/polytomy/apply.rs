@@ -14,7 +14,7 @@ pub struct ChildRef {
   pub time: f64,
 }
 
-pub fn apply_plan(
+pub(crate) fn apply_plan(
   graph: &mut Graph,
   parent_key: GraphNodeKey,
   parent_time: f64,

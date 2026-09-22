@@ -194,7 +194,7 @@ pub struct TreetimeClockArgs {
 }
 
 impl TreetimeClockArgs {
-  pub fn metadata(&self) -> &Path {
+  pub(crate) fn metadata(&self) -> &Path {
     &self.metadata
   }
 }
@@ -274,7 +274,7 @@ pub struct GridSearchParamsCli {
   /// Number of equally-spaced points to evaluate (grid method only)
   #[cfg_attr(feature = "clap", clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParamsCli::default().n_points))]
   #[default = 11]
-  pub n_points: usize,
+  n_points: usize,
 }
 
 impl From<GridSearchParamsCli> for GridSearchParams {
@@ -294,11 +294,11 @@ pub struct BrentParamsCli {
   /// Maximum number of iterations for Brent's method
   #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-max-iters", default_value_t = BrentParamsCli::default().brent_max_iters))]
   #[default = 50]
-  pub brent_max_iters: usize,
+  brent_max_iters: usize,
   /// Convergence tolerance for Brent's method
   #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-tolerance", default_value_t = BrentParamsCli::default().brent_tolerance))]
   #[default = 1e-12]
-  pub brent_tolerance: f64,
+  brent_tolerance: f64,
 }
 
 impl From<BrentParamsCli> for BrentParams {
@@ -319,11 +319,11 @@ pub struct GoldenSectionParamsCli {
   /// Maximum number of iterations for golden section search
   #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParamsCli::default().golden_max_iters))]
   #[default = 50]
-  pub golden_max_iters: usize,
+  golden_max_iters: usize,
   /// Convergence tolerance for golden section search
   #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParamsCli::default().golden_tolerance))]
   #[default = 1e-12]
-  pub golden_tolerance: f64,
+  golden_tolerance: f64,
 }
 
 impl From<GoldenSectionParamsCli> for GoldenSectionParams {
@@ -370,17 +370,17 @@ pub struct ClockParamsCli {
   /// Variance scaling factor proportional to branch length
   #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_factor))]
   #[default = 0.0]
-  pub variance_factor: f64,
+  variance_factor: f64,
 
   /// Constant variance offset for all branches
   #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_offset))]
   #[default = 0.0]
-  pub variance_offset: f64,
+  variance_offset: f64,
 
   /// Additional variance offset for leaf (terminal) nodes
   #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_offset_leaf))]
   #[default = 1.0]
-  pub variance_offset_leaf: f64,
+  variance_offset_leaf: f64,
 }
 
 impl From<ClockParamsCli> for ClockVarianceParams {

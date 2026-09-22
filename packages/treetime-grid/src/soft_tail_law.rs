@@ -48,7 +48,7 @@ impl SoftTailLaw {
     Ok(SoftTailLaw { slope })
   }
 
-  pub fn eval(&self, edge: GridEdge, t: f64) -> f64 {
+  pub(crate) fn eval(self, edge: GridEdge, t: f64) -> f64 {
     edge.y + self.slope * (t - edge.t)
   }
 

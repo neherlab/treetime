@@ -13,7 +13,12 @@ pub struct AggregateMetrics {
 }
 
 impl AggregateMetrics {
-  pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>, execution_time_ms: f64) -> Result<Self> {
+  pub(crate) fn new(
+    x: &Array1<f64>,
+    actual: &Array1<f64>,
+    expected: &Array1<f64>,
+    execution_time_ms: f64,
+  ) -> Result<Self> {
     let domain_agreement = DomainAgreementMetrics::new(x, actual, expected)?;
     let performance = compute_performance_metrics(actual, expected)?;
 

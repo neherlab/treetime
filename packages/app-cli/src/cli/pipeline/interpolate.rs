@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use treetime_utils::{make_error, make_report};
 
-pub const NAMESPACES: [&str; 3] = ["vars", "env", "steps"];
+pub(crate) const NAMESPACES: [&str; 3] = ["vars", "env", "steps"];
 
 pub struct Interpolator {
   env: Environment<'static>,
@@ -21,7 +21,7 @@ impl Default for Interpolator {
 }
 
 impl Interpolator {
-  pub fn interpolate_str(&self, leaf: &str, context: &Value) -> Result<Value, Report> {
+  pub(crate) fn interpolate_str(&self, leaf: &str, context: &Value) -> Result<Value, Report> {
     if !leaf.contains("{{") {
       return Ok(Value::String(leaf.to_owned()));
     }
@@ -45,11 +45,11 @@ impl Interpolator {
     }
   }
 
-  pub fn interpolate_value(&self, value: &Value, context: &Value) -> Result<Value, Report> {
+  pub(crate) fn interpolate_value(&self, value: &Value, context: &Value) -> Result<Value, Report> {
     map_string_leaves(value, &mut |leaf| self.interpolate_str(leaf, context))
   }
 
-  pub fn references(&self, leaf: &str) -> Result<BTreeSet<String>, Report> {
+  pub(crate) fn references(&self, leaf: &str) -> Result<BTreeSet<String>, Report> {
     if !leaf.contains("{{") {
       return Ok(BTreeSet::new());
     }
@@ -61,7 +61,7 @@ impl Interpolator {
   }
 }
 
-pub fn resolve_vars(
+pub(crate) fn resolve_vars(
   interp: &Interpolator,
   raw: &Map<String, Value>,
   env: &Value,

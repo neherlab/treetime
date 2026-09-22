@@ -24,21 +24,21 @@ use util_newick::{
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct NwkNodeMeta {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
+  name: Option<String>,
+  confidence: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NwkFastaNodeInput {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
-  pub aln: Option<Seq>,
-  pub desc: Option<String>,
+  name: Option<String>,
+  confidence: Option<f64>,
+  aln: Option<Seq>,
+  desc: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct NwkFastaEdgeInput {
-  pub branch_length: Option<f64>,
+  branch_length: Option<f64>,
 }
 
 #[derive(Debug)]
@@ -162,7 +162,7 @@ pub fn nwk_read_str(nwk_string: impl AsRef<str>) -> Result<NwkParse, Report> {
   graph_from_newick(&nwk_graph)
 }
 
-pub fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
+fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
   let nwk_graph = newick_from_reader(reader)?;
   graph_from_newick(&nwk_graph)
 }
@@ -279,7 +279,7 @@ pub fn nwk_write_str(
   nwk_write_str_with(graph, names, weights, options, &providers)
 }
 
-pub fn nwk_write_str_with(
+pub(crate) fn nwk_write_str_with(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -302,7 +302,7 @@ pub fn nwk_write(
   nwk_write_with(writer, graph, names, weights, options, &providers)
 }
 
-pub fn nwk_write_with(
+pub(crate) fn nwk_write_with(
   writer: &mut impl Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -390,7 +390,7 @@ fn str_comments_to_newick_values(comments: &BTreeMap<String, String>) -> BTreeMa
     .collect()
 }
 
-pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
+pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   if !weight.is_finite() {
     warn!("When converting graph to Newick: Weight is invalid: '{weight}'");
   }
@@ -421,7 +421,7 @@ impl<'a> CommentProviders<'a> {
     self
   }
 
-  pub fn merged_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
+  fn merged_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
     let mut comments = BTreeMap::new();
     for provider in &self.providers {
       comments.extend(provider.node_comments(key)?);

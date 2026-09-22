@@ -190,14 +190,14 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  pub(crate) fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
       other => Ok(other),
     }
   }
 
-  pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  pub(crate) fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_right_extrap(behavior)?)),
       other => Ok(other),
@@ -208,7 +208,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     self.with_left_extrap(behavior)?.with_right_extrap(behavior)
   }
 
-  pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     match self {
       Self::Function(function) => Ok(Self::Function(function.fit_soft_tail(side, n_fit)?)),
       other => Ok(other),
@@ -248,7 +248,7 @@ impl Distribution<Plain> {
   }
 
   #[allow(clippy::many_single_char_names)]
-  pub fn quantile(&self, p: f64) -> Option<f64> {
+  pub(crate) fn quantile(&self, p: f64) -> Option<f64> {
     if !(0.0..=1.0).contains(&p) {
       return None;
     }
@@ -303,7 +303,7 @@ impl Distribution<Plain> {
     }
   }
 
-  pub fn confidence_interval(&self, p_lower: f64, p_upper: f64) -> Option<(f64, f64)> {
+  pub(crate) fn confidence_interval(&self, p_lower: f64, p_upper: f64) -> Option<(f64, f64)> {
     let lower = self.quantile(p_lower)?;
     let upper = self.quantile(p_upper)?;
     Some((lower, upper))
@@ -464,7 +464,7 @@ fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<Dist
   DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
 }
 
-fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
+pub fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
   let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
     return Distribution::Empty;
   };

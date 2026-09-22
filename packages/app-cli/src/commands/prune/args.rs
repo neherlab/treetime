@@ -136,7 +136,7 @@ pub struct TreetimePruneArgs {
 }
 
 impl TreetimePruneArgs {
-  pub fn tree(&self) -> &Path {
+  pub(crate) fn tree(&self) -> &Path {
     &self.tree
   }
 }

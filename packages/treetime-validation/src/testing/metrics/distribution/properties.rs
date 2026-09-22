@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionProperties {
-  pub dynamic_range: f64,
-  pub symmetry_measure: f64,
-  pub tail_behavior: TailBehavior,
-  pub outlier_stats: OutlierStatistics,
+  dynamic_range: f64,
+  symmetry_measure: f64,
+  tail_behavior: TailBehavior,
+  outlier_stats: OutlierStatistics,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,9 +22,9 @@ pub enum TailBehavior {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutlierStatistics {
-  pub count_3sigma: usize,
-  pub count_5sigma: usize,
-  pub fraction_outliers: f64,
+  count_3sigma: usize,
+  count_5sigma: usize,
+  fraction_outliers: f64,
 }
 
 pub(super) fn compute_distribution_properties(

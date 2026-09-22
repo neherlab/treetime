@@ -11,7 +11,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
+pub const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 
 pub fn initialize_node_divergences(
   graph: &Graph,

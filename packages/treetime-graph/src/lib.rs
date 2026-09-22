@@ -1,6 +1,6 @@
 pub mod assign_node_names;
 pub mod common_ancestor;
-pub mod dependency_queue;
+pub(crate) mod dependency_queue;
 pub mod edge;
 pub mod graph;
 pub mod graph_ops;

@@ -2,7 +2,7 @@
 mod __tests__;
 
 pub mod data;
-pub mod normalize;
+pub(crate) mod normalize;
 pub mod pass;
-pub mod reconcile;
+pub(crate) mod reconcile;
 pub mod update;

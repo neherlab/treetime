@@ -188,7 +188,7 @@ mod tests {
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-    pub fn node_outputs(
+    fn node_outputs(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,

@@ -10,18 +10,18 @@ use treetime_graph::graph::Graph;
 use treetime_utils::make_report;
 
 pub struct BranchPointCostFunction<'a> {
-  pub to_parent: ClockSet,
-  pub to_child: ClockSet,
-  pub branch_length: f64,
-  pub branch_variance: f64,
-  pub is_leaf: bool,
-  pub node_time: Option<f64>,
-  pub options: &'a ClockVarianceParams,
-  pub objective: RootObjective,
+  to_parent: ClockSet,
+  to_child: ClockSet,
+  branch_length: f64,
+  branch_variance: f64,
+  is_leaf: bool,
+  node_time: Option<f64>,
+  options: &'a ClockVarianceParams,
+  objective: RootObjective,
 }
 
 impl<'a> BranchPointCostFunction<'a> {
-  pub fn new(
+  pub(crate) fn new(
     graph: &Graph,
     inputs: &ClockInputs,
     state: &ClockState,
@@ -55,7 +55,7 @@ impl<'a> BranchPointCostFunction<'a> {
     })
   }
 
-  pub fn evaluate_clock_set(&self, x: f64) -> Result<ClockSet, Report> {
+  pub(crate) fn evaluate_clock_set(&self, x: f64) -> Result<ClockSet, Report> {
     let child_contribution = if self.is_leaf {
       ClockSet::leaf_contribution_to_parent(
         self.node_time,
@@ -76,7 +76,7 @@ impl<'a> BranchPointCostFunction<'a> {
     Ok(clock_set)
   }
 
-  pub fn score_clock_set(&self, clock_set: &ClockSet) -> f64 {
+  pub(crate) fn score_clock_set(&self, clock_set: &ClockSet) -> f64 {
     self.objective.score(clock_set)
   }
 }

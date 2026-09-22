@@ -45,7 +45,6 @@ mod tests {
     let case = &OUTPUTS[dataset];
 
 let (graph, names, partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
-    let mut graph = graph;
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
     let mut state = TimetreeState::new(&graph);
@@ -53,7 +52,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     state = run_timetree(
-      &mut graph,
+      &graph,
       &constraints,
       &partitions,      &run_branch_lengths,
       &run_names,

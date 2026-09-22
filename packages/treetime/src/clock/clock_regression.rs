@@ -44,7 +44,7 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub fn into_clock_model(self) -> Result<ClockModel, Report> {
+  pub(crate) fn into_clock_model(self) -> Result<ClockModel, Report> {
     if let Some(model) = self.clock_model {
       return Ok(model);
     }
@@ -58,7 +58,7 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub fn into_clock_model_allow_negative(self) -> ClockModel {
+  pub(crate) fn into_clock_model_allow_negative(self) -> ClockModel {
     if let Some(model) = self.clock_model {
       return model;
     }
@@ -72,19 +72,19 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub fn regression(&self) -> &ClockRegression {
+  pub(crate) fn regression(&self) -> &ClockRegression {
     self
       .regression
       .as_ref()
       .expect("regression() called on fixed-rate result")
   }
 
-  pub fn reroot_result(&self) -> Option<&RerootResult> {
+  pub(crate) fn reroot_result(&self) -> Option<&RerootResult> {
     self.reroot_result.as_ref()
   }
 }
 
-pub fn clock_regression_backward(
+pub(crate) fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,
@@ -155,7 +155,7 @@ fn clock_regression_backward_node(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn clock_regression_forward(
+pub(crate) fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,
@@ -195,7 +195,7 @@ pub fn clock_regression_forward(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-pub fn estimate_clock_model_with_reroot_policy(
+pub(crate) fn estimate_clock_model_with_reroot_policy(
   graph: &mut Graph,
   inputs: &mut ClockInputs,
   mut state: ClockState,

@@ -196,7 +196,7 @@ pub struct OutputCoreArgs {
 }
 
 impl OutputCoreArgs {
-  pub fn resolve(
+  pub(crate) fn resolve(
     &self,
     command: CommandKind,
     selection: &[OutputSelection],

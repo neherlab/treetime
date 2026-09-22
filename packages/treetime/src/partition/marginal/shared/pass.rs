@@ -26,7 +26,7 @@ pub enum IndexedKind {
   Discrete,
 }
 
-pub fn indexed_backward(
+pub(crate) fn indexed_backward(
   inputs: &DenseInputs,
   gtr: &GTR,
   alphabet: Option<&Alphabet>,
@@ -144,7 +144,7 @@ fn backward_internal_dense(children: &[&DenseNodeState], length: usize) -> Dense
   }
 }
 
-pub fn indexed_forward(
+pub(crate) fn indexed_forward(
   inputs: &DenseInputs,
   gtr: &GTR,
   alphabet: Option<&Alphabet>,

@@ -24,7 +24,7 @@ pub mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_primitives::AlignmentRecord;
 
-  pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

@@ -26,12 +26,12 @@ use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::{make_error, make_internal_report};
 
-pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
+pub const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
-pub(crate) const COLORING_NUM_DATE: &str = "num_date";
-pub(crate) const NUC_TRACK: &str = "nuc";
+pub const COLORING_NUM_DATE: &str = "num_date";
+pub const NUC_TRACK: &str = "nuc";
 
-pub(crate) fn write_tree_outputs<A, M>(
+pub fn write_tree_outputs<A, M>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -98,7 +98,7 @@ where
   clippy::field_scoped_visibility_modifiers,
   reason = "crate-internal fields are the record interface"
 )]
-pub(crate) struct GraphNodeContext {
+pub struct GraphNodeContext {
   pub(crate) node_key: GraphNodeKey,
   pub(crate) edge_key: Option<GraphEdgeKey>,
 }
@@ -108,13 +108,13 @@ pub(crate) struct GraphNodeContext {
   clippy::field_scoped_visibility_modifiers,
   reason = "crate-internal fields are the record interface"
 )]
-pub(crate) struct TraitValue {
+pub struct TraitValue {
   pub(crate) value: String,
   pub(crate) confidence: BTreeMap<String, f64>,
   pub(crate) entropy: Option<f64>,
 }
 
-pub(crate) fn auspice_data(
+pub fn auspice_data(
   title: &str,
   updated: &str,
   mut colorings: Vec<AuspiceColoring>,
@@ -147,7 +147,7 @@ pub(crate) fn auspice_data(
   }
 }
 
-pub(crate) fn auspice_node(
+pub fn auspice_node(
   name: String,
   div: Option<f64>,
   date: Option<f64>,
@@ -182,7 +182,7 @@ pub(crate) fn auspice_node(
   }
 }
 
-pub(crate) fn sequence_auspice_node(
+pub fn sequence_auspice_node(
   name: &str,
   div: Option<f64>,
   confidence: Option<f64>,
@@ -211,7 +211,7 @@ pub(crate) fn sequence_auspice_node(
   Ok(node)
 }
 
-pub(crate) fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
+pub fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
 where
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
@@ -277,7 +277,7 @@ fn attach_auspice_children(
   Ok(())
 }
 
-pub(crate) fn mutation_free_mat(
+pub fn mutation_free_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -285,7 +285,7 @@ pub(crate) fn mutation_free_mat(
   mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
-pub(crate) fn mat_from_graph<F>(
+pub fn mat_from_graph<F>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -331,11 +331,7 @@ where
   })
 }
 
-pub(crate) fn mat_mutation(
-  mutation: &Mutation,
-  reference: Option<&str>,
-  node_name: &str,
-) -> Result<UsherMutation, Report> {
+pub fn mat_mutation(mutation: &Mutation, reference: Option<&str>, node_name: &str) -> Result<UsherMutation, Report> {
   if mutation.track != MutationTrack::Nucleotide {
     return make_error!("Node '{node_name}' has an amino-acid mutation that UShER MAT cannot represent");
   }
@@ -381,7 +377,7 @@ fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<
   }
 }
 
-pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
+pub fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   let mut grouped = BTreeMap::new();
   for mutation in mutations {
     let track = match &mutation.track {
@@ -437,7 +433,7 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
   )
 }
 
-pub(crate) fn cumulative_branch_length_from(
+pub fn cumulative_branch_length_from(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut key: GraphNodeKey,
@@ -453,23 +449,18 @@ pub(crate) fn cumulative_branch_length_from(
   Ok(Some(total))
 }
 
-pub(crate) fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
+pub fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }
 
-pub(crate) fn ensure_optional_finite(
-  value: Option<f64>,
-  command: &str,
-  node_name: &str,
-  field: &str,
-) -> Result<(), Report> {
+fn ensure_optional_finite(value: Option<f64>, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
   if let Some(value) = value {
     ensure_finite(value, command, node_name, field)?;
   }
   Ok(())
 }
 
-pub(crate) fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
+pub fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
   if value.is_finite() {
     Ok(())
   } else {
@@ -477,7 +468,7 @@ pub(crate) fn ensure_finite(value: f64, command: &str, node_name: &str, field: &
   }
 }
 
-pub(crate) fn finite_number(
+pub fn finite_number(
   value: Option<f64>,
   precision: i32,
   command: &str,
@@ -493,7 +484,7 @@ pub(crate) fn finite_number(
   clippy::expect_used,
   reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
 )]
-pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
+pub fn format_number(number: f64, precision: i32) -> f64 {
   if number == 0.0 || !number.is_finite() {
     return number;
   }
@@ -509,7 +500,7 @@ pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
     .expect("a float formatted in scientific notation must parse back")
 }
 
-pub(crate) fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
+pub fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   AuspiceColoring {
     key: key.to_owned(),
     title: title.to_owned(),
@@ -518,6 +509,6 @@ pub(crate) fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   }
 }
 
-pub(crate) fn generation_date() -> String {
+pub fn generation_date() -> String {
   Utc::now().format("%Y-%m-%d").to_string()
 }

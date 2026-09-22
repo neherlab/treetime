@@ -14,7 +14,7 @@ pub struct DistributionRange<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
 }
 
 impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionRange<T, Y> {
-  pub fn new(x: (T, T), y: T) -> Self {
+  pub(crate) fn new(x: (T, T), y: T) -> Self {
     DistributionRange {
       range: x,
       ampl: y,
@@ -22,15 +22,15 @@ impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionRange<T, Y> {
     }
   }
 
-  pub fn start(&self) -> T {
+  pub(crate) fn start(&self) -> T {
     self.range.0
   }
 
-  pub fn end(&self) -> T {
+  pub(crate) fn end(&self) -> T {
     self.range.1
   }
 
-  pub fn amplitude(&self) -> T {
+  pub(crate) fn amplitude(&self) -> T {
     self.ampl
   }
 }

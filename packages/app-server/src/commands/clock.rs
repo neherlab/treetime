@@ -34,35 +34,35 @@ use utoipa::ToSchema;
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct ClockArgs {
-  pub aln: Vec<String>,
-  pub tree: Option<String>,
-  pub vcf_reference: Option<String>,
-  pub dates: String,
-  pub name_column: Option<String>,
-  pub date_column: Option<String>,
-  pub sequence_length: Option<usize>,
+  aln: Vec<String>,
+  tree: Option<String>,
+  vcf_reference: Option<String>,
+  dates: String,
+  name_column: Option<String>,
+  date_column: Option<String>,
+  sequence_length: Option<usize>,
   #[default(GtrModelName::default())]
   #[schema(value_type = String)]
-  pub gtr: GtrModelName,
-  pub gtr_params: Vec<String>,
+  gtr: GtrModelName,
+  gtr_params: Vec<String>,
   #[default(BranchLengthMode::default())]
   #[schema(value_type = String)]
-  pub branch_length_mode: BranchLengthMode,
+  branch_length_mode: BranchLengthMode,
   #[default(MethodAncestral::default())]
   #[schema(value_type = String)]
-  pub method_anc: MethodAncestral,
+  method_anc: MethodAncestral,
   #[default = 3.0]
-  pub clock_filter: f64,
+  clock_filter: f64,
   #[schema(value_type = Option<String>)]
-  pub reroot: Option<RerootMethod>,
-  pub reroot_tips: Vec<String>,
-  pub keep_root: bool,
-  pub prune_short: bool,
-  pub tip_slack: Option<f64>,
-  pub covariation: bool,
-  pub allow_negative_rate: bool,
-  pub outdir: String,
-  pub seed: Option<u64>,
+  reroot: Option<RerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
+  prune_short: bool,
+  tip_slack: Option<f64>,
+  covariation: bool,
+  allow_negative_rate: bool,
+  outdir: String,
+  seed: Option<u64>,
 }
 
 #[derive(serde::Serialize)]
@@ -83,7 +83,11 @@ pub struct ClockResult {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn run_clock(args: &ClockArgs, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<ClockResult, Report> {
+pub(crate) fn run_clock(
+  args: &ClockArgs,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
+) -> Result<ClockResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");
 

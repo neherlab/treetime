@@ -47,7 +47,7 @@ pub struct SkylineResult {
   pub log_likelihood: LogLh,
 }
 
-pub fn optimize_skyline(
+pub(crate) fn optimize_skyline(
   graph: &Graph,
   params: &SkylineParams,
   node_times: &CoalescentNodeTimes,

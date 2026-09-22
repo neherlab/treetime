@@ -371,7 +371,7 @@ mod tests {
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
 
-    pub fn leaf_times(
+    fn leaf_times(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       dates: &BTreeMap<String, f64>,

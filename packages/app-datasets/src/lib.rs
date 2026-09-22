@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
 pub struct DatasetInfo {
-  pub name: String,
-  pub files: Vec<String>,
+  name: String,
+  files: Vec<String>,
 }
 
 pub fn discover_datasets(data_dir: &Path) -> Vec<DatasetInfo> {

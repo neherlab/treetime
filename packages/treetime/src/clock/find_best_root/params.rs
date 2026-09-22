@@ -36,7 +36,7 @@ pub enum RootObjective {
 }
 
 impl RootObjective {
-  pub fn score(self, clock_set: &ClockSet) -> f64 {
+  pub(crate) fn score(self, clock_set: &ClockSet) -> f64 {
     match self {
       Self::EstimatedRate => clock_set.chisq(),
       Self::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),

@@ -13,12 +13,12 @@ pub enum OptimizationContribution {
 }
 
 impl OptimizationContribution {
-  pub fn from_dense(gtr: &GTR, backward: &DenseEdgeBackward, forward: &DenseEdgeForward) -> Self {
+  pub(crate) fn from_dense(gtr: &GTR, backward: &DenseEdgeBackward, forward: &DenseEdgeForward) -> Self {
     let contribution = optimize::dense::get_coefficients(&backward.msg_to_parent, &forward.msg_to_child, gtr);
     OptimizationContribution::Dense(contribution)
   }
 
-  pub fn from_sparse(
+  pub(crate) fn from_sparse(
     gtr: &GTR,
     backward: &SparseEdgeBackward,
     forward: &SparseEdgeForward,
@@ -28,7 +28,7 @@ impl OptimizationContribution {
     Ok(OptimizationContribution::Sparse(contribution))
   }
 
-  pub fn sites(&self) -> impl Iterator<Item = (f64, ArrayView1<'_, f64>)> {
+  fn sites(&self) -> impl Iterator<Item = (f64, ArrayView1<'_, f64>)> {
     match self {
       OptimizationContribution::Dense(contribution) => {
         Either::Left(contribution.coefficients.outer_iter().map(|row| (1.0, row)))
@@ -42,25 +42,25 @@ impl OptimizationContribution {
     }
   }
 
-  pub fn gtr(&self) -> &GTR {
+  fn gtr(&self) -> &GTR {
     match self {
       OptimizationContribution::Dense(contribution) => &contribution.gtr,
       OptimizationContribution::Sparse(contribution) => &contribution.gtr,
     }
   }
 
-  pub fn all_sites_valid_at_zero(&self) -> bool {
+  pub(crate) fn all_sites_valid_at_zero(&self) -> bool {
     self.sites().all(|(_, coefficients)| {
       let site_lh = coefficients.sum();
       site_lh > 0.0 && site_lh.is_finite()
     })
   }
 
-  pub fn has_unimodal_branch_likelihood(&self) -> bool {
+  pub(crate) fn has_unimodal_branch_likelihood(&self) -> bool {
     self.gtr().unimodal_branch_likelihood
   }
 
-  pub fn zero_branch_length_derivative(&self) -> f64 {
+  pub(crate) fn zero_branch_length_derivative(&self) -> f64 {
     debug_assert!(
       self.all_sites_valid_at_zero(),
       "zero_branch_length_derivative called without verifying all_sites_valid_at_zero"

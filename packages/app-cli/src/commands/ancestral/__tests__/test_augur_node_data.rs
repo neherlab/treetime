@@ -195,7 +195,7 @@ mod tests {
       AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonGeneratedBy,
     };
 
-    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(
         AsciiChar::from_byte_unchecked(reff),
         pos,
@@ -215,7 +215,7 @@ mod tests {
       (graph, names, partition)
     }
 
-    pub fn node_name_to_key(
+    fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
     ) -> BTreeMap<String, GraphNodeKey> {
@@ -229,7 +229,7 @@ mod tests {
         .collect()
     }
 
-    pub fn build_fitch_partition(
+    fn build_fitch_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       seqs: &BTreeMap<String, String>,

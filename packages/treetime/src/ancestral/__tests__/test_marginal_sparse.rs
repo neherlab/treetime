@@ -569,7 +569,7 @@ mod tests {
       })
     }
 
-    pub fn diff_canonical_subs(alphabet: &Alphabet, parent_seq: &Seq, child_seq: &Seq) -> Result<Vec<Sub>, Report> {
+    fn diff_canonical_subs(alphabet: &Alphabet, parent_seq: &Seq, child_seq: &Seq) -> Result<Vec<Sub>, Report> {
       parent_seq
         .iter()
         .zip(child_seq.iter())

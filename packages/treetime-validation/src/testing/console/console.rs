@@ -12,7 +12,7 @@ const VERBOSE_LABEL_WIDTH: usize = 32;
 pub struct ValidationConsole;
 
 impl ValidationConsole {
-  pub fn print_test_configuration<A: Display>(
+  pub(crate) fn print_test_configuration<A: Display>(
     test_suite_name: &str,
     algorithms: &[A],
     total_available: usize,
@@ -43,13 +43,13 @@ impl ValidationConsole {
     println!();
   }
 
-  pub fn print_header(test_cases_count: usize, algorithms_count: usize) {
+  pub(crate) fn print_header(test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
     println!("## Execution\n");
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n");
   }
 
-  pub fn print_progress_table_header() {
+  pub(crate) fn print_progress_table_header() {
     println!(
       "| S  | {:^25} | {:^30} | {:^8} | {:^10} | {:^8} | {:^9} |",
       "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
@@ -60,7 +60,7 @@ impl ValidationConsole {
     );
   }
 
-  pub fn print_success_row<T: TestCase>(result: &TestResult<T>) {
+  pub(crate) fn print_success_row<T: TestCase>(result: &TestResult<T>) {
     let elapsed_ms = result.execution_time_ms;
     let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
     let r2_error_ppm = (1.0 - r_squared) * 1_000_000.0;
@@ -78,7 +78,7 @@ impl ValidationConsole {
     );
   }
 
-  pub fn print_failure_row<T: TestCase, A: Display>(test_case: &T, algorithm: A, elapsed_ms: f64) {
+  pub(crate) fn print_failure_row<T: TestCase, A: Display>(test_case: &T, algorithm: A, elapsed_ms: f64) {
     println!(
       "| !! | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
       format!("{algorithm}"),
@@ -90,7 +90,7 @@ impl ValidationConsole {
     );
   }
 
-  pub fn print_verbose_details<T: TestCase>(result: &TestResult<T>) {
+  pub(crate) fn print_verbose_details<T: TestCase>(result: &TestResult<T>) {
     let w = VERBOSE_LABEL_WIDTH;
     let m = &result.metrics;
 
@@ -282,7 +282,7 @@ impl ValidationConsole {
     println!();
   }
 
-  pub fn print_error_summary<T: TestCase>(failures: &[&TestFailure<T>]) -> Result<(), Report> {
+  pub(crate) fn print_error_summary<T: TestCase>(failures: &[&TestFailure<T>]) -> Result<(), Report> {
     if failures.is_empty() {
       return Ok(());
     }
@@ -300,7 +300,10 @@ impl ValidationConsole {
     Ok(())
   }
 
-  pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report> {
+  pub(crate) fn print_summary<T: TestCase>(
+    summary: &TestSummary,
+    outcomes: &[TestRunOutcome<T>],
+  ) -> Result<(), Report> {
     println!("\n## Results\n");
 
     Self::print_overall_statistics(summary);

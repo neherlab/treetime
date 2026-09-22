@@ -23,7 +23,7 @@ pub struct SparseNodeObs {
 }
 
 impl SparseNodeObs {
-  pub fn empty(alphabet: &Alphabet) -> Self {
+  pub(crate) fn empty(alphabet: &Alphabet) -> Self {
     Self {
       unknown: vec![],
       gaps: vec![],
@@ -75,7 +75,7 @@ pub struct SparseNodeState {
 }
 
 impl SparseNodeState {
-  pub fn empty() -> Self {
+  pub(crate) fn empty() -> Self {
     Self {
       sequence: seq![],
       profile: SparseSeqDistribution::default(),
@@ -126,29 +126,29 @@ impl SparseEdgeObs {
     }
   }
 
-  pub fn fitch_subs(&self) -> &[Sub] {
+  pub(crate) fn fitch_subs(&self) -> &[Sub] {
     &self.subs_fitch
   }
 
-  pub fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
+  pub(crate) fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
     self.subs_fitch = subs;
   }
 
-  pub fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
+  pub(crate) fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
     self.subs_fitch.extend(subs);
   }
 
-  pub fn invert_fitch_subs(&mut self) {
+  pub(crate) fn invert_fitch_subs(&mut self) {
     for sub in &mut self.subs_fitch {
       sub.invert();
     }
   }
 
-  pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
+  pub(crate) fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
     compose_substitutions(&self.subs_fitch, suffix)
   }
 
-  pub fn chain_fitch_indels(&self, child_indels: &[InDel]) -> Vec<InDel> {
+  pub(crate) fn chain_fitch_indels(&self, child_indels: &[InDel]) -> Vec<InDel> {
     let mut parent = self.indels.clone();
     let mut child = child_indels.to_vec();
     sort_indels(&mut parent);
@@ -211,7 +211,7 @@ pub struct FitchNodeData {
 }
 
 impl FitchNodeData {
-  pub fn empty(alphabet: &Alphabet) -> Self {
+  pub(crate) fn empty(alphabet: &Alphabet) -> Self {
     Self {
       seq: FitchSeqInfo {
         unknown: vec![],

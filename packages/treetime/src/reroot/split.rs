@@ -20,7 +20,7 @@ pub struct FindRootResult<S> {
   pub score: f64,
 }
 
-pub fn find_best_split<S>(
+pub(crate) fn find_best_split<S>(
   graph: &Graph,
   edge: GraphEdgeKey,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,

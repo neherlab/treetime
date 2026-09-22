@@ -20,12 +20,12 @@ pub struct DenseInputs {
 }
 
 impl DenseInputs {
-  pub fn effective_branch_length(&self, raw: f64) -> f64 {
+  fn effective_branch_length(&self, raw: f64) -> f64 {
     raw.max(self.min_branch_length)
   }
 }
 
-pub fn count_transitions_dense(
+pub(crate) fn count_transitions_dense(
   inputs: &DenseInputs,
   gtr: &GTR,
   graph: &Graph,

@@ -2,4 +2,4 @@
 mod __tests__;
 
 pub mod partition;
-pub mod reroot;
+pub(crate) mod reroot;

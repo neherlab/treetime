@@ -35,7 +35,7 @@ pub mod tests {
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
 
-  pub const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
+  const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
 
   pub const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 

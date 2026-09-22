@@ -70,7 +70,7 @@ pub fn run_validation_tests() -> Result<(), Report> {
   Ok(())
 }
 
-pub fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
+pub(crate) fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: ConvolutionTestSuite + Default,
 {
@@ -79,7 +79,7 @@ where
   })
 }
 
-pub fn run_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
+pub(crate) fn run_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: MultiplicationTestSuite + Default,
 {
@@ -88,7 +88,7 @@ where
   })
 }
 
-pub fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
+pub(crate) fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: ChainMultiplicationTestSuite + Default,
 {

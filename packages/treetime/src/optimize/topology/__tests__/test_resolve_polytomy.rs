@@ -282,7 +282,7 @@ mod tests {
     use maplit::btreemap;
     use treetime_primitives::{AsciiChar, Seq};
 
-    pub fn c(b: u8) -> AsciiChar {
+    fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 

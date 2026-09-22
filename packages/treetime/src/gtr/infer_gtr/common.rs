@@ -44,7 +44,7 @@ pub struct InferGtrResult {
 
 const TINY_NUMBER: f64 = 1e-12;
 
-pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
+pub(crate) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
     fixed_pi,
@@ -105,7 +105,7 @@ pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Res
   Ok(InferGtrResult { W, pi, mu })
 }
 
-pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
+pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
@@ -113,12 +113,12 @@ pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
+pub(crate) fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
   let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
   is_max_above(&profile, uniform_threshold)
 }
 
-pub fn get_branch_mutation_matrix(
+pub(crate) fn get_branch_mutation_matrix(
   msg_to_child: &Array2<f64>,
   msg_to_parent: &Array2<f64>,
   exp_qt: &Array2<f64>,
@@ -149,7 +149,7 @@ pub fn get_branch_mutation_matrix(
   result
 }
 
-pub fn accumulate_mutation_counts(
+pub(crate) fn accumulate_mutation_counts(
   mut_stack: &Array3<f64>,
   branch_length: f64,
   nij: &mut Array2<f64>,

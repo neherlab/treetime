@@ -157,7 +157,7 @@ pub fn build_gtr_site_specific(
   })
 }
 
-fn einsum_mu_pi_T(mu_a: &Array1<f64>, p_ia: &Array2<f64>, T_ia: &Array2<f64>) -> Array2<f64> {
+pub fn einsum_mu_pi_T(mu_a: &Array1<f64>, p_ia: &Array2<f64>, T_ia: &Array2<f64>) -> Array2<f64> {
   let (q, seq_len) = p_ia.dim();
   let mut result = Array2::zeros((q, q));
   for a in 0..seq_len {
@@ -173,7 +173,7 @@ fn einsum_mu_pi_T(mu_a: &Array1<f64>, p_ia: &Array2<f64>, T_ia: &Array2<f64>) ->
   result
 }
 
-fn einsum_pi_W_T(p_ia: &Array2<f64>, W_ij: &Array2<f64>, T_ia: &Array2<f64>) -> Array1<f64> {
+pub fn einsum_pi_W_T(p_ia: &Array2<f64>, W_ij: &Array2<f64>, T_ia: &Array2<f64>) -> Array1<f64> {
   let (q, seq_len) = p_ia.dim();
   let mut result = Array1::zeros(seq_len);
   let W_T = W_ij.dot(T_ia);
@@ -183,6 +183,6 @@ fn einsum_pi_W_T(p_ia: &Array2<f64>, W_ij: &Array2<f64>, T_ia: &Array2<f64>) -> 
   result
 }
 
-fn l2_norm_diff(a: &Array2<f64>, b: &Array2<f64>) -> f64 {
+pub fn l2_norm_diff(a: &Array2<f64>, b: &Array2<f64>) -> f64 {
   (a - b).mapv(|x| x * x).sum().sqrt()
 }

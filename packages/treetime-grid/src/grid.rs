@@ -69,7 +69,7 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
-  pub fn from_array(x: &Array1<T>) -> Result<Self, Report>
+  pub(crate) fn from_array(x: &Array1<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -109,7 +109,7 @@ impl<T: InterpElem> Grid<T> {
     (self.x_min(), self.x_max())
   }
 
-  pub fn dx(&self) -> T {
+  pub(crate) fn dx(&self) -> T {
     self.dx
   }
 
@@ -117,7 +117,7 @@ impl<T: InterpElem> Grid<T> {
     self.n_points
   }
 
-  pub fn len(&self) -> usize {
+  pub(crate) fn len(&self) -> usize {
     self.n_points
   }
 
@@ -129,7 +129,7 @@ impl<T: InterpElem> Grid<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn x_at(&self, idx: usize) -> T
+  pub(crate) fn x_at(&self, idx: usize) -> T
   where
     T: Float,
   {
@@ -140,7 +140,7 @@ impl<T: InterpElem> Grid<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn find_interval_index(&self, x: T) -> usize
+  pub(crate) fn find_interval_index(&self, x: T) -> usize
   where
     T: Float,
   {
@@ -159,7 +159,7 @@ impl<T: InterpElem> Grid<T> {
     self.iter().collect()
   }
 
-  pub fn iter(&self) -> GridIter<T>
+  pub(crate) fn iter(&self) -> GridIter<T>
   where
     T: Float,
   {

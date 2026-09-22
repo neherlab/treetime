@@ -48,35 +48,35 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct OptimizeArgs {
-  pub input_fastas: Vec<String>,
-  pub tree: String,
+  input_fastas: Vec<String>,
+  tree: String,
   #[schema(value_type = Option<String>)]
-  pub alphabet: Option<AlphabetName>,
+  alphabet: Option<AlphabetName>,
   #[default(GtrModelName::Infer)]
   #[schema(value_type = String)]
-  pub model_name: GtrModelName,
-  pub dense: Option<bool>,
-  pub outdir: String,
+  model_name: GtrModelName,
+  dense: Option<bool>,
+  outdir: String,
   #[default = 10]
-  pub max_iter: usize,
+  max_iter: usize,
   #[default = 0.1]
-  pub dp: f64,
+  dp: f64,
   #[default = 0.75]
-  pub damping: f64,
+  damping: f64,
   #[default(InitialGuessMode::Auto)]
   #[schema(value_type = String)]
-  pub branch_length_initial_guess: InitialGuessMode,
+  branch_length_initial_guess: InitialGuessMode,
   #[default(BranchOptMethod::default())]
   #[schema(value_type = String)]
-  pub opt_method: BranchOptMethod,
-  pub no_indels: bool,
-  pub reroot: Option<OptimizeRerootMethod>,
-  pub reroot_tips: Vec<String>,
-  pub keep_root: bool,
+  opt_method: BranchOptMethod,
+  no_indels: bool,
+  reroot: Option<OptimizeRerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
   #[default(GapFill::default())]
   #[schema(value_type = String)]
-  pub gap_fill: GapFill,
-  pub keep_overhangs: bool,
+  gap_fill: GapFill,
+  keep_overhangs: bool,
 }
 
 impl OptimizeArgs {
@@ -102,7 +102,7 @@ impl OptimizeArgs {
   }
 }
 
-pub fn run_optimize(
+pub(crate) fn run_optimize(
   args: &OptimizeArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,

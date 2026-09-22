@@ -25,7 +25,7 @@ impl InDel {
     Self::new(range, seq, InDelKind::Insertion)
   }
 
-  pub fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
+  fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
     let seq = seq.into();
     let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
       return make_error!(
@@ -45,14 +45,14 @@ impl InDel {
     Ok(Self { range, seq, kind })
   }
 
-  pub fn invert(&mut self) {
+  pub(crate) fn invert(&mut self) {
     self.kind = match self.kind {
       InDelKind::Insertion => InDelKind::Deletion,
       InDelKind::Deletion => InDelKind::Insertion,
     };
   }
 
-  pub fn is_deletion(&self) -> bool {
+  pub(crate) fn is_deletion(&self) -> bool {
     self.kind == InDelKind::Deletion
   }
 }
@@ -75,7 +75,7 @@ impl fmt::Display for InDel {
   }
 }
 
-pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<InDel> {
+pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<InDel> {
   debug_assert!(
     parent_indels
       .windows(2)
@@ -222,7 +222,7 @@ fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
   merged
 }
 
-pub fn sort_indels(indels: &mut [InDel]) {
+pub(crate) fn sort_indels(indels: &mut [InDel]) {
   indels.sort_by_key(|i| i.range);
 }
 

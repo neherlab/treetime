@@ -4,7 +4,7 @@ use eyre::Report;
 use num::ToPrimitive;
 use treetime_utils::make_error;
 
-pub(super) const MAX_GRID_POINTS: usize = 1_000_000;
+const MAX_GRID_POINTS: usize = 1_000_000;
 
 const GRID_COUNT_TOL: f64 = 1e-9;
 

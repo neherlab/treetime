@@ -266,7 +266,7 @@ fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Re
   Ok(())
 }
 
-pub fn compress_sequences(
+pub(crate) fn compress_sequences(
   graph: &Graph,
   partition: &mut PartitionFitch,
   node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -277,7 +277,7 @@ pub fn compress_sequences(
   fitch_cleanup(graph, partition)
 }
 
-pub fn ancestral_reconstruction_fitch(
+pub(crate) fn ancestral_reconstruction_fitch(
   graph: &Graph,
   include_leaves: bool,
   partitions: &mut [PartitionFitch],

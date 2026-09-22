@@ -34,7 +34,7 @@ fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
   })
 }
 
-pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
+fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
   (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
     let alphabet = Alphabet::new(AlphabetName::Nuc).expect("Nuc alphabet should be valid");
     let n_states = alphabet.n_canonical();
@@ -57,7 +57,7 @@ pub struct MarginalTestInput {
   pub seq_len: usize,
 }
 
-pub fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
+fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
 

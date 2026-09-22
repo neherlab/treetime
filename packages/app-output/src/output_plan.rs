@@ -41,22 +41,22 @@ pub enum OutputSelection {
 }
 
 impl OutputSelection {
-  pub fn is_tree(self) -> bool {
+  fn is_tree(self) -> bool {
     matches!(
       self,
       Self::Nwk | Self::Nexus | Self::Auspice | Self::MatPb | Self::MatJson | Self::GraphJson | Self::Dot
     )
   }
 
-  pub fn is_styled_tree(self) -> bool {
+  fn is_styled_tree(self) -> bool {
     matches!(self, Self::Nwk | Self::Nexus)
   }
 
-  pub fn is_meta(self) -> bool {
+  fn is_meta(self) -> bool {
     matches!(self, Self::All)
   }
 
-  pub fn extension(self) -> &'static str {
+  fn extension(self) -> &'static str {
     match self {
       Self::All => "",
       Self::Nwk => ".nwk",
@@ -82,7 +82,7 @@ impl OutputSelection {
     }
   }
 
-  pub fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
+  fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
     match self {
       Self::Auspice => Some(TreeWriteKind::Auspice),
       Self::MatPb => Some(TreeWriteKind::MatPb),
@@ -93,7 +93,7 @@ impl OutputSelection {
     }
   }
 
-  pub fn flag_name(self) -> &'static str {
+  fn flag_name(self) -> &'static str {
     match self {
       Self::All => "--output-selection=all",
       Self::Nwk => "--output-tree-nwk",
@@ -150,7 +150,7 @@ impl CommandKind {
   }
 
   #[allow(clippy::enum_glob_use)]
-  pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
+  fn default_outputs(self) -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
     let tree_defaults = if self == Self::Timetree {
       btreeset![Nwk, Nexus, Auspice]
@@ -200,7 +200,7 @@ impl CommandKind {
     }
   }
 
-  pub fn stem(self) -> &'static str {
+  fn stem(self) -> &'static str {
     match self {
       Self::Ancestral => "ancestral",
       Self::Timetree => "timetree",
@@ -211,7 +211,7 @@ impl CommandKind {
     }
   }
 
-  pub fn default_nwk_styles(self) -> Vec<NwkStyle> {
+  fn default_nwk_styles(self) -> Vec<NwkStyle> {
     vec![NwkStyle::Plain]
   }
 }

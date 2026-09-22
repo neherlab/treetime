@@ -164,11 +164,11 @@ pub struct TreetimeMugrationArgs {
 }
 
 impl TreetimeMugrationArgs {
-  pub fn metadata(&self) -> &Path {
+  pub(crate) fn metadata(&self) -> &Path {
     &self.metadata
   }
 
-  pub fn attribute(&self) -> &str {
+  pub(crate) fn attribute(&self) -> &str {
     &self.attribute
   }
 }

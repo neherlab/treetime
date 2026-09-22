@@ -338,11 +338,11 @@ pub struct TreetimeOptimizeArgs {
 }
 
 impl TreetimeOptimizeArgs {
-  pub fn tree(&self) -> &Path {
+  pub(crate) fn tree(&self) -> &Path {
     &self.tree
   }
 
-  pub fn reroot_spec(&self) -> Option<RerootSpec> {
+  pub(crate) fn reroot_spec(&self) -> Option<RerootSpec> {
     if self.keep_root {
       return None;
     }

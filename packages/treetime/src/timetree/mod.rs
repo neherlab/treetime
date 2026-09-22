@@ -1,11 +1,11 @@
 pub mod coalescent;
 pub mod confidence;
 pub mod convergence;
-pub mod inference;
+pub(crate) mod inference;
 pub mod optimization;
 pub mod params;
 pub mod pipeline;
-pub mod refinement;
+pub(crate) mod refinement;
 pub mod timetree_state;
 pub mod utils;
 

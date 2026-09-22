@@ -32,7 +32,7 @@ pub struct DomainAgreementMetrics {
 }
 
 impl DomainAgreementMetrics {
-  pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
+  pub(crate) fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
     Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
   }
 
@@ -40,7 +40,7 @@ impl DomainAgreementMetrics {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn new_with_thresholds(
+  pub(crate) fn new_with_thresholds(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,

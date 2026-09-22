@@ -14,21 +14,21 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
 
 impl PartitionTimetree {
-  pub fn get_sequence_length(&self) -> usize {
+  pub(crate) fn get_sequence_length(&self) -> usize {
     match self {
       Self::Dense(family) => family.partition.length,
       Self::Sparse(family) => family.partition.length,
     }
   }
 
-  pub fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
     match self {
       Self::Dense(family) => family.partition.get_log_lh(&family.node_states, node_key),
       Self::Sparse(family) => family.partition.get_log_lh(&family.node_states, node_key),
     }
   }
 
-  pub fn attach_sequences(
+  fn attach_sequences(
     &mut self,
     graph: &Graph,
     node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -39,7 +39,7 @@ impl PartitionTimetree {
     Ok(())
   }
 
-  pub fn marginal_update(
+  fn marginal_update(
     self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -56,7 +56,7 @@ impl PartitionTimetree {
     }
   }
 
-  pub fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Dense(family) => family
         .partition
@@ -67,7 +67,7 @@ impl PartitionTimetree {
     }
   }
 
-  pub fn reconstruct_node_sequence(
+  fn reconstruct_node_sequence(
     &mut self,
     node: &GraphNodeForward,
     include_leaves: bool,
@@ -103,7 +103,7 @@ impl PartitionTimetree {
     }
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Dense(family) => family.edge_indels(edge_key),
       Self::Sparse(family) => family.edge_indels(edge_key),
@@ -134,7 +134,7 @@ impl PartitionTimetree {
   }
 }
 
-pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
+pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
   let root_key = graph.get_exactly_one_root()?.key();
   let log_lh = partitions
     .par_iter()
@@ -145,7 +145,7 @@ pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<L
   Ok(log_lh)
 }
 
-pub fn marginal_update_timetree(
+pub(crate) fn marginal_update_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: Vec<PartitionTimetree>,
@@ -159,7 +159,7 @@ pub fn marginal_update_timetree(
     })
 }
 
-pub fn initialize_marginal_timetree(
+pub(crate) fn initialize_marginal_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   mut partitions: Vec<PartitionTimetree>,
@@ -171,7 +171,7 @@ pub fn initialize_marginal_timetree(
   marginal_update_timetree(graph, branch_lengths, partitions)
 }
 
-pub fn ancestral_reconstruction_timetree(
+pub(crate) fn ancestral_reconstruction_timetree(
   graph: &Graph,
   include_leaves: bool,
   impute: bool,

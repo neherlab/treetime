@@ -26,7 +26,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
-pub(crate) struct Refinement<'a> {
+pub struct Refinement<'a> {
   pub graph: &'a mut Graph,
   pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
@@ -240,7 +240,7 @@ impl Refinement<'_> {
   }
 }
 
-pub(crate) struct RefinementOptions {
+pub struct RefinementOptions {
   pub relax: Vec<f64>,
   pub topology: TopologyRefinement,
   pub clock_rate: Option<f64>,
@@ -248,20 +248,20 @@ pub(crate) struct RefinementOptions {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum TopologyRefinement {
+pub enum TopologyRefinement {
   Disabled,
   Resolve,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct RefinementOutcome {
+pub struct RefinementOutcome {
   pub sequence_changes: usize,
   pub time_change: NodeTimeChange,
   pub topology: TopologyOutcome,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum TopologyOutcome {
+pub enum TopologyOutcome {
   Unchanged,
   Changed { resolved_nodes: usize },
 }

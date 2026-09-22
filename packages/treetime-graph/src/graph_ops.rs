@@ -18,7 +18,7 @@ impl Graph {
     node_key
   }
 
-  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
+  pub(crate) fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
     let edges_to_remove: Vec<GraphEdgeKey> = self
       .edges
       .iter()

@@ -23,7 +23,7 @@ pub fn usher_mat_pb_write_bytes(tree: &UsherTree) -> Result<Vec<u8>, Report> {
   Ok(buf.to_vec())
 }
 
-pub fn usher_mat_pb_write(writer: &mut impl Write, tree: &UsherTree) -> Result<(), Report> {
+fn usher_mat_pb_write(writer: &mut impl Write, tree: &UsherTree) -> Result<(), Report> {
   util_usher_mat::usher_mat_pb_write(writer, tree).wrap_err("When writing Usher MAT protobuf")
 }
 

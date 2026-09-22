@@ -42,11 +42,11 @@ impl ConvolutionTestSuite for ExponentialTestSuite {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExponentialTestCase {
   #[serde(flatten)]
-  pub base: TestCaseBase,
-  pub a: f64,
-  pub b: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
+  base: TestCaseBase,
+  a: f64,
+  b: f64,
+  input_grid_domain: (f64, f64),
+  input_grid_n_points: usize,
 }
 
 impl From<&ExponentialConvolutionTestCase> for ExponentialTestCase {

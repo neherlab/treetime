@@ -23,7 +23,7 @@ pub struct ClockFilterResult {
   reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division"
 )]
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace(
+pub(crate) fn clock_filter_inplace(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,

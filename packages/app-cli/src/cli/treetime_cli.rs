@@ -24,7 +24,7 @@ use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;
 
-pub static SHELLS: LazyLock<Vec<&'static str>> =
+static SHELLS: LazyLock<Vec<&'static str>> =
   LazyLock::new(|| vec!["bash", "elvish", "fish", "fig", "powershell", "zsh"]);
 
 #[derive(Parser, Debug, Serialize)]

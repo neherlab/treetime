@@ -21,7 +21,7 @@ pub struct FindRootResult {
   pub chisq: f64,
 }
 
-pub fn find_best_split(
+pub(crate) fn find_best_split(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,

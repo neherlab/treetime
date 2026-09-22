@@ -4,7 +4,7 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 
-pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
+const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 
 /// Metadata identity and delimiter options shared by every command that reads a metadata table
 /// (`timetree`, `clock`, `mugration`).

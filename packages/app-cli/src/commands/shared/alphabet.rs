@@ -43,11 +43,11 @@ pub struct AlphabetArgs {
   /// When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
   /// detection is ambiguous.
   #[cfg_attr(feature = "clap", clap(long, value_enum))]
-  pub alphabet: Option<AlphabetNameCli>,
+  alphabet: Option<AlphabetNameCli>,
 }
 
 impl AlphabetArgs {
-  pub fn alphabet_name(&self) -> Option<AlphabetName> {
+  pub(crate) fn alphabet_name(&self) -> Option<AlphabetName> {
     self.alphabet.map(Into::into)
   }
 }

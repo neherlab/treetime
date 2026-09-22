@@ -10,20 +10,25 @@ mod tests {
 
   #[test]
   fn test_validate_aa_args_requires_cds_placeholder() {
-    let err = validate_aa_args(&Some("translations.fasta".to_owned()), &["S".to_owned()], &None, &None).unwrap_err();
+    let err = validate_aa_args(Some("translations.fasta"), &["S".to_owned()], None, None).unwrap_err();
     assert!(err.to_string().contains("CDS placeholder"));
   }
 
   #[test]
   fn test_validate_aa_args_accepts_percent_gene_placeholder() {
-    let result = validate_aa_args(&Some("out/%GENE.fasta".to_owned()), &["S".to_owned()], &None, &None);
+    let result = validate_aa_args(Some("out/%GENE.fasta"), &["S".to_owned()], None, None);
     result.unwrap();
   }
 
   #[test]
   fn test_validate_aa_args_accepts_cds_placeholder() {
     let template = ["{", "cds", "}"].concat();
-    let result = validate_aa_args(&Some(format!("out/{template}.fasta")), &["S".to_owned()], &None, &None);
+    let result = validate_aa_args(
+      Some(format!("out/{template}.fasta").as_str()),
+      &["S".to_owned()],
+      None,
+      None,
+    );
     result.unwrap();
   }
 
@@ -31,10 +36,10 @@ mod tests {
   fn test_validate_aa_args_empty_cdses_with_annotation_ok() {
     let template = ["{", "cds", "}"].concat();
     let result = validate_aa_args(
-      &Some(format!("out/{template}.fasta")),
+      Some(format!("out/{template}.fasta").as_str()),
       &[],
-      &Some(PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
-      &None,
+      Some(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
+      None,
     );
     result.unwrap();
   }
@@ -42,7 +47,7 @@ mod tests {
   #[test]
   fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
     let template = ["{", "cds", "}"].concat();
-    let err = validate_aa_args(&Some(format!("out/{template}.fasta")), &[], &None, &None).unwrap_err();
+    let err = validate_aa_args(Some(format!("out/{template}.fasta").as_str()), &[], None, None).unwrap_err();
     assert!(err.to_string().contains("--cdses"));
   }
 

@@ -35,11 +35,11 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     }
   }
 
-  pub fn eval_single(&self, t: f64) -> Result<f64> {
+  pub(crate) fn eval_single(&self, t: f64) -> Result<f64> {
     (self.eval_fn)(t)
   }
 
-  pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>> {
+  pub(crate) fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>> {
     let mut result = Array1::zeros(t.len());
     for (i, &ti) in t.iter().enumerate() {
       result[i] = self.eval_single(ti)?;
@@ -47,11 +47,11 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     Ok(result)
   }
 
-  pub fn t_min(&self) -> f64 {
+  pub(crate) fn t_min(&self) -> f64 {
     self.t_min
   }
 
-  pub fn t_max(&self) -> f64 {
+  pub(crate) fn t_max(&self) -> f64 {
     self.t_max
   }
 
@@ -59,7 +59,7 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn likely_time(&self) -> f64 {
+  pub(crate) fn likely_time(&self) -> f64 {
     let midpoint = f64::midpoint(self.t_min, self.t_max);
     let n_points = FORMULA_GRID_SIZE;
     let t = Array1::from_shape_fn(n_points, |i| {

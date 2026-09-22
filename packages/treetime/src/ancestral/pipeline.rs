@@ -68,7 +68,7 @@ impl SparseReconstruction {
     }
   }
 
-  pub fn sequence_length(&self) -> usize {
+  pub(crate) fn sequence_length(&self) -> usize {
     self.partition.length
   }
 
@@ -76,21 +76,21 @@ impl SparseReconstruction {
     self.partition.edge_subs(&self.edges.estimates, edge_key)
   }
 
-  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     self.partition.edge_effective_length(graph, edge_key)
   }
 
-  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     self
       .partition
       .create_edge_contribution(&self.gtr, &self.edges.backward, &self.edges.forward, edge_key)
   }
 
-  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(edge_key)
   }
 
-  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub(crate) fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.partition.node_sequence(&self.node_states, node_key)
   }
 
@@ -98,7 +98,7 @@ impl SparseReconstruction {
     Ok(self.partition.root_sequence())
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     self.partition.edge_indels(edge_key)
   }
 
@@ -106,11 +106,11 @@ impl SparseReconstruction {
     combine_edge_mutations(self.edge_subs(edge_key)?, &self.edge_indels(edge_key), track)
   }
 
-  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.node_sequence(node_key)
   }
 
-  pub fn ambiguous_char(&self) -> AsciiChar {
+  fn ambiguous_char(&self) -> AsciiChar {
     self.partition.alphabet.unknown()
   }
 
@@ -151,7 +151,7 @@ pub struct DenseReconstruction {
 }
 
 impl DenseReconstruction {
-  pub fn seeded(
+  pub(crate) fn seeded(
     partition: PartitionMarginalDense,
     gtr: GTR,
     node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
@@ -164,7 +164,7 @@ impl DenseReconstruction {
     }
   }
 
-  pub fn sequence_length(&self) -> usize {
+  pub(crate) fn sequence_length(&self) -> usize {
     self.partition.length
   }
 
@@ -172,17 +172,17 @@ impl DenseReconstruction {
     self.partition.edge_subs(&self.node_states, graph, edge_key)
   }
 
-  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     self.partition.edge_effective_length(&self.node_states, graph, edge_key)
   }
 
-  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> OptimizationContribution {
+  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> OptimizationContribution {
     self
       .partition
       .create_edge_contribution(&self.gtr, &self.edges.backward, &self.edges.forward, edge_key)
   }
 
-  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(&self.edges.estimates, edge_key)
   }
 
@@ -194,7 +194,7 @@ impl DenseReconstruction {
     self.partition.root_sequence(&self.node_states, graph)
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     self.partition.edge_indels(&self.edges.estimates, edge_key)
   }
 
@@ -207,15 +207,15 @@ impl DenseReconstruction {
     combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 
-  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.node_states[&node_key].seq.sequence.clone()
   }
 
-  pub fn ambiguous_char(&self) -> AsciiChar {
+  fn ambiguous_char(&self) -> AsciiChar {
     self.partition.alphabet.unknown()
   }
 
-  pub fn marginal_update(
+  pub(crate) fn marginal_update(
     self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -304,7 +304,7 @@ impl AncestralPartition {
     }
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Fitch(partition) => partition.edge_indels(edge_key),
       Self::Sparse(partition) => partition.edge_indels(edge_key),

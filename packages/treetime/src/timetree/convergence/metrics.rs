@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use treetime_primitives::LogLh;
 
-pub const NODE_TIME_TOLERANCE_YEARS: f64 = 1e-2;
+pub(crate) const NODE_TIME_TOLERANCE_YEARS: f64 = 1e-2;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConvergenceMetrics {
@@ -16,7 +16,7 @@ pub struct ConvergenceMetrics {
 }
 
 impl ConvergenceMetrics {
-  pub fn has_converged(&self) -> bool {
+  pub(crate) fn has_converged(&self) -> bool {
     let times_settled = self
       .max_time_change
       .map_or(self.n_diff == 0, |change| change < NODE_TIME_TOLERANCE_YEARS);

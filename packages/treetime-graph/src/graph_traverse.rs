@@ -17,7 +17,7 @@ pub struct GraphNodeForward {
 }
 
 impl GraphNodeForward {
-  pub fn new(graph: &Graph, node: &Node) -> Self {
+  fn new(graph: &Graph, node: &Node) -> Self {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
@@ -46,7 +46,7 @@ pub struct GraphNodeBackward {
 }
 
 impl GraphNodeBackward {
-  pub fn new(graph: &Graph, node: &Node) -> Self {
+  fn new(graph: &Graph, node: &Node) -> Self {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();

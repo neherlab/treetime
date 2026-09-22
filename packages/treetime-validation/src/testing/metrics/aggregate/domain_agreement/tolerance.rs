@@ -15,7 +15,7 @@ pub struct MaxErrorLocation {
   pub x_value: f64,
 }
 
-pub fn compute_tolerance_counts(
+pub(crate) fn compute_tolerance_counts(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
   thresholds: &ToleranceThresholds,
@@ -45,7 +45,11 @@ pub fn compute_tolerance_counts(
   }
 }
 
-pub fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> MaxErrorLocation {
+pub(crate) fn find_max_error_location(
+  x: &Array1<f64>,
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
+) -> MaxErrorLocation {
   let abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   let max_idx = abs_errors
     .iter()

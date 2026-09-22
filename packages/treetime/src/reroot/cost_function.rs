@@ -12,7 +12,7 @@ pub struct EdgeCostFn<S: RootStats> {
 }
 
 impl<S: RootStats> EdgeCostFn<S> {
-  pub fn evaluate(&self, x: f64) -> S {
+  pub(crate) fn evaluate(&self, x: f64) -> S {
     let child = if self.is_leaf {
       S::leaf(
         self.leaf_time,

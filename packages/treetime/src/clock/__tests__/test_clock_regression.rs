@@ -15,7 +15,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
 
-  pub fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
+  fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
     let tsq: f64 = dates.values().map(|&x| x * x).sum();
     let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();

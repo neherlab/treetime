@@ -24,8 +24,8 @@ const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5;
 const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 
 #[allow(clippy::too_many_arguments)]
-pub fn compute_rate_susceptibility(
-  graph: &mut Graph,
+pub(crate) fn compute_rate_susceptibility(
+  graph: &Graph,
   constraints: &DateConstraints,
   partitions: &[PartitionTimetree],
   clock_model: &ClockModel,

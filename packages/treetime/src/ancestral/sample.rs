@@ -15,7 +15,7 @@ pub enum SampleMode {
 }
 
 impl SampleMode {
-  pub fn samples_node(self, is_root: bool) -> bool {
+  pub(crate) fn samples_node(self, is_root: bool) -> bool {
     match self {
       SampleMode::Argmax => false,
       SampleMode::Root => is_root,
@@ -24,7 +24,7 @@ impl SampleMode {
   }
 }
 
-pub fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> usize {
+pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> usize {
   let cumsum: Vec<f64> = profile
     .iter()
     .scan(0.0, |acc, &x| {
@@ -42,12 +42,12 @@ pub fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> u
   cumsum.iter().position(|&c| c >= threshold).unwrap_or(0)
 }
 
-pub enum Resolve<'r> {
+pub(crate) enum Resolve<'r> {
   Argmax,
   Sample(&'r mut dyn RngCore),
 }
 
-pub fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
+pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
   match resolve {
     Resolve::Argmax => argmax_first(&profile).unwrap_or(0),
     Resolve::Sample(rng) => sample_from_profile(profile, &mut **rng),

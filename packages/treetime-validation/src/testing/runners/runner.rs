@@ -75,7 +75,7 @@ pub trait TestRunner: Send + Sync + Sized {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn run_tests_generic<R: TestRunner>(
+pub(crate) fn run_tests_generic<R: TestRunner>(
   args: &Args,
   suite: R::Suite,
   list_cases_fn: impl Fn(&R::Suite),
@@ -239,7 +239,7 @@ fn calculate_total_execution_time<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -
     .sum()
 }
 
-pub fn generate_summary_generic<T: TestCase, A: Display>(
+fn generate_summary_generic<T: TestCase, A: Display>(
   test_suite_name: &str,
   outcomes: &[TestRunOutcome<T>],
   algorithms: &[A],

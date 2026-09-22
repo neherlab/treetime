@@ -33,7 +33,7 @@ pub struct MarginalPartitionParams {
   pub ignore_missing_alns: bool,
 }
 
-pub fn reconstruct_marginal_partition(
+pub(crate) fn reconstruct_marginal_partition(
   graph: &Graph,
   index: usize,
   plan: PartitionPlan,

@@ -15,9 +15,9 @@ use serde_json::{Map, Value};
 use std::path::Path;
 use treetime_utils::make_error;
 
-pub const SCHEMA_KEY: &str = "$schema";
+pub(crate) const SCHEMA_KEY: &str = "$schema";
 
-pub const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
+pub(crate) const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
 
 /// A single analysis command invocation within a pipeline.
 ///
@@ -38,7 +38,7 @@ pub enum PipelineStepCommand {
 }
 
 impl PipelineStepCommand {
-  pub fn tag(&self) -> &'static str {
+  pub(crate) fn tag(&self) -> &'static str {
     match self {
       Self::Timetree(_) => "timetree",
       Self::Optimize(_) => "optimize",
@@ -60,7 +60,7 @@ impl PipelineStepCommand {
     }
   }
 
-  pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
+  pub(crate) fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
     match self {
       Self::Timetree(args) => args.resolve_outputs(),
       Self::Optimize(args) => args.resolve_outputs(),
@@ -71,7 +71,7 @@ impl PipelineStepCommand {
     }
   }
 
-  pub fn args_value(&self) -> Value {
+  pub(crate) fn args_value(&self) -> Value {
     let value = match self {
       Self::Timetree(args) => serde_json::to_value(args),
       Self::Optimize(args) => serde_json::to_value(args),
@@ -83,7 +83,7 @@ impl PipelineStepCommand {
     value.unwrap_or(Value::Null)
   }
 
-  pub fn output_all(&self) -> Option<&Path> {
+  pub(crate) fn output_all(&self) -> Option<&Path> {
     let output = match self {
       Self::Timetree(args) => &args.output,
       Self::Optimize(args) => &args.output,
@@ -95,7 +95,7 @@ impl PipelineStepCommand {
     output.output_all.as_deref()
   }
 
-  pub fn from_tag_and_value(tag: &str, payload: Value) -> Result<Self, Report> {
+  pub(crate) fn from_tag_and_value(tag: &str, payload: Value) -> Result<Self, Report> {
     match tag {
       "timetree" => Ok(Self::Timetree(serde_json::from_value(payload)?)),
       "optimize" => Ok(Self::Optimize(serde_json::from_value(payload)?)),
@@ -114,9 +114,9 @@ impl PipelineStepCommand {
 /// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct PipelineStep {
-  pub name: String,
+  name: String,
   #[serde(flatten)]
-  pub command: PipelineStepCommand,
+  command: PipelineStepCommand,
 }
 
 impl PipelineStep {
@@ -135,7 +135,7 @@ pub struct RawStep {
 }
 
 impl RawStep {
-  pub fn from_value(value: Value) -> Result<Self, Report> {
+  pub(crate) fn from_value(value: Value) -> Result<Self, Report> {
     let Value::Object(mut map) = value else {
       return make_error!("a pipeline step must be a mapping with a `name` and one command");
     };
@@ -178,15 +178,15 @@ impl RawStep {
 #[serde(deny_unknown_fields)]
 pub struct Pipeline {
   #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
-  pub schema_ref: Option<String>,
+  schema_ref: Option<String>,
 
   #[serde(default, skip_serializing_if = "Map::is_empty")]
-  pub vars: Map<String, Value>,
+  vars: Map<String, Value>,
 
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub output_all: Option<String>,
+  output_all: Option<String>,
 
-  pub steps: Vec<PipelineStep>,
+  steps: Vec<PipelineStep>,
 }
 
 pub(crate) fn commands_list() -> String {

@@ -24,7 +24,7 @@ impl AlphabetConfig {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn create_profile_map(&self) -> Result<ProfileMap, Report> {
+  pub(crate) fn create_profile_map(&self) -> Result<ProfileMap, Report> {
     let AlphabetConfig {
       canonical,
       ambiguous,
@@ -68,7 +68,7 @@ impl AlphabetConfig {
     Ok(profile_map)
   }
 
-  pub fn validate(&self) -> Result<(), Report> {
+  pub(crate) fn validate(&self) -> Result<(), Report> {
     let AlphabetConfig {
       canonical,
       ambiguous,

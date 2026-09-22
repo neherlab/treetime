@@ -16,7 +16,7 @@ pub struct DateConstraints {
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
 }
 
-pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
+fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
   match &constraint.value {
     DateValue::Exact(d) => Distribution::point(d.value, 0.0),
     DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),

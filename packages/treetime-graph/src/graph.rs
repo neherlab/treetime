@@ -28,7 +28,7 @@ impl Graph {
     self.nodes.get(key.as_usize())?.as_ref()
   }
 
-  pub fn get_node_mut(&mut self, key: GraphNodeKey) -> Option<&mut Node> {
+  pub(crate) fn get_node_mut(&mut self, key: GraphNodeKey) -> Option<&mut Node> {
     self.nodes.get_mut(key.as_usize())?.as_mut()
   }
 
@@ -36,7 +36,7 @@ impl Graph {
     self.edges.get(key.as_usize())?.as_ref()
   }
 
-  pub fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
+  pub(crate) fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
     self.edges.get_mut(key.as_usize())?.as_mut()
   }
 
@@ -47,7 +47,7 @@ impl Graph {
     })
   }
 
-  pub fn parents_keys_of<'a>(
+  pub(crate) fn parents_keys_of<'a>(
     &'a self,
     node: &'a Node,
   ) -> impl DoubleEndedIterator<Item = (GraphNodeKey, GraphEdgeKey)> + 'a {
@@ -68,7 +68,7 @@ impl Graph {
     })
   }
 
-  pub fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+  fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
     match node.inbound().len() {
       0 => Ok(None),
       1 => {
@@ -129,7 +129,7 @@ impl Graph {
     self.nodes.iter().filter_map(Option::as_ref)
   }
 
-  pub fn node_keys(&self) -> impl DoubleEndedIterator<Item = GraphNodeKey> + '_ {
+  pub(crate) fn node_keys(&self) -> impl DoubleEndedIterator<Item = GraphNodeKey> + '_ {
     self.get_nodes().map(Node::key)
   }
 
@@ -177,7 +177,7 @@ impl Graph {
     self.get_edges().map(Edge::key)
   }
 
-  pub fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<GraphNodeKey>, Report> {
+  pub(crate) fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<GraphNodeKey>, Report> {
     let mut node = self
       .get_node(node_key)
       .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
@@ -195,7 +195,7 @@ impl Graph {
   }
 
   #[allow(clippy::type_complexity)]
-  pub fn path_from_node_to_node(
+  pub(crate) fn path_from_node_to_node(
     &self,
     start: GraphNodeKey,
     finish: GraphNodeKey,
@@ -249,7 +249,7 @@ impl Graph {
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))
   }
 
-  pub fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
+  pub(crate) fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
       .map(Node::degree_in)

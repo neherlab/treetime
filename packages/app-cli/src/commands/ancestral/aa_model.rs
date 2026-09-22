@@ -27,7 +27,7 @@ pub enum AaModelName {
 }
 
 impl AaModelName {
-  pub fn resolve(self) -> AaModelResolved {
+  pub(crate) fn resolve(self) -> AaModelResolved {
     match self {
       AaModelName::Infer => AaModelResolved {
         gtr_model: GtrModelName::Infer,
@@ -41,7 +41,7 @@ impl AaModelName {
   }
 }
 
-pub struct AaModelResolved {
+pub(crate) struct AaModelResolved {
   pub gtr_model: GtrModelName,
   pub alphabet: AlphabetName,
 }

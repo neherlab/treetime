@@ -35,34 +35,34 @@ use utoipa::ToSchema;
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct AncestralArgs {
-  pub input_fastas: Vec<String>,
-  pub aln: Option<String>,
-  pub vcf_reference: Option<String>,
-  pub tree: String,
+  input_fastas: Vec<String>,
+  aln: Option<String>,
+  vcf_reference: Option<String>,
+  tree: String,
   #[schema(value_type = Option<String>)]
-  pub alphabet: Option<AlphabetName>,
+  alphabet: Option<AlphabetName>,
   #[default(GtrModelName::Infer)]
   #[schema(value_type = String)]
-  pub model_name: GtrModelName,
-  pub gtr_params: Vec<String>,
+  model_name: GtrModelName,
+  gtr_params: Vec<String>,
   #[default(MethodAncestral::default())]
   #[schema(value_type = String)]
-  pub method_anc: MethodAncestral,
-  pub dense: Option<bool>,
-  pub aa: bool,
+  method_anc: MethodAncestral,
+  dense: Option<bool>,
+  aa: bool,
   #[default(GapFill::default())]
   #[schema(value_type = String)]
-  pub gap_fill: GapFill,
-  pub keep_overhangs: bool,
-  pub zero_based: bool,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub reconstruct_tip_states: bool,
-  pub report_ambiguous: bool,
-  pub outdir: String,
-  pub gtr_iterations: usize,
-  pub site_specific_gtr: bool,
-  pub seed: Option<u64>,
+  gap_fill: GapFill,
+  keep_overhangs: bool,
+  zero_based: bool,
+  include_leaves: bool,
+  impute_missing_data: bool,
+  reconstruct_tip_states: bool,
+  report_ambiguous: bool,
+  outdir: String,
+  gtr_iterations: usize,
+  site_specific_gtr: bool,
+  seed: Option<u64>,
 }
 
 impl AncestralArgs {
@@ -90,7 +90,7 @@ impl AncestralArgs {
   }
 }
 
-pub fn run_ancestral(
+pub(crate) fn run_ancestral(
   args: &AncestralArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,

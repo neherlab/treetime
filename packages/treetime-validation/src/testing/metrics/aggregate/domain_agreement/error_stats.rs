@@ -23,7 +23,7 @@ pub struct RelativeErrorStats {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
+pub(crate) fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
   let abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   let signed_errors: Vec<f64> = (actual - expected).to_vec();
 
@@ -42,7 +42,7 @@ pub fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1
   clippy::integer_division,
   reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"
 )]
-pub fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> RelativeErrorStats {
+pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> RelativeErrorStats {
   let mut rel_errors = Vec::new();
   let mut abs_rel_errors = Vec::new();
 

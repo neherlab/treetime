@@ -44,7 +44,7 @@ pub struct TopologyOrderArgs {
 }
 
 impl TopologyOrderArgs {
-  pub fn resolve_topology_order(
+  pub(crate) fn resolve_topology_order(
     &self,
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,

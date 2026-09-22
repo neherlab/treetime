@@ -25,7 +25,7 @@ pub struct RerootTopologyParams {
   pub remove_trivial_root: bool,
 }
 
-pub fn reroot_in_place<S, F>(
+pub(crate) fn reroot_in_place<S, F>(
   graph: &mut Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
@@ -43,7 +43,7 @@ where
   apply_root_at_edge(graph, best.edge, best.split, topo, branch_lengths, fixup)
 }
 
-pub fn reroot_at_node<F>(
+pub(crate) fn reroot_at_node<F>(
   graph: &mut Graph,
   node_key: GraphNodeKey,
   topo: RerootTopologyParams,

@@ -154,11 +154,11 @@ pub struct SegmentInterval {
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Estimate {
-  pub value: f64,
+  value: f64,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub lower: Option<f64>,
+  lower: Option<f64>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub upper: Option<f64>,
+  upper: Option<f64>,
 }
 
 impl Estimate {

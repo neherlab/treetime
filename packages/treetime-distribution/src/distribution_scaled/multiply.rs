@@ -9,13 +9,13 @@ use itertools::Itertools;
 use ndarray::Array1;
 use treetime_ops::multiply_many_lazy_normalize;
 
-struct AlignedFunctionArrays<'a> {
+pub struct AlignedFunctionArrays<'a> {
   arrays: Vec<&'a Array1<f64>>,
   x_min: f64,
   dx: f64,
 }
 
-fn try_extract_aligned_function_arrays<'a>(
+pub fn try_extract_aligned_function_arrays<'a>(
   distributions: &'a [&'a ScaledDistribution],
 ) -> Option<AlignedFunctionArrays<'a>> {
   let first = distributions.first()?;

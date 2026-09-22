@@ -32,7 +32,7 @@ pub fn graphviz_write_str(
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn graphviz_write<W>(
+fn graphviz_write<W>(
   mut writer: W,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

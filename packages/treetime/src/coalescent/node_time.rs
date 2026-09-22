@@ -8,4 +8,4 @@ pub struct CoalescentNodeTime {
   pub bad_branch: bool,
 }
 
-pub type CoalescentNodeTimes = BTreeMap<GraphNodeKey, CoalescentNodeTime>;
+pub(crate) type CoalescentNodeTimes = BTreeMap<GraphNodeKey, CoalescentNodeTime>;

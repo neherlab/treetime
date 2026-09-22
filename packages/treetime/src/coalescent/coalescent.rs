@@ -16,7 +16,7 @@ pub struct CoalescentModel {
 }
 
 impl CoalescentModel {
-  pub fn new(lineage_counts: &PiecewiseConstantFn, tc: &Distribution) -> Result<Self, Report> {
+  pub(crate) fn new(lineage_counts: &PiecewiseConstantFn, tc: &Distribution) -> Result<Self, Report> {
     let expected_mergers = compute_integral_merger_rate(tc, lineage_counts)?;
     Ok(Self {
       lineage_counts: lineage_counts.clone(),
@@ -25,7 +25,7 @@ impl CoalescentModel {
     })
   }
 
-  pub fn leaf_contribution(&self, time: f64) -> f64 {
+  pub(crate) fn leaf_contribution(&self, time: f64) -> f64 {
     -self.expected_mergers.eval(time)
   }
 
@@ -33,13 +33,13 @@ impl CoalescentModel {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+  pub(crate) fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     let n_mergers = n_children.saturating_sub(1) as f64;
     let total_merger_rate = self.total_merger_rate(time)?;
     Ok(n_mergers * (self.expected_mergers.eval(time) - total_merger_rate.ln()))
   }
 
-  pub fn root_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+  pub(crate) fn root_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     Ok(self.internal_contribution(time, n_children)? + self.expected_mergers.eval(time))
   }
 
@@ -62,7 +62,10 @@ impl CoalescentModel {
     Ok(compute_merger_rate_per_lineage_scalar(k, tc))
   }
 
-  pub fn branch_merger_rate_schedule(&self, tc_schedule: &PiecewiseConstantFn) -> Result<PiecewiseConstantFn, Report> {
+  pub(crate) fn branch_merger_rate_schedule(
+    &self,
+    tc_schedule: &PiecewiseConstantFn,
+  ) -> Result<PiecewiseConstantFn, Report> {
     for (index, &k) in self.lineage_counts.values().iter().enumerate() {
       if !k.is_finite() {
         return make_error!("Coalescent lineage count region {index} must be finite, got {k:.6e}");

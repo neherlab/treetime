@@ -10,19 +10,19 @@ use treetime_graph::node::GraphNodeKey;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
-  pub node: String,
+  node: String,
   #[serde(serialize_with = "treetime_utils::array::serde::array1_as_vec")]
-  pub profile: Array1<f64>,
+  profile: Array1<f64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct MugrationConfidenceOutput {
-  pub states: Vec<String>,
-  pub rows: Vec<ConfidenceRow>,
+  states: Vec<String>,
+  rows: Vec<ConfidenceRow>,
 }
 
 impl MugrationConfidenceOutput {
-  pub fn new(output: &MugrationOutput, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Self {
+  fn new(output: &MugrationOutput, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Self {
     let states: Vec<String> = output.states.iter().map(|s| s.to_owned()).collect();
 
     let rows: Vec<ConfidenceRow> = output
@@ -75,7 +75,7 @@ pub struct MugrationTraitsOutput {
 }
 
 impl MugrationTraitsOutput {
-  pub fn new(attribute: &str, assignments: IndexMap<String, String>) -> Self {
+  fn new(attribute: &str, assignments: IndexMap<String, String>) -> Self {
     Self {
       attribute: attribute.to_owned(),
       assignments,
@@ -104,7 +104,7 @@ pub struct MugrationNodeOut {
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct EdgeOut {
-  pub branch_length: Option<f64>,
+  branch_length: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

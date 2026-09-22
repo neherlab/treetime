@@ -12,7 +12,7 @@ use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
 
-pub(crate) const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
+const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
 pub(crate) fn step_ref() -> &'static Regex {
   regex!(
@@ -28,7 +28,7 @@ pub struct PipelineDoc {
 }
 
 impl PipelineDoc {
-  pub fn from_value(value: Value) -> Result<Self, Report> {
+  pub(crate) fn from_value(value: Value) -> Result<Self, Report> {
     let Value::Object(mut map) = value else {
       return make_error!("a pipeline config must be a mapping with `steps`");
     };
@@ -101,7 +101,7 @@ pub struct ResolvedPipeline {
   pub steps: Vec<ResolvedStep>,
 }
 
-pub fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
+pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
   let interp = Interpolator::default();
   let vars = resolve_vars(&interp, &doc.vars, env)?;
 

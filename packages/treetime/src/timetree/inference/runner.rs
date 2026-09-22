@@ -28,7 +28,7 @@ pub const EPS: f64 = 5e-4;
 
 #[allow(clippy::too_many_arguments)]
 pub fn run_timetree(
-  graph: &mut Graph,
+  graph: &Graph,
   constraints: &DateConstraints,
   partitions: &[PartitionTimetree],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

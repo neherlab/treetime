@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod __tests__;
 
-pub mod backward;
-pub mod count;
-pub mod forward;
-pub mod message;
+pub(crate) mod backward;
+pub(crate) mod count;
+pub(crate) mod forward;
+pub(crate) mod message;
 pub mod partition;
-pub mod reconstruct;
-pub mod reroot;
+pub(crate) mod reconstruct;
+pub(crate) mod reroot;

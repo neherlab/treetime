@@ -20,12 +20,12 @@ pub struct QualityMetrics {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let squared_errors: f64 = (actual - expected).mapv(|x| x * x).sum();
   (squared_errors / actual.len() as f64).sqrt()
 }
 
-pub fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let mean_expected = expected.mean().unwrap_or(0.0);
   let ss_res: f64 = (actual - expected).mapv(|x| x * x).sum();
   let ss_tot: f64 = expected.mapv(|x| (x - mean_expected).powi(2)).sum();
@@ -37,7 +37,7 @@ pub fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   }
 }
 
-pub fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let mean_actual = actual.mean().unwrap_or(0.0);
   let mean_expected = expected.mean().unwrap_or(0.0);
 
@@ -52,7 +52,7 @@ pub fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 
   if denominator < 1e-15 { 1.0 } else { cov / denominator }
 }
 
-pub fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let compute_integral = |values: &Array1<f64>| -> f64 {
     let mut integral = 0.0;
     for i in 0..values.len() - 1 {
@@ -68,7 +68,7 @@ pub fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected: &Arra
   (actual_integral - expected_integral).abs()
 }
 
-pub fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let error_norm = (actual - expected).mapv(|x| x * x).sum().sqrt();
   let expected_norm = expected.mapv(|x| x * x).sum().sqrt();
 
@@ -79,7 +79,7 @@ pub fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f6
   }
 }
 
-pub fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let error_norm: f64 = (actual - expected).mapv(|x| x.abs()).sum();
   let expected_norm: f64 = expected.mapv(|x| x.abs()).sum();
 
@@ -90,7 +90,7 @@ pub fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f6
   }
 }
 
-pub fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+pub(crate) fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let error_norm = (actual - expected)
     .iter()
     .map(|&x| OrderedFloat(x.abs()))
@@ -110,7 +110,7 @@ pub fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<
   }
 }
 
-pub fn compute_max_log_error(actual: &Array1<f64>, expected: &Array1<f64>, threshold: f64) -> f64 {
+pub(crate) fn compute_max_log_error(actual: &Array1<f64>, expected: &Array1<f64>, threshold: f64) -> f64 {
   let mut max_log_error = 0.0_f64;
   for (&a, &e) in izip!(actual.iter(), expected.iter()) {
     if e > threshold && a > threshold {
@@ -121,7 +121,7 @@ pub fn compute_max_log_error(actual: &Array1<f64>, expected: &Array1<f64>, thres
   max_log_error
 }
 
-pub fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
+pub(crate) fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
   let mut max_symmetry_error = 0.0_f64;
   let mut found_symmetric_pairs = false;
 
@@ -147,7 +147,7 @@ pub fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
+pub(crate) fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
   let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   abs_errors.sort_by_key(|&x| OrderedFloat(x));
 

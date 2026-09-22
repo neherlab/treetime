@@ -13,7 +13,7 @@ pub struct OptimizationMetrics {
 }
 
 impl OptimizationMetrics {
-  pub fn new(log_lh: LogLh, derivative: f64, second_derivative: f64) -> Self {
+  pub(crate) fn new(log_lh: LogLh, derivative: f64, second_derivative: f64) -> Self {
     Self {
       log_lh,
       derivative,
@@ -21,7 +21,7 @@ impl OptimizationMetrics {
     }
   }
 
-  pub fn add(&mut self, other: &OptimizationMetrics) {
+  pub(crate) fn add(&mut self, other: &OptimizationMetrics) {
     self.log_lh += other.log_lh;
     self.derivative += other.derivative;
     self.second_derivative += other.second_derivative;
@@ -38,14 +38,14 @@ impl OptimizationContribution {
   }
 }
 
-pub fn evaluate_mixed(
+pub(crate) fn evaluate_mixed(
   contributions: &[OptimizationContribution],
   branch_length: f64,
 ) -> Result<OptimizationMetrics, Report> {
   evaluate_mixed_impl(contributions, branch_length, true)
 }
 
-pub fn evaluate_mixed_log_lh_only(
+pub(crate) fn evaluate_mixed_log_lh_only(
   contributions: &[OptimizationContribution],
   branch_length: f64,
 ) -> Result<LogLh, Report> {
@@ -68,7 +68,7 @@ fn evaluate_mixed_impl(
   Ok(total_metrics)
 }
 
-pub fn evaluate_with_indels(
+pub(crate) fn evaluate_with_indels(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -79,7 +79,7 @@ pub fn evaluate_with_indels(
   Ok(metrics)
 }
 
-pub fn evaluate_with_indels_log_lh_only(
+pub(crate) fn evaluate_with_indels_log_lh_only(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,

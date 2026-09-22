@@ -24,7 +24,7 @@ impl DiscreteStates {
     }
   }
 
-  pub fn len(&self) -> usize {
+  pub(crate) fn len(&self) -> usize {
     self.states.len()
   }
 
@@ -32,18 +32,18 @@ impl DiscreteStates {
     self.states.is_empty()
   }
 
-  pub fn get_index(&self, name: &str) -> Option<usize> {
+  pub(crate) fn get_index(&self, name: &str) -> Option<usize> {
     if self.is_missing(name) {
       return None;
     }
     self.indices.get(name).copied()
   }
 
-  pub fn get_name(&self, index: usize) -> &str {
+  pub(crate) fn get_name(&self, index: usize) -> &str {
     &self.states[index]
   }
 
-  pub fn is_missing(&self, name: &str) -> bool {
+  fn is_missing(&self, name: &str) -> bool {
     name == self.missing
   }
 

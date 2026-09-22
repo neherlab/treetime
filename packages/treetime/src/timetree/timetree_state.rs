@@ -48,7 +48,7 @@ impl TimetreeState {
     Self { nodes, edges }
   }
 
-  pub fn seed_from_values(graph: &Graph, constraints: &DateConstraints) -> Self {
+  pub(crate) fn seed_from_values(graph: &Graph, constraints: &DateConstraints) -> Self {
     let nodes = graph
       .get_nodes()
       .map(|node| {
@@ -69,7 +69,7 @@ impl TimetreeState {
     Self { nodes, edges }
   }
 
-  pub fn reseed_from_values(&mut self, graph: &Graph) {
+  pub(crate) fn reseed_from_values(&mut self, graph: &Graph) {
     let nodes = graph
       .get_nodes()
       .map(|node| {
@@ -106,7 +106,7 @@ impl TimetreeState {
     self.edges = edges;
   }
 
-  pub fn reset_date_edges_for_topology_change(&mut self, graph: &Graph) {
+  pub(crate) fn reset_date_edges_for_topology_change(&mut self, graph: &Graph) {
     for edge_ref in graph.get_edges() {
       let key = edge_ref.key();
       let entry = self.edges.entry(key).or_default();
@@ -121,7 +121,7 @@ impl TimetreeState {
   }
 
   #[must_use]
-  pub fn likely_times(&self, constraints: &DateConstraints) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  pub(crate) fn likely_times(&self, constraints: &DateConstraints) -> BTreeMap<GraphNodeKey, Option<f64>> {
     self
       .nodes
       .iter()
@@ -140,7 +140,7 @@ impl TimetreeState {
   }
 
   #[must_use]
-  pub fn coalescent_node_times(&self) -> CoalescentNodeTimes {
+  pub(crate) fn coalescent_node_times(&self) -> CoalescentNodeTimes {
     self
       .nodes
       .iter()
@@ -184,14 +184,14 @@ impl TimetreeState {
 
   #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
-  pub fn edge_mut(&mut self, key: GraphEdgeKey) -> &mut DateEdgeState {
+  pub(crate) fn edge_mut(&mut self, key: GraphEdgeKey) -> &mut DateEdgeState {
     self
       .edges
       .get_mut(&key)
       .unwrap_or_else(|| panic!("Timetree state is missing edge {key}"))
   }
 
-  pub fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
+  pub(crate) fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
         GraphPassBackwardContext<'_, DateNodeState, DateEdgeState, DateNodeState, DateEdgeState>,
@@ -207,7 +207,7 @@ impl TimetreeState {
     Ok(())
   }
 
-  pub fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
+  pub(crate) fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
         GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,

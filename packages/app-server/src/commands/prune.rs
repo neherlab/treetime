@@ -32,25 +32,29 @@ use utoipa::ToSchema;
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
 pub struct PruneArgs {
-  pub input_fastas: Vec<String>,
-  pub tree: String,
+  input_fastas: Vec<String>,
+  tree: String,
   #[schema(value_type = Option<String>)]
-  pub alphabet: Option<AlphabetName>,
-  pub outdir: String,
-  pub prune_short: Option<f64>,
-  pub prune_empty: bool,
-  pub merge_shared_mutations: bool,
-  pub prune_nodes_list: Option<String>,
+  alphabet: Option<AlphabetName>,
+  outdir: String,
+  prune_short: Option<f64>,
+  prune_empty: bool,
+  merge_shared_mutations: bool,
+  prune_nodes_list: Option<String>,
   #[default = ',']
   #[schema(value_type = String)]
-  pub prune_nodes_list_delimiter: char,
-  pub prune_nodes_list_file: Option<String>,
+  prune_nodes_list_delimiter: char,
+  prune_nodes_list_file: Option<String>,
   #[default = '\n']
   #[schema(value_type = String)]
-  pub prune_nodes_list_file_delimiter: char,
+  prune_nodes_list_file_delimiter: char,
 }
 
-pub fn run_prune(args: &PruneArgs, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<PruneResult, Report> {
+pub(crate) fn run_prune(
+  args: &PruneArgs,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
+) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
   cancel.check()?;

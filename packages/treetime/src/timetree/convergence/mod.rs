@@ -1,8 +1,8 @@
-pub mod likelihood;
+pub(crate) mod likelihood;
 pub mod metrics;
 pub mod node_times;
 pub mod optimizer;
-pub mod sequence_changes;
+pub(crate) mod sequence_changes;
 
 #[cfg(test)]
 mod __tests__;

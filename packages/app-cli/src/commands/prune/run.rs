@@ -167,10 +167,7 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub(crate) fn gather_prune_output_maps(
-  graph: &Graph,
-  partitions: &[SparseReconstruction],
-) -> Result<PruneOutputMaps, Report> {
+fn gather_prune_output_maps(graph: &Graph, partitions: &[SparseReconstruction]) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };

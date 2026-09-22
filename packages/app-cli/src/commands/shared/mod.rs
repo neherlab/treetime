@@ -7,7 +7,7 @@ pub mod metadata;
 pub mod method_anc;
 pub mod model;
 pub mod output_args;
-pub mod required;
+pub(crate) mod required;
 pub mod reroot;
 pub mod resolve_outputs;
 pub mod topology_order_args;

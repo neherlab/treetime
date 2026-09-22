@@ -18,7 +18,7 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
-pub fn compute_effective_time_marginal(
+pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
   confidence: bool,
   clock_std_dev: Option<f64>,
@@ -45,7 +45,7 @@ pub fn compute_effective_time_marginal(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn build_covariation_clock_params(
+pub(crate) fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,

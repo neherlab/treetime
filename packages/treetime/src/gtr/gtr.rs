@@ -8,7 +8,7 @@ use serde::Serialize;
 use treetime_utils::array::ndarray::{clamp_min, outer};
 use treetime_utils::array::serde::{array1_as_vec, array2_as_vec, option_array1_as_vec};
 
-pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
+pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
   Ok(pi.dot(W).dot(pi))
 }
 
@@ -126,7 +126,7 @@ impl GTR {
     self.average_rate
   }
 
-  pub fn has_site_rates(&self) -> bool {
+  pub(crate) fn has_site_rates(&self) -> bool {
     self.site_rates.is_some()
   }
 
@@ -138,14 +138,14 @@ impl GTR {
     self.site_rates = None;
   }
 
-  pub fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
+  pub(crate) fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
     let exp_lt = self.exp_lt_scaled(t, rate);
     let scaled_v_inv = &self.v_inv * &exp_lt.view().insert_axis(Axis(1));
     let Qt = self.v.dot(&scaled_v_inv);
     clamp_min(&Qt, 0.0)
   }
 
-  pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
+  pub(crate) fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let res = match &self.site_rates {
       None => {
         let Qt = self.expQt(t);
@@ -162,7 +162,7 @@ impl GTR {
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
-  pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
+  pub(crate) fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let res = match &self.site_rates {
       None => {
         let Qt = self.expQt(t);
@@ -179,7 +179,7 @@ impl GTR {
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
-  pub fn expQt(&self, t: f64) -> Array2<f64> {
+  pub(crate) fn expQt(&self, t: f64) -> Array2<f64> {
     let exp_lt = self.exp_lt(t);
     let scaled_v_inv = &self.v_inv * &exp_lt.view().insert_axis(Axis(1));
     let Qt = self.v.dot(&scaled_v_inv);

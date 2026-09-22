@@ -11,7 +11,7 @@ pub struct DistributionPoint<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
 }
 
 impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionPoint<T, Y> {
-  pub fn new(t: T, ampl: T) -> Self {
+  pub(crate) fn new(t: T, ampl: T) -> Self {
     DistributionPoint {
       t,
       ampl,
@@ -19,11 +19,11 @@ impl<T: Clone + Copy + Debug, Y: YAxisPolicy> DistributionPoint<T, Y> {
     }
   }
 
-  pub fn t(&self) -> T {
+  pub(crate) fn t(&self) -> T {
     self.t
   }
 
-  pub fn amplitude(&self) -> T {
+  pub(crate) fn amplitude(&self) -> T {
     self.ampl
   }
 }

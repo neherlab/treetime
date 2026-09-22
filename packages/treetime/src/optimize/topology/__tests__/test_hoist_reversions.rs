@@ -439,7 +439,12 @@ mod tests {
     }
 
     impl Hoisted {
-      pub fn locate(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, v_name: &str, c_name: &str) -> Self {
+      pub(crate) fn locate(
+        graph: &Graph,
+        names: &BTreeMap<GraphNodeKey, Option<String>>,
+        v_name: &str,
+        c_name: &str,
+      ) -> Self {
         let v = find_node_key_by_name(graph, names, v_name).unwrap();
         let c = find_node_key_by_name(graph, names, c_name).unwrap();
         let nv = single_inbound(graph, v);

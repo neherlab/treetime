@@ -194,7 +194,7 @@ fn gather_reconstruction_maps(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn validate_weight_coverage(
+pub(crate) fn validate_weight_coverage(
   unique_values: &IndexSet<String>,
   weights_keys: &IndexSet<String>,
   missing_data: &str,
@@ -221,7 +221,7 @@ pub fn validate_weight_coverage(
   })
 }
 
-pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {
+pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {
   let mean_weight = weights.values().mean();
 
   let weights_arr: Array1<f64> = states
@@ -237,11 +237,11 @@ pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<Strin
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
+pub(crate) fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
   Array1::from_elem(n_states, 1.0 / n_states as f64)
 }
 
-pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
+pub(crate) fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
   match pc {
     Some(pc_val) => {
       let pi = &pi + pc_val;

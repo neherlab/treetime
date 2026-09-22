@@ -38,7 +38,7 @@ impl PartitionMarginalSparse {
     self.length
   }
 
-  pub fn edge_subs(
+  pub(crate) fn edge_subs(
     &self,
     estimates: &BTreeMap<GraphEdgeKey, Vec<Sub>>,
     edge_key: GraphEdgeKey,
@@ -49,22 +49,26 @@ impl PartitionMarginalSparse {
     }
   }
 
-  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
     self.obs_edges[&edge_key].indels.clone()
   }
 
-  pub fn root_sequence(&self) -> Seq {
+  pub(crate) fn root_sequence(&self) -> Seq {
     self.root_sequence.clone()
   }
 
-  pub fn node_sequence(&self, node_states: &BTreeMap<GraphNodeKey, SparseNodeState>, node_key: GraphNodeKey) -> Seq {
+  pub(crate) fn node_sequence(
+    &self,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    node_key: GraphNodeKey,
+  ) -> Seq {
     match node_states.get(&node_key) {
       Some(node) => node.emitted.clone().unwrap_or_else(|| map_seq(node, &self.alphabet)),
       None => seq![],
     }
   }
 
-  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_non_char = &self.obs_nodes[&parent_key].non_char;
     let child_non_char = &self.obs_nodes[&child_key].non_char;
@@ -77,7 +81,7 @@ impl PartitionMarginalSparse {
     Ok(self.length.saturating_sub(non_char_positions))
   }
 
-  pub fn create_edge_contribution(
+  pub(crate) fn create_edge_contribution(
     &self,
     gtr: &GTR,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
@@ -92,11 +96,11 @@ impl PartitionMarginalSparse {
     )
   }
 
-  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.obs_edges[&edge_key].indels.len()
   }
 
-  pub fn extract_ancestral_sequence(
+  pub(crate) fn extract_ancestral_sequence(
     &self,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     node_key: GraphNodeKey,
@@ -104,7 +108,7 @@ impl PartitionMarginalSparse {
     self.node_sequence(node_states, node_key)
   }
 
-  pub fn reconcile_topology(&mut self, graph: &Graph) {
+  pub(crate) fn reconcile_topology(&mut self, graph: &Graph) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|n| n.key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().map(|e| e.key()).collect();
 
@@ -121,7 +125,7 @@ impl PartitionMarginalSparse {
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  pub fn advance_node_state(
+  pub(crate) fn advance_node_state(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
@@ -166,7 +170,7 @@ impl PartitionMarginalSparse {
     Some(())
   }
 
-  pub fn reconstruct_node_sequence(
+  pub(crate) fn reconstruct_node_sequence(
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,

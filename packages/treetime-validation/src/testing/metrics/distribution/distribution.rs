@@ -17,7 +17,7 @@ impl DistributionMetrics {
     Self::new_with_config(pointwise_errors, &DistributionConfig::default())
   }
 
-  pub fn new_with_config(pointwise_errors: &PointwiseErrors, config: &DistributionConfig) -> eyre::Result<Self> {
+  pub(crate) fn new_with_config(pointwise_errors: &PointwiseErrors, config: &DistributionConfig) -> eyre::Result<Self> {
     let histograms = compute_histogram_metrics(pointwise_errors, config)?;
     let statistics = compute_statistical_metrics(pointwise_errors)?;
     let properties = compute_distribution_properties(pointwise_errors)?;

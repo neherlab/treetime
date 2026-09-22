@@ -20,7 +20,7 @@ pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
 }
 
 impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
-  pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
+  pub(crate) fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -28,7 +28,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
+  pub(crate) fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -116,22 +116,22 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     }
   }
 
-  pub fn grid_fn(&self) -> &GridFn<T> {
+  pub(crate) fn grid_fn(&self) -> &GridFn<T> {
     &self.grid_fn
   }
 
-  pub fn t(&self) -> Array1<T>
+  pub(crate) fn t(&self) -> Array1<T>
   where
     T: Float,
   {
     self.grid_fn.x()
   }
 
-  pub fn x_min(&self) -> T {
+  pub(crate) fn x_min(&self) -> T {
     self.grid_fn.x_min()
   }
 
-  pub fn x_max(&self) -> T
+  pub(crate) fn x_max(&self) -> T
   where
     T: Float,
   {
@@ -154,7 +154,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn interp(&self, x: T) -> Result<T, Report>
+  pub(crate) fn interp(&self, x: T) -> Result<T, Report>
   where
     T: Float + UlpsEq,
   {
@@ -168,7 +168,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(val)
   }
 
-  pub fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
+  pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float + UlpsEq,
   {
@@ -202,7 +202,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     false
   }
 
-  pub fn left_extrap(&self) -> BoundaryBehavior {
+  pub(crate) fn left_extrap(&self) -> BoundaryBehavior {
     self.left_extrap
   }
 
@@ -224,7 +224,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.with_left_extrap(behavior)?.with_right_extrap(behavior)
   }
 
-  pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
+  fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -246,7 +246,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.resample(&grid)
   }
 
-  pub fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
+  pub(crate) fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -262,7 +262,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.resample(&grid)
   }
 
-  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -274,18 +274,18 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     ))
   }
 
-  pub fn resample_dx(&self, dx: T) -> Result<Self, Report>
+  pub(crate) fn resample_dx(&self, dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx)
   }
 
-  pub fn len(&self) -> usize {
+  pub(crate) fn len(&self) -> usize {
     self.grid_fn.len()
   }
 
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     self.grid_fn.len() == 0
   }
 
@@ -301,7 +301,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     ))
   }
 
-  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
+  pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
   {
@@ -312,7 +312,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(())
   }
 
-  pub fn likely_time(&self) -> Option<T>
+  pub(crate) fn likely_time(&self) -> Option<T>
   where
     T: Float,
   {
@@ -342,7 +342,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 
   #[must_use]
-  pub fn shift_y(&self, delta: T) -> Self
+  pub(crate) fn shift_y(&self, delta: T) -> Self
   where
     T: Float,
   {
@@ -351,7 +351,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 }
 
 impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
-  pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
+  pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
     match side {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
@@ -360,7 +360,7 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 }
 
-fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
+pub fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {

@@ -1,5 +1,5 @@
 pub mod args;
-pub mod initialization;
+pub(crate) mod initialization;
 pub mod output;
 pub mod run;
 

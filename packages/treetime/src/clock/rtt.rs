@@ -26,7 +26,7 @@ pub struct ClockRegressionResult {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn gather_clock_regression_results(
+pub(crate) fn gather_clock_regression_results(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &mut ClockState,

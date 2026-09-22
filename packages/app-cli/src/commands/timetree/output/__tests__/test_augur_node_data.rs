@@ -145,17 +145,17 @@ mod tests {
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub struct SampleCase {
-      pub graph: Graph,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
-      pub times: BTreeMap<GraphNodeKey, Option<f64>>,
-      pub clock_model: ClockModel,
-      pub dates: DatesMap,
-      pub intervals: Vec<NodeConfidenceInterval>,
-      pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      graph: Graph,
+      names: BTreeMap<GraphNodeKey, Option<String>>,
+      times: BTreeMap<GraphNodeKey, Option<f64>>,
+      clock_model: ClockModel,
+      dates: DatesMap,
+      intervals: Vec<NodeConfidenceInterval>,
+      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     }
 
     impl SampleCase {
-      pub fn write_json(&self) -> String {
+      pub(crate) fn write_json(&self) -> String {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph, &self.names, &self.times),
@@ -171,11 +171,11 @@ mod tests {
         json_write_str(&data, JsonPretty(true)).unwrap()
       }
 
-      pub fn write_and_read(&self) -> AugurNodeDataJsonRefine {
+      pub(crate) fn write_and_read(&self) -> AugurNodeDataJsonRefine {
         json_read_str(self.write_json()).unwrap()
       }
 
-      pub fn write_and_read_with_mutations(&self, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
+      pub(crate) fn write_and_read_with_mutations(&self, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
         let edges = self.graph.get_edges().collect::<Vec<_>>();
         let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
           .iter()

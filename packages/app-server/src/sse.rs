@@ -132,7 +132,7 @@ where
   Sse::new(stream).into_response()
 }
 
-pub fn handle_command<S, T>(
+pub(crate) fn handle_command<S, T>(
   mut body: Value,
   out_dir: &Path,
   command: fn(&S, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use strsim::levenshtein;
 
 #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
-pub fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
+fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
   let threshold = (input.len() / 3).max(1) + 1;
   candidates
     .iter()

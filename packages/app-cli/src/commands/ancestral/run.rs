@@ -43,10 +43,10 @@ pub fn run_ancestral_reconstruction(
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
   validate_aa_args(
-    &args.translations,
+    args.translations.as_deref(),
     &args.cdses,
-    &args.annotation,
-    &args.aa_root_sequence,
+    args.annotation.as_deref(),
+    args.aa_root_sequence.as_deref(),
   )?;
 
   let AncestralReadInputs {
@@ -331,7 +331,7 @@ pub(crate) fn tree_outputs_need_sequences(tree_outputs: &BTreeMap<TreeWriteKind,
     .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
 }
 
-pub(crate) fn gather_ancestral_output_maps(
+fn gather_ancestral_output_maps(
   graph: &Graph,
   partition: Option<&AncestralPartition>,
 ) -> Result<AncestralOutputMaps, Report> {

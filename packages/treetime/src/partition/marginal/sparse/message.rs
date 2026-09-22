@@ -12,7 +12,7 @@ use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::interval::range::range_contains;
 
-pub const EPS: f64 = 1e-4;
+const EPS: f64 = 1e-4;
 
 #[allow(
   clippy::as_conversions,
