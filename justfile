@@ -19,6 +19,9 @@ test_dir := build_dir / "test"
 # not overwrite the stable build cache.
 dylint_dir := build_dir / "dylint"
 
+# Records the pub_unused_in_workspace lint writes per crate for pub-unused-report.
+pub_unused_dir := dylint_dir / "treetime_lints/pub_unused"
+
 # Show the grouped task list (default).
 default:
     @just --list --list-heading $'TreeTime tasks (run via ./dev/docker/run just <task>):\n'
@@ -452,16 +455,20 @@ dylint-all *args:
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
     # No compiler cache: a cache hit skips the lint passes, so mordant's
-    # baseline check would not run.
+    # baseline check and the pub_unused_in_workspace records would not be written.
     unset RUSTFLAGS RUSTC_WRAPPER
     export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    export TREETIME_LINTS_PUB_UNUSED_DIR='{{pub_unused_dir}}'
     rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
     nicely cargo dylint --quiet --all -- --quiet --locked --workspace --all-targets --keep-going "$@"
+    status=0
+    just _pub-unused-report || status=1
     if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
       printf 'mordant: findings over the committed baseline:\n' >&2
       cat '{{dylint_dir}}/mordant/over-baseline.txt' >&2
-      exit 1
+      status=1
     fi
+    exit "${status}"
 
 # Run one lint from the vendored Trail of Bits library
 [group('lint')]
@@ -485,14 +492,39 @@ dylint-all-fix *args:
     # No compiler cache, as in dylint-all.
     unset RUSTFLAGS RUSTC_WRAPPER
     export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    export TREETIME_LINTS_PUB_UNUSED_DIR='{{pub_unused_dir}}'
     rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
     nicely cargo dylint --quiet --all --fix -- "${vcs_flag}" --quiet --locked --workspace --all-targets --keep-going "$@"
+    status=0
+    just _pub-unused-report || status=1
     if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
       printf 'mordant: findings over the committed baseline:\n' >&2
       cat '{{dylint_dir}}/mordant/over-baseline.txt' >&2
-      exit 1
+      status=1
     fi
+    exit "${status}"
+
+# Run the tests of the custom Dylint library's report binaries
+[group('lint')]
+dylint-custom-test *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    unset RUSTFLAGS RUSTC_WRAPPER CARGO_TARGET_DIR
+    pushd '{{project_dir}}/dev/lints/dylint-custom' >/dev/null
+    cargo test --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bins "$@"
+    popd >/dev/null
+
+# Report public items no workspace crate uses, from the records the
+# pub_unused_in_workspace lint wrote during the last dylint run
+_pub-unused-report:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    unset RUSTFLAGS RUSTC_WRAPPER CARGO_TARGET_DIR
+    export TREETIME_LINTS_PUB_UNUSED_DIR='{{pub_unused_dir}}'
+    pushd '{{project_dir}}/dev/lints/dylint-custom' >/dev/null
+    cargo run --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bin pub-unused-report -- '{{project_dir}}/Cargo.toml'
+    popd >/dev/null
 
 # Report unnecessary public surface across the workspace (cargo-hawk)
 [group('lint')]
@@ -663,6 +695,7 @@ _check mode:
         skip "js-tests" "no node_modules"
         skip "oxlint-rules" "no node_modules"
       fi
+      run_check "dylint-custom-tests" just dylint-custom-test
     fi
 
     printf '\n===== %s check summary =====\n' "{{mode}}"

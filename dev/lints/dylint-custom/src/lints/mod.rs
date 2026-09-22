@@ -11,6 +11,7 @@ pub mod no_comments;
 pub mod panic_in_drop;
 pub mod prefer_error_macros;
 pub mod proper_error_type;
+pub mod pub_unused_in_workspace;
 pub mod result_result;
 pub mod result_defaulted;
 pub mod serde_default_fn;
