@@ -6,95 +6,6 @@
 
 [app_napi]
 "parallel_vecs:packages/app-napi/src/commands/timetree.rs" = 1
-"unused_pub:packages/app-output/src/augur_node_data_ancestral.rs" = 1
-"unused_pub:packages/app-output/src/coalescent.rs" = 2
-"unused_pub:packages/app-output/src/mugration_result.rs" = 2
-"unused_pub:packages/app-output/src/timetree_result.rs" = 1
-"unused_pub:packages/treetime-distribution/src/distribution_core/distribution.rs" = 10
-"unused_pub:packages/treetime-distribution/src/distribution_core/function.rs" = 9
-"unused_pub:packages/treetime-distribution/src/distribution_scaled/scaled.rs" = 4
-"unused_pub:packages/treetime-distribution/src/policy.rs" = 1
-"unused_pub:packages/treetime-graph/src/edge.rs" = 1
-"unused_pub:packages/treetime-graph/src/graph.rs" = 13
-"unused_pub:packages/treetime-graph/src/node.rs" = 1
-"unused_pub:packages/treetime-graph/src/reachability.rs" = 1
-"unused_pub:packages/treetime-graph/src/topology_order.rs" = 2
-"unused_pub:packages/treetime-grid/src/boundary_behavior.rs" = 3
-"unused_pub:packages/treetime-grid/src/grid_fn.rs" = 11
-"unused_pub:packages/treetime-grid/src/lib.rs" = 1
-"unused_pub:packages/treetime-grid/src/piecewise_constant_fn.rs" = 2
-"unused_pub:packages/treetime-grid/src/piecewise_linear_fn.rs" = 3
-"unused_pub:packages/treetime-io/src/auspice.rs" = 1
-"unused_pub:packages/treetime-io/src/auspice_types.rs" = 8
-"unused_pub:packages/treetime-io/src/concat.rs" = 2
-"unused_pub:packages/treetime-io/src/csv.rs" = 2
-"unused_pub:packages/treetime-io/src/dates_csv.rs" = 1
-"unused_pub:packages/treetime-io/src/discrete_states_csv.rs" = 1
-"unused_pub:packages/treetime-io/src/fasta.rs" = 7
-"unused_pub:packages/treetime-io/src/gff.rs" = 1
-"unused_pub:packages/treetime-io/src/graphviz.rs" = 1
-"unused_pub:packages/treetime-io/src/nex.rs" = 2
-"unused_pub:packages/treetime-io/src/nwk.rs" = 4
-"unused_pub:packages/treetime-io/src/phyloxml.rs" = 6
-"unused_pub:packages/treetime-io/src/usher_mat.rs" = 3
-"unused_pub:packages/treetime-primitives/src/bitset128.rs" = 7
-"unused_pub:packages/treetime-primitives/src/date.rs" = 3
-"unused_pub:packages/treetime-primitives/src/seq.rs" = 19
-"unused_pub:packages/treetime-primitives/src/seq_char.rs" = 4
-"unused_pub:packages/treetime-utils/src/array/batched.rs" = 2
-"unused_pub:packages/treetime-utils/src/array/ndarray.rs" = 22
-"unused_pub:packages/treetime-utils/src/array/serde.rs" = 2
-"unused_pub:packages/treetime-utils/src/collections/container.rs" = 4
-"unused_pub:packages/treetime-utils/src/collections/manyzip.rs" = 1
-"unused_pub:packages/treetime-utils/src/datetime/date_range.rs" = 3
-"unused_pub:packages/treetime-utils/src/datetime/datetime.rs" = 6
-"unused_pub:packages/treetime-utils/src/datetime/nil.rs" = 1
-"unused_pub:packages/treetime-utils/src/datetime/parse_datetime.rs" = 1
-"unused_pub:packages/treetime-utils/src/error.rs" = 3
-"unused_pub:packages/treetime-utils/src/fmt/float.rs" = 4
-"unused_pub:packages/treetime-utils/src/fmt/string.rs" = 6
-"unused_pub:packages/treetime-utils/src/init/openblas.rs" = 1
-"unused_pub:packages/treetime-utils/src/interval/range.rs" = 1
-"unused_pub:packages/treetime-utils/src/interval/range_complement.rs" = 1
-"unused_pub:packages/treetime-utils/src/io/fs.rs" = 5
-"unused_pub:packages/treetime-utils/src/io/json.rs" = 3
-"unused_pub:packages/treetime-utils/src/iterator/intersection.rs" = 1
-"unused_pub:packages/treetime-utils/src/iterator/union.rs" = 1
-"unused_pub:packages/treetime-utils/src/sync/mutex.rs" = 2
-"unused_pub:packages/treetime-utils/src/sync/random.rs" = 4
-"unused_pub:packages/treetime-utils/src/testing/assert.rs" = 5
-"unused_pub:packages/treetime/src/alphabet/alphabet.rs" = 10
-"unused_pub:packages/treetime/src/ancestral/pipeline.rs" = 1
-"unused_pub:packages/treetime/src/clock/clock_model.rs" = 2
-"unused_pub:packages/treetime/src/clock/find_best_root/params.rs" = 3
-"unused_pub:packages/treetime/src/coalescent/coalescent.rs" = 1
-"unused_pub:packages/treetime/src/coalescent/optimize_tc.rs" = 1
-"unused_pub:packages/treetime/src/constants.rs" = 1
-"unused_pub:packages/treetime/src/gtr/gtr.rs" = 5
-"unused_pub:packages/treetime/src/gtr/gtr_site_specific.rs" = 4
-"unused_pub:packages/treetime/src/gtr/infer_gtr/site_specific.rs" = 2
-"unused_pub:packages/treetime/src/gtr/site_rate_variation.rs" = 1
-"unused_pub:packages/treetime/src/optimize/likelihood.rs" = 1
-"unused_pub:packages/treetime/src/partition/fitch/config.rs" = 2
-"unused_pub:packages/treetime/src/partition/fitch/partition.rs" = 1
-"unused_pub:packages/treetime/src/partition/likelihood.rs" = 2
-"unused_pub:packages/treetime/src/partition/marginal/dense/partition.rs" = 1
-"unused_pub:packages/treetime/src/partition/marginal/discrete/partition.rs" = 1
-"unused_pub:packages/treetime/src/partition/marginal/sparse/partition.rs" = 1
-"unused_pub:packages/treetime/src/partition/storage/discrete.rs" = 2
-"unused_pub:packages/treetime/src/partition/storage/sparse.rs" = 3
-"unused_pub:packages/treetime/src/partition/timetree/marginal.rs" = 1
-"unused_pub:packages/treetime/src/progress.rs" = 1
-"unused_pub:packages/treetime/src/reroot/div_stats.rs" = 1
-"unused_pub:packages/treetime/src/seq/composition.rs" = 3
-"unused_pub:packages/treetime/src/seq/indel.rs" = 2
-"unused_pub:packages/treetime/src/seq/mutation.rs" = 1
-"unused_pub:packages/treetime/src/timetree/convergence/optimizer.rs" = 2
-"unused_pub:packages/treetime/src/timetree/timetree_state.rs" = 1
-"unused_pub:packages/treetime/src/timetree/utils.rs" = 2
-"unused_pub:packages/util-newick/src/types.rs" = 3
-"unused_pub:packages/util-phyloxml/src/lib.rs" = 1
-"unused_pub:packages/util-usher-mat/src/lib.rs" = 2
 
 [app_output]
 "reimplemented_helper:packages/app-output/src/__tests__/test_tree_output.rs" = 4
@@ -130,12 +41,6 @@
 "wildcard_over_own_enum:packages/treetime/src/partition/create.rs" = 1
 "wildcard_over_own_enum:packages/treetime/src/timetree/pipeline.rs" = 1
 
-["treetime (bin treetime)"]
-"unused_pub:packages/app-cli/src/cli/pipeline/types.rs" = 2
-"unused_pub:packages/app-cli/src/commands/shared/resolve_outputs.rs" = 1
-"unused_pub:packages/app-cli/src/commands/timetree/output/dates.rs" = 1
-"unused_pub:packages/app-cli/src/commands/timetree/output/plots.rs" = 2
-
 [treetime_distribution]
 "arg_named_like_other_param:packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs" = 5
 "wildcard_over_own_enum:packages/treetime-distribution/src/distribution_core/distribution.rs" = 3
@@ -151,14 +56,6 @@
 "same_match_twice:packages/treetime-validation/src/testing/console/console_tables.rs" = 1
 "same_match_twice:packages/treetime-validation/src/testing/framework/tsv_output.rs" = 1
 "same_match_twice:packages/treetime-validation/src/testing/runners/runner.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/framework/summary.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/metrics/aggregate/aggregate.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/metrics/aggregate/domain_agreement/domain_agreement.rs" = 3
-"unused_pub:packages/treetime-validation/src/testing/metrics/distribution/distribution.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/metrics/spatial/spatial.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/run.rs" = 1
-"unused_pub:packages/treetime-validation/src/testing/test_suites/test_suites.rs" = 4
 
 [util_newick]
 "wildcard_over_own_enum:packages/util-newick/src/__tests__/test_parse.rs" = 1

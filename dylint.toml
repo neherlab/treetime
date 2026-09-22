@@ -3,11 +3,17 @@
 # built-in defaults when a section is absent.
 
 # mordant: type-invariant lints (github.com/scarletindustries/mordant).
-# All non-opt-in rule families (state, checks, errors, enums, duplication,
-# naming, keys_locks, comments, unused) stay enabled; pre-existing findings are
+# The non-opt-in rule families state, checks, errors, enums, duplication,
+# naming, keys_locks, and comments stay enabled; pre-existing findings are
 # absorbed by the committed baseline so only new findings fail the mordant gate.
 [mordant]
 baseline = "mordant-baseline.toml"
+# unused_pub judges each library from the records of whichever crates cargo
+# happened to compile before the reporting crate, so it reports items that
+# sibling binaries use. treetime_lints' pub_unused_in_workspace and the
+# pub-unused-report post-pass replace it.
+disabled = ["unused_pub"]
+
 [[mordant.forbidden-reach]]
 from = "ancestral_reconstruction"
 never = [
