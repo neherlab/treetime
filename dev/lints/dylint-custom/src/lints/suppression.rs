@@ -1,3 +1,5 @@
+use std::env;
+
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_in_test;
 use rustc_hir::{Attribute, Expr, HirId};
@@ -5,18 +7,28 @@ use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 
 /// Returns `true` if the expression is in a test context:
 ///
-/// - **Test crate** -- compiled with `--test` (integration tests in `tests/`,
-///   or `cargo test` on the main crate). Covers test helper functions that
-///   don't carry `#[test]` themselves (e.g. `tests/common/mod.rs`).
+/// - **Integration test or bench crate** -- every item of a `tests/` or
+///   `benches/` target is test code, including helpers without `#[test]`
+///   (e.g. `tests/common/mod.rs`).
 /// - **Test function** -- `#[test]`, `#[tokio::test]`, `#[rstest]`, etc.
 ///   Detected via `clippy_utils::is_in_test` (checks `#[rustc_test_marker]`).
 /// - **`#[cfg(test)]` module** -- also covered by `is_in_test`.
+///
+/// A library or binary compiled with `--test` is not a test crate as a whole:
+/// its production items are compiled into the harness too and must be linted
+/// as production code.
 pub fn is_in_test_zone(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     is_hir_in_test_zone(cx, expr.hir_id)
 }
 
 pub fn is_hir_in_test_zone(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.sess().is_test_crate() || is_in_test(cx.tcx, hir_id)
+    is_test_target_crate(cx) || is_in_test(cx.tcx, hir_id)
+}
+
+/// Returns `true` for an integration test or bench target. Cargo sets
+/// `CARGO_TARGET_TMPDIR` only when it compiles these targets.
+pub fn is_test_target_crate(cx: &LateContext<'_>) -> bool {
+    cx.sess().is_test_crate() && env::var_os("CARGO_TARGET_TMPDIR").is_some()
 }
 
 rustc_session::declare_lint! {
