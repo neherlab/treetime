@@ -1,12 +1,17 @@
 # cargo-hawk configuration -- finds unnecessary public surface in the workspace.
 # https://github.com/astral-sh/hawk
-#
+
+# Clippy's `partial_pub_fields` requires every field of a struct to share one
+# visibility, so Hawk keeps a struct's fields uniform instead of narrowing them
+# one by one.
+preserve-uniform-field-visibility = true
+
 # `[[production]]` names the reachability roots (the shipped binaries). Public
 # items unreachable from a root are candidates for the `hawk::dead_public`
 # diagnostic. `[[doctest]]` restricts the doctest reachability pass to the named
-# packages. `[[exclude]]` silences diagnostics in generated code. `[[override]]`
-# records a single item deliberately kept public despite being unreachable, each
-# with a mandatory reason.
+# packages. `[[exclude]]` silences diagnostics for general-purpose libraries and at
+# external API boundaries. `[[override]]` records a single item deliberately kept public
+# despite being unreachable, each with a mandatory reason.
 
 # Doctest reachability pass. Hawk runs `cargo test --doc` for the listed packages
 # only; without this it compiles every package's doctests. `treetime-primitives`
@@ -31,22 +36,34 @@ package = "app-server"
 bin = "treetime-server"
 reason = "the shipped treetime-server binary is a product entry point"
 
-# Prost-generated protobuf modules in util-usher-mat: machine-generated code
-# whose public surface is dictated by the .proto schema, not by hand.
+# General-purpose libraries: shared utilities and file-format crates publish a
+# complete API for reuse across the workspace, including operations no current
+# caller needs yet.
 [[exclude]]
-crate = "util_usher_mat"
-module = "mutation_detailed"
-reason = "prost-generated from the UShER protobuf schema"
+crate = "treetime_utils"
+reason = "shared utility library whose API is designed for reuse, not per caller"
+
+[[exclude]]
+crate = "util_newick"
+reason = "standalone Newick format library with a complete public API"
+
+[[exclude]]
+crate = "util_phyloxml"
+reason = "standalone PhyloXML format library with a complete public API"
+
+[[exclude]]
+crate = "util_augur_node_data_json"
+reason = "standalone Augur node-data format library with a complete public API"
 
 [[exclude]]
 crate = "util_usher_mat"
-module = "parsimony"
-reason = "prost-generated from the UShER protobuf schema"
+reason = "standalone UShER mutation-annotated tree library; its prost-generated modules follow the .proto schema"
 
+# Node addon: `#[napi]` functions and the JSON argument structs they deserialize
+# form the JavaScript API of the desktop app, which no Rust target consumes.
 [[exclude]]
-crate = "util_usher_mat"
-module = "taxodium"
-reason = "prost-generated from the UShER protobuf schema"
+crate = "app_napi"
+reason = "public surface is the Node addon API consumed by the desktop app"
 
 # Record intentional exceptions here, one table per item, e.g.:
 #
