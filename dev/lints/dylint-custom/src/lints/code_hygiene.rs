@@ -7,9 +7,12 @@ use rustc_span::kw;
 
 use clippy_utils::diagnostics::span_lint_and_help;
 
+use crate::lints::suppression::is_hir_in_test_zone;
+
 rustc_session::declare_lint! {
-    /// Forbids `use super::...` imports. Paths should start from `crate::` so a
-    /// module can be read and moved without tracing relative ancestors.
+    /// Forbids `use super::...` imports in production code. Paths should start
+    /// from `crate::` so a module can be read and moved without tracing relative
+    /// ancestors. Test modules may import the module under test with `super::`.
     pub SUPER_IMPORT,
     Warn,
     "`use super::` import -- import from `crate::` instead"
@@ -63,6 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for CodeHygiene {
                     .segments
                     .first()
                     .is_some_and(|seg| seg.ident.name == kw::Super)
+                    && !is_hir_in_test_zone(cx, item.hir_id())
                 {
                     span_lint_and_help(
                         cx,
