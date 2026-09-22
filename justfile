@@ -823,7 +823,7 @@ why *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
-    nicely cargo -q tree -i -p --locked "$@"
+    nicely cargo -q tree --locked -i "$@"
 
 # Security audit over the network: cargo-deny advisories (fetches the RustSec database) and bun audit
 [group('deps')]
