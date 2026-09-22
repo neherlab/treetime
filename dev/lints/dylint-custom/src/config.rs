@@ -98,31 +98,48 @@ impl Default for FileLengthConfig {
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct NoCommentsConfig {
-    /// Item-level derives whose doc comments render as help or schema text and are kept.
-    pub help_derives: Vec<String>,
-    /// Enum derives whose per-variant doc comments render as help text and are kept.
-    pub help_variant_derives: Vec<String>,
-    /// Attribute paths whose doc comments render as help text and are kept.
-    pub help_attrs: Vec<String>,
+    /// Render sources: each names a tool surface and the doc comments it keeps.
+    pub rendered: Vec<RenderSource>,
+    /// Non-doc comment prefixes that are kept, matched against trimmed comment
+    /// text, e.g. `"SPDX-License-Identifier"`.
+    pub allowed_comment_prefixes: Vec<String>,
     pub max_chars: usize,
     pub max_lines: usize,
     pub max_paragraphs: usize,
 }
 
+/// One tool surface that renders doc comments into user-facing output.
+#[derive(Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct RenderSource {
+    /// Surface name, e.g. `"clap"`, `"schemars"`.
+    pub name: String,
+    /// Derive names that place an item on this surface (last path segment).
+    pub derives: Vec<String>,
+    /// Attribute paths that place an item on this surface (e.g. `"utoipa::path"`).
+    pub attrs: Vec<String>,
+    /// Which doc comments this surface renders: item, fields, variants.
+    pub renders: Vec<Granularity>,
+    /// Attributes that remove a field or variant from this surface, so this
+    /// surface does not keep its doc comment. Form `outer(word)`, e.g.
+    /// `"arg(skip)"`; `word` matches a bare word inside the attribute list.
+    pub skip_attrs: Vec<String>,
+}
+
+/// Doc-comment location that a render source can carry into output.
+#[derive(Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Granularity {
+    Item,
+    Fields,
+    Variants,
+}
+
 impl Default for NoCommentsConfig {
     fn default() -> Self {
         Self {
-            help_derives: vec![
-                "Parser".into(),
-                "Args".into(),
-                "Subcommand".into(),
-                "JsonSchema".into(),
-                "ToSchema".into(),
-                "IntoParams".into(),
-                "ToResponse".into(),
-            ],
-            help_variant_derives: vec!["ValueEnum".into()],
-            help_attrs: vec!["utoipa::path".into()],
+            rendered: vec![],
+            allowed_comment_prefixes: vec![],
             max_chars: 300,
             max_lines: 3,
             max_paragraphs: 2,

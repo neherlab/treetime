@@ -90,14 +90,53 @@ never = [
 [unnamed_constant]
 threshold = 32
 
-# no_comments / doc_comment_limit: the project keeps no comments except doc
-# comments that clap, schemars, or utoipa render as help or schema text. Those
-# derives and attributes are exempt; a rendered help doc comment stays within
-# the size limits below.
+# no_comments / doc_comment_limit: the project keeps no comments, except doc
+# comments that a configured render source carries into user-facing output (CLI
+# help, JSON schema, OpenAPI, TypeScript typings). Each render source lists the
+# derives and attributes that place an item on its surface, which doc comments
+# it renders ("item", "fields", "variants"), and the attributes that drop a
+# field or variant from that surface. A doc comment is kept when at least one
+# render source still shows it. A rendered doc comment stays within the size
+# limits below.
 [no_comments]
-help_derives = ["Parser", "Args", "Subcommand", "JsonSchema", "ToSchema", "IntoParams", "ToResponse"]
-help_variant_derives = ["ValueEnum"]
-help_attrs = ["utoipa::path"]
+allowed_comment_prefixes = ["SPDX-License-Identifier"]
 max_chars = 500
 max_lines = 6
 max_paragraphs = 2
+
+[[no_comments.rendered]]
+name = "clap-command"
+derives = ["Parser", "Args"]
+renders = ["item", "fields"]
+skip_attrs = ["arg(skip)"]
+
+[[no_comments.rendered]]
+name = "clap-subcommand"
+derives = ["Subcommand"]
+renders = ["item", "variants"]
+skip_attrs = ["command(skip)", "arg(skip)"]
+
+[[no_comments.rendered]]
+name = "clap-value"
+derives = ["ValueEnum"]
+renders = ["variants"]
+skip_attrs = ["value(skip)"]
+
+[[no_comments.rendered]]
+name = "schemars"
+derives = ["JsonSchema"]
+renders = ["item", "fields", "variants"]
+skip_attrs = ["serde(skip)", "schemars(skip)"]
+
+[[no_comments.rendered]]
+name = "utoipa"
+derives = ["ToSchema", "IntoParams", "ToResponse"]
+attrs = ["utoipa::path"]
+renders = ["item", "fields", "variants"]
+skip_attrs = ["serde(skip)", "schema(ignore)", "param(ignore)"]
+
+[[no_comments.rendered]]
+name = "napi"
+attrs = ["napi"]
+renders = ["item", "fields", "variants"]
+skip_attrs = ["napi(skip)", "napi(skip_typescript)"]

@@ -68,8 +68,15 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
     lint_store.register_pre_expansion_pass(|| {
         Box::new(lints::bon_builder_collector::BonBuilderCollector)
     });
-    lint_store.register_pre_expansion_pass(|| Box::new(lints::no_comments::HelpDocCollector::new()));
-    lint_store.register_early_pass(|| Box::new(lints::no_comments::NoComments::new()));
+    let help_docs = lints::no_comments::new_help_docs();
+    lint_store.register_pre_expansion_pass({
+        let help_docs = help_docs.clone();
+        move || Box::new(lints::no_comments::HelpDocCollector::new(help_docs.clone()))
+    });
+    lint_store.register_early_pass({
+        let help_docs = help_docs.clone();
+        move || Box::new(lints::no_comments::NoComments::new(help_docs.clone()))
+    });
     lint_store.register_late_pass(|_| Box::new(lints::debug_remnants::DebugRemnants::new()));
     lint_store.register_late_pass(|_| Box::new(lints::unclear_exports::UnclearExports::new()));
     lint_store.register_late_pass(|_| Box::new(lints::result_result::ResultResult::new()));

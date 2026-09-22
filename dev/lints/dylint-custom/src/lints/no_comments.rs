@@ -1,17 +1,18 @@
-use std::cell::RefCell;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::{AttrKind, Attribute, Crate, Item, ItemKind, MetaItemInner, VariantData};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lock;
 use rustc_errors::Applicability;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, strip_shebang, tokenize};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{BytePos, FileName, SourceFile, Span, SyntaxContext, sym};
+use rustc_span::{BytePos, FileName, SourceFile, Span, Symbol, SyntaxContext, sym};
 
-use crate::config::NoCommentsConfig;
+use crate::config::{Granularity, NoCommentsConfig, RenderSource};
 
 rustc_session::declare_lint! {
     pub NO_COMMENTS,
@@ -25,70 +26,93 @@ rustc_session::declare_lint! {
     "rendered doc comment over the size limit -- keep the summary, move the rest to the knowledge base"
 }
 
-thread_local! {
-    static HELP_DOCS: RefCell<FxHashSet<(BytePos, BytePos)>> = RefCell::new(FxHashSet::default());
+pub type HelpDocs = Arc<Lock<FxHashSet<(BytePos, BytePos)>>>;
+
+pub fn new_help_docs() -> HelpDocs {
+    Arc::new(Lock::new(FxHashSet::default()))
 }
 
 pub struct HelpDocCollector {
     config: NoCommentsConfig,
+    help_docs: HelpDocs,
 }
 
 impl HelpDocCollector {
-    pub fn new() -> Self {
+    pub fn new(help_docs: HelpDocs) -> Self {
         Self {
             config: dylint_linting::config_or_default("no_comments"),
+            help_docs,
         }
     }
 
     fn record_help_docs(&self, cx: &EarlyContext<'_>, item: &Item) {
-        let derives = derive_names(&item.attrs);
-        let item_help = derives.iter().any(|name| self.config.help_derives.contains(name))
-            || item
-                .attrs
-                .iter()
-                .any(|attr| self.config.help_attrs.contains(&attr_path(attr)));
-        let variant_help = derives
-            .iter()
-            .any(|name| self.config.help_variant_derives.contains(name));
-        if !item_help && !variant_help {
+        let sources = self.matched_sources(item);
+        if sources.is_empty() {
             return;
         }
-        if item_help {
+        if sources.iter().any(|source| source.renders.contains(&Granularity::Item)) {
             self.record_doc_block(cx, &item.attrs);
         }
         match &item.kind {
-            ItemKind::Struct(_, _, data) => self.record_variant_data(cx, data),
+            ItemKind::Struct(_, _, data) => {
+                let rendering = sources_rendering(&sources, Granularity::Fields);
+                self.record_field_docs(cx, &rendering, data);
+            },
             ItemKind::Enum(_, _, def) => {
                 for variant in &def.variants {
+                    let rendering = sources_rendering(&sources, Granularity::Variants)
+                        .into_iter()
+                        .filter(|source| !is_skipped(source, &variant.attrs))
+                        .collect::<Vec<_>>();
+                    if rendering.is_empty() {
+                        continue;
+                    }
                     self.record_doc_block(cx, &variant.attrs);
-                    self.record_variant_data(cx, &variant.data);
+                    self.record_field_docs(cx, &rendering, &variant.data);
                 }
             },
             _ => {},
         }
     }
 
-    fn record_variant_data(&self, cx: &EarlyContext<'_>, data: &VariantData) {
+    fn matched_sources(&self, item: &Item) -> Vec<&RenderSource> {
+        let derives = derive_names(&item.attrs);
+        self.config
+            .rendered
+            .iter()
+            .filter(|source| {
+                source.derives.iter().any(|name| derives.contains(name))
+                    || item.attrs.iter().any(|attr| source.attrs.contains(&attr_path(attr)))
+            })
+            .collect()
+    }
+
+    fn record_field_docs(&self, cx: &EarlyContext<'_>, rendering: &[&RenderSource], data: &VariantData) {
+        if rendering.is_empty() {
+            return;
+        }
         let fields = match data {
             VariantData::Struct { fields, .. } | VariantData::Tuple(fields, _) => fields.as_slice(),
             VariantData::Unit(_) => &[],
         };
         for field in fields {
-            self.record_doc_block(cx, &field.attrs);
+            if rendering.iter().any(|source| !is_skipped(source, &field.attrs)) {
+                self.record_doc_block(cx, &field.attrs);
+            }
         }
     }
 
-    fn record_doc_block(&self, _cx: &EarlyContext<'_>, attrs: &[Attribute]) {
+    fn record_doc_block(&self, cx: &EarlyContext<'_>, attrs: &[Attribute]) {
         let docs = attrs.iter().filter(|attr| attr.doc_str().is_some()).collect::<Vec<_>>();
         let (Some(first), Some(last)) = (docs.first(), docs.last()) else {
             return;
         };
-        HELP_DOCS.with(|help| {
-            let mut help = help.borrow_mut();
+        {
+            let mut help = self.help_docs.lock();
             for attr in &docs {
                 help.insert((attr.span.lo(), attr.span.hi()));
             }
-        });
+        }
         let lines = docs
             .iter()
             .filter_map(|attr| attr.doc_str())
@@ -126,7 +150,7 @@ impl HelpDocCollector {
             return;
         }
         span_lint_and_help(
-            _cx,
+            cx,
             DOC_COMMENT_LIMIT,
             first.span.to(last.span),
             format!("rendered doc comment is over {}", over.join(", ")),
@@ -139,21 +163,29 @@ impl HelpDocCollector {
 rustc_session::impl_lint_pass!(HelpDocCollector => [DOC_COMMENT_LIMIT]);
 
 impl EarlyLintPass for HelpDocCollector {
+    fn check_crate(&mut self, _cx: &EarlyContext<'_>, _krate: &Crate) {
+        self.help_docs.lock().clear();
+    }
+
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         self.record_help_docs(cx, item);
     }
 }
 
 pub struct NoComments {
+    config: NoCommentsConfig,
     explicit_docs: Vec<Span>,
-    out_dir: Option<PathBuf>,
+    cargo_out_dir: Option<PathBuf>,
+    help_docs: HelpDocs,
 }
 
 impl NoComments {
-    pub fn new() -> Self {
+    pub fn new(help_docs: HelpDocs) -> Self {
         Self {
+            config: dylint_linting::config_or_default("no_comments"),
             explicit_docs: Vec::new(),
-            out_dir: env::var_os("OUT_DIR").map(PathBuf::from),
+            cargo_out_dir: env::var_os("OUT_DIR").map(PathBuf::from),
+            help_docs,
         }
     }
 
@@ -173,11 +205,22 @@ impl NoComments {
             };
             let lo = file.start_pos + BytePos(start as u32);
             let hi = file.start_pos + BytePos(offset as u32);
-            if doc && HELP_DOCS.with(|help| help.borrow().contains(&(lo, hi))) {
+            if doc && self.help_docs.lock().contains(&(lo, hi)) {
+                continue;
+            }
+            if !doc && self.is_allowed_comment(&src[start..offset]) {
                 continue;
             }
             report(cx, deletion_span(file, src, start, offset), doc);
         }
+    }
+
+    fn is_allowed_comment(&self, text: &str) -> bool {
+        let inner = comment_inner_text(text);
+        self.config
+            .allowed_comment_prefixes
+            .iter()
+            .any(|prefix| inner.starts_with(prefix.as_str()))
     }
 }
 
@@ -207,7 +250,7 @@ impl EarlyLintPass for NoComments {
             .filter(|file| match &file.name {
                 FileName::Real(name) => name
                     .local_path()
-                    .is_some_and(|path| !is_generated_path(path, self.out_dir.as_deref())),
+                    .is_some_and(|path| !is_generated_path(path, self.cargo_out_dir.as_deref())),
                 _ => false,
             })
             .cloned()
@@ -217,7 +260,7 @@ impl EarlyLintPass for NoComments {
         }
         for span in &self.explicit_docs {
             let file = source_map.lookup_source_file(span.lo());
-            if HELP_DOCS.with(|help| help.borrow().contains(&(span.lo(), span.hi()))) {
+            if self.help_docs.lock().contains(&(span.lo(), span.hi())) {
                 continue;
             }
             let Some(src) = file.src.as_deref() else {
@@ -230,15 +273,15 @@ impl EarlyLintPass for NoComments {
     }
 }
 
-fn is_generated_path(path: &Path, out_dir: Option<&Path>) -> bool {
-    out_dir.is_some_and(|out_dir| path.starts_with(out_dir))
+fn is_generated_path(path: &Path, cargo_out_dir: Option<&Path>) -> bool {
+    cargo_out_dir.is_some_and(|cargo_out_dir| path.starts_with(cargo_out_dir))
 }
 
 fn report(cx: &EarlyContext<'_>, delete: Span, doc: bool) {
     let (msg, help) = if doc {
         (
             "doc comment",
-            "the project keeps doc comments only where clap, schemars, or utoipa renders them",
+            "keep a doc comment only where a configured render source uses it",
         )
     } else {
         (
@@ -282,6 +325,14 @@ fn deletion_range(src: &str, start: usize, end: usize) -> (usize, usize) {
     }
 }
 
+fn comment_inner_text(text: &str) -> &str {
+    let text = text.trim();
+    let text = text
+        .strip_prefix("/*")
+        .map_or(text, |rest| rest.trim_end_matches("*/"));
+    text.trim_start_matches('/').trim()
+}
+
 fn derive_names(attrs: &[Attribute]) -> Vec<String> {
     attrs
         .iter()
@@ -307,4 +358,38 @@ fn attr_path(attr: &Attribute) -> String {
             .join("::"),
         AttrKind::DocComment(..) => String::new(),
     }
+}
+
+fn sources_rendering<'a>(sources: &[&'a RenderSource], granularity: Granularity) -> Vec<&'a RenderSource> {
+    sources
+        .iter()
+        .copied()
+        .filter(|source| source.renders.contains(&granularity))
+        .collect()
+}
+
+fn is_skipped(source: &RenderSource, attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        let path = attr_path(attr);
+        source.skip_attrs.iter().any(|spec| {
+            let (outer, word) = split_spec(spec);
+            path == outer && word.is_none_or(|word| attr_list_has_word(attr, word))
+        })
+    })
+}
+
+fn split_spec(spec: &str) -> (&str, Option<&str>) {
+    match spec.split_once('(') {
+        Some((outer, rest)) => (outer, Some(rest.trim_end_matches(')'))),
+        None => (spec, None),
+    }
+}
+
+fn attr_list_has_word(attr: &Attribute, word: &str) -> bool {
+    attr.meta_item_list().is_some_and(|list| {
+        list.iter().any(|entry| match entry {
+            MetaItemInner::MetaItem(meta) => meta.is_word() && meta.has_name(Symbol::intern(word)),
+            MetaItemInner::Lit(_) => false,
+        })
+    })
 }
