@@ -451,10 +451,11 @@ dylint-all *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
-    unset RUSTFLAGS
+    # No compiler cache: a cache hit skips the lint passes, so mordant's
+    # baseline check would not run.
+    unset RUSTFLAGS RUSTC_WRAPPER
     export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
     rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
-    kache_use dylint
     nicely cargo dylint --quiet --all -- --quiet --locked --workspace --all-targets --keep-going "$@"
     if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
       printf 'mordant: findings over the committed baseline:\n' >&2
@@ -481,10 +482,10 @@ dylint-all-fix *args:
     #!/usr/bin/env bash
     set -euo pipefail
     source '{{project_dir}}/dev/lib/utils.sh'
-    unset RUSTFLAGS
+    # No compiler cache, as in dylint-all.
+    unset RUSTFLAGS RUSTC_WRAPPER
     export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
     rm -f '{{dylint_dir}}/mordant/over-baseline.txt'
-    kache_use dylint
     vcs_flag="--allow-staged"; [[ -f '{{project_dir}}/.git' ]] && vcs_flag="--allow-no-vcs"
     nicely cargo dylint --quiet --all --fix -- "${vcs_flag}" --quiet --locked --workspace --all-targets --keep-going "$@"
     if [[ -s '{{dylint_dir}}/mordant/over-baseline.txt' ]]; then
@@ -514,7 +515,7 @@ dylint-mordant-baseline *args:
     source '{{project_dir}}/dev/lib/utils.sh'
     # Match the mordant gate: fixed (empty) RUSTFLAGS so the seeded baseline and
     # the check run analyze the workspace identically.
-    unset RUSTFLAGS
+    unset RUSTFLAGS RUSTC_WRAPPER
     export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 CARGO_INCREMENTAL=0
     nicely cargo dylint --quiet --all -- --quiet --keep-going --locked --workspace --all-targets "$@"
     printf 'Regenerated mordant-baseline.toml\n'
