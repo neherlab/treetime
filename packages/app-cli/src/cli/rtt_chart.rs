@@ -132,15 +132,14 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   Ok(())
 }
 
-#[allow(clippy::field_scoped_visibility_modifiers)]
 pub(crate) struct PointsResult {
-  pub(crate) norm_points: Vec<(f32, f32)>,
-  pub(crate) outlier_points: Vec<(f32, f32)>,
-  pub(crate) line: [(f32, f32); 2],
-  pub(crate) x_min: f32,
-  pub(crate) x_max: f32,
-  pub(crate) y_min: f32,
-  pub(crate) y_max: f32,
+  pub norm_points: Vec<(f32, f32)>,
+  pub outlier_points: Vec<(f32, f32)>,
+  pub line: [(f32, f32); 2],
+  pub x_min: f32,
+  pub x_max: f32,
+  pub y_min: f32,
+  pub y_max: f32,
 }
 
 #[allow(
