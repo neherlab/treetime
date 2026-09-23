@@ -6,7 +6,7 @@ use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use clap::ValueEnum;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::info;
 use schemars::generate::SchemaSettings;
 use schemars::transform::{Transform, transform_subschemas};
@@ -162,12 +162,14 @@ fn draft2020_generator() -> SchemaGenerator {
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
   let json = json_write_str(schema, JsonPretty(true))?;
   if output == Path::new("-") {
-    std::io::stdout().write_all(json.as_bytes())?;
+    std::io::stdout()
+      .write_all(json.as_bytes())
+      .wrap_err("When writing the JSON schema to standard output")?;
   } else {
     if let Some(parent) = output.parent() {
-      std::fs::create_dir_all(parent)?;
+      std::fs::create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
     }
-    std::fs::write(output, json)?;
+    std::fs::write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
     info!("Wrote JSON schema to '{}'", output.display());
   }
   Ok(())

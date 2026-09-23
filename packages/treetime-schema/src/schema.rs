@@ -1,5 +1,5 @@
 use crate::{ErrorResponse, ProgressEvent, VersionInfo};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::info;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
@@ -40,12 +40,14 @@ fn generate_schema_for<T: JsonSchema>(output: &Path) -> Result<(), Report> {
   let json = json_write_str(&schema, JsonPretty(true))?;
 
   if output == Path::new("-") {
-    std::io::stdout().write_all(json.as_bytes())?;
+    std::io::stdout()
+      .write_all(json.as_bytes())
+      .wrap_err("When writing the JSON schema to standard output")?;
   } else {
     if let Some(parent) = output.parent() {
-      std::fs::create_dir_all(parent)?;
+      std::fs::create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
     }
-    std::fs::write(output, json)?;
+    std::fs::write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
   }
 
   info!("Wrote JSON schema to '{}'", output.display());
