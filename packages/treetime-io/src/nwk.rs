@@ -4,6 +4,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 use std::io::{Read, Write};
 use std::path::Path;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -249,10 +250,8 @@ pub fn nwk_write_file(
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report> {
-  let mut f = create_file_or_stdout(filepath)?;
-  nwk_write(&mut f, graph, names, weights, options)?;
-  writeln!(f)?;
-  Ok(())
+  let providers = CommentProviders::new();
+  nwk_write_file_with(filepath, graph, names, weights, options, &providers)
 }
 
 pub fn nwk_write_file_with(
@@ -263,10 +262,10 @@ pub fn nwk_write_file_with(
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
+  let filepath = filepath.as_ref();
+  let text = nwk_write_str_with(graph, names, weights, options, providers)?;
   let mut f = create_file_or_stdout(filepath)?;
-  nwk_write_with(&mut f, graph, names, weights, options, providers)?;
-  writeln!(f)?;
-  Ok(())
+  writeln!(f, "{text}").wrap_err_with(|| format!("When writing Newick file '{}'", filepath.display()))
 }
 
 pub fn nwk_write_str(
@@ -286,9 +285,9 @@ pub(crate) fn nwk_write_str_with(
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<String, Report> {
-  let mut buf = Vec::new();
-  nwk_write_with(&mut buf, graph, names, weights, options, providers)?;
-  Ok(String::from_utf8(buf)?)
+  let mut text = String::new();
+  write_nwk_text(&mut text, graph, names, weights, options, providers)?;
+  Ok(text)
 }
 
 pub fn nwk_write(
@@ -304,6 +303,18 @@ pub fn nwk_write(
 
 pub(crate) fn nwk_write_with(
   writer: &mut impl Write,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  options: &NwkWriteOptions,
+  providers: &CommentProviders,
+) -> Result<(), Report> {
+  let text = nwk_write_str_with(graph, names, weights, options, providers)?;
+  writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
+}
+
+fn write_nwk_text(
+  writer: &mut impl fmt::Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
