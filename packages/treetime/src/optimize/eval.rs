@@ -5,7 +5,10 @@ use itertools::izip;
 use ndarray::{Array1, ArrayView1};
 use treetime_primitives::LogLh;
 
-#[allow(single_use_lifetimes)]
+#[expect(
+  single_use_lifetimes,
+  reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
+)]
 pub fn evaluate_site_contributions<'a>(
   sites: impl Iterator<Item = (f64, ArrayView1<'a, f64>)>,
   eigvals: &Array1<f64>,

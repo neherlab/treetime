@@ -224,7 +224,10 @@ impl Alphabet {
       .ok_or_else(|| make_report!("When accessing profile map: Unknown profile: '{profile}'"))
   }
 
-  #[allow(single_use_lifetimes)]
+  #[expect(
+    single_use_lifetimes,
+    reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
+  )]
   pub(crate) fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let profiles = chars
       .into_iter()
