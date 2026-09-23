@@ -11,16 +11,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::file::create_file_or_stdout;
 use util_newick::NwkStyle;
 
-#[derive(Clone, SmartDefault)]
-pub struct NexWriteOptions {
-  #[default(NwkStyle::Plain)]
-  pub style: NwkStyle,
-
-  pub weight_significant_digits: Option<u8>,
-
-  pub weight_decimal_digits: Option<i8>,
-}
-
 pub fn nex_write_file(
   filepath: impl AsRef<Path>,
   graph: &Graph,
@@ -119,4 +109,14 @@ End;
 "#
   )
   .wrap_err("When writing Nexus")
+}
+
+#[derive(Clone, SmartDefault)]
+pub struct NexWriteOptions {
+  #[default(NwkStyle::Plain)]
+  pub style: NwkStyle,
+
+  pub weight_significant_digits: Option<u8>,
+
+  pub weight_decimal_digits: Option<i8>,
 }

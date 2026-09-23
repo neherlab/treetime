@@ -23,25 +23,6 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct NwkNodeMeta {
-  name: Option<String>,
-  confidence: Option<f64>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct NwkFastaNodeInput {
-  name: Option<String>,
-  confidence: Option<f64>,
-  aln: Option<Seq>,
-  desc: Option<String>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct NwkFastaEdgeInput {
-  branch_length: Option<f64>,
-}
-
 #[derive(Debug)]
 pub struct NwkFastaInput {
   pub graph: Graph,
@@ -77,6 +58,11 @@ impl NwkFastaInput {
       .map(|(key, edge)| (*key, edge.branch_length))
       .collect()
   }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NwkFastaEdgeInput {
+  branch_length: Option<f64>,
 }
 
 pub fn nwk_fasta_node_inputs(
@@ -136,21 +122,12 @@ fn build_node_inputs(
     .collect()
 }
 
-#[derive(Debug)]
-pub struct NwkParse {
-  pub graph: Graph,
-  pub nodes: BTreeMap<GraphNodeKey, NwkNodeMeta>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-impl NwkParse {
-  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
-    self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
-  }
-
-  pub fn confidences(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
-    self.nodes.iter().map(|(key, meta)| (*key, meta.confidence)).collect()
-  }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct NwkFastaNodeInput {
+  name: Option<String>,
+  confidence: Option<f64>,
+  aln: Option<Seq>,
+  desc: Option<String>,
 }
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
@@ -233,14 +210,27 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
   })
 }
 
-#[derive(Clone, SmartDefault)]
-pub struct NwkWriteOptions {
-  #[default(NwkStyle::Plain)]
-  pub style: NwkStyle,
+#[derive(Debug)]
+pub struct NwkParse {
+  pub graph: Graph,
+  pub nodes: BTreeMap<GraphNodeKey, NwkNodeMeta>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
 
-  pub weight_significant_digits: Option<u8>,
+impl NwkParse {
+  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
+    self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
+  }
 
-  pub weight_decimal_digits: Option<i8>,
+  pub fn confidences(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    self.nodes.iter().map(|(key, meta)| (*key, meta.confidence)).collect()
+  }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NwkNodeMeta {
+  name: Option<String>,
+  confidence: Option<f64>,
 }
 
 pub fn nwk_write_file(
@@ -278,18 +268,6 @@ pub fn nwk_write_str(
   nwk_write_str_with(graph, names, weights, options, &providers)
 }
 
-pub(crate) fn nwk_write_str_with(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NwkWriteOptions,
-  providers: &CommentProviders,
-) -> Result<String, Report> {
-  let mut text = String::new();
-  write_nwk_text(&mut text, graph, names, weights, options, providers)?;
-  Ok(text)
-}
-
 pub fn nwk_write(
   writer: &mut impl Write,
   graph: &Graph,
@@ -311,6 +289,18 @@ pub(crate) fn nwk_write_with(
 ) -> Result<(), Report> {
   let text = nwk_write_str_with(graph, names, weights, options, providers)?;
   writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
+}
+
+pub(crate) fn nwk_write_str_with(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  options: &NwkWriteOptions,
+  providers: &CommentProviders,
+) -> Result<String, Report> {
+  let mut text = String::new();
+  write_nwk_text(&mut text, graph, names, weights, options, providers)?;
+  Ok(text)
 }
 
 fn write_nwk_text(
@@ -419,8 +409,14 @@ pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   )
 }
 
-pub trait NodeCommentProvider {
-  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
+#[derive(Clone, SmartDefault)]
+pub struct NwkWriteOptions {
+  #[default(NwkStyle::Plain)]
+  pub style: NwkStyle,
+
+  pub weight_significant_digits: Option<u8>,
+
+  pub weight_decimal_digits: Option<i8>,
 }
 
 #[must_use]
@@ -446,4 +442,8 @@ impl<'a> CommentProviders<'a> {
     }
     Ok(comments)
   }
+}
+
+pub trait NodeCommentProvider {
+  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
 }

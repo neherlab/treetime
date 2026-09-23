@@ -15,23 +15,6 @@ pub struct AuspiceGraphMeta {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeNodeAttr {
-  value: String,
-
-  #[serde(flatten)]
-  other: serde_json::Value,
-}
-
-impl AuspiceTreeNodeAttr {
-  pub fn new(value: &str) -> Self {
-    Self {
-      value: value.to_owned(),
-      other: serde_json::Value::default(),
-    }
-  }
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTreeNodeAttrF64 {
   value: f64,
 
@@ -46,233 +29,6 @@ impl AuspiceTreeNodeAttrF64 {
       other: serde_json::Value::default(),
     }
   }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AuspiceNumDate {
-  pub value: f64,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub confidence: Option<[f64; 2]>,
-}
-
-#[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeBranchAttrsLabels {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub aa: Option<String>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub clade: Option<String>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeBranchAttrs {
-  pub mutations: BTreeMap<String, Vec<String>>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub labels: Option<AuspiceTreeBranchAttrsLabels>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-impl AuspiceTreeBranchAttrs {
-  #[inline]
-  fn is_default(&self) -> bool {
-    self == &Self::default()
-  }
-}
-
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeNodeAttrs {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub div: Option<f64>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub num_date: Option<AuspiceNumDate>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub bad_branch: Option<AuspiceTreeNodeAttr>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub clade_membership: Option<AuspiceTreeNodeAttr>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub region: Option<AuspiceTreeNodeAttr>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub country: Option<AuspiceTreeNodeAttr>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub division: Option<AuspiceTreeNodeAttr>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeNode {
-  pub name: String,
-
-  #[serde(default, skip_serializing_if = "AuspiceTreeBranchAttrs::is_default")]
-  pub branch_attrs: AuspiceTreeBranchAttrs,
-
-  pub node_attrs: AuspiceTreeNodeAttrs,
-
-  #[serde(skip_serializing_if = "Vec::is_empty")]
-  #[serde(default)]
-  pub children: Vec<AuspiceTreeNode>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AuspiceColoring {
-  #[serde(rename = "type")]
-  pub type_: String,
-
-  pub key: String,
-
-  pub title: String,
-
-  #[serde(skip_serializing_if = "Vec::is_empty")]
-  #[serde(default)]
-  pub scale: Vec<[String; 2]>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Default, Serialize, Deserialize, Eq, PartialEq, Debug)]
-pub struct AuspiceDisplayDefaults {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub branch_label: Option<String>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub color_by: Option<String>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub distance_measure: Option<String>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-impl AuspiceDisplayDefaults {
-  fn is_empty(&self) -> bool {
-    self == &Self::default()
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AuspiceGenomeAnnotationNuc {
-  pub start: isize,
-
-  pub end: isize,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub strand: Option<String>,
-
-  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
-  pub r#type: Option<String>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct StartEnd {
-  pub start: isize,
-  pub end: isize,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-#[serde(rename_all = "kebab-case")]
-pub enum Segments {
-  OneSegment(StartEnd),
-  MultipleSegments {
-    segments: Vec<StartEnd>,
-
-    #[serde(flatten)]
-    other: serde_json::Value,
-  },
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AuspiceGenomeAnnotationCds {
-  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
-  pub r#type: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub gene: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub color: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub display_name: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub strand: Option<String>,
-
-  #[serde(flatten)]
-  pub segments: Segments,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AuspiceGenomeAnnotations {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub nuc: Option<AuspiceGenomeAnnotationNuc>,
-
-  #[serde(flatten)]
-  pub cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeMeta {
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub title: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub updated: Option<String>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub genome_annotations: Option<AuspiceGenomeAnnotations>,
-
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub colorings: Vec<AuspiceColoring>,
-
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub panels: Vec<String>,
-
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub filters: Vec<String>,
-
-  #[serde(default, skip_serializing_if = "AuspiceDisplayDefaults::is_empty")]
-  pub display_defaults: AuspiceDisplayDefaults,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub geo_resolutions: Option<serde_json::Value>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
 }
 
 #[repr(u8)]
@@ -294,20 +50,6 @@ impl DivergenceUnits {
   }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
-pub struct AuspiceTreeData {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub version: Option<String>,
-
-  pub meta: AuspiceTreeMeta,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub root_sequence: Option<BTreeMap<String, String>>,
-
-  #[serde(flatten)]
-  pub other: serde_json::Value,
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTree {
   #[serde(flatten)]
@@ -315,10 +57,6 @@ pub struct AuspiceTree {
 
   pub tree: AuspiceTreeNode,
 }
-
-pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
-
-pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
 
 impl AuspiceTree {
   pub fn iter_breadth_first<'a>(
@@ -369,4 +107,266 @@ impl AuspiceTree {
       .and_then(|root_sequence| root_sequence.get("nuc"))
       .map(String::as_str)
   }
+}
+
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeData {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub version: Option<String>,
+
+  pub meta: AuspiceTreeMeta,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub root_sequence: Option<BTreeMap<String, String>>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeMeta {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub title: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub updated: Option<String>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub genome_annotations: Option<AuspiceGenomeAnnotations>,
+
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub colorings: Vec<AuspiceColoring>,
+
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub panels: Vec<String>,
+
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub filters: Vec<String>,
+
+  #[serde(default, skip_serializing_if = "AuspiceDisplayDefaults::is_empty")]
+  pub display_defaults: AuspiceDisplayDefaults,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub geo_resolutions: Option<serde_json::Value>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuspiceColoring {
+  #[serde(rename = "type")]
+  pub type_: String,
+
+  pub key: String,
+
+  pub title: String,
+
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  #[serde(default)]
+  pub scale: Vec<[String; 2]>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize, Eq, PartialEq, Debug)]
+pub struct AuspiceDisplayDefaults {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub branch_label: Option<String>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub color_by: Option<String>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub distance_measure: Option<String>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+impl AuspiceDisplayDefaults {
+  fn is_empty(&self) -> bool {
+    self == &Self::default()
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuspiceGenomeAnnotations {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub nuc: Option<AuspiceGenomeAnnotationNuc>,
+
+  #[serde(flatten)]
+  pub cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuspiceGenomeAnnotationNuc {
+  pub start: isize,
+
+  pub end: isize,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub strand: Option<String>,
+
+  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+  pub r#type: Option<String>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuspiceGenomeAnnotationCds {
+  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+  pub r#type: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub gene: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub color: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub display_name: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub strand: Option<String>,
+
+  #[serde(flatten)]
+  pub segments: Segments,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+#[serde(rename_all = "kebab-case")]
+pub enum Segments {
+  OneSegment(StartEnd),
+  MultipleSegments {
+    segments: Vec<StartEnd>,
+
+    #[serde(flatten)]
+    other: serde_json::Value,
+  },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StartEnd {
+  pub start: isize,
+  pub end: isize,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
+
+pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeNode {
+  pub name: String,
+
+  #[serde(default, skip_serializing_if = "AuspiceTreeBranchAttrs::is_default")]
+  pub branch_attrs: AuspiceTreeBranchAttrs,
+
+  pub node_attrs: AuspiceTreeNodeAttrs,
+
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  #[serde(default)]
+  pub children: Vec<AuspiceTreeNode>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeBranchAttrs {
+  pub mutations: BTreeMap<String, Vec<String>>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub labels: Option<AuspiceTreeBranchAttrsLabels>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+impl AuspiceTreeBranchAttrs {
+  #[inline]
+  fn is_default(&self) -> bool {
+    self == &Self::default()
+  }
+}
+
+#[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeBranchAttrsLabels {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub aa: Option<String>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub clade: Option<String>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeNodeAttrs {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub div: Option<f64>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub num_date: Option<AuspiceNumDate>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub bad_branch: Option<AuspiceTreeNodeAttr>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub clade_membership: Option<AuspiceTreeNodeAttr>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub region: Option<AuspiceTreeNodeAttr>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub country: Option<AuspiceTreeNodeAttr>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub division: Option<AuspiceTreeNodeAttr>,
+
+  #[serde(flatten)]
+  pub other: serde_json::Value,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct AuspiceTreeNodeAttr {
+  value: String,
+
+  #[serde(flatten)]
+  other: serde_json::Value,
+}
+
+impl AuspiceTreeNodeAttr {
+  pub fn new(value: &str) -> Self {
+    Self {
+      value: value.to_owned(),
+      other: serde_json::Value::default(),
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuspiceNumDate {
+  pub value: f64,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub confidence: Option<[f64; 2]>,
 }

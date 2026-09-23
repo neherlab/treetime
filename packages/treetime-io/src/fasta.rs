@@ -11,39 +11,6 @@ use treetime_utils::io::compression::Decompressor;
 use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 use treetime_utils::make_error;
 
-#[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct FastaRecord {
-  pub seq_name: String,
-  pub desc: Option<String>,
-  pub seq: Seq,
-  pub index: usize,
-}
-
-impl FastaRecord {
-  pub fn new() -> Self {
-    Self::default()
-  }
-
-  fn clear(&mut self) {
-    self.seq_name.clear();
-    self.desc = None;
-    self.seq.clear();
-    self.index = 0;
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.seq_name.is_empty() && self.seq.is_empty() && self.desc.is_none() && self.index == 0
-  }
-
-  fn header(&self) -> String {
-    match &self.desc {
-      Some(desc) => format!(">{} {}", self.seq_name, desc),
-      None => format!(">{}", self.seq_name),
-    }
-  }
-}
-
 impl From<FastaRecord> for AlignmentRecord {
   fn from(record: FastaRecord) -> Self {
     Self {
@@ -51,6 +18,52 @@ impl From<FastaRecord> for AlignmentRecord {
       seq: record.seq,
     }
   }
+}
+
+pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A) -> Result<FastaRecord, Report> {
+  let filepath = filepath.as_ref();
+  let mut reader = FastaReader::from_path(filepath, alphabet)?;
+  let mut record = FastaRecord::default();
+  reader.read(&mut record)?;
+  Ok(record)
+}
+
+pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
+  filepaths: &[P],
+  alphabet: &A,
+) -> Result<Vec<FastaRecord>, Report> {
+  let reader = FastaReader::from_paths(filepaths, alphabet)?;
+  read_many_fasta(reader)
+}
+
+pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<FastaRecord, Report> {
+  let mut reader = FastaReader::from_str(&contents, alphabet)?;
+  let mut record = FastaRecord::default();
+  reader.read(&mut record)?;
+  Ok(record)
+}
+
+pub fn read_many_fasta_str<A: AlphabetLike>(
+  contents: impl AsRef<str>,
+  alphabet: &A,
+) -> Result<Vec<FastaRecord>, Report> {
+  let reader = FastaReader::from_str(&contents, alphabet)?;
+  read_many_fasta(reader)
+}
+
+pub fn read_many_fasta<A: AlphabetLike>(mut reader: FastaReader<'_, '_, A>) -> Result<Vec<FastaRecord>, Report> {
+  let mut records = Vec::new();
+
+  loop {
+    let mut record = FastaRecord::default();
+    reader.read(&mut record)?;
+    if record.is_empty() {
+      break;
+    }
+    records.push(record);
+  }
+
+  Ok(records)
 }
 
 pub struct FastaReader<'a, 'b, A: AlphabetLike> {
@@ -190,50 +203,47 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
   }
 }
 
-pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A) -> Result<FastaRecord, Report> {
-  let filepath = filepath.as_ref();
-  let mut reader = FastaReader::from_path(filepath, alphabet)?;
-  let mut record = FastaRecord::default();
-  reader.read(&mut record)?;
-  Ok(record)
+#[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FastaRecord {
+  pub seq_name: String,
+  pub desc: Option<String>,
+  pub seq: Seq,
+  pub index: usize,
 }
 
-pub fn read_many_fasta<A: AlphabetLike>(mut reader: FastaReader<'_, '_, A>) -> Result<Vec<FastaRecord>, Report> {
-  let mut records = Vec::new();
-
-  loop {
-    let mut record = FastaRecord::default();
-    reader.read(&mut record)?;
-    if record.is_empty() {
-      break;
-    }
-    records.push(record);
+impl FastaRecord {
+  pub fn new() -> Self {
+    Self::default()
   }
 
-  Ok(records)
+  fn clear(&mut self) {
+    self.seq_name.clear();
+    self.desc = None;
+    self.seq.clear();
+    self.index = 0;
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.seq_name.is_empty() && self.seq.is_empty() && self.desc.is_none() && self.index == 0
+  }
+
+  fn header(&self) -> String {
+    match &self.desc {
+      Some(desc) => format!(">{} {}", self.seq_name, desc),
+      None => format!(">{}", self.seq_name),
+    }
+  }
 }
 
-pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
-  filepaths: &[P],
-  alphabet: &A,
-) -> Result<Vec<FastaRecord>, Report> {
-  let reader = FastaReader::from_paths(filepaths, alphabet)?;
-  read_many_fasta(reader)
-}
-
-pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<FastaRecord, Report> {
-  let mut reader = FastaReader::from_str(&contents, alphabet)?;
-  let mut record = FastaRecord::default();
-  reader.read(&mut record)?;
-  Ok(record)
-}
-
-pub fn read_many_fasta_str<A: AlphabetLike>(
-  contents: impl AsRef<str>,
-  alphabet: &A,
-) -> Result<Vec<FastaRecord>, Report> {
-  let reader = FastaReader::from_str(&contents, alphabet)?;
-  read_many_fasta(reader)
+pub fn write_one_fasta(
+  filepath: impl AsRef<Path>,
+  seq_name: impl AsRef<str>,
+  desc: &Option<String>,
+  seq: &Seq,
+) -> Result<(), Report> {
+  let mut writer = FastaWriter::from_path(&filepath)?;
+  writer.write(seq_name, desc, seq)
 }
 
 pub struct FastaWriter {
@@ -270,14 +280,4 @@ fn write_fasta_record(writer: &mut impl Write, seq_name: &str, desc: Option<&str
   writer.write_all(b"\n")?;
   writer.write_all(seq.as_ref())?;
   writer.write_all(b"\n")
-}
-
-pub fn write_one_fasta(
-  filepath: impl AsRef<Path>,
-  seq_name: impl AsRef<str>,
-  desc: &Option<String>,
-  seq: &Seq,
-) -> Result<(), Report> {
-  let mut writer = FastaWriter::from_path(&filepath)?;
-  writer.write(seq_name, desc, seq)
 }

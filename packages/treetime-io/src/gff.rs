@@ -29,20 +29,6 @@ const NAME_ATTRS_CDS: &[&str] = &[
   "ID",
 ];
 
-#[derive(Clone, Debug)]
-pub struct GffCdsFeature {
-  pub name: String,
-  pub seqid: String,
-  pub segments: Vec<GffCdsSegment>,
-  pub strand: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct GffCdsSegment {
-  pub start: i64,
-  pub end: i64,
-}
-
 pub fn read_gff3_cds_features(path: &Path) -> Result<Vec<GffCdsFeature>, Report> {
   let contents = read_file_to_string(path)?;
   parse_gff3_cds_features(&contents, path)
@@ -180,6 +166,20 @@ fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec<GffCdsFeat
       })
     })
     .collect()
+}
+
+#[derive(Clone, Debug)]
+pub struct GffCdsFeature {
+  pub name: String,
+  pub seqid: String,
+  pub segments: Vec<GffCdsSegment>,
+  pub strand: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GffCdsSegment {
+  pub start: i64,
+  pub end: i64,
 }
 
 fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
