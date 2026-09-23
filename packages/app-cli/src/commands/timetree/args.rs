@@ -31,16 +31,6 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 
 pub use treetime::timetree::params::TimeMarginalMode;
 
-impl From<TimeMarginalModeCli> for TimeMarginalMode {
-  fn from(mode: TimeMarginalModeCli) -> Self {
-    match mode {
-      TimeMarginalModeCli::Never => TimeMarginalMode::Never,
-      TimeMarginalModeCli::Always => TimeMarginalMode::Always,
-      TimeMarginalModeCli::OnlyFinal => TimeMarginalMode::OnlyFinal,
-    }
-  }
-}
-
 #[derive(Debug, Clone)]
 pub struct TreetimeTimetreeArgs {
   pub alignment: AlignmentArgs,
@@ -586,4 +576,14 @@ pub enum TimeMarginalModeCli {
   Never,
   Always,
   OnlyFinal,
+}
+
+impl From<TimeMarginalModeCli> for TimeMarginalMode {
+  fn from(mode: TimeMarginalModeCli) -> Self {
+    match mode {
+      TimeMarginalModeCli::Never => TimeMarginalMode::Never,
+      TimeMarginalModeCli::Always => TimeMarginalMode::Always,
+      TimeMarginalModeCli::OnlyFinal => TimeMarginalMode::OnlyFinal,
+    }
+  }
 }

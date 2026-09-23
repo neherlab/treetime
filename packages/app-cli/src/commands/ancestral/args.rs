@@ -20,16 +20,6 @@ use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline::AncestralParams;
 use treetime::ancestral::sample::SampleMode;
 
-impl From<SampleModeCli> for SampleMode {
-  fn from(mode: SampleModeCli) -> Self {
-    match mode {
-      SampleModeCli::Argmax => SampleMode::Argmax,
-      SampleModeCli::Root => SampleMode::Root,
-      SampleModeCli::All => SampleMode::All,
-    }
-  }
-}
-
 pub(crate) fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
@@ -353,4 +343,14 @@ pub enum SampleModeCli {
   Argmax,
   Root,
   All,
+}
+
+impl From<SampleModeCli> for SampleMode {
+  fn from(mode: SampleModeCli) -> Self {
+    match mode {
+      SampleModeCli::Argmax => SampleMode::Argmax,
+      SampleModeCli::Root => SampleMode::Root,
+      SampleModeCli::All => SampleMode::All,
+    }
+  }
 }

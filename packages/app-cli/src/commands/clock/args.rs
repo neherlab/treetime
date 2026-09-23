@@ -239,42 +239,6 @@ pub struct TreetimeClockArgsRaw {
   pub clock_regression: ClockRegressionArgs,
 }
 
-impl From<OptimizationMethodCli> for OptimizationMethod {
-  fn from(method: OptimizationMethodCli) -> Self {
-    match method {
-      OptimizationMethodCli::Grid => OptimizationMethod::Grid,
-      OptimizationMethodCli::Brent => OptimizationMethod::Brent,
-      OptimizationMethodCli::GoldenSection => OptimizationMethod::GoldenSection,
-    }
-  }
-}
-
-impl From<GridSearchParamsCli> for GridSearchParams {
-  fn from(params: GridSearchParamsCli) -> Self {
-    GridSearchParams {
-      n_points: params.n_points,
-    }
-  }
-}
-
-impl From<BrentParamsCli> for BrentParams {
-  fn from(params: BrentParamsCli) -> Self {
-    BrentParams {
-      brent_max_iters: params.brent_max_iters,
-      brent_tolerance: params.brent_tolerance,
-    }
-  }
-}
-
-impl From<GoldenSectionParamsCli> for GoldenSectionParams {
-  fn from(params: GoldenSectionParamsCli) -> Self {
-    GoldenSectionParams {
-      golden_max_iters: params.golden_max_iters,
-      golden_tolerance: params.golden_tolerance,
-    }
-  }
-}
-
 /// Branch split optimization parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -317,6 +281,16 @@ pub enum OptimizationMethodCli {
   GoldenSection,
 }
 
+impl From<OptimizationMethodCli> for OptimizationMethod {
+  fn from(method: OptimizationMethodCli) -> Self {
+    match method {
+      OptimizationMethodCli::Grid => OptimizationMethod::Grid,
+      OptimizationMethodCli::Brent => OptimizationMethod::Brent,
+      OptimizationMethodCli::GoldenSection => OptimizationMethod::GoldenSection,
+    }
+  }
+}
+
 /// Configuration for grid search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -327,6 +301,14 @@ pub struct GridSearchParamsCli {
   #[cfg_attr(feature = "clap", clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParamsCli::default().n_points))]
   #[default = 11]
   n_points: usize,
+}
+
+impl From<GridSearchParamsCli> for GridSearchParams {
+  fn from(params: GridSearchParamsCli) -> Self {
+    GridSearchParams {
+      n_points: params.n_points,
+    }
+  }
 }
 
 /// Configuration for Brent's method optimization
@@ -345,6 +327,15 @@ pub struct BrentParamsCli {
   brent_tolerance: f64,
 }
 
+impl From<BrentParamsCli> for BrentParams {
+  fn from(params: BrentParamsCli) -> Self {
+    BrentParams {
+      brent_max_iters: params.brent_max_iters,
+      brent_tolerance: params.brent_tolerance,
+    }
+  }
+}
+
 /// Configuration for golden section search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -361,12 +352,11 @@ pub struct GoldenSectionParamsCli {
   golden_tolerance: f64,
 }
 
-impl From<ClockParamsCli> for ClockVarianceParams {
-  fn from(params: ClockParamsCli) -> Self {
-    ClockVarianceParams {
-      variance_factor: params.variance_factor,
-      variance_offset: params.variance_offset,
-      variance_offset_leaf: params.variance_offset_leaf,
+impl From<GoldenSectionParamsCli> for GoldenSectionParams {
+  fn from(params: GoldenSectionParamsCli) -> Self {
+    GoldenSectionParams {
+      golden_max_iters: params.golden_max_iters,
+      golden_tolerance: params.golden_tolerance,
     }
   }
 }
@@ -402,4 +392,14 @@ pub struct ClockParamsCli {
   #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParamsCli::default().variance_offset_leaf))]
   #[default = 1.0]
   variance_offset_leaf: f64,
+}
+
+impl From<ClockParamsCli> for ClockVarianceParams {
+  fn from(params: ClockParamsCli) -> Self {
+    ClockVarianceParams {
+      variance_factor: params.variance_factor,
+      variance_offset: params.variance_offset,
+      variance_offset_leaf: params.variance_offset_leaf,
+    }
+  }
 }

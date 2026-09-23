@@ -17,37 +17,6 @@ use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 
-impl From<OptimizeRerootMethod> for RerootMethod {
-  fn from(m: OptimizeRerootMethod) -> Self {
-    match m {
-      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
-    }
-  }
-}
-
-impl From<BranchOptMethodCli> for BranchOptMethod {
-  fn from(method: BranchOptMethodCli) -> Self {
-    match method {
-      BranchOptMethodCli::Brent => BranchOptMethod::Brent,
-      BranchOptMethodCli::BrentSqrt => BranchOptMethod::BrentSqrt,
-      BranchOptMethodCli::BrentLog => BranchOptMethod::BrentLog,
-      BranchOptMethodCli::Newton => BranchOptMethod::Newton,
-      BranchOptMethodCli::NewtonSqrt => BranchOptMethod::NewtonSqrt,
-      BranchOptMethodCli::NewtonLog => BranchOptMethod::NewtonLog,
-    }
-  }
-}
-
-impl From<InitialGuessModeCli> for InitialGuessMode {
-  fn from(mode: InitialGuessModeCli) -> Self {
-    match mode {
-      InitialGuessModeCli::Auto => InitialGuessMode::Auto,
-      InitialGuessModeCli::Always => InitialGuessMode::Always,
-      InitialGuessModeCli::Never => InitialGuessMode::Never,
-    }
-  }
-}
-
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
   pub alignment: AlignmentArgs,
@@ -323,6 +292,14 @@ pub enum OptimizeRerootMethod {
   MinDev,
 }
 
+impl From<OptimizeRerootMethod> for RerootMethod {
+  fn from(m: OptimizeRerootMethod) -> Self {
+    match m {
+      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
+    }
+  }
+}
+
 /// Per-edge branch length optimization method.
 ///
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
@@ -378,6 +355,19 @@ pub enum BranchOptMethodCli {
   NewtonLog,
 }
 
+impl From<BranchOptMethodCli> for BranchOptMethod {
+  fn from(method: BranchOptMethodCli) -> Self {
+    match method {
+      BranchOptMethodCli::Brent => BranchOptMethod::Brent,
+      BranchOptMethodCli::BrentSqrt => BranchOptMethod::BrentSqrt,
+      BranchOptMethodCli::BrentLog => BranchOptMethod::BrentLog,
+      BranchOptMethodCli::Newton => BranchOptMethod::Newton,
+      BranchOptMethodCli::NewtonSqrt => BranchOptMethod::NewtonSqrt,
+      BranchOptMethodCli::NewtonLog => BranchOptMethod::NewtonLog,
+    }
+  }
+}
+
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid
 /// input lengths can provide a better Newton starting point.
@@ -395,4 +385,14 @@ pub enum InitialGuessModeCli {
   /// Use input branch lengths as-is. Fails if any edge has a missing or
   /// invalid branch length.
   Never,
+}
+
+impl From<InitialGuessModeCli> for InitialGuessMode {
+  fn from(mode: InitialGuessModeCli) -> Self {
+    match mode {
+      InitialGuessModeCli::Auto => InitialGuessMode::Auto,
+      InitialGuessModeCli::Always => InitialGuessMode::Always,
+      InitialGuessModeCli::Never => InitialGuessMode::Never,
+    }
+  }
 }

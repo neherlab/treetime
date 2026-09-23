@@ -4,16 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::seq::gap_fill::GapFill;
 
-impl From<GapFillCli> for GapFill {
-  fn from(mode: GapFillCli) -> Self {
-    match mode {
-      GapFillCli::OnlyTerminal => GapFill::OnlyTerminal,
-      GapFillCli::All => GapFill::All,
-      GapFillCli::None => GapFill::None,
-    }
-  }
-}
-
 /// Gap-handling policy shared by every command that reads sequences.
 ///
 /// Extracted from the per-command duplication of `gap_fill` plus `keep_overhangs` plus
@@ -58,4 +48,14 @@ pub enum GapFillCli {
   OnlyTerminal,
   All,
   None,
+}
+
+impl From<GapFillCli> for GapFill {
+  fn from(mode: GapFillCli) -> Self {
+    match mode {
+      GapFillCli::OnlyTerminal => GapFill::OnlyTerminal,
+      GapFillCli::All => GapFill::All,
+      GapFillCli::None => GapFill::None,
+    }
+  }
 }

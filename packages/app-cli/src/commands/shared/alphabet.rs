@@ -4,16 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::alphabet::alphabet::AlphabetName;
 
-impl From<AlphabetNameCli> for AlphabetName {
-  fn from(name: AlphabetNameCli) -> Self {
-    match name {
-      AlphabetNameCli::Nuc => AlphabetName::Nuc,
-      AlphabetNameCli::Aa => AlphabetName::Aa,
-      AlphabetNameCli::AaNoStop => AlphabetName::AaNoStop,
-    }
-  }
-}
-
 /// Alphabet selection shared by every command that reads sequences.
 ///
 /// A single `--alphabet` flag replaces the earlier redundant pair of `--alphabet` and `--aa` (the
@@ -50,4 +40,14 @@ pub enum AlphabetNameCli {
   Aa,
   #[cfg_attr(feature = "clap", value(name = "aa-no-stop"))]
   AaNoStop,
+}
+
+impl From<AlphabetNameCli> for AlphabetName {
+  fn from(name: AlphabetNameCli) -> Self {
+    match name {
+      AlphabetNameCli::Nuc => AlphabetName::Nuc,
+      AlphabetNameCli::Aa => AlphabetName::Aa,
+      AlphabetNameCli::AaNoStop => AlphabetName::AaNoStop,
+    }
+  }
 }

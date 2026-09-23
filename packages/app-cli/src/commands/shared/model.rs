@@ -4,21 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::gtr::get_gtr::GtrModelName;
 
-impl From<GtrModelNameCli> for GtrModelName {
-  fn from(name: GtrModelNameCli) -> Self {
-    match name {
-      GtrModelNameCli::Infer => GtrModelName::Infer,
-      GtrModelNameCli::JC69 => GtrModelName::JC69,
-      GtrModelNameCli::K80 => GtrModelName::K80,
-      GtrModelNameCli::F81 => GtrModelName::F81,
-      GtrModelNameCli::HKY85 => GtrModelName::HKY85,
-      GtrModelNameCli::T92 => GtrModelName::T92,
-      GtrModelNameCli::TN93 => GtrModelName::TN93,
-      GtrModelNameCli::Jtt92 => GtrModelName::Jtt92,
-    }
-  }
-}
-
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
 ///
 /// One flag name (`--model`, short `-g`, alias `--gtr`) replaces the earlier split between `--model`
@@ -75,4 +60,19 @@ pub enum GtrModelNameCli {
   TN93,
   #[cfg_attr(feature = "clap", value(name = "jtt92"))]
   Jtt92,
+}
+
+impl From<GtrModelNameCli> for GtrModelName {
+  fn from(name: GtrModelNameCli) -> Self {
+    match name {
+      GtrModelNameCli::Infer => GtrModelName::Infer,
+      GtrModelNameCli::JC69 => GtrModelName::JC69,
+      GtrModelNameCli::K80 => GtrModelName::K80,
+      GtrModelNameCli::F81 => GtrModelName::F81,
+      GtrModelNameCli::HKY85 => GtrModelName::HKY85,
+      GtrModelNameCli::T92 => GtrModelName::T92,
+      GtrModelNameCli::TN93 => GtrModelName::TN93,
+      GtrModelNameCli::Jtt92 => GtrModelName::Jtt92,
+    }
+  }
 }
