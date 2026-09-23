@@ -38,10 +38,10 @@ allow = [
   "Zlib",
 ]
 
-# Duplicate versions are denied so a newly introduced duplicate fails the check. The tree already
-# carries pre-existing transitive duplicates (for example thiserror and syn 1.x and 2.x) pulled in
-# through third-party and git dependencies; the check reports those, and resolving them is out of
-# this policy's scope.
+# Duplicate versions are denied so a newly introduced duplicate fails the check. Each `skip` entry
+# names an older version that an upstream crate still requires at its latest release, so no version
+# choice in this workspace can remove it. The ranges cover only the older version: a new duplicate
+# still fails, and cargo-deny reports an entry that no longer matches once upstream catches up.
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
@@ -50,6 +50,19 @@ deny = [
   { crate = "serde_yaml", reason = "upstream is archived; YAML is parsed with serde-saphyr" },
   { crate = "time", reason = "dates are owned by chrono and chronoutil" },
   { crate = "xml", reason = "XML is serialized and parsed with quick-xml" },
+]
+skip = [
+  { crate = "bit-set:<0.8", reason = "intervallum 1.4.4 requires bit-set 0.8 and gcollections 1.5, which requires bit-set 0.5" },
+  { crate = "bit-vec:<0.8", reason = "bit-set 0.5, required through gcollections 1.5 by intervallum 1.4.4" },
+  { crate = "convert_case:<0.11", reason = "derive_more 2 requires convert_case 0.7 or 0.10; napi-derive 3.5.2 and later require 0.11 or newer" },
+  { crate = "getrandom:<0.3", reason = "rand 0.8 requires getrandom 0.2; every jsonschema release requires getrandom 0.3 through ahash" },
+  { crate = "libloading:<0.9", reason = "bindgen 0.70, pinned by the lapack-sys fork, requires libloading 0.8 through clang-sys; napi-sys requires 0.9" },
+  { crate = "rustc-hash:<2", reason = "bindgen 0.70, pinned by the lapack-sys fork, requires rustc-hash 1; napi requires rustc-hash 2" },
+  { crate = "syn:<3", reason = "most proc-macro crates, including serde_derive at the pinned serde version, require syn 2; saphyr 0.0.12 requires thiserror 2.0.20, whose derive requires syn 3" },
+  { crate = "thiserror:<2", reason = "bio-types (every release) and the pinned argmin revision require thiserror 1" },
+  { crate = "thiserror-impl:<2", reason = "thiserror 1, required by bio-types and the pinned argmin revision" },
+  { crate = "unicode-width:<0.2", reason = "miette 7.6 requires unicode-width 0.1; comfy-table, console, indicatif, and textwrap require 0.2" },
+  { crate = "windows-sys:<0.61", reason = "textplots 0.8.7 requires drawille 0.3, which requires colored 2, which requires windows-sys 0.59" },
 ]
 
 [sources]
