@@ -10,6 +10,7 @@ use crate::cli::rtt_chart::{PointsResult, gather_points};
 
 const NORM_POINT_COLOR: RGBColor = RGBColor(8, 232, 140);
 const OUTLIER_POINT_COLOR: RGBColor = RGBColor(255, 105, 97);
+const REGRESSION_LINE_COLOR: RGBColor = RGBColor(8, 140, 232);
 
 pub fn draw_chart<'a, DB>(
   results: &[ClockRegressionResult],
@@ -104,18 +105,17 @@ where
       )
     });
 
-  let line_color = RGBColor(8, 140, 232);
   chart
     .draw_series(LineSeries::new(
       line,
       ShapeStyle {
-        color: line_color.to_rgba(),
+        color: REGRESSION_LINE_COLOR.to_rgba(),
         filled: true,
         stroke_width: 3,
       },
     ))?
     .label(format!("Clock regression: {}", clock_model.equation_str()))
-    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
+    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], REGRESSION_LINE_COLOR));
 
   add_legend(
     &mut chart,

@@ -21,6 +21,7 @@ use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png
 use treetime_utils::io::file::create_file_or_stdout;
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
+const FALLBACK_TERMINAL_SIZE: (u16, u16) = (120, 40);
 
 pub fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],
@@ -103,7 +104,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   }
   writeln!(io::stdout().lock(), "{table}").wrap_err("When writing the clock model table to standard output")?;
 
-  let (width, height) = terminal::size().unwrap_or((120, 40));
+  let (width, height) = terminal::size().unwrap_or(FALLBACK_TERMINAL_SIZE);
   let width = clamp(width, 0, 1024) as u32;
   let height = clamp(height, 0, 1024) as u32;
 
