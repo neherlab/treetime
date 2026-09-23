@@ -68,7 +68,9 @@ pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
 
 pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> {
   let mut input = String::new();
-  reader.read_to_string(&mut input)?;
+  reader
+    .read_to_string(&mut input)
+    .wrap_err("When reading Newick input")?;
   newick_from_string(&input)
 }
 

@@ -1,9 +1,10 @@
 use crate::parse::newick_from_string;
 use crate::types::{NewickGraph, NewickWriteOptions, NexusTree};
-use crate::write::newick_to_writer;
+use crate::write::write_newick;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::fmt::Write;
+use std::io::{self, Read};
 
 pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   let input = input.trim();
@@ -19,21 +20,26 @@ pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
 
 pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report> {
   let mut input = String::new();
-  reader.read_to_string(&mut input)?;
+  reader.read_to_string(&mut input).wrap_err("When reading Nexus input")?;
   nexus_from_string(&input)
 }
 
 pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
-  let mut buf = Vec::new();
-  nexus_to_writer(&mut buf, trees, options)?;
-  Ok(String::from_utf8(buf)?)
+  let mut text = String::new();
+  write_nexus(&mut text, trees, options)?;
+  Ok(text)
 }
 
 pub fn nexus_to_writer(
-  writer: &mut impl Write,
+  writer: &mut impl io::Write,
   trees: &[NexusTree],
   options: &NewickWriteOptions,
 ) -> Result<(), Report> {
+  let text = nexus_to_string(trees, options)?;
+  writer.write_all(text.as_bytes()).wrap_err("When writing Nexus")
+}
+
+fn write_nexus(writer: &mut impl Write, trees: &[NexusTree], options: &NewickWriteOptions) -> Result<(), Report> {
   writeln!(writer, "#NEXUS")?;
   writeln!(writer)?;
 
@@ -66,7 +72,7 @@ pub fn nexus_to_writer(
     } else {
       write!(writer, "  Tree {name} = ")?;
     }
-    newick_to_writer(writer, &tree.graph, options)?;
+    write_newick(writer, &tree.graph, options)?;
     writeln!(writer)?;
   }
   writeln!(writer, "End;")?;

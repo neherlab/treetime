@@ -357,7 +357,16 @@ mod tests {
         ..Default::default()
       },
     );
-    assert!(result.is_err(), "NHX writer should reject values containing ':'");
+    let message = result
+      .unwrap_err()
+      .chain()
+      .map(ToString::to_string)
+      .collect::<Vec<_>>()
+      .join(": ");
+    assert_eq!(
+      "NHX cannot represent value containing reserved character (':', '=', or ']'): a:b",
+      message
+    );
   }
 
   #[test]
