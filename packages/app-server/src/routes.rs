@@ -107,7 +107,7 @@ async fn handle_version() -> Result<Json<Value>, AppError> {
   responses((status = 200, description = "Available datasets", body = Vec<DatasetInfo>))
 )]
 async fn handle_datasets(State(config): State<Arc<ServerConfig>>) -> Result<Json<Value>, AppError> {
-  let datasets = discover_datasets(&config.data_dir);
+  let datasets = discover_datasets(&config.data_dir)?;
   let value = serde_json::to_value(datasets)?;
   Ok(Json(value))
 }

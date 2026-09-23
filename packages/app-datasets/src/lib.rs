@@ -1,4 +1,7 @@
+use eyre::{Report, WrapErr};
 use serde::Serialize;
+use std::fs::{self, ReadDir};
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
@@ -7,25 +10,26 @@ pub struct DatasetInfo {
   files: Vec<String>,
 }
 
-pub fn discover_datasets(data_dir: &Path) -> Vec<DatasetInfo> {
+pub fn discover_datasets(data_dir: &Path) -> Result<Vec<DatasetInfo>, Report> {
   let mut datasets = Vec::new();
-  collect_datasets(data_dir, data_dir, &mut datasets);
+  match fs::read_dir(data_dir) {
+    Ok(entries) => collect_datasets(data_dir, data_dir, entries, &mut datasets)?,
+    Err(error) if error.kind() == ErrorKind::NotFound => {},
+    Err(error) => return Err(read_dir_report(error, data_dir)),
+  }
   datasets.sort_by(|a, b| a.name.cmp(&b.name));
-  datasets
+  Ok(datasets)
 }
 
-fn collect_datasets(base: &Path, dir: &Path, out: &mut Vec<DatasetInfo>) {
-  let Ok(entries) = std::fs::read_dir(dir) else {
-    return;
-  };
-
+fn collect_datasets(base: &Path, dir: &Path, entries: ReadDir, out: &mut Vec<DatasetInfo>) -> Result<(), Report> {
   let mut files: Vec<String> = Vec::new();
   let mut subdirs: Vec<PathBuf> = Vec::new();
 
-  for entry in entries.flatten() {
-    let Ok(ft) = entry.file_type() else {
-      continue;
-    };
+  for entry in entries {
+    let entry = entry.map_err(|error| read_dir_report(error, dir))?;
+    let ft = entry
+      .file_type()
+      .wrap_err_with(|| format!("When reading the file type of '{}'", entry.path().display()))?;
     let name = entry.file_name().to_string_lossy().into_owned();
     if ft.is_dir() {
       subdirs.push(entry.path());
@@ -45,6 +49,12 @@ fn collect_datasets(base: &Path, dir: &Path, out: &mut Vec<DatasetInfo>) {
   }
 
   for subdir in subdirs {
-    collect_datasets(base, &subdir, out);
+    let entries = fs::read_dir(&subdir).map_err(|error| read_dir_report(error, &subdir))?;
+    collect_datasets(base, &subdir, entries, out)?;
   }
+  Ok(())
+}
+
+fn read_dir_report(error: io::Error, dir: &Path) -> Report {
+  Report::new(error).wrap_err(format!("When listing dataset directory '{}'", dir.display()))
 }

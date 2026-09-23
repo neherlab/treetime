@@ -32,7 +32,7 @@ pub fn datasets() -> napi::Result<String> {
   let data_dir = env_var_optional(DATA_DIR_ENV)
     .map_err(|e| eyre_to_napi(&e))?
     .unwrap_or_else(|| "data".to_owned());
-  let datasets = discover_datasets(Path::new(&data_dir));
+  let datasets = discover_datasets(Path::new(&data_dir)).map_err(|e| eyre_to_napi(&e))?;
   serde_json::to_string(&datasets).map_err(|e| json_to_napi(&e))
 }
 

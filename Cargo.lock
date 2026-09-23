@@ -192,6 +192,7 @@ dependencies = [
 name = "app-datasets"
 version = "1.0.0"
 dependencies = [
+ "eyre",
  "serde",
 ]
 

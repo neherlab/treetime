@@ -16,6 +16,7 @@ test = false
 
 [dependencies]
 # [external]
+eyre = { workspace = true }
 serde = { workspace = true }
 
 [lints]
