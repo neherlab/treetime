@@ -7,7 +7,7 @@ mod tests {
   use ctor::ctor;
   use treetime_utils::init::global::global_init;
 
-  #[ctor]
+  #[ctor(unsafe)]
   fn init() {
     global_init();
     rayon::ThreadPoolBuilder::new()

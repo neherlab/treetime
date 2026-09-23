@@ -149,7 +149,7 @@ dependencies = [
  "color-eyre",
  "comfy-table",
  "crossterm",
- "ctor 0.5.0",
+ "ctor",
  "derive_more",
  "eyre",
  "image",
@@ -203,7 +203,7 @@ version = "1.0.0"
 dependencies = [
  "app-datasets",
  "app-output",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "itertools 0.14.0",
  "log",
@@ -229,7 +229,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "chrono",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "indexmap",
  "itertools 0.14.0",
@@ -262,7 +262,7 @@ dependencies = [
  "async-stream",
  "axum",
  "clap",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "itertools 0.14.0",
  "log",
@@ -1204,25 +1204,13 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.5.0"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67773048316103656a637612c4a62477603b777d91d9c62ff2290f9cde178fdb"
+checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 dependencies = [
- "ctor-proc-macro",
- "dtor",
+ "link-section",
+ "linktime-proc-macro",
 ]
-
-[[package]]
-name = "ctor"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d765eb1c0bda10d31e0ea185f5ee15da532d60b0912d2bd1441783439e749c5"
-
-[[package]]
-name = "ctor-proc-macro"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2931af7e13dc045d8e9d26afccc6fa115d64e115c9c84b1166288b46f6782c2"
 
 [[package]]
 name = "custom_derive"
@@ -1364,21 +1352,6 @@ dependencies = [
  "colored",
  "fnv",
 ]
-
-[[package]]
-name = "dtor"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e58a0764cddb55ab28955347b45be00ade43d4d6f3ba4bf3dc354e4ec9432934"
-dependencies = [
- "dtor-proc-macro",
-]
-
-[[package]]
-name = "dtor-proc-macro"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f678cf4a922c215c63e0de95eb1ff08a958a81d47e485cf9da1e27bf6305cfa5"
 
 [[package]]
 name = "dwrote"
@@ -2534,6 +2507,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "link-section"
+version = "0.19.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39c29a617ce3df32c08497bdc1ab6e2376e0b17948ac166a2fbe5977c5954cd9"
+
+[[package]]
+name = "linktime-proc-macro"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e57c38c1e860fd37c604281cdfb1dd2216977fd76a50f85ba2f388ef3219616"
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2765,7 +2750,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1d395473824516f38dd1071a1a37bc57daa7be65b293ebba4ead5f7abb017a2"
 dependencies = [
  "bitflags 2.9.4",
- "ctor 1.0.6",
+ "ctor",
  "futures",
  "napi-build",
  "napi-sys",
@@ -2788,7 +2773,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b3f766e04667e6da0e181e2da4f85475d5a6513b7cf6a80bea184e224a5b42"
 dependencies = [
  "convert_case 0.11.0",
- "ctor 1.0.6",
+ "ctor",
  "napi-derive-backend",
  "proc-macro2",
  "quote",
@@ -4789,7 +4774,7 @@ dependencies = [
  "blas-src",
  "color-eyre",
  "criterion",
- "ctor 0.5.0",
+ "ctor",
  "derive_more",
  "eyre",
  "getset",
@@ -4835,7 +4820,7 @@ name = "treetime-analytical"
 version = "1.0.0"
 dependencies = [
  "approx",
- "ctor 0.5.0",
+ "ctor",
  "ndarray",
  "rayon",
  "serde",
@@ -4849,7 +4834,7 @@ name = "treetime-distribution"
 version = "1.0.0"
 dependencies = [
  "approx",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "getset",
  "itertools 0.14.0",
@@ -4874,7 +4859,7 @@ name = "treetime-graph"
 version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
- "ctor 0.5.0",
+ "ctor",
  "derive_more",
  "eyre",
  "getset",
@@ -4893,7 +4878,7 @@ name = "treetime-grid"
 version = "1.0.0"
 dependencies = [
  "approx",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "itertools 0.14.0",
  "ndarray",
@@ -4914,7 +4899,7 @@ dependencies = [
  "approx",
  "bytes",
  "csv",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "indoc",
  "itertools 0.14.0",
@@ -4942,7 +4927,7 @@ name = "treetime-ops"
 version = "1.0.0"
 dependencies = [
  "approx",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "ndarray",
  "ndarray-conv",
@@ -4957,7 +4942,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "auto_ops",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "itertools 0.14.0",
  "pretty_assertions",
@@ -4993,7 +4978,7 @@ dependencies = [
  "chronoutil",
  "clap",
  "color-eyre",
- "ctor 0.5.0",
+ "ctor",
  "env_logger",
  "eyre",
  "flate2",
@@ -5037,7 +5022,7 @@ dependencies = [
  "approx",
  "clap",
  "csv",
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "image",
  "itertools 0.14.0",
@@ -5167,7 +5152,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 name = "util-augur-node-data-json"
 version = "1.0.0"
 dependencies = [
- "ctor 0.5.0",
+ "ctor",
  "maplit",
  "pretty_assertions",
  "rayon",
@@ -5180,7 +5165,7 @@ dependencies = [
 name = "util-newick"
 version = "1.0.0"
 dependencies = [
- "ctor 0.5.0",
+ "ctor",
  "eyre",
  "indoc",
  "pest",
@@ -5199,7 +5184,7 @@ dependencies = [
 name = "util-phyloxml"
 version = "1.0.0"
 dependencies = [
- "ctor 0.5.0",
+ "ctor",
  "indoc",
  "pretty_assertions",
  "quick-xml",

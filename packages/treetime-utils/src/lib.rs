@@ -17,7 +17,7 @@ mod tests {
   use crate::init::global::global_init;
   use ctor::ctor;
 
-  #[ctor]
+  #[ctor(unsafe)]
   fn init() {
     global_init();
     rayon::ThreadPoolBuilder::new()

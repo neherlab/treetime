@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use treetime_utils::init::global::global_init;
 use treetime_utils::make_report;
 
-#[ctor]
+#[ctor(unsafe)]
 fn init() {
   global_init();
 }

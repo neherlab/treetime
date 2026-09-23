@@ -20,7 +20,7 @@ mod __tests__;
 mod tests {
   use ctor::ctor;
 
-  #[ctor]
+  #[ctor(unsafe)]
   fn init() {
     rayon::ThreadPoolBuilder::new()
       .num_threads(1)

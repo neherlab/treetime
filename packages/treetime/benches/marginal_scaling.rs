@@ -25,7 +25,7 @@ use treetime_utils::init::global::global_init;
 
 const DATASET_SEQUENCES: u64 = 200;
 
-#[ctor]
+#[ctor(unsafe)]
 fn init() {
   global_init();
 }

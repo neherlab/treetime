@@ -25,7 +25,7 @@ const STATIC_DIR_ENV: &str = "STATIC_DIR";
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 3100;
 
-#[ctor]
+#[ctor(unsafe)]
 fn init() {
   global_init();
 }

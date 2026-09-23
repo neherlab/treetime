@@ -45,7 +45,7 @@ use treetime_utils::init::openblas::get_openblas_info_str;
 use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[ctor]
+#[ctor(unsafe)]
 fn init() {
   global_init();
 }
