@@ -1,12 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::indel::{InDel, InDelKind};
 use crate::{make_error, make_internal_error};
+use derive_more::Display;
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
 use regex::regex;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::fmt;
 use std::str::FromStr;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
@@ -128,8 +128,9 @@ fn mutation_position(start: usize, offset: usize) -> Result<usize, Report> {
     .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display)]
 #[getset(get_copy = "pub")]
+#[display("{reff}{}{qry}", pos + 1)]
 pub struct Sub {
   pos: usize,
   qry: AsciiChar,
@@ -251,10 +252,4 @@ fn parse_pos(s: &str) -> Result<usize, Report> {
     return make_error!("Mutation position is expected to be >= 1");
   }
   Ok(pos - 1)
-}
-
-impl fmt::Display for Sub {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{}{}{}", self.reff, self.pos + 1, self.qry)
-  }
 }

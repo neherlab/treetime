@@ -8,6 +8,21 @@ mod tests {
   use treetime_primitives::seq;
 
   #[test]
+  fn test_mutation_sub_display_uses_one_based_position() -> Result<(), Report> {
+    let sub = Sub::new(AsciiChar::try_new(b'A')?, 9_usize, AsciiChar::try_new(b'G')?)?;
+    assert_eq!("A10G", sub.to_string());
+    Ok(())
+  }
+
+  #[test]
+  fn test_mutation_sub_display_roundtrips_through_from_str() -> Result<(), Report> {
+    let expected: Sub = "C123T".parse()?;
+    let actual: Sub = expected.to_string().parse()?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
   fn test_mutation_compose_substitutions_both_empty() -> Result<(), Report> {
     let result = compose_substitutions(&[], &[])?;
     assert_eq!(result, vec![]);
