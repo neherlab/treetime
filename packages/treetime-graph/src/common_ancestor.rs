@@ -1,7 +1,8 @@
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
-use eyre::{Report, eyre};
+use eyre::Report;
 use itertools::Itertools;
+use treetime_utils::make_report;
 
 pub fn common_ancestor(graph: &Graph, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report> {
   let paths = node_keys
@@ -11,7 +12,7 @@ pub fn common_ancestor(graph: &Graph, node_keys: &[GraphNodeKey]) -> Result<Grap
 
   let first_path = paths
     .first()
-    .ok_or_else(|| eyre!("Cannot find MRCA of an empty node set"))?;
+    .ok_or_else(|| make_report!("Cannot find MRCA of an empty node set"))?;
 
   let mut ancestor = first_path[0];
   for (index, candidate) in first_path.iter().copied().enumerate() {
