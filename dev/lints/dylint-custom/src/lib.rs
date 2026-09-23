@@ -115,3 +115,8 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
 fn ui_topological_ordering() {
     dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/topological_ordering").run();
 }
+
+#[test]
+fn ui_suggest_builder() {
+    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/suggest_builder").run();
+}

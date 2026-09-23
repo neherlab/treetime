@@ -7,6 +7,8 @@ use rustc_span::{Symbol, sym};
 
 use crate::config::SuggestBuilderConfig;
 
+const BON_ORIGINAL_FN_PREFIX: &str = "__orig_";
+
 rustc_session::declare_lint! {
     /// Suggests using a `#[builder]` constructor in a `#[bon] impl` for structs with many named fields.
     pub SUGGEST_BUILDER,
@@ -105,6 +107,10 @@ impl<'tcx> LateLintPass<'tcx> for SuggestBuilder {
                 .associated_items(*impl_id)
                 .in_definition_order()
                 .filter(|assoc| matches!(assoc.kind, ty::AssocKind::Fn { .. }))
+                // A `#[bon] impl` keeps the body of a `#[builder]` method as a hidden
+                // `__orig_<name>` function returning `Self`; the builder replaces it
+                // as the public constructor.
+                .filter(|assoc| !assoc.name().as_str().starts_with(BON_ORIGINAL_FN_PREFIX))
                 .any(|assoc| {
                     let ret_ty = cx
                         .tcx

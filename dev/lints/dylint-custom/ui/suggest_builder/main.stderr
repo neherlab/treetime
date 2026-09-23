@@ -1,0 +1,17 @@
+warning: struct `Positional` has 6 fields; consider exposing a `#[builder]` constructor
+  --> $DIR/main.rs:6:1
+   |
+LL | / pub struct Positional {
+LL | |     a: u8,
+LL | |     b: u8,
+LL | |     c: u8,
+...  |
+LL | |     f: u8,
+LL | | }
+   | |_^
+   |
+   = help: use the function builder style: `#[bon] impl` plus `#[builder] fn new(...) -> Self`
+   = note: `#[warn(suggest_builder)]` on by default
+
+warning: 1 warning emitted
+
