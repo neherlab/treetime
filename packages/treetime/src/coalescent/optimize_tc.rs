@@ -4,14 +4,6 @@ use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
-pub struct OptimizeTcResult {
-  pub tc: f64,
-  pub log_tc_variance: f64,
-  pub tc_lower_bound: f64,
-  pub tc_upper_bound: f64,
-  pub likelihood: LogLh,
-}
-
 pub fn optimize_tc(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<OptimizeTcResult, Report> {
   let result = optimize_skyline(
     graph,
@@ -28,4 +20,12 @@ pub fn optimize_tc(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<Op
     tc_upper_bound: result.tc_upper_bounds[0],
     likelihood: result.log_likelihood,
   })
+}
+
+pub struct OptimizeTcResult {
+  pub tc: f64,
+  pub log_tc_variance: f64,
+  pub tc_lower_bound: f64,
+  pub tc_upper_bound: f64,
+  pub likelihood: LogLh,
 }

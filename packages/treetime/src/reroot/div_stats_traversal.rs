@@ -8,11 +8,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub struct DivStatsField {
-  pub edge_stats: BTreeMap<GraphEdgeKey, (DivStats, DivStats)>,
-  pub root_stats: DivStats,
-}
-
 pub fn compute_div_stats(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -105,6 +100,11 @@ pub fn compute_div_stats(
   Ok(DivStatsField { edge_stats, root_stats })
 }
 
+pub struct DivStatsField {
+  pub edge_stats: BTreeMap<GraphEdgeKey, (DivStats, DivStats)>,
+  pub root_stats: DivStats,
+}
+
 fn sum_children(
   from_child: &BTreeMap<GraphEdgeKey, DivStats>,
   child_edges: &[GraphEdgeKey],
@@ -119,13 +119,6 @@ fn sum_children(
   Ok(acc)
 }
 
-struct NodeTopology {
-  is_leaf: bool,
-  is_root: bool,
-  child_edges: Vec<GraphEdgeKey>,
-  parent_edge: Option<GraphEdgeKey>,
-}
-
 fn node_topology(graph: &Graph, node_key: GraphNodeKey) -> Result<NodeTopology, Report> {
   let node = graph
     .get_node(node_key)
@@ -136,6 +129,13 @@ fn node_topology(graph: &Graph, node_key: GraphNodeKey) -> Result<NodeTopology, 
     child_edges: node.outbound().to_vec(),
     parent_edge: node.inbound().first().copied(),
   })
+}
+
+struct NodeTopology {
+  is_leaf: bool,
+  is_root: bool,
+  child_edges: Vec<GraphEdgeKey>,
+  parent_edge: Option<GraphEdgeKey>,
 }
 
 fn branch_length_of(

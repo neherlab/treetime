@@ -9,6 +9,23 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_report;
 
+impl CostFunction for &BranchPointCostFunction<'_> {
+  type Param = f64;
+  type Output = f64;
+
+  fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+    if *x < 0.0 || *x > 1.0 {
+      return Ok(f64::INFINITY);
+    }
+
+    let result = self
+      .evaluate_clock_set(*x)
+      .map_or(f64::INFINITY, |clock_set| self.score_clock_set(&clock_set));
+
+    Ok(result)
+  }
+}
+
 pub struct BranchPointCostFunction<'a> {
   to_parent: ClockSet,
   to_child: ClockSet,
@@ -78,22 +95,5 @@ impl<'a> BranchPointCostFunction<'a> {
 
   pub(crate) fn score_clock_set(&self, clock_set: &ClockSet) -> f64 {
     self.objective.score(clock_set)
-  }
-}
-
-impl CostFunction for &BranchPointCostFunction<'_> {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-    if *x < 0.0 || *x > 1.0 {
-      return Ok(f64::INFINITY);
-    }
-
-    let result = self
-      .evaluate_clock_set(*x)
-      .map_or(f64::INFINITY, |clock_set| self.score_clock_set(&clock_set));
-
-    Ok(result)
   }
 }

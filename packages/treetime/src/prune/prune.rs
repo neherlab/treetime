@@ -32,51 +32,6 @@ pub fn prune_nodes(
   Ok(())
 }
 
-pub fn get_edge_num_muts(
-  partitions: &[PartitionMarginalSparse],
-  edge_key: GraphEdgeKey,
-) -> Result<Option<usize>, Report> {
-  let mut total_muts = 0;
-  let mut found_any = false;
-
-  for partition in partitions {
-    if let Some(edge) = partition.obs_edges.get(&edge_key) {
-      total_muts += edge.fitch_subs().len();
-      found_any = true;
-    }
-  }
-
-  Ok(found_any.then_some(total_muts))
-}
-
-pub fn collapse_sparse_edges_from_leaf_recursive(
-  graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
-  edge_key: GraphEdgeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report> {
-  let mut current_edge_key = edge_key;
-
-  loop {
-    let parent_node_key = graph.get_source_node_key(current_edge_key)?;
-
-    collapse_edge(graph, partitions, current_edge_key, branch_lengths)?;
-
-    let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
-      graph.parent_inbound_edge(parent_node_key)?
-    } else {
-      None
-    };
-
-    match next_edge_key {
-      Some(key) => current_edge_key = key,
-      None => break,
-    }
-  }
-
-  Ok(())
-}
-
 fn prune_internal_nodes(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -122,6 +77,23 @@ fn prune_internal_nodes(
   })
 }
 
+pub fn get_edge_num_muts(
+  partitions: &[PartitionMarginalSparse],
+  edge_key: GraphEdgeKey,
+) -> Result<Option<usize>, Report> {
+  let mut total_muts = 0;
+  let mut found_any = false;
+
+  for partition in partitions {
+    if let Some(edge) = partition.obs_edges.get(&edge_key) {
+      total_muts += edge.fitch_subs().len();
+      found_any = true;
+    }
+  }
+
+  Ok(found_any.then_some(total_muts))
+}
+
 fn prune_leaves(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -150,6 +122,34 @@ fn prune_leaves(
     debug!("Collapsing leaf edge: {edge_key}");
     collapse_sparse_edges_from_leaf_recursive(graph, partitions, edge_key, branch_lengths)
   })
+}
+
+pub fn collapse_sparse_edges_from_leaf_recursive(
+  graph: &mut Graph,
+  partitions: &mut [PartitionMarginalSparse],
+  edge_key: GraphEdgeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<(), Report> {
+  let mut current_edge_key = edge_key;
+
+  loop {
+    let parent_node_key = graph.get_source_node_key(current_edge_key)?;
+
+    collapse_edge(graph, partitions, current_edge_key, branch_lengths)?;
+
+    let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
+      graph.parent_inbound_edge(parent_node_key)?
+    } else {
+      None
+    };
+
+    match next_edge_key {
+      Some(key) => current_edge_key = key,
+      None => break,
+    }
+  }
+
+  Ok(())
 }
 
 fn should_collapse_parent(graph: &Graph, node_key: GraphNodeKey) -> bool {

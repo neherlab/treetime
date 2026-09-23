@@ -14,6 +14,76 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
 
+pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
+  let root_key = graph.get_exactly_one_root()?.key();
+  let log_lh = partitions
+    .par_iter()
+    .map(|partition| partition.get_log_lh(root_key))
+    .collect::<Vec<_>>()
+    .into_iter()
+    .sum();
+  Ok(log_lh)
+}
+
+pub(crate) fn initialize_marginal_timetree(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  mut partitions: Vec<PartitionTimetree>,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
+  for partition in &mut partitions {
+    partition.attach_sequences(graph, node_inputs)?;
+  }
+  marginal_update_timetree(graph, branch_lengths, partitions)
+}
+
+pub(crate) fn marginal_update_timetree(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  partitions: Vec<PartitionTimetree>,
+) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
+  partitions
+    .into_iter()
+    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), partition| {
+      let (partition, log_lh) = partition.marginal_update(graph, branch_lengths)?;
+      updated.push(partition);
+      Ok((updated, total + log_lh))
+    })
+}
+
+pub(crate) fn ancestral_reconstruction_timetree(
+  graph: &Graph,
+  tips: TipStates,
+  partitions: &mut [PartitionTimetree],
+  sample_mode: SampleMode,
+  rng: &mut dyn rand::RngCore,
+  mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
+) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+  let mut node_sequences = BTreeMap::new();
+  graph.iter_depth_first_preorder_forward(|node| {
+    if partitions.is_empty() {
+      if !tips.include_leaves && node.is_leaf {
+        return Ok(());
+      }
+      let seq = seq![];
+      visitor(node.key, &seq)?;
+      node_sequences.insert(node.key, seq);
+      return Ok(());
+    }
+
+    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng);
+    match reconstructed {
+      Some(seq) => {
+        visitor(node.key, &seq)?;
+        node_sequences.insert(node.key, seq);
+        Ok(())
+      },
+      None => Ok(()),
+    }
+  })?;
+  Ok(node_sequences)
+}
+
 impl PartitionTimetree {
   pub(crate) fn get_sequence_length(&self) -> usize {
     match self {
@@ -128,74 +198,4 @@ impl PartitionTimetree {
   ) -> Result<Vec<Mutation>, Report> {
     combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
-}
-
-pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
-  let root_key = graph.get_exactly_one_root()?.key();
-  let log_lh = partitions
-    .par_iter()
-    .map(|partition| partition.get_log_lh(root_key))
-    .collect::<Vec<_>>()
-    .into_iter()
-    .sum();
-  Ok(log_lh)
-}
-
-pub(crate) fn marginal_update_timetree(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: Vec<PartitionTimetree>,
-) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
-  partitions
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), partition| {
-      let (partition, log_lh) = partition.marginal_update(graph, branch_lengths)?;
-      updated.push(partition);
-      Ok((updated, total + log_lh))
-    })
-}
-
-pub(crate) fn initialize_marginal_timetree(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  mut partitions: Vec<PartitionTimetree>,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
-  for partition in &mut partitions {
-    partition.attach_sequences(graph, node_inputs)?;
-  }
-  marginal_update_timetree(graph, branch_lengths, partitions)
-}
-
-pub(crate) fn ancestral_reconstruction_timetree(
-  graph: &Graph,
-  tips: TipStates,
-  partitions: &mut [PartitionTimetree],
-  sample_mode: SampleMode,
-  rng: &mut dyn rand::RngCore,
-  mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
-  let mut node_sequences = BTreeMap::new();
-  graph.iter_depth_first_preorder_forward(|node| {
-    if partitions.is_empty() {
-      if !tips.include_leaves && node.is_leaf {
-        return Ok(());
-      }
-      let seq = seq![];
-      visitor(node.key, &seq)?;
-      node_sequences.insert(node.key, seq);
-      return Ok(());
-    }
-
-    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng);
-    match reconstructed {
-      Some(seq) => {
-        visitor(node.key, &seq)?;
-        node_sequences.insert(node.key, seq);
-        Ok(())
-      },
-      None => Ok(()),
-    }
-  })?;
-  Ok(node_sequences)
 }

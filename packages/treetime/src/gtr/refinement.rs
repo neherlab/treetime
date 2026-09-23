@@ -221,10 +221,6 @@ struct GtrRateCandidate<P: MarginalPasses> {
   backward: BTreeMap<GraphEdgeKey, P::Backward>,
 }
 
-struct GtrRateCostFn<'a, F> {
-  neg_log_lh: &'a F,
-}
-
 impl<F> CostFunction for &GtrRateCostFn<'_, F>
 where
   F: Fn(f64) -> f64,
@@ -235,4 +231,8 @@ where
   fn cost(&self, sqrt_mu: &Self::Param) -> Result<Self::Output, Error> {
     Ok((self.neg_log_lh)(*sqrt_mu))
   }
+}
+
+struct GtrRateCostFn<'a, F> {
+  neg_log_lh: &'a F,
 }

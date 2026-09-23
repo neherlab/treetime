@@ -204,12 +204,6 @@ pub fn hoist_reverting_child(
   Ok(n_key)
 }
 
-struct SubSplit {
-  hoisted: Vec<Sub>,
-  kept: Vec<Sub>,
-  composed: Vec<Sub>,
-}
-
 fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Report> {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
@@ -267,6 +261,12 @@ fn split_subs(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<SubSplit, Repor
   })
 }
 
+struct SubSplit {
+  hoisted: Vec<Sub>,
+  kept: Vec<Sub>,
+  composed: Vec<Sub>,
+}
+
 fn count_reversions(parent_subs: &[Sub], child_subs: &[Sub]) -> usize {
   debug_assert!(
     parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
@@ -296,12 +296,6 @@ fn count_reversions(parent_subs: &[Sub], child_subs: &[Sub]) -> usize {
     }
   }
   count
-}
-
-struct IndelSplit {
-  hoisted: Vec<InDel>,
-  kept: Vec<InDel>,
-  composed: Vec<InDel>,
 }
 
 fn split_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> IndelSplit {
@@ -342,4 +336,10 @@ struct EdgeSplit {
   kept: Vec<Sub>,
   composed: Vec<Sub>,
   indels: IndelSplit,
+}
+
+struct IndelSplit {
+  hoisted: Vec<InDel>,
+  kept: Vec<InDel>,
+  composed: Vec<InDel>,
 }

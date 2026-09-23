@@ -8,12 +8,6 @@ use eyre::Report;
 
 const BRENT_MAX_ITER: u64 = 50;
 
-pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
-  let lower = min_branch_length.max(1e-12);
-  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
-  (lower, upper)
-}
-
 pub(super) fn brent_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -104,11 +98,10 @@ pub(super) fn brent_log_inner(
   Ok(u.exp())
 }
 
-struct BranchLengthCostFn<'a, F: Fn(f64) -> f64> {
-  contributions: &'a [OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  to_t: F,
+pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
+  let lower = min_branch_length.max(1e-12);
+  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
+  (lower, upper)
 }
 
 impl<F: Fn(f64) -> f64> CostFunction for &BranchLengthCostFn<'_, F> {
@@ -121,4 +114,11 @@ impl<F: Fn(f64) -> f64> CostFunction for &BranchLengthCostFn<'_, F> {
       .map_err(|error| Error::msg(error.to_string()))?;
     Ok(-log_lh)
   }
+}
+
+struct BranchLengthCostFn<'a, F: Fn(f64) -> f64> {
+  contributions: &'a [OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  to_t: F,
 }

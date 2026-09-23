@@ -5,16 +5,6 @@ use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use std::iter::zip;
 
-pub struct SiteContribution {
-  pub multiplicity: f64,
-  pub coefficients: ndarray::Array1<f64>,
-}
-
-pub struct PartitionContribution {
-  pub site_contributions: Vec<SiteContribution>,
-  pub gtr: GTR,
-}
-
 #[allow(
   clippy::as_conversions,
   clippy::unwrap_used,
@@ -91,4 +81,14 @@ pub(crate) fn get_coefficients(
     site_contributions,
     gtr: gtr.clone(),
   })
+}
+
+pub struct PartitionContribution {
+  pub site_contributions: Vec<SiteContribution>,
+  pub gtr: GTR,
+}
+
+pub struct SiteContribution {
+  pub multiplicity: f64,
+  pub coefficients: ndarray::Array1<f64>,
 }

@@ -53,13 +53,6 @@ pub fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mu
   seq
 }
 
-pub fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
-  match node.profile.variable.get(&pos) {
-    Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
-    None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
-  }
-}
-
 pub fn reconstruct_leaf_sequence(
   node: &SparseNodeState,
   node_obs: &SparseNodeObs,
@@ -97,4 +90,11 @@ pub fn reconstruct_leaf_sequence(
   }
 
   seq
+}
+
+pub fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
+  match node.profile.variable.get(&pos) {
+    Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
+    None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
+  }
 }

@@ -5,8 +5,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-pub type AncestralStateSnapshot = Vec<BTreeMap<GraphNodeKey, Seq>>;
-
 pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
   previous
     .iter()
@@ -58,6 +56,8 @@ pub fn capture_ancestral_states(graph: &Graph, partitions: &[PartitionTimetree])
     })
     .collect()
 }
+
+pub type AncestralStateSnapshot = Vec<BTreeMap<GraphNodeKey, Seq>>;
 
 fn count_differing_positions(a: &Seq, b: &Seq) -> usize {
   let shared = a.iter().zip(b.iter()).filter(|(ca, cb)| ca != cb).count();

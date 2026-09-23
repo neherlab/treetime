@@ -5,14 +5,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
-  branch_length.is_finite() && branch_length >= 0.0
-}
-
-pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
-  branch_length.is_some_and(is_valid_branch_length_value)
-}
-
 pub fn invalid_branch_length_descriptions(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -34,6 +26,10 @@ pub fn invalid_branch_length_descriptions(
     .collect()
 }
 
+pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
+  branch_length.is_some_and(is_valid_branch_length_value)
+}
+
 pub fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
   if is_valid_branch_length_value(branch_length) {
     Ok(())
@@ -42,6 +38,10 @@ pub fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
       "branch length must be finite and non-negative, got {branch_length}"
     ))
   }
+}
+
+pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
+  branch_length.is_finite() && branch_length >= 0.0
 }
 
 fn node_label(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {

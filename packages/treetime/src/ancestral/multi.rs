@@ -16,24 +16,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlignmentRecord, Seq};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-pub struct PartitionPlan {
-  pub name: String,
-  pub alphabet: Alphabet,
-  pub gtr_model: GtrModelName,
-  pub sequences: Vec<AlignmentRecord>,
-  pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
-  pub reference_override: Option<Seq>,
-}
-
-pub struct MarginalPartitionParams {
-  pub dense: Option<bool>,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub sample_from_profile: SampleMode,
-  pub seed: Option<u64>,
-  pub ignore_missing_alns: bool,
-}
-
 pub(crate) fn reconstruct_marginal_partition(
   graph: &Graph,
   index: usize,
@@ -127,6 +109,24 @@ pub(crate) fn reconstruct_marginal_partition(
     annotation,
     reference_override,
   })
+}
+
+pub struct PartitionPlan {
+  pub name: String,
+  pub alphabet: Alphabet,
+  pub gtr_model: GtrModelName,
+  pub sequences: Vec<AlignmentRecord>,
+  pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
+  pub reference_override: Option<Seq>,
+}
+
+pub struct MarginalPartitionParams {
+  pub dense: Option<bool>,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub sample_from_profile: SampleMode,
+  pub seed: Option<u64>,
+  pub ignore_missing_alns: bool,
 }
 
 pub struct ReconstructedPartition {

@@ -10,10 +10,6 @@ use log::info;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 
-pub trait TraceSink: Send {
-  fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report>;
-}
-
 pub struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,
   trace_sink: Option<Box<dyn TraceSink>>,
@@ -114,6 +110,10 @@ impl TimetreeOptimizer {
   fn has_reached_max_iterations(&self) -> bool {
     self.i >= self.max_iterations
   }
+}
+
+pub trait TraceSink: Send {
+  fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report>;
 }
 
 pub(crate) struct IterationContext {

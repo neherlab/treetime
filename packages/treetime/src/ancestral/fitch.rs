@@ -41,6 +41,17 @@ pub fn create_fitch_partition(
   Ok(partition)
 }
 
+pub(crate) fn compress_sequences(
+  graph: &Graph,
+  partition: &mut PartitionFitch,
+  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+) -> Result<(), Report> {
+  attach_seqs_to_graph(graph, partition, node_inputs)?;
+  fitch_backward(graph, partition)?;
+  fitch_forward(graph, partition)?;
+  fitch_cleanup(graph, partition)
+}
+
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
   partition: &mut PartitionFitch,
@@ -264,17 +275,6 @@ fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Re
     }
   }
   Ok(())
-}
-
-pub(crate) fn compress_sequences(
-  graph: &Graph,
-  partition: &mut PartitionFitch,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<(), Report> {
-  attach_seqs_to_graph(graph, partition, node_inputs)?;
-  fitch_backward(graph, partition)?;
-  fitch_forward(graph, partition)?;
-  fitch_cleanup(graph, partition)
 }
 
 pub(crate) fn ancestral_reconstruction_fitch(

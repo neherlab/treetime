@@ -103,10 +103,6 @@ pub fn discover_fixed_disagreements_backward(
   discovered
 }
 
-fn choose_state(states: StateSet, alphabet: &Alphabet) -> AsciiChar {
-  alphabet.first_canonical(states).unwrap_or_else(|| states.get_one())
-}
-
 pub fn resolve_root_forward(
   sequence: &mut Seq,
   variable: &BTreeMap<usize, StateSet>,
@@ -169,6 +165,10 @@ pub fn resolve_nonroot_substitutions_forward(
 
   subs.sort();
   Ok(subs)
+}
+
+fn choose_state(states: StateSet, alphabet: &Alphabet) -> AsciiChar {
+  alphabet.first_canonical(states).unwrap_or_else(|| states.get_one())
 }
 
 pub fn finalize_sequence_forward(

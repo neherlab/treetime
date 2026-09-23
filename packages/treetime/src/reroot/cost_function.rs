@@ -1,6 +1,18 @@
 use crate::reroot::traits::RootStats;
 use argmin::core::{CostFunction, Error};
 
+impl<S: RootStats> CostFunction for &EdgeCostFn<S> {
+  type Param = f64;
+  type Output = f64;
+
+  fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+    if *x < 0.0 || *x > 1.0 {
+      return Ok(f64::INFINITY);
+    }
+    Ok(self.evaluate(*x).score())
+  }
+}
+
 pub struct EdgeCostFn<S: RootStats> {
   pub to_parent: S,
   pub to_child: S,
@@ -30,17 +42,5 @@ impl<S: RootStats> EdgeCostFn<S> {
       .propagate(self.branch_length * x, self.branch_variance * x);
 
     parent + child
-  }
-}
-
-impl<S: RootStats> CostFunction for &EdgeCostFn<S> {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-    if *x < 0.0 || *x > 1.0 {
-      return Ok(f64::INFINITY);
-    }
-    Ok(self.evaluate(*x).score())
   }
 }

@@ -11,18 +11,6 @@ const NEWTON_ABS_TOL: f64 = 1e-8;
 
 const NEWTON_MAX_ITER: usize = 10;
 
-pub(super) fn newton_tolerance_t(t: f64) -> f64 {
-  f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
-}
-
-pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
-  f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
-}
-
-pub(super) fn newton_tolerance_log() -> f64 {
-  NEWTON_REL_TOL.ln_1p()
-}
-
 pub(super) fn newton_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -52,6 +40,10 @@ pub(super) fn newton_inner(
   } else {
     grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation)
   }
+}
+
+pub(super) fn newton_tolerance_t(t: f64) -> f64 {
+  f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
 }
 
 pub(super) fn newton_sqrt_inner(
@@ -92,24 +84,18 @@ pub(super) fn newton_sqrt_inner(
   Ok(new_s * new_s)
 }
 
-pub(super) fn sqrt_step_lower_bound(s: f64) -> f64 {
-  s - (s * s + 1.0).sqrt()
+pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
+  f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
 }
 
-pub(super) fn log_step_lower_bound(t: f64) -> f64 {
-  -(1.0 / t).ln_1p()
+pub(super) fn sqrt_step_lower_bound(s: f64) -> f64 {
+  s - (s * s + 1.0).sqrt()
 }
 
 pub(super) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
   let dl_ds = 2.0 * s * dl_dt;
   let d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
   (dl_ds, d2l_ds2)
-}
-
-pub(super) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
-  let dl_du = t * dl_dt;
-  let d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
-  (dl_du, d2l_du2)
 }
 
 pub(super) fn newton_log_inner(
@@ -158,4 +144,18 @@ pub(super) fn newton_log_inner(
   }
 
   Ok(new_u.exp())
+}
+
+pub(super) fn newton_tolerance_log() -> f64 {
+  NEWTON_REL_TOL.ln_1p()
+}
+
+pub(super) fn log_step_lower_bound(t: f64) -> f64 {
+  -(1.0 / t).ln_1p()
+}
+
+pub(super) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
+  let dl_du = t * dl_dt;
+  let d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
+  (dl_du, d2l_du2)
 }

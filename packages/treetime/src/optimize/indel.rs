@@ -16,42 +16,6 @@ use treetime_utils::{make_error, make_report};
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
-  validate_branch_length_value(t)?;
-
-  if mu == 0.0 {
-    return Ok(if k == 0 {
-      OptimizationMetrics::default()
-    } else {
-      OptimizationMetrics::new(LogLh::IMPOSSIBLE, 0.0, 0.0)
-    });
-  }
-
-  if k == 0 {
-    return Ok(OptimizationMetrics::new(LogLh::new(-mu * t), -mu, 0.0));
-  }
-
-  if t == 0.0 {
-    return make_error!("Poisson indel likelihood requires a positive branch length when k > 0, got t={t}");
-  }
-
-  let k_f = k as f64;
-  let lambda = mu * t;
-  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(k as u64);
-  let derivative = k_f / t - mu;
-  let second_derivative = -k_f / (t * t);
-
-  Ok(OptimizationMetrics::new(
-    LogLh::new(log_lh),
-    derivative,
-    second_derivative,
-  ))
-}
-
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn estimate_indel_rate(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
@@ -104,4 +68,40 @@ pub fn total_indel_log_lh(
     .collect::<Vec<_>>()
     .into_iter()
     .sum()
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
+pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
+  validate_branch_length_value(t)?;
+
+  if mu == 0.0 {
+    return Ok(if k == 0 {
+      OptimizationMetrics::default()
+    } else {
+      OptimizationMetrics::new(LogLh::IMPOSSIBLE, 0.0, 0.0)
+    });
+  }
+
+  if k == 0 {
+    return Ok(OptimizationMetrics::new(LogLh::new(-mu * t), -mu, 0.0));
+  }
+
+  if t == 0.0 {
+    return make_error!("Poisson indel likelihood requires a positive branch length when k > 0, got t={t}");
+  }
+
+  let k_f = k as f64;
+  let lambda = mu * t;
+  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(k as u64);
+  let derivative = k_f / t - mu;
+  let second_derivative = -k_f / (t * t);
+
+  Ok(OptimizationMetrics::new(
+    LogLh::new(log_lh),
+    derivative,
+    second_derivative,
+  ))
 }

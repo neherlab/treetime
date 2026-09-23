@@ -21,27 +21,6 @@ use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
-fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
-  for node in graph.get_nodes() {
-    if node.is_leaf() {
-      continue;
-    }
-    let Some(time) = state.node(node.key()).time else {
-      return make_error!(
-        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
-        node.key()
-      );
-    };
-    if !time.is_finite() {
-      return make_error!(
-        "Topology rebuild requires a finite inferred time for every internal node, but node {:?} has {time}",
-        node.key()
-      );
-    }
-  }
-  Ok(())
-}
-
 pub(crate) fn resolve_polytomies(
   graph: &mut Graph,
   partitions: &[PartitionTimetree],
@@ -158,13 +137,6 @@ fn resolve_single_polytomy(
   Ok(created)
 }
 
-struct ChildInfo {
-  node_key: GraphNodeKey,
-  edge_key: GraphEdgeKey,
-  time: f64,
-  mutations: u32,
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -199,6 +171,13 @@ fn collect_children(
       })
     })
     .collect()
+}
+
+struct ChildInfo {
+  node_key: GraphNodeKey,
+  edge_key: GraphEdgeKey,
+  time: f64,
+  mutations: u32,
 }
 
 #[allow(
@@ -282,5 +261,26 @@ pub(crate) fn prepare_tree_after_topology_change(graph: &Graph, state: &mut Time
     state.node_mut(key).time_distribution = Some(distribution);
   }
 
+  Ok(())
+}
+
+fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
+  for node in graph.get_nodes() {
+    if node.is_leaf() {
+      continue;
+    }
+    let Some(time) = state.node(node.key()).time else {
+      return make_error!(
+        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+        node.key()
+      );
+    };
+    if !time.is_finite() {
+      return make_error!(
+        "Topology rebuild requires a finite inferred time for every internal node, but node {:?} has {time}",
+        node.key()
+      );
+    }
+  }
   Ok(())
 }

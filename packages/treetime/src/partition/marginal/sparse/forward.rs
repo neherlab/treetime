@@ -58,12 +58,6 @@ pub fn process_forward_indexed(
   })
 }
 
-struct SparseEdgeForwardOut {
-  msg_to_child: SparseSeqDistribution,
-  msg_from_parent: SparseSeqDistribution,
-  subs_ml: Vec<Sub>,
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -156,6 +150,12 @@ fn process_node_forward_indexed(
   };
 
   Ok(GraphPassNodeOutput { node, parent_message })
+}
+
+struct SparseEdgeForwardOut {
+  msg_to_child: SparseSeqDistribution,
+  msg_from_parent: SparseSeqDistribution,
+  subs_ml: Vec<Sub>,
 }
 
 #[allow(

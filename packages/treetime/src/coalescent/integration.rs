@@ -5,10 +5,6 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 use treetime_utils::make_error;
 
-pub(super) fn compute_merger_rate_per_lineage_scalar(k: f64, tc: f64) -> f64 {
-  compute_merger_rate_per_lineage(compute_merger_rate_lineage_count(k), tc)
-}
-
 pub(super) fn compute_merger_rate_total_scalar(k: f64, tc: f64) -> f64 {
   compute_merger_rate_total(compute_merger_rate_lineage_count(k), tc)
 }
@@ -48,6 +44,10 @@ pub fn compute_integral_merger_rate(
     Array1::from(breakpoints.to_vec()),
     Array1::from_vec(integral_values),
   ))
+}
+
+pub(super) fn compute_merger_rate_per_lineage_scalar(k: f64, tc: f64) -> f64 {
+  compute_merger_rate_per_lineage(compute_merger_rate_lineage_count(k), tc)
 }
 
 fn compute_merger_rate_lineage_count(k: f64) -> f64 {
