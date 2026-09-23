@@ -27,6 +27,7 @@ use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{LocalDefId, LocalModDefId};
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{BytePos, Span};
 
 use super::hir_refs;
@@ -413,7 +414,7 @@ fn item_chunks(
     let item_ends: Vec<BytePos> = module
         .item_ids
         .iter()
-        .map(|&item_id| cx.tcx.hir_item(item_id).span.source_callsite())
+        .filter_map(|&item_id| source_extent(cx.tcx.hir_item(item_id).span))
         .filter(|&span| body.contains(span))
         .map(|span| span.hi())
         .collect();
@@ -439,6 +440,21 @@ fn item_chunks(
         previous_end = item.span.hi();
     }
     Some(chunks)
+}
+
+/// Return the source text an item occupies: its own span, or the call site of
+/// the function-like macro that produced it. Items produced by derive and
+/// attribute macros yield `None`, since their call sites lie inside the
+/// attributes of another item.
+fn source_extent(span: Span) -> Option<Span> {
+    let mut current = span;
+    let mut from_bang_macro = true;
+    while current.from_expansion() {
+        let expansion = current.ctxt().outer_expn_data();
+        from_bang_macro = matches!(expansion.kind, ExpnKind::Macro(MacroKind::Bang, _));
+        current = expansion.call_site;
+    }
+    from_bang_macro.then_some(current)
 }
 
 fn emit_module_diagnostic(
