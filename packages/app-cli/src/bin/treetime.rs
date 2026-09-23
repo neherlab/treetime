@@ -35,7 +35,7 @@ use app_cli::commands::prune::run::run_prune;
 use app_cli::commands::timetree::args::TreetimeTimetreeArgs;
 use app_cli::commands::timetree::run::run_timetree_estimation;
 use ctor::ctor;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::info;
 use std::io::{self, Write};
 use treetime::cancel::NoopCancel;
@@ -152,7 +152,8 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Arg(arg_args) => {},
     TreetimeCommands::Debug => {
-      writeln!(io::stdout().lock(), "{}", get_openblas_info_str())?;
+      writeln!(io::stdout().lock(), "{}", get_openblas_info_str())
+        .wrap_err("When writing debug information to standard output")?;
     },
   }
 

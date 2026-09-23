@@ -11,6 +11,7 @@ use app_server::create_router;
 use app_server::state::ServerConfig;
 use clap::Parser;
 use ctor::ctor;
+use eyre::WrapErr;
 use log::{LevelFilter, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -95,11 +96,15 @@ async fn main() -> eyre::Result<()> {
   let static_dir = env_var_optional(STATIC_DIR_ENV)?;
 
   let addr = format!("{host}:{port}");
-  let listener = tokio::net::TcpListener::bind(&addr).await?;
-  writeln!(io::stderr().lock(), "TreeTime server listening on http://{addr}")?;
+  let listener = tokio::net::TcpListener::bind(&addr)
+    .await
+    .wrap_err_with(|| format!("When binding the server to {addr}"))?;
+  writeln!(io::stderr().lock(), "TreeTime server listening on http://{addr}")
+    .wrap_err("When writing the startup line to standard error")?;
   axum::serve(listener, create_router(config, static_dir))
     .with_graceful_shutdown(shutdown_signal())
-    .await?;
+    .await
+    .wrap_err("When serving HTTP requests")?;
   Ok(())
 }
 

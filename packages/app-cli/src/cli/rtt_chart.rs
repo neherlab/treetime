@@ -3,7 +3,7 @@ use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};
 use crossterm::terminal;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::{Itertools, chain};
 use num_traits::clamp;
 use plotters::prelude::*;
@@ -99,7 +99,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   if let Some(chisq) = clock_model.chisq() {
     table.add_row([o!("χ²"), format!("{chisq:.3e}")]);
   }
-  writeln!(io::stdout().lock(), "{table}")?;
+  writeln!(io::stdout().lock(), "{table}").wrap_err("When writing the clock model table to standard output")?;
 
   let (width, height) = terminal::size().unwrap_or((120, 40));
   let width = clamp(width, 0, 1024) as u32;
