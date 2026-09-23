@@ -4,7 +4,7 @@
 )]
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use crate::ancestral_result::AncestralNodeOut;
   use crate::ancestral_tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
   use crate::clock_tree_output::{clock_to_auspice, clock_to_mat};
@@ -12,12 +12,12 @@ mod tests {
   use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
   use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
   use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
-  use crate::tree_output::{format_number, group_mutations, mat_mutation};
+  use crate::tree_output::{format_number, group_mutations};
   use approx::assert_ulps_eq;
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
+
   use serde_json::Value;
   use tempfile::TempDir;
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -27,7 +27,7 @@ mod tests {
   use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use treetime::seq::indel::InDel;
   use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
-  use treetime_graph::graph::Graph;
+
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
@@ -118,109 +118,6 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )
-    .expect_err("MAT must reject indels");
-    assert!(error.to_string().contains("insertion or deletion"));
-
-    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )
-    .expect_err("MAT must reject amino-acid mutations");
-    assert!(error.to_string().contains("amino-acid mutation"));
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_uses_one_global_reference_for_recurrent_mutations() -> Result<(), Report> {
-    let first = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
-    );
-    let recurrent = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'T'), 0_usize, helpers::c(b'C'))?,
-    );
-
-    let first = mat_mutation(&first, Some("A"), "inner")?;
-    let recurrent = mat_mutation(&recurrent, Some("A"), "leaf")?;
-    assert_eq!((0, 0, vec![3]), (first.ref_nuc, first.par_nuc, first.mut_nuc));
-    assert_eq!(
-      (0, 3, vec![1]),
-      (recurrent.ref_nuc, recurrent.par_nuc, recurrent.mut_nuc)
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_rejects_missing_reference() -> Result<(), Report> {
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
-    );
-    let error = mat_mutation(&mutation, None, "A").expect_err("MAT must require a global reference");
-    assert!(error.to_string().contains("requires a root nucleotide reference"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_rejects_reference_lookup_out_of_range() -> Result<(), Report> {
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 1_usize, helpers::c(b'T'))?,
-    );
-    let error = mat_mutation(&mutation, Some("A"), "A").expect_err("MAT must check the reference length");
-    assert!(error.to_string().contains("outside the root nucleotide reference"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mat_rejects_coordinate_above_i32() -> Result<(), Report> {
-    let position = usize::try_from(i32::MAX)?;
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), position, helpers::c(b'T'))?,
-    );
-    let error = mat_mutation(&mutation, Some("A"), "A").expect_err("MAT must check its coordinate range");
-    assert!(error.to_string().contains("exceeds the UShER MAT i32 coordinate range"));
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::root_reference(("N", b'A', b'T'), "root reference nucleotide 'N'")]
-  #[case::parent(        ("A", b'N', b'T'), "parent nucleotide 'N'")]
-  #[case::child(         ("A", b'A', b'N'), "child nucleotide 'N'")]
-  #[trace]
-  fn test_tree_output_mat_rejects_noncanonical_nucleotide(
-    #[case] (reference, parent, child): (&str, u8, u8),
-    #[case] expected: &str,
-  ) -> Result<(), Report> {
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(helpers::c(parent), 0_usize, helpers::c(child))?,
-    );
-    let error = mat_mutation(&mutation, Some(reference), "A").expect_err("MAT must accept only A, C, G, or T");
-    assert!(error.to_string().contains(expected));
-    Ok(())
-  }
-
-  #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
     let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
@@ -282,20 +179,6 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_mutation_free_mat_needs_no_reference() -> Result<(), Report> {
-    let (graph, names, branch_lengths) = helpers::ancestral_graph_without_partition()?;
-    let mat = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, None),
-      None,
-    )?;
-    assert!(mat.node_mutations.iter().all(|mutations| mutations.mutation.is_empty()));
-    Ok(())
-  }
-
-  #[test]
   fn test_tree_output_all_auspice_models_match_augur_v2_schema() -> Result<(), Report> {
     let documents = helpers::all_auspice_documents()?;
     let validator = helpers::auspice_validator()?;
@@ -349,50 +232,6 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_all_mat_models_preserve_embedded_newick_lengths() -> Result<(), Report> {
-    let documents = helpers::all_mat_documents()?;
-    assert_eq!(6, documents.len());
-    assert!(documents.iter().all(|document| {
-      document.node_mutations.len() == 4
-        && document
-          .node_mutations
-          .iter()
-          .all(|mutations| mutations.mutation.is_empty())
-    }));
-
-    for (command, document) in ["ancestral", "optimize", "prune", "clock", "mugration", "timetree"]
-      .into_iter()
-      .zip(documents)
-    {
-      let nwk_parsed = nwk_read_str(&document.newick)?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
-      assert_eq!(
-        None,
-        helpers::branch_length(&graph, &names, &branch_lengths, "A")?,
-        "{command}: {}",
-        document.newick
-      );
-      assert_eq!(
-        Some(0.0),
-        helpers::branch_length(&graph, &names, &branch_lengths, "B")?,
-        "{command}: {}",
-        document.newick
-      );
-      assert_eq!(
-        Some(0.5),
-        helpers::branch_length(&graph, &names, &branch_lengths, "C")?,
-        "{command}: {}",
-        document.newick
-      );
-    }
-
-    Ok(())
-  }
-
-  #[test]
   fn test_tree_output_format_number_fractional_precision() {
     assert_ulps_eq!(0.123457, format_number(0.12345678, 6), max_ulps = 0);
     assert_ulps_eq!(123.456789, format_number(123.456789, 6), max_ulps = 0);
@@ -431,7 +270,7 @@ mod tests {
     Ok(())
   }
 
-  mod helpers {
+  pub mod helpers {
     use super::*;
     use crate::ancestral_result::AncestralOutputMaps;
     use crate::clock_result::ClockNodeOut;
