@@ -30,34 +30,6 @@ fn init() {
   global_init();
 }
 
-#[derive(Parser, Debug)]
-#[command(name = "treetime-server", about = "TreeTime web server")]
-struct ServerArgs {
-  /// Host address to bind to. Falls back to HOST env var, then 127.0.0.1
-  #[arg(long)]
-  host: Option<String>,
-
-  /// Port to listen on. Falls back to PORT env var, then 3100
-  #[arg(long, short)]
-  port: Option<u16>,
-
-  /// Number of processing threads. Defaults to all available CPU threads
-  #[arg(long, short = 'j', default_value_t = default_jobs())]
-  jobs: usize,
-
-  /// Directory containing input datasets
-  #[arg(long)]
-  data_dir: PathBuf,
-
-  /// Base directory for output files
-  #[arg(long)]
-  out_dir: PathBuf,
-}
-
-fn default_jobs() -> usize {
-  available_parallelism().map_or(1, |n| n.get())
-}
-
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
   setup_logger(LevelFilter::Warn);
@@ -106,6 +78,34 @@ async fn main() -> eyre::Result<()> {
     .await
     .wrap_err("When serving HTTP requests")?;
   Ok(())
+}
+
+#[derive(Parser, Debug)]
+#[command(name = "treetime-server", about = "TreeTime web server")]
+struct ServerArgs {
+  /// Host address to bind to. Falls back to HOST env var, then 127.0.0.1
+  #[arg(long)]
+  host: Option<String>,
+
+  /// Port to listen on. Falls back to PORT env var, then 3100
+  #[arg(long, short)]
+  port: Option<u16>,
+
+  /// Number of processing threads. Defaults to all available CPU threads
+  #[arg(long, short = 'j', default_value_t = default_jobs())]
+  jobs: usize,
+
+  /// Directory containing input datasets
+  #[arg(long)]
+  data_dir: PathBuf,
+
+  /// Base directory for output files
+  #[arg(long)]
+  out_dir: PathBuf,
+}
+
+fn default_jobs() -> usize {
+  available_parallelism().map_or(1, |n| n.get())
 }
 
 #[allow(
