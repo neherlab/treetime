@@ -7,13 +7,9 @@ pub struct PiecewiseFnBase {
 }
 
 impl PiecewiseFnBase {
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(
-      breakpoints.as_slice().unwrap().is_sorted_by(|a, b| a < b),
+      breakpoints.iter().is_sorted_by(|a, b| a < b),
       "breakpoints must be strictly ascending"
     );
     Self { breakpoints, values }
