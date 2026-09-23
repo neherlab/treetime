@@ -1,15 +1,9 @@
+use derive_more::{Display, Error};
 use eyre::Report;
 
-#[derive(Debug)]
+#[derive(Debug, Display, Error)]
+#[display("Operation cancelled")]
 pub struct CancelledError;
-
-impl std::fmt::Display for CancelledError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str("Operation cancelled")
-  }
-}
-
-impl std::error::Error for CancelledError {}
 
 pub trait Cancel: Send + Sync {
   fn is_cancelled(&self) -> bool;
