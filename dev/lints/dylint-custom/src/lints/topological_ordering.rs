@@ -21,14 +21,16 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_in_test;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModDefId};
+use rustc_span::{BytePos, Span};
 
 use super::hir_refs;
+use super::topological_reorder::{OrderNode, attached_start, desired_order};
 
 rustc_session::declare_lint! {
     /// Flags items that appear out of the project's ordering convention within a
@@ -353,10 +355,97 @@ fn check_impl_grouping(
     violations
 }
 
+/// Build a machine-applicable rewrite that permutes the module's items into
+/// the order the lint accepts. Each item moves together with its attributes
+/// and the comments directly above it; everything else stays in place.
+/// Return `None` when an item's surrounding text cannot be delimited safely.
+fn reorder_fix(
+    cx: &LateContext<'_>,
+    module_def_id: LocalDefId,
+    items: &[ModuleItem],
+    refs: &[(usize, usize, Span)],
+    item_to_scc: &[usize],
+    def_id_to_idx: &FxHashMap<LocalDefId, usize>,
+) -> Option<Vec<(Span, String)>> {
+    let chunks = item_chunks(cx, module_def_id, items)?;
+    let source_map = cx.sess().source_map();
+    let texts = chunks
+        .iter()
+        .map(|&chunk| source_map.span_to_snippet(chunk).ok())
+        .collect::<Option<Vec<_>>>()?;
+
+    let nodes: Vec<OrderNode> = items
+        .iter()
+        .map(|item| OrderNode {
+            is_const_or_static: item.is_const_or_static,
+            attached_to: item
+                .impl_self_ty
+                .and_then(|self_ty| def_id_to_idx.get(&self_ty).copied()),
+        })
+        .collect();
+    let edges: Vec<(usize, usize)> = refs.iter().map(|&(from, to, _)| (from, to)).collect();
+    let order = desired_order(&nodes, &edges, item_to_scc);
+    if order.len() != items.len() {
+        return None;
+    }
+
+    let parts: Vec<(Span, String)> = order
+        .iter()
+        .enumerate()
+        .filter(|&(slot, &idx)| slot != idx)
+        .map(|(slot, &idx)| (chunks[slot], texts[idx].clone()))
+        .collect();
+    (!parts.is_empty()).then_some(parts)
+}
+
+/// Return, for each item, the span from the start of its attached attributes
+/// and comments to its end. The text before an item is delimited by the end
+/// of the nearest preceding item of any kind in the module.
+fn item_chunks(
+    cx: &LateContext<'_>,
+    module_def_id: LocalDefId,
+    items: &[ModuleItem],
+) -> Option<Vec<Span>> {
+    let (module, _, _) = cx
+        .tcx
+        .hir_get_module(LocalModDefId::new_unchecked(module_def_id));
+    let body = module.spans.inner_span;
+    let item_ends: Vec<BytePos> = module
+        .item_ids
+        .iter()
+        .map(|&item_id| cx.tcx.hir_item(item_id).span.source_callsite())
+        .filter(|&span| body.contains(span))
+        .map(|span| span.hi())
+        .collect();
+    let source_map = cx.sess().source_map();
+
+    let mut chunks = Vec::with_capacity(items.len());
+    let mut previous_end = body.lo();
+    for item in items {
+        let lo = item.span.lo();
+        if lo < previous_end || !body.contains(item.span) {
+            return None;
+        }
+        let boundary = item_ends
+            .iter()
+            .copied()
+            .filter(|&end| end <= lo)
+            .fold(body.lo(), BytePos::max);
+        let gap = source_map
+            .span_to_snippet(item.span.with_lo(boundary).with_hi(lo))
+            .ok()?;
+        let offset = u32::try_from(attached_start(&gap)?).ok()?;
+        chunks.push(item.span.with_lo(boundary + BytePos(offset)));
+        previous_end = item.span.hi();
+    }
+    Some(chunks)
+}
+
 fn emit_module_diagnostic(
     cx: &LateContext<'_>,
     ordering_violations: &[OrderingViolation],
     grouping_violations: &[GroupingViolation],
+    mut fix: Option<Vec<(Span, String)>>,
 ) {
     if !ordering_violations.is_empty() {
         let first = &ordering_violations[0];
@@ -390,6 +479,13 @@ fn emit_module_diagnostic(
                 diag.help(
                     "reorder items so referencing items appear before the items they reference (callers before callees)",
                 );
+                if let Some(parts) = fix.take() {
+                    diag.multipart_suggestion(
+                        "reorder the items of this module",
+                        parts,
+                        Applicability::MachineApplicable,
+                    );
+                }
             },
         );
     }
@@ -415,6 +511,13 @@ fn emit_module_diagnostic(
                 // fix will implicitly place impls next to their types.
                 if ordering_violations.is_empty() {
                     diag.help("move the impl block adjacent to its type definition");
+                }
+                if let Some(parts) = fix.take() {
+                    diag.multipart_suggestion(
+                        "reorder the items of this module",
+                        parts,
+                        Applicability::MachineApplicable,
+                    );
                 }
             },
         );
@@ -603,7 +706,15 @@ impl<'tcx> LateLintPass<'tcx> for TopologicalOrdering {
                 continue;
             }
 
-            emit_module_diagnostic(cx, &ordering_violations, &grouping_violations);
+            let fix = reorder_fix(
+                cx,
+                module_def_id,
+                items,
+                &remapped_refs,
+                &item_to_scc,
+                &item_def_id_to_idx,
+            );
+            emit_module_diagnostic(cx, &ordering_violations, &grouping_violations, fix);
         }
     }
 }

@@ -20,6 +20,7 @@ pub mod suggest_builder;
 pub mod suppression;
 pub mod test_hygiene;
 pub mod topological_ordering;
+mod topological_reorder;
 pub mod typographic;
 pub mod unclear_exports;
 pub mod value_cloned_to_deserialize;
