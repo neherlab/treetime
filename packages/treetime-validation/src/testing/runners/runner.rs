@@ -286,11 +286,13 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
         return None;
       }
 
-      Some(AlgorithmSummary::new_from_name(
-        &algorithm_name,
-        &algo_successes,
-        &algo_failures,
-      ))
+      Some(
+        AlgorithmSummary::builder()
+          .algorithm_name(&algorithm_name)
+          .successes(&algo_successes)
+          .failures(&algo_failures)
+          .build(),
+      )
     })
     .collect()
 }

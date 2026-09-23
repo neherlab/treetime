@@ -1,6 +1,6 @@
-use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
+use bon::bon;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -35,20 +35,14 @@ pub struct AlgorithmSummary {
   pub success_rate: f64,
 }
 
+#[bon]
 impl AlgorithmSummary {
-  pub fn new<T: TestCase>(
-    algorithm: ConvolutionAlgorithm,
-    successes: &[&&TestResult<T>],
-    failures: &[&&TestFailure<T>],
-  ) -> Self {
-    Self::new_from_name(&algorithm.to_string(), successes, failures)
-  }
-
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub(crate) fn new_from_name<T: TestCase>(
+  #[builder]
+  pub(crate) fn new<T: TestCase>(
     algorithm_name: &str,
     successes: &[&&TestResult<T>],
     failures: &[&&TestFailure<T>],

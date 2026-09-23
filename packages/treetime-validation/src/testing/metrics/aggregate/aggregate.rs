@@ -19,7 +19,11 @@ impl AggregateMetrics {
     expected: &Array1<f64>,
     execution_time_ms: f64,
   ) -> Result<Self> {
-    let domain_agreement = DomainAgreementMetrics::new(x, actual, expected)?;
+    let domain_agreement = DomainAgreementMetrics::builder()
+      .x(x)
+      .actual(actual)
+      .expected(expected)
+      .build()?;
     let performance = compute_performance_metrics(actual, expected)?;
 
     Ok(Self {
@@ -36,7 +40,12 @@ impl AggregateMetrics {
     execution_time_ms: f64,
     thresholds: &ToleranceThresholds,
   ) -> Result<Self> {
-    let domain_agreement = DomainAgreementMetrics::new_with_thresholds(x, actual, expected, thresholds)?;
+    let domain_agreement = DomainAgreementMetrics::builder()
+      .x(x)
+      .actual(actual)
+      .expected(expected)
+      .thresholds(thresholds)
+      .build()?;
     let performance = compute_performance_metrics(actual, expected)?;
 
     Ok(Self {

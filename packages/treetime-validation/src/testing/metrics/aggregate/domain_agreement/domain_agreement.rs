@@ -11,6 +11,7 @@ use crate::testing::metrics::aggregate::domain_agreement::tolerance::{
   MaxErrorLocation, compute_tolerance_counts, find_max_error_location,
 };
 use crate::testing::metrics::config::ToleranceThresholds;
+use bon::bon;
 use itertools::Itertools;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -32,21 +33,21 @@ pub struct DomainAgreementMetrics {
   pub overall_assessment: AgreementAssessment,
 }
 
+#[bon]
 impl DomainAgreementMetrics {
-  pub(crate) fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
-    Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
-  }
-
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub(crate) fn new_with_thresholds(
+  #[builder]
+  pub(crate) fn new(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,
-    thresholds: &ToleranceThresholds,
+    thresholds: Option<&ToleranceThresholds>,
   ) -> eyre::Result<Self> {
+    let default_thresholds = ToleranceThresholds::default();
+    let thresholds = thresholds.unwrap_or(&default_thresholds);
     let total_points = actual.len();
 
     if actual.len() != expected.len() || actual.len() != x.len() {

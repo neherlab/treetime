@@ -24,6 +24,7 @@ treetime-utils = { workspace = true }
 
 # [external]
 approx = { workspace = true }
+bon = { workspace = true }
 clap = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
