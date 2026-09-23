@@ -29,3 +29,4 @@ mod test_pipeline_reroot;
 mod test_root_preservation;
 mod test_run_optimize_loop;
 mod test_topology_cleanup;
+mod test_topology_cleanup_prune_and_merge;

@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -22,7 +22,7 @@ mod tests {
   use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
+  use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
@@ -40,52 +40,6 @@ mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
-
-  fn c(b: u8) -> AsciiChar {
-    AsciiChar::from_byte_unchecked(b)
-  }
-
-  fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
-    Sub::new(c(reff), pos, c(qry)).unwrap()
-  }
-
-  fn empty_sparse_recon() -> Result<SparseReconstruction, Report> {
-    Ok(SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        alphabet: Alphabet::new(AlphabetName::Nuc)?,
-        length: 100,
-        root_sequence: seq![],
-        obs_nodes: btreemap! {},
-        obs_edges: btreemap! {},
-      },
-      gtr: jc69(JC69Params::default())?,
-      node_states: btreemap! {},
-      edges: MarginalEdges::default(),
-    })
-  }
-
-  fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
-    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
-      .take(recon.partition.length)
-      .collect();
-    if recon.partition.root_sequence.is_empty() {
-      recon.partition.root_sequence = ref_seq.clone();
-    }
-    let alphabet = recon.partition.alphabet.clone();
-    for node in graph.get_nodes() {
-      let key = node.key();
-      recon
-        .partition
-        .obs_nodes
-        .entry(key)
-        .or_insert_with(|| SparseNodeObs::empty(&alphabet));
-      recon
-        .node_states
-        .entry(key)
-        .or_insert_with(|| SparseNodeState::leaf(&ref_seq));
-    }
-  }
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
@@ -152,103 +106,6 @@ mod tests {
     let sparse: Vec<SparseReconstruction> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 2);
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    let mut names_tt_13 = names;
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[],
-      TopologyOps::default(),
-      &mut branch_lengths,
-      &mut names_tt_13,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(!changed);
-    assert_eq!(graph.get_nodes().count(), 4);
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_collapses_and_merges() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
-
-    let mut partition = empty_sparse_recon()?;
-
-    populate_test_nodes(&mut partition, &graph);
-
-    partition.partition.obs_edges.insert(ri_key, SparseEdgeObs::default());
-
-    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
-
-    partition
-      .partition
-      .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    branch_lengths.insert(ri_key, Some(0.0));
-
-    let mut names_tt_12 = names.clone();
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[ri_key],
-      TopologyOps::default(),
-      &mut branch_lengths,
-      &mut names_tt_12,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(changed);
-
-    assert!(find_node_key_by_name(&graph, &names, "I").is_none());
-
-    assert!(find_node_key_by_name(&graph, &names, "D").is_some());
-
-    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
-    let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.degree_out(), 2);
-
     Ok(())
   }
 
@@ -495,70 +352,6 @@ mod tests {
   }
 
   #[test]
-  fn test_optimize_prune_and_merge_hoists_reversion_without_collapse() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let mut partition = empty_sparse_recon()?;
-    populate_test_nodes(&mut partition, &graph);
-
-    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
-    partition
-      .partition
-      .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    let mut names_tt_9 = names;
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[],
-      TopologyOps::default(),
-      &mut branch_lengths,
-      &mut names_tt_9,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(changed, "reversion polytomy must be resolved even without a collapse");
-
-    let p = &sparse[0];
-    let total_subs: usize = graph
-      .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
-      .map(|e| e.fitch_subs().len())
-      .sum();
-    assert_eq!(total_subs, 2, "reaches the parsimony optimum");
-
-    let reversion_remains = graph
-      .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
-      .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
-    assert!(!reversion_remains, "reversion must be removed");
-
-    Ok(())
-  }
-
-  #[test]
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
     let names = nwk_parsed.names();
@@ -682,272 +475,6 @@ mod tests {
       let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
-
-    let mut partition = empty_sparse_recon()?;
-
-    populate_test_nodes(&mut partition, &graph);
-
-    partition.partition.obs_edges.insert(ri_key, SparseEdgeObs::default());
-
-    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
-
-    partition
-      .partition
-      .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    branch_lengths.insert(ri_key, Some(0.0));
-
-    let mut names_tt_6 = names;
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[ri_key],
-      TopologyOps::default(),
-      &mut branch_lengths,
-      &mut names_tt_6,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(changed);
-
-    let mut names: Vec<String> = graph
-      .get_nodes()
-      .filter_map(|n| names_tt_6.get(&n.key()).cloned().flatten())
-      .collect();
-    names.sort();
-
-    assert_eq!(names, vec!["A", "B", "C", "D", "NODE_0000000", "root"]);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_merge_disabled_keeps_polytomy() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
-
-    let mut partition = empty_sparse_recon()?;
-    populate_test_nodes(&mut partition, &graph);
-    partition.partition.obs_edges.insert(ri_key, SparseEdgeObs::default());
-
-    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
-    partition
-      .partition
-      .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    branch_lengths.insert(ri_key, Some(0.0));
-
-    let ops = TopologyOps {
-      merge_siblings: false,
-      ..TopologyOps::default()
-    };
-    let mut names_tt_5 = names.clone();
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[ri_key],
-      ops,
-      &mut branch_lengths,
-      &mut names_tt_5,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(changed, "collapse still fires even with merge disabled");
-
-    assert!(find_node_key_by_name(&graph, &names, "I").is_none());
-
-    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
-    let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.degree_out(), 4);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let mut partition = empty_sparse_recon()?;
-    populate_test_nodes(&mut partition, &graph);
-
-    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
-    partition
-      .partition
-      .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    let ops = TopologyOps {
-      flip_parent_child: false,
-      ..TopologyOps::default()
-    };
-    let mut names_tt_4 = names;
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[],
-      ops,
-      &mut branch_lengths,
-      &mut names_tt_4,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(changed, "merge still groups the reverting siblings");
-
-    let p = &sparse[0];
-    let reversion_remains = graph
-      .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
-      .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
-    assert!(
-      reversion_remains,
-      "reversion is kept when flip-parent-child is disabled"
-    );
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-
-    let mut partition = empty_sparse_recon()?;
-    populate_test_nodes(&mut partition, &graph);
-
-    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
-    partition
-      .partition
-      .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition
-      .partition
-      .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
-    partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
-
-    let sparse = vec![partition];
-    let dense: Vec<DenseReconstruction> = vec![];
-
-    let node_count_before = graph.get_nodes().count();
-    let ops = TopologyOps {
-      collapse_short_branches: false,
-      merge_siblings: false,
-      flip_parent_child: false,
-    };
-    let mut names_tt_3 = names;
-    let cleanup = prune_and_merge_in_loop(
-      &mut graph,
-      sparse,
-      dense,
-      &[],
-      ops,
-      &mut branch_lengths,
-      &mut names_tt_3,
-    )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
-    let changed = cleanup.topology_changed;
-    assert!(!changed, "no topology step runs when all are disabled");
-    assert_eq!(graph.get_nodes().count(), node_count_before);
-
-    let p = &sparse[0];
-    let total_subs: usize = graph
-      .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
-      .map(|e| e.fitch_subs().len())
-      .sum();
-    assert_eq!(total_subs, 4, "mutation content is unchanged");
 
     Ok(())
   }
@@ -1114,5 +641,55 @@ mod tests {
       );
     }
     Ok(())
+  }
+
+  pub mod helpers {
+    use super::*;
+
+    pub fn c(b: u8) -> AsciiChar {
+      AsciiChar::from_byte_unchecked(b)
+    }
+
+    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+      Sub::new(c(reff), pos, c(qry)).unwrap()
+    }
+
+    pub fn empty_sparse_recon() -> Result<SparseReconstruction, Report> {
+      Ok(SparseReconstruction {
+        partition: PartitionMarginalSparse {
+          index: 0,
+          alphabet: Alphabet::new(AlphabetName::Nuc)?,
+          length: 100,
+          root_sequence: seq![],
+          obs_nodes: btreemap! {},
+          obs_edges: btreemap! {},
+        },
+        gtr: jc69(JC69Params::default())?,
+        node_states: btreemap! {},
+        edges: MarginalEdges::default(),
+      })
+    }
+
+    pub fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
+      let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
+        .take(recon.partition.length)
+        .collect();
+      if recon.partition.root_sequence.is_empty() {
+        recon.partition.root_sequence = ref_seq.clone();
+      }
+      let alphabet = recon.partition.alphabet.clone();
+      for node in graph.get_nodes() {
+        let key = node.key();
+        recon
+          .partition
+          .obs_nodes
+          .entry(key)
+          .or_insert_with(|| SparseNodeObs::empty(&alphabet));
+        recon
+          .node_states
+          .entry(key)
+          .or_insert_with(|| SparseNodeState::leaf(&ref_seq));
+      }
+    }
   }
 }
