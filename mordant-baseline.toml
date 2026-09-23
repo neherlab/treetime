@@ -39,7 +39,6 @@
 "unchecked_construction:packages/treetime/src/optimize/__tests__/test_is_zero_branch_optimal.rs" = 1
 "wildcard_over_own_enum:packages/treetime/src/gtr/get_gtr.rs" = 1
 "wildcard_over_own_enum:packages/treetime/src/partition/create.rs" = 1
-"wildcard_over_own_enum:packages/treetime/src/timetree/pipeline.rs" = 1
 
 [treetime_distribution]
 "arg_named_like_other_param:packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs" = 5

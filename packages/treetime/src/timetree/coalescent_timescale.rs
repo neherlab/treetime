@@ -32,7 +32,7 @@ pub fn coalescent_timescale(
 ) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
-    mode => mode,
+    mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
   };
   estimate_coalescent_tc(mode, graph, skyline_params, node_times)
     .wrap_err("Failed to estimate the coalescent timescale")?
@@ -73,11 +73,7 @@ pub fn estimate_coalescent_tc(
   }))
 }
 
-fn fixed_timescale(
-  tc: f64,
-  graph: &Graph,
-  node_times: &CoalescentNodeTimes,
-) -> Result<CoalescentTimescale, Report> {
+fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<CoalescentTimescale, Report> {
   let lineage_counts =
     compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
   let breakpoints = lineage_counts.breakpoints();
