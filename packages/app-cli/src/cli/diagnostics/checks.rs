@@ -43,15 +43,12 @@ fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: b
   let schema_value = match serde_json::to_value(schema) {
     Ok(schema_value) => schema_value,
     Err(err) => {
-      return vec![RawDiagnostic::new(
-        "config::internal",
-        format!("could not build schema: {err}"),
-      )];
+      return vec![RawDiagnostic::builder("config::internal", format!("could not build schema: {err}")).build()];
     },
   };
   let validator = match jsonschema::validator_for(&schema_value) {
     Ok(validator) => validator,
-    Err(err) => return vec![RawDiagnostic::new("config::internal", format!("invalid schema: {err}"))],
+    Err(err) => return vec![RawDiagnostic::builder("config::internal", format!("invalid schema: {err}")).build()],
   };
 
   let mut diags = Vec::new();
@@ -71,29 +68,43 @@ fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: b
         let candidate_refs: Vec<&str> = candidates.iter().map(String::as_str).collect();
         let bad = instance_string(error.instance().as_ref());
         diags.push(
-          RawDiagnostic::new("config::enum", format!("`{bad}` is not a valid value"))
+          RawDiagnostic::builder("config::enum", format!("`{bad}` is not a valid value"))
             .at(pointer)
-            .help(suggestion_suffix(&bad, &candidate_refs)),
+            .help(suggestion_suffix(&bad, &candidate_refs))
+            .build(),
         );
       },
       ValidationErrorKind::Type { .. } => {
-        diags.push(RawDiagnostic::new("config::type", error.to_string()).at(pointer));
+        diags.push(
+          RawDiagnostic::builder("config::type", error.to_string())
+            .at(pointer)
+            .build(),
+        );
       },
       ValidationErrorKind::Required { property } => {
         let property = property.as_str().unwrap_or_default();
-        diags.push(RawDiagnostic::new("config::required", format!("missing required field `{property}`")).at(pointer));
+        diags.push(
+          RawDiagnostic::builder("config::required", format!("missing required field `{property}`"))
+            .at(pointer)
+            .build(),
+        );
       },
       ValidationErrorKind::AdditionalProperties { unexpected } => {
         for key in unexpected {
           diags.push(
-            RawDiagnostic::new("config::unknown-field", format!("unknown field `{key}`"))
+            RawDiagnostic::builder("config::unknown-field", format!("unknown field `{key}`"))
               .at(format!("{pointer}/{key}"))
-              .key_span(),
+              .key_span(true)
+              .build(),
           );
         }
       },
       _ => {
-        diags.push(RawDiagnostic::new("config::schema", error.to_string()).at(pointer));
+        diags.push(
+          RawDiagnostic::builder("config::schema", error.to_string())
+            .at(pointer)
+            .build(),
+        );
       },
     }
   }
@@ -103,41 +114,62 @@ fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: b
 pub fn pipeline_structural_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
   let Value::Object(map) = value else {
-    diags.push(RawDiagnostic::new("config::shape", "a pipeline config must be a mapping with `steps`").at(""));
+    diags.push(
+      RawDiagnostic::builder("config::shape", "a pipeline config must be a mapping with `steps`")
+        .at("")
+        .build(),
+    );
     return diags;
   };
 
   for key in map.keys() {
     if !TOP_LEVEL_KEYS.contains(&key.as_str()) {
       diags.push(
-        RawDiagnostic::new("config::unknown-field", format!("unknown top-level key `{key}`"))
+        RawDiagnostic::builder("config::unknown-field", format!("unknown top-level key `{key}`"))
           .at(format!("/{key}"))
-          .key_span()
-          .help(suggestion_suffix(key, &TOP_LEVEL_KEYS)),
+          .key_span(true)
+          .help(suggestion_suffix(key, &TOP_LEVEL_KEYS))
+          .build(),
       );
     }
   }
 
   if let Some(vars) = map.get("vars") {
     if !vars.is_object() {
-      diags.push(RawDiagnostic::new("config::type", "top-level `vars` must be a mapping").at("/vars"));
+      diags.push(
+        RawDiagnostic::builder("config::type", "top-level `vars` must be a mapping")
+          .at("/vars")
+          .build(),
+      );
     }
   }
   if let Some(output_all) = map.get("output_all") {
     if !output_all.is_string() {
-      diags.push(RawDiagnostic::new("config::type", "top-level `output_all` must be a string").at("/output_all"));
+      diags.push(
+        RawDiagnostic::builder("config::type", "top-level `output_all` must be a string")
+          .at("/output_all")
+          .build(),
+      );
     }
   }
 
   match map.get("steps") {
-    None => diags.push(RawDiagnostic::new("config::missing-steps", "pipeline config has no `steps`").at("")),
+    None => diags.push(
+      RawDiagnostic::builder("config::missing-steps", "pipeline config has no `steps`")
+        .at("")
+        .build(),
+    ),
     Some(Value::Array(steps)) => {
       let mut seen = BTreeSet::new();
       for (position, step) in steps.iter().enumerate() {
         structural_step_diagnostics(&mut diags, position, step, &mut seen);
       }
     },
-    Some(_) => diags.push(RawDiagnostic::new("config::type", "`steps` must be a list of steps").at("/steps")),
+    Some(_) => diags.push(
+      RawDiagnostic::builder("config::type", "`steps` must be a list of steps")
+        .at("/steps")
+        .build(),
+    ),
   }
 
   diags
@@ -152,11 +184,12 @@ fn structural_step_diagnostics(
   let base = format!("/steps/{position}");
   let Value::Object(map) = step else {
     diags.push(
-      RawDiagnostic::new(
+      RawDiagnostic::builder(
         "config::shape",
         "a pipeline step must be a mapping with a `name` and one command",
       )
-      .at(base),
+      .at(base)
+      .build(),
     );
     return;
   };
@@ -164,23 +197,31 @@ fn structural_step_diagnostics(
   let name = match map.get("name") {
     Some(Value::String(name)) => Some(name.clone()),
     Some(_) => {
-      diags
-        .push(RawDiagnostic::new("config::type", "pipeline step `name` must be a string").at(format!("{base}/name")));
+      diags.push(
+        RawDiagnostic::builder("config::type", "pipeline step `name` must be a string")
+          .at(format!("{base}/name"))
+          .build(),
+      );
       None
     },
     None => {
-      diags.push(RawDiagnostic::new("config::missing-name", "pipeline step is missing a `name`").at(base.clone()));
+      diags.push(
+        RawDiagnostic::builder("config::missing-name", "pipeline step is missing a `name`")
+          .at(base.clone())
+          .build(),
+      );
       None
     },
   };
   if let Some(name) = &name {
     if !seen.insert(name.clone()) {
       diags.push(
-        RawDiagnostic::new(
+        RawDiagnostic::builder(
           "config::duplicate-step",
           format!("duplicate step name `{name}`; step names must be unique"),
         )
-        .at(format!("{base}/name")),
+        .at(format!("{base}/name"))
+        .build(),
       );
     }
   }
@@ -191,30 +232,33 @@ fn structural_step_diagnostics(
     .collect();
   match tags.as_slice() {
     [] => diags.push(
-      RawDiagnostic::new(
+      RawDiagnostic::builder(
         "config::missing-command",
         format!("pipeline step has no command; expected one of {}", commands_list()),
       )
-      .at(base),
+      .at(base)
+      .build(),
     ),
     [tag] => {
       if !COMMAND_TAGS.contains(&tag.as_str()) {
         diags.push(
-          RawDiagnostic::new("config::unknown-command", format!("unknown command `{tag}`"))
+          RawDiagnostic::builder("config::unknown-command", format!("unknown command `{tag}`"))
             .at(format!("{base}/{tag}"))
-            .key_span()
-            .help(suggestion_suffix(tag, &COMMAND_TAGS)),
+            .key_span(true)
+            .help(suggestion_suffix(tag, &COMMAND_TAGS))
+            .build(),
         );
       }
     },
     _ => {
       let list = tags.iter().sorted().map(|tag| format!("`{tag}`")).join(", ");
       diags.push(
-        RawDiagnostic::new(
+        RawDiagnostic::builder(
           "config::multiple-commands",
           format!("pipeline step has more than one command ({list}); a step runs exactly one command"),
         )
-        .at(base),
+        .at(base)
+        .build(),
       );
     },
   }
@@ -258,43 +302,47 @@ fn leaf_reference_diagnostics(
     let producer = &captures[1];
     match scope {
       Scope::Vars => diags.push(
-        RawDiagnostic::new(
+        RawDiagnostic::builder(
           "config::var-references-steps",
           "pipeline var references `steps`; vars may only use `vars` and `env`",
         )
-        .at(pointer.to_owned()),
+        .at(pointer.to_owned())
+        .build(),
       ),
       Scope::Step(current) => match step_index.get(producer) {
         Some(&earlier) if earlier < current => {},
         Some(_) => diags.push(
-          RawDiagnostic::new(
+          RawDiagnostic::builder(
             "config::step-reference",
             format!(
               "step references `{producer}`, which is not an earlier step; steps may only reference steps before them"
             ),
           )
-          .at(pointer.to_owned()),
+          .at(pointer.to_owned())
+          .build(),
         ),
         None => {
           let earlier: Vec<&str> = step_names.iter().take(current).map(String::as_str).collect();
           diags.push(
-            RawDiagnostic::new(
+            RawDiagnostic::builder(
               "config::step-reference",
               format!(
                 "step references unknown step `{producer}`; {}",
                 suggestion_suffix(producer, &earlier)
               ),
             )
-            .at(pointer.to_owned()),
+            .at(pointer.to_owned())
+            .build(),
           );
         },
       },
       Scope::Other => diags.push(
-        RawDiagnostic::new(
+        RawDiagnostic::builder(
           "config::step-reference",
           "`steps` is not available here; only `vars` and `env` are",
         )
-        .at(pointer.to_owned()),
+        .at(pointer.to_owned())
+        .build(),
       ),
     }
   }
@@ -310,29 +358,35 @@ fn leaf_reference_diagnostics(
               if !var_names.contains(name) {
                 let candidates: Vec<&str> = var_names.iter().copied().collect();
                 diags.push(
-                  RawDiagnostic::new(
+                  RawDiagnostic::builder(
                     "config::unknown-var",
                     format!("unknown variable `{name}`; {}", suggestion_suffix(name, &candidates)),
                   )
-                  .at(pointer.to_owned()),
+                  .at(pointer.to_owned())
+                  .build(),
                 );
               }
             }
           },
           Some("env" | "steps") => {},
           Some(other) => diags.push(
-            RawDiagnostic::new(
+            RawDiagnostic::builder(
               "config::unknown-namespace",
               format!("unknown namespace `{other}`; {}", suggestion_suffix(other, &NAMESPACES)),
             )
-            .at(pointer.to_owned()),
+            .at(pointer.to_owned())
+            .build(),
           ),
           None => {},
         }
       }
     },
     Err(err) => {
-      diags.push(RawDiagnostic::new("config::template", format!("invalid template: {err}")).at(pointer.to_owned()));
+      diags.push(
+        RawDiagnostic::builder("config::template", format!("invalid template: {err}"))
+          .at(pointer.to_owned())
+          .build(),
+      );
     },
   }
 }

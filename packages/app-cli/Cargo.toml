@@ -25,6 +25,7 @@ treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }
 
 # [external]
+bon = { workspace = true }
 clap = { workspace = true }
 clap-markdown = { workspace = true }
 clap_complete = { workspace = true }

@@ -134,6 +134,7 @@ version = "1.0.0"
 dependencies = [
  "app-output",
  "approx",
+ "bon",
  "clap",
  "clap-markdown",
  "clap_complete",

@@ -1,3 +1,4 @@
+use bon::bon;
 use color_eyre::Section;
 use eyre::Report;
 use itertools::Itertools;
@@ -20,10 +21,7 @@ pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value,
       render_and_bail(
         source,
         "invalid configuration",
-        vec![RawDiagnostic::new(
-          "config::syntax",
-          format!("could not parse config: {err}"),
-        )],
+        vec![RawDiagnostic::builder("config::syntax", format!("could not parse config: {err}")).build()],
       )?;
       unreachable!("render_and_bail returns an error whenever diagnostics are present");
     },
@@ -58,35 +56,24 @@ pub struct RawDiagnostic {
   pub help: Option<String>,
 }
 
+#[bon]
 impl RawDiagnostic {
-  #[must_use]
-  pub(crate) fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+  #[builder]
+  pub(crate) fn new(
+    #[builder(start_fn, into)] code: String,
+    #[builder(start_fn, into)] message: String,
+    #[builder(into, name = at)] pointer: Option<String>,
+    #[builder(default, name = key_span)] use_key_span: bool,
+    #[builder(into)] help: Option<String>,
+  ) -> Self {
     Self {
-      pointer: None,
-      use_key_span: false,
-      code: code.into(),
-      message: message.into(),
+      pointer,
+      use_key_span,
+      code,
+      message,
       label: "here".to_owned(),
-      help: None,
+      help,
     }
-  }
-
-  #[must_use]
-  pub(crate) fn at(mut self, pointer: impl Into<String>) -> Self {
-    self.pointer = Some(pointer.into());
-    self
-  }
-
-  #[must_use]
-  pub(crate) fn key_span(mut self) -> Self {
-    self.use_key_span = true;
-    self
-  }
-
-  #[must_use]
-  pub(crate) fn help(mut self, help: impl Into<String>) -> Self {
-    self.help = Some(help.into());
-    self
   }
 
   fn resolve(self, source: &ConfigSource) -> ConfigDiagnostic {
