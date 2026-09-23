@@ -4,12 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::io;
 
-pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, Report> {
-  let mut text = String::new();
-  write_newick(&mut text, graph, options)?;
-  Ok(text)
-}
-
 pub fn newick_to_writer(
   writer: &mut impl io::Write,
   graph: &NewickGraph,
@@ -17,6 +11,12 @@ pub fn newick_to_writer(
 ) -> Result<(), Report> {
   let text = newick_to_string(graph, options)?;
   writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
+}
+
+pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, Report> {
+  let mut text = String::new();
+  write_newick(&mut text, graph, options)?;
+  Ok(text)
 }
 
 pub(crate) fn write_newick(

@@ -6,6 +6,12 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::io::{self, Read};
 
+pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report> {
+  let mut input = String::new();
+  reader.read_to_string(&mut input).wrap_err("When reading Nexus input")?;
+  nexus_from_string(&input)
+}
+
 pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   let input = input.trim();
   let header = input.split_ascii_whitespace().next().unwrap_or("");
@@ -18,18 +24,6 @@ pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   extract_trees(&blocks, &translate_table)
 }
 
-pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report> {
-  let mut input = String::new();
-  reader.read_to_string(&mut input).wrap_err("When reading Nexus input")?;
-  nexus_from_string(&input)
-}
-
-pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
-  let mut text = String::new();
-  write_nexus(&mut text, trees, options)?;
-  Ok(text)
-}
-
 pub fn nexus_to_writer(
   writer: &mut impl io::Write,
   trees: &[NexusTree],
@@ -37,6 +31,12 @@ pub fn nexus_to_writer(
 ) -> Result<(), Report> {
   let text = nexus_to_string(trees, options)?;
   writer.write_all(text.as_bytes()).wrap_err("When writing Nexus")
+}
+
+pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
+  let mut text = String::new();
+  write_nexus(&mut text, trees, options)?;
+  Ok(text)
 }
 
 fn write_nexus(writer: &mut impl Write, trees: &[NexusTree], options: &NewickWriteOptions) -> Result<(), Report> {
@@ -92,11 +92,6 @@ fn collect_leaf_names(graph: &NewickGraph, taxa: &mut Vec<String>) {
 
 fn needs_nexus_quoting(s: &str) -> bool {
   s.contains(|c: char| matches!(c, '(' | ')' | '[' | ']' | ',' | ';' | ':' | '\'') || c.is_whitespace())
-}
-
-struct NexusBlock {
-  name: String,
-  content: String,
 }
 
 #[expect(
@@ -202,16 +197,6 @@ fn split_translate_entries(body: &str) -> Vec<String> {
   entries
 }
 
-fn strip_nexus_quotes(s: &str) -> String {
-  if let Some(inner) = s.strip_prefix('\'').and_then(|i| i.strip_suffix('\'')) {
-    return inner.replace("''", "'");
-  }
-  if let Some(inner) = s.strip_prefix('"').and_then(|i| i.strip_suffix('"')) {
-    return inner.replace("\"\"", "\"");
-  }
-  s.to_owned()
-}
-
 #[expect(
   clippy::string_slice,
   reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
@@ -258,6 +243,21 @@ fn extract_trees(blocks: &[NexusBlock], translate_table: &BTreeMap<String, Strin
   }
 
   Ok(trees)
+}
+
+struct NexusBlock {
+  name: String,
+  content: String,
+}
+
+fn strip_nexus_quotes(s: &str) -> String {
+  if let Some(inner) = s.strip_prefix('\'').and_then(|i| i.strip_suffix('\'')) {
+    return inner.replace("''", "'");
+  }
+  if let Some(inner) = s.strip_prefix('"').and_then(|i| i.strip_suffix('"')) {
+    return inner.replace("\"\"", "\"");
+  }
+  s.to_owned()
 }
 
 #[expect(
