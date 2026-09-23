@@ -4,7 +4,7 @@ mod tests {
 
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use treetime_utils::make_error;
+  use treetime_utils::{assert_error, make_error};
 
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -296,7 +296,6 @@ mod tests {
     Ok(())
   }
 
-  #[allow(clippy::assertions_on_result_states)]
   #[test]
   fn test_graph_collapse_edge_invalid_edge() -> Result<(), Report> {
     let mut graph = Graph::new();
@@ -309,7 +308,10 @@ mod tests {
     let invalid_key = GraphEdgeKey(9999);
     let result = graph.collapse_edge(invalid_key);
 
-    assert!(result.is_err());
+    assert_error!(
+      result,
+      "Edge 9999 not found. This is an internal error. Please report it to developers."
+    );
 
     Ok(())
   }
