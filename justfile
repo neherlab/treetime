@@ -834,6 +834,15 @@ upgrade-deps *args:
     require_main_checkout '{{project_dir}}' "dependency upgrades"
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive "$@"
 
+# Update Cargo.lock to the newest versions the manifests allow (main checkout only): just update-lock [-p <crate>]
+[group('deps')]
+update-lock *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source '{{project_dir}}/dev/lib/utils.sh'
+    require_main_checkout '{{project_dir}}' "lockfile updates"
+    nicely cargo update "$@"
+
 # Explain why a crate is in the dependency tree: just why <crate>
 [group('deps')]
 why *args:
