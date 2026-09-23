@@ -91,6 +91,13 @@ impl<Y: YAxisPolicy> Clone for DistributionFormula<Y> {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "the formula holds a closure, which has no Debug representation"
+  )
+)]
 impl<Y: YAxisPolicy> fmt::Debug for DistributionFormula<Y> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str("DistributionFormula")

@@ -148,6 +148,13 @@ impl Hash for NewickValue {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "array values render recursively in the Newick comment syntax"
+  )
+)]
 impl fmt::Display for NewickValue {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {

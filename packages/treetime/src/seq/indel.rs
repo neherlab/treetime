@@ -64,6 +64,13 @@ pub enum InDelKind {
   Deletion,
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "an indel renders in range notation with the replaced characters"
+  )
+)]
 impl fmt::Display for InDel {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let delta_str = if self.is_deletion() {

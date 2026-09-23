@@ -126,12 +126,26 @@ impl AsciiChar {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "a sequence character renders as the character, not its byte value"
+  )
+)]
 impl core::fmt::Display for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.write_char(char::from(self.0))
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "Debug shows the character, not its byte value, for readable test diffs"
+  )
+)]
 impl core::fmt::Debug for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     core::fmt::Display::fmt(self, f)

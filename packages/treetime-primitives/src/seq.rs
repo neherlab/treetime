@@ -271,12 +271,23 @@ impl AsRef<[u8]> for Seq {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(handwritten_fmt_impl, reason = "a sequence renders as its characters")
+)]
 impl core::fmt::Display for Seq {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.write_str(self.as_str())
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "Debug shows the sequence text, not its byte vector, for readable test diffs"
+  )
+)]
 impl core::fmt::Debug for Seq {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     core::fmt::Display::fmt(self, f)

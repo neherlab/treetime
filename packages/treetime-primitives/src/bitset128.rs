@@ -291,6 +291,13 @@ impl From<char> for BitSet128 {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "a state set renders as a braced list of its characters"
+  )
+)]
 impl std::fmt::Display for BitSet128 {
   #[allow(
     clippy::as_conversions,
@@ -325,6 +332,13 @@ impl<'de> Deserialize<'de> for BitSet128 {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "Debug shows the characters of the set, not its bit mask, for readable test diffs"
+  )
+)]
 impl std::fmt::Debug for BitSet128 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{self}")
