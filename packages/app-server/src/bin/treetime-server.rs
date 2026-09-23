@@ -12,6 +12,7 @@ use app_server::state::ServerConfig;
 use clap::Parser;
 use ctor::ctor;
 use log::{LevelFilter, warn};
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::thread::available_parallelism;
 use treetime_utils::env::env_var_optional;
@@ -95,7 +96,7 @@ async fn main() -> eyre::Result<()> {
 
   let addr = format!("{host}:{port}");
   let listener = tokio::net::TcpListener::bind(&addr).await?;
-  eprintln!("TreeTime server listening on http://{addr}");
+  writeln!(io::stderr().lock(), "TreeTime server listening on http://{addr}")?;
   axum::serve(listener, create_router(config, static_dir))
     .with_graceful_shutdown(shutdown_signal())
     .await?;
@@ -105,6 +106,13 @@ async fn main() -> eyre::Result<()> {
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
+)]
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    debug_remnants,
+    reason = "status line on stderr; the shutdown future has no error channel"
+  )
 )]
 async fn shutdown_signal() {
   let ctrl_c = tokio::signal::ctrl_c();
