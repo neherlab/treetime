@@ -1,3 +1,4 @@
+use eyre::{Report, WrapErr};
 use indicatif::{ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, ProgressSink};
@@ -8,18 +9,14 @@ pub struct BarProgress {
 }
 
 impl BarProgress {
-  #[allow(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
-  pub fn new(min_level: LogLevel) -> Self {
+  pub fn new(min_level: LogLevel) -> Result<Self, Report> {
     let bar = ProgressBar::new(1000);
     bar.set_style(
       ProgressStyle::with_template("{spinner:.green} [{bar:30.cyan/dim}] {percent}% {msg}")
-        .expect("progress style template")
+        .wrap_err("When parsing the progress bar template")?
         .progress_chars("=> "),
     );
-    Self { bar, min_level }
+    Ok(Self { bar, min_level })
   }
 }
 

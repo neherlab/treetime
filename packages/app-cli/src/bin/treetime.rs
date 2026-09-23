@@ -49,17 +49,17 @@ fn init() {
   global_init();
 }
 
-fn make_progress(verbosity: &Verbosity) -> Box<dyn ProgressSink> {
-  match verbosity.get_log_level() {
+fn make_progress(verbosity: &Verbosity) -> Result<Box<dyn ProgressSink>, Report> {
+  Ok(match verbosity.get_log_level() {
     None => Box::new(NoopProgress),
     Some(min_level) => {
       if !verbosity.no_progress && is_tty() {
-        Box::new(BarProgress::new(min_level))
+        Box::new(BarProgress::new(min_level)?)
       } else {
         Box::new(TextProgress::new(min_level))
       }
     },
-  }
+  })
 }
 
 fn main() -> Result<(), Report> {
@@ -79,7 +79,7 @@ fn main() -> Result<(), Report> {
       .build_global()?;
   }
 
-  let progress = make_progress(&args.verbosity);
+  let progress = make_progress(&args.verbosity)?;
 
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
