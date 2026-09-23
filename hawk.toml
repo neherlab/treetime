@@ -9,8 +9,9 @@ preserve-uniform-field-visibility = true
 # `[[production]]` names the reachability roots (the shipped binaries). Public
 # items unreachable from a root are candidates for the `hawk::dead_public`
 # diagnostic. `[[doctest]]` restricts the doctest reachability pass to the named
-# packages. `[[exclude]]` silences diagnostics for general-purpose libraries and at
-# external API boundaries. `[[override]]` records a single item deliberately kept public
+# packages. `[[exclude]]` silences diagnostics for a module or file; whole library
+# crates at an external API boundary are excluded by the `hawk` justfile recipe.
+# `[[override]]` records a single item deliberately kept public
 # despite being unreachable, each with a mandatory reason.
 
 # Doctest reachability pass. Hawk runs `cargo test --doc` for the listed packages
@@ -35,35 +36,6 @@ reason = "the shipped treetime CLI is the primary product entry point"
 package = "app-server"
 bin = "treetime-server"
 reason = "the shipped treetime-server binary is a product entry point"
-
-# General-purpose libraries: shared utilities and file-format crates publish a
-# complete API for reuse across the workspace, including operations no current
-# caller needs yet.
-[[exclude]]
-crate = "treetime_utils"
-reason = "shared utility library whose API is designed for reuse, not per caller"
-
-[[exclude]]
-crate = "util_newick"
-reason = "standalone Newick format library with a complete public API"
-
-[[exclude]]
-crate = "util_phyloxml"
-reason = "standalone PhyloXML format library with a complete public API"
-
-[[exclude]]
-crate = "util_augur_node_data_json"
-reason = "standalone Augur node-data format library with a complete public API"
-
-[[exclude]]
-crate = "util_usher_mat"
-reason = "standalone UShER mutation-annotated tree library; its prost-generated modules follow the .proto schema"
-
-# Node addon: `#[napi]` functions and the JSON argument structs they deserialize
-# form the JavaScript API of the desktop app, which no Rust target consumes.
-[[exclude]]
-crate = "app_napi"
-reason = "public surface is the Node addon API consumed by the desktop app"
 
 # Record intentional exceptions here, one table per item, e.g.:
 #

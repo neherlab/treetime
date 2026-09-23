@@ -537,7 +537,24 @@ hawk *args:
     # that toolchain (installed by dev/docker/files/install-hawk, version shared
     # via dev/docker/files/hawk-toolchain).
     toolchain="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain')"
-    nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "$@"
+    # Library crates whose public API is an external boundary: the shared utility
+    # and file-format libraries publish a complete API for reuse, including
+    # operations no current caller needs, and the Node addon's `#[napi]` surface
+    # is consumed by JavaScript, not by a Rust target. hawk.toml selects only
+    # modules and files, so whole crates are excluded here.
+    excluded_crates=(
+      treetime_utils
+      util_newick
+      util_phyloxml
+      util_augur_node_data_json
+      util_usher_mat
+      app_napi
+    )
+    exclude_flags=()
+    for crate in "${excluded_crates[@]}"; do
+      exclude_flags+=(--exclude-crate="${crate}")
+    done
+    nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "${exclude_flags[@]}" "$@"
 
 # Regenerate the committed mordant baseline (mordant-baseline.toml)
 [group('lint')]
