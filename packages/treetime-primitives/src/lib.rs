@@ -11,11 +11,6 @@ pub use log_lh::LogLh;
 pub use seq::Seq;
 pub use seq_char::AsciiChar;
 
-pub trait AlphabetLike {
-  fn contains(&self, c: AsciiChar) -> bool;
-  fn chars(&self) -> impl Iterator<Item = AsciiChar>;
-}
-
 impl<A: AlphabetLike> AlphabetLike for &A {
   fn contains(&self, c: AsciiChar) -> bool {
     (*self).contains(c)
@@ -24,6 +19,11 @@ impl<A: AlphabetLike> AlphabetLike for &A {
   fn chars(&self) -> impl Iterator<Item = AsciiChar> {
     (*self).chars()
   }
+}
+
+pub trait AlphabetLike {
+  fn contains(&self, c: AsciiChar) -> bool;
+  fn chars(&self) -> impl Iterator<Item = AsciiChar>;
 }
 
 pub type StateSet = BitSet128;
