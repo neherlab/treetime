@@ -5,8 +5,19 @@ use ndarray::Array1;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {
-  Ok(mass_profile(f)?.z)
+pub fn rewindow_to_mass(
+  dist: &Distribution<NegLog>,
+  eps: f64,
+  grid_points: usize,
+) -> Result<Distribution<NegLog>, Report> {
+  let Distribution::Function(f) = dist else {
+    return Ok(dist.normalize());
+  };
+  let Some(normalized) = peak_normalized_if_mass_sizable(f) else {
+    return Ok(dist.normalize());
+  };
+  let (lo, hi) = mass_bounded_domain(&normalized, eps)?;
+  resample_to_mass_window(&normalized, lo, hi, grid_points)
 }
 
 pub fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> Result<(f64, f64), Report> {
@@ -26,21 +37,6 @@ pub fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> R
   Ok((lo, hi))
 }
 
-pub fn rewindow_to_mass(
-  dist: &Distribution<NegLog>,
-  eps: f64,
-  grid_points: usize,
-) -> Result<Distribution<NegLog>, Report> {
-  let Distribution::Function(f) = dist else {
-    return Ok(dist.normalize());
-  };
-  let Some(normalized) = peak_normalized_if_mass_sizable(f) else {
-    return Ok(dist.normalize());
-  };
-  let (lo, hi) = mass_bounded_domain(&normalized, eps)?;
-  resample_to_mass_window(&normalized, lo, hi, grid_points)
-}
-
 pub fn peak_normalized_if_mass_sizable(
   f: &DistributionFunction<f64, NegLog>,
 ) -> Option<DistributionFunction<f64, NegLog>> {
@@ -52,6 +48,10 @@ pub fn peak_normalized_if_mass_sizable(
   total_mass(&normalized)
     .is_ok_and(|z| z.is_finite() && z > 0.0)
     .then_some(normalized)
+}
+
+pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {
+  Ok(mass_profile(f)?.z)
 }
 
 #[allow(
@@ -178,18 +178,6 @@ fn solve_cell_fraction(p0: f64, dp: f64, q: f64) -> f64 {
   h.clamp(0.0, 1.0)
 }
 
-struct MassProfile {
-  plain: Array1<f64>,
-  dx: f64,
-  x_min: f64,
-  x_max: f64,
-  left: BoundaryBehavior,
-  right: BoundaryBehavior,
-  left_mass: f64,
-  right_mass: f64,
-  z: f64,
-}
-
 fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Report> {
   let ys = f.y();
   let n_points = ys.len();
@@ -226,6 +214,18 @@ fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Re
     right_mass,
     z: total,
   })
+}
+
+struct MassProfile {
+  plain: Array1<f64>,
+  dx: f64,
+  x_min: f64,
+  x_max: f64,
+  left: BoundaryBehavior,
+  right: BoundaryBehavior,
+  left_mass: f64,
+  right_mass: f64,
+  z: f64,
 }
 
 fn tail_mass(extrap: BoundaryBehavior, w_edge: f64, t_edge: f64, side: Side) -> Result<f64, Report> {

@@ -9,41 +9,6 @@ use itertools::Itertools;
 use ndarray::Array1;
 use treetime_ops::multiply_many_lazy_normalize;
 
-pub struct AlignedFunctionArrays<'a> {
-  arrays: Vec<&'a Array1<f64>>,
-  x_min: f64,
-  dx: f64,
-}
-
-pub fn try_extract_aligned_function_arrays<'a>(
-  distributions: &'a [&'a ScaledDistribution],
-) -> Option<AlignedFunctionArrays<'a>> {
-  let first = distributions.first()?;
-  let Distribution::Function(first_func) = first.inner() else {
-    return None;
-  };
-
-  let x_min = first_func.x_min();
-  let dx = first_func.dx();
-  let len = first_func.len();
-
-  let mut arrays = Vec::with_capacity(distributions.len());
-
-  for dist in distributions {
-    match dist.inner() {
-      Distribution::Function(f) => {
-        if !ulps_eq!(f.x_min(), x_min, max_ulps = 10) || !ulps_eq!(f.dx(), dx, max_ulps = 10) || f.len() != len {
-          return None;
-        }
-        arrays.push(f.y());
-      },
-      _ => return None,
-    }
-  }
-
-  Some(AlignedFunctionArrays { arrays, x_min, dx })
-}
-
 pub fn scaled_distribution_multiplication(
   a: &ScaledDistribution,
   b: &ScaledDistribution,
@@ -110,4 +75,39 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
       ))
     },
   }
+}
+
+pub fn try_extract_aligned_function_arrays<'a>(
+  distributions: &'a [&'a ScaledDistribution],
+) -> Option<AlignedFunctionArrays<'a>> {
+  let first = distributions.first()?;
+  let Distribution::Function(first_func) = first.inner() else {
+    return None;
+  };
+
+  let x_min = first_func.x_min();
+  let dx = first_func.dx();
+  let len = first_func.len();
+
+  let mut arrays = Vec::with_capacity(distributions.len());
+
+  for dist in distributions {
+    match dist.inner() {
+      Distribution::Function(f) => {
+        if !ulps_eq!(f.x_min(), x_min, max_ulps = 10) || !ulps_eq!(f.dx(), dx, max_ulps = 10) || f.len() != len {
+          return None;
+        }
+        arrays.push(f.y());
+      },
+      _ => return None,
+    }
+  }
+
+  Some(AlignedFunctionArrays { arrays, x_min, dx })
+}
+
+pub struct AlignedFunctionArrays<'a> {
+  arrays: Vec<&'a Array1<f64>>,
+  x_min: f64,
+  dx: f64,
 }

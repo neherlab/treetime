@@ -16,6 +16,16 @@ const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 
+pub fn distribution_convolution_fine<Y: SupportsConvolution>(
+  a: &Distribution<Y>,
+  b: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
+  match (a, b) {
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b),
+    _ => distribution_convolution(a, b),
+  }
+}
+
 pub fn distribution_convolution<Y: SupportsConvolution>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
@@ -41,16 +51,6 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
       convolution_range_function::<Y>(a, b)
     },
     (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b),
-  }
-}
-
-pub fn distribution_convolution_fine<Y: SupportsConvolution>(
-  a: &Distribution<Y>,
-  b: &Distribution<Y>,
-) -> Result<Distribution<Y>, Report> {
-  match (a, b) {
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b),
-    _ => distribution_convolution(a, b),
   }
 }
 
@@ -101,16 +101,6 @@ fn convolution_point_range<Y: SupportsConvolution>(
   Distribution::range((begin, end), amplitude)
 }
 
-fn convolution_point_function<Y: SupportsConvolution>(
-  p: &DistributionPoint<f64, Y>,
-  f: &DistributionFunction<f64, Y>,
-) -> Result<DistributionFunction<f64, Y>, Report> {
-  let x_min = f.x_min() + p.t();
-  let dx = f.dx();
-  let y = f.y().mapv(|y| Y::multiply(y, p.amplitude()));
-  DistributionFunction::from_start_dx_values(x_min, dx, y)
-}
-
 fn convolution_range_function<Y: SupportsConvolution>(
   r: &DistributionRange<f64, Y>,
   f: &DistributionFunction<f64, Y>,
@@ -137,11 +127,14 @@ fn convolution_range_function<Y: SupportsConvolution>(
     .map(Distribution::Function)
 }
 
-fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
-  has_mass.then_some((
-    (f64::NEG_INFINITY, f64::INFINITY),
-    (BoundaryBehavior::Error, BoundaryBehavior::Error),
-  ))
+fn convolution_point_function<Y: SupportsConvolution>(
+  p: &DistributionPoint<f64, Y>,
+  f: &DistributionFunction<f64, Y>,
+) -> Result<DistributionFunction<f64, Y>, Report> {
+  let x_min = f.x_min() + p.t();
+  let dx = f.dx();
+  let y = f.y().mapv(|y| Y::multiply(y, p.amplitude()));
+  DistributionFunction::from_start_dx_values(x_min, dx, y)
 }
 
 fn convolution_function_function<Y: SupportsConvolution>(
@@ -220,6 +213,13 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   Ok(Distribution::Function(conv_distr))
 }
 
+fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
+  has_mass.then_some((
+    (f64::NEG_INFINITY, f64::INFINITY),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
+  ))
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -244,11 +244,6 @@ fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<
   }
   let plain = neg_log.mapv(|nl| (peak - nl).exp());
   (plain, peak)
-}
-
-struct ReconstructedConv {
-  start_offset: usize,
-  neg_log: Array1<f64>,
 }
 
 #[allow(
@@ -301,4 +296,9 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<Recon
     start_offset: left_start,
     neg_log,
   }))
+}
+
+struct ReconstructedConv {
+  start_offset: usize,
+  neg_log: Array1<f64>,
 }

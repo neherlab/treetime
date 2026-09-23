@@ -222,52 +222,6 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-#[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
-pub(super) fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
-  let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);
-  let (hard_hi, soft_hi) = side_bounds(domains, Side::Right);
-
-  if izip!(hard_lo, hard_hi).any(|(lo, hi)| lo > hi) {
-    return SupportIntersection::Disjoint;
-  }
-
-  let lo = hard_lo.or(soft_lo).unwrap_or(f64::INFINITY);
-  let hi = hard_hi.or(soft_hi).unwrap_or(f64::NEG_INFINITY);
-  if lo == hi {
-    SupportIntersection::Point(lo)
-  } else if lo < hi {
-    SupportIntersection::Interval((lo, hi))
-  } else {
-    SupportIntersection::Disjoint
-  }
-}
-
-fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>) {
-  let (inner, outer): (fn(f64, f64) -> f64, fn(f64, f64) -> f64) = match side {
-    Side::Left => (f64::max, f64::min),
-    Side::Right => (f64::min, f64::max),
-  };
-  let extrap = |d: &HardDomain| match side {
-    Side::Left => d.1.0,
-    Side::Right => d.1.1,
-  };
-  let bound = |d: &HardDomain| match side {
-    Side::Left => d.0.0,
-    Side::Right => d.0.1,
-  };
-  let hard = domains
-    .iter()
-    .filter(|&d| !extrap(d).is_soft())
-    .map(&bound)
-    .reduce(inner);
-  let soft = domains
-    .iter()
-    .filter(|&d| extrap(d).is_soft())
-    .map(&bound)
-    .reduce(outer);
-  (hard, soft)
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -404,6 +358,52 @@ fn multiply_formula_range<Y: YAxisPolicy>(
   }
 }
 
+#[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
+pub(super) fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
+  let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);
+  let (hard_hi, soft_hi) = side_bounds(domains, Side::Right);
+
+  if izip!(hard_lo, hard_hi).any(|(lo, hi)| lo > hi) {
+    return SupportIntersection::Disjoint;
+  }
+
+  let lo = hard_lo.or(soft_lo).unwrap_or(f64::INFINITY);
+  let hi = hard_hi.or(soft_hi).unwrap_or(f64::NEG_INFINITY);
+  if lo == hi {
+    SupportIntersection::Point(lo)
+  } else if lo < hi {
+    SupportIntersection::Interval((lo, hi))
+  } else {
+    SupportIntersection::Disjoint
+  }
+}
+
+fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>) {
+  let (inner, outer): (fn(f64, f64) -> f64, fn(f64, f64) -> f64) = match side {
+    Side::Left => (f64::max, f64::min),
+    Side::Right => (f64::min, f64::max),
+  };
+  let extrap = |d: &HardDomain| match side {
+    Side::Left => d.1.0,
+    Side::Right => d.1.1,
+  };
+  let bound = |d: &HardDomain| match side {
+    Side::Left => d.0.0,
+    Side::Right => d.0.1,
+  };
+  let hard = domains
+    .iter()
+    .filter(|&d| !extrap(d).is_soft())
+    .map(&bound)
+    .reduce(inner);
+  let soft = domains
+    .iter()
+    .filter(|&d| extrap(d).is_soft())
+    .map(&bound)
+    .reduce(outer);
+  (hard, soft)
+}
+
 fn with_composed_tails<Y: YAxisPolicy>(
   function: DistributionFunction<f64, Y>,
   a_tails: (BoundaryBehavior, BoundaryBehavior),
@@ -431,7 +431,15 @@ fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Resu
   }
 }
 
-pub type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
+pub fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
+  match d {
+    Distribution::Empty => None,
+    Distribution::Point(p) => Some(point_hard_domain(p)),
+    Distribution::Range(r) => Some(range_hard_domain(r)),
+    Distribution::Formula(f) => Some(formula_hard_domain(f)),
+    Distribution::Function(f) => (!f.is_empty()).then(|| function_hard_domain(f)),
+  }
+}
 
 pub fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
   ((p.t(), p.t()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
@@ -450,16 +458,6 @@ pub fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDo
     (f.t_min(), f.t_max()),
     (BoundaryBehavior::Error, BoundaryBehavior::Error),
   )
-}
-
-pub fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
-  match d {
-    Distribution::Empty => None,
-    Distribution::Point(p) => Some(point_hard_domain(p)),
-    Distribution::Range(r) => Some(range_hard_domain(r)),
-    Distribution::Formula(f) => Some(formula_hard_domain(f)),
-    Distribution::Function(f) => (!f.is_empty()).then(|| function_hard_domain(f)),
-  }
 }
 
 pub fn guarded_empty_result<Y: YAxisPolicy>(
@@ -483,6 +481,8 @@ pub fn guarded_empty_result<Y: YAxisPolicy>(
     )
   }
 }
+
+pub type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
 
 pub fn hard_domains_disjoint(
   a_bounds: (f64, f64),
