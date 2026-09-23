@@ -3,20 +3,22 @@ use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
 use crate::cli::pipeline::runner::select_steps;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::{self, Write};
 
 pub fn print_pipeline_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   let steps = select_steps(pipeline, selected)?;
   let producers = producers_by_path(pipeline);
+  let mut out = io::stdout().lock();
 
   if let Some(workdir) = &pipeline.workdir {
-    println!("workdir: {}", workdir.display());
+    writeln!(out, "workdir: {}", workdir.display())?;
   }
-  println!("steps ({}):", steps.len());
+  writeln!(out, "steps ({}):", steps.len())?;
 
   for step in steps {
-    println!("  - {} ({})", step.name, step.command.tag());
-    print_inputs(step, &producers)?;
-    print_outputs(step);
+    writeln!(out, "  - {} ({})", step.name, step.command.tag())?;
+    print_inputs(&mut out, step, &producers)?;
+    print_outputs(&mut out, step)?;
   }
   Ok(())
 }
@@ -33,19 +35,19 @@ fn producers_by_path(pipeline: &ResolvedPipeline) -> BTreeMap<String, String> {
   producers
 }
 
-fn print_inputs(step: &ResolvedStep, producers: &BTreeMap<String, String>) -> Result<(), Report> {
+fn print_inputs(out: &mut impl Write, step: &ResolvedStep, producers: &BTreeMap<String, String>) -> Result<(), Report> {
   for (label, path) in labeled_input_paths(&step.command)? {
     match producers.get(&path) {
-      Some(producer) if producer != &step.name => println!("    {label}: {path} (from step {producer})"),
-      _ => println!("    {label}: {path}"),
+      Some(producer) if producer != &step.name => writeln!(out, "    {label}: {path} (from step {producer})")?,
+      _ => writeln!(out, "    {label}: {path}")?,
     }
   }
   Ok(())
 }
 
-fn print_outputs(step: &ResolvedStep) {
+fn print_outputs(out: &mut impl Write, step: &ResolvedStep) -> Result<(), Report> {
   if let Some(dir) = &step.outputs.output_all {
-    println!("    output dir: {}", dir.display());
+    writeln!(out, "    output dir: {}", dir.display())?;
   }
   let produced: Vec<String> = step
     .outputs
@@ -55,9 +57,10 @@ fn print_outputs(step: &ResolvedStep) {
     .map(|path| path.to_string_lossy().into_owned())
     .collect();
   if !produced.is_empty() {
-    println!("    produces:");
+    writeln!(out, "    produces:")?;
     for path in produced {
-      println!("      {path}");
+      writeln!(out, "      {path}")?;
     }
   }
+  Ok(())
 }

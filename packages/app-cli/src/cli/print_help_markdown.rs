@@ -3,11 +3,12 @@ use clap::{Command, CommandFactory};
 use eyre::{Report, WrapErr};
 use regex::Regex;
 use std::borrow::Cow;
+use std::io::{self, Write};
 
 pub fn print_help_markdown() -> Result<(), Report> {
   let help = help_markdown()?;
 
-  println!("{help}");
+  writeln!(io::stdout().lock(), "{help}")?;
   Ok(())
 }
 

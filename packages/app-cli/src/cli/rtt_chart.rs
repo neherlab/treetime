@@ -8,6 +8,7 @@ use itertools::{Itertools, chain};
 use num_traits::clamp;
 use plotters::prelude::*;
 use rgb::RGB8;
+use std::io::{self, Write};
 use std::path::Path;
 use textplots::{Chart, ColorPlot, Shape};
 use treetime::clock::clock_model::ClockModel;
@@ -98,7 +99,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   if let Some(chisq) = clock_model.chisq() {
     table.add_row([o!("χ²"), format!("{chisq:.3e}")]);
   }
-  println!("{table}");
+  writeln!(io::stdout().lock(), "{table}")?;
 
   let (width, height) = terminal::size().unwrap_or((120, 40));
   let width = clamp(width, 0, 1024) as u32;

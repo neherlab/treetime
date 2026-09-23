@@ -37,6 +37,7 @@ use app_cli::commands::timetree::run::run_timetree_estimation;
 use ctor::ctor;
 use eyre::Report;
 use log::info;
+use std::io::{self, Write};
 use treetime::cancel::NoopCancel;
 use treetime::progress::{NoopProgress, ProgressSink};
 use treetime_utils::init::global::global_init;
@@ -151,7 +152,7 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Arg(arg_args) => {},
     TreetimeCommands::Debug => {
-      println!("{}", get_openblas_info_str());
+      writeln!(io::stdout().lock(), "{}", get_openblas_info_str())?;
     },
   }
 
