@@ -112,6 +112,30 @@ fn item_display_name(cx: &LateContext<'_>, item: &hir::Item<'_>) -> String {
     }
 }
 
+/// The local type an impl belongs to: its self type, or for a trait impl on a
+/// foreign type, the first local type among the trait's generic arguments (as in
+/// `impl From<Local> for Foreign`).
+fn resolve_impl_anchor<'tcx>(
+    cx: &LateContext<'tcx>,
+    impl_block: &'tcx hir::Impl<'tcx>,
+) -> Option<LocalDefId> {
+    resolve_self_ty_def_id(cx, impl_block).or_else(|| {
+        impl_block
+            .of_trait?
+            .trait_ref
+            .path
+            .segments
+            .iter()
+            .filter_map(|segment| segment.args)
+            .flat_map(|args| args.args)
+            .find_map(|arg| match arg {
+                hir::GenericArg::Type(ty) => hir_refs::resolve_ty_def_id(cx, ty)
+                    .and_then(|(def_id, _, _)| def_id.as_local()),
+                _ => None,
+            })
+    })
+}
+
 fn resolve_self_ty_def_id(cx: &LateContext<'_>, impl_block: &hir::Impl<'_>) -> Option<LocalDefId> {
     // Cannot reuse `hir_refs::resolve_ty_def_id` due to `AmbigArg` type mismatch
     // on `Impl::self_ty`.
@@ -157,8 +181,9 @@ struct ModuleItem {
     /// `true` for `const` / `static` items, which are exempt as ordering targets
     /// (they live at the top of the module by convention).
     is_const_or_static: bool,
-    /// When the impl's self type is defined in this same module, the `LocalDefId`
-    /// of the self type. Used to group the impl with its type for ordering.
+    /// When the type the impl belongs to (see `resolve_impl_anchor`) is defined in
+    /// this same module, its `LocalDefId`. Used to group the impl with its type for
+    /// ordering.
     impl_self_ty: Option<LocalDefId>,
 }
 
@@ -616,7 +641,7 @@ impl<'tcx> LateLintPass<'tcx> for TopologicalOrdering {
             matches!(item.kind, hir::ItemKind::Const(..) | hir::ItemKind::Static(..));
 
         let impl_self_ty = if let hir::ItemKind::Impl(impl_block) = &item.kind {
-            resolve_self_ty_def_id(cx, impl_block)
+            resolve_impl_anchor(cx, impl_block)
         } else {
             None
         };

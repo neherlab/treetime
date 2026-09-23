@@ -110,3 +110,8 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         Box::new(lints::pub_unused_in_workspace::PubUnusedInWorkspace::new())
     });
 }
+
+#[test]
+fn ui_topological_ordering() {
+    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/topological_ordering").run();
+}

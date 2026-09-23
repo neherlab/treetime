@@ -1,0 +1,33 @@
+warning: `impl From<Separated> for String` is separated from its type definition
+  --> $DIR/main.rs:24:1
+   |
+LL | / pub enum Separated {
+LL | |     A,
+LL | | }
+   | |_- `Separated` defined here
+...
+LL | / impl From<Separated> for String {
+LL | |     fn from(value: Separated) -> Self {
+LL | |         match value {
+LL | |             Separated::A => "separated".to_owned(),
+...  |
+LL | | }
+   | |_^
+   |
+   = help: move the impl block adjacent to its type definition
+   = note: `#[warn(topological_ordering)]` on by default
+help: reorder the items of this module
+   |
+LL + impl From<Separated> for String {
+LL +     fn from(value: Separated) -> Self {
+LL +         match value {
+LL +             Separated::A => "separated".to_owned(),
+LL +         }
+LL +     }
+LL + }
+LL |
+LL + pub struct Unrelated;
+   |
+
+warning: 1 warning emitted
+
