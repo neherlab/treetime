@@ -4,13 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::json::{JsonPretty, json_write, json_write_file, json_write_str};
-pub use util_phyloxml::{
-  Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
-  PhyloxmlBranchColor, PhyloxmlClade, PhyloxmlCladeRelation, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlDistribution,
-  PhyloxmlDomainArchitecture, PhyloxmlEvents, PhyloxmlId, PhyloxmlMolSeq, PhyloxmlPhylogeny, PhyloxmlPoint,
-  PhyloxmlProperty, PhyloxmlProteinDomain, PhyloxmlReference, PhyloxmlSequence, PhyloxmlSequenceRelation,
-  PhyloxmlTaxonomy, PhyloxmlUri, Polygon,
-};
+use util_phyloxml::types::Phyloxml;
 
 pub fn phyloxml_write_file(filepath: impl AsRef<Path>, phyloxml: &Phyloxml) -> Result<(), Report> {
   let filepath = filepath.as_ref();

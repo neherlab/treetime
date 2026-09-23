@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::{Phyloxml, phyloxml_read, phyloxml_write};
+  use crate::types::Phyloxml;
+  use crate::{phyloxml_read, phyloxml_write};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
 

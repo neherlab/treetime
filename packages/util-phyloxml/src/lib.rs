@@ -1,6 +1,6 @@
 pub mod types;
 
-pub use crate::types::*;
+use crate::types::Phyloxml;
 use quick_xml::DeError;
 use quick_xml::de::from_reader;
 use quick_xml::se::Serializer;
