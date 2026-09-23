@@ -72,6 +72,13 @@ fn write_clock_regression_chart_bitmap(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    result_defaulted,
+    reason = "output that is not a terminal has no size; the chart uses a fixed default"
+  )
+)]
 pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<(), Report> {
   let mut table = Table::new();
   table

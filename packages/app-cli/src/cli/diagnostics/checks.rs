@@ -343,6 +343,13 @@ enum Scope {
   Other,
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    result_defaulted,
+    reason = "a path segment that is not an index places the pointer outside a step"
+  )
+)]
 fn scope_of(pointer: &str) -> Scope {
   if let Some(rest) = pointer.strip_prefix("/steps/") {
     if let Some(index) = rest.split('/').next().and_then(|segment| segment.parse::<usize>().ok()) {

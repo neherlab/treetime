@@ -16,6 +16,13 @@ pub struct ConfigSource {
 }
 
 impl ConfigSource {
+  #[cfg_attr(
+    dylint_lib = "treetime_lints",
+    expect(
+      error_dropped_by_pattern,
+      reason = "source spans are optional; parse_config_document reports the YAML error for the same text"
+    )
+  )]
   pub(crate) fn new(name: impl Into<String>, text: impl Into<String>) -> Self {
     let name = name.into();
     let text = text.into();
