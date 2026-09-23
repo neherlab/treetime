@@ -208,6 +208,17 @@ fn auspice_coordinate(coordinate: i64, name: &str, field: &str) -> Result<isize,
     .wrap_err_with(|| format!("CDS annotation '{name}' {field} does not fit Auspice coordinates"))
 }
 
+fn ancestral_all_mutations(
+  graph: &Graph,
+  maps: &AncestralOutputMaps,
+  aa_node_data: Option<&AaNodeData>,
+) -> Vec<Mutation> {
+  graph
+    .get_nodes()
+    .flat_map(|node| ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data))
+    .collect()
+}
+
 fn ancestral_node_mutations(
   graph: &Graph,
   maps: &AncestralOutputMaps,
@@ -229,15 +240,4 @@ fn ancestral_node_mutations(
     }));
   }
   mutations
-}
-
-fn ancestral_all_mutations(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> Vec<Mutation> {
-  graph
-    .get_nodes()
-    .flat_map(|node| ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data))
-    .collect()
 }

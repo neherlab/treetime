@@ -12,6 +12,16 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonTraitsMeta, AugurNodeDataJsonTraitsNode,
 };
 
+pub fn write_augur_node_data_json(
+  result: &MugrationResult,
+  output: &MugrationOutput,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(result, output)?;
+  json_write_file(path, &data, JsonPretty(true))?;
+  Ok(())
+}
+
 pub fn build_augur_node_data_json(
   result: &MugrationResult,
   output: &MugrationOutput,
@@ -45,16 +55,6 @@ pub fn build_augur_node_data_json(
     },
     nodes,
   })
-}
-
-pub fn write_augur_node_data_json(
-  result: &MugrationResult,
-  output: &MugrationOutput,
-  path: &Path,
-) -> Result<(), Report> {
-  let data = build_augur_node_data_json(result, output)?;
-  json_write_file(path, &data, JsonPretty(true))?;
-  Ok(())
 }
 
 fn build_models(attribute: &str, output: &MugrationOutput) -> BTreeMap<String, AugurNodeDataJsonTraitModel> {

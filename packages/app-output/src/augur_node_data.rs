@@ -15,6 +15,33 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonRefineNode,
 };
 
+pub fn write_augur_node_data_json(
+  graph: &Graph,
+  outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
+  clock_model: &ClockModel,
+  confidence_intervals: Option<&[NodeConfidenceInterval]>,
+  dates: Option<&DatesMap>,
+  alignment: Option<&Path>,
+  input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(
+    graph,
+    outputs,
+    edges,
+    clock_model,
+    confidence_intervals,
+    dates,
+    alignment,
+    input_tree,
+    mutation_counts,
+  )?;
+  json_write_file(path, &data, JsonPretty(true))?;
+  Ok(())
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -105,33 +132,6 @@ pub fn build_augur_node_data_json(
     },
     nodes,
   })
-}
-
-pub fn write_augur_node_data_json(
-  graph: &Graph,
-  outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
-  clock_model: &ClockModel,
-  confidence_intervals: Option<&[NodeConfidenceInterval]>,
-  dates: Option<&DatesMap>,
-  alignment: Option<&Path>,
-  input_tree: Option<&Path>,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  path: &Path,
-) -> Result<(), Report> {
-  let data = build_augur_node_data_json(
-    graph,
-    outputs,
-    edges,
-    clock_model,
-    confidence_intervals,
-    dates,
-    alignment,
-    input_tree,
-    mutation_counts,
-  )?;
-  json_write_file(path, &data, JsonPretty(true))?;
-  Ok(())
 }
 
 fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {

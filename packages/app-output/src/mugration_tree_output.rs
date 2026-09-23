@@ -125,22 +125,6 @@ fn mugration_traits(
   })
 }
 
-fn mugration_transition(
-  graph: &Graph,
-  output: &MugrationOutput,
-  node_key: GraphNodeKey,
-) -> Result<Option<(String, String)>, Report> {
-  let Some((parent_key, _edge_key)) = graph.node_parent(node_key)? else {
-    return Ok(None);
-  };
-  let parent = output.reconstructed_traits[&parent_key].clone();
-  let child = output.reconstructed_traits[&node_key].clone();
-  Ok(match (parent, child) {
-    (Some(parent), Some(child)) if parent != child => Some((parent, child)),
-    _ => None,
-  })
-}
-
 fn mugration_transition_label(
   graph: &Graph,
   output: &MugrationOutput,
@@ -155,6 +139,22 @@ fn mugration_transition_label(
     clade: None,
     other: json!({ attribute.to_owned(): format!("{parent} → {child}") }),
   }))
+}
+
+fn mugration_transition(
+  graph: &Graph,
+  output: &MugrationOutput,
+  node_key: GraphNodeKey,
+) -> Result<Option<(String, String)>, Report> {
+  let Some((parent_key, _edge_key)) = graph.node_parent(node_key)? else {
+    return Ok(None);
+  };
+  let parent = output.reconstructed_traits[&parent_key].clone();
+  let child = output.reconstructed_traits[&node_key].clone();
+  Ok(match (parent, child) {
+    (Some(parent), Some(child)) if parent != child => Some((parent, child)),
+    _ => None,
+  })
 }
 
 pub(crate) fn build_confidence_map(states: &DiscreteStates, profile: &ndarray::Array1<f64>) -> BTreeMap<String, f64> {

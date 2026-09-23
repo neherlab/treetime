@@ -25,6 +25,20 @@ pub fn write_augur_node_data_json(
   write_augur_node_data_json_with_aa(graph, maps, mask, names, None, &BTreeMap::new(), path)
 }
 
+pub fn write_augur_node_data_json_with_aa(
+  graph: &Graph,
+  maps: &AugurOutputMaps,
+  mask: &[bool],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  aa_node_data: Option<&AaNodeData>,
+  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data, aa_annotations)?;
+  json_write_file(path, &data, JsonPretty(true))?;
+  Ok(())
+}
+
 pub fn build_augur_node_data_json(
   graph: &Graph,
   maps: &AugurOutputMaps,
@@ -116,20 +130,6 @@ pub fn build_augur_node_data_json(
     },
     nodes,
   })
-}
-
-pub fn write_augur_node_data_json_with_aa(
-  graph: &Graph,
-  maps: &AugurOutputMaps,
-  mask: &[bool],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  aa_node_data: Option<&AaNodeData>,
-  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-  path: &Path,
-) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data, aa_annotations)?;
-  json_write_file(path, &data, JsonPretty(true))?;
-  Ok(())
 }
 
 fn aa_mutation_strings(tracks: &BTreeMap<String, Vec<MutationEvent>>) -> Result<BTreeMap<String, Vec<String>>, Report> {

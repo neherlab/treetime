@@ -5,17 +5,17 @@ use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
+pub fn write_confidence_intervals_file(intervals: &[NodeConfidenceInterval], filepath: &Path) -> Result<(), Report> {
+  let file = create_file_or_stdout(filepath)?;
+  write_confidence_intervals(intervals, file)
+}
+
 pub(crate) fn write_confidence_intervals(
   intervals: &[NodeConfidenceInterval],
   writer: impl Write + Send,
 ) -> Result<(), Report> {
   let mut csv = CsvStructWriter::new(writer, b'\t')?;
   intervals.iter().try_for_each(|ci| csv.write(ci))
-}
-
-pub fn write_confidence_intervals_file(intervals: &[NodeConfidenceInterval], filepath: &Path) -> Result<(), Report> {
-  let file = create_file_or_stdout(filepath)?;
-  write_confidence_intervals(intervals, file)
 }
 
 #[cfg(test)]

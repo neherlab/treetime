@@ -10,6 +10,27 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonGeneratedBy, AugurNodeDataJsonRefine, AugurNodeDataJsonRefineMeta, AugurNodeDataJsonRefineNode,
 };
 
+pub fn write_augur_node_data_json(
+  graph: &Graph,
+  node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  alignment: Option<&Path>,
+  input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(
+    graph,
+    node_outputs,
+    branch_lengths,
+    alignment,
+    input_tree,
+    mutation_counts,
+  )?;
+  json_write_file(path, &data, JsonPretty(true))?;
+  Ok(())
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -75,25 +96,4 @@ pub fn build_augur_node_data_json(
     },
     nodes,
   })
-}
-
-pub fn write_augur_node_data_json(
-  graph: &Graph,
-  node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  alignment: Option<&Path>,
-  input_tree: Option<&Path>,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  path: &Path,
-) -> Result<(), Report> {
-  let data = build_augur_node_data_json(
-    graph,
-    node_outputs,
-    branch_lengths,
-    alignment,
-    input_tree,
-    mutation_counts,
-  )?;
-  json_write_file(path, &data, JsonPretty(true))?;
-  Ok(())
 }
