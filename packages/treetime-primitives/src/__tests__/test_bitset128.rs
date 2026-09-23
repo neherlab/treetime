@@ -7,9 +7,11 @@
 #[cfg(test)]
 mod tests {
   use crate::{AsciiChar, BitSet128, BitSet128Status, bitset128};
+  use itertools::{Itertools as _, izip};
   use pretty_assertions::{assert_eq, assert_ne};
   use rstest::rstest;
   use std::hash::{DefaultHasher, Hash, Hasher};
+  use std::iter::repeat_n;
 
   #[test]
   fn test_bitset128_new() {
@@ -280,45 +282,33 @@ mod tests {
       })
       .collect();
 
-    let mut n_cases = 0_usize;
-    let mut indices = vec![0_usize; n_children];
-    loop {
-      let sets: Vec<BitSet128> = indices.iter().map(|&i| subsets[i]).collect();
+    let cases = repeat_n(subsets.iter().copied(), n_children)
+      .multi_cartesian_product()
+      .collect_vec();
 
-      let costs: Vec<usize> = STATES
-        .iter()
-        .map(|state| sets.iter().filter(|set| !set.contains(*state)).count())
-        .collect();
-      let min_cost = *costs.iter().min().unwrap();
-      let mut expected = BitSet128::new();
-      for (i, state) in STATES.iter().enumerate() {
-        if costs[i] == min_cost {
-          expected.insert(*state);
-        }
-      }
+    let disagreements = cases
+      .iter()
+      .filter_map(|sets| {
+        let costs = STATES
+          .iter()
+          .map(|state| sets.iter().filter(|set| !set.contains(*state)).count())
+          .collect_vec();
+        let min_cost = *costs.iter().min().unwrap();
+        let expected: BitSet128 = izip!(&STATES, &costs)
+          .filter(|(_, cost)| **cost == min_cost)
+          .map(|(state, _)| *state)
+          .collect();
+        let actual = BitSet128::from_plurality(sets);
+        (actual != expected).then(|| format!("sets {sets:?}: expected {expected:?}, actual {actual:?}"))
+      })
+      .collect_vec();
 
-      assert_eq!(
-        BitSet128::from_plurality(&sets),
-        expected,
-        "plurality disagrees with brute-force minimum for sets {sets:?}"
-      );
-      n_cases += 1;
-
-      let mut d = 0;
-      while d < n_children {
-        indices[d] += 1;
-        if indices[d] < subsets.len() {
-          break;
-        }
-        indices[d] = 0;
-        d += 1;
-      }
-      if d == n_children {
-        break;
-      }
-    }
-
-    assert_eq!(n_cases, subsets.len().pow(n_children as u32), "enumerated every case");
+    assert_eq!(
+      cases.len(),
+      subsets.len().pow(n_children as u32),
+      "enumerated every case"
+    );
+    assert_eq!(Vec::<String>::new(), disagreements);
   }
 
   #[test]
