@@ -2,6 +2,9 @@ use crate::make_error;
 use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 
+pub(crate) const LAST_NANOSECOND_OF_DAY: (u32, u32, u32, u32) = (23, 59, 59, 999_999_999);
+const MILLISECONDS_PER_SECOND: i64 = 1000;
+
 pub fn date_now() -> DateTime<Utc> {
   Utc::now()
 }
@@ -31,7 +34,7 @@ pub fn date_from_rfc2822(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Rep
 }
 
 pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
-  datetime.timestamp() * 1000
+  datetime.timestamp() * MILLISECONDS_PER_SECOND
 }
 
 #[allow(

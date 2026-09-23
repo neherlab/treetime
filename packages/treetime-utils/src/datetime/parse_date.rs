@@ -1,4 +1,5 @@
 use crate::datetime::date_range::DateRange;
+use crate::datetime::datetime::LAST_NANOSECOND_OF_DAY;
 use crate::datetime::options::{DateParserOptions, TimeOfDay};
 use crate::datetime::year_fraction::year_fraction_to_date;
 use crate::make_error;
@@ -67,7 +68,10 @@ pub fn parse_date_with_format(
     .map(|naive_date| match options.default_time_of_day {
       TimeOfDay::Dawn => naive_date.and_hms_opt(0, 0, 0).unwrap(),
       TimeOfDay::Noon => naive_date.and_hms_opt(12, 0, 0).unwrap(),
-      TimeOfDay::Dusk => naive_date.and_hms_nano_opt(23, 59, 59, 999_999_999).unwrap(),
+      TimeOfDay::Dusk => {
+        let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
+        naive_date.and_hms_nano_opt(hour, minute, second, nanosecond).unwrap()
+      },
       TimeOfDay::Custom(time) => naive_date.and_time(time),
       TimeOfDay::CustomFn(func) => naive_date.and_time(func(&naive_date)),
     })

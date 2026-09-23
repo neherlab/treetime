@@ -8,6 +8,9 @@ use treetime_utils::fmt::float::float_to_significant_digits;
 
 use crate::cli::rtt_chart::{PointsResult, gather_points};
 
+const NORM_POINT_COLOR: RGBColor = RGBColor(8, 232, 140);
+const OUTLIER_POINT_COLOR: RGBColor = RGBColor(255, 105, 97);
+
 pub fn draw_chart<'a, DB>(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
@@ -53,12 +56,11 @@ where
     .y_label_style(("sans-serif", 16))
     .draw()?;
 
-  let norm_point_color = RGBColor(8, 232, 140);
   chart
     .draw_series(PointSeries::of_element(
       norm_points,
       4,
-      &norm_point_color,
+      &NORM_POINT_COLOR,
       &|c, s, st| {
         EmptyElement::at(c)
           + Circle::new((0, 0), s, st.filled())
@@ -71,19 +73,18 @@ where
         (x + 10, y),
         4,
         ShapeStyle {
-          color: norm_point_color.to_rgba(),
+          color: NORM_POINT_COLOR.to_rgba(),
           filled: true,
           stroke_width: 0,
         },
       )
     });
 
-  let outlier_point_color = RGBColor(255, 105, 97);
   chart
     .draw_series(PointSeries::of_element(
       outlier_points,
       4,
-      &outlier_point_color,
+      &OUTLIER_POINT_COLOR,
       &|c, s, st| {
         EmptyElement::at(c)
           + Circle::new((0, 0), s, st.filled())
@@ -96,7 +97,7 @@ where
         (x + 10, y),
         4,
         ShapeStyle {
-          color: outlier_point_color.to_rgba(),
+          color: OUTLIER_POINT_COLOR.to_rgba(),
           filled: true,
           stroke_width: 0,
         },

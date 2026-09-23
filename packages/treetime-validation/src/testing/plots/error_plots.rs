@@ -5,6 +5,10 @@ use eyre::Report;
 use itertools::izip;
 use plotters::prelude::*;
 
+const ABSOLUTE_ERROR_PLOT_SIZE: (u32, u32) = (960, 480);
+const TOLERANCE_PLOT_SIZE: (u32, u32) = (800, 600);
+const ERROR_HISTOGRAM_PLOT_SIZE: (u32, u32) = (960, 640);
+
 pub fn plot_absolute_error<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
@@ -32,7 +36,7 @@ where
     y_max = y_min + 1.0;
   }
   let output_path = format!("{output_dir}/absolute_error.svg");
-  let root = SVGBackend::new(&output_path, (960, 480)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, ABSOLUTE_ERROR_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
   let mut chart = ChartBuilder::on(&root)
     .caption(
@@ -68,7 +72,7 @@ where
   let abs = result.metrics.aggregate.domain_agreement.abs_tolerance_fractions;
   let rel = result.metrics.aggregate.domain_agreement.rel_tolerance_fractions;
   let output_path = format!("{output_dir}/tolerance_metrics.svg");
-  let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, TOLERANCE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
   let mut chart = ChartBuilder::on(&root)
     .caption(
@@ -126,7 +130,7 @@ where
   T: TestCase,
 {
   let output_path = format!("{output_dir}/error_histogram.svg");
-  let root = SVGBackend::new(&output_path, (960, 640)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, ERROR_HISTOGRAM_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let dist = &result.metrics.distribution;

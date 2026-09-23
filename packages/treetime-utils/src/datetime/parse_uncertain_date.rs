@@ -8,6 +8,8 @@ use itertools::Itertools;
 use regex::Regex;
 use std::sync::LazyLock;
 
+const SUPPORTED_YEARS: (u32, u32) = (1, 9999);
+
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -53,7 +55,7 @@ fn determine_date_range(
   month: Option<&str>,
   day: Option<&str>,
 ) -> Result<Option<DateRange>, Report> {
-  let year = year.and_then(|year| resolve_uncertain_date_component(year, (1, 9999)).ok());
+  let year = year.and_then(|year| resolve_uncertain_date_component(year, SUPPORTED_YEARS).ok());
 
   let month = month.and_then(|month| resolve_uncertain_date_component(month, (1, 12)).ok());
 

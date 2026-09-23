@@ -1,4 +1,4 @@
-use crate::datetime::datetime::iso;
+use crate::datetime::datetime::{LAST_NANOSECOND_OF_DAY, iso};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use getset::Getters;
 use serde::{Deserialize, Serialize};
@@ -35,9 +35,10 @@ impl DateRange {
       .unwrap()
       .and_utc();
 
+    let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
     let end = NaiveDate::from_ymd_opt(end.0 as i32, end.1, end.2)
       .unwrap()
-      .and_hms_nano_opt(23, 59, 59, 999_999_999)
+      .and_hms_nano_opt(hour, minute, second, nanosecond)
       .unwrap()
       .and_utc();
 

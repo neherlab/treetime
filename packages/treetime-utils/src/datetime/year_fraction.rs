@@ -3,6 +3,8 @@ use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
 use std::time::Duration;
 
+const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -28,7 +30,7 @@ pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
 pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let year = year_fraction.trunc() as i32;
   let fraction = year_fraction.fract();
-  let seconds_in_year = (days_in_year(year) as u64) * 24 * 60 * 60;
+  let seconds_in_year = (days_in_year(year) as u64) * SECONDS_PER_DAY;
   let seconds_since_year_start = seconds_in_year as f64 * fraction;
   let dt = RelativeDuration::from(Duration::from_secs_f64(seconds_since_year_start));
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt

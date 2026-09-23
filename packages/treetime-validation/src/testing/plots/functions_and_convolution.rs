@@ -4,12 +4,14 @@ use crate::testing::plots::utils::{combined_range, expand_range};
 use eyre::Report;
 use plotters::prelude::*;
 
+const FUNCTIONS_PLOT_SIZE: (u32, u32) = (960, 640);
+
 pub fn plot_functions_and_convolution<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {
   let output_path = format!("{output_dir}/functions_convolution.svg");
-  let root = SVGBackend::new(&output_path, (960, 640)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, FUNCTIONS_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
   let (x_raw_min, x_raw_max) = combined_range(&[&result.f_x_values, &result.g_x_values, &result.evaluation_grid]);
   let (x_min, x_max) = expand_range(x_raw_min, x_raw_max);

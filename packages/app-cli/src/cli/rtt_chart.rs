@@ -20,12 +20,14 @@ use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png
 #[cfg(feature = "png")]
 use treetime_utils::io::file::create_file_or_stdout;
 
+const CHART_SIZE: (u32, u32) = (1200, 800);
+
 pub fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
 ) -> Result<(), Report> {
-  let svg = SVGBackend::new(filepath.as_ref(), (1200, 800)).into_drawing_area();
+  let svg = SVGBackend::new(filepath.as_ref(), CHART_SIZE).into_drawing_area();
   draw_chart(results, clock_model, &svg)?;
   svg.present()?;
   Ok(())
@@ -59,7 +61,7 @@ fn write_clock_regression_chart_bitmap(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
 ) -> Result<DynamicImage, Report> {
-  let (width, height) = (1200, 800);
+  let (width, height) = CHART_SIZE;
   let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width, height);
   {
     let bitmap = BitMapBackend::with_buffer(img.as_flat_samples_mut().samples, (width, height)).into_drawing_area();

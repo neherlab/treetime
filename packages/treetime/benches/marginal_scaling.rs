@@ -23,6 +23,8 @@ use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::init::global::global_init;
 
+const DATASET_SEQUENCES: u64 = 200;
+
 #[ctor]
 fn init() {
   global_init();
@@ -31,7 +33,7 @@ fn init() {
 fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   let mut group = criterion.benchmark_group("marginal_update_threads");
   group.sample_size(10);
-  group.throughput(Throughput::Elements(200));
+  group.throughput(Throughput::Elements(DATASET_SEQUENCES));
 
   for threads in [1, 2, 4, 8] {
     let (graph, recon, branch_lengths) = setup();

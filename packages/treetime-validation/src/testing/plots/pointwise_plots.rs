@@ -5,12 +5,15 @@ use eyre::Report;
 use plotters::prelude::*;
 use std::iter::once;
 
+const POINTWISE_PLOT_SIZE: (u32, u32) = (1200, 900);
+const DERIVATIVE_PLOT_SIZE: (u32, u32) = (1200, 450);
+
 pub fn plot_pointwise_error_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {
   let output_path = format!("{output_dir}/pointwise_error_profiles.svg");
-  let root = SVGBackend::new(&output_path, (1200, 900)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, POINTWISE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((2, 2));
@@ -126,7 +129,7 @@ where
   T: TestCase,
 {
   let output_path = format!("{output_dir}/derivative_errors.svg");
-  let root = SVGBackend::new(&output_path, (1200, 450)).into_drawing_area();
+  let root = SVGBackend::new(&output_path, DERIVATIVE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((1, 2));
