@@ -1,8 +1,9 @@
 use crate::nwk::{NwkWriteOptions, format_weight};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::fmt::Write;
+use std::io::Write as _;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -16,10 +17,10 @@ pub fn graphviz_write_file(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
+  let filepath = filepath.as_ref();
+  let text = graphviz_write_str(graph, names, weights)?;
   let mut f = create_file_or_stdout(filepath)?;
-  graphviz_write(&mut f, graph, names, weights)?;
-  writeln!(f)?;
-  Ok(())
+  writeln!(f, "{text}").wrap_err_with(|| format!("When writing Graphviz file '{}'", filepath.display()))
 }
 
 pub fn graphviz_write_str(
@@ -27,9 +28,9 @@ pub fn graphviz_write_str(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<String, Report> {
-  let mut buf = Vec::new();
-  graphviz_write(&mut buf, graph, names, weights)?;
-  Ok(String::from_utf8(buf)?)
+  let mut text = String::new();
+  graphviz_write(&mut text, graph, names, weights)?;
+  Ok(text)
 }
 
 fn graphviz_write<W>(
