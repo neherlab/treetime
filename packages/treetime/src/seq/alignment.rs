@@ -28,12 +28,6 @@ impl AncestralInput {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NodeSeqInput {
-  pub name: Option<String>,
-  pub seq: Option<Seq>,
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct EdgeSeqInput {
   pub branch_length: Option<f64>,
@@ -103,6 +97,12 @@ pub(crate) fn get_common_length_of_node_inputs(
     },
   }
   .wrap_err("When calculating length of sequences")
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NodeSeqInput {
+  pub name: Option<String>,
+  pub seq: Option<Seq>,
 }
 
 pub fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {

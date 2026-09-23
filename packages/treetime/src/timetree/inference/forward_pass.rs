@@ -70,12 +70,6 @@ fn propagate_distributions_forward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Refinement {
-  Done,
-  ContradictedGivenDate,
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -126,6 +120,12 @@ fn refine_distribution_from_parent(
   Ok(Refinement::Done)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Refinement {
+  Done,
+  ContradictedGivenDate,
+}
+
 fn commit_node_time(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -169,10 +169,6 @@ pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>
   Some(time)
 }
 
-fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> Option<String> {
-  names[&key].clone()
-}
-
 fn log_refinement(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -208,6 +204,10 @@ fn log_kept_given_date(
      tree puts it at {}, which leaves no probability on that date",
     describe_grid(dist_from_parent)
   );
+}
+
+fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> Option<String> {
+  names[&key].clone()
 }
 
 fn describe_grid(dist: &Distribution<NegLog>) -> String {

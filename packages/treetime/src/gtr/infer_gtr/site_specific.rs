@@ -5,41 +5,6 @@ use ndarray::Array3;
 use ndarray::prelude::*;
 use smart_default::SmartDefault;
 
-#[derive(Clone, Debug)]
-pub struct MutationCountsSiteSpecific {
-  pub n_ija: Array3<f64>,
-
-  pub T_ia: Array2<f64>,
-
-  pub root_state: Array2<f64>,
-}
-
-#[derive(Clone, Debug, SmartDefault)]
-pub struct InferGtrSiteSpecificOptions {
-  pub n_states: usize,
-
-  #[default = 1.0]
-  pub pc: f64,
-
-  #[default = 0.01]
-  pub gap_limit: f64,
-
-  pub gap_index: Option<usize>,
-
-  #[default = 30]
-  pub max_iter: usize,
-
-  #[default = 1e-5]
-  pub dp: f64,
-}
-
-#[derive(Clone, Debug)]
-pub struct InferGtrSiteSpecificResult {
-  pub W: Array2<f64>,
-  pub pi: Array2<f64>,
-  pub mu: Array1<f64>,
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -141,6 +106,34 @@ pub fn infer_gtr_site_specific_impl(
   })
 }
 
+#[derive(Clone, Debug)]
+pub struct MutationCountsSiteSpecific {
+  pub n_ija: Array3<f64>,
+
+  pub T_ia: Array2<f64>,
+
+  pub root_state: Array2<f64>,
+}
+
+#[derive(Clone, Debug, SmartDefault)]
+pub struct InferGtrSiteSpecificOptions {
+  pub n_states: usize,
+
+  #[default = 1.0]
+  pub pc: f64,
+
+  #[default = 0.01]
+  pub gap_limit: f64,
+
+  pub gap_index: Option<usize>,
+
+  #[default = 30]
+  pub max_iter: usize,
+
+  #[default = 1e-5]
+  pub dp: f64,
+}
+
 pub fn build_gtr_site_specific(
   result: &InferGtrSiteSpecificResult,
   n_states: usize,
@@ -155,6 +148,13 @@ pub fn build_gtr_site_specific(
     pi: result.pi.clone(),
     approximate,
   })
+}
+
+#[derive(Clone, Debug)]
+pub struct InferGtrSiteSpecificResult {
+  pub W: Array2<f64>,
+  pub pi: Array2<f64>,
+  pub mu: Array1<f64>,
 }
 
 pub fn einsum_mu_pi_T(mu_a: &Array1<f64>, p_ia: &Array2<f64>, T_ia: &Array2<f64>) -> Array2<f64> {

@@ -41,43 +41,6 @@ use treetime_utils::{make_error, make_report};
 
 const PRE_REROOT_DAMPING: f64 = 0.75;
 
-pub struct OptimizeParams {
-  pub model: GtrModelName,
-  pub dense: Option<bool>,
-  pub max_iter: usize,
-  pub dp: f64,
-  pub damping: f64,
-  pub opt_method: BranchOptMethod,
-  pub initial_guess: InitialGuessMode,
-  pub no_indels: bool,
-  pub reroot_spec: Option<RerootSpec>,
-  pub topology_ops: TopologyOps,
-}
-
-pub struct OptimizeInput {
-  pub graph: Graph,
-  pub alphabet: Alphabet,
-  pub sequences: Vec<AlignmentRecord>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct OptimizeOutput {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub gtr: GTR,
-  pub model_name: GtrModelName,
-  #[serde(skip)]
-  pub sparse_partitions: Vec<SparseReconstruction>,
-  #[serde(skip)]
-  pub dense_partitions: Vec<DenseReconstruction>,
-  #[serde(skip)]
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  #[serde(skip)]
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-}
-
 pub fn run(
   params: &OptimizeParams,
   mut input: OptimizeInput,
@@ -244,6 +207,43 @@ pub fn run(
     branch_lengths,
     names,
   })
+}
+
+pub struct OptimizeParams {
+  pub model: GtrModelName,
+  pub dense: Option<bool>,
+  pub max_iter: usize,
+  pub dp: f64,
+  pub damping: f64,
+  pub opt_method: BranchOptMethod,
+  pub initial_guess: InitialGuessMode,
+  pub no_indels: bool,
+  pub reroot_spec: Option<RerootSpec>,
+  pub topology_ops: TopologyOps,
+}
+
+pub struct OptimizeInput {
+  pub graph: Graph,
+  pub alphabet: Alphabet,
+  pub sequences: Vec<AlignmentRecord>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OptimizeOutput {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub gtr: GTR,
+  pub model_name: GtrModelName,
+  #[serde(skip)]
+  pub sparse_partitions: Vec<SparseReconstruction>,
+  #[serde(skip)]
+  pub dense_partitions: Vec<DenseReconstruction>,
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 fn pre_reroot_optimize(

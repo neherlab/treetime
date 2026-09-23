@@ -14,39 +14,6 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
 
-#[derive(Debug, Clone)]
-pub struct SkylineParams {
-  pub n_points: usize,
-  pub stiffness: f64,
-  pub tolerance: f64,
-  pub max_iter: u64,
-  pub n_std: f64,
-}
-
-impl Default for SkylineParams {
-  fn default() -> Self {
-    Self {
-      n_points: 20,
-      stiffness: 2.0,
-      tolerance: 1e-8,
-      max_iter: 100,
-      n_std: 2.0,
-    }
-  }
-}
-
-#[derive(Debug, Clone)]
-pub struct SkylineResult {
-  pub tc_distribution: Distribution,
-  pub tc_schedule: PiecewiseConstantFn,
-  pub segment_boundaries: Array1<f64>,
-  pub tc_values: Array1<f64>,
-  pub log_tc_variances: Array1<f64>,
-  pub tc_lower_bounds: Array1<f64>,
-  pub tc_upper_bounds: Array1<f64>,
-  pub log_likelihood: LogLh,
-}
-
 pub(crate) fn optimize_skyline(
   graph: &Graph,
   params: &SkylineParams,
@@ -138,10 +105,37 @@ pub(crate) fn optimize_skyline(
   })
 }
 
-fn segment_index(boundaries: &[f64], t: f64) -> usize {
-  let n_seg = boundaries.len() - 1;
-  let above = boundaries.partition_point(|&b| b <= t);
-  above.saturating_sub(1).min(n_seg - 1)
+#[derive(Debug, Clone)]
+pub struct SkylineParams {
+  pub n_points: usize,
+  pub stiffness: f64,
+  pub tolerance: f64,
+  pub max_iter: u64,
+  pub n_std: f64,
+}
+
+impl Default for SkylineParams {
+  fn default() -> Self {
+    Self {
+      n_points: 20,
+      stiffness: 2.0,
+      tolerance: 1e-8,
+      max_iter: 100,
+      n_std: 2.0,
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct SkylineResult {
+  pub tc_distribution: Distribution,
+  pub tc_schedule: PiecewiseConstantFn,
+  pub segment_boundaries: Array1<f64>,
+  pub tc_values: Array1<f64>,
+  pub log_tc_variances: Array1<f64>,
+  pub tc_lower_bounds: Array1<f64>,
+  pub tc_upper_bounds: Array1<f64>,
+  pub log_likelihood: LogLh,
 }
 
 #[allow(
@@ -369,4 +363,10 @@ fn build_tc_distribution(boundaries: &[f64], tc_values: &Array1<f64>) -> Distrib
     t_min,
     t_max,
   ))
+}
+
+fn segment_index(boundaries: &[f64], t: f64) -> usize {
+  let n_seg = boundaries.len() - 1;
+  let above = boundaries.partition_point(|&b| b <= t);
+  above.saturating_sub(1).min(n_seg - 1)
 }

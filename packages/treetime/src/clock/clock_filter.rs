@@ -11,12 +11,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
 
-#[derive(Debug, Clone, Copy)]
-pub struct ClockFilterResult {
-  pub new_outliers: i32,
-  pub iqd: f64,
-}
-
 #[allow(
   clippy::expect_used,
   clippy::integer_division,
@@ -112,6 +106,12 @@ pub(crate) fn clock_filter_inplace(
   );
 
   Ok(ClockFilterResult { new_outliers, iqd })
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ClockFilterResult {
+  pub new_outliers: i32,
+  pub iqd: f64,
 }
 
 fn edge_branch_length(edge_key: GraphEdgeKey, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {

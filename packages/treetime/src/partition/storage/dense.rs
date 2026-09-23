@@ -9,15 +9,6 @@ use std::collections::BTreeSet;
 use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqInfo {
-  pub gaps: Vec<(usize, usize)>,
-  pub unknown: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>,
-  pub variable_indel: BTreeSet<(usize, usize)>,
-  pub sequence: Seq,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DenseNodeState {
   pub seq: DenseSeqInfo,
@@ -58,6 +49,15 @@ impl MarginalNodeState for DenseNodeState {
   fn set_log_lh(&mut self, log_lh: LogLh) {
     self.profile.log_lh = log_lh;
   }
+}
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct DenseSeqInfo {
+  pub gaps: Vec<(usize, usize)>,
+  pub unknown: Vec<(usize, usize)>,
+  pub non_char: Vec<(usize, usize)>,
+  pub variable_indel: BTreeSet<(usize, usize)>,
+  pub sequence: Seq,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

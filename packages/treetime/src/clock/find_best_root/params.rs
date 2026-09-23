@@ -4,16 +4,6 @@ use smart_default::SmartDefault;
 
 use crate::clock::clock_set::ClockSet;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum RerootMethod {
-  #[default]
-  LeastSquares,
-  MinDev,
-  Oldest,
-  ClockFilter,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum RerootSpec {
@@ -25,6 +15,16 @@ impl Default for RerootSpec {
   fn default() -> Self {
     Self::Method(RerootMethod::default())
   }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum RerootMethod {
+  #[default]
+  LeastSquares,
+  MinDev,
+  Oldest,
+  ClockFilter,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
@@ -55,19 +55,6 @@ pub enum BranchPointOptimizationParams {
   GoldenSection(GoldenSectionParams),
 }
 
-/// Optimization method selection
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum OptimizationMethod {
-  /// Grid search with equally-spaced evaluation points
-  #[default]
-  Grid,
-  /// Brent's method for robust 1D optimization
-  Brent,
-  /// Golden section search optimization
-  GoldenSection,
-}
-
 impl BranchPointOptimizationParams {
   pub fn brent() -> Self {
     Self::Brent(BrentParams::default())
@@ -92,6 +79,19 @@ impl BranchPointOptimizationParams {
   pub fn grid_with(params: GridSearchParams) -> Self {
     Self::Grid(params)
   }
+}
+
+/// Optimization method selection
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum OptimizationMethod {
+  /// Grid search with equally-spaced evaluation points
+  #[default]
+  Grid,
+  /// Brent's method for robust 1D optimization
+  Brent,
+  /// Golden section search optimization
+  GoldenSection,
 }
 
 /// Configuration for grid search optimization

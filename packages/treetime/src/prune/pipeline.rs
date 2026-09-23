@@ -18,34 +18,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AlignmentRecord;
 
-pub struct PruneParams {
-  pub prune_short: Option<f64>,
-  pub prune_empty: bool,
-  pub merge_shared_mutations: bool,
-  pub node_names: BTreeSet<String>,
-}
-
-pub struct PruneInput {
-  pub graph: Graph,
-  pub alphabet: Alphabet,
-  pub sequences: Option<Vec<AlignmentRecord>>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PruneOutput {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub gtr: Option<GTR>,
-  #[serde(skip)]
-  pub partitions: Vec<SparseReconstruction>,
-  #[serde(skip)]
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  #[serde(skip)]
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
 pub fn run(
   params: &PruneParams,
   mut input: PruneInput,
@@ -118,4 +90,32 @@ pub fn run(
     names,
     branch_lengths,
   })
+}
+
+pub struct PruneParams {
+  pub prune_short: Option<f64>,
+  pub prune_empty: bool,
+  pub merge_shared_mutations: bool,
+  pub node_names: BTreeSet<String>,
+}
+
+pub struct PruneInput {
+  pub graph: Graph,
+  pub alphabet: Alphabet,
+  pub sequences: Option<Vec<AlignmentRecord>>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PruneOutput {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub gtr: Option<GTR>,
+  #[serde(skip)]
+  pub partitions: Vec<SparseReconstruction>,
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }

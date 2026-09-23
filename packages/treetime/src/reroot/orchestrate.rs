@@ -16,15 +16,6 @@ use treetime_graph::reroot::{
   trivial_node_branch_lengths,
 };
 
-#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
-pub struct RerootTopologyParams {
-  #[default = true]
-  pub split_edge: bool,
-
-  #[default = true]
-  pub remove_trivial_root: bool,
-}
-
 pub(crate) fn reroot_in_place<S, F>(
   graph: &mut Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
@@ -126,4 +117,13 @@ where
     edge_merge,
     inverted_edge_keys,
   })
+}
+
+#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
+pub struct RerootTopologyParams {
+  #[default = true]
+  pub split_edge: bool,
+
+  #[default = true]
+  pub remove_trivial_root: bool,
 }

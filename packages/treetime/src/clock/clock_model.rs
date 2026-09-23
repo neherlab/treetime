@@ -15,99 +15,6 @@ pub trait ClockLine {
   fn clock_deviation(&self, date: f64, div: f64) -> f64;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegressionStats {
-  pub chisq: f64,
-  pub r_val: f64,
-  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub hessian: Array2<f64>,
-  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub cov: Array2<f64>,
-}
-
-#[must_use]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClockRegression {
-  clock_rate: f64,
-  intercept: f64,
-  chisq: f64,
-  r_val: f64,
-  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  hessian: Array2<f64>,
-  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  cov: Array2<f64>,
-}
-
-impl ClockLine for ClockRegression {
-  fn clock_rate(&self) -> f64 {
-    self.clock_rate
-  }
-
-  fn intercept(&self) -> f64 {
-    self.intercept
-  }
-
-  fn clock_deviation(&self, date: f64, div: f64) -> f64 {
-    date * self.clock_rate + self.intercept - div
-  }
-}
-
-#[expect(
-  clippy::same_name_method,
-  reason = "the inherent accessor and the trait method return the same field"
-)]
-impl ClockRegression {
-  pub(crate) fn clock_rate(&self) -> f64 {
-    self.clock_rate
-  }
-
-  pub(crate) fn intercept(&self) -> f64 {
-    self.intercept
-  }
-
-  pub(crate) fn chisq(&self) -> f64 {
-    self.chisq
-  }
-
-  pub(crate) fn r_val(&self) -> f64 {
-    self.r_val
-  }
-
-  pub(crate) fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
-    let det = clock_set.determinant();
-    if det <= 0.0 {
-      debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
-      debug!("ClockSet determinant: {det}");
-      return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
-    }
-
-    let clock_rate = clock_set.clock_rate(det);
-    Ok(Self {
-      clock_rate,
-      intercept: clock_set.intercept(clock_rate),
-      chisq: clock_set.chisq(),
-      r_val: clock_set.r_val(),
-      hessian: clock_set.hessian(),
-      cov: clock_set.cov(),
-    })
-  }
-
-  pub(crate) fn hessian(&self) -> &Array2<f64> {
-    &self.hessian
-  }
-
-  pub fn cov(&self) -> &Array2<f64> {
-    &self.cov
-  }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ClockModelStats {
-  Estimated(RegressionStats),
-  Fixed,
-}
-
 #[must_use]
 #[derive(Debug, Clone, Serialize, Deserialize, Getters)]
 pub struct ClockModel {
@@ -273,4 +180,97 @@ impl ClockLine for ClockModel {
   fn clock_deviation(&self, date: f64, div: f64) -> f64 {
     date * self.clock_rate + self.intercept - div
   }
+}
+
+#[must_use]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClockRegression {
+  clock_rate: f64,
+  intercept: f64,
+  chisq: f64,
+  r_val: f64,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  hessian: Array2<f64>,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  cov: Array2<f64>,
+}
+
+impl ClockLine for ClockRegression {
+  fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  fn clock_deviation(&self, date: f64, div: f64) -> f64 {
+    date * self.clock_rate + self.intercept - div
+  }
+}
+
+#[expect(
+  clippy::same_name_method,
+  reason = "the inherent accessor and the trait method return the same field"
+)]
+impl ClockRegression {
+  pub(crate) fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  pub(crate) fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  pub(crate) fn chisq(&self) -> f64 {
+    self.chisq
+  }
+
+  pub(crate) fn r_val(&self) -> f64 {
+    self.r_val
+  }
+
+  pub(crate) fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
+    let det = clock_set.determinant();
+    if det <= 0.0 {
+      debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
+      debug!("ClockSet determinant: {det}");
+      return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
+    }
+
+    let clock_rate = clock_set.clock_rate(det);
+    Ok(Self {
+      clock_rate,
+      intercept: clock_set.intercept(clock_rate),
+      chisq: clock_set.chisq(),
+      r_val: clock_set.r_val(),
+      hessian: clock_set.hessian(),
+      cov: clock_set.cov(),
+    })
+  }
+
+  pub(crate) fn hessian(&self) -> &Array2<f64> {
+    &self.hessian
+  }
+
+  pub fn cov(&self) -> &Array2<f64> {
+    &self.cov
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ClockModelStats {
+  Estimated(RegressionStats),
+  Fixed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegressionStats {
+  pub chisq: f64,
+  pub r_val: f64,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  pub hessian: Array2<f64>,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  pub cov: Array2<f64>,
 }

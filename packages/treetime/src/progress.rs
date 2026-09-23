@@ -2,17 +2,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
-#[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
-#[strum(serialize_all = "UPPERCASE")]
-#[serde(rename_all = "kebab-case")]
-pub enum LogLevel {
-  Trace,
-  Debug,
-  Info,
-  Warn,
-  Error,
-}
-
 pub trait ProgressSink: Send + Sync {
   fn report(&self, stage: &str, fraction: f64, message: &str);
   fn log(&self, level: LogLevel, message: &str);
@@ -33,6 +22,17 @@ impl ProgressSink for NoopProgress {
 pub struct LogEvent {
   pub level: LogLevel,
   pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[strum(serialize_all = "UPPERCASE")]
+#[serde(rename_all = "kebab-case")]
+pub enum LogLevel {
+  Trace,
+  Debug,
+  Info,
+  Warn,
+  Error,
 }
 
 #[macro_export]

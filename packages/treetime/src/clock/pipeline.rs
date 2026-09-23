@@ -18,37 +18,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::DatesMap;
 
-pub struct ClockParams {
-  pub clock_params: ClockVarianceParams,
-  pub clock_filter: f64,
-  pub keep_root: bool,
-  pub allow_negative_rate: bool,
-  pub branch_params: BranchPointOptimizationParams,
-  pub reroot_spec: RerootSpec,
-}
-
-pub struct ClockInput {
-  pub graph: Graph,
-  pub dates: DatesMap,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ClockOutput {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub inputs: ClockInputs,
-  #[serde(skip)]
-  pub state: ClockState,
-  pub clock_model: ClockModel,
-  pub regression_results: Vec<ClockRegressionResult>,
-  #[serde(skip)]
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  #[serde(skip)]
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
 pub fn run(
   params: &ClockParams,
   mut input: ClockInput,
@@ -104,6 +73,37 @@ pub fn run(
     names,
     branch_lengths,
   })
+}
+
+pub struct ClockParams {
+  pub clock_params: ClockVarianceParams,
+  pub clock_filter: f64,
+  pub keep_root: bool,
+  pub allow_negative_rate: bool,
+  pub branch_params: BranchPointOptimizationParams,
+  pub reroot_spec: RerootSpec,
+}
+
+pub struct ClockInput {
+  pub graph: Graph,
+  pub dates: DatesMap,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ClockOutput {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub inputs: ClockInputs,
+  #[serde(skip)]
+  pub state: ClockState,
+  pub clock_model: ClockModel,
+  pub regression_results: Vec<ClockRegressionResult>,
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[expect(

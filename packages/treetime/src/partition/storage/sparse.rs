@@ -200,15 +200,6 @@ impl Default for SparseSeqDistribution {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FitchSeqDistribution {
-  pub variable: BTreeMap<usize, StateSet>,
-
-  pub variable_indel: BTreeSet<(usize, usize)>,
-
-  pub chosen_state: BTreeMap<usize, AsciiChar>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchNodeData {
   pub seq: FitchSeqInfo,
 }
@@ -270,6 +261,15 @@ pub struct FitchSeqInfo {
   pub composition: Composition,
   pub sequence: Seq,
   pub fitch: FitchSeqDistribution,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FitchSeqDistribution {
+  pub variable: BTreeMap<usize, StateSet>,
+
+  pub variable_indel: BTreeSet<(usize, usize)>,
+
+  pub chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -16,20 +16,97 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
-#[serde(default, deny_unknown_fields)]
-pub struct ClockVarianceParams {
-  /// Variance scaling factor proportional to branch length
-  #[default = 0.0]
-  pub variance_factor: f64,
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
+pub(crate) fn estimate_clock_model_with_reroot_policy(
+  graph: &mut Graph,
+  inputs: &mut ClockInputs,
+  mut state: ClockState,
+  options: &ClockVarianceParams,
+  clock_rate: Option<f64>,
+  keep_root: bool,
+  optimization_params: &BranchPointOptimizationParams,
+  reroot_params: &RerootParams,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  prev_clock_rate: Option<f64>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<(ClockState, ClockRerootResult), Report> {
+  if let Some(rate) = clock_rate {
+    info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
+  } else {
+    info!("## Estimating clock model (keep_root={keep_root})");
+  }
 
-  /// Constant variance offset for all branches
-  #[default = 0.0]
-  pub variance_offset: f64,
+  info!("### Running backward regression");
+  clock_regression_backward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
+  debug!("Backward regression completed");
 
-  /// Additional variance offset for leaf (terminal) nodes
-  #[default = 1.0]
-  pub variance_offset_leaf: f64,
+  let reroot_result = if !keep_root {
+    info!("### Running forward regression to find optimal root");
+    clock_regression_forward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
+    debug!("Forward regression completed");
+
+    info!("### Finding best root and rerooting tree");
+    let reroot_params = clock_rate.map_or_else(
+      || reroot_params.clone(),
+      |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
+    );
+    let (new_state, reroot_result) = reroot_in_place(
+      graph,
+      inputs,
+      state,
+      options,
+      optimization_params,
+      &reroot_params,
+      branch_lengths,
+      names,
+    )?;
+    state = new_state;
+    info!("Rerooted to node {}", reroot_result.new_root_key.0);
+    debug!("Rerooting completed");
+    Some(reroot_result)
+  } else {
+    info!("### Keeping original root (--keep-root enabled)");
+    None
+  };
+
+  info!("### Extracting clock model from root");
+  let root_key = graph.get_exactly_one_root()?.key();
+  let root_clock_set = state.node(root_key).clock_set.clone();
+
+  let (regression, clock_model) = if let Some(rate) = clock_rate {
+    info!("### Using fixed clock rate: {rate:.6e}");
+    (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
+  } else {
+    info!("### Using estimated clock rate");
+    let regression = ClockRegression::from_clock_set(&root_clock_set)?;
+    (Some(regression), None)
+  };
+
+  let rate = clock_model
+    .as_ref()
+    .map_or_else(|| regression.as_ref().unwrap().clock_rate(), |m| m.clock_rate());
+  let intercept = clock_model
+    .as_ref()
+    .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
+  info!("**Clock rate:** {rate:.6e}");
+  info!("**Intercept:** {intercept:.4}");
+  if let Some(reg) = &regression {
+    info!("**R²:** {:.4}", reg.r_val() * reg.r_val());
+    info!("**χ²:** {:.4}", reg.chisq());
+    info!("**Hessian:**\n{}", reg.hessian());
+  }
+
+  Ok((
+    state,
+    ClockRerootResult {
+      regression,
+      clock_model,
+      reroot_result,
+    },
+  ))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -191,97 +268,20 @@ pub(crate) fn clock_regression_forward(
   })
 }
 
-#[allow(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
-pub(crate) fn estimate_clock_model_with_reroot_policy(
-  graph: &mut Graph,
-  inputs: &mut ClockInputs,
-  mut state: ClockState,
-  options: &ClockVarianceParams,
-  clock_rate: Option<f64>,
-  keep_root: bool,
-  optimization_params: &BranchPointOptimizationParams,
-  reroot_params: &RerootParams,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  prev_clock_rate: Option<f64>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(ClockState, ClockRerootResult), Report> {
-  if let Some(rate) = clock_rate {
-    info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
-  } else {
-    info!("## Estimating clock model (keep_root={keep_root})");
-  }
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+pub struct ClockVarianceParams {
+  /// Variance scaling factor proportional to branch length
+  #[default = 0.0]
+  pub variance_factor: f64,
 
-  info!("### Running backward regression");
-  clock_regression_backward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
-  debug!("Backward regression completed");
+  /// Constant variance offset for all branches
+  #[default = 0.0]
+  pub variance_offset: f64,
 
-  let reroot_result = if !keep_root {
-    info!("### Running forward regression to find optimal root");
-    clock_regression_forward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
-    debug!("Forward regression completed");
-
-    info!("### Finding best root and rerooting tree");
-    let reroot_params = clock_rate.map_or_else(
-      || reroot_params.clone(),
-      |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
-    );
-    let (new_state, reroot_result) = reroot_in_place(
-      graph,
-      inputs,
-      state,
-      options,
-      optimization_params,
-      &reroot_params,
-      branch_lengths,
-      names,
-    )?;
-    state = new_state;
-    info!("Rerooted to node {}", reroot_result.new_root_key.0);
-    debug!("Rerooting completed");
-    Some(reroot_result)
-  } else {
-    info!("### Keeping original root (--keep-root enabled)");
-    None
-  };
-
-  info!("### Extracting clock model from root");
-  let root_key = graph.get_exactly_one_root()?.key();
-  let root_clock_set = state.node(root_key).clock_set.clone();
-
-  let (regression, clock_model) = if let Some(rate) = clock_rate {
-    info!("### Using fixed clock rate: {rate:.6e}");
-    (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
-  } else {
-    info!("### Using estimated clock rate");
-    let regression = ClockRegression::from_clock_set(&root_clock_set)?;
-    (Some(regression), None)
-  };
-
-  let rate = clock_model
-    .as_ref()
-    .map_or_else(|| regression.as_ref().unwrap().clock_rate(), |m| m.clock_rate());
-  let intercept = clock_model
-    .as_ref()
-    .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
-  info!("**Clock rate:** {rate:.6e}");
-  info!("**Intercept:** {intercept:.4}");
-  if let Some(reg) = &regression {
-    info!("**R²:** {:.4}", reg.r_val() * reg.r_val());
-    info!("**χ²:** {:.4}", reg.chisq());
-    info!("**Hessian:**\n{}", reg.hessian());
-  }
-
-  Ok((
-    state,
-    ClockRerootResult {
-      regression,
-      clock_model,
-      reroot_result,
-    },
-  ))
+  /// Additional variance offset for leaf (terminal) nodes
+  #[default = 1.0]
+  pub variance_offset_leaf: f64,
 }
 
 #[allow(

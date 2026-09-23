@@ -6,26 +6,6 @@ use eyre::Report;
 use treetime_primitives::AlignmentRecord;
 
 #[derive(Clone, Debug)]
-pub struct PartitionLikelihoodWithAln {
-  pub gtr: GTR,
-  pub alphabet: Alphabet,
-  pub aln: Vec<AlignmentRecord>,
-  pub length: usize,
-}
-
-impl PartitionLikelihoodWithAln {
-  pub fn new(gtr: GTR, alphabet: Alphabet, aln: Vec<AlignmentRecord>) -> Result<Self, Report> {
-    let length = get_common_length(&aln)?;
-    Ok(Self {
-      gtr,
-      alphabet,
-      aln,
-      length,
-    })
-  }
-}
-
-#[derive(Clone, Debug)]
 pub struct PartitionLikelihood {
   pub gtr: GTR,
   pub alphabet: Alphabet,
@@ -49,5 +29,25 @@ impl From<PartitionLikelihoodWithAln> for PartitionLikelihood {
       alphabet: item.alphabet,
       length: item.length,
     }
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct PartitionLikelihoodWithAln {
+  pub gtr: GTR,
+  pub alphabet: Alphabet,
+  pub aln: Vec<AlignmentRecord>,
+  pub length: usize,
+}
+
+impl PartitionLikelihoodWithAln {
+  pub fn new(gtr: GTR, alphabet: Alphabet, aln: Vec<AlignmentRecord>) -> Result<Self, Report> {
+    let length = get_common_length(&aln)?;
+    Ok(Self {
+      gtr,
+      alphabet,
+      aln,
+      length,
+    })
   }
 }

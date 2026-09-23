@@ -100,16 +100,6 @@ pub struct CoalescentOutputs {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CoalescentSegment {
-  pub index: usize,
-  pub segment: SegmentInterval,
-  #[serde(rename = "T_c")]
-  pub tc: Estimate,
-  #[serde(rename = "N_e")]
-  pub ne: Estimate,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentSegmentRow {
   pub index: usize,
   #[serde(rename = "segment.start")]
@@ -144,6 +134,16 @@ impl CoalescentSegmentRow {
       ne_upper: segment.ne.upper,
     }
   }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CoalescentSegment {
+  pub index: usize,
+  pub segment: SegmentInterval,
+  #[serde(rename = "T_c")]
+  pub tc: Estimate,
+  #[serde(rename = "N_e")]
+  pub ne: Estimate,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

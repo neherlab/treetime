@@ -7,13 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::make_internal_error;
 
-#[derive(Clone, Copy, Debug)]
-pub struct ChildRef {
-  pub node_key: GraphNodeKey,
-  pub edge_key: GraphEdgeKey,
-  pub time: f64,
-}
-
 pub(crate) fn apply_plan(
   graph: &mut Graph,
   parent_key: GraphNodeKey,
@@ -172,4 +165,11 @@ fn attach(
   }
 
   Ok(())
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ChildRef {
+  pub node_key: GraphNodeKey,
+  pub edge_key: GraphEdgeKey,
+  pub time: f64,
 }

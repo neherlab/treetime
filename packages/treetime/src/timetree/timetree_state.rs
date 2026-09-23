@@ -13,23 +13,6 @@ use treetime_graph::pass::{
 };
 
 #[derive(Debug, Clone, Default)]
-pub struct DateNodeState {
-  pub time_distribution: Option<Arc<Distribution<NegLog>>>,
-  pub time: Option<f64>,
-  pub bad_branch: bool,
-  pub contradicted: bool,
-}
-
-#[derive(Debug, Clone, SmartDefault)]
-pub struct DateEdgeState {
-  pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
-  pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
-  pub time_length: Option<f64>,
-  #[default = 1.0]
-  pub gamma: f64,
-}
-
-#[derive(Debug, Clone, Default)]
 pub struct TimetreeState {
   pub nodes: BTreeMap<GraphNodeKey, DateNodeState>,
   pub edges: BTreeMap<GraphEdgeKey, DateEdgeState>,
@@ -222,4 +205,21 @@ impl TimetreeState {
     self.edges = edges;
     Ok(())
   }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DateNodeState {
+  pub time_distribution: Option<Arc<Distribution<NegLog>>>,
+  pub time: Option<f64>,
+  pub bad_branch: bool,
+  pub contradicted: bool,
+}
+
+#[derive(Debug, Clone, SmartDefault)]
+pub struct DateEdgeState {
+  pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
+  pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
+  pub time_length: Option<f64>,
+  #[default = 1.0]
+  pub gamma: f64,
 }

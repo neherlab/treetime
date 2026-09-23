@@ -94,13 +94,6 @@ impl AaNodeData {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
-pub struct AaCdsNodeData {
-  pub reference: String,
-  pub root_sequence: String,
-  pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
-}
-
 pub(crate) fn collect_aa_cds_node_data(
   graph: &Graph,
   partition: &AncestralPartition,
@@ -158,6 +151,13 @@ pub(crate) fn collect_aa_cds_node_data(
     root_sequence: inferred_root.as_str().to_owned(),
     node_mutations,
   })
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+pub struct AaCdsNodeData {
+  pub reference: String,
+  pub root_sequence: String,
+  pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
 }
 
 fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {

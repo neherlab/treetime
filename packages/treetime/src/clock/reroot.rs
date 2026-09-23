@@ -23,32 +23,6 @@ use treetime_graph::reroot::{
   trivial_node_branch_lengths,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
-pub struct RerootParams {
-  pub spec: RerootSpec,
-
-  pub objective: RootObjective,
-
-  #[default = true]
-  pub split_edge: bool,
-
-  #[default = true]
-  pub remove_trivial_root: bool,
-
-  #[default = true]
-  pub force_positive_rate: bool,
-}
-
-impl RerootParams {
-  #[must_use]
-  pub(crate) fn with_objective(&self, objective: RootObjective) -> Self {
-    Self {
-      objective,
-      ..self.clone()
-    }
-  }
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -228,6 +202,32 @@ fn select_root(
       reroot_params.objective,
       names,
     ),
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
+pub struct RerootParams {
+  pub spec: RerootSpec,
+
+  pub objective: RootObjective,
+
+  #[default = true]
+  pub split_edge: bool,
+
+  #[default = true]
+  pub remove_trivial_root: bool,
+
+  #[default = true]
+  pub force_positive_rate: bool,
+}
+
+impl RerootParams {
+  #[must_use]
+  pub(crate) fn with_objective(&self, objective: RootObjective) -> Self {
+    Self {
+      objective,
+      ..self.clone()
+    }
   }
 }
 

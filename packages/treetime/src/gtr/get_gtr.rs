@@ -12,12 +12,18 @@ use strum_macros::Display;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum GtrModelType {
-  Named,
-  Inferred,
-  Custom,
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
+pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
+  let output = GtrOutput::new(gtr, model_name);
+  let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
+  info!("GTR model initialized:\n{json}");
+}
+
+pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {
+  json_write_file(path, output, JsonPretty(true))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -63,18 +69,25 @@ impl GtrOutput {
   }
 }
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
-pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
-  let output = GtrOutput::new(gtr, model_name);
-  let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
-  info!("GTR model initialized:\n{json}");
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GtrModelType {
+  Named,
+  Inferred,
+  Custom,
 }
 
-pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {
-  json_write_file(path, output, JsonPretty(true))
+pub(crate) fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
+  match name {
+    GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
+    GtrModelName::JC69 => jc69(JC69Params::default()),
+    GtrModelName::F81 => f81(F81Params::default()),
+    GtrModelName::HKY85 => hky85(HKY85Params::default()),
+    GtrModelName::K80 => k80(K80Params::default()),
+    GtrModelName::T92 => t92(T92Params::default()),
+    GtrModelName::TN93 => tn93(TN93Params::default()),
+    GtrModelName::Jtt92 => jtt92(Jtt92Params::default()),
+  }
 }
 
 #[derive(
@@ -97,28 +110,6 @@ pub enum GtrModelName {
   Jtt92,
 }
 
-pub(crate) fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
-  match name {
-    GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
-    GtrModelName::JC69 => jc69(JC69Params::default()),
-    GtrModelName::F81 => f81(F81Params::default()),
-    GtrModelName::HKY85 => hky85(HKY85Params::default()),
-    GtrModelName::K80 => k80(K80Params::default()),
-    GtrModelName::T92 => t92(T92Params::default()),
-    GtrModelName::TN93 => tn93(TN93Params::default()),
-    GtrModelName::Jtt92 => jtt92(Jtt92Params::default()),
-  }
-}
-
-#[derive(Copy, Clone, Debug, SmartDefault)]
-pub struct JC69Params {
-  #[default = 1.0]
-  pub mu: f64,
-
-  #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
-}
-
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
@@ -130,12 +121,9 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
-pub struct K80Params {
+pub struct JC69Params {
   #[default = 1.0]
   pub mu: f64,
-
-  #[default = 0.1]
-  pub kappa: f64,
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
@@ -153,13 +141,13 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
-#[derive(Clone, Debug, SmartDefault)]
-pub struct F81Params {
+#[derive(Copy, Clone, Debug, SmartDefault)]
+pub struct K80Params {
   #[default = 1.0]
   pub mu: f64,
 
-  #[default(None)]
-  pub pi: Option<Array1<f64>>,
+  #[default = 0.1]
+  pub kappa: f64,
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
@@ -180,12 +168,9 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
 }
 
 #[derive(Clone, Debug, SmartDefault)]
-pub struct HKY85Params {
+pub struct F81Params {
   #[default = 1.0]
   pub mu: f64,
-
-  #[default = 0.1]
-  pub kappa: f64,
 
   #[default(None)]
   pub pi: Option<Array1<f64>>,
@@ -213,16 +198,16 @@ pub(crate) fn hky85(
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
-pub struct T92Params {
+#[derive(Clone, Debug, SmartDefault)]
+pub struct HKY85Params {
   #[default = 1.0]
   pub mu: f64,
 
   #[default = 0.1]
   pub kappa: f64,
 
-  #[default = 0.5]
-  pub pi_GC: f64,
+  #[default(None)]
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
@@ -248,12 +233,18 @@ pub(crate) fn t92(
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
-pub struct Jtt92Params {
+pub struct T92Params {
   #[default = 1.0]
-  mu: f64,
+  pub mu: f64,
 
-  #[default(AlphabetName::AaNoStop)]
-  alphabet: AlphabetName,
+  #[default = 0.1]
+  pub kappa: f64,
+
+  #[default = 0.5]
+  pub pi_GC: f64,
+
+  #[default(AlphabetName::Nuc)]
+  pub alphabet: AlphabetName,
 }
 
 pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
@@ -311,6 +302,15 @@ pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Re
   })
 }
 
+#[derive(Copy, Clone, Debug, SmartDefault)]
+pub struct Jtt92Params {
+  #[default = 1.0]
+  mu: f64,
+
+  #[default(AlphabetName::AaNoStop)]
+  alphabet: AlphabetName,
+}
+
 fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<Array2<f64>, Report> {
   let num_chars = alphabet.n_canonical();
   let mut W = Array2::<f64>::ones((num_chars, num_chars));
@@ -319,24 +319,6 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
   W[[2, 0]] = kappa;
   W[[3, 1]] = kappa;
   Ok(W)
-}
-
-#[derive(Clone, Debug, SmartDefault)]
-pub struct TN93Params {
-  #[default = 1.0]
-  pub mu: f64,
-
-  #[default = 1.0]
-  pub kappa1: f64,
-
-  #[default = 1.0]
-  pub kappa2: f64,
-
-  #[default(None)]
-  pub pi: Option<Array1<f64>>,
-
-  #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
 }
 
 #[allow(
@@ -367,4 +349,22 @@ pub(crate) fn tn93(
   let pi = &pi / pi.sum();
 
   GTR::new(GTRParams { n_states, mu, W, pi })
+}
+
+#[derive(Clone, Debug, SmartDefault)]
+pub struct TN93Params {
+  #[default = 1.0]
+  pub mu: f64,
+
+  #[default = 1.0]
+  pub kappa1: f64,
+
+  #[default = 1.0]
+  pub kappa2: f64,
+
+  #[default(None)]
+  pub pi: Option<Array1<f64>>,
+
+  #[default(AlphabetName::Nuc)]
+  pub alphabet: AlphabetName,
 }

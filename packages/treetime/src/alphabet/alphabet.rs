@@ -16,21 +16,7 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(
-  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "kebab-case")]
-pub enum AlphabetName {
-  #[default]
-  Nuc,
-  Aa,
-  AaNoStop,
-}
-
-pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
 pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
-type CharToSet = IndexMap<AsciiChar, StateSet>;
-type SetToChar = IndexMap<StateSet, AsciiChar>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(try_from = "AlphabetConfig")]
@@ -50,13 +36,11 @@ pub struct Alphabet {
   pub index_to_char: Vec<AsciiChar>,
   pub config: AlphabetConfig,
 }
-
 impl Serialize for Alphabet {
   fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     self.config.serialize(serializer)
   }
 }
-
 impl TryFrom<AlphabetConfig> for Alphabet {
   type Error = Report;
 
@@ -64,7 +48,6 @@ impl TryFrom<AlphabetConfig> for Alphabet {
     Self::with_config(&config)
   }
 }
-
 impl Default for Alphabet {
   #[allow(
     clippy::expect_used,
@@ -344,3 +327,20 @@ impl AlphabetLike for Alphabet {
     self.all.iter()
   }
 }
+
+#[derive(
+  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "kebab-case")]
+pub enum AlphabetName {
+  #[default]
+  Nuc,
+  Aa,
+  AaNoStop,
+}
+
+pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
+
+type CharToSet = IndexMap<AsciiChar, StateSet>;
+
+type SetToChar = IndexMap<StateSet, AsciiChar>;

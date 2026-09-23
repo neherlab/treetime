@@ -1,10 +1,6 @@
 use derive_more::{Display, Error};
 use eyre::Report;
 
-#[derive(Debug, Display, Error)]
-#[display("Operation cancelled")]
-pub struct CancelledError;
-
 pub trait Cancel: Send + Sync {
   fn is_cancelled(&self) -> bool;
 
@@ -16,6 +12,10 @@ pub trait Cancel: Send + Sync {
     }
   }
 }
+
+#[derive(Debug, Display, Error)]
+#[display("Operation cancelled")]
+pub struct CancelledError;
 
 pub struct NoopCancel;
 

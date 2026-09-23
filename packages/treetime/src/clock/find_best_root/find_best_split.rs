@@ -10,17 +10,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FindRootResult {
-  pub edge: Option<GraphEdgeKey>,
-
-  pub split: f64,
-
-  pub clock_set: ClockSet,
-
-  pub chisq: f64,
-}
-
 pub(crate) fn find_best_split(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -40,4 +29,15 @@ pub(crate) fn find_best_split(
       method_golden_section::optimize_golden_section(edge, &cost_fn, params)
     },
   }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FindRootResult {
+  pub edge: Option<GraphEdgeKey>,
+
+  pub split: f64,
+
+  pub clock_set: ClockSet,
+
+  pub chisq: f64,
 }

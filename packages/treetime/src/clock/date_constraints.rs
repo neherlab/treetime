@@ -9,20 +9,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::{DateConstraint, DateValue, DatesMap};
 
-#[derive(Debug, Clone, Default)]
-pub struct DateConstraints {
-  pub date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-}
-
-fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
-  match &constraint.value {
-    DateValue::Exact(d) => Distribution::point(d.value, 0.0),
-    DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),
-  }
-}
-
 #[allow(
   clippy::as_conversions,
   clippy::unwrap_used,
@@ -106,6 +92,20 @@ pub fn load_date_constraints(
     time_distributions,
     bad_branches,
   })
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DateConstraints {
+  pub date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
+}
+
+fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
+  match &constraint.value {
+    DateValue::Exact(d) => Distribution::point(d.value, 0.0),
+    DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),
+  }
 }
 
 fn warn_unused_date_constraints(dates: &DatesMap, used_names: &BTreeSet<String>) {

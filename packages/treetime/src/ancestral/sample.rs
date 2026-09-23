@@ -24,6 +24,13 @@ impl SampleMode {
   }
 }
 
+pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
+  match resolve {
+    Resolve::Argmax => argmax_first(&profile).unwrap_or(0),
+    Resolve::Sample(rng) => sample_from_profile(profile, &mut **rng),
+  }
+}
+
 pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> usize {
   let cumsum: Vec<f64> = profile
     .iter()
@@ -45,11 +52,4 @@ pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCor
 pub(crate) enum Resolve<'r> {
   Argmax,
   Sample(&'r mut dyn RngCore),
-}
-
-pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
-  match resolve {
-    Resolve::Argmax => argmax_first(&profile).unwrap_or(0),
-    Resolve::Sample(rng) => sample_from_profile(profile, &mut **rng),
-  }
 }

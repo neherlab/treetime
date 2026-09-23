@@ -10,33 +10,6 @@ use treetime_graph::pass::{
 };
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ClockNodeInput {
-  pub time: Option<f64>,
-  pub bad_branch: bool,
-}
-
-#[derive(Debug, Clone, SmartDefault, PartialEq)]
-pub struct ClockEdgeInput {
-  pub time_length: Option<f64>,
-  #[default = 1.0]
-  pub gamma: f64,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct ClockNodeState {
-  pub clock_set: ClockSet,
-  pub div: f64,
-  pub is_outlier: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct ClockEdgeState {
-  pub clock_to_parent: ClockSet,
-  pub clock_to_child: ClockSet,
-  pub clock_from_child: ClockSet,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockInputs {
   pub nodes: BTreeMap<GraphNodeKey, ClockNodeInput>,
   pub edges: BTreeMap<GraphEdgeKey, ClockEdgeInput>,
@@ -126,6 +99,19 @@ impl ClockInputs {
   pub(crate) fn likely_time(&self, key: GraphNodeKey) -> Option<f64> {
     self.node(key).time
   }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ClockNodeInput {
+  pub time: Option<f64>,
+  pub bad_branch: bool,
+}
+
+#[derive(Debug, Clone, SmartDefault, PartialEq)]
+pub struct ClockEdgeInput {
+  pub time_length: Option<f64>,
+  #[default = 1.0]
+  pub gamma: f64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -232,4 +218,18 @@ impl ClockState {
     self.edges = edges;
     Ok(())
   }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ClockNodeState {
+  pub clock_set: ClockSet,
+  pub div: f64,
+  pub is_outlier: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ClockEdgeState {
+  pub clock_to_parent: ClockSet,
+  pub clock_to_child: ClockSet,
+  pub clock_from_child: ClockSet,
 }

@@ -12,6 +12,18 @@ use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::to_eyre_error;
 
+pub(crate) fn combine_edge_mutations(
+  subs: Vec<Sub>,
+  indels: &[InDel],
+  track: &MutationTrack,
+) -> Result<Vec<Mutation>, Report> {
+  subs
+    .into_iter()
+    .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
+    .chain(indels.iter().map(|indel| Mutation::indel(track.clone(), indel)))
+    .collect()
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Mutation {
   pub track: MutationTrack,
@@ -36,31 +48,11 @@ impl Mutation {
   }
 }
 
-pub(crate) fn combine_edge_mutations(
-  subs: Vec<Sub>,
-  indels: &[InDel],
-  track: &MutationTrack,
-) -> Result<Vec<Mutation>, Report> {
-  subs
-    .into_iter()
-    .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
-    .chain(indels.iter().map(|indel| Mutation::indel(track.clone(), indel)))
-    .collect()
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum MutationEvent {
-  Substitution(Sub),
-  Insertion(AlignedMutation),
-  Deletion(AlignedMutation),
 }
 
 pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Report> {
@@ -79,6 +71,14 @@ pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Repo
       .map(|(offset, state)| mutation_position(segment.range.0, offset).map(|position| format!("{state}{position}-")))
       .collect(),
   }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum MutationEvent {
+  Substitution(Sub),
+  Insertion(AlignedMutation),
+  Deletion(AlignedMutation),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
@@ -126,48 +126,6 @@ fn mutation_position(start: usize, offset: usize) -> Result<usize, Report> {
     .checked_add(offset)
     .and_then(|position| position.checked_add(1))
     .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display)]
-#[getset(get_copy = "pub")]
-#[display("{reff}{}{qry}", pos + 1)]
-pub struct Sub {
-  pos: usize,
-  qry: AsciiChar,
-  #[serde(rename = "ref")]
-  reff: AsciiChar,
-}
-
-impl Sub {
-  pub fn new<P: Into<usize>>(reff: AsciiChar, pos: P, qry: AsciiChar) -> Result<Self, Report> {
-    let pos = pos.into();
-
-    if qry == AsciiChar::from_byte_unchecked(b'-') || reff == AsciiChar::from_byte_unchecked(b'-') {
-      return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
-    }
-
-    Ok(Self { pos, qry, reff })
-  }
-
-  pub(crate) fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
-    if !alphabet.is_determined(self.qry()) || !alphabet.is_determined(self.reff()) {
-      make_internal_error!("Substitution is not determined: '{self}'")
-    } else {
-      Ok(())
-    }
-  }
-
-  pub(crate) fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
-    if !alphabet.is_canonical(self.qry()) || !alphabet.is_canonical(self.reff()) {
-      make_internal_error!("Substitution is not canonical: '{self}'")
-    } else {
-      Ok(())
-    }
-  }
-
-  pub(crate) fn invert(&mut self) {
-    std::mem::swap(&mut self.reff, &mut self.qry);
-  }
 }
 
 pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
@@ -219,6 +177,48 @@ pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> 
   result.extend_from_slice(&child_subs[ci..]);
 
   Ok(result)
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display)]
+#[getset(get_copy = "pub")]
+#[display("{reff}{}{qry}", pos + 1)]
+pub struct Sub {
+  pos: usize,
+  qry: AsciiChar,
+  #[serde(rename = "ref")]
+  reff: AsciiChar,
+}
+
+impl Sub {
+  pub fn new<P: Into<usize>>(reff: AsciiChar, pos: P, qry: AsciiChar) -> Result<Self, Report> {
+    let pos = pos.into();
+
+    if qry == AsciiChar::from_byte_unchecked(b'-') || reff == AsciiChar::from_byte_unchecked(b'-') {
+      return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
+    }
+
+    Ok(Self { pos, qry, reff })
+  }
+
+  pub(crate) fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_determined(self.qry()) || !alphabet.is_determined(self.reff()) {
+      make_internal_error!("Substitution is not determined: '{self}'")
+    } else {
+      Ok(())
+    }
+  }
+
+  pub(crate) fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_canonical(self.qry()) || !alphabet.is_canonical(self.reff()) {
+      make_internal_error!("Substitution is not canonical: '{self}'")
+    } else {
+      Ok(())
+    }
+  }
+
+  pub(crate) fn invert(&mut self) {
+    std::mem::swap(&mut self.reff, &mut self.qry);
+  }
 }
 
 impl FromStr for Sub {

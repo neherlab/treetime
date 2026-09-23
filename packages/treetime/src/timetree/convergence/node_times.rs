@@ -3,14 +3,6 @@ use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct NodeTimeChange {
-  pub max: Option<f64>,
-  pub rms: Option<f64>,
-}
-
 pub(crate) fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
   graph
     .get_nodes()
@@ -42,4 +34,12 @@ pub(crate) fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &No
     max: Some(max),
     rms: Some(rms),
   }
+}
+
+pub(crate) type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct NodeTimeChange {
+  pub max: Option<f64>,
+  pub rms: Option<f64>,
 }

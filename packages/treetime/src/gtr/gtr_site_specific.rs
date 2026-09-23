@@ -8,16 +8,6 @@ use rand_distr::Gamma;
 use treetime_utils::array::ndarray::clamp_min;
 
 #[derive(Clone, Debug)]
-pub struct GTRSiteSpecificParams {
-  pub n_states: usize,
-  pub seq_len: usize,
-  pub mu: Array1<f64>,
-  pub W: Option<Array2<f64>>,
-  pub pi: Array2<f64>,
-  pub approximate: bool,
-}
-
-#[derive(Clone, Debug)]
 #[expect(
   clippy::partial_pub_fields,
   reason = "private fields hold derived state that only the constructor keeps consistent"
@@ -340,6 +330,16 @@ impl GTRSiteSpecific {
       rate_scale,
     });
   }
+}
+
+#[derive(Clone, Debug)]
+pub struct GTRSiteSpecificParams {
+  pub n_states: usize,
+  pub seq_len: usize,
+  pub mu: Array1<f64>,
+  pub W: Option<Array2<f64>>,
+  pub pi: Array2<f64>,
+  pub approximate: bool,
 }
 
 #[derive(Clone, Debug)]

@@ -5,12 +5,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Clone, Default)]
-struct RelaxedClockCoeffs {
-  k1: f64,
-  k2: f64,
-}
-
 pub fn apply_relaxed_clock(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -104,4 +98,10 @@ pub fn apply_relaxed_clock(
   }
 
   Ok(())
+}
+
+#[derive(Clone, Default)]
+struct RelaxedClockCoeffs {
+  k1: f64,
+  k2: f64,
 }

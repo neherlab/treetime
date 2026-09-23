@@ -2,15 +2,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use treetime_primitives::{AsciiChar, Seq};
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum GapFill {
-  #[default]
-  OnlyTerminal,
-  All,
-  None,
-}
-
 pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: AsciiChar) {
   match mode {
     GapFill::None => {},
@@ -45,4 +36,13 @@ pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: Asc
       }
     },
   }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum GapFill {
+  #[default]
+  OnlyTerminal,
+  All,
+  None,
 }

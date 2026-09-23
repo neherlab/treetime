@@ -10,12 +10,33 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
-#[derive(Debug, Clone)]
-pub struct OutlierRecord {
-  name: String,
-  given_date: f64,
-  apparent_date: f64,
-  residual: f64,
+pub(crate) fn report_bad_branches(
+  graph: &Graph,
+  clock_state: &ClockState,
+  clock_model: &ClockModel,
+  iqd: f64,
+  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) {
+  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates, names);
+  if outliers.is_empty() {
+    return;
+  }
+
+  warn!("Clock filter marked {} outliers:", outliers.len());
+  warn!(
+    "{:>20} {:>12} {:>14} {:>10}",
+    "name", "given_date", "apparent_date", "residual"
+  );
+  for r in &outliers {
+    warn!(
+      "{:>20} {:>12.2} {:>14.2} {:>10.2}",
+      truncate_right_with_ellipsis(&r.name, 20),
+      r.given_date,
+      r.apparent_date,
+      r.residual
+    );
+  }
 }
 
 fn collect_outliers(
@@ -52,33 +73,12 @@ fn collect_outliers(
     .collect_vec()
 }
 
-pub(crate) fn report_bad_branches(
-  graph: &Graph,
-  clock_state: &ClockState,
-  clock_model: &ClockModel,
-  iqd: f64,
-  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) {
-  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates, names);
-  if outliers.is_empty() {
-    return;
-  }
-
-  warn!("Clock filter marked {} outliers:", outliers.len());
-  warn!(
-    "{:>20} {:>12} {:>14} {:>10}",
-    "name", "given_date", "apparent_date", "residual"
-  );
-  for r in &outliers {
-    warn!(
-      "{:>20} {:>12.2} {:>14.2} {:>10.2}",
-      truncate_right_with_ellipsis(&r.name, 20),
-      r.given_date,
-      r.apparent_date,
-      r.residual
-    );
-  }
+#[derive(Debug, Clone)]
+pub struct OutlierRecord {
+  name: String,
+  given_date: f64,
+  apparent_date: f64,
+  residual: f64,
 }
 
 pub(crate) fn apply_outlier_bad_branches(

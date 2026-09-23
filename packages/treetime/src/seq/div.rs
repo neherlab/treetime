@@ -7,9 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
-#[derive(Debug, Default, Copy, Clone)]
-pub struct OnlyLeaves(pub bool);
-
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -45,6 +42,9 @@ pub(crate) fn compute_divs(
 
   Ok(result)
 }
+
+#[derive(Debug, Default, Copy, Clone)]
+pub struct OnlyLeaves(pub bool);
 
 pub fn compute_edge_mutation_counts(
   graph: &Graph,

@@ -20,39 +20,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub struct MugrationParams {
-  pub missing_data: String,
-  pub pc: Option<f64>,
-  pub missing_weights_threshold: f64,
-  pub iterations: usize,
-  pub sampling_bias_correction: Option<f64>,
-  pub smooth_initial_pi: bool,
-  pub filter_uninformative_root: bool,
-}
-
-pub struct MugrationInput {
-  pub graph: Graph,
-  pub traits: BTreeMap<String, String>,
-  pub weights: Option<BTreeMap<String, f64>>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-#[derive(Debug)]
-pub struct MugrationOutput {
-  pub graph: Graph,
-  pub gtr: GTR,
-  pub states: DiscreteStates,
-  pub n_states: usize,
-  pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
-  pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
-}
-
-#[derive(Debug)]
-pub struct WeightCoverageResult {
-  pub missing_values: IndexSet<String>,
-  pub missing_ratio: f64,
-}
-
 pub fn run(
   params: &MugrationParams,
   input: MugrationInput,
@@ -165,6 +132,33 @@ pub fn run(
   })
 }
 
+pub struct MugrationParams {
+  pub missing_data: String,
+  pub pc: Option<f64>,
+  pub missing_weights_threshold: f64,
+  pub iterations: usize,
+  pub sampling_bias_correction: Option<f64>,
+  pub smooth_initial_pi: bool,
+  pub filter_uninformative_root: bool,
+}
+
+pub struct MugrationInput {
+  pub graph: Graph,
+  pub traits: BTreeMap<String, String>,
+  pub weights: Option<BTreeMap<String, f64>>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+#[derive(Debug)]
+pub struct MugrationOutput {
+  pub graph: Graph,
+  pub gtr: GTR,
+  pub states: DiscreteStates,
+  pub n_states: usize,
+  pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
+  pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
+}
+
 fn gather_reconstruction_maps(
   graph: &Graph,
   partition: &PartitionMarginalDiscrete,
@@ -219,6 +213,12 @@ pub(crate) fn validate_weight_coverage(
     missing_values,
     missing_ratio,
   })
+}
+
+#[derive(Debug)]
+pub struct WeightCoverageResult {
+  pub missing_values: IndexSet<String>,
+  pub missing_ratio: f64,
 }
 
 pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {

@@ -9,19 +9,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ClockRegressionResult {
-  pub name: Option<String>,
-  pub div: f64,
-  pub date: Option<f64>,
-  pub predicted_date: f64,
-  pub clock_deviation: Option<f64>,
-  #[serde(serialize_with = "skip_serializing_if_false")]
-  pub is_outlier: bool,
-  #[serde(skip)]
-  pub is_leaf: bool,
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -69,4 +56,17 @@ pub(crate) fn gather_clock_regression_results(
       })
     })
     .collect()
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClockRegressionResult {
+  pub name: Option<String>,
+  pub div: f64,
+  pub date: Option<f64>,
+  pub predicted_date: f64,
+  pub clock_deviation: Option<f64>,
+  #[serde(serialize_with = "skip_serializing_if_false")]
+  pub is_outlier: bool,
+  #[serde(skip)]
+  pub is_leaf: bool,
 }

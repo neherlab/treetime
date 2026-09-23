@@ -5,46 +5,6 @@ use std::collections::VecDeque;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::{make_error, make_internal_error};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Lineage {
-  pub time: f64,
-  pub mutations: u32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Merger {
-  pub time: f64,
-  pub left: usize,
-  pub right: usize,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SubtreePlan {
-  pub mergers: Vec<Merger>,
-  pub roots: Vec<usize>,
-}
-
-impl SubtreePlan {
-  fn unresolved(n_children: usize) -> Self {
-    Self {
-      mergers: Vec::new(),
-      roots: (0..n_children).collect(),
-    }
-  }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct Tracked {
-  id: usize,
-  mutations: u32,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct Pending {
-  lineage: Tracked,
-  elapsed: f64,
-}
-
 pub(crate) fn simulate_subtree(
   children: &[Lineage],
   t_stop: f64,
@@ -140,6 +100,21 @@ pub(crate) fn simulate_subtree(
   Ok(SubtreePlan { mergers, roots })
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SubtreePlan {
+  pub mergers: Vec<Merger>,
+  pub roots: Vec<usize>,
+}
+
+impl SubtreePlan {
+  fn unresolved(n_children: usize) -> Self {
+    Self {
+      mergers: Vec::new(),
+      roots: (0..n_children).collect(),
+    }
+  }
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -187,6 +162,12 @@ fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Res
   Ok(())
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Lineage {
+  pub time: f64,
+  pub mutations: u32,
+}
+
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -196,6 +177,12 @@ fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Pending>, ela
     let arrived = to_come.pop_front().expect("front was just inspected");
     alive.push(arrived.lineage);
   }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Pending {
+  lineage: Tracked,
+  elapsed: f64,
 }
 
 fn place_mutation(alive: &mut [Tracked], total_mutations: u64, rng: &mut dyn rand::RngCore) -> Result<(), Report> {
@@ -264,4 +251,17 @@ fn coalesce_pair(
     left: left_id,
     right: right_id,
   })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Merger {
+  pub time: f64,
+  pub left: usize,
+  pub right: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Tracked {
+  id: usize,
+  mutations: u32,
 }

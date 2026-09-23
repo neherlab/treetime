@@ -13,18 +13,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[derive(Clone, Debug, Serialize)]
-pub struct DenseInputs {
-  pub min_branch_length: f64,
-  pub filter_uninformative_root: bool,
-}
-
-impl DenseInputs {
-  fn effective_branch_length(&self, raw: f64) -> f64 {
-    raw.max(self.min_branch_length)
-  }
-}
-
 pub(crate) fn count_transitions_dense(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -66,4 +54,16 @@ pub(crate) fn count_transitions_dense(
   nij.diag_mut().fill(0.0);
 
   Ok(MutationCounts { nij, Ti, root_state })
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct DenseInputs {
+  pub min_branch_length: f64,
+  pub filter_uninformative_root: bool,
+}
+
+impl DenseInputs {
+  fn effective_branch_length(&self, raw: f64) -> f64 {
+    raw.max(self.min_branch_length)
+  }
 }

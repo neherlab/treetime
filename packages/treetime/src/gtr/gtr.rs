@@ -8,41 +8,6 @@ use serde::Serialize;
 use treetime_utils::array::ndarray::{clamp_min, outer};
 use treetime_utils::array::serde::{array1_as_vec, array2_as_vec, option_array1_as_vec};
 
-pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
-  Ok(pi.dot(W).dot(pi))
-}
-
-pub(super) fn eig_single_site(
-  W: &Array2<f64>,
-  pi: ArrayView1<'_, f64>,
-) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
-  assert!(abs(W.diag().sum()) < 1e-10);
-
-  let sqrt_pi: Array1<f64> = pi.mapv(f64::sqrt);
-  let mut sym_Q: Array2<f64> = W * outer(&sqrt_pi, &sqrt_pi)?;
-
-  let diag = -W.dot(&pi);
-  sym_Q.diag_mut().assign(&diag);
-
-  let (eigvals, eigvecs) = sym_Q.eigh(Lower)?;
-
-  let tmp_v: Array2<f64> = eigvecs.t().to_owned() * sqrt_pi.to_owned();
-  let one_norm: Array1<f64> = tmp_v.mapv(f64::abs).sum_axis(Axis(1));
-
-  let v = tmp_v.t().to_owned() / &one_norm;
-  let v_inv = (eigvecs * one_norm).t().to_owned() / sqrt_pi;
-
-  Ok((eigvals, v, v_inv))
-}
-
-#[derive(Clone, Debug)]
-pub struct GTRParams {
-  pub n_states: usize,
-  pub mu: f64,
-  pub W: Option<Array2<f64>>,
-  pub pi: Array1<f64>,
-}
-
 #[derive(Clone, Debug, Serialize)]
 pub struct GTR {
   pub debug: bool,
@@ -204,4 +169,39 @@ impl GTR {
     Q.diag_mut().assign(&diag);
     Q
   }
+}
+
+pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
+  Ok(pi.dot(W).dot(pi))
+}
+
+pub(super) fn eig_single_site(
+  W: &Array2<f64>,
+  pi: ArrayView1<'_, f64>,
+) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
+  assert!(abs(W.diag().sum()) < 1e-10);
+
+  let sqrt_pi: Array1<f64> = pi.mapv(f64::sqrt);
+  let mut sym_Q: Array2<f64> = W * outer(&sqrt_pi, &sqrt_pi)?;
+
+  let diag = -W.dot(&pi);
+  sym_Q.diag_mut().assign(&diag);
+
+  let (eigvals, eigvecs) = sym_Q.eigh(Lower)?;
+
+  let tmp_v: Array2<f64> = eigvecs.t().to_owned() * sqrt_pi.to_owned();
+  let one_norm: Array1<f64> = tmp_v.mapv(f64::abs).sum_axis(Axis(1));
+
+  let v = tmp_v.t().to_owned() / &one_norm;
+  let v_inv = (eigvecs * one_norm).t().to_owned() / sqrt_pi;
+
+  Ok((eigvals, v, v_inv))
+}
+
+#[derive(Clone, Debug)]
+pub struct GTRParams {
+  pub n_states: usize,
+  pub mu: f64,
+  pub W: Option<Array2<f64>>,
+  pub pi: Array1<f64>,
 }

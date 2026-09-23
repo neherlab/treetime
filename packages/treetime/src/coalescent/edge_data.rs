@@ -7,39 +7,6 @@ use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug)]
-pub struct CoalescentEdgeData {
-  child_time: CalendarTime,
-  parent_time: CalendarTime,
-  n_siblings: f64,
-}
-
-impl CoalescentEdgeData {
-  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_siblings: f64) -> Self {
-    Self {
-      child_time,
-      parent_time,
-      n_siblings,
-    }
-  }
-
-  pub fn child_time(&self) -> CalendarTime {
-    self.child_time
-  }
-
-  pub fn parent_time(&self) -> CalendarTime {
-    self.parent_time
-  }
-
-  pub fn n_siblings(&self) -> f64 {
-    self.n_siblings
-  }
-}
-
-fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
-  entry.time.or(entry.time_dist_likely)
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -99,10 +66,43 @@ pub fn collect_coalescent_edges(
   Ok(edges)
 }
 
+fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
+  entry.time.or(entry.time_dist_likely)
+}
+
 pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<LogLh, Report> {
   let total_contribution = edges
     .iter()
     .map(|edge| model.edge_contribution(edge))
     .sum::<Result<f64, Report>>()?;
   Ok(LogLh::new(-total_contribution))
+}
+
+#[derive(Clone, Debug)]
+pub struct CoalescentEdgeData {
+  child_time: CalendarTime,
+  parent_time: CalendarTime,
+  n_siblings: f64,
+}
+
+impl CoalescentEdgeData {
+  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_siblings: f64) -> Self {
+    Self {
+      child_time,
+      parent_time,
+      n_siblings,
+    }
+  }
+
+  pub fn child_time(&self) -> CalendarTime {
+    self.child_time
+  }
+
+  pub fn parent_time(&self) -> CalendarTime {
+    self.parent_time
+  }
+
+  pub fn n_siblings(&self) -> f64 {
+    self.n_siblings
+  }
 }

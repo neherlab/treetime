@@ -20,12 +20,6 @@ use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForward
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Copy, Debug)]
-pub enum IndexedKind {
-  Dense,
-  Discrete,
-}
-
 pub(crate) fn indexed_backward(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -181,11 +175,6 @@ pub(crate) fn indexed_forward(
   })
 }
 
-struct DenseEdgeForwardOut {
-  msg_to_child: DenseSeqDistribution,
-  indels: Vec<crate::seq::indel::InDel>,
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -239,6 +228,17 @@ fn indexed_node_forward(
 
   let parent_message = edge_out.map(|(_, _, out)| out);
   Ok(GraphPassNodeOutput { node, parent_message })
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum IndexedKind {
+  Dense,
+  Discrete,
+}
+
+struct DenseEdgeForwardOut {
+  msg_to_child: DenseSeqDistribution,
+  indels: Vec<crate::seq::indel::InDel>,
 }
 
 #[allow(

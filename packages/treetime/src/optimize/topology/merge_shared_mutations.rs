@@ -84,21 +84,6 @@ fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEd
   node.outbound().to_vec()
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-enum MutationKey {
-  Sub(Sub),
-  InDel(InDel),
-}
-
-struct MergeGroup {
-  edges: Vec<GraphEdgeKey>,
-  shared_subs: Vec<Vec<Sub>>,
-  shared_indels: Vec<Vec<InDel>>,
-  total_shared: usize,
-}
-
-type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
-
 fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[GraphEdgeKey]) -> MutationIndex {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
@@ -170,6 +155,14 @@ fn shared_mutations_for_group(
   (shared_subs, shared_indels)
 }
 
+type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+enum MutationKey {
+  Sub(Sub),
+  InDel(InDel),
+}
+
 fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup> {
   groups.sort_unstable_by(|a, b| {
     b.total_shared
@@ -186,11 +179,6 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
     }
   });
   groups
-}
-
-struct ChildEdgeData {
-  remaining_subs: Vec<Sub>,
-  remaining_indels: Vec<InDel>,
 }
 
 #[allow(
@@ -297,4 +285,16 @@ fn merge_sibling_group(
   }
 
   Ok(())
+}
+
+struct MergeGroup {
+  edges: Vec<GraphEdgeKey>,
+  shared_subs: Vec<Vec<Sub>>,
+  shared_indels: Vec<Vec<InDel>>,
+  total_shared: usize,
+}
+
+struct ChildEdgeData {
+  remaining_subs: Vec<Sub>,
+  remaining_indels: Vec<InDel>,
 }

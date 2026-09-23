@@ -28,34 +28,6 @@ use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
-pub fn marginal_update_sparse(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  sparse: Vec<SparseReconstruction>,
-) -> Result<(Vec<SparseReconstruction>, LogLh), Report> {
-  sparse
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
-      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-      updated.push(family);
-      Ok((updated, total + log_lh))
-    })
-}
-
-pub fn marginal_update_dense(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  dense: Vec<DenseReconstruction>,
-) -> Result<(Vec<DenseReconstruction>, LogLh), Report> {
-  dense
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
-      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-      updated.push(family);
-      Ok((updated, total + log_lh))
-    })
-}
-
 pub fn run_optimize_loop(
   graph: &mut Graph,
   sparse_partitions: Vec<SparseReconstruction>,
@@ -205,14 +177,6 @@ pub fn run_optimize_loop(
   })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConvergenceReason {
-  Converged,
-  Oscillating,
-  Worsened,
-  NumericalFailure,
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct OptimizeLoopResult {
   pub sparse_partitions: Vec<SparseReconstruction>,
@@ -230,13 +194,12 @@ pub struct OptimizeLoopResult {
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-struct OptimizeIterationLikelihood {
-  sparse_lh: LogLh,
-  dense_lh: LogLh,
-  indel_lh: LogLh,
-  total_lh: LogLh,
-  indel_rate: f64,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConvergenceReason {
+  Converged,
+  Oscillating,
+  Worsened,
+  NumericalFailure,
 }
 
 fn compute_iteration(
@@ -271,10 +234,47 @@ fn compute_iteration(
   })
 }
 
+pub fn marginal_update_sparse(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  sparse: Vec<SparseReconstruction>,
+) -> Result<(Vec<SparseReconstruction>, LogLh), Report> {
+  sparse
+    .into_iter()
+    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
+      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
+      updated.push(family);
+      Ok((updated, total + log_lh))
+    })
+}
+
+pub fn marginal_update_dense(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  dense: Vec<DenseReconstruction>,
+) -> Result<(Vec<DenseReconstruction>, LogLh), Report> {
+  dense
+    .into_iter()
+    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
+      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
+      updated.push(family);
+      Ok((updated, total + log_lh))
+    })
+}
+
 struct OptimizeIteration {
   sparse_partitions: Vec<SparseReconstruction>,
   dense_partitions: Vec<DenseReconstruction>,
   likelihood: OptimizeIterationLikelihood,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct OptimizeIterationLikelihood {
+  sparse_lh: LogLh,
+  dense_lh: LogLh,
+  indel_lh: LogLh,
+  total_lh: LogLh,
+  indel_rate: f64,
 }
 
 pub fn find_zero_optimal_internal_edges(
@@ -433,22 +433,6 @@ fn join_dense(
     .collect_vec()
 }
 
-pub fn any_indel_edge_has_zero_branch_length(
-  graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> bool {
-  graph.get_edges().any(|edge_ref| {
-    let edge = edge_ref;
-    let edge_key = edge.key();
-    let bl = branch_lengths[&edge_key].unwrap_or(0.0);
-    if bl != 0.0 {
-      return false;
-    }
-    indel_counts[&edge_key] > 0
-  })
-}
-
 #[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
@@ -510,6 +494,22 @@ pub fn apply_initial_guess_mode(
       Ok(())
     },
   }
+}
+
+pub fn any_indel_edge_has_zero_branch_length(
+  graph: &Graph,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> bool {
+  graph.get_edges().any(|edge_ref| {
+    let edge = edge_ref;
+    let edge_key = edge.key();
+    let bl = branch_lengths[&edge_key].unwrap_or(0.0);
+    if bl != 0.0 {
+      return false;
+    }
+    indel_counts[&edge_key] > 0
+  })
 }
 
 pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -> Option<String> {

@@ -119,15 +119,6 @@ pub(crate) fn compute_rate_susceptibility(
   Ok(rate_susceptibility_dates)
 }
 
-pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {
-  let [lower, central, upper] = dates;
-  let z_lower = quantile_to_zscore(interval.0);
-  let z_upper = quantile_to_zscore(interval.1);
-  let ci_lower = central + z_lower * (lower - central).abs();
-  let ci_upper = central + z_upper * (upper - central).abs();
-  (ci_lower, ci_upper)
-}
-
 pub fn extract_confidence_intervals(
   graph: &Graph,
   state: &TimetreeState,
@@ -173,6 +164,15 @@ pub fn extract_confidence_intervals(
     })
     .sorted_by_key(|ci| ci.key)
     .collect_vec()
+}
+
+pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {
+  let [lower, central, upper] = dates;
+  let z_lower = quantile_to_zscore(interval.0);
+  let z_upper = quantile_to_zscore(interval.1);
+  let ci_lower = central + z_lower * (lower - central).abs();
+  let ci_upper = central + z_upper * (upper - central).abs();
+  (ci_lower, ci_upper)
 }
 
 #[derive(Debug, Clone, Serialize)]

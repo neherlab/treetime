@@ -8,55 +8,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalUpdate<Node, Backward, Forward, Estimate> {
-  pub node_states: BTreeMap<GraphNodeKey, Node>,
-  pub edges: MarginalEdges<Backward, Forward, Estimate>,
-  pub log_lh: LogLh,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalEdges<Backward, Forward, Estimate> {
-  pub backward: BTreeMap<GraphEdgeKey, Backward>,
-  pub forward: BTreeMap<GraphEdgeKey, Forward>,
-  pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
-}
-
-impl<Backward, Forward, Estimate> Default for MarginalEdges<Backward, Forward, Estimate> {
-  fn default() -> Self {
-    Self {
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }
-  }
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalStates<Node> {
-  pub node_states: BTreeMap<GraphNodeKey, Node>,
-  pub log_lh: LogLh,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalBackward<Node, Backward> {
-  pub node_states: BTreeMap<GraphNodeKey, Node>,
-  pub backward: BTreeMap<GraphEdgeKey, Backward>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalForward<Node, Forward, Estimate> {
-  pub node_states: BTreeMap<GraphNodeKey, Node>,
-  pub forward: BTreeMap<GraphEdgeKey, Forward>,
-  pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
-}
-
-pub trait MarginalNodeState {
-  fn log_lh(&self) -> LogLh;
-
-  fn set_log_lh(&mut self, log_lh: LogLh);
-}
-
 pub trait MarginalPasses {
   type Node: MarginalNodeState;
   type Backward;
@@ -145,4 +96,53 @@ pub trait MarginalPasses {
       node.set_log_lh(LogLh::ZERO);
     }
   }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalUpdate<Node, Backward, Forward, Estimate> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub edges: MarginalEdges<Backward, Forward, Estimate>,
+  pub log_lh: LogLh,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalEdges<Backward, Forward, Estimate> {
+  pub backward: BTreeMap<GraphEdgeKey, Backward>,
+  pub forward: BTreeMap<GraphEdgeKey, Forward>,
+  pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
+}
+
+impl<Backward, Forward, Estimate> Default for MarginalEdges<Backward, Forward, Estimate> {
+  fn default() -> Self {
+    Self {
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalStates<Node> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub log_lh: LogLh,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalBackward<Node, Backward> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub backward: BTreeMap<GraphEdgeKey, Backward>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalForward<Node, Forward, Estimate> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub forward: BTreeMap<GraphEdgeKey, Forward>,
+  pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
+}
+
+pub trait MarginalNodeState {
+  fn log_lh(&self) -> LogLh;
+
+  fn set_log_lh(&mut self, log_lh: LogLh);
 }

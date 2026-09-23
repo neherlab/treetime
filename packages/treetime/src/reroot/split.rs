@@ -9,17 +9,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-#[derive(Debug, Clone)]
-pub struct FindRootResult<S> {
-  pub edge: Option<GraphEdgeKey>,
-
-  pub split: f64,
-
-  pub stats: S,
-
-  pub score: f64,
-}
-
 pub(crate) fn find_best_split<S>(
   graph: &Graph,
   edge: GraphEdgeKey,
@@ -58,4 +47,15 @@ where
   };
 
   optimize_brent(edge, &cost_fn, params)
+}
+
+#[derive(Debug, Clone)]
+pub struct FindRootResult<S> {
+  pub edge: Option<GraphEdgeKey>,
+
+  pub split: f64,
+
+  pub stats: S,
+
+  pub score: f64,
 }

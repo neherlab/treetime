@@ -9,79 +9,6 @@ use treetime_utils::interval::range_intersection::{range_intersection, range_int
 use treetime_utils::interval::range_union::range_union_iter;
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-pub struct InDel {
-  pub range: (usize, usize),
-  pub seq: Seq,
-  pub kind: InDelKind,
-}
-
-impl InDel {
-  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
-    Self::new(range, seq, InDelKind::Deletion)
-  }
-
-  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
-    Self::new(range, seq, InDelKind::Insertion)
-  }
-
-  fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
-    let seq = seq.into();
-    let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
-      return make_error!(
-        "Indel range must be non-empty and ordered, got {}..{}",
-        range.0,
-        range.1
-      );
-    };
-    if seq.len() != length {
-      return make_error!(
-        "Indel range {}..{} has length {length}, but its sequence has length {}",
-        range.0,
-        range.1,
-        seq.len()
-      );
-    }
-    Ok(Self { range, seq, kind })
-  }
-
-  pub(crate) fn invert(&mut self) {
-    self.kind = match self.kind {
-      InDelKind::Insertion => InDelKind::Deletion,
-      InDelKind::Deletion => InDelKind::Insertion,
-    };
-  }
-
-  pub(crate) fn is_deletion(&self) -> bool {
-    self.kind == InDelKind::Deletion
-  }
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum InDelKind {
-  Insertion,
-  Deletion,
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    handwritten_fmt_impl,
-    reason = "an indel renders in range notation with the replaced characters"
-  )
-)]
-impl fmt::Display for InDel {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    let delta_str = if self.is_deletion() {
-      format!("{} -> {}", &self.seq.as_str(), "-".repeat(self.seq.len()))
-    } else {
-      format!("{} -> {}", "-".repeat(self.seq.len()), &self.seq.as_str())
-    };
-    write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
-  }
-}
-
 pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<InDel> {
   debug_assert!(
     parent_indels
@@ -236,31 +163,6 @@ pub(crate) fn sort_indels(indels: &mut [InDel]) {
   indels.sort_by_key(|i| i.range);
 }
 
-pub struct IndelsBackward {
-  pub variable_indel: BTreeSet<(usize, usize)>,
-  pub resolved_gaps: Vec<(usize, usize)>,
-}
-
-pub struct NodeRanges {
-  pub non_char: Vec<(usize, usize)>,
-  pub unknown: Vec<(usize, usize)>,
-}
-
-fn collect_breakpoints(ranges: impl Iterator<Item = (usize, usize)>) -> Vec<usize> {
-  let mut bp: Vec<usize> = ranges.flat_map(|(lo, hi)| <[usize; 2]>::from((lo, hi))).collect();
-  bp.sort_unstable();
-  bp.dedup();
-  bp
-}
-
-fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
-  ranges.iter().any(|&(a, b)| a <= lo && hi <= b)
-}
-
-fn interval_in_vi(vi: &BTreeSet<(usize, usize)>, lo: usize, hi: usize) -> bool {
-  vi.iter().any(|&(a, b)| a <= lo && hi <= b)
-}
-
 pub fn compute_node_ranges(
   child_non_chars: &[&Vec<(usize, usize)>],
   child_gaps: &[&Vec<(usize, usize)>],
@@ -270,6 +172,11 @@ pub fn compute_node_ranges(
   let consensus_gaps = range_intersection(&[non_char.clone(), gap_union]);
   let unknown = range_difference(&non_char, &consensus_gaps);
   NodeRanges { non_char, unknown }
+}
+
+pub struct NodeRanges {
+  pub non_char: Vec<(usize, usize)>,
+  pub unknown: Vec<(usize, usize)>,
 }
 
 pub fn resolve_indels_backward(
@@ -337,6 +244,11 @@ pub fn resolve_indels_backward(
   }
 }
 
+pub struct IndelsBackward {
+  pub variable_indel: BTreeSet<(usize, usize)>,
+  pub resolved_gaps: Vec<(usize, usize)>,
+}
+
 pub fn resolve_indels_forward(
   variable_indel: &BTreeSet<(usize, usize)>,
   node_gaps: &[(usize, usize)],
@@ -401,4 +313,92 @@ pub fn resolve_indels_forward(
   }
 
   (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct InDel {
+  pub range: (usize, usize),
+  pub seq: Seq,
+  pub kind: InDelKind,
+}
+
+impl InDel {
+  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
+    Self::new(range, seq, InDelKind::Deletion)
+  }
+
+  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
+    Self::new(range, seq, InDelKind::Insertion)
+  }
+
+  fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
+    let seq = seq.into();
+    let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
+      return make_error!(
+        "Indel range must be non-empty and ordered, got {}..{}",
+        range.0,
+        range.1
+      );
+    };
+    if seq.len() != length {
+      return make_error!(
+        "Indel range {}..{} has length {length}, but its sequence has length {}",
+        range.0,
+        range.1,
+        seq.len()
+      );
+    }
+    Ok(Self { range, seq, kind })
+  }
+
+  pub(crate) fn invert(&mut self) {
+    self.kind = match self.kind {
+      InDelKind::Insertion => InDelKind::Deletion,
+      InDelKind::Deletion => InDelKind::Insertion,
+    };
+  }
+
+  pub(crate) fn is_deletion(&self) -> bool {
+    self.kind == InDelKind::Deletion
+  }
+}
+
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "an indel renders in range notation with the replaced characters"
+  )
+)]
+impl fmt::Display for InDel {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let delta_str = if self.is_deletion() {
+      format!("{} -> {}", &self.seq.as_str(), "-".repeat(self.seq.len()))
+    } else {
+      format!("{} -> {}", "-".repeat(self.seq.len()), &self.seq.as_str())
+    };
+    write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
+  }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum InDelKind {
+  Insertion,
+  Deletion,
+}
+
+fn collect_breakpoints(ranges: impl Iterator<Item = (usize, usize)>) -> Vec<usize> {
+  let mut bp: Vec<usize> = ranges.flat_map(|(lo, hi)| <[usize; 2]>::from((lo, hi))).collect();
+  bp.sort_unstable();
+  bp.dedup();
+  bp
+}
+
+fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
+  ranges.iter().any(|&(a, b)| a <= lo && hi <= b)
+}
+
+fn interval_in_vi(vi: &BTreeSet<(usize, usize)>, lo: usize, hi: usize) -> bool {
+  vi.iter().any(|&(a, b)| a <= lo && hi <= b)
 }

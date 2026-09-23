@@ -9,15 +9,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_primitives::AlignmentRecord;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum TimeMarginalMode {
-  #[default]
-  Never,
-  Always,
-  OnlyFinal,
-}
-
 pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
   confidence: bool,
@@ -39,6 +30,15 @@ pub(crate) fn compute_effective_time_marginal(
   } else {
     time_marginal
   }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum TimeMarginalMode {
+  #[default]
+  Never,
+  Always,
+  OnlyFinal,
 }
 
 #[allow(

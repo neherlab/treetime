@@ -66,83 +66,6 @@ use treetime_utils::sync::random::get_random_number_generator;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
-pub struct TimetreeParams {
-  pub model: GtrModelName,
-  pub alphabet_name: crate::alphabet::alphabet::AlphabetName,
-  pub dense: Option<bool>,
-  pub gap_fill: crate::seq::gap_fill::GapFill,
-  pub branch_length_mode: BranchLengthMode,
-  pub no_indels: bool,
-  pub sequence_length: Option<usize>,
-  pub clock_rate: Option<f64>,
-  pub clock_std_dev: Option<f64>,
-  pub keep_root: bool,
-  pub reroot_spec: RerootSpec,
-  pub allow_negative_rate: bool,
-  pub clock_filter: f64,
-  pub covariation: bool,
-  pub tip_slack: Option<f64>,
-  pub max_iter: usize,
-  pub resolve_polytomies: bool,
-  pub keep_polytomies: bool,
-  pub relax: Vec<f64>,
-  pub coalescent: Option<f64>,
-  pub coalescent_opt: bool,
-  pub coalescent_skyline: bool,
-  pub skyline_n_points: usize,
-  pub skyline_stiffness: f64,
-  pub coalescent_confidence: f64,
-  pub gen_per_year: f64,
-  pub n_branches_posterior: Option<usize>,
-  pub time_marginal: TimeMarginalMode,
-  pub confidence: bool,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub report_ambiguous: bool,
-  pub zero_based: bool,
-  pub seed: Option<u64>,
-}
-
-pub struct TimetreeInput {
-  pub graph: Graph,
-  pub alphabet: Alphabet,
-  pub sequences: Option<Vec<AlignmentRecord>>,
-  pub dates: Option<DatesMap>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
-#[derive(Serialize)]
-pub struct TimetreeOutput {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub clock_model: ClockModel,
-  #[serde(skip)]
-  pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  #[serde(skip)]
-  pub partitions: Vec<PartitionTimetree>,
-  #[serde(skip)]
-  pub dates: Option<DatesMap>,
-  #[serde(skip)]
-  pub gtr: Option<GTR>,
-  #[serde(skip)]
-  pub model_name: Option<GtrModelName>,
-  #[serde(skip)]
-  pub coalescent: Option<CoalescentOutput>,
-  #[serde(skip)]
-  pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
-  #[serde(skip)]
-  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-  #[serde(skip)]
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  #[serde(skip)]
-  pub clock_state: ClockState,
-  #[serde(skip)]
-  pub timetree_state: TimetreeState,
-  #[serde(skip)]
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -643,27 +566,44 @@ pub fn run(
   })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum CoalescentMode {
-  Disabled,
-  Fixed(f64),
-  Constant,
-  Skyline,
+pub struct TimetreeInput {
+  pub graph: Graph,
+  pub alphabet: Alphabet,
+  pub sequences: Option<Vec<AlignmentRecord>>,
+  pub dates: Option<DatesMap>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-impl CoalescentMode {
-  fn is_optimized(self) -> bool {
-    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
-  }
-
-  fn output_mode(self) -> Option<CoalescentOutputMode> {
-    match self {
-      CoalescentMode::Disabled => None,
-      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
-      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
-      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
-    }
-  }
+#[derive(Serialize)]
+pub struct TimetreeOutput {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
+  #[serde(skip)]
+  pub partitions: Vec<PartitionTimetree>,
+  #[serde(skip)]
+  pub dates: Option<DatesMap>,
+  #[serde(skip)]
+  pub gtr: Option<GTR>,
+  #[serde(skip)]
+  pub model_name: Option<GtrModelName>,
+  #[serde(skip)]
+  pub coalescent: Option<CoalescentOutput>,
+  #[serde(skip)]
+  pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+  #[serde(skip)]
+  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  #[serde(skip)]
+  pub clock_state: ClockState,
+  #[serde(skip)]
+  pub timetree_state: TimetreeState,
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
@@ -676,6 +616,21 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
   } else {
     CoalescentMode::Disabled
   }
+}
+
+fn coalescent_timescale(
+  mode: CoalescentMode,
+  graph: &Graph,
+  skyline_params: &SkylineParams,
+  node_times: &CoalescentNodeTimes,
+) -> Result<CoalescentTimescale, Report> {
+  let mode = match mode {
+    CoalescentMode::Disabled => CoalescentMode::Constant,
+    mode => mode,
+  };
+  estimate_coalescent_tc(mode, graph, skyline_params, node_times)
+    .wrap_err("Failed to estimate the coalescent timescale")?
+    .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
 
 fn estimate_coalescent_tc(
@@ -731,48 +686,6 @@ fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> 
   })
 }
 
-fn coalescent_timescale(
-  mode: CoalescentMode,
-  graph: &Graph,
-  skyline_params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-) -> Result<CoalescentTimescale, Report> {
-  let mode = match mode {
-    CoalescentMode::Disabled => CoalescentMode::Constant,
-    mode => mode,
-  };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times)
-    .wrap_err("Failed to estimate the coalescent timescale")?
-    .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
-}
-
-struct CoalescentTimescale {
-  distribution: Distribution,
-  schedule: PiecewiseConstantFn,
-  report: Option<CoalescentTcReport>,
-}
-
-impl CoalescentTimescale {
-  fn constant(tc: f64) -> Self {
-    Self {
-      distribution: Distribution::constant(tc),
-      schedule: PiecewiseConstantFn::new(array![], array![tc]),
-      report: None,
-    }
-  }
-}
-
-struct CoalescentTcReport {
-  segment_boundaries: Array1<f64>,
-  band: Option<CoalescentReportBand>,
-  log_likelihood: Option<f64>,
-}
-
-struct CoalescentReportBand {
-  lower: Array1<f64>,
-  upper: Array1<f64>,
-}
-
 fn build_coalescent_output(
   requested: CoalescentMode,
   timescale: &CoalescentTimescale,
@@ -822,10 +735,54 @@ fn build_coalescent_output(
   Ok(Some(output))
 }
 
-struct PartitionInitResult {
-  partitions: Vec<PartitionTimetree>,
-  gtr: GTR,
-  model_name: GtrModelName,
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum CoalescentMode {
+  Disabled,
+  Fixed(f64),
+  Constant,
+  Skyline,
+}
+
+impl CoalescentMode {
+  fn is_optimized(self) -> bool {
+    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
+  }
+
+  fn output_mode(self) -> Option<CoalescentOutputMode> {
+    match self {
+      CoalescentMode::Disabled => None,
+      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
+      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
+      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
+    }
+  }
+}
+
+struct CoalescentTimescale {
+  distribution: Distribution,
+  schedule: PiecewiseConstantFn,
+  report: Option<CoalescentTcReport>,
+}
+
+impl CoalescentTimescale {
+  fn constant(tc: f64) -> Self {
+    Self {
+      distribution: Distribution::constant(tc),
+      schedule: PiecewiseConstantFn::new(array![], array![tc]),
+      report: None,
+    }
+  }
+}
+
+struct CoalescentTcReport {
+  segment_boundaries: Array1<f64>,
+  band: Option<CoalescentReportBand>,
+  log_likelihood: Option<f64>,
+}
+
+struct CoalescentReportBand {
+  lower: Array1<f64>,
+  upper: Array1<f64>,
 }
 
 fn initialize_partitions_from_params(
@@ -866,6 +823,49 @@ fn initialize_partitions_from_params(
     gtr,
     model_name: created.model_name,
   })
+}
+
+pub struct TimetreeParams {
+  pub model: GtrModelName,
+  pub alphabet_name: crate::alphabet::alphabet::AlphabetName,
+  pub dense: Option<bool>,
+  pub gap_fill: crate::seq::gap_fill::GapFill,
+  pub branch_length_mode: BranchLengthMode,
+  pub no_indels: bool,
+  pub sequence_length: Option<usize>,
+  pub clock_rate: Option<f64>,
+  pub clock_std_dev: Option<f64>,
+  pub keep_root: bool,
+  pub reroot_spec: RerootSpec,
+  pub allow_negative_rate: bool,
+  pub clock_filter: f64,
+  pub covariation: bool,
+  pub tip_slack: Option<f64>,
+  pub max_iter: usize,
+  pub resolve_polytomies: bool,
+  pub keep_polytomies: bool,
+  pub relax: Vec<f64>,
+  pub coalescent: Option<f64>,
+  pub coalescent_opt: bool,
+  pub coalescent_skyline: bool,
+  pub skyline_n_points: usize,
+  pub skyline_stiffness: f64,
+  pub coalescent_confidence: f64,
+  pub gen_per_year: f64,
+  pub n_branches_posterior: Option<usize>,
+  pub time_marginal: TimeMarginalMode,
+  pub confidence: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub report_ambiguous: bool,
+  pub zero_based: bool,
+  pub seed: Option<u64>,
+}
+
+struct PartitionInitResult {
+  partitions: Vec<PartitionTimetree>,
+  gtr: GTR,
+  model_name: GtrModelName,
 }
 
 fn optimize_branch_lengths_pre_step(
