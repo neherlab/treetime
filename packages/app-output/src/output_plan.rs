@@ -137,12 +137,6 @@ impl OutputSelection {
   }
 }
 
-impl std::fmt::Display for OutputSelection {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.flag_name())
-  }
-}
-
 fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
   match style {
     NwkStyle::Plain => "",
