@@ -11,6 +11,9 @@ use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::make_internal_report;
 
+const FAKE_EDGE_BASE_WEIGHT: usize = 1000;
+const FAKE_EDGE_WEIGHT_STEP: usize = 100;
+
 pub fn graphviz_write_file(
   filepath: impl AsRef<Path>,
   graph: &Graph,
@@ -141,7 +144,7 @@ where
   let fake_edges = iproduct!(node_keys, node_keys)
     .enumerate()
     .map(|(i, (left, right))| {
-      let weight = 1000 + i * 100;
+      let weight = FAKE_EDGE_BASE_WEIGHT + i * FAKE_EDGE_WEIGHT_STEP;
       format!("      {left}-> {right} [style=invis, weight={weight}]")
     })
     .join("\n");
