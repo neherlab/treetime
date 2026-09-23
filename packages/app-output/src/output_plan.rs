@@ -166,54 +166,66 @@ impl CommandKind {
     &Self::available_tree_outputs() | &self.non_tree_outputs()
   }
 
-  #[allow(clippy::enum_glob_use)]
   fn default_outputs(self) -> BTreeSet<OutputSelection> {
-    use OutputSelection::*;
     let tree_defaults = if self == Self::Timetree {
-      btreeset![Nwk, Nexus, Auspice]
+      btreeset![OutputSelection::Nwk, OutputSelection::Nexus, OutputSelection::Auspice]
     } else {
-      btreeset![Nwk, Nexus]
+      btreeset![OutputSelection::Nwk, OutputSelection::Nexus]
     };
     let mut non_tree = self.non_tree_outputs();
     for non_default in [
-      ReconstructedAaFasta,
-      ConfidenceTsv,
-      ConfidenceCsv,
-      Tracelog,
-      CoalescentCsv,
-      CoalescentJson,
+      OutputSelection::ReconstructedAaFasta,
+      OutputSelection::ConfidenceTsv,
+      OutputSelection::ConfidenceCsv,
+      OutputSelection::Tracelog,
+      OutputSelection::CoalescentCsv,
+      OutputSelection::CoalescentJson,
     ] {
       non_tree.remove(&non_default);
     }
     &tree_defaults | &non_tree
   }
 
-  #[allow(clippy::enum_glob_use)]
   fn available_tree_outputs() -> BTreeSet<OutputSelection> {
-    use OutputSelection::*;
-    btreeset![Nwk, Nexus, Auspice, MatPb, MatJson, GraphJson, Dot]
+    btreeset![
+      OutputSelection::Nwk,
+      OutputSelection::Nexus,
+      OutputSelection::Auspice,
+      OutputSelection::MatPb,
+      OutputSelection::MatJson,
+      OutputSelection::GraphJson,
+      OutputSelection::Dot
+    ]
   }
 
-  #[allow(clippy::enum_glob_use)]
   fn non_tree_outputs(self) -> BTreeSet<OutputSelection> {
-    use OutputSelection::*;
     match self {
-      Self::Ancestral => btreeset![AugurNodeData, Gtr, ReconstructedNucFasta, ReconstructedAaFasta],
-      Self::Timetree => btreeset![
-        AugurNodeData,
-        Gtr,
-        ReconstructedNucFasta,
-        ClockModel,
-        ConfidenceTsv,
-        Tracelog,
-        CoalescentTsv,
-        CoalescentCsv,
-        CoalescentJson
+      Self::Ancestral => btreeset![
+        OutputSelection::AugurNodeData,
+        OutputSelection::Gtr,
+        OutputSelection::ReconstructedNucFasta,
+        OutputSelection::ReconstructedAaFasta
       ],
-      Self::Optimize => btreeset![AugurNodeData, Gtr],
-      Self::Mugration => btreeset![AugurNodeData, Gtr, ConfidenceCsv, TraitsCsv],
-      Self::Clock => btreeset![ClockModel, ClockCsv],
-      Self::Prune => btreeset![Gtr],
+      Self::Timetree => btreeset![
+        OutputSelection::AugurNodeData,
+        OutputSelection::Gtr,
+        OutputSelection::ReconstructedNucFasta,
+        OutputSelection::ClockModel,
+        OutputSelection::ConfidenceTsv,
+        OutputSelection::Tracelog,
+        OutputSelection::CoalescentTsv,
+        OutputSelection::CoalescentCsv,
+        OutputSelection::CoalescentJson
+      ],
+      Self::Optimize => btreeset![OutputSelection::AugurNodeData, OutputSelection::Gtr],
+      Self::Mugration => btreeset![
+        OutputSelection::AugurNodeData,
+        OutputSelection::Gtr,
+        OutputSelection::ConfidenceCsv,
+        OutputSelection::TraitsCsv
+      ],
+      Self::Clock => btreeset![OutputSelection::ClockModel, OutputSelection::ClockCsv],
+      Self::Prune => btreeset![OutputSelection::Gtr],
     }
   }
 
