@@ -6,20 +6,6 @@ use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-pub fn absolute_path(path: impl AsRef<Path>) -> Result<PathBuf, Report> {
-  let path = path.as_ref();
-
-  let absolute_path = if path.is_absolute() {
-    path.to_path_buf()
-  } else {
-    env::current_dir()
-      .wrap_err("When resolving the current directory")?
-      .join(path)
-  };
-
-  Ok(absolute_path)
-}
-
 pub fn ensure_dir(filepath: impl AsRef<Path>) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   {
@@ -34,6 +20,20 @@ pub fn ensure_dir(filepath: impl AsRef<Path>) -> Result<(), Report> {
   .wrap_err_with(|| format!("When ensuring parent directory for '{}'", filepath.display()))
 }
 
+pub fn absolute_path(path: impl AsRef<Path>) -> Result<PathBuf, Report> {
+  let path = path.as_ref();
+
+  let absolute_path = if path.is_absolute() {
+    path.to_path_buf()
+  } else {
+    env::current_dir()
+      .wrap_err("When resolving the current directory")?
+      .join(path)
+  };
+
+  Ok(absolute_path)
+}
+
 pub fn filename_maybe(filepath: impl AsRef<Path>) -> Option<String> {
   filepath.as_ref().file_name()?.to_str()?.to_owned().into()
 }
@@ -42,13 +42,13 @@ pub fn basename_maybe(filepath: impl AsRef<Path>) -> Option<String> {
   filepath.as_ref().file_stem()?.to_str()?.to_owned().into()
 }
 
+pub fn has_extension(filepath: impl AsRef<Path>, ext: impl AsRef<str>) -> bool {
+  extension(filepath.as_ref()).is_some_and(|fext| fext.eq_ignore_ascii_case(ext.as_ref()))
+}
+
 pub fn extension(filepath: impl AsRef<Path>) -> Option<String> {
   let filepath = filepath.as_ref();
   filepath.extension().and_then(OsStr::to_str).map(str::to_owned)
-}
-
-pub fn has_extension(filepath: impl AsRef<Path>, ext: impl AsRef<str>) -> bool {
-  extension(filepath.as_ref()).is_some_and(|fext| fext.eq_ignore_ascii_case(ext.as_ref()))
 }
 
 pub fn add_extension(filepath: impl AsRef<Path>, extension: impl AsRef<OsStr>) -> PathBuf {

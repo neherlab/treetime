@@ -71,10 +71,8 @@ pub fn format_map<M: Debug>(map: &M) -> String {
   strip_ndarray_metadata(&s)
 }
 
-fn strip_ndarray_metadata(s: &str) -> String {
-  regex!(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)")
-    .replace_all(s, "")
-    .into_owned()
+pub fn format_array(s: impl AsRef<str>) -> String {
+  strip_ndarray_metadata(&format_newlines(s))
 }
 
 #[macro_export]
@@ -150,16 +148,18 @@ macro_rules! pretty_assert_neg_inf {
   }};
 }
 
-pub fn format_newlines(s: impl AsRef<str>) -> String {
-  s.as_ref().replace('\n', "\u{0085}")
-}
-
-pub fn format_array(s: impl AsRef<str>) -> String {
-  strip_ndarray_metadata(&format_newlines(s))
+fn strip_ndarray_metadata(s: &str) -> String {
+  regex!(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)")
+    .replace_all(s, "")
+    .into_owned()
 }
 
 pub fn format_scalar(s: impl AsRef<str>) -> String {
   format_newlines(s)
+}
+
+pub fn format_newlines(s: impl AsRef<str>) -> String {
+  s.as_ref().replace('\n', "\u{0085}")
 }
 
 pub fn is_neg_inf(actual: f64) -> bool {

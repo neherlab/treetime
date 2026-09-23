@@ -21,18 +21,13 @@ pub fn clone_random_number_generator(rng: &mut impl Rng) -> impl Rng + Send + Sy
   Isaac64Rng::from_rng(rng).expect("Unable to clone random number generator")
 }
 
-pub fn random_choice_maybe<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl Rng) -> Option<T> {
-  iter.into_iter().choose(rng)
-}
-
 pub fn random_choice<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl Rng) -> Result<T, Report> {
   random_choice_maybe(iter, rng)
     .ok_or_else(|| make_internal_report!("random_choice: expected at least one item, but none found"))
 }
 
-pub fn random_remove<T>(v: &mut Vec<T>, rng: &mut impl Rng) -> T {
-  let index: usize = rng.gen_range(0..v.len());
-  v.remove(index)
+pub fn random_choice_maybe<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl Rng) -> Option<T> {
+  iter.into_iter().choose(rng)
 }
 
 pub fn random_pop<T: Clone + Ord>(s: &mut BTreeSet<T>, rng: &mut impl Rng) -> T {
@@ -41,6 +36,11 @@ pub fn random_pop<T: Clone + Ord>(s: &mut BTreeSet<T>, rng: &mut impl Rng) -> T 
   *s = BTreeSet::new();
   s.extend(v);
   item
+}
+
+pub fn random_remove<T>(v: &mut Vec<T>, rng: &mut impl Rng) -> T {
+  let index: usize = rng.gen_range(0..v.len());
+  v.remove(index)
 }
 
 pub fn random_sequence(length: usize, rng: &mut impl Rng) -> Vec<char> {

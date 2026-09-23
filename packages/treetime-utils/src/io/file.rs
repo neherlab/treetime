@@ -8,15 +8,6 @@ use std::path::Path;
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
-pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
-  info!("Reading from standard input");
-
-  #[cfg(not(target_arch = "wasm32"))]
-  non_wasm::warn_if_tty();
-
-  Ok(Box::new(BufReader::new(stdin())))
-}
-
 pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dyn BufRead>, Report> {
   match filepath {
     Some(filepath) => {
@@ -33,6 +24,15 @@ pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dy
     },
     None => open_stdin(),
   }
+}
+
+pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
+  info!("Reading from standard input");
+
+  #[cfg(not(target_arch = "wasm32"))]
+  non_wasm::warn_if_tty();
+
+  Ok(Box::new(BufReader::new(stdin())))
 }
 
 pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, Report> {

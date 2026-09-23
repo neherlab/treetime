@@ -53,32 +53,6 @@ pub fn parse_date_with_formats(
   make_error!("Unrecognized date format: {date_str}")
 }
 
-#[allow(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
-pub fn parse_date_with_format(
-  date_str: impl AsRef<str>,
-  format: impl AsRef<str>,
-  options: &DateParserOptions,
-) -> Result<DateTime<Utc>, Report> {
-  let date_str = date_str.as_ref();
-  let format = format.as_ref();
-  NaiveDate::parse_from_str(date_str, format)
-    .map(|naive_date| match options.default_time_of_day {
-      TimeOfDay::Dawn => naive_date.and_hms_opt(0, 0, 0).unwrap(),
-      TimeOfDay::Noon => naive_date.and_hms_opt(12, 0, 0).unwrap(),
-      TimeOfDay::Dusk => {
-        let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
-        naive_date.and_hms_nano_opt(hour, minute, second, nanosecond).unwrap()
-      },
-      TimeOfDay::Custom(time) => naive_date.and_time(time),
-      TimeOfDay::CustomFn(func) => naive_date.and_time(func(&naive_date)),
-    })
-    .map(|naive_datetime| Utc.from_utc_datetime(&naive_datetime))
-    .wrap_err_with(|| format!("When parsing date '{date_str}' using format '{format}'"))
-}
-
 pub const DATE_FORMATS: &[&str] = &[
   "%Y-%m-%d",
   "%Y/%m/%d",
@@ -107,6 +81,32 @@ pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Re
     }
   }
   make_error!("Unrecognized date range format: {date_range_str}")
+}
+
+#[allow(
+  clippy::unwrap_used,
+  reason = "unwrap on a value an upstream invariant guarantees is present"
+)]
+pub fn parse_date_with_format(
+  date_str: impl AsRef<str>,
+  format: impl AsRef<str>,
+  options: &DateParserOptions,
+) -> Result<DateTime<Utc>, Report> {
+  let date_str = date_str.as_ref();
+  let format = format.as_ref();
+  NaiveDate::parse_from_str(date_str, format)
+    .map(|naive_date| match options.default_time_of_day {
+      TimeOfDay::Dawn => naive_date.and_hms_opt(0, 0, 0).unwrap(),
+      TimeOfDay::Noon => naive_date.and_hms_opt(12, 0, 0).unwrap(),
+      TimeOfDay::Dusk => {
+        let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
+        naive_date.and_hms_nano_opt(hour, minute, second, nanosecond).unwrap()
+      },
+      TimeOfDay::Custom(time) => naive_date.and_time(time),
+      TimeOfDay::CustomFn(func) => naive_date.and_time(func(&naive_date)),
+    })
+    .map(|naive_datetime| Utc.from_utc_datetime(&naive_datetime))
+    .wrap_err_with(|| format!("When parsing date '{date_str}' using format '{format}'"))
 }
 
 static DATE_RANGE_REGEX: LazyLock<Vec<(Regex, String)>> = LazyLock::new(create_date_range_regexes);

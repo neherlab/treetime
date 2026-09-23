@@ -4,10 +4,17 @@ use env_logger::Env;
 use log::{Level, LevelFilter, Record};
 use std::io::Write;
 
-fn log_level_str(record: &Record) -> String {
-  let mut level_str = record.level().to_string();
-  level_str.truncate(1);
-  level_str
+pub fn setup_logger(filter_level: LevelFilter) {
+  env_logger::Builder::from_env(Env::default().default_filter_or("warn"))
+    .filter_level(filter_level)
+    .format(|buf, record| {
+      let level = color_log_level(record);
+      let date = date_format_precise(&date_now()).dimmed().to_string();
+      let args = record.args();
+      writeln!(buf, "{date} {level:} {args}")?;
+      Ok(())
+    })
+    .init();
 }
 
 fn color_log_level(record: &Record) -> String {
@@ -21,17 +28,10 @@ fn color_log_level(record: &Record) -> String {
   format!("{:}{level_str}{:}", "[".dimmed(), "]".dimmed())
 }
 
-pub fn setup_logger(filter_level: LevelFilter) {
-  env_logger::Builder::from_env(Env::default().default_filter_or("warn"))
-    .filter_level(filter_level)
-    .format(|buf, record| {
-      let level = color_log_level(record);
-      let date = date_format_precise(&date_now()).dimmed().to_string();
-      let args = record.args();
-      writeln!(buf, "{date} {level:} {args}")?;
-      Ok(())
-    })
-    .init();
+fn log_level_str(record: &Record) -> String {
+  let mut level_str = record.level().to_string();
+  level_str.truncate(1);
+  level_str
 }
 
 #[allow(

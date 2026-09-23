@@ -7,15 +7,6 @@ use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 
-pub trait MapLike<K, V> {
-  fn map_get(&self, key: &K) -> Option<&V>;
-  fn map_len(&self) -> usize;
-  fn map_iter<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a V)>
-  where
-    K: 'a,
-    V: 'a;
-}
-
 impl<K: Ord, V> MapLike<K, V> for BTreeMap<K, V> {
   fn map_get(&self, key: &K) -> Option<&V> {
     self.get(key)
@@ -78,4 +69,13 @@ impl<K, V, M: MapLike<K, V>> MapLike<K, V> for &M {
   {
     (*self).map_iter()
   }
+}
+
+pub trait MapLike<K, V> {
+  fn map_get(&self, key: &K) -> Option<&V>;
+  fn map_len(&self) -> usize;
+  fn map_iter<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a V)>
+  where
+    K: 'a,
+    V: 'a;
 }

@@ -237,14 +237,20 @@ pub fn random<T: Copy + SampleUniform + Zero + One, D: Dimension, Sh: ShapeBuild
   Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(T::zero(), T::one()), rng)
 }
 
-pub fn reverse_inplace<T>(arr: &mut Array1<T>) {
-  arr.invert_axis(Axis(0));
-}
-
 pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T> {
   let mut reversed = arr.view().to_owned();
   reverse_inplace(&mut reversed);
   reversed
+}
+
+pub fn reverse_inplace<T>(arr: &mut Array1<T>) {
+  arr.invert_axis(Axis(0));
+}
+
+pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
+  let mut result = arr.clone();
+  sort_inplace(&mut result);
+  result
 }
 
 #[allow(
@@ -253,12 +259,6 @@ pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T
 )]
 pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
   arr.as_slice_mut().unwrap().sort_by_key(|x| OrderedFloat(*x));
-}
-
-pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
-  let mut result = arr.clone();
-  sort_inplace(&mut result);
-  result
 }
 
 const MAX_SPACING_ULPS: f64 = 64.0;

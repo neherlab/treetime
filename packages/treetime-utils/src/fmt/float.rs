@@ -9,37 +9,6 @@ use pretty_dtoa::{FmtFloatConfig, dtoa};
 static FLOAT_CONFIG: LazyLock<FmtFloatConfig> =
   LazyLock::new(|| FmtFloatConfig::default().add_point_zero(true).radix_point('.').round());
 
-#[expect(
-  clippy::string_slice,
-  reason = "the index comes from str::find on the ASCII exponent marker"
-)]
-fn trim_trailing_zeros(input: &str) -> String {
-  let (mantissa, exponent) = match input.find(['e', 'E']) {
-    Some(pos) => (&input[..pos], Some(&input[pos..])),
-    None => (input, None),
-  };
-
-  if exponent.is_some() {
-    return input.to_owned();
-  }
-
-  match mantissa.find('.') {
-    Some(pos) => {
-      format!(
-        "{}{}",
-        &mantissa[..pos],
-        &mantissa[pos..].trim_end_matches('0').trim_end_matches('.')
-      )
-    },
-    None => mantissa.to_owned(),
-  }
-}
-
-fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
-  let raw = dtoa(x.into(), config);
-  trim_trailing_zeros(&raw)
-}
-
 pub trait FloatFormatExt {
   fn to_significant_digits(self, max_significant_digits: u8) -> String;
 
@@ -90,4 +59,35 @@ pub fn float_to_digits<F: Into<f64>>(
   }
 
   float_format(x, config)
+}
+
+fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
+  let raw = dtoa(x.into(), config);
+  trim_trailing_zeros(&raw)
+}
+
+#[expect(
+  clippy::string_slice,
+  reason = "the index comes from str::find on the ASCII exponent marker"
+)]
+fn trim_trailing_zeros(input: &str) -> String {
+  let (mantissa, exponent) = match input.find(['e', 'E']) {
+    Some(pos) => (&input[..pos], Some(&input[pos..])),
+    None => (input, None),
+  };
+
+  if exponent.is_some() {
+    return input.to_owned();
+  }
+
+  match mantissa.find('.') {
+    Some(pos) => {
+      format!(
+        "{}{}",
+        &mantissa[..pos],
+        &mantissa[pos..].trim_end_matches('0').trim_end_matches('.')
+      )
+    },
+    None => mantissa.to_owned(),
+  }
 }

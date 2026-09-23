@@ -5,6 +5,12 @@ use std::time::Duration;
 
 const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
 
+pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
+  let begin = date_to_year_fraction(date_range.begin());
+  let end = date_to_year_fraction(date_range.end());
+  (begin, end)
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -16,10 +22,8 @@ pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
   year as f64 + frac
 }
 
-pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
-  let begin = date_to_year_fraction(date_range.begin());
-  let end = date_to_year_fraction(date_range.end());
-  (begin, end)
+pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
+  year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
 #[allow(
@@ -34,10 +38,6 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let seconds_since_year_start = seconds_in_year as f64 * fraction;
   let dt = RelativeDuration::from(Duration::from_secs_f64(seconds_since_year_start));
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
-}
-
-pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
-  year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
 #[allow(
