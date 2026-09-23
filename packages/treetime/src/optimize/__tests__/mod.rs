@@ -22,6 +22,8 @@ mod test_no_indels;
 mod test_optimization_metrics;
 mod test_optimize_indel;
 mod test_optimize_method;
+mod test_optimize_method_brent_transform;
+mod test_optimize_method_chain_rule;
 mod test_optimize_method_step_clamping;
 mod test_optimize_zero_sequence_length;
 mod test_pipeline_gtr_normalized;

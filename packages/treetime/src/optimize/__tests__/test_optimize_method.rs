@@ -4,30 +4,26 @@
 )]
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
-  use crate::optimize::likelihood::{
-    OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only,
-  };
-  use crate::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
+  use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only};
+
   use crate::optimize::method_newton::newton_tolerance_t;
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::zero_boundary::min_branch_length_for_indels;
-  use crate::partition::optimize;
-  use crate::partition::optimize::contribution::OptimizationContribution;
+
   use crate::seq::indel::InDel;
-  use approx::assert_abs_diff_eq;
+
   use eyre::Report;
   use helpers::*;
-  use ndarray::array;
+
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
@@ -36,180 +32,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
-  #[test]
-  fn test_optimize_method_chain_rule_at_zero() {
-    let (ds, d2s) = chain_rule_sqrt(0.0, 100.0, -500.0);
-    assert_abs_diff_eq!(ds, 0.0, epsilon = 1e-15);
-    assert_abs_diff_eq!(d2s, 200.0, epsilon = 1e-15);
-  }
-
-  #[test]
-  fn test_optimize_method_chain_rule_analytical() {
-    let s = 0.3;
-    let (ds, d2s) = chain_rule_sqrt(s, 10.0, -100.0);
-    assert_abs_diff_eq!(ds, 6.0, epsilon = 1e-14);
-    assert_abs_diff_eq!(d2s, -16.0, epsilon = 1e-14);
-  }
-
-  #[test]
-  fn test_optimize_method_chain_rule_log_analytical() {
-    let t = 0.09;
-    let (du, d2u) = chain_rule_log(t, 10.0, -100.0);
-    assert_abs_diff_eq!(du, 0.9, epsilon = 1e-14);
-    assert_abs_diff_eq!(d2u, 0.09, epsilon = 1e-14);
-  }
-
-  #[test]
-  fn test_optimize_method_chain_rule_log_small_t() {
-    let t = 1e-10;
-    let (du, d2u) = chain_rule_log(t, 1e6, -1e12);
-    assert_abs_diff_eq!(du, 1e-4, epsilon = 1e-14);
-    assert_abs_diff_eq!(d2u, -1e-8 + 1e-4, epsilon = 1e-14);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::small(   0.01,  2, 10.0)]
-  #[case::medium(  0.1,   3, 20.0)]
-  #[case::large(   0.5,   1,  5.0)]
-  #[case::no_indel(0.2,   0,  0.0)]
-  #[trace]
-  fn test_optimize_method_chain_rule_log_numerical_first_derivative(
-    #[case] t: f64,
-    #[case] k: usize,
-    #[case] mu: f64,
-  ) {
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
-    );
-    let contributions = vec![contribution];
-
-    let u = t.ln();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
-    let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-    let dl_dt = metrics.derivative + indel.derivative;
-    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
-    let (dl_du_analytical, _) = chain_rule_log(t, dl_dt, d2l_dt2);
-
-    let h = u.abs() * 1e-5;
-    let eval_u = |uv: f64| {
-      let tv = uv.exp();
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
-    };
-    let dl_du_numerical = (eval_u(u + h) - eval_u(u - h)) / (2.0 * h);
-
-    assert_abs_diff_eq!(dl_du_analytical, dl_du_numerical, epsilon = 1e-4);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::small(   0.01,  2, 10.0)]
-  #[case::medium(  0.1,   3, 20.0)]
-  #[case::large(   0.5,   1,  5.0)]
-  #[case::no_indel(0.2,   0,  0.0)]
-  #[trace]
-  fn test_optimize_method_chain_rule_log_numerical_second_derivative(
-    #[case] t: f64,
-    #[case] k: usize,
-    #[case] mu: f64,
-  ) {
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
-    );
-    let contributions = vec![contribution];
-
-    let u = t.ln();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
-    let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-    let dl_dt = metrics.derivative + indel.derivative;
-    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
-    let (_, d2l_du2_analytical) = chain_rule_log(t, dl_dt, d2l_dt2);
-
-    let h = u.abs() * 1e-4;
-    let eval_u = |uv: f64| {
-      let tv = uv.exp();
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
-    };
-    let d2l_du2_numerical = (eval_u(u + h) - 2.0 * eval_u(u) + eval_u(u - h)) / (h * h);
-
-    assert_abs_diff_eq!(d2l_du2_analytical, d2l_du2_numerical, epsilon = 1e-2);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::small(   0.01,  2, 10.0)]
-  #[case::medium(  0.1,   3, 20.0)]
-  #[case::large(   0.5,   1,  5.0)]
-  #[case::no_indel(0.2,   0,  0.0)]
-  #[trace]
-  fn test_optimize_method_chain_rule_numerical_first_derivative(
-    #[case] t: f64,
-    #[case] k: usize,
-    #[case] mu: f64,
-  ) {
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
-    );
-    let contributions = vec![contribution];
-
-    let s = t.sqrt();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
-    let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-    let dl_dt = metrics.derivative + indel.derivative;
-    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
-    let (dl_ds_analytical, _) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-
-    let h = s * 1e-5;
-    let eval_s = |sv: f64| {
-      let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
-    };
-    let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
-
-    assert_abs_diff_eq!(dl_ds_analytical, dl_ds_numerical, epsilon = 1e-4);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::small(   0.01,  2, 10.0)]
-  #[case::medium(  0.1,   3, 20.0)]
-  #[case::large(   0.5,   1,  5.0)]
-  #[case::no_indel(0.2,   0,  0.0)]
-  #[trace]
-  fn test_optimize_method_chain_rule_numerical_second_derivative(
-    #[case] t: f64,
-    #[case] k: usize,
-    #[case] mu: f64,
-  ) {
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(
-      optimize::dense::PartitionContribution::new(coefficients, gtr),
-    );
-    let contributions = vec![contribution];
-
-    let s = t.sqrt();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
-    let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-    let dl_dt = metrics.derivative + indel.derivative;
-    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
-    let (_, d2l_ds2_analytical) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-
-    let h = s * 1e-4;
-    let eval_s = |sv: f64| {
-      let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
-    };
-    let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
-
-    assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
-  }
+  use proptest::prelude::*;
 
   #[rustfmt::skip]
   #[rstest]
@@ -846,152 +669,7 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln = simple_alignment()?;
-    let (dense_mixed_partitions, sparse_mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-    let mut contributions_by_edge =
-      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
-    let contributions = contributions_by_edge
-      .remove(&edge_key)
-      .expect("first edge present in gathered contributions");
-
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let one_mutation = 1.0 / total_length as f64;
-    let branch_length = 0.01;
-
-    let result = brent_sqrt_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
-    assert!(
-      result >= 0.0,
-      "brent_sqrt_inner result must be non-negative, got {result}"
-    );
-    assert!(
-      result.is_finite(),
-      "brent_sqrt_inner result must be finite, got {result}"
-    );
-
-    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
-      .expect("valid branch length")
-      .value();
-    if result > 1e-10 {
-      let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99)
-        .expect("valid branch length")
-        .value();
-      let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01)
-        .expect("valid branch length")
-        .value();
-      assert!(
-        lh_opt >= lh_below - 1e-10,
-        "sqrt: lh at opt ({lh_opt}) < lh below ({lh_below})"
-      );
-      assert!(
-        lh_opt >= lh_above - 1e-10,
-        "sqrt: lh at opt ({lh_opt}) < lh above ({lh_above})"
-      );
-    }
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln = simple_alignment()?;
-    let (dense_mixed_partitions, sparse_mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-    let mut contributions_by_edge =
-      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
-    let contributions = contributions_by_edge
-      .remove(&edge_key)
-      .expect("first edge present in gathered contributions");
-
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let one_mutation = 1.0 / total_length as f64;
-    let branch_length = 0.01;
-
-    let result = brent_log_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
-    assert!(result > 0.0, "brent_log_inner result must be positive, got {result}");
-    assert!(
-      result.is_finite(),
-      "brent_log_inner result must be finite, got {result}"
-    );
-
-    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
-      .expect("valid branch length")
-      .value();
-    let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99)
-      .expect("valid branch length")
-      .value();
-    let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01)
-      .expect("valid branch length")
-      .value();
-    assert!(
-      lh_opt >= lh_below - 1e-10,
-      "log: lh at opt ({lh_opt}) < lh below ({lh_below})"
-    );
-    assert!(
-      lh_opt >= lh_above - 1e-10,
-      "log: lh at opt ({lh_opt}) < lh above ({lh_above})"
-    );
-
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::brent(     BranchOptMethod::Brent)]
-  #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
-  #[case::brent_log( BranchOptMethod::BrentLog)]
-  #[trace]
-  fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
-
-    let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
-    let one_mutation = 1.0 / total_length as f64;
-    let min_bl = min_branch_length_for_indels(4, one_mutation);
-    let (lower, upper) = brent_bracket(input_bl, min_bl, one_mutation);
-
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-
-    let bl = first_edge_bl(&graph, &branch_lengths);
-    let lh_opt = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl)?;
-
-    let lh_lower = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, lower)?;
-    let lh_upper = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, upper)?;
-
-    assert!(
-      lh_opt >= lh_lower - 1e-10,
-      "{method:?} optimum lh ({lh_opt}) < lower bracket lh ({lh_lower})"
-    );
-    assert!(
-      lh_opt >= lh_upper - 1e-10,
-      "{method:?} optimum lh ({lh_opt}) < upper bracket lh ({lh_upper})"
-    );
-
-    Ok(())
-  }
-
-  mod generators {
+  pub mod generators {
     use proptest::prelude::*;
     pub fn gen_s() -> impl Strategy<Value = f64> {
       1e-6_f64..1e3_f64
@@ -1010,98 +688,10 @@ mod tests {
     }
   }
 
-  use proptest::prelude::*;
-
-  proptest! {
-    #[test]
-    fn test_prop_optimize_method_chain_rule_sqrt_formula(
-      s in generators::gen_s(),
-      dl_dt in generators::gen_dl_dt(),
-      d2l_dt2 in generators::gen_d2l_dt2(),
-    ) {
-      let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-      let expected_dl_ds = 2.0 * s * dl_dt;
-      let expected_d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
-      let dl_tol = 1e-9 * expected_dl_ds.abs().max(1.0);
-      let d2l_tol = 1e-9 * expected_d2l_ds2.abs().max(1.0);
-      prop_assert!(
-        (dl_ds - expected_dl_ds).abs() <= dl_tol,
-        "dl_ds: got {dl_ds}, expected {expected_dl_ds}"
-      );
-      prop_assert!(
-        (d2l_ds2 - expected_d2l_ds2).abs() <= d2l_tol,
-        "d2l_ds2: got {d2l_ds2}, expected {expected_d2l_ds2}"
-      );
-    }
-
-    #[test]
-    fn test_prop_optimize_method_chain_rule_sqrt_linear(
-      s in generators::gen_s(),
-      dl_dt in generators::gen_dl_dt(),
-      d2l_dt2 in generators::gen_d2l_dt2(),
-      k in generators::gen_scalar(),
-    ) {
-      let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
-      let (dl_ds_k, d2l_ds2_k) = chain_rule_sqrt(s, k * dl_dt, k * d2l_dt2);
-      let dl_tol = 1e-9 * (k * dl_ds).abs().max(1.0);
-      let d2l_tol = 1e-9 * (k * d2l_ds2).abs().max(1.0);
-      prop_assert!(
-        (dl_ds_k - k * dl_ds).abs() <= dl_tol,
-        "linearity violated for dl_ds: {dl_ds_k} vs k*{dl_ds}"
-      );
-      prop_assert!(
-        (d2l_ds2_k - k * d2l_ds2).abs() <= d2l_tol,
-        "linearity violated for d2l_ds2: {d2l_ds2_k} vs k*{d2l_ds2}"
-      );
-    }
-
-    #[test]
-    fn test_prop_optimize_method_chain_rule_log_formula(
-      t in generators::gen_t(),
-      dl_dt in generators::gen_dl_dt(),
-      d2l_dt2 in generators::gen_d2l_dt2(),
-    ) {
-      let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
-      let expected_dl_du = t * dl_dt;
-      let expected_d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
-      let dl_tol = 1e-9 * expected_dl_du.abs().max(1.0);
-      let d2l_tol = 1e-9 * expected_d2l_du2.abs().max(1.0);
-      prop_assert!(
-        (dl_du - expected_dl_du).abs() <= dl_tol,
-        "dl_du: got {dl_du}, expected {expected_dl_du}"
-      );
-      prop_assert!(
-        (d2l_du2 - expected_d2l_du2).abs() <= d2l_tol,
-        "d2l_du2: got {d2l_du2}, expected {expected_d2l_du2}"
-      );
-    }
-
-    #[test]
-    fn test_prop_optimize_method_chain_rule_log_linear(
-      t in generators::gen_t(),
-      dl_dt in generators::gen_dl_dt(),
-      d2l_dt2 in generators::gen_d2l_dt2(),
-      k in generators::gen_scalar(),
-    ) {
-      let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
-      let (dl_du_k, d2l_du2_k) = chain_rule_log(t, k * dl_dt, k * d2l_dt2);
-      let dl_tol = 1e-9 * (k * dl_du).abs().max(1.0);
-      let d2l_tol = 1e-9 * (k * d2l_du2).abs().max(1.0);
-      prop_assert!(
-        (dl_du_k - k * dl_du).abs() <= dl_tol,
-        "linearity violated for dl_du: {dl_du_k} vs k*{dl_du}"
-      );
-      prop_assert!(
-        (d2l_du2_k - k * d2l_du2).abs() <= d2l_tol,
-        "linearity violated for d2l_du2: {d2l_du2_k} vs k*{d2l_du2}"
-      );
-    }
-  }
-
-  mod helpers {
+  pub mod helpers {
     use super::*;
 
-    pub(super) fn setup_with_indels(
+    pub fn setup_with_indels(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -1130,7 +720,7 @@ mod tests {
       Ok((dense_partitions, sparse_partitions, indel_rate))
     }
 
-    pub(super) fn eval_combined_first_edge(
+    pub fn eval_combined_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
       sparse: &[SparseReconstruction],
@@ -1153,7 +743,7 @@ mod tests {
       Ok(sub_lh + indel_lh)
     }
 
-    pub(super) fn eval_metrics_first_edge(
+    pub fn eval_metrics_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
       sparse: &[SparseReconstruction],
@@ -1171,8 +761,94 @@ mod tests {
       Ok(metrics)
     }
 
-    pub(super) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
+    pub fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
+    }
+
+    proptest! {
+      #[test]
+      fn test_prop_optimize_method_chain_rule_sqrt_formula(
+        s in generators::gen_s(),
+        dl_dt in generators::gen_dl_dt(),
+        d2l_dt2 in generators::gen_d2l_dt2(),
+      ) {
+        let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
+        let expected_dl_ds = 2.0 * s * dl_dt;
+        let expected_d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
+        let dl_tol = 1e-9 * expected_dl_ds.abs().max(1.0);
+        let d2l_tol = 1e-9 * expected_d2l_ds2.abs().max(1.0);
+        prop_assert!(
+          (dl_ds - expected_dl_ds).abs() <= dl_tol,
+          "dl_ds: got {dl_ds}, expected {expected_dl_ds}"
+        );
+        prop_assert!(
+          (d2l_ds2 - expected_d2l_ds2).abs() <= d2l_tol,
+          "d2l_ds2: got {d2l_ds2}, expected {expected_d2l_ds2}"
+        );
+      }
+
+      #[test]
+      fn test_prop_optimize_method_chain_rule_sqrt_linear(
+        s in generators::gen_s(),
+        dl_dt in generators::gen_dl_dt(),
+        d2l_dt2 in generators::gen_d2l_dt2(),
+        k in generators::gen_scalar(),
+      ) {
+        let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
+        let (dl_ds_k, d2l_ds2_k) = chain_rule_sqrt(s, k * dl_dt, k * d2l_dt2);
+        let dl_tol = 1e-9 * (k * dl_ds).abs().max(1.0);
+        let d2l_tol = 1e-9 * (k * d2l_ds2).abs().max(1.0);
+        prop_assert!(
+          (dl_ds_k - k * dl_ds).abs() <= dl_tol,
+          "linearity violated for dl_ds: {dl_ds_k} vs k*{dl_ds}"
+        );
+        prop_assert!(
+          (d2l_ds2_k - k * d2l_ds2).abs() <= d2l_tol,
+          "linearity violated for d2l_ds2: {d2l_ds2_k} vs k*{d2l_ds2}"
+        );
+      }
+
+      #[test]
+      fn test_prop_optimize_method_chain_rule_log_formula(
+        t in generators::gen_t(),
+        dl_dt in generators::gen_dl_dt(),
+        d2l_dt2 in generators::gen_d2l_dt2(),
+      ) {
+        let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
+        let expected_dl_du = t * dl_dt;
+        let expected_d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
+        let dl_tol = 1e-9 * expected_dl_du.abs().max(1.0);
+        let d2l_tol = 1e-9 * expected_d2l_du2.abs().max(1.0);
+        prop_assert!(
+          (dl_du - expected_dl_du).abs() <= dl_tol,
+          "dl_du: got {dl_du}, expected {expected_dl_du}"
+        );
+        prop_assert!(
+          (d2l_du2 - expected_d2l_du2).abs() <= d2l_tol,
+          "d2l_du2: got {d2l_du2}, expected {expected_d2l_du2}"
+        );
+      }
+
+      #[test]
+      fn test_prop_optimize_method_chain_rule_log_linear(
+        t in generators::gen_t(),
+        dl_dt in generators::gen_dl_dt(),
+        d2l_dt2 in generators::gen_d2l_dt2(),
+        k in generators::gen_scalar(),
+      ) {
+        let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
+        let (dl_du_k, d2l_du2_k) = chain_rule_log(t, k * dl_dt, k * d2l_dt2);
+        let dl_tol = 1e-9 * (k * dl_du).abs().max(1.0);
+        let d2l_tol = 1e-9 * (k * d2l_du2).abs().max(1.0);
+        prop_assert!(
+          (dl_du_k - k * dl_du).abs() <= dl_tol,
+          "linearity violated for dl_du: {dl_du_k} vs k*{dl_du}"
+        );
+        prop_assert!(
+          (d2l_du2_k - k * d2l_du2).abs() <= d2l_tol,
+          "linearity violated for d2l_du2: {d2l_du2_k} vs k*{d2l_du2}"
+        );
+      }
     }
   }
 }
