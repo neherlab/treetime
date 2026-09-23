@@ -94,26 +94,6 @@ where
   Ok(())
 }
 
-#[allow(
-  clippy::field_scoped_visibility_modifiers,
-  reason = "crate-internal fields are the record interface"
-)]
-pub struct GraphNodeContext {
-  pub(crate) node_key: GraphNodeKey,
-  pub(crate) edge_key: Option<GraphEdgeKey>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-#[allow(
-  clippy::field_scoped_visibility_modifiers,
-  reason = "crate-internal fields are the record interface"
-)]
-pub struct TraitValue {
-  pub(crate) value: String,
-  pub(crate) confidence: BTreeMap<String, f64>,
-  pub(crate) entropy: Option<f64>,
-}
-
 pub fn auspice_data(
   title: &str,
   updated: &str,
@@ -145,6 +125,35 @@ pub fn auspice_data(
     root_sequence: root_sequences.filter(|sequences| !sequences.is_empty()),
     other: Value::default(),
   }
+}
+
+pub fn sequence_auspice_node(
+  name: &str,
+  div: Option<f64>,
+  confidence: Option<f64>,
+  mutations: Vec<Mutation>,
+  date: Option<f64>,
+  bad_branch: Option<bool>,
+) -> Result<AuspiceTreeNode, Report> {
+  let mut other = serde_json::Map::new();
+  if let Some(confidence) = confidence {
+    ensure_finite(confidence, "tree output", name, "input branch support")?;
+    other.insert("confidence".to_owned(), json!({ "value": confidence }));
+  }
+  let mut node = auspice_node(
+    name.to_owned(),
+    finite_number(div, 6, "tree output", name, "div")?,
+    finite_number(date, 3, "tree output", name, "date")?,
+    None,
+    bad_branch,
+    BTreeMap::new(),
+    group_mutations(mutations)?,
+    None,
+  );
+  if let Value::Object(target) = &mut node.node_attrs.other {
+    target.extend(other);
+  }
+  Ok(node)
 }
 
 pub fn auspice_node(
@@ -182,35 +191,6 @@ pub fn auspice_node(
   }
 }
 
-pub fn sequence_auspice_node(
-  name: &str,
-  div: Option<f64>,
-  confidence: Option<f64>,
-  mutations: Vec<Mutation>,
-  date: Option<f64>,
-  bad_branch: Option<bool>,
-) -> Result<AuspiceTreeNode, Report> {
-  let mut other = serde_json::Map::new();
-  if let Some(confidence) = confidence {
-    ensure_finite(confidence, "tree output", name, "input branch support")?;
-    other.insert("confidence".to_owned(), json!({ "value": confidence }));
-  }
-  let mut node = auspice_node(
-    name.to_owned(),
-    finite_number(div, 6, "tree output", name, "div")?,
-    finite_number(date, 3, "tree output", name, "date")?,
-    None,
-    bad_branch,
-    BTreeMap::new(),
-    group_mutations(mutations)?,
-    None,
-  );
-  if let Value::Object(target) = &mut node.node_attrs.other {
-    target.extend(other);
-  }
-  Ok(node)
-}
-
 pub fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
 where
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
@@ -242,6 +222,15 @@ where
     .remove(&root_key)
     .ok_or_else(|| make_internal_report!("Auspice root node {root_key} was not converted"))?;
   Ok(AuspiceTree { data, tree })
+}
+
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub struct GraphNodeContext {
+  pub(crate) node_key: GraphNodeKey,
+  pub(crate) edge_key: Option<GraphEdgeKey>,
 }
 
 fn attach_auspice_children(
@@ -433,6 +422,17 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
   )
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub struct TraitValue {
+  pub(crate) value: String,
+  pub(crate) confidence: BTreeMap<String, f64>,
+  pub(crate) entropy: Option<f64>,
+}
+
 pub fn cumulative_branch_length_from(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -453,6 +453,17 @@ pub fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }
 
+pub fn finite_number(
+  value: Option<f64>,
+  precision: i32,
+  command: &str,
+  node_name: &str,
+  field: &str,
+) -> Result<Option<f64>, Report> {
+  ensure_optional_finite(value, command, node_name, field)?;
+  Ok(value.map(|value| format_number(value, precision)))
+}
+
 fn ensure_optional_finite(value: Option<f64>, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
   if let Some(value) = value {
     ensure_finite(value, command, node_name, field)?;
@@ -466,17 +477,6 @@ pub fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) ->
   } else {
     make_error!("{command} node '{node_name}' has non-finite {field}={value}")
   }
-}
-
-pub fn finite_number(
-  value: Option<f64>,
-  precision: i32,
-  command: &str,
-  node_name: &str,
-  field: &str,
-) -> Result<Option<f64>, Report> {
-  ensure_optional_finite(value, command, node_name, field)?;
-  Ok(value.map(|value| format_number(value, precision)))
 }
 
 #[allow(

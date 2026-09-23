@@ -12,6 +12,16 @@ pub struct TimetreeOutputMaps {
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
+#[derive(Serialize)]
+pub struct TimetreeResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TimetreeNodeOut {
   pub name: Option<String>,
@@ -36,14 +46,4 @@ impl TimetreeEdgeOut {
   pub fn profile_branch_length(&self) -> Option<f64> {
     self.clock_branch_length.or(self.branch_length)
   }
-}
-
-#[derive(Serialize)]
-pub struct TimetreeResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
 }

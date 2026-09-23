@@ -8,105 +8,6 @@ use treetime::mugration::pipeline::MugrationOutput;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Clone, Debug, Serialize)]
-pub struct ConfidenceRow {
-  node: String,
-  #[serde(serialize_with = "treetime_utils::array::serde::array1_as_vec")]
-  profile: Array1<f64>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MugrationConfidenceOutput {
-  states: Vec<String>,
-  rows: Vec<ConfidenceRow>,
-}
-
-impl MugrationConfidenceOutput {
-  fn new(output: &MugrationOutput, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Self {
-    let states: Vec<String> = output.states.iter().map(|s| s.to_owned()).collect();
-
-    let rows: Vec<ConfidenceRow> = output
-      .graph
-      .get_nodes()
-      .filter_map(|node| {
-        let node_key = node.key();
-        let node_name = node_name_or_fallback(names, node_key);
-
-        output.confidences[&node_key].clone().map(|profile| ConfidenceRow {
-          node: node_name,
-          profile,
-        })
-      })
-      .collect();
-
-    Self { states, rows }
-  }
-
-  pub fn to_map(&self) -> BTreeMap<String, Vec<String>> {
-    self
-      .rows
-      .iter()
-      .map(|row| {
-        let formatted: Vec<String> = row.profile.iter().map(|p| format!("{p:.6}")).collect();
-        (row.node.clone(), formatted)
-      })
-      .collect()
-  }
-
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub fn render_csv(&self) -> String {
-    let mut out = String::new();
-    writeln!(out, "node,{}", self.states.join(",")).unwrap();
-    for row in &self.rows {
-      let probs = row.profile.iter().map(|p| format!("{p:.6}")).join(",");
-      writeln!(out, "{},{probs}", row.node).unwrap();
-    }
-    out
-  }
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MugrationTraitsOutput {
-  pub attribute: String,
-  pub assignments: IndexMap<String, String>,
-}
-
-impl MugrationTraitsOutput {
-  fn new(attribute: &str, assignments: IndexMap<String, String>) -> Self {
-    Self {
-      attribute: attribute.to_owned(),
-      assignments,
-    }
-  }
-
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub fn render_csv(&self) -> String {
-    let mut out = String::new();
-    writeln!(out, "node,{}", self.attribute).unwrap();
-    for (node, trait_value) in &self.assignments {
-      writeln!(out, "{node},{trait_value}").unwrap();
-    }
-    out
-  }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct MugrationNodeOut {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct EdgeOut {
-  branch_length: Option<f64>,
-}
-
 #[derive(Debug, Serialize)]
 pub struct MugrationResult {
   #[serde(skip)]
@@ -166,6 +67,105 @@ impl MugrationResult {
   pub fn trait_assignments(&self) -> &IndexMap<String, String> {
     &self.traits.assignments
   }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MugrationConfidenceOutput {
+  states: Vec<String>,
+  rows: Vec<ConfidenceRow>,
+}
+
+impl MugrationConfidenceOutput {
+  fn new(output: &MugrationOutput, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Self {
+    let states: Vec<String> = output.states.iter().map(|s| s.to_owned()).collect();
+
+    let rows: Vec<ConfidenceRow> = output
+      .graph
+      .get_nodes()
+      .filter_map(|node| {
+        let node_key = node.key();
+        let node_name = node_name_or_fallback(names, node_key);
+
+        output.confidences[&node_key].clone().map(|profile| ConfidenceRow {
+          node: node_name,
+          profile,
+        })
+      })
+      .collect();
+
+    Self { states, rows }
+  }
+
+  pub fn to_map(&self) -> BTreeMap<String, Vec<String>> {
+    self
+      .rows
+      .iter()
+      .map(|row| {
+        let formatted: Vec<String> = row.profile.iter().map(|p| format!("{p:.6}")).collect();
+        (row.node.clone(), formatted)
+      })
+      .collect()
+  }
+
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
+  pub fn render_csv(&self) -> String {
+    let mut out = String::new();
+    writeln!(out, "node,{}", self.states.join(",")).unwrap();
+    for row in &self.rows {
+      let probs = row.profile.iter().map(|p| format!("{p:.6}")).join(",");
+      writeln!(out, "{},{probs}", row.node).unwrap();
+    }
+    out
+  }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ConfidenceRow {
+  node: String,
+  #[serde(serialize_with = "treetime_utils::array::serde::array1_as_vec")]
+  profile: Array1<f64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MugrationTraitsOutput {
+  pub attribute: String,
+  pub assignments: IndexMap<String, String>,
+}
+
+impl MugrationTraitsOutput {
+  fn new(attribute: &str, assignments: IndexMap<String, String>) -> Self {
+    Self {
+      attribute: attribute.to_owned(),
+      assignments,
+    }
+  }
+
+  #[allow(
+    clippy::unwrap_used,
+    reason = "unwrap on a value an upstream invariant guarantees is present"
+  )]
+  pub fn render_csv(&self) -> String {
+    let mut out = String::new();
+    writeln!(out, "node,{}", self.attribute).unwrap();
+    for (node, trait_value) in &self.assignments {
+      writeln!(out, "{node},{trait_value}").unwrap();
+    }
+    out
+  }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MugrationNodeOut {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct EdgeOut {
+  branch_length: Option<f64>,
 }
 
 fn extract_trait_assignments(

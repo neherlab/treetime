@@ -12,6 +12,16 @@ pub struct PruneOutputMaps {
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
+#[derive(Serialize)]
+pub struct PruneResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, PruneNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct PruneNodeOut {
   pub name: Option<String>,
@@ -21,14 +31,4 @@ pub struct PruneNodeOut {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct EdgeOut {
   pub branch_length: Option<f64>,
-}
-
-#[derive(Serialize)]
-pub struct PruneResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, PruneNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }

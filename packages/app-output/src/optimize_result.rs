@@ -13,6 +13,16 @@ pub struct OptimizeOutputMaps {
   pub edge_subs: BTreeMap<GraphEdgeKey, Vec<Sub>>,
 }
 
+#[derive(Serialize)]
+pub struct OptimizeResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct OptimizeNodeOut {
   pub name: Option<String>,
@@ -22,14 +32,4 @@ pub struct OptimizeNodeOut {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct EdgeOut {
   pub branch_length: Option<f64>,
-}
-
-#[derive(Serialize)]
-pub struct OptimizeResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }

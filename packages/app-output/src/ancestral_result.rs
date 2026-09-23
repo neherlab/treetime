@@ -21,6 +21,16 @@ pub struct AugurOutputMaps {
   pub ambiguous_char: AsciiChar,
 }
 
+#[derive(Serialize)]
+pub struct AncestralResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AncestralNodeOut {
   pub name: Option<String>,
@@ -30,14 +40,4 @@ pub struct AncestralNodeOut {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct EdgeOut {
   pub branch_length: Option<f64>,
-}
-
-#[derive(Serialize)]
-pub struct AncestralResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
