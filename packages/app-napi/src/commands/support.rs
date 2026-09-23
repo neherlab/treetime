@@ -5,6 +5,10 @@ use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 
+pub fn default_output_plan(command: CommandKind, outdir: &Path) -> Result<ResolvedOutputs, Report> {
+  output_plan(command, outdir, BTreeMap::new())
+}
+
 pub fn output_plan(
   command: CommandKind,
   outdir: &Path,
@@ -18,10 +22,6 @@ pub fn output_plan(
     tree_overrides: BTreeMap::new(),
     non_tree_overrides,
   })
-}
-
-pub fn default_output_plan(command: CommandKind, outdir: &Path) -> Result<ResolvedOutputs, Report> {
-  output_plan(command, outdir, BTreeMap::new())
 }
 
 pub fn default_topology_order() -> TopologyOrderSpec {

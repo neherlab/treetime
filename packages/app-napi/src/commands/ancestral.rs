@@ -30,60 +30,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
-#[derive(Debug, SmartDefault, Deserialize)]
-#[serde(default)]
-pub struct AncestralArgs {
-  pub input_fastas: Vec<String>,
-  pub aln: Option<String>,
-  pub vcf_reference: Option<String>,
-  pub tree: String,
-  pub alphabet: Option<AlphabetName>,
-  #[default(GtrModelName::Infer)]
-  pub model_name: GtrModelName,
-  pub gtr_params: Vec<String>,
-  #[default(MethodAncestral::default())]
-  pub method_anc: MethodAncestral,
-  pub dense: Option<bool>,
-  pub aa: bool,
-  #[default(GapFill::default())]
-  pub gap_fill: GapFill,
-  pub keep_overhangs: bool,
-  pub zero_based: bool,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub reconstruct_tip_states: bool,
-  pub report_ambiguous: bool,
-  pub outdir: String,
-  pub gtr_iterations: usize,
-  pub site_specific_gtr: bool,
-  pub seed: Option<u64>,
-}
-
-impl AncestralArgs {
-  fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
-
-  fn params(&self) -> AncestralParams {
-    AncestralParams {
-      method: self.method_anc,
-      model: self.model_name,
-      dense: self.dense,
-      include_leaves: self.include_leaves || self.reconstruct_tip_states,
-      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
-      gtr_iterations: self.gtr_iterations,
-      site_specific_gtr: self.site_specific_gtr,
-      seed: self.seed,
-      sample_from_profile: SampleMode::default(),
-      ignore_missing_alns: false,
-    }
-  }
-}
-
 pub fn run_ancestral(
   args: &AncestralArgs,
   cancel: &dyn Cancel,
@@ -210,13 +156,6 @@ pub fn run_ancestral(
   })
 }
 
-struct AncestralReadInputs {
-  input: AncestralInput,
-  mask: Vec<bool>,
-  descs: BTreeMap<String, Option<String>>,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-}
-
 fn read_nwk_fasta(
   args: &AncestralArgs,
   cancel: &dyn Cancel,
@@ -273,6 +212,67 @@ fn read_nwk_fasta(
     descs,
     confidences,
   })
+}
+
+#[derive(Debug, SmartDefault, Deserialize)]
+#[serde(default)]
+pub struct AncestralArgs {
+  pub input_fastas: Vec<String>,
+  pub aln: Option<String>,
+  pub vcf_reference: Option<String>,
+  pub tree: String,
+  pub alphabet: Option<AlphabetName>,
+  #[default(GtrModelName::Infer)]
+  pub model_name: GtrModelName,
+  pub gtr_params: Vec<String>,
+  #[default(MethodAncestral::default())]
+  pub method_anc: MethodAncestral,
+  pub dense: Option<bool>,
+  pub aa: bool,
+  #[default(GapFill::default())]
+  pub gap_fill: GapFill,
+  pub keep_overhangs: bool,
+  pub zero_based: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub reconstruct_tip_states: bool,
+  pub report_ambiguous: bool,
+  pub outdir: String,
+  pub gtr_iterations: usize,
+  pub site_specific_gtr: bool,
+  pub seed: Option<u64>,
+}
+
+impl AncestralArgs {
+  fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
+
+  fn params(&self) -> AncestralParams {
+    AncestralParams {
+      method: self.method_anc,
+      model: self.model_name,
+      dense: self.dense,
+      include_leaves: self.include_leaves || self.reconstruct_tip_states,
+      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
+      gtr_iterations: self.gtr_iterations,
+      site_specific_gtr: self.site_specific_gtr,
+      seed: self.seed,
+      sample_from_profile: SampleMode::default(),
+      ignore_missing_alns: false,
+    }
+  }
+}
+
+struct AncestralReadInputs {
+  input: AncestralInput,
+  mask: Vec<bool>,
+  descs: BTreeMap<String, Option<String>>,
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
 fn write_tree_for_partition(

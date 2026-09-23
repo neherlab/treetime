@@ -20,27 +20,6 @@ use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_utils::io::file::create_file_or_stdout;
 
-#[derive(Debug, SmartDefault, Deserialize)]
-#[serde(default)]
-pub struct MugrationArgs {
-  pub tree: Option<String>,
-  #[default(_code = r#""country".to_owned()"#)]
-  pub attribute: String,
-  pub states: String,
-  pub weights: Option<String>,
-  pub name_column: Option<String>,
-  pub confidence: Option<String>,
-  pub pc: Option<f64>,
-  #[default(_code = r#""?".to_owned()"#)]
-  pub missing_data: String,
-  #[default = 0.5]
-  pub missing_weights_threshold: f64,
-  #[default = 5]
-  pub iterations: usize,
-  pub sampling_bias_correction: Option<f64>,
-  pub outdir: String,
-}
-
 pub fn run_mugration(
   args: &MugrationArgs,
   cancel: &dyn Cancel,
@@ -158,4 +137,25 @@ pub fn run_mugration(
 
   progress.report("Done", 1.0, "");
   Ok(result)
+}
+
+#[derive(Debug, SmartDefault, Deserialize)]
+#[serde(default)]
+pub struct MugrationArgs {
+  pub tree: Option<String>,
+  #[default(_code = r#""country".to_owned()"#)]
+  pub attribute: String,
+  pub states: String,
+  pub weights: Option<String>,
+  pub name_column: Option<String>,
+  pub confidence: Option<String>,
+  pub pc: Option<f64>,
+  #[default(_code = r#""?".to_owned()"#)]
+  pub missing_data: String,
+  #[default = 0.5]
+  pub missing_weights_threshold: f64,
+  #[default = 5]
+  pub iterations: usize,
+  pub sampling_bias_correction: Option<f64>,
+  pub outdir: String,
 }

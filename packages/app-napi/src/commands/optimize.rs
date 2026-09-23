@@ -27,69 +27,11 @@ use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum OptimizeRerootMethod {
-  MinDev,
-}
-
 impl From<OptimizeRerootMethod> for RerootMethod {
   fn from(m: OptimizeRerootMethod) -> Self {
     match m {
       OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
     }
-  }
-}
-
-#[derive(Debug, SmartDefault, Deserialize)]
-#[serde(default)]
-pub struct OptimizeArgs {
-  pub input_fastas: Vec<String>,
-  pub tree: String,
-  pub alphabet: Option<AlphabetName>,
-  #[default(GtrModelName::Infer)]
-  pub model_name: GtrModelName,
-  pub dense: Option<bool>,
-  pub outdir: String,
-  #[default = 10]
-  pub max_iter: usize,
-  #[default = 0.1]
-  pub dp: f64,
-  #[default = 0.75]
-  pub damping: f64,
-  #[default(InitialGuessMode::Auto)]
-  pub branch_length_initial_guess: InitialGuessMode,
-  #[default(BranchOptMethod::default())]
-  pub opt_method: BranchOptMethod,
-  pub no_indels: bool,
-  pub reroot: Option<OptimizeRerootMethod>,
-  pub reroot_tips: Vec<String>,
-  pub keep_root: bool,
-  #[default(GapFill::default())]
-  pub gap_fill: GapFill,
-  pub keep_overhangs: bool,
-}
-
-impl OptimizeArgs {
-  fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
-
-  fn reroot_spec(&self) -> Option<RerootSpec> {
-    if self.keep_root {
-      return None;
-    }
-    if let Some(method) = self.reroot {
-      return Some(RerootSpec::Method(RerootMethod::from(method)));
-    }
-    if !self.reroot_tips.is_empty() {
-      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
-    }
-    None
   }
 }
 
@@ -216,6 +158,64 @@ pub fn run_optimize(
   progress.report("Done", 1.0, "");
 
   Ok(OptimizeResult { graph, nodes, edges })
+}
+
+#[derive(Debug, SmartDefault, Deserialize)]
+#[serde(default)]
+pub struct OptimizeArgs {
+  pub input_fastas: Vec<String>,
+  pub tree: String,
+  pub alphabet: Option<AlphabetName>,
+  #[default(GtrModelName::Infer)]
+  pub model_name: GtrModelName,
+  pub dense: Option<bool>,
+  pub outdir: String,
+  #[default = 10]
+  pub max_iter: usize,
+  #[default = 0.1]
+  pub dp: f64,
+  #[default = 0.75]
+  pub damping: f64,
+  #[default(InitialGuessMode::Auto)]
+  pub branch_length_initial_guess: InitialGuessMode,
+  #[default(BranchOptMethod::default())]
+  pub opt_method: BranchOptMethod,
+  pub no_indels: bool,
+  pub reroot: Option<OptimizeRerootMethod>,
+  pub reroot_tips: Vec<String>,
+  pub keep_root: bool,
+  #[default(GapFill::default())]
+  pub gap_fill: GapFill,
+  pub keep_overhangs: bool,
+}
+
+impl OptimizeArgs {
+  fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
+
+  fn reroot_spec(&self) -> Option<RerootSpec> {
+    if self.keep_root {
+      return None;
+    }
+    if let Some(method) = self.reroot {
+      return Some(RerootSpec::Method(RerootMethod::from(method)));
+    }
+    if !self.reroot_tips.is_empty() {
+      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
+    }
+    None
+  }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OptimizeRerootMethod {
+  MinDev,
 }
 
 fn gather_optimize_output_maps(

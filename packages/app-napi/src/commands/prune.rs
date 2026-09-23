@@ -27,24 +27,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
 
-#[derive(Debug, SmartDefault, Deserialize)]
-#[serde(default)]
-pub struct PruneArgs {
-  pub input_fastas: Vec<String>,
-  pub tree: String,
-  pub alphabet: Option<AlphabetName>,
-  pub outdir: String,
-  pub prune_short: Option<f64>,
-  pub prune_empty: bool,
-  pub merge_shared_mutations: bool,
-  pub prune_nodes_list: Option<String>,
-  #[default = ',']
-  pub prune_nodes_list_delimiter: char,
-  pub prune_nodes_list_file: Option<String>,
-  #[default = '\n']
-  pub prune_nodes_list_file_delimiter: char,
-}
-
 pub fn run_prune(args: &PruneArgs, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
@@ -216,6 +198,24 @@ fn validate_args(args: &PruneArgs) -> Result<(), Report> {
   }
 
   Ok(())
+}
+
+#[derive(Debug, SmartDefault, Deserialize)]
+#[serde(default)]
+pub struct PruneArgs {
+  pub input_fastas: Vec<String>,
+  pub tree: String,
+  pub alphabet: Option<AlphabetName>,
+  pub outdir: String,
+  pub prune_short: Option<f64>,
+  pub prune_empty: bool,
+  pub merge_shared_mutations: bool,
+  pub prune_nodes_list: Option<String>,
+  #[default = ',']
+  pub prune_nodes_list_delimiter: char,
+  pub prune_nodes_list_file: Option<String>,
+  #[default = '\n']
+  pub prune_nodes_list_file_delimiter: char,
 }
 
 #[allow(

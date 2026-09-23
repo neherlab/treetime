@@ -17,15 +17,6 @@ pub fn reset_cancel() {
   CANCELLED.store(false, Ordering::SeqCst);
 }
 
-#[derive(Serialize)]
-#[serde(tag = "type", content = "data")]
-enum NapiEvent {
-  #[serde(rename = "progress")]
-  Progress(ProgressEvent),
-  #[serde(rename = "log")]
-  Log(LogEvent),
-}
-
 pub struct NapiProgressSink {
   tsfn: Arc<ThreadsafeFunction<String, ()>>,
 }
@@ -64,6 +55,15 @@ impl ProgressSink for NapiProgressSink {
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
   }
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data")]
+enum NapiEvent {
+  #[serde(rename = "progress")]
+  Progress(ProgressEvent),
+  #[serde(rename = "log")]
+  Log(LogEvent),
 }
 
 pub struct NapiCancel;

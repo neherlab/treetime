@@ -52,16 +52,24 @@ pub fn cancel() {
   progress::cancel();
 }
 
-fn eyre_to_napi(err: &eyre::Report) -> napi::Error {
-  if err.downcast_ref::<CancelledError>().is_some() {
-    napi::Error::new(napi::Status::Cancelled, "Operation cancelled".to_owned())
-  } else {
-    napi::Error::new(napi::Status::GenericFailure, format!("{err:#}"))
-  }
+#[napi(
+  ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
+  ts_return_type = "Promise<string>"
+)]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
+pub fn ancestral(
+  args_json: String,
+  _on_event: Arc<ThreadsafeFunction<String, ()>>,
+) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTask>> {
+  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTask { args }))
 }
 
-fn json_to_napi(err: &serde_json::Error) -> napi::Error {
-  napi::Error::new(napi::Status::InvalidArg, format!("{err}"))
+pub struct AncestralTask {
+  args: AncestralArgs,
 }
 
 macro_rules! define_task {
@@ -105,10 +113,6 @@ macro_rules! define_task {
   };
 }
 
-pub struct AncestralTask {
-  args: AncestralArgs,
-}
-
 impl Task for AncestralTask {
   type Output = String;
   type JsValue = String;
@@ -123,20 +127,16 @@ impl Task for AncestralTask {
   }
 }
 
-#[napi(
-  ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
-  ts_return_type = "Promise<string>"
-)]
-#[allow(
-  clippy::needless_pass_by_value,
-  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-)]
-pub fn ancestral(
-  args_json: String,
-  _on_event: Arc<ThreadsafeFunction<String, ()>>,
-) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTask>> {
-  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTask { args }))
+fn eyre_to_napi(err: &eyre::Report) -> napi::Error {
+  if err.downcast_ref::<CancelledError>().is_some() {
+    napi::Error::new(napi::Status::Cancelled, "Operation cancelled".to_owned())
+  } else {
+    napi::Error::new(napi::Status::GenericFailure, format!("{err:#}"))
+  }
+}
+
+fn json_to_napi(err: &serde_json::Error) -> napi::Error {
+  napi::Error::new(napi::Status::InvalidArg, format!("{err}"))
 }
 
 define_task!(ClockTask, ClockArgs, run_clock, clock);
