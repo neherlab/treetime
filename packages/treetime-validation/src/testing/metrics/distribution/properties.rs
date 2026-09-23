@@ -4,29 +4,6 @@ use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DistributionProperties {
-  dynamic_range: f64,
-  symmetry_measure: f64,
-  tail_behavior: TailBehavior,
-  outlier_stats: OutlierStatistics,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TailBehavior {
-  Light,
-  Heavy,
-  ExtremelyHeavy,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OutlierStatistics {
-  count_3sigma: usize,
-  count_5sigma: usize,
-  fraction_outliers: f64,
-}
-
 pub(super) fn compute_distribution_properties(
   pointwise_errors: &PointwiseErrors,
 ) -> eyre::Result<DistributionProperties> {
@@ -62,6 +39,14 @@ pub(super) fn compute_distribution_properties(
   })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DistributionProperties {
+  dynamic_range: f64,
+  symmetry_measure: f64,
+  tail_behavior: TailBehavior,
+  outlier_stats: OutlierStatistics,
+}
+
 fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   let mut sorted_errors: Vec<f64> = errors.iter().copied().filter(|&x| x > 0.0 && x.is_finite()).collect();
   sorted_errors.sort_by_key(|&x| OrderedFloat(x));
@@ -86,6 +71,14 @@ fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   } else {
     TailBehavior::Light
   }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TailBehavior {
+  Light,
+  Heavy,
+  ExtremelyHeavy,
 }
 
 #[allow(
@@ -117,4 +110,11 @@ fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
     count_5sigma,
     fraction_outliers,
   }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutlierStatistics {
+  count_3sigma: usize,
+  count_5sigma: usize,
+  fraction_outliers: f64,
 }

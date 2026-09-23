@@ -5,6 +5,13 @@ use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TestRunOutcome<T: TestCase> {
+  Success(Box<TestResult<T>>),
+  Failure(TestFailure<T>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult<T: TestCase> {
   pub algorithm: String,
   pub test_case: T,
@@ -42,11 +49,4 @@ pub struct TestFailure<T: TestCase> {
   pub test_case: T,
   pub error: String,
   pub execution_time_ms: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TestRunOutcome<T: TestCase> {
-  Success(Box<TestResult<T>>),
-  Failure(TestFailure<T>),
 }

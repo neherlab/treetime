@@ -3,22 +3,6 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct AbsoluteErrorStats {
-  pub mean: f64,
-  pub max: f64,
-  pub std: f64,
-  pub bias: f64,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct RelativeErrorStats {
-  pub mean: f64,
-  pub max: f64,
-  pub mape: f64,
-  pub median: f64,
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -35,6 +19,14 @@ pub(crate) fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: 
   let std = variance.sqrt();
 
   AbsoluteErrorStats { mean, max, std, bias }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AbsoluteErrorStats {
+  pub mean: f64,
+  pub max: f64,
+  pub std: f64,
+  pub bias: f64,
 }
 
 #[allow(
@@ -86,4 +78,12 @@ pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: 
     mape,
     median,
   }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RelativeErrorStats {
+  pub mean: f64,
+  pub max: f64,
+  pub mape: f64,
+  pub median: f64,
 }

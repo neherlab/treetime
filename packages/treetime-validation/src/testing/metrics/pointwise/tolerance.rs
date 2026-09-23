@@ -34,24 +34,6 @@ where
   ])
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToleranceMetrics {
-  #[serde(
-    serialize_with = "serialize_array_of_array1",
-    deserialize_with = "deserialize_array_of_array1"
-  )]
-  pub pass_masks: [Array1<f64>; 3],
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub support_coverage_mask: Array1<f64>,
-  pub summary: ToleranceSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToleranceSummary {
-  pub pass_fractions: [f64; 3],
-  pub support_mismatch_count: usize,
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -113,4 +95,22 @@ pub(super) fn compute_tolerance_metrics(
     support_coverage_mask,
     summary,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToleranceMetrics {
+  #[serde(
+    serialize_with = "serialize_array_of_array1",
+    deserialize_with = "deserialize_array_of_array1"
+  )]
+  pub pass_masks: [Array1<f64>; 3],
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub support_coverage_mask: Array1<f64>,
+  pub summary: ToleranceSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToleranceSummary {
+  pub pass_fractions: [f64; 3],
+  pub support_mismatch_count: usize,
 }

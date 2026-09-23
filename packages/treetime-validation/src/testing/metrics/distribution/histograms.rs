@@ -4,34 +4,6 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HistogramMode {
-  Unsigned { use_log_scale: bool },
-  Signed,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistogramMetrics {
-  pub abs_error_histogram: ErrorHistogram,
-  pub rel_error_histogram: ErrorHistogram,
-  pub signed_error_histogram: ErrorHistogram,
-  pub summary: HistogramSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ErrorHistogram {
-  pub bin_edges: Vec<f64>,
-  pub bin_counts: Vec<usize>,
-  pub bin_centers: Vec<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistogramSummary {
-  total_count: usize,
-  modal_range: (f64, f64),
-  spread_measure: f64,
-}
-
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -89,6 +61,21 @@ pub(super) fn compute_histogram_metrics(
     signed_error_histogram,
     summary,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistogramMetrics {
+  pub abs_error_histogram: ErrorHistogram,
+  pub rel_error_histogram: ErrorHistogram,
+  pub signed_error_histogram: ErrorHistogram,
+  pub summary: HistogramSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistogramSummary {
+  total_count: usize,
+  modal_range: (f64, f64),
+  spread_measure: f64,
 }
 
 #[allow(
@@ -158,6 +145,19 @@ fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, mode: Histogra
     bin_counts,
     bin_centers,
   })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HistogramMode {
+  Unsigned { use_log_scale: bool },
+  Signed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorHistogram {
+  pub bin_edges: Vec<f64>,
+  pub bin_counts: Vec<usize>,
+  pub bin_centers: Vec<f64>,
 }
 
 #[cfg(test)]

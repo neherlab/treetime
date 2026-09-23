@@ -3,19 +3,6 @@ use serde::{Deserialize, Serialize};
 use treetime_utils::array::ndarray::cumsum_axis;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CumulativeMetrics {
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub cumulative_error: Array1<f64>,
-  pub summary: CumulativeSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CumulativeSummary {
-  pub final_value: f64,
-  pub max_abs: f64,
-}
-
 pub(super) fn compute_cumulative_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -35,4 +22,17 @@ pub(super) fn compute_cumulative_metrics(
     cumulative_error,
     summary,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CumulativeMetrics {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub cumulative_error: Array1<f64>,
+  pub summary: CumulativeSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CumulativeSummary {
+  pub final_value: f64,
+  pub max_abs: f64,
 }

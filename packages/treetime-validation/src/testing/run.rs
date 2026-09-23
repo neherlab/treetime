@@ -13,6 +13,44 @@ use clap::Parser;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 
+pub fn run_validation_tests() -> Result<(), Report> {
+  let mut args = Args::parse();
+  args.test_suites = TestSuiteName::expand(&args.test_suites);
+  args.conv_algorithms = ConvolutionAlgorithm::expand(&args.conv_algorithms);
+  args.mult_algorithms = MultiplicationAlgorithm::expand(&args.mult_algorithms);
+  for suite_name in &args.test_suites {
+    suite_name.run_tests(&args)?;
+  }
+  Ok(())
+}
+
+pub(crate) fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
+where
+  S: ConvolutionTestSuite + Default,
+{
+  run_tests_generic::<ConvolutionRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
+  })
+}
+
+pub(crate) fn run_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
+where
+  S: MultiplicationTestSuite + Default,
+{
+  run_tests_generic::<MultiplicationRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
+  })
+}
+
+pub(crate) fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
+where
+  S: ChainMultiplicationTestSuite + Default,
+{
+  run_tests_generic::<ChainMultiplicationRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
+  })
+}
+
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[command(
@@ -57,44 +95,6 @@ pub struct Args {
     help = "List available test cases without running tests"
   )]
   pub list_cases: bool,
-}
-
-pub fn run_validation_tests() -> Result<(), Report> {
-  let mut args = Args::parse();
-  args.test_suites = TestSuiteName::expand(&args.test_suites);
-  args.conv_algorithms = ConvolutionAlgorithm::expand(&args.conv_algorithms);
-  args.mult_algorithms = MultiplicationAlgorithm::expand(&args.mult_algorithms);
-  for suite_name in &args.test_suites {
-    suite_name.run_tests(&args)?;
-  }
-  Ok(())
-}
-
-pub(crate) fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
-where
-  S: ConvolutionTestSuite + Default,
-{
-  run_tests_generic::<ConvolutionRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
-  })
-}
-
-pub(crate) fn run_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
-where
-  S: MultiplicationTestSuite + Default,
-{
-  run_tests_generic::<MultiplicationRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
-  })
-}
-
-pub(crate) fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
-where
-  S: ChainMultiplicationTestSuite + Default,
-{
-  run_tests_generic::<ChainMultiplicationRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
-  })
 }
 
 #[cfg_attr(

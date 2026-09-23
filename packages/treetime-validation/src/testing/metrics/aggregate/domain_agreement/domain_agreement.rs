@@ -138,31 +138,6 @@ impl DomainAgreementMetrics {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[serde(rename_all = "kebab-case")]
-pub enum AgreementAssessment {
-  #[strum(to_string = "EXCELLENT: Near-perfect agreement")]
-  Excellent,
-  #[strum(to_string = "VERY GOOD: High agreement")]
-  VeryGood,
-  #[strum(to_string = "GOOD: Reasonable agreement")]
-  Good,
-  #[strum(to_string = "POOR: Low agreement")]
-  Poor,
-}
-
-fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssessment {
-  if r2 >= thresholds[0] {
-    AgreementAssessment::Excellent
-  } else if r2 >= thresholds[1] {
-    AgreementAssessment::VeryGood
-  } else if r2 >= thresholds[2] {
-    AgreementAssessment::Good
-  } else {
-    AgreementAssessment::Poor
-  }
-}
-
 #[cfg_attr(
   dylint_lib = "treetime_lints",
   expect(
@@ -290,4 +265,29 @@ Points within relative tolerance:
 {overall_assessment}"#
     )
   }
+}
+
+fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssessment {
+  if r2 >= thresholds[0] {
+    AgreementAssessment::Excellent
+  } else if r2 >= thresholds[1] {
+    AgreementAssessment::VeryGood
+  } else if r2 >= thresholds[2] {
+    AgreementAssessment::Good
+  } else {
+    AgreementAssessment::Poor
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgreementAssessment {
+  #[strum(to_string = "EXCELLENT: Near-perfect agreement")]
+  Excellent,
+  #[strum(to_string = "VERY GOOD: High agreement")]
+  VeryGood,
+  #[strum(to_string = "GOOD: Reasonable agreement")]
+  Good,
+  #[strum(to_string = "POOR: Low agreement")]
+  Poor,
 }

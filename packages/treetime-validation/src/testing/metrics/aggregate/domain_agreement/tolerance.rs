@@ -3,18 +3,6 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ToleranceCounts {
-  pub within_abs_tolerances: [usize; 3],
-  pub within_rel_tolerances: [usize; 3],
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct MaxErrorLocation {
-  pub idx: usize,
-  pub x_value: f64,
-}
-
 pub(crate) fn compute_tolerance_counts(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -45,6 +33,12 @@ pub(crate) fn compute_tolerance_counts(
   }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ToleranceCounts {
+  pub within_abs_tolerances: [usize; 3],
+  pub within_rel_tolerances: [usize; 3],
+}
+
 pub(crate) fn find_max_error_location(
   x: &Array1<f64>,
   actual: &Array1<f64>,
@@ -61,4 +55,10 @@ pub(crate) fn find_max_error_location(
     idx: max_idx,
     x_value: x[max_idx],
   }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MaxErrorLocation {
+  pub idx: usize,
+  pub x_value: f64,
 }

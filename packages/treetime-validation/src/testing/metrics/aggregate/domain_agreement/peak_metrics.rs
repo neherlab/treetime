@@ -5,12 +5,6 @@ use ndarray_stats::QuantileExt;
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PeakMetrics {
-  pub value_error: f64,
-  pub location_error: f64,
-}
-
 pub(crate) fn compute_peak_metrics(
   x: &Array1<f64>,
   actual: &Array1<f64>,
@@ -35,4 +29,10 @@ pub(crate) fn compute_peak_metrics(
     value_error,
     location_error,
   })
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PeakMetrics {
+  pub value_error: f64,
+  pub location_error: f64,
 }

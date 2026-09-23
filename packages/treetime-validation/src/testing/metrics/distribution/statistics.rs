@@ -3,26 +3,6 @@ use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StatisticalMetrics {
-  pub abs_error_stats: ErrorStatistics,
-  pub rel_error_stats: ErrorStatistics,
-  pub signed_error_stats: ErrorStatistics,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ErrorStatistics {
-  pub mean: f64,
-  pub std: f64,
-  pub median: f64,
-  pub q25: f64,
-  pub q75: f64,
-  pub q95: f64,
-  pub q99: f64,
-  pub skewness: f64,
-  pub kurtosis: f64,
-}
-
 pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) -> eyre::Result<StatisticalMetrics> {
   let abs_error_stats = compute_error_statistics(&pointwise_errors.absolute)?;
   let rel_error_stats = compute_error_statistics(&pointwise_errors.relative)?;
@@ -33,6 +13,13 @@ pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) ->
     rel_error_stats,
     signed_error_stats,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatisticalMetrics {
+  pub abs_error_stats: ErrorStatistics,
+  pub rel_error_stats: ErrorStatistics,
+  pub signed_error_stats: ErrorStatistics,
 }
 
 #[allow(
@@ -80,6 +67,19 @@ fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistic
     skewness,
     kurtosis,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorStatistics {
+  pub mean: f64,
+  pub std: f64,
+  pub median: f64,
+  pub q25: f64,
+  pub q75: f64,
+  pub q95: f64,
+  pub q99: f64,
+  pub skewness: f64,
+  pub kurtosis: f64,
 }
 
 pub(super) fn compute_std(data: &Array1<f64>) -> f64 {

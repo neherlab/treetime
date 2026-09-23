@@ -1,14 +1,6 @@
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceMetrics {
-  signal_to_noise_ratio: f64,
-  normalized_rmse: f64,
-  coefficient_of_determination: f64,
-  nash_sutcliffe_efficiency: f64,
-}
-
 pub(crate) fn compute_performance_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -54,4 +46,12 @@ pub(crate) fn compute_performance_metrics(
     coefficient_of_determination,
     nash_sutcliffe_efficiency,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+  signal_to_noise_ratio: f64,
+  normalized_rmse: f64,
+  coefficient_of_determination: f64,
+  nash_sutcliffe_efficiency: f64,
 }

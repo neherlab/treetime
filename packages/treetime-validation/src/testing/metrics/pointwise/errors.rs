@@ -4,32 +4,6 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PointwiseErrors {
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub absolute: Array1<f64>,
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub relative: Array1<f64>,
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub signed: Array1<f64>,
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub logarithmic: Array1<f64>,
-  pub summary: PointwiseErrorSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PointwiseErrorSummary {
-  pub abs_mean: f64,
-  pub abs_max: f64,
-  pub abs_std: f64,
-  pub rel_mean: f64,
-  pub rel_max: f64,
-  pub rel_median: f64,
-  pub signed_bias: f64,
-  pub log_valid_count: usize,
-  pub log_max: f64,
-}
-
 pub(super) fn compute_pointwise_errors(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -92,6 +66,32 @@ pub(super) fn compute_pointwise_errors(
     logarithmic,
     summary,
   })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PointwiseErrors {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub absolute: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub relative: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub signed: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub logarithmic: Array1<f64>,
+  pub summary: PointwiseErrorSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PointwiseErrorSummary {
+  pub abs_mean: f64,
+  pub abs_max: f64,
+  pub abs_std: f64,
+  pub rel_mean: f64,
+  pub rel_max: f64,
+  pub rel_median: f64,
+  pub signed_bias: f64,
+  pub log_valid_count: usize,
+  pub log_max: f64,
 }
 
 #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]

@@ -4,29 +4,6 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegionalMetrics {
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub peak_region_errors: Array1<f64>,
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub tail_region_errors: Array1<f64>,
-  pub summary: RegionalSummary,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegionalSummary {
-  pub peak_region: RegionStats,
-  pub tail_region: RegionStats,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegionStats {
-  pub point_count: usize,
-  pub mean_error: f64,
-  pub max_error: f64,
-  pub std_error: f64,
-}
-
 pub(super) fn compute_regional_metrics(
   x: &Array1<f64>,
   actual: &Array1<f64>,
@@ -81,6 +58,21 @@ pub(super) fn compute_regional_metrics(
   })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegionalMetrics {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub peak_region_errors: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub tail_region_errors: Array1<f64>,
+  pub summary: RegionalSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegionalSummary {
+  pub peak_region: RegionStats,
+  pub tail_region: RegionStats,
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -107,4 +99,12 @@ fn compute_region_stats(errors: &[f64]) -> RegionStats {
     max_error: max,
     std_error: std,
   }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegionStats {
+  pub point_count: usize,
+  pub mean_error: f64,
+  pub max_error: f64,
+  pub std_error: f64,
 }

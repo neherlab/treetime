@@ -16,64 +16,6 @@ use std::time::Instant;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
 
-pub trait TestRunner: Send + Sync + Sized {
-  type TestCase: TestCase;
-  type Algorithm: Copy + Display + Send + Sync;
-  type Suite: Send + Sync;
-
-  fn test_suite_name(suite: &Self::Suite) -> &'static str;
-
-  fn create_test_cases(suite: &Self::Suite) -> Vec<Self::TestCase>;
-
-  fn get_algorithms(args: &Args) -> &[Self::Algorithm];
-
-  fn run_single_test(
-    suite: &Self::Suite,
-    test_case: &Self::TestCase,
-    algorithm: Self::Algorithm,
-  ) -> Result<TestResult<Self::TestCase>, Report>;
-
-  fn print_test_configuration(
-    test_suite_name: &str,
-    algorithms: &[Self::Algorithm],
-    total_available: usize,
-    selected_count: usize,
-    name_filter_applied: bool,
-    slowness_threshold: f64,
-    output_dir: &str,
-  ) {
-    ValidationConsole::print_test_configuration(
-      test_suite_name,
-      algorithms,
-      total_available,
-      selected_count,
-      name_filter_applied,
-      slowness_threshold,
-      output_dir,
-    );
-  }
-
-  fn print_header(test_cases_count: usize, algorithms_count: usize) {
-    ValidationConsole::print_header(test_cases_count, algorithms_count);
-  }
-
-  fn print_table_header() {
-    ValidationConsole::print_progress_table_header();
-  }
-
-  fn print_success_row(result: &TestResult<Self::TestCase>) {
-    ValidationConsole::print_success_row(result);
-  }
-
-  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
-    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
-  }
-
-  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
-    ValidationConsole::print_error_summary(failures)
-  }
-}
-
 #[expect(
   clippy::needless_pass_by_value,
   reason = "the runner owns the suite for the whole test run"
@@ -212,6 +154,85 @@ fn execute_single_test<R: TestRunner>(
   }
 }
 
+pub trait TestRunner: Send + Sync + Sized {
+  type TestCase: TestCase;
+  type Algorithm: Copy + Display + Send + Sync;
+  type Suite: Send + Sync;
+
+  fn test_suite_name(suite: &Self::Suite) -> &'static str;
+
+  fn create_test_cases(suite: &Self::Suite) -> Vec<Self::TestCase>;
+
+  fn get_algorithms(args: &Args) -> &[Self::Algorithm];
+
+  fn run_single_test(
+    suite: &Self::Suite,
+    test_case: &Self::TestCase,
+    algorithm: Self::Algorithm,
+  ) -> Result<TestResult<Self::TestCase>, Report>;
+
+  fn print_test_configuration(
+    test_suite_name: &str,
+    algorithms: &[Self::Algorithm],
+    total_available: usize,
+    selected_count: usize,
+    name_filter_applied: bool,
+    slowness_threshold: f64,
+    output_dir: &str,
+  ) {
+    ValidationConsole::print_test_configuration(
+      test_suite_name,
+      algorithms,
+      total_available,
+      selected_count,
+      name_filter_applied,
+      slowness_threshold,
+      output_dir,
+    );
+  }
+
+  fn print_header(test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_cases_count, algorithms_count);
+  }
+
+  fn print_table_header() {
+    ValidationConsole::print_progress_table_header();
+  }
+
+  fn print_success_row(result: &TestResult<Self::TestCase>) {
+    ValidationConsole::print_success_row(result);
+  }
+
+  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
+  }
+
+  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
+    ValidationConsole::print_error_summary(failures)
+  }
+}
+
+fn generate_summary_generic<T: TestCase, A: Display>(
+  test_suite_name: &str,
+  outcomes: &[TestRunOutcome<T>],
+  algorithms: &[A],
+) -> TestSummary {
+  let successes = collect_successes(outcomes);
+  let failures = collect_failures(outcomes);
+  let total_execution_time = calculate_total_execution_time(outcomes);
+  let algorithm_summaries = build_algorithm_summaries_generic(algorithms, &successes, &failures);
+
+  TestSummary {
+    test_suite_name: test_suite_name.to_owned(),
+    total_tests: outcomes.len(),
+    total_successes: successes.len(),
+    total_failures: failures.len(),
+    total_algorithms: algorithms.len(),
+    execution_time_total_ms: total_execution_time,
+    algorithm_summaries,
+  }
+}
+
 fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFailure<T>> {
   outcomes
     .iter()
@@ -240,27 +261,6 @@ fn calculate_total_execution_time<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -
       TestRunOutcome::Failure(failure) => failure.execution_time_ms,
     })
     .sum()
-}
-
-fn generate_summary_generic<T: TestCase, A: Display>(
-  test_suite_name: &str,
-  outcomes: &[TestRunOutcome<T>],
-  algorithms: &[A],
-) -> TestSummary {
-  let successes = collect_successes(outcomes);
-  let failures = collect_failures(outcomes);
-  let total_execution_time = calculate_total_execution_time(outcomes);
-  let algorithm_summaries = build_algorithm_summaries_generic(algorithms, &successes, &failures);
-
-  TestSummary {
-    test_suite_name: test_suite_name.to_owned(),
-    total_tests: outcomes.len(),
-    total_successes: successes.len(),
-    total_failures: failures.len(),
-    total_algorithms: algorithms.len(),
-    execution_time_total_ms: total_execution_time,
-    algorithm_summaries,
-  }
 }
 
 fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
@@ -295,12 +295,6 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
     .collect()
 }
 
-#[derive(Serialize)]
-struct ResultsJson<'a, T: TestCase> {
-  summary: &'a TestSummary,
-  outcomes: &'a [TestRunOutcome<T>],
-}
-
 fn save_results_json<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report>
 where
   T: Serialize + TestCase,
@@ -309,4 +303,10 @@ where
   let results = ResultsJson { summary, outcomes };
   let json_path = format!("{output_dir}/{}_results.json", summary.test_suite_name);
   json_write_file(&json_path, &results, JsonPretty(true))
+}
+
+#[derive(Serialize)]
+struct ResultsJson<'a, T: TestCase> {
+  summary: &'a TestSummary,
+  outcomes: &'a [TestRunOutcome<T>],
 }
