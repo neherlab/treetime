@@ -9,11 +9,14 @@ use app_datasets::discover_datasets;
 use napi::Task;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
+use std::env;
 use std::path::Path;
 use std::sync::Arc;
 use treetime::cancel::{CancelledError, NoopCancel};
 use treetime::progress::NoopProgress;
 use treetime_schema::version_info;
+
+const DATA_DIR_ENV: &str = "DATA_DIR";
 
 #[allow(
   clippy::expect_used,
@@ -30,7 +33,7 @@ pub fn version() -> String {
 )]
 #[napi]
 pub fn datasets() -> String {
-  let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".to_owned());
+  let data_dir = env::var(DATA_DIR_ENV).unwrap_or_else(|_| "data".to_owned());
   let datasets = discover_datasets(Path::new(&data_dir));
   serde_json::to_string(&datasets).expect("datasets serialization failed")
 }

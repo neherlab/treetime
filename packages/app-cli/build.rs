@@ -3,14 +3,17 @@ use std::error::Error;
 use std::path::Path;
 use std::process::{Command, Output};
 
+const BUILD_MODE_ENV: &str = "TREETIME_BUILD_MODE";
+const VERSION_SUFFIX_ENV: &str = "TREETIME_VERSION_SUFFIX";
+
 fn main() -> Result<(), Box<dyn Error>> {
   emit_long_version()?;
   Ok(())
 }
 
 fn emit_long_version() -> Result<(), Box<dyn Error>> {
-  println!("cargo:rerun-if-env-changed=TREETIME_BUILD_MODE");
-  println!("cargo:rerun-if-env-changed=TREETIME_VERSION_SUFFIX");
+  println!("cargo:rerun-if-env-changed={BUILD_MODE_ENV}");
+  println!("cargo:rerun-if-env-changed={VERSION_SUFFIX_ENV}");
   emit_git_dependency("HEAD")?;
   emit_git_dependency("index")?;
 
@@ -22,10 +25,8 @@ fn emit_long_version() -> Result<(), Box<dyn Error>> {
   }
 
   let base = env!("CARGO_PKG_VERSION");
-  let mode = env::var("TREETIME_BUILD_MODE").unwrap_or_else(|_| "dev".to_owned());
-  let suffix = env::var("TREETIME_VERSION_SUFFIX")
-    .ok()
-    .filter(|suffix| !suffix.is_empty());
+  let mode = env::var(BUILD_MODE_ENV).unwrap_or_else(|_| "dev".to_owned());
+  let suffix = env::var(VERSION_SUFFIX_ENV).ok().filter(|suffix| !suffix.is_empty());
   let short_sha = git_stdout(&["rev-parse", "--short", "HEAD"])?;
   let dirty = if git_stdout(&["status", "--porcelain"])?.is_empty() {
     ""

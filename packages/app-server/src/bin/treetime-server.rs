@@ -12,9 +12,13 @@ use app_server::state::ServerConfig;
 use clap::Parser;
 use ctor::ctor;
 use log::LevelFilter;
+use std::env;
 use std::path::PathBuf;
 use std::thread::available_parallelism;
 use treetime_utils::init::global::{global_init, setup_logger};
+
+const HOST_ENV: &str = "HOST";
+const PORT_ENV: &str = "PORT";
 
 #[ctor]
 fn init() {
@@ -65,13 +69,13 @@ async fn main() -> eyre::Result<()> {
 
   let host = args
     .host
-    .or_else(|| std::env::var("HOST").ok())
+    .or_else(|| env::var(HOST_ENV).ok())
     .unwrap_or_else(|| "127.0.0.1".to_owned());
 
   let port: u16 = args
     .port
     .or_else(|| {
-      std::env::var("PORT").ok().and_then(|val| {
+      env::var(PORT_ENV).ok().and_then(|val| {
         val.parse().ok().or_else(|| {
           eprintln!("Warning: invalid PORT value '{val}', using default 3100");
           None
