@@ -8,10 +8,10 @@ use util_phyloxml::types::Phyloxml;
 
 pub fn phyloxml_write_file(filepath: impl AsRef<Path>, phyloxml: &Phyloxml) -> Result<(), Report> {
   let filepath = filepath.as_ref();
+  let context = || format!("When writing PhyloXML file '{}'", filepath.display());
   let mut f = create_file_or_stdout(filepath)?;
-  phyloxml_write(&mut f, phyloxml).wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
-  writeln!(f)?;
-  Ok(())
+  phyloxml_write(&mut f, phyloxml).wrap_err_with(context)?;
+  writeln!(f).wrap_err_with(context)
 }
 
 pub fn phyloxml_write_str(phyloxml: &Phyloxml) -> Result<String, Report> {
