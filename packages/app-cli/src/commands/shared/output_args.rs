@@ -9,26 +9,6 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_io::nwk::NwkStyle;
 
-/// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-pub enum NwkStyleArg {
-  Plain,
-  Beast,
-  Nhx,
-}
-
-impl From<NwkStyleArg> for NwkStyle {
-  fn from(value: NwkStyleArg) -> Self {
-    match value {
-      NwkStyleArg::Plain => Self::Plain,
-      NwkStyleArg::Beast => Self::Beast,
-      NwkStyleArg::Nhx => Self::Nhx,
-    }
-  }
-}
-
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -229,6 +209,26 @@ impl OutputCoreArgs {
     .into_iter()
     .filter_map(|(variant, path)| path.map(|path| (variant, path.to_path_buf())))
     .collect()
+  }
+}
+
+/// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+pub enum NwkStyleArg {
+  Plain,
+  Beast,
+  Nhx,
+}
+
+impl From<NwkStyleArg> for NwkStyle {
+  fn from(value: NwkStyleArg) -> Self {
+    match value {
+      NwkStyleArg::Plain => Self::Plain,
+      NwkStyleArg::Beast => Self::Beast,
+      NwkStyleArg::Nhx => Self::Nhx,
+    }
   }
 }
 

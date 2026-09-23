@@ -134,16 +134,6 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   Ok(())
 }
 
-pub(crate) struct PointsResult {
-  pub norm_points: Vec<(f32, f32)>,
-  pub outlier_points: Vec<(f32, f32)>,
-  pub line: [(f32, f32); 2],
-  pub x_min: f32,
-  pub x_max: f32,
-  pub y_min: f32,
-  pub y_max: f32,
-}
-
 #[allow(
   clippy::as_conversions,
   clippy::unwrap_used,
@@ -192,4 +182,14 @@ pub(crate) fn gather_points(
     y_min,
     y_max,
   })
+}
+
+pub(crate) struct PointsResult {
+  pub norm_points: Vec<(f32, f32)>,
+  pub outlier_points: Vec<(f32, f32)>,
+  pub line: [(f32, f32); 2],
+  pub x_min: f32,
+  pub x_max: f32,
+  pub y_min: f32,
+  pub y_max: f32,
 }
