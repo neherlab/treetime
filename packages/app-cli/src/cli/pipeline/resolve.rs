@@ -8,6 +8,7 @@ use regex::{Regex, regex};
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
@@ -237,10 +238,13 @@ fn producer_output_all(step: &str, producer: &ResolvedStep) -> Result<String, Re
 
 fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) -> Result<String, Report> {
   let by_selection = &producer.outputs.by_selection;
-  let produced_tags: Vec<String> = by_selection.keys().map(|sel| selection_tag(*sel)).collect();
+  let produced_tags: Vec<String> = by_selection
+    .keys()
+    .map(|selection| selection.as_ref().to_owned())
+    .collect();
   let produced_tags: Vec<&str> = produced_tags.iter().map(String::as_str).collect();
 
-  let Some(parsed) = parse_selection(selection) else {
+  let Ok(parsed) = OutputSelection::from_str(selection) else {
     return make_error!(
       "step `{step}` references `steps.{}.outputs.{selection}`, an unknown output; {}",
       producer.name,
@@ -281,17 +285,6 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
       Value::String(dir.to_string_lossy().into_owned()),
     );
   }
-}
-
-fn selection_tag(selection: OutputSelection) -> String {
-  serde_json::to_value(selection)
-    .ok()
-    .and_then(|value| value.as_str().map(str::to_owned))
-    .unwrap_or_default()
-}
-
-fn parse_selection(tag: &str) -> Option<OutputSelection> {
-  serde_json::from_value(Value::String(tag.to_owned())).ok()
 }
 
 pub(crate) fn is_template_path(path: &Path) -> bool {

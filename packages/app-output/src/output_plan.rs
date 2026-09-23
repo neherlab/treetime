@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use strum_macros::{AsRefStr, EnumIter, EnumString};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::make_error;
@@ -12,8 +13,24 @@ use treetime_utils::make_error;
 /// Canonical lookup key for selectable outputs. Command adapters convert their
 /// selection enums into this type, and [`plan`] resolves each key to a path.
 /// Tree variants do not encode the separately selected Newick style.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Eq,
+  PartialEq,
+  Hash,
+  Ord,
+  PartialOrd,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  AsRefStr,
+  EnumString,
+  EnumIter,
+)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum OutputSelection {
   All,
 
