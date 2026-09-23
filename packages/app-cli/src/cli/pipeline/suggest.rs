@@ -1,6 +1,13 @@
 use itertools::Itertools;
 use strsim::levenshtein;
 
+pub fn suggestion_suffix(input: &str, candidates: &[&str]) -> String {
+  match did_you_mean(input, candidates) {
+    Some(best) => format!("did you mean `{best}`? Valid values: {}", valid_values(candidates)),
+    None => format!("valid values: {}", valid_values(candidates)),
+  }
+}
+
 #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
   let threshold = (input.len() / 3).max(1) + 1;
@@ -18,13 +25,6 @@ pub fn valid_values(candidates: &[&str]) -> String {
     .sorted()
     .map(|candidate| format!("`{candidate}`"))
     .join(", ")
-}
-
-pub fn suggestion_suffix(input: &str, candidates: &[&str]) -> String {
-  match did_you_mean(input, candidates) {
-    Some(best) => format!("did you mean `{best}`? Valid values: {}", valid_values(candidates)),
-    None => format!("valid values: {}", valid_values(candidates)),
-  }
 }
 
 #[cfg(test)]

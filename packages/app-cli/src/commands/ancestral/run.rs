@@ -217,14 +217,6 @@ pub fn run_ancestral_reconstruction(
   })
 }
 
-struct AncestralReadInputs {
-  input: AncestralInput,
-  mask: Vec<bool>,
-  alphabet: Alphabet,
-  descs: BTreeMap<String, Option<String>>,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-}
-
 fn read_nwk_fasta(
   args: &TreetimeAncestralArgs,
   cancel: &dyn Cancel,
@@ -282,6 +274,14 @@ fn read_nwk_fasta(
     descs,
     confidences,
   })
+}
+
+struct AncestralReadInputs {
+  input: AncestralInput,
+  mask: Vec<bool>,
+  alphabet: Alphabet,
+  descs: BTreeMap<String, Option<String>>,
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
 fn write_tree_for_partition(

@@ -15,10 +15,50 @@ pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "
 
 const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
-pub(crate) fn step_ref() -> &'static Regex {
-  regex!(
-    r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#
-  )
+pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
+  let interp = Interpolator::default();
+  let vars = resolve_vars(&interp, &doc.vars, env)?;
+
+  let value_context = template_context(&vars, env);
+  let workdir = match &doc.output_all {
+    Some(template) => Some(interpolate_to_path(&interp, template, &value_context, "output_all")?),
+    None => None,
+  };
+
+  let all_names: BTreeSet<&str> = doc.steps.iter().map(|step| step.name.as_str()).collect();
+  let mut resolved_steps: Vec<ResolvedStep> = Vec::new();
+  let mut index: BTreeMap<String, usize> = BTreeMap::new();
+
+  for raw in &doc.steps {
+    let payload = substitute_step_refs(&raw.payload, &resolved_steps, &index, &raw.name, &all_names)?;
+    let mut payload = interp
+      .interpolate_value(&payload, &value_context)
+      .map_err(|err| step_error(&raw.name, &err))?;
+
+    if let Some(dir) = &workdir {
+      set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
+    }
+
+    let command =
+      PipelineStepCommand::from_tag_and_value(&raw.tag, payload).map_err(|err| step_error(&raw.name, &err))?;
+    let resolved = command.resolve_outputs().map_err(|err| step_error(&raw.name, &err))?;
+    let outputs = StepOutputs {
+      output_all: command.output_all().map(Path::to_path_buf),
+      by_selection: resolved.paths_by_selection(),
+    };
+
+    index.insert(raw.name.clone(), resolved_steps.len());
+    resolved_steps.push(ResolvedStep {
+      name: raw.name.clone(),
+      command,
+      outputs,
+    });
+  }
+
+  Ok(ResolvedPipeline {
+    workdir,
+    steps: resolved_steps,
+  })
 }
 
 pub struct PipelineDoc {
@@ -86,66 +126,9 @@ impl PipelineDoc {
   }
 }
 
-pub struct StepOutputs {
-  pub output_all: Option<PathBuf>,
-  pub by_selection: BTreeMap<OutputSelection, Vec<PathBuf>>,
-}
-
-pub struct ResolvedStep {
-  pub name: String,
-  pub command: PipelineStepCommand,
-  pub outputs: StepOutputs,
-}
-
 pub struct ResolvedPipeline {
   pub workdir: Option<PathBuf>,
   pub steps: Vec<ResolvedStep>,
-}
-
-pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
-  let interp = Interpolator::default();
-  let vars = resolve_vars(&interp, &doc.vars, env)?;
-
-  let value_context = template_context(&vars, env);
-  let workdir = match &doc.output_all {
-    Some(template) => Some(interpolate_to_path(&interp, template, &value_context, "output_all")?),
-    None => None,
-  };
-
-  let all_names: BTreeSet<&str> = doc.steps.iter().map(|step| step.name.as_str()).collect();
-  let mut resolved_steps: Vec<ResolvedStep> = Vec::new();
-  let mut index: BTreeMap<String, usize> = BTreeMap::new();
-
-  for raw in &doc.steps {
-    let payload = substitute_step_refs(&raw.payload, &resolved_steps, &index, &raw.name, &all_names)?;
-    let mut payload = interp
-      .interpolate_value(&payload, &value_context)
-      .map_err(|err| step_error(&raw.name, &err))?;
-
-    if let Some(dir) = &workdir {
-      set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
-    }
-
-    let command =
-      PipelineStepCommand::from_tag_and_value(&raw.tag, payload).map_err(|err| step_error(&raw.name, &err))?;
-    let resolved = command.resolve_outputs().map_err(|err| step_error(&raw.name, &err))?;
-    let outputs = StepOutputs {
-      output_all: command.output_all().map(Path::to_path_buf),
-      by_selection: resolved.paths_by_selection(),
-    };
-
-    index.insert(raw.name.clone(), resolved_steps.len());
-    resolved_steps.push(ResolvedStep {
-      name: raw.name.clone(),
-      command,
-      outputs,
-    });
-  }
-
-  Ok(ResolvedPipeline {
-    workdir,
-    steps: resolved_steps,
-  })
 }
 
 fn interpolate_to_path(interp: &Interpolator, template: &str, context: &Value, field: &str) -> Result<PathBuf, Report> {
@@ -202,6 +185,12 @@ fn substitute_step_refs_in_leaf(
   }
   result.push_str(leaf.get(last..).unwrap_or_default());
   Ok(result)
+}
+
+pub(crate) fn step_ref() -> &'static Regex {
+  regex!(
+    r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#
+  )
 }
 
 fn resolve_producer<'a>(
@@ -272,6 +261,17 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
       paths.iter().map(|path| format!("`{}`", path.display())).join(", ")
     ),
   }
+}
+
+pub struct ResolvedStep {
+  pub name: String,
+  pub command: PipelineStepCommand,
+  pub outputs: StepOutputs,
+}
+
+pub struct StepOutputs {
+  pub output_all: Option<PathBuf>,
+  pub by_selection: BTreeMap<OutputSelection, Vec<PathBuf>>,
 }
 
 fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {

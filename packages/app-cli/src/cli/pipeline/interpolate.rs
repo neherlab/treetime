@@ -8,6 +8,91 @@ use treetime_utils::{make_error, make_report};
 
 pub(crate) const NAMESPACES: [&str; 3] = ["vars", "env", "steps"];
 
+pub(crate) fn resolve_vars(
+  interp: &Interpolator,
+  raw: &Map<String, Value>,
+  env: &Value,
+) -> Result<Map<String, Value>, Report> {
+  let mut resolved: Map<String, Value> = Map::new();
+  let mut pending: Vec<(String, Value)> = raw.iter().map(|(name, value)| (name.clone(), value.clone())).collect();
+
+  while !pending.is_empty() {
+    let mut progressed = false;
+    let mut next = Vec::new();
+    for (name, value) in pending {
+      let deps = var_dependencies(interp, &name, &value)?;
+      if deps.iter().all(|dep| resolved.contains_key(dep)) {
+        let context = template_context(&resolved, env);
+        let rendered = interp
+          .interpolate_value(&value, &context)
+          .map_err(|err| eyre::eyre!("resolving var `{name}`: {err}"))?;
+        resolved.insert(name, rendered);
+        progressed = true;
+      } else {
+        next.push((name, value));
+      }
+    }
+    if !progressed {
+      let unresolved = next.iter().map(|(name, _)| format!("`{name}`")).sorted().join(", ");
+      return make_error!("cannot resolve pipeline `vars` ({unresolved}): circular or unknown reference among them");
+    }
+    pending = next;
+  }
+
+  Ok(resolved)
+}
+
+pub(crate) fn template_context(vars: &Map<String, Value>, env: &Value) -> Value {
+  let mut context = Map::new();
+  context.insert("vars".to_owned(), Value::Object(vars.clone()));
+  context.insert("env".to_owned(), env.clone());
+  Value::Object(context)
+}
+
+fn var_dependencies(interp: &Interpolator, name: &str, value: &Value) -> Result<BTreeSet<String>, Report> {
+  let mut deps = BTreeSet::new();
+  collect_var_dependencies(interp, name, value, &mut deps)?;
+  Ok(deps)
+}
+
+fn collect_var_dependencies(
+  interp: &Interpolator,
+  name: &str,
+  value: &Value,
+  deps: &mut BTreeSet<String>,
+) -> Result<(), Report> {
+  match value {
+    Value::String(leaf) => {
+      for reference in interp.references(leaf)? {
+        let mut segments = reference.split('.');
+        match segments.next() {
+          Some("vars") => {
+            if let Some(dep) = segments.next() {
+              deps.insert(dep.to_owned());
+            }
+          },
+          Some("steps") => {
+            return make_error!("pipeline var `{name}` references `steps`; vars may only use `vars` and `env`");
+          },
+          _ => {},
+        }
+      }
+    },
+    Value::Array(items) => {
+      for item in items {
+        collect_var_dependencies(interp, name, item, deps)?;
+      }
+    },
+    Value::Object(map) => {
+      for val in map.values() {
+        collect_var_dependencies(interp, name, val, deps)?;
+      }
+    },
+    _ => {},
+  }
+  Ok(())
+}
+
 pub struct Interpolator {
   env: Environment<'static>,
 }
@@ -61,47 +146,6 @@ impl Interpolator {
   }
 }
 
-pub(crate) fn resolve_vars(
-  interp: &Interpolator,
-  raw: &Map<String, Value>,
-  env: &Value,
-) -> Result<Map<String, Value>, Report> {
-  let mut resolved: Map<String, Value> = Map::new();
-  let mut pending: Vec<(String, Value)> = raw.iter().map(|(name, value)| (name.clone(), value.clone())).collect();
-
-  while !pending.is_empty() {
-    let mut progressed = false;
-    let mut next = Vec::new();
-    for (name, value) in pending {
-      let deps = var_dependencies(interp, &name, &value)?;
-      if deps.iter().all(|dep| resolved.contains_key(dep)) {
-        let context = template_context(&resolved, env);
-        let rendered = interp
-          .interpolate_value(&value, &context)
-          .map_err(|err| eyre::eyre!("resolving var `{name}`: {err}"))?;
-        resolved.insert(name, rendered);
-        progressed = true;
-      } else {
-        next.push((name, value));
-      }
-    }
-    if !progressed {
-      let unresolved = next.iter().map(|(name, _)| format!("`{name}`")).sorted().join(", ");
-      return make_error!("cannot resolve pipeline `vars` ({unresolved}): circular or unknown reference among them");
-    }
-    pending = next;
-  }
-
-  Ok(resolved)
-}
-
-pub(crate) fn template_context(vars: &Map<String, Value>, env: &Value) -> Value {
-  let mut context = Map::new();
-  context.insert("vars".to_owned(), Value::Object(vars.clone()));
-  context.insert("env".to_owned(), env.clone());
-  Value::Object(context)
-}
-
 pub(crate) fn map_string_leaves(
   value: &Value,
   f: &mut impl FnMut(&str) -> Result<Value, Report>,
@@ -120,50 +164,6 @@ pub(crate) fn map_string_leaves(
       .map(Value::Object),
     other => Ok(other.clone()),
   }
-}
-
-fn var_dependencies(interp: &Interpolator, name: &str, value: &Value) -> Result<BTreeSet<String>, Report> {
-  let mut deps = BTreeSet::new();
-  collect_var_dependencies(interp, name, value, &mut deps)?;
-  Ok(deps)
-}
-
-fn collect_var_dependencies(
-  interp: &Interpolator,
-  name: &str,
-  value: &Value,
-  deps: &mut BTreeSet<String>,
-) -> Result<(), Report> {
-  match value {
-    Value::String(leaf) => {
-      for reference in interp.references(leaf)? {
-        let mut segments = reference.split('.');
-        match segments.next() {
-          Some("vars") => {
-            if let Some(dep) = segments.next() {
-              deps.insert(dep.to_owned());
-            }
-          },
-          Some("steps") => {
-            return make_error!("pipeline var `{name}` references `steps`; vars may only use `vars` and `env`");
-          },
-          _ => {},
-        }
-      }
-    },
-    Value::Array(items) => {
-      for item in items {
-        collect_var_dependencies(interp, name, item, deps)?;
-      }
-    },
-    Value::Object(map) => {
-      for val in map.values() {
-        collect_var_dependencies(interp, name, val, deps)?;
-      }
-    },
-    _ => {},
-  }
-  Ok(())
 }
 
 fn minijinja_error(kind: &str, leaf: &str, err: &minijinja::Error) -> Report {

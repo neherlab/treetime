@@ -10,6 +10,15 @@ const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("vcf-reference", &["vcf_reference"]),
 ];
 
+pub fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
+  Ok(
+    labeled_input_paths(command)?
+      .into_iter()
+      .map(|(_, path)| path)
+      .collect(),
+  )
+}
+
 pub fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'static str, String)>, Report> {
   let args = command.args_value()?;
   Ok(
@@ -20,15 +29,6 @@ pub fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'stati
           .into_iter()
           .map(move |path| (*label, path.to_owned()))
       })
-      .collect(),
-  )
-}
-
-pub fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
-  Ok(
-    labeled_input_paths(command)?
-      .into_iter()
-      .map(|(_, path)| path)
       .collect(),
   )
 }

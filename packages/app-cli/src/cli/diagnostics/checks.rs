@@ -337,12 +337,6 @@ fn leaf_reference_diagnostics(
   }
 }
 
-enum Scope {
-  Vars,
-  Step(usize),
-  Other,
-}
-
 #[cfg_attr(
   dylint_lib = "treetime_lints",
   expect(
@@ -360,6 +354,12 @@ fn scope_of(pointer: &str) -> Scope {
     return Scope::Vars;
   }
   Scope::Other
+}
+
+enum Scope {
+  Vars,
+  Step(usize),
+  Other,
 }
 
 pub fn config_vars(value: &Value) -> Map<String, Value> {

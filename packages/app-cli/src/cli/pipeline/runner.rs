@@ -44,6 +44,25 @@ fn process_env() -> Value {
   Value::Object(env)
 }
 
+pub fn run_pipeline(
+  pipeline: &ResolvedPipeline,
+  selected: Option<&BTreeSet<String>>,
+  progress: &dyn ProgressSink,
+) -> Result<(), Report> {
+  let steps = select_steps(pipeline, selected)?;
+
+  let mut completed: Vec<&ResolvedStep> = Vec::new();
+  for (position, step) in steps.iter().enumerate() {
+    if let Err(err) = run_step(step, progress) {
+      let remaining = steps[position..].iter().map(|step| step.name.as_str()).join(",");
+      return Err(err.wrap_err(failure_report(step, &completed, &remaining)));
+    }
+    completed.push(step);
+  }
+
+  Ok(())
+}
+
 pub(crate) fn select_steps<'a>(
   pipeline: &'a ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
@@ -70,25 +89,6 @@ pub(crate) fn select_steps<'a>(
       .filter(|step| selected.contains(&step.name))
       .collect(),
   )
-}
-
-pub fn run_pipeline(
-  pipeline: &ResolvedPipeline,
-  selected: Option<&BTreeSet<String>>,
-  progress: &dyn ProgressSink,
-) -> Result<(), Report> {
-  let steps = select_steps(pipeline, selected)?;
-
-  let mut completed: Vec<&ResolvedStep> = Vec::new();
-  for (position, step) in steps.iter().enumerate() {
-    if let Err(err) = run_step(step, progress) {
-      let remaining = steps[position..].iter().map(|step| step.name.as_str()).join(",");
-      return Err(err.wrap_err(failure_report(step, &completed, &remaining)));
-    }
-    completed.push(step);
-  }
-
-  Ok(())
 }
 
 fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Report> {
