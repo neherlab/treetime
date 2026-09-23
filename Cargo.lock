@@ -147,7 +147,7 @@ dependencies = [
  "image",
  "indicatif",
  "indoc",
- "itertools 0.14.0",
+ "itertools",
  "jsonschema",
  "log",
  "maplit",
@@ -197,7 +197,7 @@ dependencies = [
  "app-output",
  "ctor",
  "eyre",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "maplit",
  "napi",
@@ -224,7 +224,7 @@ dependencies = [
  "ctor",
  "eyre",
  "indexmap",
- "itertools 0.14.0",
+ "itertools",
  "jsonschema",
  "maplit",
  "ndarray",
@@ -256,7 +256,7 @@ dependencies = [
  "clap",
  "ctor",
  "eyre",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "maplit",
  "rayon",
@@ -457,7 +457,7 @@ dependencies = [
  "bitflags 2.13.2",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -485,7 +485,7 @@ dependencies = [
  "editdistancek",
  "enum-map",
  "fxhash",
- "itertools 0.14.0",
+ "itertools",
  "itertools-num",
  "lazy_static",
  "multimap",
@@ -1009,7 +1009,7 @@ dependencies = [
  "ciborium",
  "clap",
  "criterion-plot",
- "itertools 0.13.0",
+ "itertools",
  "num-traits",
  "oorandom",
  "plotters",
@@ -1028,7 +1028,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b1bcc0dc7dfae599d84ad0b1a55f80cde8af3725da8313b528da95ef783e338"
 dependencies = [
  "cast",
- "itertools 0.13.0",
+ "itertools",
 ]
 
 [[package]]
@@ -2192,15 +2192,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itertools-num"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2764,7 +2755,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17ebbe97acce52d06aebed4cd4a87c0941f4b2519b59b82b4feb5bd0ce003dfd"
 dependencies = [
  "indexmap",
- "itertools 0.13.0",
+ "itertools",
  "ndarray",
  "noisy_float",
  "num-integer",
@@ -3277,7 +3268,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac6c3320f9abac597dcbc668774ef006702672474aad53c6d596b62e487b40b1"
 dependencies = [
  "heck",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "multimap",
  "once_cell",
@@ -3297,7 +3288,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -4503,7 +4494,7 @@ dependencies = [
  "getset",
  "indexmap",
  "indoc",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "maplit",
  "ndarray",
@@ -4560,7 +4551,7 @@ dependencies = [
  "ctor",
  "eyre",
  "getset",
- "itertools 0.14.0",
+ "itertools",
  "ndarray",
  "ndarray-stats",
  "num",
@@ -4586,7 +4577,7 @@ dependencies = [
  "derive_more",
  "eyre",
  "getset",
- "itertools 0.14.0",
+ "itertools",
  "maplit",
  "ordered-float",
  "parking_lot",
@@ -4603,7 +4594,7 @@ dependencies = [
  "approx",
  "ctor",
  "eyre",
- "itertools 0.14.0",
+ "itertools",
  "ndarray",
  "ndarray-stats",
  "num",
@@ -4625,7 +4616,7 @@ dependencies = [
  "ctor",
  "eyre",
  "indoc",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "maplit",
  "percent-encoding",
@@ -4667,7 +4658,7 @@ dependencies = [
  "auto_ops",
  "ctor",
  "eyre",
- "itertools 0.14.0",
+ "itertools",
  "pretty_assertions",
  "rayon",
  "rstest",
@@ -4709,7 +4700,7 @@ dependencies = [
  "getset",
  "indexmap",
  "intervallum",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "maplit",
  "ndarray",
@@ -4748,7 +4739,7 @@ dependencies = [
  "ctor",
  "eyre",
  "image",
- "itertools 0.14.0",
+ "itertools",
  "ndarray",
  "ndarray-stats",
  "ordered-float",
