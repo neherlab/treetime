@@ -479,7 +479,14 @@ dylint-trailofbits lint *args:
     unset RUSTFLAGS
     lint="${1}"
     shift
-    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints -A warnings -W ${lint}" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
+    allow_others=()
+    for manifest in '{{project_dir}}'/dev/lints/dylint-trailofbits/*/Cargo.toml; do
+      other="$(basename "$(dirname "${manifest}")")"
+      if [[ "${other}" != "${lint}" ]]; then
+        allow_others+=(-A "${other}")
+      fi
+    done
+    export CARGO_TARGET_DIR='{{dylint_dir}}' DYLINT_RUSTFLAGS="-A unknown_lints ${allow_others[*]} -W ${lint}" RUST_BACKTRACE=0 CARGO_INCREMENTAL=0
     kache_use dylint
     nicely cargo dylint --quiet --lib trailofbits -- --quiet --locked --workspace --all-targets "$@"
 
