@@ -1,3 +1,4 @@
+use crate::make_internal_report;
 use crate::optimize::params::TopologyOps;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::hoist_reversions::{
@@ -87,7 +88,7 @@ fn try_hoist_reverting_child(
   if degree_out < 2 {
     return Ok(false);
   }
-  let root_and_sibling = bifurcating_root_sibling_edge(graph, parent_edge_key);
+  let root_and_sibling = bifurcating_root_sibling_edge(graph, parent_edge_key)?;
   let sibling_edge_key = root_and_sibling.map(|(_, sibling_edge_key)| sibling_edge_key);
   let Some(child_edge_key) = best_reverting_child(graph, sparse, node_key, parent_edge_key, sibling_edge_key) else {
     return Ok(false);
@@ -106,18 +107,23 @@ fn try_hoist_reverting_child(
   Ok(true)
 }
 
-fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -> Option<(GraphNodeKey, GraphEdgeKey)> {
-  let root_key = graph.get_source_node_key(parent_edge_key).ok()?;
-  let root = graph.get_node(root_key)?;
+fn bifurcating_root_sibling_edge(
+  graph: &Graph,
+  parent_edge_key: GraphEdgeKey,
+) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+  let root_key = graph.get_source_node_key(parent_edge_key)?;
+  let root = graph
+    .get_node(root_key)
+    .ok_or_else(|| make_internal_report!("Node {root_key} not found"))?;
   if !root.is_root() || root.degree_out() != 2 {
-    return None;
+    return Ok(None);
   }
   let sibling_edge_key = root
     .outbound()
     .iter()
     .copied()
-    .find(|&edge_key| edge_key != parent_edge_key)?;
-  Some((root_key, sibling_edge_key))
+    .find(|&edge_key| edge_key != parent_edge_key);
+  Ok(sibling_edge_key.map(|sibling_edge_key| (root_key, sibling_edge_key)))
 }
 
 fn best_reverting_child(
