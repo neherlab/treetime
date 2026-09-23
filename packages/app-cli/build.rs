@@ -1,4 +1,4 @@
-use std::env;
+use std::env::{self, VarError};
 use std::error::Error;
 use std::path::Path;
 use std::process::{Command, Output};
@@ -25,8 +25,8 @@ fn emit_long_version() -> Result<(), Box<dyn Error>> {
   }
 
   let base = env!("CARGO_PKG_VERSION");
-  let mode = env::var(BUILD_MODE_ENV).unwrap_or_else(|_| "dev".to_owned());
-  let suffix = env::var(VERSION_SUFFIX_ENV).ok().filter(|suffix| !suffix.is_empty());
+  let mode = env_var_optional(BUILD_MODE_ENV)?.unwrap_or_else(|| "dev".to_owned());
+  let suffix = env_var_optional(VERSION_SUFFIX_ENV)?.filter(|suffix| !suffix.is_empty());
   let short_sha = git_stdout(&["rev-parse", "--short", "HEAD"])?;
   let dirty = if git_stdout(&["status", "--porcelain"])?.is_empty() {
     ""
@@ -49,6 +49,14 @@ fn emit_long_version() -> Result<(), Box<dyn Error>> {
 
   println!("cargo:rustc-env=TREETIME_LONG_VERSION={long_version}");
   Ok(())
+}
+
+fn env_var_optional(name: &str) -> Result<Option<String>, VarError> {
+  match env::var(name) {
+    Ok(value) => Ok(Some(value)),
+    Err(VarError::NotPresent) => Ok(None),
+    Err(error @ VarError::NotUnicode(_)) => Err(error),
+  }
 }
 
 fn emit_git_dependency(path: &str) -> Result<(), Box<dyn Error>> {
