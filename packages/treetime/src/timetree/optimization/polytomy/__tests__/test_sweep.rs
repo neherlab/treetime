@@ -7,6 +7,7 @@ mod tests {
   use proptest::prelude::*;
   use rstest::rstest;
   use std::collections::BTreeSet;
+  use std::iter::repeat_with;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
@@ -320,8 +321,7 @@ mod tests {
     let kappa = 0.25;
     let expected_mean = 1.0 / ((k - 1) as f64 * kappa);
 
-    #[allow(clippy::map_with_unused_argument_over_ranges)]
-    let children: Vec<Lineage> = (0..k).map(|_| lineage(0.0, 0)).collect();
+    let children: Vec<Lineage> = repeat_with(|| lineage(0.0, 0)).take(k).collect();
     let replicates = 20_000;
 
     let mut total = 0.0;
