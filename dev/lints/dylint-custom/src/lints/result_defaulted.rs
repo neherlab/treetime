@@ -1,10 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, layout::LayoutOf};
-use rustc_span::sym;
 
-use crate::lints::hir_refs::receiver_is_result;
+use crate::lints::hir_refs::{receiver_is_result, result_error_carries_no_cause};
 use crate::lints::suppression::is_in_test_zone;
 
 rustc_session::declare_lint! {
@@ -35,7 +33,7 @@ impl<'tcx> LateLintPass<'tcx> for ResultDefaulted {
     if !matches!(name, "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" | "ok") {
       return;
     }
-    if !receiver_is_result(cx, cx.typeck_results(), receiver) || error_carries_no_cause(cx, receiver) {
+    if !receiver_is_result(cx, cx.typeck_results(), receiver) || result_error_carries_no_cause(cx, cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()) {
       return;
     }
     if name == "unwrap_or_else" && closure_binds_error(cx, args) {
@@ -65,22 +63,4 @@ fn closure_binds_error(cx: &LateContext<'_>, args: &[Expr<'_>]) -> bool {
     .params
     .first()
     .is_some_and(|param| matches!(param.pat.kind, PatKind::Binding(..)))
-}
-
-fn error_carries_no_cause<'tcx>(cx: &LateContext<'tcx>, receiver: &Expr<'tcx>) -> bool {
-  let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
-  let ty::Adt(_, args) = receiver_ty.kind() else {
-    return false;
-  };
-  let Some(error_ty) = args.types().nth(1) else {
-    return false;
-  };
-  if cx.layout_of(error_ty).is_ok_and(|layout| layout.is_zst()) {
-    return true;
-  }
-  let ty::Adt(error_adt, _) = error_ty.kind() else {
-    return false;
-  };
-  let did = error_adt.did();
-  cx.tcx.crate_name(did.krate) == sym::core && cx.tcx.item_name(did).as_str() == "TryFromIntError"
 }

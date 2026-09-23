@@ -9,7 +9,8 @@ use clippy_utils::macros::expn_backtrace;
 use rustc_hir::def::Res;
 use rustc_hir::{Body, Expr, ExprKind, HirId, Node};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{ExpnKind, Span, sym};
 
@@ -73,6 +74,26 @@ pub fn receiver_is_result<'tcx>(
 
 pub fn expr_is_result<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     receiver_is_result(cx, cx.typeck_results(), expr)
+}
+
+/// Returns `true` if the error type of `result_ty` records no cause worth
+/// keeping: a zero-sized error, or `TryFromIntError`, whose only content is
+/// that the conversion failed.
+pub fn result_error_carries_no_cause<'tcx>(cx: &LateContext<'tcx>, result_ty: Ty<'tcx>) -> bool {
+    let ty::Adt(_, args) = result_ty.kind() else {
+        return false;
+    };
+    let Some(error_ty) = args.types().nth(1) else {
+        return false;
+    };
+    if cx.layout_of(error_ty).is_ok_and(|layout| layout.is_zst()) {
+        return true;
+    }
+    let ty::Adt(error_adt, _) = error_ty.kind() else {
+        return false;
+    };
+    let did = error_adt.did();
+    cx.tcx.crate_name(did.krate) == sym::core && cx.tcx.item_name(did).as_str() == "TryFromIntError"
 }
 
 /// If `expr` is a panicking `.unwrap()` or `.expect()` on `Option`/`Result`,

@@ -5,7 +5,7 @@ use rustc_hir::{Expr, ExprKind, LangItem, LetStmt, Pat, PatKind, Stmt, StmtKind}
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::Span;
 
-use crate::lints::hir_refs::expr_is_result;
+use crate::lints::hir_refs::{expr_is_result, result_error_carries_no_cause};
 use crate::lints::suppression::{is_hir_in_test_zone, is_in_test_zone};
 
 rustc_session::declare_lint! {
@@ -31,7 +31,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorDroppedByPattern {
     if pat.span.from_expansion() || is_hir_in_test_zone(cx, pat.hir_id) {
       return;
     }
-    if result_ctor(cx, pat) == Some(ResultCtor::Err) && subpatterns_are_wild(pat) {
+    if result_ctor(cx, pat) == Some(ResultCtor::Err) && subpatterns_are_wild(pat) && error_has_cause(cx, pat) {
       emit(cx, pat.span, "`Err(_)` discards the error");
     }
   }
@@ -43,7 +43,10 @@ impl<'tcx> LateLintPass<'tcx> for ErrorDroppedByPattern {
     let ExprKind::Let(let_expr) = expr.kind else {
       return;
     };
-    if result_ctor(cx, let_expr.pat) == Some(ResultCtor::Ok) && expr_is_result(cx, let_expr.init) {
+    if result_ctor(cx, let_expr.pat) == Some(ResultCtor::Ok)
+      && expr_is_result(cx, let_expr.init)
+      && error_has_cause(cx, let_expr.pat)
+    {
       emit(
         cx,
         let_expr.pat.span,
@@ -65,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorDroppedByPattern {
     else {
       return;
     };
-    if result_ctor(cx, pat) == Some(ResultCtor::Ok) && expr_is_result(cx, init) {
+    if result_ctor(cx, pat) == Some(ResultCtor::Ok) && expr_is_result(cx, init) && error_has_cause(cx, pat) {
       emit(
         cx,
         pat.span,
@@ -73,6 +76,10 @@ impl<'tcx> LateLintPass<'tcx> for ErrorDroppedByPattern {
       );
     }
   }
+}
+
+fn error_has_cause<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> bool {
+  !result_error_carries_no_cause(cx, cx.typeck_results().pat_ty(pat).peel_refs())
 }
 
 fn emit(cx: &LateContext<'_>, span: Span, msg: &'static str) {
