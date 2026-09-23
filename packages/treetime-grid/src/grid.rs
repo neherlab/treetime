@@ -9,6 +9,18 @@ use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::make_error;
 
+impl<T: InterpElem> IntoIterator for &Grid<T>
+where
+  T: Float,
+{
+  type Item = T;
+  type IntoIter = GridIter<T>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
+  }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Grid<T: InterpElem> {
   x_min: T,
@@ -164,17 +176,5 @@ impl<T: InterpElem> Grid<T> {
     T: Float,
   {
     GridIter::new(*self)
-  }
-}
-
-impl<T: InterpElem> IntoIterator for &Grid<T>
-where
-  T: Float,
-{
-  type Item = T;
-  type IntoIter = GridIter<T>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.iter()
   }
 }
