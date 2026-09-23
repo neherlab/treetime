@@ -150,6 +150,7 @@ dependencies = [
  "comfy-table",
  "crossterm",
  "ctor 0.5.0",
+ "derive_more",
  "eyre",
  "image",
  "indicatif",

@@ -33,6 +33,7 @@ color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 crossterm = { workspace = true }
 ctor = { workspace = true }
+derive_more = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
 indicatif = { workspace = true }

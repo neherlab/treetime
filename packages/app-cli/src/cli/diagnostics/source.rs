@@ -6,7 +6,7 @@ use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use serde_json::Value;
 use serde_saphyr::DuplicateKeyPolicy;
 use std::collections::BTreeMap;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::Display;
 use treetime_utils::{make_error, make_report};
 
 pub struct ConfigSource {
@@ -148,7 +148,8 @@ pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value,
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+#[display("{message}")]
 struct ConfigDiagnostic {
   message: String,
   code: String,
@@ -157,14 +158,6 @@ struct ConfigDiagnostic {
   span: Option<SourceSpan>,
   label: String,
 }
-
-impl Display for ConfigDiagnostic {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    f.write_str(&self.message)
-  }
-}
-
-impl std::error::Error for ConfigDiagnostic {}
 
 impl Diagnostic for ConfigDiagnostic {
   fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
@@ -191,19 +184,12 @@ impl Diagnostic for ConfigDiagnostic {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+#[display("{message}")]
 struct ConfigReport {
   message: String,
   related: Vec<ConfigDiagnostic>,
 }
-
-impl Display for ConfigReport {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    f.write_str(&self.message)
-  }
-}
-
-impl std::error::Error for ConfigReport {}
 
 impl Diagnostic for ConfigReport {
   fn severity(&self) -> Option<Severity> {
