@@ -26,7 +26,7 @@ pub fn build_augur_node_data_json(
 
   let models = build_models(attribute, output);
   let nodes = build_nodes(attribute, graph, &names, output);
-  let branches = build_branches(attribute, graph, &names, output);
+  let branches = build_branches(attribute, graph, &names, output)?;
 
   Ok(AugurNodeDataJsonTraits {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
@@ -133,11 +133,11 @@ fn build_branches(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   output: &MugrationOutput,
-) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
-  let root_key = graph.get_exactly_one_root().ok().map(|r| r.key());
+) -> Result<BTreeMap<String, AugurNodeDataJsonTraitsBranches>, Report> {
+  let root_key = graph.get_exactly_one_root()?.key();
   let mut branches = BTreeMap::new();
 
-  let parent_traits = build_parent_trait_map(graph, output);
+  let parent_traits = build_parent_trait_map(graph, output)?;
 
   for node in graph.get_nodes() {
     let node_guard = node;
@@ -148,7 +148,7 @@ fn build_branches(
 
     let child_trait = output.reconstructed_traits[&node_key].clone();
 
-    let label = if Some(node_key) == root_key {
+    let label = if node_key == root_key {
       child_trait.clone()
     } else {
       let parent_trait = parent_traits.get(&node_key).and_then(|t| t.as_deref());
@@ -171,20 +171,23 @@ fn build_branches(
     }
   }
 
-  branches
+  Ok(branches)
 }
 
-fn build_parent_trait_map(graph: &Graph, output: &MugrationOutput) -> BTreeMap<GraphNodeKey, Option<String>> {
+fn build_parent_trait_map(
+  graph: &Graph,
+  output: &MugrationOutput,
+) -> Result<BTreeMap<GraphNodeKey, Option<String>>, Report> {
   let mut map = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node;
     let node_key = node_guard.key();
     let inbound = node_guard.inbound().to_vec();
     if let Some(parent_edge_key) = inbound.first() {
-      let parent_node_key = graph.get_source_node_key(*parent_edge_key).ok();
-      let parent_trait = parent_node_key.and_then(|k| output.reconstructed_traits[&k].clone());
+      let parent_node_key = graph.get_source_node_key(*parent_edge_key)?;
+      let parent_trait = output.reconstructed_traits[&parent_node_key].clone();
       map.insert(node_key, parent_trait);
     }
   }
-  map
+  Ok(map)
 }
