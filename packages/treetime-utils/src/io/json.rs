@@ -29,9 +29,6 @@ fn deserialize_without_recursion_limit<'de, R: Read<'de>, T: Deserialize<'de>>(
   Ok(obj)
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct JsonPretty(pub bool);
-
 pub fn json_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T, pretty: JsonPretty) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   json_write(create_file_or_stdout(filepath)?, &obj, pretty)
@@ -55,6 +52,9 @@ pub fn json_write<W: Write, T: Serialize>(writer: W, obj: &T, pretty: JsonPretty
   }
   .wrap_err("When writing JSON")
 }
+
+#[derive(Clone, Copy, Debug)]
+pub struct JsonPretty(pub bool);
 
 pub fn is_json_value_null<T: Serialize>(t: &T) -> bool {
   match serde_json::to_value(t) {

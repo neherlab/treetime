@@ -18,24 +18,6 @@ unsafe extern "C" {
   fn openblas_get_num_procs() -> c_int;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ParallelMode {
-  Sequential,
-  ParallelPlatform,
-  ParallelOpenMP,
-  Unknown(i32),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenBlasInfo {
-  pub config: Option<String>,
-  pub core_name: Option<String>,
-  pub parallel_mode: ParallelMode,
-  pub num_threads: i32,
-  pub num_procs: i32,
-}
-
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -69,6 +51,24 @@ pub fn get_openblas_info() -> OpenBlasInfo {
       num_procs: num_procs as i32,
     }
   }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenBlasInfo {
+  pub config: Option<String>,
+  pub core_name: Option<String>,
+  pub parallel_mode: ParallelMode,
+  pub num_threads: i32,
+  pub num_procs: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ParallelMode {
+  Sequential,
+  ParallelPlatform,
+  ParallelOpenMP,
+  Unknown(i32),
 }
 
 fn get_c_string(ptr: *const c_char) -> Option<String> {

@@ -23,47 +23,6 @@ use xz2::read::XzDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use xz2::write::XzEncoder;
 
-#[derive(strum_macros::Display, Clone)]
-pub enum CompressionType {
-  #[cfg(not(target_arch = "wasm32"))]
-  Bzip2,
-  #[cfg(not(target_arch = "wasm32"))]
-  Xz,
-  #[cfg(not(target_arch = "wasm32"))]
-  Zstandard,
-
-  Gzip,
-  None,
-}
-
-pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (CompressionType, String) {
-  let filepath = filepath.as_ref();
-
-  match extension(filepath).map(|ext| ext.to_lowercase()) {
-    None => (CompressionType::None, "".to_owned()),
-    Some(ext) => {
-      let compression_type: CompressionType = match ext.as_str() {
-        #[cfg(not(target_arch = "wasm32"))]
-        "bz2" => CompressionType::Bzip2,
-        #[cfg(not(target_arch = "wasm32"))]
-        "xz" => CompressionType::Xz,
-        #[cfg(not(target_arch = "wasm32"))]
-        "zst" => CompressionType::Zstandard,
-        "gz" => CompressionType::Gzip,
-        _ => CompressionType::None,
-      };
-
-      debug!(
-        "When processing '{}': detected file extension '{ext}'. \
-        Will be using compression algorithm: '{compression_type}'",
-        filepath.display()
-      );
-
-      (compression_type, ext)
-    },
-  }
-}
-
 pub fn remove_compression_ext(filepath: impl AsRef<Path>) -> PathBuf {
   let compressed_exts = ["bz2", "xz", "zst", "gz"];
   let path = filepath.as_ref();
@@ -132,24 +91,6 @@ impl Read for Decompressor<'_> {
       })
       .with_section(|| self.compression_type.clone().header("Decompressor"))
       .map_err(|report| io::Error::other(report_to_string(&report)))
-  }
-}
-
-#[allow(
-  clippy::unwrap_used,
-  reason = "default compression level 2 is representable in every NumCast integer target"
-)]
-fn get_comp_level<I>(ext: &str) -> Result<I, Report>
-where
-  I: FromStr + Integer + NumCast,
-  I::Err: Error + Send + Sync + 'static,
-{
-  let var_name = format!("{}_COMPRESSION", ext.to_uppercase());
-  match env_var_optional(&var_name)? {
-    Some(value) => value
-      .parse::<I>()
-      .wrap_err_with(|| format!("When parsing compression level '{value}' from environment variable '{var_name}'")),
-    None => Ok(NumCast::from(2).unwrap()),
   }
 }
 
@@ -235,5 +176,64 @@ impl Drop for Compressor<'_> {
           .map_or(String::new(), |p| format!(" (file: {p})"))
       );
     }
+  }
+}
+
+pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (CompressionType, String) {
+  let filepath = filepath.as_ref();
+
+  match extension(filepath).map(|ext| ext.to_lowercase()) {
+    None => (CompressionType::None, "".to_owned()),
+    Some(ext) => {
+      let compression_type: CompressionType = match ext.as_str() {
+        #[cfg(not(target_arch = "wasm32"))]
+        "bz2" => CompressionType::Bzip2,
+        #[cfg(not(target_arch = "wasm32"))]
+        "xz" => CompressionType::Xz,
+        #[cfg(not(target_arch = "wasm32"))]
+        "zst" => CompressionType::Zstandard,
+        "gz" => CompressionType::Gzip,
+        _ => CompressionType::None,
+      };
+
+      debug!(
+        "When processing '{}': detected file extension '{ext}'. \
+        Will be using compression algorithm: '{compression_type}'",
+        filepath.display()
+      );
+
+      (compression_type, ext)
+    },
+  }
+}
+
+#[derive(strum_macros::Display, Clone)]
+pub enum CompressionType {
+  #[cfg(not(target_arch = "wasm32"))]
+  Bzip2,
+  #[cfg(not(target_arch = "wasm32"))]
+  Xz,
+  #[cfg(not(target_arch = "wasm32"))]
+  Zstandard,
+
+  Gzip,
+  None,
+}
+
+#[allow(
+  clippy::unwrap_used,
+  reason = "default compression level 2 is representable in every NumCast integer target"
+)]
+fn get_comp_level<I>(ext: &str) -> Result<I, Report>
+where
+  I: FromStr + Integer + NumCast,
+  I::Err: Error + Send + Sync + 'static,
+{
+  let var_name = format!("{}_COMPRESSION", ext.to_uppercase());
+  match env_var_optional(&var_name)? {
+    Some(value) => value
+      .parse::<I>()
+      .wrap_err_with(|| format!("When parsing compression level '{value}' from environment variable '{var_name}'")),
+    None => Ok(NumCast::from(2).unwrap()),
   }
 }

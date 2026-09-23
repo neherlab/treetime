@@ -25,11 +25,28 @@ pub fn quote_single(x: impl Display) -> String {
   format!("'{x}'")
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TruncateDirection {
-  Left,
-  Right,
-  Middle,
+pub fn truncate_right(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, None, TruncateDirection::Right)
+}
+
+pub fn truncate_left(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, None, TruncateDirection::Left)
+}
+
+pub fn truncate_middle(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, None, TruncateDirection::Middle)
+}
+
+pub fn truncate_right_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, Some("..."), TruncateDirection::Right)
+}
+
+pub fn truncate_left_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, Some("..."), TruncateDirection::Left)
+}
+
+pub fn truncate_middle_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
+  truncate(s, max_len, Some("..."), TruncateDirection::Middle)
 }
 
 #[expect(
@@ -67,26 +84,9 @@ pub fn truncate(s: impl AsRef<str>, max_len: usize, ellipsis: Option<&str>, dire
   }
 }
 
-pub fn truncate_right(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Right)
-}
-
-pub fn truncate_left(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Left)
-}
-
-pub fn truncate_middle(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Middle)
-}
-
-pub fn truncate_right_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, Some("..."), TruncateDirection::Right)
-}
-
-pub fn truncate_left_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, Some("..."), TruncateDirection::Left)
-}
-
-pub fn truncate_middle_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, Some("..."), TruncateDirection::Middle)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TruncateDirection {
+  Left,
+  Right,
+  Middle,
 }
