@@ -1,4 +1,5 @@
 use approx::ulps_eq;
+use eyre::WrapErr;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use treetime_utils::array::ndarray::argmax_first;
@@ -15,8 +16,10 @@ pub(crate) fn compute_peak_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
 ) -> eyre::Result<PeakMetrics> {
-  let actual_peak = *actual.max().unwrap_or(&0.0);
-  let expected_peak = *expected.max().unwrap_or(&0.0);
+  let actual_peak = *actual.max().wrap_err("When finding the peak of the actual values")?;
+  let expected_peak = *expected
+    .max()
+    .wrap_err("When finding the peak of the expected values")?;
 
   let actual_peak_idx = argmax_first(&actual.view()).unwrap_or(0);
   let expected_peak_idx = argmax_first(&expected.view()).unwrap_or(0);
