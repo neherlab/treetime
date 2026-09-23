@@ -512,14 +512,15 @@ dylint-all-fix *args:
     fi
     exit "${status}"
 
-# Run the tests of the custom Dylint library's report binaries
+# Run the tests of the custom Dylint library: lint unit and UI tests, and the report binaries
 [group('lint')]
 dylint-custom-test *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    unset RUSTFLAGS RUSTC_WRAPPER CARGO_TARGET_DIR
+    unset RUSTFLAGS RUSTC_WRAPPER
+    export CARGO_TARGET_DIR='{{dylint_dir}}/pub-unused-report'
     pushd '{{project_dir}}/dev/lints/dylint-custom' >/dev/null
-    cargo test --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bins "$@"
+    cargo test --quiet --release --locked --lib --bins "$@"
     popd >/dev/null
 
 # Run the UI tests of the vendored Trail of Bits Dylint library
