@@ -1,3 +1,4 @@
+use log::error;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use serde::Serialize;
 use std::sync::Arc;
@@ -35,8 +36,11 @@ impl NapiProgressSink {
   }
 
   fn send_event(&self, event: &NapiEvent) {
-    if let Ok(json) = serde_json::to_string(&event) {
-      self.tsfn.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+    match serde_json::to_string(&event) {
+      Ok(json) => {
+        self.tsfn.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+      },
+      Err(error) => error!("When serializing a progress event: {error}"),
     }
   }
 }
