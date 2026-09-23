@@ -28,14 +28,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
 use utoipa::ToSchema;
 
-impl From<OptimizeRerootMethod> for RerootMethod {
-  fn from(m: OptimizeRerootMethod) -> Self {
-    match m {
-      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
-    }
-  }
-}
-
 pub(crate) fn run_optimize(
   args: &OptimizeArgs,
   cancel: &dyn Cancel,
@@ -225,6 +217,14 @@ impl OptimizeArgs {
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
+}
+
+impl From<OptimizeRerootMethod> for RerootMethod {
+  fn from(m: OptimizeRerootMethod) -> Self {
+    match m {
+      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
+    }
+  }
 }
 
 fn gather_optimize_output_maps(
