@@ -245,6 +245,21 @@ mod tests {
   }
 
   #[test]
+  fn test_parse_enewick_hybrid_index_overflow_is_error() {
+    let actual = newick_from_string("((A)x#H4294967296,(x#H4294967296,B));");
+    let message = actual
+      .unwrap_err()
+      .chain()
+      .map(ToString::to_string)
+      .collect::<Vec<_>>()
+      .join(": ");
+    assert_eq!(
+      "When parsing the hybrid node index in 'x#H4294967296': number too large to fit in target type",
+      message
+    );
+  }
+
+  #[test]
   fn test_parse_enewick_hybrid() {
     let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
     let hybrid_nodes: Vec<_> = g.nodes.iter().filter(|n| n.hybrid.is_some()).collect();

@@ -136,7 +136,7 @@ fn visit_leaf(
     }
   }
 
-  let extraction = extract_hybrid(name);
+  let extraction = extract_hybrid(name)?;
   let node_data = NewickNodeData {
     name: extraction.clean_name,
     confidence: None,
@@ -179,11 +179,14 @@ fn visit_internal(
     }
   }
 
-  let extraction = extract_hybrid(name);
+  let extraction = extract_hybrid(name)?;
 
   let (final_name, confidence) = match extraction.clean_name {
-    Some(label) if label.parse::<f64>().is_ok() => (None, label.parse::<f64>().ok()),
-    other => (other, None),
+    Some(label) => match parse_support_value(&label) {
+      Some(confidence) => (None, Some(confidence)),
+      None => (Some(label), None),
+    },
+    None => (None, None),
   };
 
   let node_data = NewickNodeData {
@@ -260,6 +263,17 @@ fn visit_branch(
   Ok((child_idx, edge_data))
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    result_defaulted,
+    reason = "a label that is not a number is a node name, not a malformed support value"
+  )
+)]
+fn parse_support_value(label: &str) -> Option<f64> {
+  label.parse::<f64>().ok()
+}
+
 fn parse_label(pair: pest::iterators::Pair<Rule>) -> String {
   let inner = pair.into_inner().next().expect("label must have content");
   match inner.as_rule() {
@@ -282,21 +296,21 @@ struct HybridExtraction {
   is_acceptor: bool,
 }
 
-fn extract_hybrid(name: Option<String>) -> HybridExtraction {
+fn extract_hybrid(name: Option<String>) -> Result<HybridExtraction, Report> {
   let Some(name) = name else {
-    return HybridExtraction {
+    return Ok(HybridExtraction {
       clean_name: None,
       hybrid: None,
       is_acceptor: false,
-    };
+    });
   };
 
   let Some(caps) = regex!(r"^(.*?)(##|#)([A-Za-z]*)(\d+)$").captures(&name) else {
-    return HybridExtraction {
+    return Ok(HybridExtraction {
       clean_name: Some(name),
       hybrid: None,
       is_acceptor: false,
-    };
+    });
   };
 
   let prefix = caps.get(1).map_or("", |m| m.as_str());
@@ -314,14 +328,16 @@ fn extract_hybrid(name: Option<String>) -> HybridExtraction {
   } else {
     Some(kind_str.to_owned())
   };
-  let index = index_str.parse::<u32>().unwrap_or(0);
+  let index = index_str
+    .parse::<u32>()
+    .wrap_err_with(|| format!("When parsing the hybrid node index in '{name}'"))?;
   let is_acceptor = hash_marker == "##";
 
-  HybridExtraction {
+  Ok(HybridExtraction {
     clean_name,
     hybrid: Some(NewickHybrid { kind, index }),
     is_acceptor,
-  }
+  })
 }
 
 fn resolve_hybrid_node(
@@ -435,6 +451,13 @@ fn strip_beast_quotes(s: &str) -> String {
   s.to_owned()
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a value that is not a finite number is kept as a string"
+  )
+)]
 fn parse_beast_value(s: &str) -> NewickValue {
   let s = s.trim();
 
