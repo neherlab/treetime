@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::shared::topology_order_args::{LadderizeArg, TopologyOrderArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
-  use eyre::Report;
+  use eyre::{Report, WrapErr};
   use std::fs::read_to_string;
   use std::path::PathBuf;
   use treetime::cancel::NoopCancel;
@@ -19,7 +19,7 @@ mod tests {
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
     let root = project_root();
     let outdir = root.join("tmp/test-convergence-pipeline");
-    std::fs::create_dir_all(&outdir)?;
+    std::fs::create_dir_all(&outdir).wrap_err("When creating the output directory")?;
     let tracelog_path = outdir.join("tracelog.csv");
 
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
@@ -40,7 +40,7 @@ mod tests {
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
 
-    let csv_content = read_to_string(&tracelog_path)?;
+    let csv_content = read_to_string(&tracelog_path).wrap_err("When reading the trace log")?;
     let lines: Vec<&str> = csv_content.lines().collect();
     assert!(lines.len() >= 2, "Tracelog must have header + at least 1 data row");
 
@@ -87,7 +87,10 @@ mod tests {
     assert!(nwk_path.exists(), "Output newick file must exist");
     assert!(nex_path.exists(), "Output nexus file must exist");
     assert!(
-      std::fs::metadata(&nwk_path)?.len() > 0,
+      std::fs::metadata(&nwk_path)
+        .wrap_err("When reading the Newick output metadata")?
+        .len()
+        > 0,
       "Output newick file must be non-empty"
     );
 
@@ -98,7 +101,7 @@ mod tests {
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
-    let output = tempfile::tempdir()?;
+    let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
@@ -134,7 +137,7 @@ mod tests {
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_pipeline_timetree_writes_coalescent_outputs() -> Result<(), Report> {
     let root = project_root();
-    let output = tempfile::tempdir()?;
+    let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],

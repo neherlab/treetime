@@ -14,7 +14,7 @@ mod tests {
   use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
   use crate::tree_output::{format_number, group_mutations, mat_mutation};
   use approx::assert_ulps_eq;
-  use eyre::Report;
+  use eyre::{Report, WrapErr};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -224,7 +224,7 @@ mod tests {
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
     let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let dir = TempDir::new()?;
+    let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
     let outputs = btreemap! {
@@ -254,7 +254,7 @@ mod tests {
   fn test_tree_output_graph_json_dumps_topology() -> Result<(), Report> {
     let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::None)?;
-    let dir = TempDir::new()?;
+    let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
 
@@ -454,6 +454,7 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
     use treetime_io::usher_mat::UsherTree;
+    use treetime_utils::make_report;
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
     const AUSPICE_SCHEMA: &str = include_str!("schemas/auspice/schema-export-v2.json");
@@ -1083,7 +1084,7 @@ mod tests {
               let schema: Value = json_read_str(schema)?;
               let id = schema["$id"]
                 .as_str()
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Vendored schema has no $id"))?
+                .ok_or_else(|| make_report!("Vendored schema has no $id"))?
                 .to_owned();
               Ok((id, schema))
             })

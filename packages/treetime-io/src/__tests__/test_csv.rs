@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::csv::{default_name_candidates, detect_csv_delimiter, get_col_name};
-  use eyre::Report;
+  use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::io::{BufReader, Cursor, Read};
@@ -94,7 +94,9 @@ mod tests {
     })?;
 
     let mut actual = Vec::new();
-    reader.read_to_end(&mut actual)?;
+    reader
+      .read_to_end(&mut actual)
+      .wrap_err("When reading the buffered input")?;
     assert_eq!(content, actual.as_slice());
     Ok(())
   }

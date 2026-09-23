@@ -98,7 +98,7 @@ mod tests {
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
-    use eyre::Report;
+    use eyre::{Report, WrapErr};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use treetime::alphabet::alphabet::Alphabet;
@@ -132,7 +132,7 @@ mod tests {
     ) -> Result<Vec<FastaRecord>, Report> {
       let root = project_root();
       let outdir = root.join("tmp").join(subdir);
-      std::fs::create_dir_all(&outdir)?;
+      std::fs::create_dir_all(&outdir).wrap_err("When creating the output directory")?;
       let fasta = outdir.join("ancestral_sequences.fasta");
 
       let mut args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {

@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::shared::method_anc::MethodAncestralCli;
   use crate::commands::shared::model::GtrModelNameCli;
   use crate::commands::shared::model::ModelArgs;
-  use eyre::Report;
+  use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use tempfile::tempdir;
@@ -19,12 +19,13 @@ mod tests {
     method: MethodAncestralCli,
     dense: Option<bool>,
   ) -> Result<BTreeMap<String, Option<String>>, Report> {
-    let dir = tempdir()?;
+    let dir = tempdir().wrap_err("When creating a temporary directory")?;
     let tree_path = dir.path().join("tree.nwk");
     let fasta_path = dir.path().join("aln.fasta");
     let out_path = dir.path().join("reconstructed-nuc.fasta");
-    std::fs::write(&tree_path, "(A:0.1,B:0.1)root;")?;
-    std::fs::write(&fasta_path, ">A sample description\nACGT\n>B\nACGT\n")?;
+    std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").wrap_err("When writing the tree fixture")?;
+    std::fs::write(&fasta_path, ">A sample description\nACGT\n>B\nACGT\n")
+      .wrap_err("When writing the alignment fixture")?;
 
     let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
       alignment: AlignmentArgs {
