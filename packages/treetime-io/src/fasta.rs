@@ -3,7 +3,7 @@ use eyre::{Context, Report};
 use itertools::Itertools;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, Seq};
 use treetime_utils::fmt::string::quote_single;
@@ -115,7 +115,11 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     if self.line.is_empty() {
       loop {
         self.line.clear();
-        if self.reader.read_line(&mut self.line)? == 0 {
+        let n_read = self
+          .reader
+          .read_line(&mut self.line)
+          .wrap_err_with(|| format!("When reading line {} of FASTA input", self.n_lines + 1))?;
+        if n_read == 0 {
           if self.index > 0 {
             return Ok(());
           }
@@ -151,7 +155,12 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     self.index += 1;
 
     self.line.clear();
-    while self.reader.read_line(&mut self.line)? > 0 {
+    while self
+      .reader
+      .read_line(&mut self.line)
+      .wrap_err_with(|| format!("When reading line {} of FASTA input", self.n_lines + 1))?
+      > 0
+    {
       let trimmed = self.line.trim();
       self.n_lines += 1;
       self.n_chars += trimmed.len();
@@ -241,24 +250,26 @@ impl FastaWriter {
   }
 
   pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
-    self.writer.write_all(b">")?;
-    self.writer.write_all(seq_name.as_ref().as_bytes())?;
-
-    if let Some(desc) = desc {
-      self.writer.write_all(b" ")?;
-      self.writer.write_all(desc.as_bytes())?;
-    }
-
-    self.writer.write_all(b"\n")?;
-    self.writer.write_all(seq.as_ref())?;
-    self.writer.write_all(b"\n")?;
-    Ok(())
+    let seq_name = seq_name.as_ref();
+    write_fasta_record(&mut self.writer, seq_name, desc.as_deref(), seq)
+      .wrap_err_with(|| format!("When writing FASTA record '{seq_name}'"))
   }
 
   pub fn flush(&mut self) -> Result<(), Report> {
-    self.writer.flush()?;
-    Ok(())
+    self.writer.flush().wrap_err("When flushing FASTA output")
   }
+}
+
+fn write_fasta_record(writer: &mut impl Write, seq_name: &str, desc: Option<&str>, seq: &Seq) -> io::Result<()> {
+  writer.write_all(b">")?;
+  writer.write_all(seq_name.as_bytes())?;
+  if let Some(desc) = desc {
+    writer.write_all(b" ")?;
+    writer.write_all(desc.as_bytes())?;
+  }
+  writer.write_all(b"\n")?;
+  writer.write_all(seq.as_ref())?;
+  writer.write_all(b"\n")
 }
 
 pub fn write_one_fasta(
