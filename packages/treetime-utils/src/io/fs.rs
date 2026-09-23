@@ -12,7 +12,9 @@ pub fn absolute_path(path: impl AsRef<Path>) -> Result<PathBuf, Report> {
   let absolute_path = if path.is_absolute() {
     path.to_path_buf()
   } else {
-    env::current_dir()?.join(path)
+    env::current_dir()
+      .wrap_err("When resolving the current directory")?
+      .join(path)
   };
 
   Ok(absolute_path)
@@ -86,7 +88,7 @@ pub fn read_reader_to_string(reader: impl Read) -> Result<String, Report> {
   let mut reader = BufReader::with_capacity(BUF_SIZE, reader);
 
   let mut data = String::new();
-  reader.read_to_string(&mut data)?;
+  reader.read_to_string(&mut data).wrap_err("When reading input")?;
 
   Ok(data)
 }

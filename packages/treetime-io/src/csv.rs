@@ -180,7 +180,13 @@ pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
     return Ok(*delimiter);
   }
 
-  let sample = reader.fill_buf()?;
+  let filepath = filepath.as_ref();
+  let sample = reader.fill_buf().wrap_err_with(|| {
+    format!(
+      "When reading the start of '{}' to detect its delimiter",
+      filepath.display()
+    )
+  })?;
   let sample = &sample[..sample.len().min(SAMPLE_SIZE)];
   let matches = delimiters
     .iter()

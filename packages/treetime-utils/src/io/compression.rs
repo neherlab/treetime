@@ -89,7 +89,9 @@ impl<'r> Decompressor<'r> {
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzDecoder::new_multi_decoder(reader)),
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Zstandard => Box::new(zstd::Decoder::new(reader)?),
+      CompressionType::Zstandard => {
+        Box::new(zstd::Decoder::new(reader).wrap_err("When creating the Zstandard decoder")?)
+      },
       CompressionType::Gzip => Box::new(MultiGzDecoder::new(reader)),
       CompressionType::None => Box::new(reader),
     };
@@ -165,7 +167,11 @@ impl<'w> Compressor<'w> {
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ")?)),
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Zstandard => Box::new(zstd::Encoder::new(writer, get_comp_level("ZST")?)?.auto_finish()),
+      CompressionType::Zstandard => Box::new(
+        zstd::Encoder::new(writer, get_comp_level("ZST")?)
+          .wrap_err("When creating the Zstandard encoder")?
+          .auto_finish(),
+      ),
       CompressionType::Gzip => Box::new(GzEncoder::new(writer, flate2::Compression::new(get_comp_level("GZ")?))),
       CompressionType::None => Box::new(writer),
     };
