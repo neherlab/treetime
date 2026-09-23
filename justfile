@@ -522,6 +522,17 @@ dylint-custom-test *args:
     cargo test --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bins "$@"
     popd >/dev/null
 
+# Run the UI tests of the vendored Trail of Bits Dylint library
+[group('lint')]
+dylint-trailofbits-test *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    unset RUSTFLAGS RUSTC_WRAPPER
+    export CARGO_TARGET_DIR='{{dylint_dir}}/trailofbits-test'
+    pushd '{{project_dir}}/dev/lints/dylint-trailofbits' >/dev/null
+    cargo test --quiet --locked --workspace --lib "$@"
+    popd >/dev/null
+
 # Report public items no workspace crate uses, from the records the
 # pub_unused_in_workspace lint wrote during the last dylint run
 _pub-unused-report:
@@ -720,6 +731,7 @@ _check mode:
         skip "oxlint-rules" "no node_modules"
       fi
       run_check "dylint-custom-tests" just dylint-custom-test
+      run_check "dylint-trailofbits-tests" just dylint-trailofbits-test
     fi
 
     printf '\n===== %s check summary =====\n' "{{mode}}"

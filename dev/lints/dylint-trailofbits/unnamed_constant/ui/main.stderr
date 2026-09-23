@@ -1,0 +1,35 @@
+warning: unnamed constant
+  --> $DIR/main.rs:3:17
+   |
+LL |     let _ = x * 1000;
+   |                 ^^^^
+   |
+   = help: give the constant a name and use that instead
+   = note: `#[warn(unnamed_constant)]` on by default
+
+warning: unnamed constant
+  --> $DIR/main.rs:10:17
+   |
+LL |     let _ = x * 1001;
+   |                 ^^^^
+   |
+   = help: give the constant a name and use that instead
+
+warning: unnamed constant
+  --> $DIR/main.rs:17:13
+   |
+LL |         x * 1002
+   |             ^^^^
+   |
+   = help: give the constant a name and use that instead
+
+warning: unnamed constant
+  --> $DIR/main.rs:22:28
+   |
+LL |         let _ = helper() * 1003;
+   |                            ^^^^
+   |
+   = help: give the constant a name and use that instead
+
+warning: 4 warnings emitted
+

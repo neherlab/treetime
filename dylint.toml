@@ -93,8 +93,11 @@ never = [
 # should be named constants. Raised above the default of 10 because this is a
 # numerically dense codebase where small dimension, index, and exponent literals
 # are idiomatic; the ceiling still catches genuinely opaque magic numbers.
+# Test code is exempt: grid sizes, sample counts, seeds, and expected values in a
+# test read best next to the assertion that uses them.
 [unnamed_constant]
 threshold = 32
+check_tests = false
 
 # no_comments / doc_comment_limit: the project keeps no comments, except doc
 # comments that a configured render source carries into user-facing output (CLI

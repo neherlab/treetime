@@ -1,3 +1,8 @@
+#![cfg_attr(
+  dylint_lib = "trailofbits",
+  expect(unnamed_constant, reason = "each validation case states its factor count inline")
+)]
+
 use crate::gaussian::GaussianParams;
 use serde::{Deserialize, Serialize};
 

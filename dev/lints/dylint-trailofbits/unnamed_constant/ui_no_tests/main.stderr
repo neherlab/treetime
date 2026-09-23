@@ -1,0 +1,11 @@
+warning: unnamed constant
+  --> $DIR/main.rs:3:17
+   |
+LL |     let _ = x * 1000;
+   |                 ^^^^
+   |
+   = help: give the constant a name and use that instead
+   = note: `#[warn(unnamed_constant)]` on by default
+
+warning: 1 warning emitted
+

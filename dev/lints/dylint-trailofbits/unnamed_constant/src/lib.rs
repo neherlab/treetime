@@ -5,6 +5,7 @@ extern crate rustc_ast;
 extern crate rustc_hir;
 
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::is_in_test;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind, ItemKind, Node, OwnerNode};
 use rustc_lint::{LateContext, LateLintPass};
@@ -38,6 +39,8 @@ dylint_linting::impl_late_lint! {
     /// ### Configuration
     ///
     /// - `threshold: u64` (default `10`): Minimum value a constant must exceed to be flagged.
+    /// - `check_tests: bool` (default `true`): Whether to flag constants in `#[test]` functions and
+    ///   `#[cfg(test)]` code.
     ///
     /// [pandaquests]: https://levelup.gitconnected.com/whats-so-bad-about-magic-numbers-4c0a0c524b7d
     pub UNNAMED_CONSTANT,
@@ -47,13 +50,18 @@ dylint_linting::impl_late_lint! {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Config {
     threshold: u64,
+    check_tests: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { threshold: 10 }
+        Self {
+            threshold: 10,
+            check_tests: true,
+        }
     }
 }
 
@@ -88,6 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnamedConstant {
             && let ExprKind::Lit(lit) = expr.kind
             && let LitKind::Int(value, _) = lit.node
             && !self.okay(value.get())
+            && (self.config.check_tests || !is_in_test(cx.tcx, expr.hir_id))
         {
             span_lint_and_help(
                 cx,
@@ -124,4 +133,19 @@ fn flips(value: u128) -> Vec<u32> {
         prev = curr;
     }
     flips
+}
+
+#[test]
+fn ui() {
+    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui")
+        .rustc_flags(["--test"])
+        .run();
+}
+
+#[test]
+fn ui_no_tests() {
+    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui_no_tests")
+        .rustc_flags(["--test"])
+        .dylint_toml("unnamed_constant.check_tests = false")
+        .run();
 }

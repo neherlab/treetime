@@ -1,6 +1,7 @@
 # The lints of the trailofbits/dylint examples that the project runs, vendored at the
 # release tag of the pinned cargo-dylint. Each lint keeps its upstream crate and sources
-# byte for byte; this package links them into one library through their `rlib` features.
+# byte for byte, except that unnamed_constant adds a `check_tests` option and UI tests for
+# it; this package links them into one library through their `rlib` features.
 [package]
 name = "trailofbits"
 version = "6.0.4"
@@ -39,6 +40,7 @@ clippy_utils = "=0.1.98"
 derivative = "2.2.0"
 dylint_internal = "=6.0.4"
 dylint_linting = "=6.0.4"
+dylint_testing = "=6.0.4"
 once_cell = "1.21"
 predicates = "3.1"
 serde = "1.0"
