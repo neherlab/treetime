@@ -80,8 +80,11 @@ fn git_stdout(args: &[&str]) -> Result<String, Box<dyn Error>> {
   Ok(output_stdout(&output)?)
 }
 
-fn git_output(args: &[&str]) -> Result<Output, std::io::Error> {
-  Command::new("git").args(args).output()
+fn git_output(args: &[&str]) -> Result<Output, Box<dyn Error>> {
+  Command::new("git")
+    .args(args)
+    .output()
+    .map_err(|error| format!("When running git {}: {error}", args.join(" ")).into())
 }
 
 fn output_stdout(output: &Output) -> Result<String, std::str::Utf8Error> {
