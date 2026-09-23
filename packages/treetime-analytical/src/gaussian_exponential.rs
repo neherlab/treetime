@@ -1,12 +1,12 @@
 use ndarray::Array1;
 use statrs::function::erf::erfc;
 
-pub fn gaussian_exponential_convolution(a: f64, x: f64) -> f64 {
-  0.5 * a * (-x * a + 0.5 * a.powi(2)).exp() * erfc((a - x) / 2_f64.sqrt())
-}
-
 pub fn gaussian_exponential_convolution_grid(a: f64, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| gaussian_exponential_convolution(a, x))
+}
+
+pub fn gaussian_exponential_convolution(a: f64, x: f64) -> f64 {
+  0.5 * a * (-x * a + 0.5 * a.powi(2)).exp() * erfc((a - x) / 2_f64.sqrt())
 }
 
 #[cfg(test)]
