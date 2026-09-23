@@ -27,14 +27,6 @@ use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
 
-impl From<OptimizeRerootMethod> for RerootMethod {
-  fn from(m: OptimizeRerootMethod) -> Self {
-    match m {
-      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
-    }
-  }
-}
-
 pub fn run_optimize(
   args: &OptimizeArgs,
   cancel: &dyn Cancel,
@@ -216,6 +208,14 @@ impl OptimizeArgs {
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
+}
+
+impl From<OptimizeRerootMethod> for RerootMethod {
+  fn from(m: OptimizeRerootMethod) -> Self {
+    match m {
+      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
+    }
+  }
 }
 
 fn gather_optimize_output_maps(
