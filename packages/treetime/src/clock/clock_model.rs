@@ -52,7 +52,10 @@ impl ClockLine for ClockRegression {
   }
 }
 
-#[allow(clippy::same_name_method)]
+#[expect(
+  clippy::same_name_method,
+  reason = "the inherent accessor and the trait method return the same field"
+)]
 impl ClockRegression {
   pub(crate) fn clock_rate(&self) -> f64 {
     self.clock_rate
@@ -116,7 +119,10 @@ pub struct ClockModel {
   stats: ClockModelStats,
 }
 
-#[allow(clippy::same_name_method)]
+#[expect(
+  clippy::same_name_method,
+  reason = "the inherent accessor and the trait method return the same field"
+)]
 impl ClockModel {
   pub fn clock_rate(&self) -> f64 {
     self.clock_rate

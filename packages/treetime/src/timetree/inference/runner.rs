@@ -26,7 +26,10 @@ pub const GRID_POINTS: usize = 300;
 
 pub const EPS: f64 = 5e-4;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub fn run_timetree(
   graph: &Graph,
   constraints: &DateConstraints,

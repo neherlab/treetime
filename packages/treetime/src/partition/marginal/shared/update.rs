@@ -90,7 +90,6 @@ pub trait MarginalPasses {
     forward: &BTreeMap<GraphEdgeKey, Self::Forward>,
   ) -> Result<MutationCounts, Report>;
 
-  #[allow(clippy::needless_pass_by_value)]
   fn marginal_update(
     &self,
     gtr: &GTR,

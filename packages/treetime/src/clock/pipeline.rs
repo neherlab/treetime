@@ -106,7 +106,10 @@ pub fn run(
   })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 #[allow(
   clippy::useless_let_if_seq,
   reason = "the conditional branch runs fallible pre-filter root finding with ?; folding it into a let-if-else would nest a large fallible block in the initializer"

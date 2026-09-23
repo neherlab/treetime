@@ -61,7 +61,10 @@ impl Cancel for ChannelProgress {
   clippy::expect_used,
   reason = "the synchronous ProgressSink cannot await bounded sends, so SSE buffering does not apply backpressure; event serialization is infallible"
 )]
-#[allow(tail_expr_drop_order)]
+#[expect(
+  tail_expr_drop_order,
+  reason = "no value in the tail expression depends on drop order"
+)]
 fn sse_response<F>(run_fn: F) -> Response
 where
   F: FnOnce(&dyn Cancel, &dyn ProgressSink) -> Result<Value, Report> + Send + 'static,

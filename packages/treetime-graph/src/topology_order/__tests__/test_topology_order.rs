@@ -414,7 +414,6 @@ mod tests {
     Ok((graph, names))
   }
 
-  #[allow(clippy::type_complexity)]
   fn fixture_branch_length_tree() -> Result<
     (
       Graph,

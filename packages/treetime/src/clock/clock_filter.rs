@@ -22,7 +22,10 @@ pub struct ClockFilterResult {
   clippy::integer_division,
   reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division"
 )]
-#[allow(clippy::integer_division_remainder_used)]
+#[expect(
+  clippy::integer_division_remainder_used,
+  reason = "the remainder distributes work evenly across chunks"
+)]
 pub(crate) fn clock_filter_inplace(
   graph: &Graph,
   inputs: &ClockInputs,

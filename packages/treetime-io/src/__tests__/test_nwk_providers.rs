@@ -236,7 +236,6 @@ mod tests {
       }
     }
 
-    #[allow(clippy::type_complexity)]
     pub(super) fn make_graph() -> Result<
       (
         Graph,

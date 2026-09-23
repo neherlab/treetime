@@ -48,7 +48,7 @@ mod tests {
   }
 
   #[test]
-  #[allow(clippy::float_cmp)]
+  #[expect(clippy::float_cmp, reason = "determinism requires bit-identical results")]
   fn test_optimize_tc_is_deterministic() -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);

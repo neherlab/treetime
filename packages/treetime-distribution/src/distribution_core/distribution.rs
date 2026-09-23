@@ -18,7 +18,6 @@ pub const TIME_EPSILON: f64 = 1e-10;
 const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]
-#[allow(variant_size_differences)]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display)]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
@@ -44,7 +43,10 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     Self::Range(DistributionRange::new((x1, x2), y))
   }
 
-  #[allow(clippy::needless_pass_by_value)]
+  #[expect(
+    clippy::needless_pass_by_value,
+    reason = "the constructor stores the arrays in the distribution it returns"
+  )]
   pub fn function(x: Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
     assert_eq!(x.shape(), y.shape());
 
@@ -247,7 +249,10 @@ impl Distribution<Plain> {
     self.scale_by(1.0 / max_val)
   }
 
-  #[allow(clippy::many_single_char_names)]
+  #[expect(
+    clippy::many_single_char_names,
+    reason = "single-letter names follow the notation of the formulas"
+  )]
   pub(crate) fn quantile(&self, p: f64) -> Option<f64> {
     if !(0.0..=1.0).contains(&p) {
       return None;

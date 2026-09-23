@@ -256,7 +256,6 @@ pub struct Jtt92Params {
   alphabet: AlphabetName,
 }
 
-#[allow(clippy::excessive_precision)]
 pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
 

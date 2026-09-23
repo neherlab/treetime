@@ -93,7 +93,10 @@ struct NexusBlock {
   content: String,
 }
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
+)]
 fn parse_nexus_blocks(input: &str) -> Vec<NexusBlock> {
   let mut blocks = Vec::new();
   let lower = input.to_ascii_lowercase();
@@ -127,7 +130,10 @@ fn parse_nexus_blocks(input: &str) -> Vec<NexusBlock> {
   blocks
 }
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
+)]
 fn extract_translate_table(blocks: &[NexusBlock]) -> BTreeMap<String, String> {
   let mut table = BTreeMap::new();
 
@@ -200,7 +206,10 @@ fn strip_nexus_quotes(s: &str) -> String {
   s.to_owned()
 }
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
+)]
 fn extract_trees(blocks: &[NexusBlock], translate_table: &BTreeMap<String, String>) -> Result<Vec<NexusTree>, Report> {
   let mut trees = Vec::new();
 
@@ -245,7 +254,10 @@ fn extract_trees(blocks: &[NexusBlock], translate_table: &BTreeMap<String, Strin
   Ok(trees)
 }
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
+)]
 fn find_tree_command(lower: &str) -> Option<usize> {
   let mut pos = 0;
   while pos < lower.len() {

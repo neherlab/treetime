@@ -6,7 +6,6 @@ use eyre::Report;
 use itertools::Either;
 use ndarray::ArrayView1;
 
-#[allow(clippy::large_enum_variant)]
 pub enum OptimizationContribution {
   Dense(optimize::dense::PartitionContribution),
   Sparse(optimize::sparse::PartitionContribution),

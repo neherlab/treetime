@@ -1,8 +1,9 @@
-#![allow(
+#![expect(
   trivial_numeric_casts,
   unsafe_code,
   clippy::multiple_unsafe_ops_per_block,
-  clippy::undocumented_unsafe_blocks
+  clippy::undocumented_unsafe_blocks,
+  reason = "OpenBLAS returns C integer types that differ by platform; calls OpenBLAS introspection functions through FFI; each block reads one C string returned by OpenBLAS; the OpenBLAS introspection functions take no arguments and return static data"
 )]
 
 use serde::{Deserialize, Serialize};

@@ -23,7 +23,10 @@ const CI_FRACTION: f64 = 0.9;
 const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5;
 const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub(crate) fn compute_rate_susceptibility(
   graph: &Graph,
   constraints: &DateConstraints,

@@ -78,7 +78,10 @@ mod tests {
     Ok(())
   }
 
-  #[allow(clippy::missing_asserts_for_indexing)]
+  #[expect(
+    clippy::missing_asserts_for_indexing,
+    reason = "the test indexes the trace after asserting the iteration count"
+  )]
   #[test]
   fn test_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = helpers::empty_graph();

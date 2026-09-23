@@ -1,5 +1,4 @@
 #[cfg(test)]
-#[allow(clippy::iter_on_single_items, clippy::redundant_type_annotations)]
 mod tests {
   use crate::concat::*;
   use rstest::rstest;

@@ -18,7 +18,10 @@ pub struct GTRSiteSpecificParams {
 }
 
 #[derive(Clone, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(
+  clippy::partial_pub_fields,
+  reason = "private fields hold derived state that only the constructor keeps consistent"
+)]
 pub struct GTRSiteSpecific {
   pub seq_len: usize,
   pub mu: Array1<f64>,

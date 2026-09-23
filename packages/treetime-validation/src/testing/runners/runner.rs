@@ -74,7 +74,10 @@ pub trait TestRunner: Send + Sync + Sized {
   }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "the runner owns the suite for the whole test run"
+)]
 pub(crate) fn run_tests_generic<R: TestRunner>(
   args: &Args,
   suite: R::Suite,

@@ -225,7 +225,10 @@ fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
   node.raw_comments.hash(&mut hasher);
   node.hybrid.hash(&mut hasher);
 
-  #[allow(clippy::collection_is_never_read)]
+  #[expect(
+    clippy::collection_is_never_read,
+    reason = "the vector is read by Hash::hash, which the lint does not see"
+  )]
   let mut child_hashes: Vec<(u64, u64)> = node
     .children
     .iter()

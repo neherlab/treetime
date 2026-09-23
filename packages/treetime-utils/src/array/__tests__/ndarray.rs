@@ -5,7 +5,10 @@
 
 #[cfg(test)]
 mod tests {
-  #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]
+  #![expect(
+    clippy::excessive_precision,
+    reason = "expected values keep all digits of the oracle"
+  )]
 
   use std::sync::LazyLock;
 

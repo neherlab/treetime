@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-  #![allow(clippy::redundant_clone)]
+  #![expect(
+    clippy::redundant_clone,
+    reason = "tests clone inputs to compare them after the call"
+  )]
   use crate::interval::range_intersection::*;
   use rstest::rstest;
 

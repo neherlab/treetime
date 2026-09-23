@@ -114,7 +114,7 @@ mod tests {
     assert_eq!("desc", case.description());
     assert_eq!("stress", case.stress_type());
     assert_eq!("caution", case.analytical_caution());
-    #[allow(clippy::float_cmp)]
+    #[expect(clippy::float_cmp, reason = "the slowness literal is stored and returned unchanged")]
     {
       assert_eq!(1.5, case.slowness());
     }

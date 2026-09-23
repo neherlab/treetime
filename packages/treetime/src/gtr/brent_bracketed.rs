@@ -59,7 +59,11 @@ where
     Ok((state.param(self.x).cost(self.fx), None))
   }
 
-  #[allow(clippy::many_single_char_names, clippy::float_cmp)]
+  #[expect(
+    clippy::many_single_char_names,
+    clippy::float_cmp,
+    reason = "single-letter names follow the notation of the formulas; Brent's method compares iterates exactly, as the reference algorithm does"
+  )]
   fn next_iter(
     &mut self,
     problem: &mut Problem<O>,

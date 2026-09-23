@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::string_slice)]
+    #[expect(clippy::string_slice, reason = "indices come from char_indices")]
     fn test_prop_tree_arb_newick_no_single_element_parens(newick in arb_newick(4)) {
       let mut depth = 0;
       let mut start = 0;

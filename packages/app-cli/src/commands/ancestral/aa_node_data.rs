@@ -27,7 +27,10 @@ pub fn validate_aa_args(
     return make_error!("--translations is required when using --cdses, --annotation, or --aa-root-sequence");
   };
 
-  #[allow(clippy::literal_string_with_formatting_args)]
+  #[expect(
+    clippy::literal_string_with_formatting_args,
+    reason = "the braces are a path template placeholder, not a format argument"
+  )]
   if !template_has_cds_placeholder(template) {
     return make_error!("--translations must contain a CDS placeholder ('{{cds}}' or '%GENE')");
   }

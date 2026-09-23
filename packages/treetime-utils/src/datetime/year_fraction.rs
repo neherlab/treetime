@@ -50,7 +50,6 @@ fn days_in_year(year: i32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-  #![allow(clippy::excessive_precision)]
   use super::*;
   use crate::datetime::datetime::iso;
   use crate::pretty_assert_ulps_eq;

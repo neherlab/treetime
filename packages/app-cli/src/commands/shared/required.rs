@@ -25,7 +25,10 @@ fn required_flag(command: &clap::Command, id: &str) -> String {
 }
 
 #[cfg(not(feature = "clap"))]
-#[allow(clippy::extra_unused_type_parameters)]
+#[expect(
+  clippy::extra_unused_type_parameters,
+  reason = "keeps the signature of the clap variant, which reads argument definitions from the type"
+)]
 pub fn missing_required_args<C>(missing_ids: &[&str]) -> Report {
   let list = missing_ids
     .iter()

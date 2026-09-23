@@ -103,7 +103,10 @@ impl MarginalNodeState for SparseNodeState {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(
+  clippy::partial_pub_fields,
+  reason = "private fields hold derived state that only the constructor keeps consistent"
+)]
 pub struct SparseEdgeObs {
   subs_fitch: Vec<Sub>,
   pub indels: Vec<InDel>,

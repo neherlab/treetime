@@ -19,7 +19,10 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{o, vec_of_owned};
 
-  #[allow(clippy::too_many_arguments)]
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+  )]
   fn run_mugration_case(
     nwk: &str,
     traits: &BTreeMap<String, String>,

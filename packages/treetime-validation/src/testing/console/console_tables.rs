@@ -13,7 +13,7 @@ use treetime_utils::fmt::float::float_to_significant_digits;
 
 use crate::testing::console::console::ValidationConsole;
 
-#[allow(clippy::multiple_inherent_impl)]
+#[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl ValidationConsole {
   pub(crate) fn print_per_test_case_comparison<T: TestCase>(outcomes: &[TestRunOutcome<T>]) {
     let successes: Vec<_> = outcomes

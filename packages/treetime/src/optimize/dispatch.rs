@@ -40,7 +40,6 @@ pub fn run_optimize_mixed(
 }
 
 #[cfg(test)]
-#[allow(clippy::too_many_arguments)]
 pub fn run_optimize_mixed_with_indel_rate(
   graph: &Graph,
   total_length: usize,
@@ -67,7 +66,10 @@ pub fn run_optimize_mixed_with_indel_rate(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub fn run_optimize_mixed_inner(
   graph: &Graph,
   total_length: usize,
@@ -252,7 +254,10 @@ impl BifurcatingRootState {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub fn initial_guess_mixed(
   graph: &Graph,
   total_length: usize,

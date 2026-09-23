@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use treetime_utils::{make_internal_error, make_internal_report};
 
-#[allow(clippy::field_scoped_visibility_modifiers)]
+#[expect(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "graph storage stays crate-internal behind accessor methods"
+)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Graph {
   pub(crate) nodes: Vec<Option<Node>>,
@@ -194,7 +197,6 @@ impl Graph {
     Ok(path)
   }
 
-  #[allow(clippy::type_complexity)]
   pub(crate) fn path_from_node_to_node(
     &self,
     start: GraphNodeKey,

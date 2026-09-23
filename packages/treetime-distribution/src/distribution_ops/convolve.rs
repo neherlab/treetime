@@ -159,7 +159,6 @@ fn convolution_function_function<Y: SupportsConvolution>(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-#[allow(clippy::many_single_char_names)]
 fn convolution_function_function_fine<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,

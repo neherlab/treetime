@@ -4,7 +4,10 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 
-#[allow(variant_size_differences)]
+#[expect(
+  variant_size_differences,
+  reason = "values are matched in place; boxing the large variant would add an allocation per value"
+)]
 #[derive(Clone, Debug)]
 pub enum BitSet128Status {
   Empty,

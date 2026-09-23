@@ -222,7 +222,7 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
 pub(super) fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
   let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);
   let (hard_hi, soft_hi) = side_bounds(domains, Side::Right);

@@ -9,7 +9,10 @@ use pretty_dtoa::{FmtFloatConfig, dtoa};
 static FLOAT_CONFIG: LazyLock<FmtFloatConfig> =
   LazyLock::new(|| FmtFloatConfig::default().add_point_zero(true).radix_point('.').round());
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "the index comes from str::find on the ASCII exponent marker"
+)]
 fn trim_trailing_zeros(input: &str) -> String {
   let (mantissa, exponent) = match input.find(['e', 'E']) {
     Some(pos) => (&input[..pos], Some(&input[pos..])),

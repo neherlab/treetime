@@ -484,7 +484,10 @@ impl SeqSink for ReconstructedNucSink {
   }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 fn gather_timetree_outputs(
   graph: &Graph,
   clock_state: &ClockState,

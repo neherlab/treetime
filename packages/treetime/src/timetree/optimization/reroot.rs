@@ -16,7 +16,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub fn reroot_tree(
   graph: &mut Graph,
   constraints: &DateConstraints,

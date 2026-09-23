@@ -110,7 +110,10 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 fn accumulate_site_transition_weighted(
   pp: &Array1<f64>,
   pc: &Array1<f64>,

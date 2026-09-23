@@ -105,7 +105,10 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     Ok(Self::new(Box::new(concat_buf), alphabet))
   }
 
-  #[allow(clippy::string_slice)]
+  #[expect(
+    clippy::string_slice,
+    reason = "index 1 follows the ASCII '>' marker, a char boundary"
+  )]
   pub fn read(&mut self, record: &mut FastaRecord) -> Result<(), Report> {
     record.clear();
 

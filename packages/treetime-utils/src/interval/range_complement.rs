@@ -20,7 +20,6 @@ pub fn range_complement_iter<'a>(
 
 #[cfg(test)]
 mod tests {
-  #![allow(clippy::redundant_clone)]
   use super::*;
   use rstest::rstest;
 

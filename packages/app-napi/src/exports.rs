@@ -37,7 +37,10 @@ pub fn datasets() -> napi::Result<String> {
 }
 
 #[napi]
-#[allow(clippy::needless_pass_by_value)]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
   let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
   let result = run_ancestral(&args, &NoopCancel, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
@@ -88,7 +91,10 @@ macro_rules! define_task {
       ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
       ts_return_type = "Promise<string>"
     )]
-    #[allow(clippy::needless_pass_by_value)]
+    #[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
     pub fn $napi_fn(
       args_json: String,
       on_event: Arc<ThreadsafeFunction<String, ()>>,
@@ -121,7 +127,10 @@ impl Task for AncestralTask {
   ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
   ts_return_type = "Promise<string>"
 )]
-#[allow(clippy::needless_pass_by_value)]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
 pub fn ancestral(
   args_json: String,
   _on_event: Arc<ThreadsafeFunction<String, ()>>,

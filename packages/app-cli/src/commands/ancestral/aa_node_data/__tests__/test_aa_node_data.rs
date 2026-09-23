@@ -51,12 +51,12 @@ mod tests {
     assert!(err.to_string().contains("--cdses"));
   }
 
-  #[allow(clippy::literal_string_with_formatting_args)]
+  #[expect(clippy::literal_string_with_formatting_args, reason = "the braces are a path template placeholder, not a format argument")]
   #[rustfmt::skip]
   #[rstest]
   #[case::cds_placeholder( "out/{cds}.fasta",  "S",  "out/S.fasta")]
   #[case::gene_placeholder("out/%GENE.fasta",   "S",  "out/S.fasta")]
-  #[allow(clippy::literal_string_with_formatting_args)]
+  #[expect(clippy::literal_string_with_formatting_args, reason = "the braces are a path template placeholder, not a format argument")]
   #[case::both_placeholders("out/{cds}/%GENE.fasta", "ORF1a", "out/ORF1a/ORF1a.fasta")]
   fn test_translation_path_expands_placeholders(
     #[case] template: &str,

@@ -32,7 +32,10 @@ pub enum TruncateDirection {
   Middle,
 }
 
-#[allow(clippy::string_slice)]
+#[expect(
+  clippy::string_slice,
+  reason = "the input is ASCII, so every byte index is a char boundary"
+)]
 #[allow(
   clippy::integer_division,
   reason = "intentional halving of the budget for middle truncation; the remainder is assigned to the right half"

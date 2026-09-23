@@ -28,7 +28,7 @@ impl OptimizationMetrics {
   }
 }
 
-#[allow(clippy::multiple_inherent_impl)]
+#[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl OptimizationContribution {
   pub fn evaluate(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
     match self {

@@ -86,7 +86,10 @@ fn prune_internal_nodes(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  #[allow(clippy::needless_collect)]
+  #[expect(
+    clippy::needless_collect,
+    reason = "collecting ends the graph borrow before edges are collapsed"
+  )]
   let edges_to_collapse: Vec<_> = graph
     .get_edges()
     .map(|edge| -> Result<Option<GraphEdgeKey>, Report> {
@@ -126,7 +129,6 @@ fn prune_leaves(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  #[allow(clippy::needless_collect)]
   let edges_to_collapse = graph
     .get_edges()
     .filter_map(|edge| {

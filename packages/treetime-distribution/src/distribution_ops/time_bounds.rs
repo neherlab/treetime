@@ -46,7 +46,7 @@ pub fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(dist_a: &Distribution<Y
   distribution_time_bounds_intersection(dist_a, dist_b).is_some()
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
 pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
   let start = a.0.max(b.0);
   let end = a.1.min(b.1);

@@ -449,7 +449,10 @@ pub fn any_indel_edge_has_zero_branch_length(
   })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+)]
 pub fn apply_initial_guess_mode(
   graph: &Graph,
   total_length: usize,

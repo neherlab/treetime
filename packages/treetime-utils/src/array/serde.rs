@@ -2,7 +2,6 @@ use indexmap::IndexMap;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn skip_serializing_if_false<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
 where
   S: Serializer,

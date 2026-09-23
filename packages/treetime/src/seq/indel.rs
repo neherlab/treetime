@@ -207,7 +207,10 @@ fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
 
   let mut merged: Vec<InDel> = Vec::with_capacity(indels.len());
   for indel in indels {
-    #[allow(clippy::suspicious_operation_groupings)]
+    #[expect(
+      clippy::suspicious_operation_groupings,
+      reason = "adjacent deletions merge when the end of one equals the start of the next"
+    )]
     let should_merge = merged
       .last()
       .is_some_and(|prev: &InDel| prev.is_deletion() && indel.is_deletion() && prev.range.1 == indel.range.0);

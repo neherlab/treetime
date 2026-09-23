@@ -12,7 +12,6 @@ pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, R
   Ok(pi.dot(W).dot(pi))
 }
 
-#[allow(clippy::type_complexity)]
 pub(super) fn eig_single_site(
   W: &Array2<f64>,
   pi: ArrayView1<'_, f64>,

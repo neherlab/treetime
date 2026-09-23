@@ -10,7 +10,7 @@ use treetime_utils::make_internal_report;
 
 use crate::testing::console::console::ValidationConsole;
 
-#[allow(clippy::multiple_inherent_impl)]
+#[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl ValidationConsole {
   #[allow(
     clippy::as_conversions,
