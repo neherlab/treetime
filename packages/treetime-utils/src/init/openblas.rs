@@ -35,10 +35,6 @@ pub struct OpenBlasInfo {
   pub num_procs: i32,
 }
 
-pub fn print_openblas_info() {
-  eprintln!("{}", get_openblas_info_str());
-}
-
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
