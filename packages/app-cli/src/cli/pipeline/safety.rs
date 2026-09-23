@@ -17,7 +17,7 @@ pub fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<Str
 
 fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   for step in &pipeline.steps {
-    if input_paths(&step.command).iter().any(|path| path == STDIO_PATH) {
+    if input_paths(&step.command)?.iter().any(|path| path == STDIO_PATH) {
       return make_error!(
         "step `{}` uses `-` (stdin) for an input; a pipeline runs many steps in one process, so steps need real file paths",
         step.name
@@ -53,7 +53,7 @@ fn reject_output_collisions(pipeline: &ResolvedPipeline) -> Result<(), Report> {
 fn reject_self_truncation(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   for step in &pipeline.steps {
     let outputs: BTreeSet<String> = output_paths(step).into_iter().collect();
-    for input in input_paths(&step.command) {
+    for input in input_paths(&step.command)? {
       if outputs.contains(&input) {
         return make_error!(
           "step `{}` reads and writes the same file `{input}`, which would truncate the input",
@@ -81,7 +81,7 @@ fn reject_missing_upstream(pipeline: &ResolvedPipeline, selected: Option<&BTreeS
     if !selected.contains(&step.name) {
       continue;
     }
-    for input in input_paths(&step.command) {
+    for input in input_paths(&step.command)? {
       if let Some(producer) = producers.get(&input) {
         if !selected.contains(*producer) && !Path::new(&input).exists() {
           return make_error!(

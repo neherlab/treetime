@@ -15,7 +15,7 @@ pub fn print_pipeline_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeS
 
   for step in steps {
     println!("  - {} ({})", step.name, step.command.tag());
-    print_inputs(step, &producers);
+    print_inputs(step, &producers)?;
     print_outputs(step);
   }
   Ok(())
@@ -33,13 +33,14 @@ fn producers_by_path(pipeline: &ResolvedPipeline) -> BTreeMap<String, String> {
   producers
 }
 
-fn print_inputs(step: &ResolvedStep, producers: &BTreeMap<String, String>) {
-  for (label, path) in labeled_input_paths(&step.command) {
+fn print_inputs(step: &ResolvedStep, producers: &BTreeMap<String, String>) -> Result<(), Report> {
+  for (label, path) in labeled_input_paths(&step.command)? {
     match producers.get(&path) {
       Some(producer) if producer != &step.name => println!("    {label}: {path} (from step {producer})"),
       _ => println!("    {label}: {path}"),
     }
   }
+  Ok(())
 }
 
 fn print_outputs(step: &ResolvedStep) {

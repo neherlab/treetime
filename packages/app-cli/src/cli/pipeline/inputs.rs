@@ -1,4 +1,5 @@
 use crate::cli::pipeline::types::PipelineStepCommand;
+use eyre::Report;
 use serde_json::Value;
 
 const INPUT_FIELDS: [(&str, &[&str]); 5] = [
@@ -9,20 +10,27 @@ const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("vcf-reference", &["vcf_reference"]),
 ];
 
-pub fn labeled_input_paths(command: &PipelineStepCommand) -> Vec<(&'static str, String)> {
-  let args = command.args_value();
-  INPUT_FIELDS
-    .iter()
-    .flat_map(|(label, keys)| {
-      lookup_paths(&args, keys)
-        .into_iter()
-        .map(move |path| (*label, path.to_owned()))
-    })
-    .collect()
+pub fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'static str, String)>, Report> {
+  let args = command.args_value()?;
+  Ok(
+    INPUT_FIELDS
+      .iter()
+      .flat_map(|(label, keys)| {
+        lookup_paths(&args, keys)
+          .into_iter()
+          .map(move |path| (*label, path.to_owned()))
+      })
+      .collect(),
+  )
 }
 
-pub fn input_paths(command: &PipelineStepCommand) -> Vec<String> {
-  labeled_input_paths(command).into_iter().map(|(_, path)| path).collect()
+pub fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
+  Ok(
+    labeled_input_paths(command)?
+      .into_iter()
+      .map(|(_, path)| path)
+      .collect(),
+  )
 }
 
 fn lookup_paths<'a>(args: &'a Value, keys: &[&str]) -> Vec<&'a str> {

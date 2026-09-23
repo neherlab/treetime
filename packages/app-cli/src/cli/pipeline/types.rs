@@ -7,7 +7,7 @@ use crate::commands::prune::args::TreetimePruneArgsRaw;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_output::output_plan::{CommandKind, ResolvedOutputs};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -71,7 +71,7 @@ impl PipelineStepCommand {
     }
   }
 
-  pub(crate) fn args_value(&self) -> Value {
+  pub(crate) fn args_value(&self) -> Result<Value, Report> {
     let value = match self {
       Self::Timetree(args) => serde_json::to_value(args),
       Self::Optimize(args) => serde_json::to_value(args),
@@ -80,7 +80,7 @@ impl PipelineStepCommand {
       Self::Clock(args) => serde_json::to_value(args),
       Self::Mugration(args) => serde_json::to_value(args),
     };
-    value.unwrap_or(Value::Null)
+    value.wrap_err_with(|| format!("When serializing the arguments of a `{}` step", self.tag()))
   }
 
   pub(crate) fn output_all(&self) -> Option<&Path> {
