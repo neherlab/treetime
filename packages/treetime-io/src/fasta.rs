@@ -11,15 +11,6 @@ use treetime_utils::io::compression::Decompressor;
 use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 use treetime_utils::make_error;
 
-impl From<FastaRecord> for AlignmentRecord {
-  fn from(record: FastaRecord) -> Self {
-    Self {
-      name: record.seq_name,
-      seq: record.seq,
-    }
-  }
-}
-
 pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A) -> Result<FastaRecord, Report> {
   let filepath = filepath.as_ref();
   let mut reader = FastaReader::from_path(filepath, alphabet)?;
@@ -210,6 +201,15 @@ pub struct FastaRecord {
   pub desc: Option<String>,
   pub seq: Seq,
   pub index: usize,
+}
+
+impl From<FastaRecord> for AlignmentRecord {
+  fn from(record: FastaRecord) -> Self {
+    Self {
+      name: record.seq_name,
+      seq: record.seq,
+    }
+  }
 }
 
 impl FastaRecord {
