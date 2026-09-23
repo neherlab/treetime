@@ -11,22 +11,6 @@ use treetime_utils::io::fs::{extension, read_file_to_string};
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 
-pub struct CsvStructWriter<W: Write + Send> {
-  pub writer: Writer<W>,
-}
-
-impl<W: Write + Send> CsvStructWriter<W> {
-  pub fn new(writer: W, delimiter: u8) -> Result<Self, Report> {
-    let writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
-    Ok(Self { writer })
-  }
-
-  pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
-    self.writer.serialize(record)?;
-    Ok(())
-  }
-}
-
 pub struct CsvStructFileWriter {
   pub filepath: PathBuf,
   pub writer: CsvStructWriter<Box<dyn Write + Send>>,
@@ -45,6 +29,48 @@ impl CsvStructFileWriter {
 
   pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
     self.writer.write(record)?;
+    Ok(())
+  }
+}
+
+pub struct CsvStructWriter<W: Write + Send> {
+  pub writer: Writer<W>,
+}
+
+impl<W: Write + Send> CsvStructWriter<W> {
+  pub fn new(writer: W, delimiter: u8) -> Result<Self, Report> {
+    let writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
+    Ok(Self { writer })
+  }
+
+  pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
+    self.writer.serialize(record)?;
+    Ok(())
+  }
+}
+
+pub struct CsvVecFileWriter {
+  pub filepath: PathBuf,
+  pub headers: Vec<String>,
+  pub writer: CsvVecWriter<Box<dyn Write + Send>>,
+}
+
+impl CsvVecFileWriter {
+  pub fn new(filepath: impl AsRef<Path>, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
+    let filepath = filepath.as_ref();
+    let file = create_file_or_stdout(filepath)?;
+    let writer = CsvVecWriter::new(file, delimiter, headers)?;
+    Ok(Self {
+      filepath: filepath.to_owned(),
+      headers: headers.to_owned(),
+      writer,
+    })
+  }
+}
+
+impl VecWriter for CsvVecFileWriter {
+  fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
+    self.writer.write(values)?;
     Ok(())
   }
 }
@@ -72,32 +98,6 @@ impl<W: Write + Send> CsvVecWriter<W> {
 impl<W: Write + Send> VecWriter for CsvVecWriter<W> {
   fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
     self.writer.write_record(values)?;
-    Ok(())
-  }
-}
-
-pub struct CsvVecFileWriter {
-  pub filepath: PathBuf,
-  pub headers: Vec<String>,
-  pub writer: CsvVecWriter<Box<dyn Write + Send>>,
-}
-
-impl CsvVecFileWriter {
-  pub fn new(filepath: impl AsRef<Path>, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
-    let filepath = filepath.as_ref();
-    let file = create_file_or_stdout(filepath)?;
-    let writer = CsvVecWriter::new(file, delimiter, headers)?;
-    Ok(Self {
-      filepath: filepath.to_owned(),
-      headers: headers.to_owned(),
-      writer,
-    })
-  }
-}
-
-impl VecWriter for CsvVecFileWriter {
-  fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
-    self.writer.write(values)?;
     Ok(())
   }
 }
@@ -214,13 +214,6 @@ pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
   }
 }
 
-pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
-  headers
-    .iter()
-    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
-    .collect()
-}
-
 fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
   u8::try_from(u32::from(delimiter))
     .map_err(Report::from)
@@ -233,6 +226,13 @@ fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, csv::Error> 
     .delimiter(delimiter)
     .from_reader(sample);
   reader.headers().map(normalize_csv_headers)
+}
+
+pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
+  headers
+    .iter()
+    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
+    .collect()
 }
 
 fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {

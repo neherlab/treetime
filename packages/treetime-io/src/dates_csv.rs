@@ -13,39 +13,6 @@ use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
-type DateRecord = (String, Option<DateConstraint>);
-
-fn read_dates_from_reader(
-  reader: impl Read,
-  delimiter: u8,
-  name_candidates: &[String],
-  name_column: Option<&str>,
-  date_column: Option<&str>,
-) -> Result<DatesMap, Report> {
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .from_reader(reader);
-
-  let headers = reader
-    .headers()
-    .map(normalize_csv_headers)
-    .map_err(|err| make_report!("{err}"))?;
-
-  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
-  let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
-
-  reader
-    .records()
-    .enumerate()
-    .map(|(index, record)| {
-      let record = record?;
-      convert_record(index, &record, name_column_idx, date_column_idx)
-        .wrap_err_with(|| format!("When reading row {index}, column '{date_column_idx}'"))
-    })
-    .collect::<Result<DatesMap, Report>>()
-}
-
 pub fn read_dates_from_str(
   content: &str,
   delimiter: u8,
@@ -88,6 +55,37 @@ pub fn read_dates(
   .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
 }
 
+fn read_dates_from_reader(
+  reader: impl Read,
+  delimiter: u8,
+  name_candidates: &[String],
+  name_column: Option<&str>,
+  date_column: Option<&str>,
+) -> Result<DatesMap, Report> {
+  let mut reader = ReaderBuilder::new()
+    .trim(Trim::All)
+    .delimiter(delimiter)
+    .from_reader(reader);
+
+  let headers = reader
+    .headers()
+    .map(normalize_csv_headers)
+    .map_err(|err| make_report!("{err}"))?;
+
+  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
+  let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
+
+  reader
+    .records()
+    .enumerate()
+    .map(|(index, record)| {
+      let record = record?;
+      convert_record(index, &record, name_column_idx, date_column_idx)
+        .wrap_err_with(|| format!("When reading row {index}, column '{date_column_idx}'"))
+    })
+    .collect::<Result<DatesMap, Report>>()
+}
+
 fn convert_record(
   index: usize,
   record: &StringRecord,
@@ -107,6 +105,8 @@ fn convert_record(
 
   Ok((name, date))
 }
+
+type DateRecord = (String, Option<DateConstraint>);
 
 #[cfg_attr(
   dylint_lib = "treetime_lints",

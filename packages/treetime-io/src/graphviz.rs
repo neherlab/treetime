@@ -58,21 +58,6 @@ digraph Phylogeny {{
   Ok(())
 }
 
-fn print_node<W>(mut writer: W, node: &Node, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
-where
-  W: Write,
-{
-  let key = node.key();
-  let label = names[&key].clone();
-
-  if let Some(label) = label {
-    writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
-  } else {
-    writeln!(writer, "    {key} [label=\"({key})\"]")?;
-  }
-  Ok(())
-}
-
 fn print_nodes<W>(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
@@ -97,6 +82,21 @@ where
   print_fake_edges(&mut writer, &leaves.iter().map(|node| node.key()).collect_vec())?;
 
   writeln!(writer, "  }}")?;
+  Ok(())
+}
+
+fn print_node<W>(mut writer: W, node: &Node, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
+where
+  W: Write,
+{
+  let key = node.key();
+  let label = names[&key].clone();
+
+  if let Some(label) = label {
+    writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
+  } else {
+    writeln!(writer, "    {key} [label=\"({key})\"]")?;
+  }
   Ok(())
 }
 

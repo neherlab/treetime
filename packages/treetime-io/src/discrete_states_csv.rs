@@ -7,42 +7,6 @@ use std::path::Path;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report};
 
-fn read_discrete_attrs_from_reader<T>(
-  reader: impl Read,
-  delimiter: u8,
-  name_candidates: &[String],
-  name_column: Option<&str>,
-  value_column: Option<&str>,
-  parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(BTreeMap<String, T>, String), Report> {
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .comment(None)
-    .from_reader(reader);
-
-  let headers = reader
-    .headers()
-    .map(normalize_csv_headers)
-    .map_err(|err| make_report!("{err}"))?;
-
-  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
-  let value_column_idx = get_col_name(&headers, &[], value_column)?;
-
-  let value_name = headers[value_column_idx].clone();
-
-  let values = reader
-    .records()
-    .enumerate()
-    .map(|(index, record)| {
-      let record = record?;
-      convert_record::<T>(index, &record, name_column_idx, value_column_idx, &parser)
-    })
-    .collect::<Result<BTreeMap<String, T>, Report>>()?;
-
-  Ok((values, value_name))
-}
-
 pub fn read_discrete_attrs_from_str<T>(
   content: &str,
   delimiter: u8,
@@ -86,6 +50,42 @@ pub fn read_discrete_attrs<T>(
     parser,
   )
   .wrap_err_with(|| format!("When reading discrete attributes from file: '{}'", filepath.display()))
+}
+
+fn read_discrete_attrs_from_reader<T>(
+  reader: impl Read,
+  delimiter: u8,
+  name_candidates: &[String],
+  name_column: Option<&str>,
+  value_column: Option<&str>,
+  parser: impl Fn(&str) -> Result<T, Report>,
+) -> Result<(BTreeMap<String, T>, String), Report> {
+  let mut reader = ReaderBuilder::new()
+    .trim(Trim::All)
+    .delimiter(delimiter)
+    .comment(None)
+    .from_reader(reader);
+
+  let headers = reader
+    .headers()
+    .map(normalize_csv_headers)
+    .map_err(|err| make_report!("{err}"))?;
+
+  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
+  let value_column_idx = get_col_name(&headers, &[], value_column)?;
+
+  let value_name = headers[value_column_idx].clone();
+
+  let values = reader
+    .records()
+    .enumerate()
+    .map(|(index, record)| {
+      let record = record?;
+      convert_record::<T>(index, &record, name_column_idx, value_column_idx, &parser)
+    })
+    .collect::<Result<BTreeMap<String, T>, Report>>()?;
+
+  Ok((values, value_name))
 }
 
 fn convert_record<T>(
