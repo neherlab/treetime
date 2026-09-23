@@ -14,7 +14,6 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
-  use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
 

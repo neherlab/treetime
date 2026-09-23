@@ -1,7 +1,6 @@
 use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
 use csv::{ReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
 use std::io::Read;
 use std::path::Path;
 use treetime_utils::datetime::options::DateParserOptions;
