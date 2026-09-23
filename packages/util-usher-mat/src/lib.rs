@@ -68,7 +68,9 @@ pub fn usher_mat_pb_read_bytes(buf: impl Buf) -> Result<UsherTree, Report> {
 
 pub fn usher_mat_pb_read(mut reader: impl Read) -> Result<UsherTree, Report> {
   let mut buf = Vec::new();
-  reader.read_to_end(&mut buf)?;
+  reader
+    .read_to_end(&mut buf)
+    .wrap_err("When reading Usher MAT protobuf input")?;
   usher_mat_pb_read_bytes(&buf[..])
 }
 

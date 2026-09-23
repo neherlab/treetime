@@ -1,4 +1,4 @@
-use eyre::Report;
+use eyre::{Report, WrapErr};
 
 fn main() -> Result<(), Report> {
   prost_build::Config::new()
@@ -11,6 +11,7 @@ fn main() -> Result<(), Report> {
         "schemas/taxodium.proto",
       ],
       &["src/gen/"],
-    )?;
+    )
+    .wrap_err("When compiling the UShER protobuf schemas")?;
   Ok(())
 }
