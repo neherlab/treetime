@@ -1,5 +1,5 @@
-use crate::nwk::{CommentProviders, NwkWriteOptions, nwk_write_with};
-use eyre::Report;
+use crate::nwk::{CommentProviders, NwkWriteOptions, nwk_write_str_with};
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -28,10 +28,11 @@ pub fn nex_write_file(
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
 ) -> Result<(), Report> {
+  let filepath = filepath.as_ref();
+  let context = || format!("When writing Nexus file '{}'", filepath.display());
   let mut f = create_file_or_stdout(filepath)?;
-  nex_write(&mut f, graph, names, weights, options)?;
-  writeln!(f)?;
-  Ok(())
+  nex_write(&mut f, graph, names, weights, options).wrap_err_with(context)?;
+  writeln!(f).wrap_err_with(context)
 }
 
 pub fn nex_write_file_with(
@@ -42,10 +43,11 @@ pub fn nex_write_file_with(
   options: &NexWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
+  let filepath = filepath.as_ref();
+  let context = || format!("When writing Nexus file '{}'", filepath.display());
   let mut f = create_file_or_stdout(filepath)?;
-  nex_write_with(&mut f, graph, names, weights, options, providers)?;
-  writeln!(f)?;
-  Ok(())
+  nex_write_with(&mut f, graph, names, weights, options, providers).wrap_err_with(context)?;
+  writeln!(f).wrap_err_with(context)
 }
 
 pub fn nex_write_str(
@@ -91,9 +93,7 @@ fn nex_write_with(
 ) -> Result<(), Report> {
   let n_leaves = graph.num_leaves();
   let leaf_names = graph.get_leaves().filter_map(|n| names[&n.key()].clone()).join(" ");
-  let mut nwk = Vec::new();
-  nwk_write_with(
-    &mut nwk,
+  let nwk = nwk_write_str_with(
     graph,
     names,
     weights,
@@ -104,7 +104,6 @@ fn nex_write_with(
     },
     providers,
   )?;
-  let nwk = String::from_utf8(nwk)?;
   let nwk = nwk.strip_suffix(';').unwrap_or(&nwk);
 
   writeln!(
@@ -118,7 +117,6 @@ Begin Trees;
   Tree tree1={nwk};
 End;
 "#
-  )?;
-
-  Ok(())
+  )
+  .wrap_err("When writing Nexus")
 }

@@ -7,11 +7,10 @@ use treetime_utils::io::json::{JsonPretty, json_write};
 
 pub fn auspice_write_file(filepath: impl AsRef<Path>, tree: &AuspiceTree) -> Result<(), Report> {
   let filepath = filepath.as_ref();
+  let context = || format!("When writing Auspice v2 JSON file '{}'", filepath.display());
   let mut f = create_file_or_stdout(filepath)?;
-  auspice_write(&mut f, tree)
-    .wrap_err_with(|| format!("When writing Auspice v2 JSON file '{}'", filepath.display()))?;
-  writeln!(f)?;
-  Ok(())
+  auspice_write(&mut f, tree).wrap_err_with(context)?;
+  writeln!(f).wrap_err_with(context)
 }
 
 pub fn auspice_write_str(tree: &AuspiceTree) -> Result<String, Report> {
