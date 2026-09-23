@@ -11,14 +11,17 @@ use app_server::create_router;
 use app_server::state::ServerConfig;
 use clap::Parser;
 use ctor::ctor;
-use log::LevelFilter;
-use std::env;
+use log::{LevelFilter, warn};
 use std::path::PathBuf;
 use std::thread::available_parallelism;
+use treetime_utils::env::env_var_optional;
 use treetime_utils::init::global::{global_init, setup_logger};
 
 const HOST_ENV: &str = "HOST";
 const PORT_ENV: &str = "PORT";
+const STATIC_DIR_ENV: &str = "STATIC_DIR";
+const DEFAULT_HOST: &str = "127.0.0.1";
+const DEFAULT_PORT: u16 = 3100;
 
 #[ctor]
 fn init() {
@@ -67,32 +70,33 @@ async fn main() -> eyre::Result<()> {
     rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
   }
 
-  let host = args
-    .host
-    .or_else(|| env::var(HOST_ENV).ok())
-    .unwrap_or_else(|| "127.0.0.1".to_owned());
+  let host = match args.host {
+    Some(host) => host,
+    None => env_var_optional(HOST_ENV)?.unwrap_or_else(|| DEFAULT_HOST.to_owned()),
+  };
 
-  let port: u16 = args
-    .port
-    .or_else(|| {
-      env::var(PORT_ENV).ok().and_then(|val| {
-        val.parse().ok().or_else(|| {
-          eprintln!("Warning: invalid PORT value '{val}', using default 3100");
-          None
-        })
-      })
-    })
-    .unwrap_or(3100);
+  let port = match args.port {
+    Some(port) => port,
+    None => match env_var_optional(PORT_ENV)? {
+      Some(value) => value.parse().unwrap_or_else(|error| {
+        warn!("Invalid {PORT_ENV} value '{value}' ({error}), using default {DEFAULT_PORT}");
+        DEFAULT_PORT
+      }),
+      None => DEFAULT_PORT,
+    },
+  };
 
   let config = ServerConfig {
     data_dir: args.data_dir,
     out_dir: args.out_dir,
   };
 
+  let static_dir = env_var_optional(STATIC_DIR_ENV)?;
+
   let addr = format!("{host}:{port}");
   let listener = tokio::net::TcpListener::bind(&addr).await?;
   eprintln!("TreeTime server listening on http://{addr}");
-  axum::serve(listener, create_router(config))
+  axum::serve(listener, create_router(config, static_dir))
     .with_graceful_shutdown(shutdown_signal())
     .await?;
   Ok(())

@@ -7,21 +7,18 @@ pub mod state;
 
 use crate::state::ServerConfig;
 use axum::Router;
-use std::env;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
-const STATIC_DIR_ENV: &str = "STATIC_DIR";
-
-pub fn create_router(config: ServerConfig) -> Router {
+pub fn create_router(config: ServerConfig, static_dir: Option<String>) -> Router {
   let api = routes::api_routes(config);
 
-  match env::var(STATIC_DIR_ENV) {
-    Ok(static_dir) => {
+  match static_dir {
+    Some(static_dir) => {
       let index = format!("{static_dir}/index.html");
       api.fallback_service(ServeDir::new(&static_dir).fallback(ServeFile::new(index)))
     },
-    Err(_) => api,
+    None => api,
   }
   .layer(CorsLayer::permissive())
 }
