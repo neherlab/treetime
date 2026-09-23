@@ -63,12 +63,7 @@ impl CoalescentOutput {
   }
 
   pub fn rows(&self) -> Vec<CoalescentSegmentRow> {
-    self
-      .outputs
-      .segments
-      .iter()
-      .map(CoalescentSegmentRow::from_segment)
-      .collect()
+    self.outputs.segments.iter().map(CoalescentSegmentRow::from).collect()
   }
 }
 
@@ -120,8 +115,8 @@ pub struct CoalescentSegmentRow {
   pub ne_upper: Option<f64>,
 }
 
-impl CoalescentSegmentRow {
-  fn from_segment(segment: &CoalescentSegment) -> Self {
+impl From<&CoalescentSegment> for CoalescentSegmentRow {
+  fn from(segment: &CoalescentSegment) -> Self {
     Self {
       index: segment.index + 1,
       segment_start: segment.segment.start,
