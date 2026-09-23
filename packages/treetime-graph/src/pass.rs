@@ -292,13 +292,6 @@ impl GraphPass {
   }
 }
 
-pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
-  pub node_key: GraphNodeKey,
-  pub edge_key: GraphEdgeKey,
-  pub node: &'a NodeOut,
-  pub edge: Option<&'a EdgeOut>,
-}
-
 pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
@@ -306,6 +299,13 @@ pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub input: &'a N,
   pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
+}
+
+pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
+  pub node_key: GraphNodeKey,
+  pub edge_key: GraphEdgeKey,
+  pub node: &'a NodeOut,
+  pub edge: Option<&'a EdgeOut>,
 }
 
 pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
