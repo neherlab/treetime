@@ -9,12 +9,12 @@ use app_datasets::discover_datasets;
 use napi::Task;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
-use std::env;
 use std::path::Path;
 use std::sync::Arc;
 use treetime::cancel::{CancelledError, NoopCancel};
 use treetime::progress::NoopProgress;
 use treetime_schema::version_info;
+use treetime_utils::env::env_var_optional;
 
 const DATA_DIR_ENV: &str = "DATA_DIR";
 
@@ -27,15 +27,13 @@ pub fn version() -> String {
   serde_json::to_string(&version_info()).expect("version_info serialization failed")
 }
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 #[napi]
-pub fn datasets() -> String {
-  let data_dir = env::var(DATA_DIR_ENV).unwrap_or_else(|_| "data".to_owned());
+pub fn datasets() -> napi::Result<String> {
+  let data_dir = env_var_optional(DATA_DIR_ENV)
+    .map_err(|e| eyre_to_napi(&e))?
+    .unwrap_or_else(|| "data".to_owned());
   let datasets = discover_datasets(Path::new(&data_dir));
-  serde_json::to_string(&datasets).expect("datasets serialization failed")
+  serde_json::to_string(&datasets).map_err(|e| json_to_napi(&e))
 }
 
 #[napi]
