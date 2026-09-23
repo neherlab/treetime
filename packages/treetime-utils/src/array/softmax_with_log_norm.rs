@@ -3,6 +3,7 @@ mod __tests__;
 
 use ndarray::{Array1, ArrayView1};
 use ndarray_stats::QuantileExt;
+use ndarray_stats::errors::MinMaxError;
 
 #[allow(
   clippy::as_conversions,
@@ -13,8 +14,8 @@ pub fn softmax_with_log_norm(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64)
 
   let max_val = match log_vec.max() {
     Ok(&max) => max,
-    Err(_) if n == 0 => return (Array1::zeros(0), f64::NEG_INFINITY),
-    Err(_) => return (Array1::from_elem(n, f64::NAN), f64::NAN),
+    Err(MinMaxError::EmptyInput) => return (Array1::zeros(0), f64::NEG_INFINITY),
+    Err(MinMaxError::UndefinedOrder) => return (Array1::from_elem(n, f64::NAN), f64::NAN),
   };
 
   if max_val == f64::INFINITY {
