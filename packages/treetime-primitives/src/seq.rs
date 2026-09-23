@@ -2,18 +2,6 @@ use crate::seq_char::AsciiChar;
 use eyre::Report;
 use treetime_utils::error::make_error;
 
-impl PartialEq<Seq> for str {
-  fn eq(&self, other: &Seq) -> bool {
-    other == self
-  }
-}
-
-impl PartialEq<Seq> for String {
-  fn eq(&self, other: &Seq) -> bool {
-    other == self.as_str()
-  }
-}
-
 impl<'a> IntoIterator for &'a Seq {
   type Item = &'a AsciiChar;
   type IntoIter = core::slice::Iter<'a, AsciiChar>;
@@ -36,6 +24,18 @@ impl<'a> IntoIterator for &'a mut Seq {
 #[derive(Clone, PartialOrd, Ord, Default)]
 pub struct Seq {
   data: Vec<AsciiChar>,
+}
+
+impl PartialEq<Seq> for str {
+  fn eq(&self, other: &Seq) -> bool {
+    other == self
+  }
+}
+
+impl PartialEq<Seq> for String {
+  fn eq(&self, other: &Seq) -> bool {
+    other == self.as_str()
+  }
 }
 
 impl Seq {
