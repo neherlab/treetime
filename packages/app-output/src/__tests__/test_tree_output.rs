@@ -284,7 +284,7 @@ pub mod tests {
     use std::collections::BTreeMap;
     use std::error::Error;
     use std::io;
-    use treetime::gtr::gtr::{GTR, GTRParams};
+    use treetime::gtr::gtr::GTR;
     use treetime::mugration::pipeline::MugrationOutput;
     use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use treetime::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
@@ -768,12 +768,7 @@ pub mod tests {
       let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
-      let gtr = GTR::new(GTRParams {
-        n_states: 2,
-        mu: 1.0,
-        W: None,
-        pi: array![0.5, 0.5],
-      })?;
+      let gtr = GTR::builder().n_states(2).mu(1.0).pi(array![0.5, 0.5]).build()?;
       let partition = PartitionMarginalDiscrete::new(states, 1e-8, false);
       let node_states: BTreeMap<GraphNodeKey, DenseNodeState> = graph
         .get_nodes()

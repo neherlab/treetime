@@ -1,4 +1,5 @@
 use argmin::core::{CostFunction, Error, IterState, KV, Problem, Solver, State, TerminationReason};
+use bon::bon;
 
 const GOLDEN: f64 = 0.381_966_011_250_105;
 
@@ -18,7 +19,9 @@ pub struct BrentBracketed {
   d: f64,
 }
 
+#[bon]
 impl BrentBracketed {
+  #[builder]
   pub(crate) fn new(xa: f64, xb: f64, xc: f64) -> Self {
     let (a, b) = if xa < xc { (xa, xc) } else { (xc, xa) };
     Self {
@@ -171,7 +174,7 @@ mod tests {
   }
 
   fn minimize(f: fn(f64) -> f64, xa: f64, xb: f64, xc: f64) -> Result<f64, Report> {
-    let solver = BrentBracketed::new(xa, xb, xc);
+    let solver = BrentBracketed::builder().xa(xa).xb(xb).xc(xc).build();
     let res = Executor::new(Fn1D(f), solver)
       .configure(|cfg| cfg.max_iters(500))
       .run()

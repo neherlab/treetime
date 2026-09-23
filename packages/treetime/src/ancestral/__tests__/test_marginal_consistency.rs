@@ -12,7 +12,7 @@ mod tests {
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
@@ -390,12 +390,12 @@ mod tests {
       [1.0, 1.0, 1.0, 0.0],
     ];
 
-    let gtr = GTR::new(GTRParams {
-      n_states: alphabet.n_canonical(),
-      mu: 1.0,
-      W: Some(W),
-      pi,
-    })?;
+    let gtr = GTR::builder()
+      .n_states(alphabet.n_canonical())
+      .mu(1.0)
+      .W(W)
+      .pi(pi)
+      .build()?;
 
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
     let nwk_parsed = nwk_read_str(tree_newick)?;

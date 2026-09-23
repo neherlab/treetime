@@ -129,7 +129,7 @@ pub fn run_prune(
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match gtr.as_ref() {
       Some(gtr) => {
-        let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
+        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(GtrModelName::JC69).build();
         write_gtr_json(&gtr_output, path)?;
       },
       None if args.output_gtr.is_some() => {

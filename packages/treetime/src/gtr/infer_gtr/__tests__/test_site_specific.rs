@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::__tests__::site_specific_support::simulate_counts;
-  use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
+  use crate::gtr::gtr_site_specific::GTRSiteSpecific;
   use crate::gtr::infer_gtr::site_specific::{
     InferGtrSiteSpecificOptions, build_gtr_site_specific, infer_gtr_site_specific_impl,
   };
@@ -21,15 +21,15 @@ mod tests {
       w
     };
 
-    let gtr = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len: 2,
-      mu: array![1.0, 1.0],
-      W: Some(W),
-      pi,
-      approximate: false,
-    })
-    .unwrap();
+    let gtr = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(2)
+      .mu(array![1.0, 1.0])
+      .W(W)
+      .pi(pi)
+      .approximate(false)
+      .build()
+      .unwrap();
 
     let counts = simulate_counts(&gtr, 10000.0);
 
@@ -68,15 +68,14 @@ mod tests {
   fn test_infer_gtr_site_specific_produces_valid_model() {
     let pi = array![[0.1, 0.25, 0.4], [0.2, 0.25, 0.1], [0.3, 0.25, 0.2], [0.4, 0.25, 0.3]];
 
-    let gtr = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len: 3,
-      mu: array![1.0, 2.0, 0.5],
-      W: None,
-      pi,
-      approximate: false,
-    })
-    .unwrap();
+    let gtr = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(3)
+      .mu(array![1.0, 2.0, 0.5])
+      .pi(pi)
+      .approximate(false)
+      .build()
+      .unwrap();
 
     let counts = simulate_counts(&gtr, 500.0);
 

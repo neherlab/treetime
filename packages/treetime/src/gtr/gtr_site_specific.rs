@@ -1,5 +1,6 @@
 use crate::gtr::gtr::eig_single_site;
 use crate::{make_error, make_report};
+use bon::bon;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray::{Array3, Array4};
@@ -23,20 +24,20 @@ pub struct GTRSiteSpecific {
   interpolator: Option<ExpQtInterpolator>,
 }
 
+#[bon]
 impl GTRSiteSpecific {
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
+  #[builder]
   pub(crate) fn new(
-    GTRSiteSpecificParams {
-      n_states,
-      seq_len,
-      mu,
-      W,
-      pi,
-      approximate,
-    }: GTRSiteSpecificParams,
+    n_states: usize,
+    seq_len: usize,
+    mu: Array1<f64>,
+    W: Option<Array2<f64>>,
+    pi: Array2<f64>,
+    approximate: bool,
   ) -> Result<Self, Report> {
     if mu.len() != seq_len {
       return make_error!("mu length {} does not match seq_len {seq_len}", mu.len());
@@ -76,7 +77,7 @@ impl GTRSiteSpecific {
           return make_error!("Site {a} has non-positive pi column sum: {}", col_sums[a]);
         }
       }
-      let pi = &pi / &col_sums;
+      let pi = pi / &col_sums;
       for a in 0..seq_len {
         for i in 0..n_states {
           if pi[[i, a]] <= 0.0 {
@@ -195,14 +196,14 @@ impl GTRSiteSpecific {
       mu
     };
 
-    let mut model = Self::new(GTRSiteSpecificParams {
-      n_states,
-      seq_len,
-      mu,
-      W: Some(W),
-      pi,
-      approximate: false,
-    })?;
+    let mut model = Self::builder()
+      .n_states(n_states)
+      .seq_len(seq_len)
+      .mu(mu)
+      .W(W)
+      .pi(pi)
+      .approximate(false)
+      .build()?;
 
     let mean_rate = model.average_rate().sum() / seq_len as f64;
     if mean_rate > 0.0 {
@@ -330,16 +331,6 @@ impl GTRSiteSpecific {
       rate_scale,
     });
   }
-}
-
-#[derive(Clone, Debug)]
-pub struct GTRSiteSpecificParams {
-  pub n_states: usize,
-  pub seq_len: usize,
-  pub mu: Array1<f64>,
-  pub W: Option<Array2<f64>>,
-  pub pi: Array2<f64>,
-  pub approximate: bool,
 }
 
 #[derive(Clone, Debug)]

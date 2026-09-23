@@ -1,5 +1,5 @@
 use crate::gtr::brent_bracketed::BrentBracketed;
-use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::make_internal_report;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
@@ -95,12 +95,12 @@ fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions, n_states: usize
 }
 
 fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<GTR, Report> {
-  GTR::new(GTRParams {
-    n_states,
-    mu: result.mu,
-    W: Some(result.W.clone()),
-    pi: result.pi.clone(),
-  })
+  GTR::builder()
+    .n_states(n_states)
+    .mu(result.mu)
+    .W(result.W.clone())
+    .pi(result.pi.clone())
+    .build()
 }
 
 fn log_final(gtr: &GTR, log_lh: LogLh) {
@@ -181,7 +181,7 @@ where
   let (cost_hi, at_hi) = evaluate(hi);
 
   if cost_mid < cost_lo && cost_mid < cost_hi {
-    let solver = BrentBracketed::new(lo, sqrt_old_mu, hi);
+    let solver = BrentBracketed::builder().xa(lo).xb(sqrt_old_mu).xc(hi).build();
     let res = Executor::new(&cost_fn, solver)
       .configure(|cfg| cfg.max_iters(500))
       .run()

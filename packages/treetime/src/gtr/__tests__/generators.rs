@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub mod tests {
   pub mod generators {
-    use crate::gtr::gtr::{GTR, GTRParams};
+    use crate::gtr::gtr::GTR;
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
 
@@ -71,13 +71,13 @@ pub mod tests {
 
     pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
       (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
-        GTR::new(GTRParams {
-          n_states: 4,
-          mu,
-          W: Some(w),
-          pi,
-        })
-        .expect("GTR construction should succeed with valid parameters")
+        GTR::builder()
+          .n_states(4)
+          .mu(mu)
+          .W(w)
+          .pi(pi)
+          .build()
+          .expect("GTR construction should succeed with valid parameters")
       })
     }
 

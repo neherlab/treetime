@@ -114,8 +114,12 @@ pub(crate) fn run_mugration(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output =
-      GtrOutput::new(&output.gtr, GtrModelName::Infer).with_discrete_states(&args.attribute, output.states.iter());
+    let gtr_output = GtrOutput::builder()
+      .gtr(&output.gtr)
+      .model_name(GtrModelName::Infer)
+      .attribute(&args.attribute)
+      .states(output.states.iter().map(ToOwned::to_owned).collect())
+      .build();
     write_gtr_json(&gtr_output, path)?;
   }
 

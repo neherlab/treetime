@@ -6,6 +6,7 @@ mod tests {
   use rstest::rstest;
   use tempfile::TempDir;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::vec_of_owned;
 
   #[rustfmt::skip]
   #[rstest]
@@ -16,7 +17,7 @@ mod tests {
   fn test_write_gtr_json_filename(#[case] filename: &str) {
     let dir = TempDir::new().unwrap();
     let gtr = jc69(JC69Params::default()).unwrap();
-    let output = GtrOutput::new(&gtr, GtrModelName::JC69);
+    let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
     write_gtr_json(&output, dir.path().join(filename)).unwrap();
 
     let expected_path = dir.path().join(filename);
@@ -27,7 +28,7 @@ mod tests {
   fn test_write_gtr_json_both_partitions_no_overwrite() {
     let dir = TempDir::new().unwrap();
     let gtr = jc69(JC69Params::default()).unwrap();
-    let output = GtrOutput::new(&gtr, GtrModelName::JC69);
+    let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
 
     write_gtr_json(&output, dir.path().join("gtr_sparse.json")).unwrap();
     write_gtr_json(&output, dir.path().join("gtr_dense.json")).unwrap();
@@ -49,7 +50,7 @@ mod tests {
   #[test]
   fn test_gtr_output_without_discrete_states_omits_fields() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let output = GtrOutput::new(&gtr, GtrModelName::JC69);
+    let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
     let json = json_write_str(&output, JsonPretty(false))?;
     let parsed: serde_json::Value = serde_json::from_str(&json)?;
 
@@ -68,8 +69,12 @@ mod tests {
   #[test]
   fn test_gtr_output_with_discrete_states_includes_fields() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let output =
-      GtrOutput::new(&gtr, GtrModelName::Infer).with_discrete_states("country", ["france", "germany", "usa"].iter());
+    let output = GtrOutput::builder()
+      .gtr(&gtr)
+      .model_name(GtrModelName::Infer)
+      .attribute("country")
+      .states(vec_of_owned!["france", "germany", "usa"])
+      .build();
     let json = json_write_str(&output, JsonPretty(false))?;
     let parsed: serde_json::Value = serde_json::from_str(&json)?;
 
@@ -84,7 +89,12 @@ mod tests {
   #[test]
   fn test_gtr_output_with_discrete_states_roundtrip() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let original = GtrOutput::new(&gtr, GtrModelName::Infer).with_discrete_states("region", ["asia", "europe"].iter());
+    let original = GtrOutput::builder()
+      .gtr(&gtr)
+      .model_name(GtrModelName::Infer)
+      .attribute("region")
+      .states(vec_of_owned!["asia", "europe"])
+      .build();
     let json = json_write_str(&original, JsonPretty(true))?;
     let restored: GtrOutput = serde_json::from_str(&json)?;
 

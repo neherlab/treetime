@@ -4,7 +4,7 @@ mod tests {
   use crate::gtr::get_gtr::{
     F81Params, HKY85Params, JC69Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, k80, t92, tn93,
   };
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use eyre::Report;
   use rstest::rstest;
 
@@ -151,12 +151,12 @@ mod tests {
     let expected = &outputs.custom[case];
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: input.mu,
-      W: Some(input.w.clone()),
-      pi: input.pi.clone(),
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(input.mu)
+      .W(input.w.clone())
+      .pi(input.pi.clone())
+      .build()?;
     compare_gtr(&gtr, expected);
     Ok(())
   }

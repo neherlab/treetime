@@ -1,4 +1,5 @@
 use crate::make_error;
+use bon::bon;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
@@ -28,8 +29,10 @@ pub struct GTR {
   pub unimodal_branch_likelihood: bool,
 }
 
+#[bon]
 impl GTR {
-  pub fn new(GTRParams { n_states, mu, W, pi }: GTRParams) -> Result<Self, Report> {
+  #[builder]
+  pub fn new(n_states: usize, mu: f64, W: Option<Array2<f64>>, pi: Array1<f64>) -> Result<Self, Report> {
     let n = n_states;
 
     if pi.shape() != [n] {
@@ -196,12 +199,4 @@ pub(super) fn eig_single_site(
   let v_inv = (eigvecs * one_norm).t().to_owned() / sqrt_pi;
 
   Ok((eigvals, v, v_inv))
-}
-
-#[derive(Clone, Debug)]
-pub struct GTRParams {
-  pub n_states: usize,
-  pub mu: f64,
-  pub W: Option<Array2<f64>>,
-  pub pi: Array1<f64>,
 }

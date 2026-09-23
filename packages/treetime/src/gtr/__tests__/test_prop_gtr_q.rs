@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::__tests__::generators::tests::generators::{arb_gtr_nuc, arb_pi_nuc, arb_w_nuc};
   use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_detailed_balance};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use proptest::prelude::*;
   use treetime_utils::{
     prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq, prop_assert_array_diag_nonpositive,
@@ -57,19 +57,9 @@ mod tests {
       let alphabet = Alphabet::new(AlphabetName::Nuc).expect("alphabet");
       let n_states = alphabet.n_canonical();
 
-      let gtr1 = GTR::new(GTRParams {
-        n_states,
-        mu: 1.0,
-        W: Some(w.clone()),
-        pi: pi.clone(),
-      }).expect("GTR with mu=1");
+      let gtr1 = GTR::builder().n_states(n_states).mu(1.0).W(w.clone()).pi(pi.clone()).build().expect("GTR with mu=1");
 
-      let gtr2 = GTR::new(GTRParams {
-        n_states,
-        mu: 2.0,
-        W: Some(w),
-        pi,
-      }).expect("GTR with mu=2");
+      let gtr2 = GTR::builder().n_states(n_states).mu(2.0).W(w).pi(pi).build().expect("GTR with mu=2");
 
       let p1 = gtr1.expQt(2.0 * t);
       let p2 = gtr2.expQt(t);

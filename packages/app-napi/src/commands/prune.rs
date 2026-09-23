@@ -124,7 +124,7 @@ pub fn run_prune(args: &PruneArgs, cancel: &dyn Cancel, progress: &dyn ProgressS
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match gtr.as_ref() {
       Some(gtr) => {
-        let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
+        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(GtrModelName::JC69).build();
         write_gtr_json(&gtr_output, path)?;
       },
       None => log::warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --aln)"),

@@ -170,7 +170,7 @@ pub fn run_timetree(
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match (gtr.as_ref(), model_name) {
       (Some(gtr), Some(model_name)) => {
-        let gtr_output = GtrOutput::new(gtr, model_name);
+        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
         write_gtr_json(&gtr_output, path)?;
       },
       _ => warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"),

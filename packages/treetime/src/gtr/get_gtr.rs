@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::gtr::GTR;
 use crate::make_error;
+use bon::bon;
 use eyre::Report;
 use log::info;
 use ndarray::{Array1, Array2, array};
@@ -17,7 +18,7 @@ use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
 pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
-  let output = GtrOutput::new(gtr, model_name);
+  let output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
   let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
   info!("GTR model initialized:\n{json}");
 }
@@ -43,8 +44,15 @@ pub struct GtrOutput {
   pub states: Option<Vec<String>>,
 }
 
+#[bon]
 impl GtrOutput {
-  pub fn new(gtr: &GTR, model_name: GtrModelName) -> Self {
+  #[builder]
+  pub fn new(
+    gtr: &GTR,
+    model_name: GtrModelName,
+    #[builder(into)] attribute: Option<String>,
+    states: Option<Vec<String>>,
+  ) -> Self {
     let model_type = match model_name {
       GtrModelName::Infer => GtrModelType::Inferred,
       _ => GtrModelType::Named,
@@ -56,16 +64,9 @@ impl GtrOutput {
       pi: gtr.pi.clone(),
       w: gtr.W.clone(),
       n_states: gtr.pi.len(),
-      attribute: None,
-      states: None,
+      attribute,
+      states,
     }
-  }
-
-  #[must_use]
-  pub fn with_discrete_states(mut self, attribute: &str, states: impl Iterator<Item = impl AsRef<str>>) -> Self {
-    self.attribute = Some(attribute.to_owned());
-    self.states = Some(states.map(|s| s.as_ref().to_owned()).collect());
-    self
   }
 }
 
@@ -115,7 +116,7 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
-  let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
+  let mut gtr = GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()?;
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
@@ -138,7 +139,7 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = Array1::<f64>::ones(n_states) / (n_states as f64);
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -162,7 +163,7 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
-  let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
+  let mut gtr = GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()?;
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
@@ -195,7 +196,7 @@ pub(crate) fn hky85(
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
 #[derive(Clone, Debug, SmartDefault)]
@@ -229,7 +230,7 @@ pub(crate) fn t92(
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -294,12 +295,7 @@ pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Re
   }
 
   let n_states = alphabet.n_canonical();
-  GTR::new(GTRParams {
-    n_states,
-    mu,
-    W: Some(w),
-    pi,
-  })
+  GTR::builder().n_states(n_states).mu(mu).W(w).pi(pi).build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -348,7 +344,7 @@ pub(crate) fn tn93(
   let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / (n_states as f64));
   let pi = &pi / pi.sum();
 
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
 #[derive(Clone, Debug, SmartDefault)]

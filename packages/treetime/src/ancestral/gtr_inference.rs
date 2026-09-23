@@ -1,4 +1,4 @@
-use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::seq::mutation::Sub;
@@ -17,7 +17,7 @@ pub fn infer_gtr_fitch(
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let n_states = partition.alphabet.n_canonical();
   let W = Some(W);
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
 #[allow(

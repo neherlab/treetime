@@ -130,7 +130,7 @@ pub fn run_ancestral(
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match gtr.as_ref() {
       Some(gtr) => {
-        let gtr_output = GtrOutput::new(gtr, model_name);
+        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
         write_gtr_json(&gtr_output, path)?;
       },
       None => warn!("Skipping GTR output: no GTR model was fitted (use model=infer or gtr_iterations)"),

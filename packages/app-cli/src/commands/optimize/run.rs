@@ -104,7 +104,7 @@ pub fn run_optimize(
     .collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::new(&gtr, model_name);
+    let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
     write_gtr_json(&gtr_output, path)?;
   }
 

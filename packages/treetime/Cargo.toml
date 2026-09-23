@@ -27,6 +27,7 @@ approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
 auto_ops = { workspace = true }
+bon = { workspace = true }
 color-eyre = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }

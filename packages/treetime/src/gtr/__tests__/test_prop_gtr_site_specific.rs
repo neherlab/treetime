@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
+  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr_site_specific::GTRSiteSpecific;
   use ndarray::prelude::*;
   use proptest::prelude::*;
   use treetime_utils::array::batched::{matmul_3d, matvec_3d};
@@ -12,7 +12,7 @@ mod tests {
 
   mod generators {
     use crate::gtr::__tests__::generators::tests::generators::{arb_pi_nuc, arb_w_nuc};
-    use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
+    use crate::gtr::gtr_site_specific::GTRSiteSpecific;
     use ndarray::prelude::*;
     use proptest::prelude::*;
 
@@ -28,15 +28,15 @@ mod tests {
             pi.column_mut(a).assign(p);
           }
           let mu = Array1::from_vec(mus);
-          GTRSiteSpecific::new(GTRSiteSpecificParams {
-            n_states: 4,
-            seq_len,
-            mu,
-            W: Some(w),
-            pi,
-            approximate: false,
-          })
-          .expect("GTRSiteSpecific construction should succeed")
+          GTRSiteSpecific::builder()
+            .n_states(4)
+            .seq_len(seq_len)
+            .mu(mu)
+            .W(w)
+            .pi(pi)
+            .approximate(false)
+            .build()
+            .expect("GTRSiteSpecific construction should succeed")
         })
     }
 
@@ -52,15 +52,15 @@ mod tests {
             pi.column_mut(a).assign(p);
           }
           let mu = Array1::from_vec(mus);
-          GTRSiteSpecific::new(GTRSiteSpecificParams {
-            n_states: 4,
-            seq_len,
-            mu,
-            W: Some(w),
-            pi,
-            approximate: true,
-          })
-          .expect("GTRSiteSpecific construction should succeed")
+          GTRSiteSpecific::builder()
+            .n_states(4)
+            .seq_len(seq_len)
+            .mu(mu)
+            .W(w)
+            .pi(pi)
+            .approximate(true)
+            .build()
+            .expect("GTRSiteSpecific construction should succeed")
         })
     }
   }
@@ -262,42 +262,39 @@ mod tests {
   #[test]
   fn test_gtr_site_specific_rejects_zero_pi_column() {
     let pi = array![[0.25, 0.0], [0.25, 0.0], [0.25, 0.0], [0.25, 0.0]];
-    let result = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len: 2,
-      mu: array![1.0, 1.0],
-      W: None,
-      pi,
-      approximate: false,
-    });
+    let result = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(2)
+      .mu(array![1.0, 1.0])
+      .pi(pi)
+      .approximate(false)
+      .build();
     assert!(result.is_err(), "Should reject zero-sum pi column");
   }
 
   #[test]
   fn test_gtr_site_specific_rejects_negative_mu() {
     let pi = array![[0.25, 0.25], [0.25, 0.25], [0.25, 0.25], [0.25, 0.25]];
-    let result = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len: 2,
-      mu: array![1.0, -0.5],
-      W: None,
-      pi,
-      approximate: false,
-    });
+    let result = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(2)
+      .mu(array![1.0, -0.5])
+      .pi(pi)
+      .approximate(false)
+      .build();
     assert!(result.is_err(), "Should reject negative mu");
   }
 
   #[test]
   fn test_gtr_site_specific_rejects_dimension_mismatch() {
     let pi = array![[0.25, 0.25], [0.25, 0.25], [0.25, 0.25], [0.25, 0.25]];
-    let result = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len: 2,
-      mu: array![1.0, 1.0, 1.0],
-      W: None,
-      pi,
-      approximate: false,
-    });
+    let result = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(2)
+      .mu(array![1.0, 1.0, 1.0])
+      .pi(pi)
+      .approximate(false)
+      .build();
     assert!(result.is_err(), "Should reject mu length mismatch");
   }
 
@@ -327,13 +324,13 @@ mod tests {
       w
     };
 
-    let standard = GTR::new(GTRParams {
-      n_states: 4,
-      mu: 1.0,
-      W: Some(W.clone()),
-      pi: pi.clone(),
-    })
-    .unwrap();
+    let standard = GTR::builder()
+      .n_states(4)
+      .mu(1.0)
+      .W(W.clone())
+      .pi(pi.clone())
+      .build()
+      .unwrap();
 
     let seq_len = 3;
     let mut pi_2d = Array2::zeros((4, seq_len));
@@ -341,15 +338,15 @@ mod tests {
       pi_2d.column_mut(a).assign(&pi);
     }
 
-    let site_specific = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states: 4,
-      seq_len,
-      mu: Array1::ones(seq_len),
-      W: Some(W),
-      pi: pi_2d,
-      approximate: false,
-    })
-    .unwrap();
+    let site_specific = GTRSiteSpecific::builder()
+      .n_states(4)
+      .seq_len(seq_len)
+      .mu(Array1::ones(seq_len))
+      .W(W)
+      .pi(pi_2d)
+      .approximate(false)
+      .build()
+      .unwrap();
 
     let t = 0.5;
     let p_standard = standard.expQt(t);
@@ -384,15 +381,14 @@ mod tests {
 
     pub fn two_site_model() -> GTRSiteSpecific {
       let pi = array![[0.25, 0.1], [0.25, 0.2], [0.25, 0.3], [0.25, 0.4]];
-      GTRSiteSpecific::new(GTRSiteSpecificParams {
-        n_states: 4,
-        seq_len: 2,
-        mu: array![1.0, 1.0],
-        W: None,
-        pi,
-        approximate: false,
-      })
-      .expect("Construction should succeed")
+      GTRSiteSpecific::builder()
+        .n_states(4)
+        .seq_len(2)
+        .mu(array![1.0, 1.0])
+        .pi(pi)
+        .approximate(false)
+        .build()
+        .expect("Construction should succeed")
     }
   }
 }

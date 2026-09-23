@@ -156,7 +156,7 @@ mod tests {
 
   mod helpers {
     use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
-    use crate::gtr::gtr::{GTR, GTRParams};
+    use crate::gtr::gtr::GTR;
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
@@ -175,12 +175,11 @@ mod tests {
     pub(super) fn make_partition(states: [&str; 2]) -> Result<(PartitionMarginalDiscrete, GTR), Report> {
       let discrete_states = DiscreteStates::from_values(states.into_iter(), "?");
       let n_states = discrete_states.len();
-      let gtr = GTR::new(GTRParams {
-        n_states,
-        mu: 1.0,
-        W: None,
-        pi: Array1::from_elem(n_states, 1.0 / n_states as f64),
-      })?;
+      let gtr = GTR::builder()
+        .n_states(n_states)
+        .mu(1.0)
+        .pi(Array1::from_elem(n_states, 1.0 / n_states as f64))
+        .build()?;
 
       Ok((
         PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, false),

@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::{run_dense_marginal_with_newick, run_sparse_marginal_with_newick};
   use eyre::Report;
@@ -40,12 +40,11 @@ mod tests {
   fn test_equilibrium_convergence_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.4, 0.1, 0.2, 0.3],
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.4, 0.1, 0.2, 0.3])
+      .build()?;
 
     let t = 100.0;
     let expected_equilibrium_log_lh = (0.4 * 0.2_f64).ln();

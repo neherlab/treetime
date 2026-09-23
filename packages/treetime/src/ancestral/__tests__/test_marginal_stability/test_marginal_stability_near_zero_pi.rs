@@ -5,7 +5,7 @@ mod tests {
     run_sparse_marginal_with_partitions,
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use eyre::Report;
   use ndarray::array;
 
@@ -13,12 +13,11 @@ mod tests {
   fn test_near_zero_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.97, 0.01, 0.01, 0.01],
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.97, 0.01, 0.01, 0.01])
+      .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nCCCC\n>B\nGGGG\n";
@@ -42,12 +41,11 @@ mod tests {
   fn test_near_zero_pi_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.97, 0.01, 0.01, 0.01],
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.97, 0.01, 0.01, 0.01])
+      .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nCCCC\n>B\nGGGG\n";
@@ -71,12 +69,11 @@ mod tests {
   fn test_near_zero_pi_with_dominant_state_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.97, 0.01, 0.01, 0.01],
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.97, 0.01, 0.01, 0.01])
+      .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nAAAA\n>B\nAAAA\n";
@@ -96,12 +93,11 @@ mod tests {
   fn test_extremely_skewed_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.9997, 0.0001, 0.0001, 0.0001],
-    })?;
+    let gtr = GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.9997, 0.0001, 0.0001, 0.0001])
+      .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";
     let aln = ">A\nACGT\n>B\nACGT\n";

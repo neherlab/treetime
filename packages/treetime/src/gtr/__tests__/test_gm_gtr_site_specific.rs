@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
+  use crate::gtr::gtr_site_specific::GTRSiteSpecific;
   use crate::gtr::infer_gtr::site_specific::{InferGtrSiteSpecificOptions, infer_gtr_site_specific_impl};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -93,14 +93,14 @@ mod tests {
     let total_time = infer_input["total_time"].as_f64().unwrap();
     let pc = infer_input["pc"].as_f64().unwrap();
 
-    let gtr_ref = GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states,
-      seq_len,
-      mu,
-      W: Some(W),
-      pi,
-      approximate: false,
-    })?;
+    let gtr_ref = GTRSiteSpecific::builder()
+      .n_states(n_states)
+      .seq_len(seq_len)
+      .mu(mu)
+      .W(W)
+      .pi(pi)
+      .approximate(false)
+      .build()?;
 
     let counts = simulate_counts(&gtr_ref, total_time);
 
@@ -171,26 +171,26 @@ mod tests {
 
   fn build_from_input(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
     let (n_states, seq_len, mu, W, pi) = parse_input(input);
-    GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states,
-      seq_len,
-      mu,
-      W,
-      pi,
-      approximate: false,
-    })
+    GTRSiteSpecific::builder()
+      .n_states(n_states)
+      .seq_len(seq_len)
+      .mu(mu)
+      .maybe_W(W)
+      .pi(pi)
+      .approximate(false)
+      .build()
   }
 
   fn build_from_input_approximate(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
     let (n_states, seq_len, mu, W, pi) = parse_input(input);
-    GTRSiteSpecific::new(GTRSiteSpecificParams {
-      n_states,
-      seq_len,
-      mu,
-      W,
-      pi,
-      approximate: true,
-    })
+    GTRSiteSpecific::builder()
+      .n_states(n_states)
+      .seq_len(seq_len)
+      .mu(mu)
+      .maybe_W(W)
+      .pi(pi)
+      .approximate(true)
+      .build()
   }
 
   mod helpers {

@@ -3,7 +3,7 @@ mod tests {
   use super::super::test_gtr_numerical_edge_support::assert_stochastic_matrix;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{HKY85Params, K80Params, hky85, k80};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
@@ -72,12 +72,7 @@ mod tests {
     ];
 
     let pi = array![0.25, 0.25, 0.25, 0.25];
-    let gtr = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: Some(w),
-      pi,
-    })?;
+    let gtr = GTR::builder().n_states(n_states).mu(1.0).W(w).pi(pi).build()?;
 
     let p = gtr.expQt(1.0);
     assert!(

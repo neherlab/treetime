@@ -12,7 +12,7 @@ mod tests {
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
@@ -121,23 +121,21 @@ mod tests {
   fn make_python_reference_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.2, 0.3, 0.15, 0.35],
-    })
+    GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.2, 0.3, 0.15, 0.35])
+      .build()
   }
 
   fn make_python_reference_gtr2() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
-    GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: None,
-      pi: array![0.4, 0.15, 0.12, 0.33],
-    })
+    GTR::builder()
+      .n_states(n_states)
+      .mu(1.0)
+      .pi(array![0.4, 0.15, 0.12, 0.33])
+      .build()
   }
 
   const PYTHON_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";

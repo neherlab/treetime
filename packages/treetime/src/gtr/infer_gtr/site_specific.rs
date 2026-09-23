@@ -1,4 +1,4 @@
-use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
+use crate::gtr::gtr_site_specific::GTRSiteSpecific;
 use eyre::Report;
 use log::warn;
 use ndarray::Array3;
@@ -140,14 +140,14 @@ pub fn build_gtr_site_specific(
   approximate: bool,
 ) -> Result<GTRSiteSpecific, Report> {
   let seq_len = result.pi.ncols();
-  GTRSiteSpecific::new(GTRSiteSpecificParams {
-    n_states,
-    seq_len,
-    mu: result.mu.clone(),
-    W: Some(result.W.clone()),
-    pi: result.pi.clone(),
-    approximate,
-  })
+  GTRSiteSpecific::builder()
+    .n_states(n_states)
+    .seq_len(seq_len)
+    .mu(result.mu.clone())
+    .W(result.W.clone())
+    .pi(result.pi.clone())
+    .approximate(approximate)
+    .build()
 }
 
 #[derive(Clone, Debug)]

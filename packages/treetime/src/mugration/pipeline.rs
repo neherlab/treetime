@@ -2,7 +2,7 @@ use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
-use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_model_and_rate;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -90,12 +90,7 @@ pub fn run(
     pi
   };
 
-  let gtr = GTR::new(GTRParams {
-    n_states,
-    mu: 1.0,
-    W: None,
-    pi,
-  })?;
+  let gtr = GTR::builder().n_states(n_states).mu(1.0).pi(pi).build()?;
 
   let partition = PartitionMarginalDiscrete::new(
     discrete_states,

@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{F81Params, HKY85Params, JC69Params, K80Params, TN93Params, f81, hky85, jc69, k80, tn93};
-  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::gtr::GTR;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::array;
@@ -156,12 +156,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).expect("Nuc alphabet should be valid");
     let n_states = alphabet.n_canonical();
 
-    let g = GTR::new(GTRParams {
-      n_states,
-      mu: 1.0,
-      W: Some(w),
-      pi,
-    })?;
+    let g = GTR::builder().n_states(n_states).mu(1.0).W(w).pi(pi).build()?;
 
     let q_t = t.Q();
     let q_g = g.Q();
