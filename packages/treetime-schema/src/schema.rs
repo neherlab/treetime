@@ -12,6 +12,33 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 #[cfg(feature = "clap")]
 use clap::ValueEnum;
 
+pub fn generate_schema(format: &TreetimeSchemaFormat, output: Option<&PathBuf>) -> Result<(), Report> {
+  match format {
+    TreetimeSchemaFormat::All => {
+      let output_dir = output.map_or_else(|| PathBuf::from("."), |p| p.clone());
+      for fmt in TreetimeSchemaFormat::iter() {
+        if let Some(filename) = fmt.default_filename() {
+          let path = output_dir.join(filename);
+          generate_schema(&fmt, Some(&path))?;
+        }
+      }
+    },
+    TreetimeSchemaFormat::VersionInfo => {
+      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
+      generate_schema_for::<VersionInfo>(&path)?;
+    },
+    TreetimeSchemaFormat::ProgressEvent => {
+      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
+      generate_schema_for::<ProgressEvent>(&path)?;
+    },
+    TreetimeSchemaFormat::ErrorResponse => {
+      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
+      generate_schema_for::<ErrorResponse>(&path)?;
+    },
+  }
+  Ok(())
+}
+
 #[derive(Debug, Clone, Default, EnumIter, serde::Serialize)]
 #[cfg_attr(feature = "clap", derive(ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -51,32 +78,5 @@ fn generate_schema_for<T: JsonSchema>(output: &Path) -> Result<(), Report> {
   }
 
   info!("Wrote JSON schema to '{}'", output.display());
-  Ok(())
-}
-
-pub fn generate_schema(format: &TreetimeSchemaFormat, output: Option<&PathBuf>) -> Result<(), Report> {
-  match format {
-    TreetimeSchemaFormat::All => {
-      let output_dir = output.map_or_else(|| PathBuf::from("."), |p| p.clone());
-      for fmt in TreetimeSchemaFormat::iter() {
-        if let Some(filename) = fmt.default_filename() {
-          let path = output_dir.join(filename);
-          generate_schema(&fmt, Some(&path))?;
-        }
-      }
-    },
-    TreetimeSchemaFormat::VersionInfo => {
-      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
-      generate_schema_for::<VersionInfo>(&path)?;
-    },
-    TreetimeSchemaFormat::ProgressEvent => {
-      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
-      generate_schema_for::<ProgressEvent>(&path)?;
-    },
-    TreetimeSchemaFormat::ErrorResponse => {
-      let path = output.map_or_else(|| PathBuf::from("-"), |p| p.clone());
-      generate_schema_for::<ErrorResponse>(&path)?;
-    },
-  }
   Ok(())
 }
