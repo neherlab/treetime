@@ -4,12 +4,6 @@ use std::fs::{self, ReadDir};
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Serialize)]
-pub struct DatasetInfo {
-  name: String,
-  files: Vec<String>,
-}
-
 pub fn discover_datasets(data_dir: &Path) -> Result<Vec<DatasetInfo>, Report> {
   let mut datasets = Vec::new();
   match fs::read_dir(data_dir) {
@@ -53,6 +47,12 @@ fn collect_datasets(base: &Path, dir: &Path, entries: ReadDir, out: &mut Vec<Dat
     collect_datasets(base, &subdir, entries, out)?;
   }
   Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct DatasetInfo {
+  name: String,
+  files: Vec<String>,
 }
 
 fn read_dir_report(error: io::Error, dir: &Path) -> Report {
