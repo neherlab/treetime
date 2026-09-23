@@ -5,6 +5,64 @@ use treetime_utils::array::ndarray::max_or;
 
 const UNDERFLOW_THRESHOLD: f64 = 1e-100;
 
+pub struct PointwiseMultiply;
+
+impl MultiplyAlgo for PointwiseMultiply {
+  fn name(&self) -> &'static str {
+    "pointwise"
+  }
+
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
+  }
+
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
+    multiply_many_naive(distributions)
+  }
+}
+
+pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
+  if distributions.is_empty() {
+    return ScaledArray::empty(0);
+  }
+
+  let n = distributions[0].len();
+  let mut result = Array1::ones(n);
+
+  for dist in distributions {
+    result = &result * *dist;
+  }
+
+  let max_val = max_or(&result, f64::NEG_INFINITY);
+  let log_scale = if max_val > 0.0 && max_val.is_finite() {
+    max_val.ln()
+  } else {
+    f64::NEG_INFINITY
+  };
+
+  if max_val > 0.0 && max_val.is_finite() {
+    result.mapv_inplace(|v| v / max_val);
+  }
+
+  ScaledArray::new(result, log_scale)
+}
+
+pub struct LogScaleMultiply;
+
+impl MultiplyAlgo for LogScaleMultiply {
+  fn name(&self) -> &'static str {
+    "log-scale"
+  }
+
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
+  }
+
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
+    multiply_many_lazy_normalize(distributions)
+  }
+}
+
 pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
     return ScaledArray::empty(0);
@@ -47,6 +105,22 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArr
   ScaledArray::new(product, accumulated_log_scale)
 }
 
+pub struct AggressiveMultiply;
+
+impl MultiplyAlgo for AggressiveMultiply {
+  fn name(&self) -> &'static str {
+    "aggressive"
+  }
+
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
+  }
+
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
+    multiply_many(distributions)
+  }
+}
+
 pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
     return ScaledArray::empty(0);
@@ -80,80 +154,6 @@ pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   }
 
   ScaledArray::new(normalized_result, accumulated_log_scale)
-}
-
-pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
-  if distributions.is_empty() {
-    return ScaledArray::empty(0);
-  }
-
-  let n = distributions[0].len();
-  let mut result = Array1::ones(n);
-
-  for dist in distributions {
-    result = &result * *dist;
-  }
-
-  let max_val = max_or(&result, f64::NEG_INFINITY);
-  let log_scale = if max_val > 0.0 && max_val.is_finite() {
-    max_val.ln()
-  } else {
-    f64::NEG_INFINITY
-  };
-
-  if max_val > 0.0 && max_val.is_finite() {
-    result.mapv_inplace(|v| v / max_val);
-  }
-
-  ScaledArray::new(result, log_scale)
-}
-
-pub struct PointwiseMultiply;
-
-impl MultiplyAlgo for PointwiseMultiply {
-  fn name(&self) -> &'static str {
-    "pointwise"
-  }
-
-  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
-    f_values * g_values
-  }
-
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
-    multiply_many_naive(distributions)
-  }
-}
-
-pub struct LogScaleMultiply;
-
-impl MultiplyAlgo for LogScaleMultiply {
-  fn name(&self) -> &'static str {
-    "log-scale"
-  }
-
-  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
-    f_values * g_values
-  }
-
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
-    multiply_many_lazy_normalize(distributions)
-  }
-}
-
-pub struct AggressiveMultiply;
-
-impl MultiplyAlgo for AggressiveMultiply {
-  fn name(&self) -> &'static str {
-    "aggressive"
-  }
-
-  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
-    f_values * g_values
-  }
-
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
-    multiply_many(distributions)
-  }
 }
 
 fn normalize_and_extract_scale(arr: &Array1<f64>) -> ScaledArray {

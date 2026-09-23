@@ -3,30 +3,6 @@ use eyre::Report;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode};
 
-pub fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let mut result = Array1::zeros(f_values.len() + g_values.len() - 1);
-
-  for (i, &f_val) in f_values.iter().enumerate() {
-    for (j, &g_val) in g_values.iter().enumerate() {
-      result[i + j] += f_val * g_val * dx;
-    }
-  }
-
-  Ok(result)
-}
-
-pub fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
-  let continuous_conv = &discrete_conv * dx;
-  Ok(continuous_conv)
-}
-
-pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let discrete_conv = f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?;
-  let continuous_conv = &discrete_conv * dx;
-  Ok(continuous_conv)
-}
-
 pub struct RiemannConvolve;
 
 impl ConvolveAlgo for RiemannConvolve {
@@ -37,6 +13,18 @@ impl ConvolveAlgo for RiemannConvolve {
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
     convolve_riemann(dx, f_values, g_values)
   }
+}
+
+pub fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+  let mut result = Array1::zeros(f_values.len() + g_values.len() - 1);
+
+  for (i, &f_val) in f_values.iter().enumerate() {
+    for (j, &g_val) in g_values.iter().enumerate() {
+      result[i + j] += f_val * g_val * dx;
+    }
+  }
+
+  Ok(result)
 }
 
 pub struct NdarrayConvolve;
@@ -51,6 +39,12 @@ impl ConvolveAlgo for NdarrayConvolve {
   }
 }
 
+pub fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+  let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
+  let continuous_conv = &discrete_conv * dx;
+  Ok(continuous_conv)
+}
+
 pub struct FftConvolve;
 
 impl ConvolveAlgo for FftConvolve {
@@ -61,6 +55,12 @@ impl ConvolveAlgo for FftConvolve {
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
     convolve_fft(dx, f_values, g_values)
   }
+}
+
+pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+  let discrete_conv = f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?;
+  let continuous_conv = &discrete_conv * dx;
+  Ok(continuous_conv)
 }
 
 #[cfg(test)]
