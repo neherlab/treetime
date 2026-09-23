@@ -3,9 +3,8 @@ use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::gaussian_chain_multiplication::{
-  GaussianChainMultiplicationTestCase as AnalyticalCase, get_gaussian_chain_multiplication_cases,
-};
+use treetime_analytical::validation::cases::gaussian_chain_multiplication;
+use treetime_analytical::validation::cases::gaussian_chain_multiplication::get_gaussian_chain_multiplication_cases;
 use treetime_analytical::{GaussianParams, gaussian_product};
 use treetime_ops::ScaledArray;
 
@@ -53,8 +52,8 @@ pub struct GaussianChainTestCase {
   input_grid_n_points: usize,
 }
 
-impl From<AnalyticalCase> for GaussianChainTestCase {
-  fn from(case: AnalyticalCase) -> Self {
+impl From<gaussian_chain_multiplication::GaussianChainMultiplicationTestCase> for GaussianChainTestCase {
+  fn from(case: gaussian_chain_multiplication::GaussianChainMultiplicationTestCase) -> Self {
     Self {
       base: TestCaseBase {
         name: case.name.to_owned(),

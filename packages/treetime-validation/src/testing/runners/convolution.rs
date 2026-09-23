@@ -1,5 +1,5 @@
-use crate::algorithms::Algo;
 use crate::algorithms::ConvolutionAlgorithm;
+use crate::algorithms::ConvolveAlgo;
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::metrics::metrics::ValidationMetrics;
@@ -44,7 +44,7 @@ impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
 fn run_convolution_test<S: ConvolutionTestSuite>(
   suite: &S,
   test_case: &S::TestCase,
-  algo: &dyn Algo,
+  algo: &dyn ConvolveAlgo,
   start_time: Instant,
 ) -> Result<TestResult<S::TestCase>, Report> {
   let (input_grid_min, input_grid_max) = test_case.input_grid_domain();

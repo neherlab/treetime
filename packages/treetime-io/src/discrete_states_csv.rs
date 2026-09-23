@@ -1,5 +1,5 @@
 use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
-use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
+use csv::{ReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::io::Read;
@@ -15,7 +15,7 @@ fn read_discrete_attrs_from_reader<T>(
   value_column: Option<&str>,
   parser: impl Fn(&str) -> Result<T, Report>,
 ) -> Result<(BTreeMap<String, T>, String), Report> {
-  let mut reader = CsvReaderBuilder::new()
+  let mut reader = ReaderBuilder::new()
     .trim(Trim::All)
     .delimiter(delimiter)
     .comment(None)

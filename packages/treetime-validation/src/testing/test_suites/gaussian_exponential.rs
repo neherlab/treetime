@@ -4,9 +4,8 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
-use treetime_analytical::validation::cases::gaussian_exponential::{
-  GAUSSIAN_EXPONENTIAL_CASES, GaussianExponentialTestCase as AnalyticalCase,
-};
+use treetime_analytical::validation::cases::gaussian_exponential;
+use treetime_analytical::validation::cases::gaussian_exponential::GAUSSIAN_EXPONENTIAL_CASES;
 use treetime_analytical::{exponential_pdf_grid, gaussian_exponential_convolution_grid};
 
 #[derive(Default)]
@@ -48,8 +47,8 @@ pub struct GaussianExponentialTestCase {
   input_grid_n_points: usize,
 }
 
-impl From<&AnalyticalCase> for GaussianExponentialTestCase {
-  fn from(case: &AnalyticalCase) -> Self {
+impl From<&gaussian_exponential::GaussianExponentialTestCase> for GaussianExponentialTestCase {
+  fn from(case: &gaussian_exponential::GaussianExponentialTestCase) -> Self {
     Self {
       base: TestCaseBase {
         name: case.name.to_owned(),

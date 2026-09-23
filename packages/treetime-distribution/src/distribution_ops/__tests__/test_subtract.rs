@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::DistributionPlain as Distribution;
+  use crate::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::subtract::distribution_subtraction;
   use approx::assert_ulps_eq;
@@ -19,9 +19,9 @@ mod tests {
       .with_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_subtraction(&Distribution::Function(a), &Distribution::Function(b)).unwrap();
+    let actual = distribution_subtraction(&DistributionPlain::Function(a), &DistributionPlain::Function(b)).unwrap();
 
-    let Distribution::Function(f) = actual else {
+    let DistributionPlain::Function(f) = actual else {
       panic!("expected a Function difference");
     };
     assert_ulps_eq!(f.y(), &array![4.0, 3.0, 2.0], max_ulps = 4);
@@ -42,9 +42,9 @@ mod tests {
       .with_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_subtraction(&Distribution::Function(a), &Distribution::Function(b)).unwrap();
+    let actual = distribution_subtraction(&DistributionPlain::Function(a), &DistributionPlain::Function(b)).unwrap();
 
-    let Distribution::Function(f) = actual else {
+    let DistributionPlain::Function(f) = actual else {
       panic!("expected a Function difference");
     };
     assert_eq!(BoundaryBehavior::Error, f.left_extrap());
@@ -53,8 +53,8 @@ mod tests {
 
   #[test]
   fn test_subtract_function_mismatched_grids_errors() {
-    let a = Distribution::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();
-    let b = Distribution::function(array![0.0, 1.0, 2.0, 3.0], array![1.0, 1.0, 1.0, 1.0]).unwrap();
+    let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();
+    let b = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0], array![1.0, 1.0, 1.0, 1.0]).unwrap();
 
     assert_error!(
       distribution_subtraction(&a, &b),
@@ -64,8 +64,8 @@ mod tests {
 
   #[test]
   fn test_subtract_non_function_errors() {
-    let a = Distribution::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();
-    let point = Distribution::point(1.0, 2.0);
+    let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![5.0, 4.0, 3.0]).unwrap();
+    let point = DistributionPlain::point(1.0, 2.0);
 
     assert_error!(
       distribution_subtraction(&a, &point),

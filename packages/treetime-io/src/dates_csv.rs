@@ -1,5 +1,5 @@
 use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
-use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
+use csv::{ReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::io::Read;
@@ -22,7 +22,7 @@ fn read_dates_from_reader(
   name_column: Option<&str>,
   date_column: Option<&str>,
 ) -> Result<DatesMap, Report> {
-  let mut reader = CsvReaderBuilder::new()
+  let mut reader = ReaderBuilder::new()
     .trim(Trim::All)
     .delimiter(delimiter)
     .from_reader(reader);

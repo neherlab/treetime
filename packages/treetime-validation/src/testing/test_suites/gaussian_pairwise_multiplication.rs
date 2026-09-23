@@ -3,9 +3,8 @@ use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::gaussian_pairwise_multiplication::{
-  GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES, GaussianPairwiseMultiplicationTestCase as AnalyticalCase,
-};
+use treetime_analytical::validation::cases::gaussian_pairwise_multiplication;
+use treetime_analytical::validation::cases::gaussian_pairwise_multiplication::GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES;
 use treetime_analytical::{GaussianParams, gaussian_product};
 use treetime_ops::ScaledArray;
 
@@ -72,8 +71,10 @@ pub struct GaussianPairwiseMultiplicationTestCase {
   input_grid_n_points: usize,
 }
 
-impl From<&AnalyticalCase> for GaussianPairwiseMultiplicationTestCase {
-  fn from(case: &AnalyticalCase) -> Self {
+impl From<&gaussian_pairwise_multiplication::GaussianPairwiseMultiplicationTestCase>
+  for GaussianPairwiseMultiplicationTestCase
+{
+  fn from(case: &gaussian_pairwise_multiplication::GaussianPairwiseMultiplicationTestCase) -> Self {
     Self {
       base: TestCaseBase {
         name: case.name.to_owned(),

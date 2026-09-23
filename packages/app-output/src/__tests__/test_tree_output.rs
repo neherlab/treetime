@@ -443,7 +443,7 @@ mod tests {
     use ndarray::array;
     use serde::Serialize;
     use std::collections::BTreeMap;
-    use std::error::Error as StdError;
+    use std::error::Error;
     use std::io;
     use treetime::gtr::gtr::{GTR, GTRParams};
     use treetime::mugration::pipeline::MugrationOutput;
@@ -1093,7 +1093,7 @@ mod tests {
     }
 
     impl Retrieve for AuspiceSchemaRetriever {
-      fn retrieve(&self, uri: &Uri<String>) -> Result<Value, Box<dyn StdError + Send + Sync>> {
+      fn retrieve(&self, uri: &Uri<String>) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self
           .schemas
           .get(uri.as_str())

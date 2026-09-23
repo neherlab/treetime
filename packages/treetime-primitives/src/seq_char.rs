@@ -1,7 +1,7 @@
 use eyre::Report;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::fmt::Write as StdFmtWrite;
+use std::fmt::Write as _;
 use treetime_utils::error::make_error;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]

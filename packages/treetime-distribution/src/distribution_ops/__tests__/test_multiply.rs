@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionFunction;
-  use crate::DistributionPlain as Distribution;
+  use crate::DistributionPlain;
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{distribution_multiplication, guarded_empty_result, hard_domains_disjoint};
   use crate::policy::Plain;
@@ -22,15 +22,15 @@ mod tests {
   #[test]
   fn test_multiply_formula_function_returns_function() {
     let formula = DistributionFormula::new(|t| Ok(2.0 * t), 0.0, 10.0);
-    let formula_dist = Distribution::Formula(formula);
+    let formula_dist = DistributionPlain::Formula(formula);
 
     let t = array![1.0, 3.0, 5.0, 7.0, 9.0];
     let y = array![1.0, 2.0, 3.0, 4.0, 5.0];
-    let function_dist = Distribution::function(t, y).unwrap();
+    let function_dist = DistributionPlain::function(t, y).unwrap();
 
     let result = distribution_multiplication(&formula_dist, &function_dist).unwrap();
 
-    let Distribution::Function(result_fn) = result else {
+    let DistributionPlain::Function(result_fn) = result else {
       panic!("Expected Function variant, got {result:?}");
     };
 
@@ -41,16 +41,16 @@ mod tests {
   #[test]
   fn test_multiply_function_formula_commutative() {
     let formula = DistributionFormula::new(|t| Ok(t * t), 0.0, 5.0);
-    let formula_dist = Distribution::Formula(formula);
+    let formula_dist = DistributionPlain::Formula(formula);
 
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
     let y = array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-    let function_dist = Distribution::function(t, y).unwrap();
+    let function_dist = DistributionPlain::function(t, y).unwrap();
 
     let result_ff = distribution_multiplication(&formula_dist, &function_dist).unwrap();
     let result_fxf = distribution_multiplication(&function_dist, &formula_dist).unwrap();
 
-    let (Distribution::Function(ff_fn), Distribution::Function(fxf_fn)) = (&result_ff, &result_fxf) else {
+    let (DistributionPlain::Function(ff_fn), DistributionPlain::Function(fxf_fn)) = (&result_ff, &result_fxf) else {
       panic!("Both results should be Function variants");
     };
 
@@ -59,11 +59,12 @@ mod tests {
 
   #[test]
   fn test_multiply_formula_function_uses_function_spacing_over_intersection() {
-    let formula = Distribution::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.2, 2.4));
-    let function = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let formula = DistributionPlain::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.2, 2.4));
+    let function =
+      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
 
     let actual = distribution_multiplication(&formula, &function).unwrap();
-    let Distribution::Function(actual) = actual else {
+    let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
 
@@ -85,15 +86,15 @@ mod tests {
     #[case] expected_t: Vec<f64>,
     #[case] expected_y: Vec<f64>,
   ) {
-    let range = Distribution::range(range_bounds, 2.0);
-    let function = Distribution::function(
+    let range = DistributionPlain::range(range_bounds, 2.0);
+    let function = DistributionPlain::function(
       array![0.0, 1.0, 2.0, 3.0, 4.0],
       array![1.0, 2.0, 3.0, 4.0, 5.0],
     )
     .unwrap();
 
     let actual = distribution_multiplication(&range, &function).unwrap();
-    let Distribution::Function(actual) = actual else {
+    let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
     pretty_assert_ulps_eq!(Array1::from_vec(expected_t), actual.t(), max_ulps = 4);
@@ -102,41 +103,41 @@ mod tests {
 
   #[test]
   fn test_multiply_range_function_disjoint_returns_empty() {
-    let range = Distribution::range((5.0, 6.0), 2.0);
-    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let range = DistributionPlain::range((5.0, 6.0), 2.0);
+    let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_multiplication(&range, &function).unwrap();
-    let expected = Distribution::Empty;
+    let expected = DistributionPlain::Empty;
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_range_function_endpoint_contact_returns_point() {
-    let range = Distribution::range((2.0, 3.0), 2.0);
-    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let range = DistributionPlain::range((2.0, 3.0), 2.0);
+    let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_multiplication(&range, &function).unwrap();
-    let expected = Distribution::point(2.0, 6.0);
+    let expected = DistributionPlain::point(2.0, 6.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_function_function_endpoint_contact_returns_point() {
-    let left = Distribution::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
-    let right = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
+    let left = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
+    let right = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
     let actual = distribution_multiplication(&left, &right).unwrap();
-    let expected = Distribution::point(1.0, 15.0);
+    let expected = DistributionPlain::point(1.0, 15.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_multiply_function_function_uses_finer_spacing_over_intersection() {
-    let coarse = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let fine = Distribution::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
+    let coarse = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let fine = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
     let actual = distribution_multiplication(&coarse, &fine).unwrap();
-    let Distribution::Function(actual) = actual else {
+    let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
 
@@ -146,7 +147,7 @@ mod tests {
     pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
   }
 
-  fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {
+  fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> DistributionPlain {
     let x_min = mu - 5.0 * sigma;
     let x_max = mu + 5.0 * sigma;
     let dx = (x_max - x_min) / (n_points - 1) as f64;
@@ -155,7 +156,7 @@ mod tests {
       (-0.5 * ((x - mu) / sigma).powi(2)).exp()
     });
     let f = DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y).unwrap();
-    Distribution::Function(f)
+    DistributionPlain::Function(f)
   }
 
   #[test]
@@ -164,7 +165,7 @@ mod tests {
     let b = make_gaussian(20.0, 1.0, 101);
 
     let result = distribution_multiplication(&a, &b).unwrap();
-    assert!(matches!(result, Distribution::Empty));
+    assert!(matches!(result, DistributionPlain::Empty));
   }
 
   #[test]
@@ -174,7 +175,7 @@ mod tests {
 
     let result = distribution_multiplication(&a, &b).unwrap();
 
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function variant");
     };
 
@@ -198,7 +199,7 @@ mod tests {
       accum = distribution_multiplication(&accum, &msg).unwrap().normalize();
 
       assert!(
-        !matches!(accum, Distribution::Empty),
+        !matches!(accum, DistributionPlain::Empty),
         "Chain multiplication underflowed at step {i}"
       );
     }
@@ -218,10 +219,10 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c1_overlapping_no_tails() {
-    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0));
-    let b = Distribution::Function(make_function(3.0, 13.0, 101, 8.0, 2.0));
+    let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0));
+    let b = DistributionPlain::Function(make_function(3.0, 13.0, 101, 8.0, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
@@ -232,10 +233,10 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c2_overlapping_with_tails() {
-    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(SOFT).unwrap());
-    let b = Distribution::Function(make_function(3.0, 13.0, 101, 8.0, 2.0).with_left_extrap(SOFT).unwrap());
+    let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(SOFT).unwrap());
+    let b = DistributionPlain::Function(make_function(3.0, 13.0, 101, 8.0, 2.0).with_left_extrap(SOFT).unwrap());
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -244,14 +245,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c3_disjoint_one_constant_left() {
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function, got {result:?}")
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -261,14 +262,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c4_disjoint_both_constant_left() {
-    let leaf_msg = Distribution::Function(
+    let leaf_msg = DistributionPlain::Function(
       make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let subtree_msg = Distribution::Function(
+    let subtree_msg = DistributionPlain::Function(
       make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -276,7 +277,7 @@ mod tests {
         .unwrap(),
     );
     let result = distribution_multiplication(&leaf_msg, &subtree_msg).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (non-empty product), got {result:?}")
     };
     assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
@@ -287,25 +288,25 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c5_disjoint_hard_tail() {
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
     assert!(
-      matches!(result, Distribution::Empty),
+      matches!(result, DistributionPlain::Empty),
       "Hard tail should not prevent Empty"
     );
   }
 
   #[test]
   fn test_multiply_tail_c6_endpoint_contact_with_constant() {
-    let a = Distribution::Function(make_function(5.0, 10.0, 51, 7.5, 2.0).with_left_extrap(SOFT).unwrap());
-    let b = Distribution::Function(make_function(0.0, 5.0, 51, 2.5, 2.0));
+    let a = DistributionPlain::Function(make_function(5.0, 10.0, 51, 7.5, 2.0).with_left_extrap(SOFT).unwrap());
+    let b = DistributionPlain::Function(make_function(0.0, 5.0, 51, 2.5, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (interval, not point contact), got {result:?}")
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -314,10 +315,10 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c7_contained_with_tails() {
-    let outer = Distribution::Function(make_function(0.0, 20.0, 201, 10.0, 5.0).with_left_extrap(SOFT).unwrap());
-    let inner = Distribution::Function(make_function(5.0, 15.0, 101, 10.0, 3.0));
+    let outer = DistributionPlain::Function(make_function(0.0, 20.0, 201, 10.0, 5.0).with_left_extrap(SOFT).unwrap());
+    let inner = DistributionPlain::Function(make_function(5.0, 15.0, 101, 10.0, 3.0));
     let result = distribution_multiplication(&outer, &inner).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_ulps_eq!(f.x_min(), 5.0, max_ulps = 4);
@@ -326,14 +327,14 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_c8_mixed_constant_zero() {
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let b = Distribution::Function(
+    let b = DistributionPlain::Function(
       make_function(3.0, 8.0, 51, 5.5, 1.5)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -341,7 +342,7 @@ mod tests {
         .unwrap(),
     );
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
@@ -351,15 +352,15 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_commutative() {
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
         .with_left_extrap(SOFT)
         .unwrap(),
     );
-    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
     let ab = distribution_multiplication(&a, &b).unwrap();
     let ba = distribution_multiplication(&b, &a).unwrap();
-    let (Distribution::Function(fab), Distribution::Function(fba)) = (&ab, &ba) else {
+    let (DistributionPlain::Function(fab), DistributionPlain::Function(fba)) = (&ab, &ba) else {
       panic!("Both results should be Function")
     };
     assert_ulps_eq!(fab.x_min(), fba.x_min(), max_ulps = 4);
@@ -369,28 +370,28 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_chained_normalize_preserves_tails_survives_disjoint() {
-    let msg1 = Distribution::Function(
+    let msg1 = DistributionPlain::Function(
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let msg2 = Distribution::Function(
+    let msg2 = DistributionPlain::Function(
       make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let msg3 = Distribution::Function(
+    let msg3 = DistributionPlain::Function(
       make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let msg4 = Distribution::Function(
+    let msg4 = DistributionPlain::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -403,7 +404,7 @@ mod tests {
       accum = distribution_multiplication(&accum, msg).unwrap().normalize();
     }
 
-    let Distribution::Function(f) = &accum else {
+    let DistributionPlain::Function(f) = &accum else {
       panic!("Chained multiplication collapsed to {accum:?} despite soft left tails")
     };
     assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
@@ -416,21 +417,21 @@ mod tests {
 
   #[test]
   fn test_multiply_tail_chained_normalize_no_reapply_survives() {
-    let msg_recent_1 = Distribution::Function(
+    let msg_recent_1 = DistributionPlain::Function(
       make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let msg_recent_2 = Distribution::Function(
+    let msg_recent_2 = DistributionPlain::Function(
       make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
         .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let msg_old = Distribution::Function(
+    let msg_old = DistributionPlain::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(SOFT)
         .unwrap()
@@ -439,17 +440,17 @@ mod tests {
     );
 
     let product = distribution_multiplication(&msg_recent_1, &msg_recent_2).unwrap();
-    assert!(!matches!(product, Distribution::Empty));
+    assert!(!matches!(product, DistributionPlain::Empty));
 
     let normalized = product.normalize();
-    let Distribution::Function(f) = &normalized else {
+    let DistributionPlain::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
     assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
 
     let final_result = distribution_multiplication(&normalized, &msg_old).unwrap();
     assert!(
-      !matches!(final_result, Distribution::Empty),
+      !matches!(final_result, DistributionPlain::Empty),
       "soft left tail must survive normalize() so the accumulator overlaps the old message"
     );
   }
@@ -461,8 +462,8 @@ mod tests {
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
-    let normalized = Distribution::Function(f).normalize();
-    let Distribution::Function(f) = &normalized else {
+    let normalized = DistributionPlain::Function(f).normalize();
+    let DistributionPlain::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
     assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
@@ -483,18 +484,18 @@ mod tests {
     #[case] b_left: BoundaryBehavior,
     #[case] expected_left: BoundaryBehavior,
   ) {
-    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
-    let b = Distribution::Function(make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
+    let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
+    let b = DistributionPlain::Function(make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
 
     let ab = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(fab) = &ab else {
+    let DistributionPlain::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
     assert_eq!(expected_left, fab.left_extrap());
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
 
     let ba = distribution_multiplication(&b, &a).unwrap();
-    let Distribution::Function(fba) = &ba else {
+    let DistributionPlain::Function(fba) = &ba else {
       panic!("Expected Function, got {ba:?}")
     };
     assert_eq!(expected_left, fba.left_extrap());
@@ -502,19 +503,19 @@ mod tests {
 
   #[test]
   fn test_multiply_function_function_composes_soft_tails() {
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.002 }))
         .unwrap(),
     );
-    let b = Distribution::Function(
+    let b = DistributionPlain::Function(
       make_function(2.0, 12.0, 101, 7.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.003 }))
         .unwrap(),
     );
 
     let ab = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(fab) = &ab else {
+    let DistributionPlain::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
     let BoundaryBehavior::Linear(law) = fab.left_extrap() else {
@@ -529,12 +530,12 @@ mod tests {
     let law_a = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0 };
 
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law_a))
         .unwrap(),
     );
-    let b = Distribution::Function(
+    let b = DistributionPlain::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law_b))
         .unwrap(),
@@ -550,19 +551,19 @@ mod tests {
   fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
     let law = HardApproachLaw { t_hard: 0.0, b: 1.5 };
 
-    let a = Distribution::Function(
+    let a = DistributionPlain::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::HardApproach(law))
         .unwrap(),
     );
-    let b = Distribution::Function(
+    let b = DistributionPlain::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
     let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
     assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
@@ -575,8 +576,8 @@ mod tests {
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }))
       .unwrap();
 
-    let normalized = Distribution::Function(f).normalize();
-    let Distribution::Function(f) = &normalized else {
+    let normalized = DistributionPlain::Function(f).normalize();
+    let DistributionPlain::Function(f) = &normalized else {
       panic!("Expected Function")
     };
     let preserved = f
@@ -607,17 +608,17 @@ mod tests {
 
   #[test]
   fn test_multiply_point_on_function_zero_raises_internal_error() {
-    let point = Distribution::point(1.0, 5.0);
-    let func = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 0.0, 1.0]).unwrap();
+    let point = DistributionPlain::point(1.0, 5.0);
+    let func = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 0.0, 1.0]).unwrap();
     let error = distribution_multiplication(&point, &func).unwrap_err().to_string();
     assert!(error.contains("hard domains overlap"), "unexpected error: {error}");
   }
 
   #[test]
   fn test_multiply_disjoint_points_return_empty() {
-    let a = Distribution::point(1.0, 2.0);
-    let b = Distribution::point(5.0, 3.0);
-    assert_eq!(Distribution::Empty, distribution_multiplication(&a, &b).unwrap());
+    let a = DistributionPlain::point(1.0, 2.0);
+    let b = DistributionPlain::point(5.0, 3.0);
+    assert_eq!(DistributionPlain::Empty, distribution_multiplication(&a, &b).unwrap());
   }
 
   #[rstest]
@@ -640,7 +641,7 @@ mod tests {
     let a = Some(((0.0, 8.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
     let b = Some(((10.0, 20.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
     assert_eq!(
-      Distribution::Empty,
+      DistributionPlain::Empty,
       guarded_empty_result::<Plain>(operation, a, b).unwrap()
     );
   }
@@ -649,11 +650,11 @@ mod tests {
   fn test_guarded_empty_result_empty_operand_returns_empty() {
     let present = Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
     assert_eq!(
-      Distribution::Empty,
+      DistributionPlain::Empty,
       guarded_empty_result::<Plain>("multiplication", None, present).unwrap()
     );
     assert_eq!(
-      Distribution::Empty,
+      DistributionPlain::Empty,
       guarded_empty_result::<Plain>("multiplication", present, None).unwrap()
     );
   }

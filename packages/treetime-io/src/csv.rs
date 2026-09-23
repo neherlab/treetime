@@ -1,4 +1,4 @@
-use csv::{ReaderBuilder as CsvReaderBuilder, Trim, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
+use csv::{ReaderBuilder, Trim, Writer, WriterBuilder};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,12 @@ use treetime_utils::make_error;
 use treetime_utils::make_report;
 
 pub struct CsvStructWriter<W: Write + Send> {
-  pub writer: CsvWriterImpl<W>,
+  pub writer: Writer<W>,
 }
 
 impl<W: Write + Send> CsvStructWriter<W> {
   pub fn new(writer: W, delimiter: u8) -> Result<Self, Report> {
-    let writer = CsvWriterBuilder::new().delimiter(delimiter).from_writer(writer);
+    let writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
     Ok(Self { writer })
   }
 
@@ -55,12 +55,12 @@ pub trait VecWriter {
 
 pub struct CsvVecWriter<W: Write + Send> {
   pub headers: Vec<String>,
-  pub writer: CsvWriterImpl<W>,
+  pub writer: Writer<W>,
 }
 
 impl<W: Write + Send> CsvVecWriter<W> {
   pub fn new(writer: W, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
-    let mut writer = CsvWriterBuilder::new().delimiter(delimiter).from_writer(writer);
+    let mut writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
     writer.write_record(headers)?;
     Ok(Self {
       headers: headers.to_owned(),
@@ -109,7 +109,7 @@ pub fn csv_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -
 }
 
 pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result<Vec<T>, Report> {
-  let reader = CsvReaderBuilder::new()
+  let reader = ReaderBuilder::new()
     .has_headers(true)
     .from_reader(data.as_ref().as_bytes());
   reader
@@ -222,7 +222,7 @@ fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
 }
 
 fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, csv::Error> {
-  let mut reader = CsvReaderBuilder::new()
+  let mut reader = ReaderBuilder::new()
     .trim(Trim::All)
     .delimiter(delimiter)
     .from_reader(sample);

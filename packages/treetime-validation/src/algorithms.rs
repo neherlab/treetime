@@ -8,7 +8,7 @@ use treetime_ops::{
 };
 use treetime_utils::make_error;
 
-pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
+pub use treetime_ops::traits::{ConvolveAlgo, MultiplyAlgo};
 
 #[derive(
   Debug,
@@ -49,7 +49,7 @@ impl ConvolutionAlgorithm {
     }
   }
 
-  pub(crate) fn instantiate(self) -> Result<Box<dyn Algo>, Report> {
+  pub(crate) fn instantiate(self) -> Result<Box<dyn ConvolveAlgo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
       Self::Riemann => Ok(Box::new(RiemannConvolve)),

@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionFunction;
-  use crate::DistributionPlain as Distribution;
+  use crate::DistributionPlain;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::Plain;
   use itertools::Itertools;
@@ -22,8 +22,8 @@ mod tests {
     fn test_prop_multiply_child_order_preserves_support(
       params in prop::collection::vec(child_message_strategy(), 2..=5),
     ) {
-      let children: Vec<Distribution> = params.iter().map(|&p| make_child_message(p)).collect();
-      let children: Vec<&Distribution> = children.iter().collect();
+      let children: Vec<DistributionPlain> = params.iter().map(|&p| make_child_message(p)).collect();
+      let children: Vec<&DistributionPlain> = children.iter().collect();
       let n = children.len();
 
       let (base_min, base_max) = fold_support(&children)?;
@@ -38,13 +38,13 @@ mod tests {
     fn test_prop_multiply_child_order_preserves_tails(
       params in prop::collection::vec(child_message_strategy(), 2..=5),
     ) {
-      let children: Vec<Distribution> = params.iter().map(|&p| make_child_message(p)).collect();
-      let children: Vec<&Distribution> = children.iter().collect();
+      let children: Vec<DistributionPlain> = params.iter().map(|&p| make_child_message(p)).collect();
+      let children: Vec<&DistributionPlain> = children.iter().collect();
       let n = children.len();
 
       for perm in children.iter().copied().permutations(n) {
         let result = fold_children(&perm);
-        let Distribution::Function(f) = &result else {
+        let DistributionPlain::Function(f) = &result else {
           return Err(TestCaseError::fail(format!("fold collapsed to {result:?}")));
         };
         prop_assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
@@ -69,15 +69,15 @@ mod tests {
     }
   }
 
-  fn fold_support(children: &[&Distribution]) -> Result<(f64, f64), TestCaseError> {
+  fn fold_support(children: &[&DistributionPlain]) -> Result<(f64, f64), TestCaseError> {
     let result = fold_children(children);
-    let Distribution::Function(f) = &result else {
+    let DistributionPlain::Function(f) = &result else {
       return Err(TestCaseError::fail(format!("fold collapsed to {result:?}")));
     };
     Ok((f.x_min(), f.x_max()))
   }
 
-  fn fold_children(children: &[&Distribution]) -> Distribution {
+  fn fold_children(children: &[&DistributionPlain]) -> DistributionPlain {
     let mut accum = children[0].clone();
     for child in &children[1..] {
       accum = distribution_multiplication(&accum, child).unwrap().normalize();
@@ -85,7 +85,7 @@ mod tests {
     accum
   }
 
-  fn make_child_message((center, width, sigma, n_points): (f64, f64, f64, usize)) -> Distribution {
+  fn make_child_message((center, width, sigma, n_points): (f64, f64, f64, usize)) -> DistributionPlain {
     let x_min = center - width / 2.0;
     let dx = width / (n_points - 1) as f64;
     let y = Array1::from_shape_fn(n_points, |i| {
@@ -98,7 +98,7 @@ mod tests {
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
-    Distribution::Function(f)
+    DistributionPlain::Function(f)
   }
 
   fn child_message_strategy() -> impl Strategy<Value = (f64, f64, f64, usize)> {

@@ -1,7 +1,7 @@
 use crate::datetime::date_range::DateRange;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
-use std::time::Duration as StdDuration;
+use std::time::Duration;
 
 #[allow(
   clippy::as_conversions,
@@ -30,7 +30,7 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let fraction = year_fraction.fract();
   let seconds_in_year = (days_in_year(year) as u64) * 24 * 60 * 60;
   let seconds_since_year_start = seconds_in_year as f64 * fraction;
-  let dt = RelativeDuration::from(StdDuration::from_secs_f64(seconds_since_year_start));
+  let dt = RelativeDuration::from(Duration::from_secs_f64(seconds_since_year_start));
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
 }
 

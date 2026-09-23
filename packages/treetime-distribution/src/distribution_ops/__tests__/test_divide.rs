@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionNegLog;
-  use crate::DistributionPlain as Distribution;
+  use crate::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
   use crate::distribution_ops::multiply::distribution_multiplication;
@@ -40,17 +40,17 @@ mod tests {
 
   #[test]
   fn test_divide_empty_by_any() {
-    let empty = Distribution::empty();
-    let point = Distribution::point(1.0, 2.0);
+    let empty = DistributionPlain::empty();
+    let point = DistributionPlain::point(1.0, 2.0);
     let actual = distribution_division(&empty, &point).unwrap();
-    let expected = Distribution::empty();
+    let expected = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_by_empty_fails() {
-    let point = Distribution::point(1.0, 2.0);
-    let empty = Distribution::empty();
+    let point = DistributionPlain::point(1.0, 2.0);
+    let empty = DistributionPlain::empty();
     assert_error!(
       distribution_division(&point, &empty),
       "Cannot divide by empty distribution"
@@ -59,13 +59,13 @@ mod tests {
 
   #[test]
   fn test_divide_point_by_function() {
-    let point = Distribution::point(2.0, 10.0);
+    let point = DistributionPlain::point(2.0, 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
-    let func = Distribution::function(t, y).unwrap();
+    let func = DistributionPlain::function(t, y).unwrap();
 
     let actual = distribution_division(&point, &func).unwrap();
-    let expected = Distribution::point(2.0, 2.0);
+    let expected = DistributionPlain::point(2.0, 2.0);
     assert_eq!(expected, actual);
   }
 
@@ -75,13 +75,13 @@ mod tests {
     let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
     let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
 
-    let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t.clone(), y2).unwrap();
+    let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
+    let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
 
     let expected_y = array![5.0, 5.0, 6.0, 5.0, 5.0];
-    let expected = Distribution::function(t, expected_y).unwrap();
+    let expected = DistributionPlain::function(t, expected_y).unwrap();
     assert_eq!(expected, actual);
   }
 
@@ -91,25 +91,25 @@ mod tests {
     let y1 = array![10.0, 20.0, 30.0];
     let y2 = array![2.0, 0.0, 5.0];
 
-    let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t.clone(), y2).unwrap();
+    let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
+    let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
 
     let expected_y = array![5.0, 20.0 / TINY_NUMBER, 6.0];
-    let expected = Distribution::function(t, expected_y).unwrap();
+    let expected = DistributionPlain::function(t, expected_y).unwrap();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_range_by_function_full_overlap() {
-    let range = Distribution::range((1.0, 3.0), 10.0);
+    let range = DistributionPlain::range((1.0, 3.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
-    let func = Distribution::function(t, y).unwrap();
+    let func = DistributionPlain::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-    let expected = Distribution::Function(
+    let expected = DistributionPlain::Function(
       DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5])
         .unwrap()
         .with_extrap(BoundaryBehavior::Hard)
@@ -130,15 +130,15 @@ mod tests {
     #[case] expected_t: Vec<f64>,
     #[case] expected_y: Vec<f64>,
   ) {
-    let range = Distribution::range(range_bounds, 12.0);
-    let function = Distribution::function(
+    let range = DistributionPlain::range(range_bounds, 12.0);
+    let function = DistributionPlain::function(
       array![0.0, 1.0, 2.0, 3.0, 4.0],
       array![1.0, 2.0, 3.0, 4.0, 5.0],
     )
     .unwrap();
 
     let actual = distribution_division(&range, &function).unwrap();
-    let Distribution::Function(actual) = actual else {
+    let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
     pretty_assert_ulps_eq!(Array1::from_vec(expected_t), actual.t(), max_ulps = 4);
@@ -147,23 +147,23 @@ mod tests {
 
   #[test]
   fn test_divide_range_by_function_endpoint_contact_returns_point() {
-    let range = Distribution::range((2.0, 3.0), 12.0);
-    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+    let range = DistributionPlain::range((2.0, 3.0), 12.0);
+    let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
     let actual = distribution_division(&range, &function).unwrap();
-    let expected = Distribution::point(2.0, 4.0);
+    let expected = DistributionPlain::point(2.0, 4.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_range_by_function_no_overlap() {
-    let range = Distribution::range((5.0, 6.0), 10.0);
+    let range = DistributionPlain::range((5.0, 6.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0];
     let y = array![1.0, 2.0, 4.0, 8.0];
-    let func = Distribution::function(t, y).unwrap();
+    let func = DistributionPlain::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-    let expected = Distribution::empty();
+    let expected = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
 
@@ -173,12 +173,12 @@ mod tests {
     let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
     let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
 
-    let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t.clone(), y2).unwrap();
+    let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
+    let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
 
-    let expected = Distribution::function(t, array![5.0, 5.0, 6.0, 5.0, 5.0]).unwrap();
+    let expected = DistributionPlain::function(t, array![5.0, 5.0, 6.0, 5.0, 5.0]).unwrap();
     assert_eq!(expected, actual);
   }
 
@@ -186,15 +186,15 @@ mod tests {
   fn test_divide_function_by_function_different_grids() {
     let t1 = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
-    let dividend = Distribution::function(t1.clone(), y1).unwrap();
+    let dividend = DistributionPlain::function(t1.clone(), y1).unwrap();
 
     let t2 = array![0.0, 2.0, 4.0];
     let y2 = array![2.0, 5.0, 10.0];
-    let divisor = Distribution::function(t2, y2).unwrap();
+    let divisor = DistributionPlain::function(t2, y2).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
 
-    let expected = Distribution::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
+    let expected = DistributionPlain::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
     assert_eq!(expected, actual);
   }
 
@@ -225,19 +225,20 @@ mod tests {
 
   #[test]
   fn test_divide_function_by_function_uses_exact_intersection() {
-    let dividend = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 4.0, 6.0, 8.0, 10.0]).unwrap();
-    let divisor = Distribution::function(array![1.5, 2.5, 3.5], array![2.0, 2.0, 2.0]).unwrap();
+    let dividend =
+      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 4.0, 6.0, 8.0, 10.0]).unwrap();
+    let divisor = DistributionPlain::function(array![1.5, 2.5, 3.5], array![2.0, 2.0, 2.0]).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    let expected = Distribution::function(array![1.5, 2.5, 3.5], array![2.5, 3.5, 4.5]).unwrap();
+    let expected = DistributionPlain::function(array![1.5, 2.5, 3.5], array![2.5, 3.5, 4.5]).unwrap();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_function_by_function_soft_divisor_tail_extends_quotient_within_dividend() {
     let dividend =
-      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 20.0, 30.0, 40.0, 50.0]).unwrap();
-    let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
+      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 20.0, 30.0, 40.0, 50.0]).unwrap();
+    let divisor = DistributionPlain::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
       .unwrap()
@@ -246,17 +247,17 @@ mod tests {
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
     let expected =
-      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 10.0, 15.0, 20.0, 20.0]).unwrap();
+      DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 10.0, 15.0, 20.0, 20.0]).unwrap();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_function_by_function_endpoint_contact_returns_point() {
-    let dividend = Distribution::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
-    let divisor = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
+    let dividend = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
+    let divisor = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    let expected = Distribution::point(1.0, 0.6);
+    let expected = DistributionPlain::point(1.0, 0.6);
     assert_eq!(expected, actual);
   }
 
@@ -276,9 +277,13 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_division(&Distribution::Function(dividend), &Distribution::Function(divisor)).unwrap();
+    let actual = distribution_division(
+      &DistributionPlain::Function(dividend),
+      &DistributionPlain::Function(divisor),
+    )
+    .unwrap();
 
-    let Distribution::Function(f) = actual else {
+    let DistributionPlain::Function(f) = actual else {
       panic!("expected a Function quotient");
     };
     pretty_assert_ulps_eq!(0.0, f.x_min(), max_ulps = 4);
@@ -305,9 +310,13 @@ mod tests {
         .unwrap();
     let divisor = DistributionFunction::from_start_dx_values(4.0, 1.0, array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
-    let actual = distribution_division(&Distribution::Function(dividend), &Distribution::Function(divisor)).unwrap();
+    let actual = distribution_division(
+      &DistributionPlain::Function(dividend),
+      &DistributionPlain::Function(divisor),
+    )
+    .unwrap();
 
-    let Distribution::Function(f) = actual else {
+    let DistributionPlain::Function(f) = actual else {
       panic!("expected a Function quotient");
     };
     assert_eq!(BoundaryBehavior::Error, f.left_extrap());
@@ -349,7 +358,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::DistributionPlain as Distribution;
+    use crate::DistributionPlain;
     use crate::distribution_core::formula::DistributionFormula;
     use ndarray::array;
 
@@ -362,13 +371,15 @@ mod tests {
       Formula,
     }
 
-    pub fn distribution(variant: DistributionVariant) -> Distribution {
+    pub fn distribution(variant: DistributionVariant) -> DistributionPlain {
       match variant {
-        DistributionVariant::Empty => Distribution::empty(),
-        DistributionVariant::Point => Distribution::point(0.0, 1.0),
-        DistributionVariant::Range => Distribution::range((0.0, 1.0), 1.0),
-        DistributionVariant::Function => Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]).unwrap(),
-        DistributionVariant::Formula => Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0)),
+        DistributionVariant::Empty => DistributionPlain::empty(),
+        DistributionVariant::Point => DistributionPlain::point(0.0, 1.0),
+        DistributionVariant::Range => DistributionPlain::range((0.0, 1.0), 1.0),
+        DistributionVariant::Function => {
+          DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]).unwrap()
+        },
+        DistributionVariant::Formula => DistributionPlain::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0)),
       }
     }
   }
