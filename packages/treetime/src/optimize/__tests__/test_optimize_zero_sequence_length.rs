@@ -6,6 +6,7 @@ mod tests {
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
   use crate::optimize::gather::total_sequence_length;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalEdges;
   use std::collections::BTreeMap;
@@ -61,7 +62,7 @@ mod tests {
       &BTreeMap::new(),
       &BTreeMap::new(),
       &BTreeMap::new(),
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     );

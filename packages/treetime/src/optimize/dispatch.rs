@@ -3,7 +3,7 @@ use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
 use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt_inner};
-use crate::optimize::params::BranchOptMethod;
+use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_error, make_internal_report, make_report};
@@ -259,7 +259,7 @@ pub fn initial_guess_mixed(
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   sub_counts: &BTreeMap<GraphEdgeKey, usize>,
   effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
-  overwrite_valid: bool,
+  existing: ExistingBranchLengths,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -279,7 +279,7 @@ pub fn initial_guess_mixed(
 
     let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
 
-    if !overwrite_valid {
+    if existing == ExistingBranchLengths::Keep {
       if let Some(bl) = branch_lengths.get(&edge_key).copied().flatten() {
         if is_valid_branch_length_value(bl) && (bl > 0.0 || indel_count == 0) {
           continue;

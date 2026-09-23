@@ -11,6 +11,7 @@ mod tests {
     total_sequence_length,
   };
   use crate::optimize::iteration::apply_damping;
+  use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{
     find_zero_optimal_internal_edges, marginal_update_dense, marginal_update_sparse, prune_and_merge_in_loop,
@@ -296,7 +297,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
-    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -386,7 +387,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
-    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -643,7 +644,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
-    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -992,7 +993,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
-    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -1072,7 +1073,7 @@ mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     )?;

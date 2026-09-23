@@ -13,6 +13,7 @@ mod tests {
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
@@ -95,7 +96,7 @@ mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      false,
+      ExistingBranchLengths::Keep,
       false,
       branch_lengths,
     )?;

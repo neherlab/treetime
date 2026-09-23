@@ -21,6 +21,7 @@ pub mod tests {
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -107,7 +108,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       branch_lengths,
     )?;
@@ -333,7 +334,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     )?;
@@ -373,7 +374,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     )?;
@@ -493,7 +494,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     )?;

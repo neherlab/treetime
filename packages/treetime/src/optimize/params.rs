@@ -69,3 +69,9 @@ pub enum InitialGuessMode {
   /// invalid branch length.
   Never,
 }
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+pub enum ExistingBranchLengths {
+  Keep,
+  Overwrite,
+}

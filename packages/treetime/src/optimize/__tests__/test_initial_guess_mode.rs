@@ -9,6 +9,7 @@ pub mod tests {
   use crate::optimize::gather::{
     gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
   };
+  use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::InitialGuessMode;
   use crate::optimize::run_loop::marginal_update_dense;
   use crate::optimize::run_loop::{
@@ -128,7 +129,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      false,
+      ExistingBranchLengths::Keep,
       false,
       &mut branch_lengths,
     )?;
@@ -163,7 +164,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      false,
+      ExistingBranchLengths::Keep,
       false,
       &mut branch_lengths,
     )?;
@@ -196,7 +197,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      false,
+      ExistingBranchLengths::Keep,
       false,
       &mut branch_lengths,
     )?;
@@ -281,7 +282,7 @@ pub mod tests {
       &indel_counts,
       &sub_counts,
       &effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       false,
       &mut branch_lengths,
     )?;

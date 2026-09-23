@@ -7,6 +7,7 @@ use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::apply_damping;
+use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -472,7 +473,7 @@ pub fn apply_initial_guess_mode(
       indel_counts,
       sub_counts,
       effective_lengths,
-      false,
+      ExistingBranchLengths::Keep,
       no_indels,
       branch_lengths,
     ),
@@ -482,7 +483,7 @@ pub fn apply_initial_guess_mode(
       indel_counts,
       sub_counts,
       effective_lengths,
-      true,
+      ExistingBranchLengths::Overwrite,
       no_indels,
       branch_lengths,
     ),
