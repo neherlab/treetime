@@ -26,7 +26,6 @@ impl PiecewiseLinearFn {
     self.base.breakpoints()
   }
 
-  #[allow(dead_code)]
   pub fn values(&self) -> &Array1<f64> {
     self.base.values()
   }
@@ -57,7 +56,6 @@ impl PiecewiseLinearFn {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  #[allow(dead_code)]
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.as_slice().unwrap().is_sorted());
 
