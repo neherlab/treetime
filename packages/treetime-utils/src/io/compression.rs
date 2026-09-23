@@ -1,3 +1,4 @@
+use crate::env::env_var_optional;
 use crate::error::report_to_string;
 use crate::io::fs::extension;
 use color_eyre::{Help, SectionExt};
@@ -8,7 +9,7 @@ use flate2::write::GzEncoder;
 use log::{debug, error};
 use num::Integer;
 use num_traits::NumCast;
-use std::env;
+use std::error::Error;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -143,12 +144,18 @@ impl Read for Decompressor<'_> {
   clippy::unwrap_used,
   reason = "default compression level 2 is representable in every NumCast integer target"
 )]
-fn get_comp_level<I: FromStr + Integer + NumCast>(ext: &str) -> I {
+fn get_comp_level<I>(ext: &str) -> Result<I, Report>
+where
+  I: FromStr + Integer + NumCast,
+  I::Err: Error + Send + Sync + 'static,
+{
   let var_name = format!("{}_COMPRESSION", ext.to_uppercase());
-  env::var(var_name)
-    .ok()
-    .and_then(|val| val.parse::<I>().ok())
-    .unwrap_or_else(|| NumCast::from(2).unwrap())
+  match env_var_optional(&var_name)? {
+    Some(value) => value
+      .parse::<I>()
+      .wrap_err_with(|| format!("When parsing compression level '{value}' from environment variable '{var_name}'")),
+    None => Ok(NumCast::from(2).unwrap()),
+  }
 }
 
 pub struct Compressor<'w> {
@@ -161,12 +168,12 @@ impl<'w> Compressor<'w> {
   pub fn new<W: 'w + Write + Send>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
     let compressor: Box<dyn Write + Send + 'w> = match compression_type {
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, BzCompressionLevel::new(get_comp_level("BZ2")))),
+      CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, BzCompressionLevel::new(get_comp_level("BZ2")?))),
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ"))),
+      CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ")?)),
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Zstandard => Box::new(ZstdEncoder::new(writer, get_comp_level("ZST"))?.auto_finish()),
-      CompressionType::Gzip => Box::new(GzEncoder::new(writer, GzCompressionLevel::new(get_comp_level("GZ")))),
+      CompressionType::Zstandard => Box::new(ZstdEncoder::new(writer, get_comp_level("ZST")?)?.auto_finish()),
+      CompressionType::Gzip => Box::new(GzEncoder::new(writer, GzCompressionLevel::new(get_comp_level("GZ")?))),
       CompressionType::None => Box::new(writer),
     };
 
