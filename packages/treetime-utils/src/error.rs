@@ -1,5 +1,4 @@
 use color_eyre::Report;
-use std::str::FromStr;
 
 pub fn report_to_string(report: &Report) -> String {
   let strings: Vec<String> = report.chain().map(ToString::to_string).collect();
@@ -8,26 +7,6 @@ pub fn report_to_string(report: &Report) -> String {
 
 pub fn to_eyre_error<T, E: Into<eyre::Error>>(val_or_err: Result<T, E>) -> Result<T, Report> {
   val_or_err.map_err(|report| make_report!(report))
-}
-
-#[allow(
-  clippy::unwrap_used,
-  reason = "E::from_str is expected to parse a formatted report string in this conversion helper"
-)]
-pub fn from_eyre_error<T, E: FromStr>(val_or_err: Result<T, Report>) -> Result<T, E> {
-  val_or_err.map_err(|report| E::from_str(&report_to_string(&report)).ok().unwrap())
-}
-
-pub fn report_to_string_debug_only(report: &Report) -> String {
-  #[cfg(not(debug_assertions))]
-  return "An unexpected error occurred. Please try again later.".to_owned();
-
-  #[cfg(debug_assertions)]
-  report_to_string(report)
-}
-
-pub fn keep_ok<T, E>(results: &[Result<T, E>]) -> impl Iterator<Item = &T> {
-  results.iter().filter_map(|r| r.as_ref().ok())
 }
 
 #[macro_export(local_inner_macros)]
