@@ -14,7 +14,7 @@ mod tests {
   use std::iter::repeat_n;
 
   #[test]
-  fn test_bitset128_new() {
+  fn test_bitset128_new_is_empty() {
     let actual = BitSet128::new();
     let expected = bitset128! {};
     assert_eq!(actual, expected);

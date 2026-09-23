@@ -19,7 +19,7 @@ mod tests {
   }
 
   #[test]
-  fn test_optimization_metrics_new() {
+  fn test_optimization_metrics_new_stores_values() {
     let metrics = OptimizationMetrics::new(LogLh::new(1.5), -0.3, -2.0);
 
     pretty_assert_ulps_eq!(metrics.log_lh.value(), 1.5, max_ulps = 4);

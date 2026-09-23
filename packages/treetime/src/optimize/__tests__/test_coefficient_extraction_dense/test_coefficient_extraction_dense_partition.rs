@@ -6,7 +6,7 @@ mod tests {
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
-  fn test_partition_contribution_new() {
+  fn test_partition_contribution_new_stores_coefficients() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
     let coefficients = array![[0.1, 0.2, 0.3, 0.4], [0.4, 0.3, 0.2, 0.1]];
 
