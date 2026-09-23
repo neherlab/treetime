@@ -135,15 +135,10 @@ mod tests {
       pub pc: Option<f64>,
       pub sampling_bias_correction: Option<f64>,
       pub weights_path: Option<String>,
-      #[allow(dead_code)]
-      pub verbose: usize,
       pub iterations: usize,
-      #[allow(dead_code)]
-      pub rng_seed: u64,
     }
 
     #[derive(Debug, Deserialize)]
-    #[allow(dead_code)]
     pub struct GmMugrationOutput {
       pub states: Vec<String>,
       pub trait_assignments: BTreeMap<String, String>,

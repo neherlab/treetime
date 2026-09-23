@@ -70,8 +70,6 @@ pub mod support {
 
   #[derive(Debug, Deserialize)]
   struct DatasetInput {
-    #[allow(dead_code)]
-    tree_path: String,
     aln_path: String,
     metadata_path: String,
     name_column: Option<String>,

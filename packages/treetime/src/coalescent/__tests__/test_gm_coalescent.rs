@@ -18,7 +18,7 @@ mod tests {
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::nwk_read_file;
-  use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
+  use treetime_utils::array::serde::indexmap_array1_from_map;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -87,21 +87,8 @@ mod tests {
 
   #[derive(Debug, Deserialize)]
   struct Snapshot {
-    #[allow(dead_code)]
-    description: String,
-    #[allow(dead_code)]
-    virus_path: String,
     inputs: SnapshotInputs,
     tbp_grid: SnapshotTbpGrid,
-    #[serde(deserialize_with = "array1_from_vec")]
-    #[allow(dead_code)]
-    lineage_counts: Array1<f64>,
-    #[serde(deserialize_with = "array1_from_vec")]
-    #[allow(dead_code)]
-    integral_merger_rate: Array1<f64>,
-    #[serde(deserialize_with = "array1_from_vec")]
-    #[allow(dead_code)]
-    total_merger_rate: Array1<f64>,
     #[serde(deserialize_with = "indexmap_array1_from_map")]
     node_contributions: IndexMap<String, Array1<f64>>,
   }
@@ -118,8 +105,6 @@ mod tests {
   struct SnapshotTbpGrid {
     start: f64,
     end: f64,
-    #[allow(dead_code)]
-    padding: f64,
     n_points: usize,
   }
 
