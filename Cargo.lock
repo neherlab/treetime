@@ -4927,6 +4927,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smart-default",
+ "tempfile",
  "traversal",
  "treetime-graph",
  "treetime-primitives",

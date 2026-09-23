@@ -12,9 +12,7 @@ pub fn usher_mat_pb_write_file(filepath: impl AsRef<Path>, tree: &UsherTree) -> 
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   usher_mat_pb_write(&mut f, tree)
-    .wrap_err_with(|| format!("When writing Usher MAT protobuf file '{}'", filepath.display()))?;
-  writeln!(f)?;
-  Ok(())
+    .wrap_err_with(|| format!("When writing Usher MAT protobuf file '{}'", filepath.display()))
 }
 
 pub fn usher_mat_pb_write_bytes(tree: &UsherTree) -> Result<Vec<u8>, Report> {
