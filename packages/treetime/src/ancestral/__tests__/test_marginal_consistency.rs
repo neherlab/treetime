@@ -10,6 +10,7 @@ mod tests {
   use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
+  use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -305,7 +306,16 @@ mod tests {
     } = recon;
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(graph, |node| {
-      let seq = partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng)?;
+      let seq = partition.reconstruct_node_sequence(
+        node_states,
+        node,
+        TipStates {
+          include_leaves: false,
+          impute: false,
+        },
+        SampleMode::Argmax,
+        &mut rng,
+      )?;
       actual.insert(
         names[&node.key].clone().expect("all test nodes are named"),
         seq.to_string(),
@@ -333,8 +343,10 @@ mod tests {
         node_states,
         &edges.forward,
         node,
-        false,
-        false,
+        TipStates {
+          include_leaves: false,
+          impute: false,
+        },
         SampleMode::Argmax,
         &mut rng,
       )?;

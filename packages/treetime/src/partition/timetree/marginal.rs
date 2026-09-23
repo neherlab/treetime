@@ -1,4 +1,5 @@
 use crate::ancestral::sample::SampleMode;
+use crate::ancestral::tip_states::TipStates;
 use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::seq::alignment::NodeSeqInput;
@@ -70,26 +71,21 @@ impl PartitionTimetree {
   fn reconstruct_node_sequence(
     &mut self,
     node: &GraphNodeForward,
-    include_leaves: bool,
-    impute: bool,
+    tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
     match self {
-      Self::Dense(family) => family.partition.reconstruct_node_sequence(
-        &mut family.node_states,
-        node,
-        include_leaves,
-        impute,
-        sample_mode,
-        rng,
-      ),
+      Self::Dense(family) => {
+        family
+          .partition
+          .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng)
+      },
       Self::Sparse(family) => family.partition.reconstruct_node_sequence(
         &mut family.node_states,
         &family.edges.forward,
         node,
-        include_leaves,
-        impute,
+        tips,
         sample_mode,
         rng,
       ),
@@ -173,8 +169,7 @@ pub(crate) fn initialize_marginal_timetree(
 
 pub(crate) fn ancestral_reconstruction_timetree(
   graph: &Graph,
-  include_leaves: bool,
-  impute: bool,
+  tips: TipStates,
   partitions: &mut [PartitionTimetree],
   sample_mode: SampleMode,
   rng: &mut dyn rand::RngCore,
@@ -183,7 +178,7 @@ pub(crate) fn ancestral_reconstruction_timetree(
   let mut node_sequences = BTreeMap::new();
   graph.iter_depth_first_preorder_forward(|node| {
     if partitions.is_empty() {
-      if !include_leaves && node.is_leaf {
+      if !tips.include_leaves && node.is_leaf {
         return Ok(());
       }
       let seq = seq![];
@@ -192,7 +187,7 @@ pub(crate) fn ancestral_reconstruction_timetree(
       return Ok(());
     }
 
-    let reconstructed = partitions[0].reconstruct_node_sequence(&node, include_leaves, impute, sample_mode, rng);
+    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng);
     match reconstructed {
       Some(seq) => {
         visitor(node.key, &seq)?;

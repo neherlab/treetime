@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::{Resolve, SampleMode};
+use crate::ancestral::tip_states::TipStates;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
@@ -130,8 +131,7 @@ impl PartitionMarginalSparse {
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
     node: &GraphNodeForward,
-    include_leaves: bool,
-    impute: bool,
+    tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<()> {
@@ -154,7 +154,7 @@ impl PartitionMarginalSparse {
         node_obs,
         msg_from_parent.as_ref(),
         parent_state.as_ref(),
-        impute,
+        tips.impute,
         &self.alphabet,
       );
       node_states.get_mut(&node.key)?.emitted = Some(seq);
@@ -163,7 +163,7 @@ impl PartitionMarginalSparse {
       node_states.get_mut(&node.key)?.emitted = Some(seq);
     }
 
-    if !include_leaves && node.is_leaf {
+    if !tips.include_leaves && node.is_leaf {
       return None;
     }
 
@@ -175,12 +175,11 @@ impl PartitionMarginalSparse {
     node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
     node: &GraphNodeForward,
-    include_leaves: bool,
-    impute: bool,
+    tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
-    self.advance_node_state(node_states, forward, node, include_leaves, impute, sample_mode, rng)?;
+    self.advance_node_state(node_states, forward, node, tips, sample_mode, rng)?;
     Some(self.node_sequence(node_states, node.key))
   }
 }

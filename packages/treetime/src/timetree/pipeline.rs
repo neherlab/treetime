@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::ancestral::sample::SampleMode;
+use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
@@ -604,8 +605,10 @@ pub fn run(
       let mut rng = get_random_number_generator(params.seed);
       ancestral_reconstruction_timetree(
         &input.graph,
-        params.include_leaves,
-        params.impute_missing_data,
+        TipStates {
+          include_leaves: params.include_leaves,
+          impute: params.impute_missing_data,
+        },
         &mut partitions,
         SampleMode::Argmax,
         &mut rng,

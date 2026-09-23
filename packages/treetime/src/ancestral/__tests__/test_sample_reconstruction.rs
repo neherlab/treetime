@@ -56,6 +56,7 @@ mod tests {
     use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
     use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
+    use crate::ancestral::tip_states::TipStates;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::seq::alignment::node_seq_inputs;
     use eyre::Report;
@@ -112,8 +113,17 @@ mod tests {
           ..
         } = &mut recon;
         ancestral_reconstruction(&graph, |node| {
-          let seq =
-            partition.reconstruct_node_sequence(node_states, &edges.forward, node, false, false, mode, &mut rng)?;
+          let seq = partition.reconstruct_node_sequence(
+            node_states,
+            &edges.forward,
+            node,
+            TipStates {
+              include_leaves: false,
+              impute: false,
+            },
+            mode,
+            &mut rng,
+          )?;
           out.insert(names[&node.key].clone().unwrap_or_default(), seq.to_string());
           Some(())
         })?;

@@ -12,6 +12,7 @@ mod tests {
   use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
+  use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -184,8 +185,10 @@ mod tests {
           node_states,
           &edges.forward,
           node,
-          false,
-          false,
+          TipStates {
+            include_leaves: false,
+            impute: false,
+          },
           SampleMode::Argmax,
           &mut rng,
         )?;
@@ -495,8 +498,10 @@ mod tests {
           node_states,
           &edges.forward,
           node,
-          true,
-          false,
+          TipStates {
+            include_leaves: true,
+            impute: false,
+          },
           SampleMode::Argmax,
           &mut rng,
         )?;

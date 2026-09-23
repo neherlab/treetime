@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
+use crate::ancestral::tip_states::TipStates;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
@@ -181,8 +182,7 @@ impl PartitionMarginalDense {
     &self,
     node_states: &mut BTreeMap<GraphNodeKey, DenseNodeState>,
     node: &GraphNodeForward,
-    include_leaves: bool,
-    impute: bool,
+    tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
@@ -190,7 +190,7 @@ impl PartitionMarginalDense {
       let seq_info = node_states.get(&node.key)?;
       if node.is_leaf {
         let mut seq = seq_info.seq.sequence.clone();
-        if impute && seq_info.profile.dis.nrows() == seq.len() {
+        if tips.impute && seq_info.profile.dis.nrows() == seq.len() {
           for pos in 0..seq.len() {
             let ch = seq[pos];
             if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
@@ -215,7 +215,7 @@ impl PartitionMarginalDense {
       node_data.seq.sequence = seq.clone();
     }
 
-    if !include_leaves && node.is_leaf {
+    if !tips.include_leaves && node.is_leaf {
       return None;
     }
 

@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
+  use crate::ancestral::tip_states::TipStates;
   use crate::seq::composition::Composition;
   use proptest::prelude::*;
   use rand::SeedableRng;
@@ -67,7 +68,7 @@ mod tests {
         } = &mut recon;
         ancestral_reconstruction(&graph, |node| {
           partition
-            .reconstruct_node_sequence(node_states, &edges.forward, node, true, false, SampleMode::Argmax, &mut rng)
+            .reconstruct_node_sequence(node_states, &edges.forward, node, TipStates { include_leaves: true, impute: false }, SampleMode::Argmax, &mut rng)
             .map(|_| ())
         })
         .unwrap();

@@ -3,6 +3,7 @@ use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_parti
 use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
+use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
@@ -450,8 +451,10 @@ pub fn run(
               &mut node_states,
               &edges.forward,
               node,
-              params.include_leaves,
-              params.impute_missing_data,
+              TipStates {
+                include_leaves: params.include_leaves,
+                impute: params.impute_missing_data,
+              },
               params.sample_from_profile,
               &mut rng,
             )
@@ -505,8 +508,10 @@ pub fn run(
               .reconstruct_node_sequence(
                 &mut node_states,
                 node,
-                params.include_leaves,
-                params.impute_missing_data,
+                TipStates {
+                  include_leaves: params.include_leaves,
+                  impute: params.impute_missing_data,
+                },
                 params.sample_from_profile,
                 &mut rng,
               )

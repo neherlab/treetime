@@ -3,6 +3,7 @@ use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
 use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
 use crate::ancestral::sample::SampleMode;
+use crate::ancestral::tip_states::TipStates;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -75,8 +76,10 @@ pub(crate) fn reconstruct_marginal_partition(
           &mut node_states,
           &edges.forward,
           node,
-          params.include_leaves,
-          params.impute_missing_data,
+          TipStates {
+            include_leaves: params.include_leaves,
+            impute: params.impute_missing_data,
+          },
           params.sample_from_profile,
           rng,
         )
@@ -98,8 +101,10 @@ pub(crate) fn reconstruct_marginal_partition(
           .reconstruct_node_sequence(
             &mut node_states,
             node,
-            params.include_leaves,
-            params.impute_missing_data,
+            TipStates {
+              include_leaves: params.include_leaves,
+              impute: params.impute_missing_data,
+            },
             params.sample_from_profile,
             rng,
           )

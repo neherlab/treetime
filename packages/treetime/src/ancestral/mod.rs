@@ -10,6 +10,7 @@ pub mod multi;
 pub mod params;
 pub mod pipeline;
 pub mod sample;
+pub mod tip_states;
 
 #[cfg(test)]
 mod __tests__;
