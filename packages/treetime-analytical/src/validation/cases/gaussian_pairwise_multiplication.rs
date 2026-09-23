@@ -1,22 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianPairwiseMultiplicationTestCase {
-  pub name: &'static str,
-  pub description: &'static str,
-  pub stress_type: &'static str,
-  pub analytical_caution: &'static str,
-  pub slowness: f64,
-  pub mu_f: f64,
-  pub sigma_f: f64,
-  pub amplitude_f: f64,
-  pub mu_g: f64,
-  pub sigma_g: f64,
-  pub amplitude_g: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
-}
-
 pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicationTestCase] = &[
   GaussianPairwiseMultiplicationTestCase {
     name: "identical",
@@ -169,3 +152,20 @@ pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicati
     input_grid_n_points: 201,
   },
 ];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GaussianPairwiseMultiplicationTestCase {
+  pub name: &'static str,
+  pub description: &'static str,
+  pub stress_type: &'static str,
+  pub analytical_caution: &'static str,
+  pub slowness: f64,
+  pub mu_f: f64,
+  pub sigma_f: f64,
+  pub amplitude_f: f64,
+  pub mu_g: f64,
+  pub sigma_g: f64,
+  pub amplitude_g: f64,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
+}

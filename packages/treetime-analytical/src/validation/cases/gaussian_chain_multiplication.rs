@@ -1,18 +1,6 @@
 use crate::gaussian::GaussianParams;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianChainMultiplicationTestCase {
-  pub name: &'static str,
-  pub description: &'static str,
-  pub stress_type: &'static str,
-  pub analytical_caution: &'static str,
-  pub slowness: f64,
-  pub factors: Vec<GaussianParams>,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
-}
-
 pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicationTestCase> {
   let mut cases = Vec::new();
 
@@ -336,4 +324,16 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
   });
 
   cases
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GaussianChainMultiplicationTestCase {
+  pub name: &'static str,
+  pub description: &'static str,
+  pub stress_type: &'static str,
+  pub analytical_caution: &'static str,
+  pub slowness: f64,
+  pub factors: Vec<GaussianParams>,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
 }

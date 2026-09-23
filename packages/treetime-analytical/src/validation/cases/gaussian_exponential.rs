@@ -1,17 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianExponentialTestCase {
-  pub name: &'static str,
-  pub description: &'static str,
-  pub stress_type: &'static str,
-  pub analytical_caution: &'static str,
-  pub slowness: f64,
-  pub a_f: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
-}
-
 pub const GAUSSIAN_EXPONENTIAL_CASES: &[GaussianExponentialTestCase] = &[
   GaussianExponentialTestCase {
     name: "python_notebook_case",
@@ -84,3 +72,15 @@ pub const GAUSSIAN_EXPONENTIAL_CASES: &[GaussianExponentialTestCase] = &[
     input_grid_n_points: 201,
   },
 ];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GaussianExponentialTestCase {
+  pub name: &'static str,
+  pub description: &'static str,
+  pub stress_type: &'static str,
+  pub analytical_caution: &'static str,
+  pub slowness: f64,
+  pub a_f: f64,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
+}

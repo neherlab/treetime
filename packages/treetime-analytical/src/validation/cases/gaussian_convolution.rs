@@ -1,19 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianConvolutionTestCase {
-  pub name: &'static str,
-  pub description: &'static str,
-  pub stress_type: &'static str,
-  pub analytical_caution: &'static str,
-  pub slowness: f64,
-  pub sigma_f: f64,
-  pub sigma_g: f64,
-  pub mu: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
-}
-
 pub const GAUSSIAN_CONVOLUTION_CASES: &[GaussianConvolutionTestCase] = &[
   GaussianConvolutionTestCase {
     name: "python_notebook_case_1",
@@ -220,3 +206,17 @@ pub const GAUSSIAN_CONVOLUTION_CASES: &[GaussianConvolutionTestCase] = &[
     input_grid_n_points: 2006,
   },
 ];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GaussianConvolutionTestCase {
+  pub name: &'static str,
+  pub description: &'static str,
+  pub stress_type: &'static str,
+  pub analytical_caution: &'static str,
+  pub slowness: f64,
+  pub sigma_f: f64,
+  pub sigma_g: f64,
+  pub mu: f64,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
+}

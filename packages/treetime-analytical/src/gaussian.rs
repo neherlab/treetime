@@ -3,18 +3,14 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime_ops::ScaledArray;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct GaussianParams {
-  pub mu: f64,
-  pub sigma: f64,
-  pub amplitude: f64,
-}
+pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> ScaledArray {
+  if params.is_empty() {
+    return ScaledArray::new(Array1::ones(grid.len()), 0.0);
+  }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct GaussianProductResult {
-  pub mu: f64,
-  pub sigma: f64,
-  pub log_scale: f64,
+  let result = gaussian_product_params(params);
+  let normalized = grid.mapv(|x| (-(0.5 * ((x - result.mu) / result.sigma).powi(2))).exp());
+  ScaledArray::new(normalized, result.log_scale)
 }
 
 pub fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResult {
@@ -46,18 +42,19 @@ pub fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResu
   }
 }
 
-pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> ScaledArray {
-  if params.is_empty() {
-    return ScaledArray::new(Array1::ones(grid.len()), 0.0);
-  }
-
-  let result = gaussian_product_params(params);
-  let normalized = grid.mapv(|x| (-(0.5 * ((x - result.mu) / result.sigma).powi(2))).exp());
-  ScaledArray::new(normalized, result.log_scale)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GaussianProductResult {
+  pub mu: f64,
+  pub sigma: f64,
+  pub log_scale: f64,
 }
 
 pub fn gaussian_evaluate(params: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| params.amplitude * (-(0.5 * ((x - params.mu) / params.sigma).powi(2))).exp())
+}
+
+pub fn gaussian_pdf_grid(mu: f64, sigma: f64, grid: &Array1<f64>) -> Array1<f64> {
+  grid.mapv(|x| gaussian_pdf(mu, sigma, x))
 }
 
 pub fn gaussian_pdf(mu: f64, sigma: f64, x: f64) -> f64 {
@@ -65,17 +62,13 @@ pub fn gaussian_pdf(mu: f64, sigma: f64, x: f64) -> f64 {
   (-(0.5 * ((x - mu) / sigma).powi(2))).exp() / (sigma * (2.0 * PI).sqrt())
 }
 
-pub fn gaussian_pdf_grid(mu: f64, sigma: f64, grid: &Array1<f64>) -> Array1<f64> {
-  grid.mapv(|x| gaussian_pdf(mu, sigma, x))
+pub fn gaussian_convolution_pdf_grid(sigma_f: f64, sigma_g: f64, mu: f64, grid: &Array1<f64>) -> Array1<f64> {
+  grid.mapv(|x| gaussian_convolution_pdf(sigma_f, sigma_g, mu, x))
 }
 
 pub fn gaussian_convolution_pdf(sigma_f: f64, sigma_g: f64, mu: f64, x: f64) -> f64 {
   let variance_sum = sigma_f.powi(2) + sigma_g.powi(2);
   (-(0.5 * (x - mu).powi(2) / variance_sum)).exp() / (2.0 * PI * variance_sum).sqrt()
-}
-
-pub fn gaussian_convolution_pdf_grid(sigma_f: f64, sigma_g: f64, mu: f64, grid: &Array1<f64>) -> Array1<f64> {
-  grid.mapv(|x| gaussian_convolution_pdf(sigma_f, sigma_g, mu, x))
 }
 
 pub fn gaussian_convolution(a: &GaussianParams, b: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
@@ -85,4 +78,11 @@ pub fn gaussian_convolution(a: &GaussianParams, b: &GaussianParams, grid: &Array
   let normalization = a.amplitude * b.amplitude * std::f64::consts::TAU.sqrt() * a.sigma * b.sigma / sigma_conv;
 
   grid.mapv(|x| normalization * (-(0.5 * ((x - mu_conv) / sigma_conv).powi(2))).exp())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct GaussianParams {
+  pub mu: f64,
+  pub sigma: f64,
+  pub amplitude: f64,
 }

@@ -1,18 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExponentialConvolutionTestCase {
-  pub name: &'static str,
-  pub description: &'static str,
-  pub stress_type: &'static str,
-  pub analytical_caution: &'static str,
-  pub slowness: f64,
-  pub a: f64,
-  pub b: f64,
-  pub input_grid_domain: (f64, f64),
-  pub input_grid_n_points: usize,
-}
-
 pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   ExponentialConvolutionTestCase {
     name: "python_notebook_case",
@@ -158,3 +145,16 @@ pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
     input_grid_n_points: 1001,
   },
 ];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExponentialConvolutionTestCase {
+  pub name: &'static str,
+  pub description: &'static str,
+  pub stress_type: &'static str,
+  pub analytical_caution: &'static str,
+  pub slowness: f64,
+  pub a: f64,
+  pub b: f64,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
+}
