@@ -5,7 +5,7 @@ use itertools::izip;
 use ndarray::{Array1, ArrayView1};
 use treetime_primitives::LogLh;
 
-#[expect(
+#[allow(
   single_use_lifetimes,
   reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
 )]

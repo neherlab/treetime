@@ -9,7 +9,7 @@ pub struct DiscreteStates {
 }
 
 impl DiscreteStates {
-  #[expect(
+  #[allow(
     single_use_lifetimes,
     reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
   )]
