@@ -6,64 +6,6 @@ use itertools::Itertools;
 use std::collections::{BTreeSet, VecDeque};
 use treetime_utils::make_internal_report;
 
-#[must_use]
-#[derive(Debug)]
-pub struct GraphNodeForward {
-  pub is_root: bool,
-  pub is_leaf: bool,
-  pub key: GraphNodeKey,
-  pub parent_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
-  pub child_edge_keys: Vec<GraphEdgeKey>,
-}
-
-impl GraphNodeForward {
-  fn new(graph: &Graph, node: &Node) -> Self {
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
-    let key = node.key();
-
-    let parent_keys = graph.parents_keys_of(node).collect_vec();
-    let child_edge_keys = graph.children_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
-
-    Self {
-      is_root,
-      is_leaf,
-      key,
-      parent_keys,
-      child_edge_keys,
-    }
-  }
-}
-
-#[must_use]
-#[derive(Debug)]
-pub struct GraphNodeBackward {
-  pub is_root: bool,
-  pub is_leaf: bool,
-  pub key: GraphNodeKey,
-  pub child_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
-  pub parent_edge_keys: Vec<GraphEdgeKey>,
-}
-
-impl GraphNodeBackward {
-  fn new(graph: &Graph, node: &Node) -> Self {
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
-    let key = node.key();
-
-    let child_keys = graph.children_keys_of(node).collect_vec();
-    let parent_edge_keys = graph.parents_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
-
-    Self {
-      is_root,
-      is_leaf,
-      key,
-      child_keys,
-      parent_edge_keys,
-    }
-  }
-}
-
 #[allow(
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
@@ -172,5 +114,63 @@ impl Graph {
       explorer(GraphNodeBackward::new(self, node))?;
     }
     Ok(())
+  }
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct GraphNodeForward {
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: GraphNodeKey,
+  pub parent_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
+  pub child_edge_keys: Vec<GraphEdgeKey>,
+}
+
+impl GraphNodeForward {
+  fn new(graph: &Graph, node: &Node) -> Self {
+    let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
+    let key = node.key();
+
+    let parent_keys = graph.parents_keys_of(node).collect_vec();
+    let child_edge_keys = graph.children_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
+
+    Self {
+      is_root,
+      is_leaf,
+      key,
+      parent_keys,
+      child_edge_keys,
+    }
+  }
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct GraphNodeBackward {
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: GraphNodeKey,
+  pub child_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
+  pub parent_edge_keys: Vec<GraphEdgeKey>,
+}
+
+impl GraphNodeBackward {
+  fn new(graph: &Graph, node: &Node) -> Self {
+    let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
+    let key = node.key();
+
+    let child_keys = graph.children_keys_of(node).collect_vec();
+    let parent_edge_keys = graph.parents_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
+
+    Self {
+      is_root,
+      is_leaf,
+      key,
+      child_keys,
+      parent_edge_keys,
+    }
   }
 }

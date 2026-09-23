@@ -4,16 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct GraphNodeKey(pub usize);
-
-impl GraphNodeKey {
-  #[inline]
-  pub const fn as_usize(self) -> usize {
-    self.0
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Node {
   key: GraphNodeKey,
@@ -115,5 +105,15 @@ impl Node {
   #[inline]
   pub(crate) fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.inbound_edges
+  }
+}
+
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct GraphNodeKey(pub usize);
+
+impl GraphNodeKey {
+  #[inline]
+  pub const fn as_usize(self) -> usize {
+    self.0
   }
 }

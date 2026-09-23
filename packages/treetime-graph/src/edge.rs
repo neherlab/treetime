@@ -6,19 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct GraphEdgeKey(pub usize);
-
-impl GraphEdgeKey {
-  pub(crate) const fn as_usize(self) -> usize {
-    self.0
-  }
-
-  pub fn invalid() -> Self {
-    Self(usize::MAX)
-  }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Getters, CopyGetters, MutGetters, Setters)]
 pub struct Edge {
   #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
@@ -63,5 +50,18 @@ pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
     let edge = graph.get_edge_mut(edge_key).expect("Edge must exist");
     edge.set_source(target_key);
     edge.set_target(source_key);
+  }
+}
+
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct GraphEdgeKey(pub usize);
+
+impl GraphEdgeKey {
+  pub(crate) const fn as_usize(self) -> usize {
+    self.0
+  }
+
+  pub fn invalid() -> Self {
+    Self(usize::MAX)
   }
 }

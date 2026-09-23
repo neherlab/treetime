@@ -140,21 +140,6 @@ impl TopologyOrderPreset {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TopologyOrderTargetAggregate {
-  #[default]
-  Mean,
-  Median,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct TopologyOrder {
-  roots: Vec<GraphNodeKey>,
-  leaves: Vec<GraphNodeKey>,
-  outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
-}
-
 fn build_order_unmodified(graph: &Graph) -> Result<TopologyOrder, Report> {
   Ok(TopologyOrder {
     roots: graph.roots.clone(),
@@ -213,27 +198,11 @@ fn build_order<K: Ord>(
   })
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct TargetScore {
-  numerator: usize,
-  denominator: usize,
-}
-
-impl Ord for TargetScore {
-  #[allow(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
-  fn cmp(&self, other: &Self) -> Ordering {
-    ((self.numerator as u128) * (other.denominator as u128))
-      .cmp(&((other.numerator as u128) * (self.denominator as u128)))
-  }
-}
-
-impl PartialOrd for TargetScore {
-  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-    Some(self.cmp(other))
-  }
+#[derive(Debug, Eq, PartialEq)]
+struct TopologyOrder {
+  roots: Vec<GraphNodeKey>,
+  leaves: Vec<GraphNodeKey>,
+  outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
 }
 
 #[allow(
@@ -359,6 +328,14 @@ fn compute_target_scores(
   }
 }
 
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TopologyOrderTargetAggregate {
+  #[default]
+  Mean,
+  Median,
+}
+
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -446,6 +423,29 @@ fn median_score(sorted_positions: &[usize]) -> TargetScore {
       numerator: sorted_positions[midpoint],
       denominator: 1,
     }
+  }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TargetScore {
+  numerator: usize,
+  denominator: usize,
+}
+
+impl Ord for TargetScore {
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
+  fn cmp(&self, other: &Self) -> Ordering {
+    ((self.numerator as u128) * (other.denominator as u128))
+      .cmp(&((other.numerator as u128) * (self.denominator as u128)))
+  }
+}
+
+impl PartialOrd for TargetScore {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
   }
 }
 
