@@ -9,9 +9,9 @@ rustc_session::declare_lint! {
     /// Forbids glob imports (`use foo::*`) and renamed imports (`use foo::Bar as Baz`).
     /// Every imported name must be listed explicitly under its original name so the
     /// module's API surface is intentional, auditable, and traceable. As in clippy's
-    /// `wildcard_imports`, a `prelude` module and `use super::*` in a test module
-    /// may be glob-imported: preludes exist to be imported whole, and a test module
-    /// tests its parent's items.
+    /// `wildcard_imports`, a `prelude` module and any glob inside test code may be
+    /// glob-imported: preludes exist to be imported whole, and a test module imports
+    /// the module it tests, which lives in a sibling file under `__tests__/`.
     pub UNCLEAR_EXPORTS,
     Warn,
     "unclear exports -- glob imports and renamed imports are banned"
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for UnclearExports {
         };
 
         if *kind == UseKind::Glob {
-            let exempt = is_prelude_glob(path) || (is_super_glob(path) && is_hir_in_test_zone(cx, item.hir_id()));
+            let exempt = is_prelude_glob(path) || is_hir_in_test_zone(cx, item.hir_id());
             if !exempt {
                 span_lint_and_help(cx, UNCLEAR_EXPORTS, item.span, GLOB_MSG, None, GLOB_HELP);
             }
@@ -78,9 +78,4 @@ impl<'tcx> LateLintPass<'tcx> for UnclearExports {
 /// Returns `true` for `use some::path::prelude::*`.
 fn is_prelude_glob(path: &UsePath<'_>) -> bool {
     path.segments.last().is_some_and(|segment| segment.ident.as_str() == "prelude")
-}
-
-/// Returns `true` for `use super::*`.
-fn is_super_glob(path: &UsePath<'_>) -> bool {
-    matches!(path.segments, [segment] if segment.ident.name == kw::Super)
 }
