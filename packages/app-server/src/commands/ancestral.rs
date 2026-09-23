@@ -31,65 +31,6 @@ use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use utoipa::ToSchema;
 
-/// Ancestral reconstruction request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct AncestralArgs {
-  input_fastas: Vec<String>,
-  aln: Option<String>,
-  vcf_reference: Option<String>,
-  tree: String,
-  #[schema(value_type = Option<String>)]
-  alphabet: Option<AlphabetName>,
-  #[default(GtrModelName::Infer)]
-  #[schema(value_type = String)]
-  model_name: GtrModelName,
-  gtr_params: Vec<String>,
-  #[default(MethodAncestral::default())]
-  #[schema(value_type = String)]
-  method_anc: MethodAncestral,
-  dense: Option<bool>,
-  aa: bool,
-  #[default(GapFill::default())]
-  #[schema(value_type = String)]
-  gap_fill: GapFill,
-  keep_overhangs: bool,
-  zero_based: bool,
-  include_leaves: bool,
-  impute_missing_data: bool,
-  reconstruct_tip_states: bool,
-  report_ambiguous: bool,
-  outdir: String,
-  gtr_iterations: usize,
-  site_specific_gtr: bool,
-  seed: Option<u64>,
-}
-
-impl AncestralArgs {
-  fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
-
-  fn params(&self) -> AncestralParams {
-    AncestralParams {
-      method: self.method_anc,
-      model: self.model_name,
-      dense: self.dense,
-      include_leaves: self.include_leaves || self.reconstruct_tip_states,
-      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
-      gtr_iterations: self.gtr_iterations,
-      site_specific_gtr: self.site_specific_gtr,
-      seed: self.seed,
-      sample_from_profile: SampleMode::default(),
-      ignore_missing_alns: false,
-    }
-  }
-}
-
 pub(crate) fn run_ancestral(
   args: &AncestralArgs,
   cancel: &dyn Cancel,
@@ -216,13 +157,6 @@ pub(crate) fn run_ancestral(
   })
 }
 
-struct AncestralReadInputs {
-  input: AncestralInput,
-  mask: Vec<bool>,
-  descs: BTreeMap<String, Option<String>>,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-}
-
 fn read_nwk_fasta(
   args: &AncestralArgs,
   cancel: &dyn Cancel,
@@ -279,6 +213,72 @@ fn read_nwk_fasta(
     descs,
     confidences,
   })
+}
+
+/// Ancestral reconstruction request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct AncestralArgs {
+  input_fastas: Vec<String>,
+  aln: Option<String>,
+  vcf_reference: Option<String>,
+  tree: String,
+  #[schema(value_type = Option<String>)]
+  alphabet: Option<AlphabetName>,
+  #[default(GtrModelName::Infer)]
+  #[schema(value_type = String)]
+  model_name: GtrModelName,
+  gtr_params: Vec<String>,
+  #[default(MethodAncestral::default())]
+  #[schema(value_type = String)]
+  method_anc: MethodAncestral,
+  dense: Option<bool>,
+  aa: bool,
+  #[default(GapFill::default())]
+  #[schema(value_type = String)]
+  gap_fill: GapFill,
+  keep_overhangs: bool,
+  zero_based: bool,
+  include_leaves: bool,
+  impute_missing_data: bool,
+  reconstruct_tip_states: bool,
+  report_ambiguous: bool,
+  outdir: String,
+  gtr_iterations: usize,
+  site_specific_gtr: bool,
+  seed: Option<u64>,
+}
+
+impl AncestralArgs {
+  fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
+
+  fn params(&self) -> AncestralParams {
+    AncestralParams {
+      method: self.method_anc,
+      model: self.model_name,
+      dense: self.dense,
+      include_leaves: self.include_leaves || self.reconstruct_tip_states,
+      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
+      gtr_iterations: self.gtr_iterations,
+      site_specific_gtr: self.site_specific_gtr,
+      seed: self.seed,
+      sample_from_profile: SampleMode::default(),
+      ignore_missing_alns: false,
+    }
+  }
+}
+
+struct AncestralReadInputs {
+  input: AncestralInput,
+  mask: Vec<bool>,
+  descs: BTreeMap<String, Option<String>>,
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
 fn write_tree_for_partition(

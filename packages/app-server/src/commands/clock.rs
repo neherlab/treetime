@@ -30,55 +30,6 @@ use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use utoipa::ToSchema;
 
-/// Clock estimation request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct ClockArgs {
-  aln: Vec<String>,
-  tree: Option<String>,
-  vcf_reference: Option<String>,
-  dates: String,
-  name_column: Option<String>,
-  date_column: Option<String>,
-  sequence_length: Option<usize>,
-  #[default(GtrModelName::default())]
-  #[schema(value_type = String)]
-  gtr: GtrModelName,
-  gtr_params: Vec<String>,
-  #[default(BranchLengthMode::default())]
-  #[schema(value_type = String)]
-  branch_length_mode: BranchLengthMode,
-  #[default(MethodAncestral::default())]
-  #[schema(value_type = String)]
-  method_anc: MethodAncestral,
-  #[default = 3.0]
-  clock_filter: f64,
-  #[schema(value_type = Option<String>)]
-  reroot: Option<RerootMethod>,
-  reroot_tips: Vec<String>,
-  keep_root: bool,
-  prune_short: bool,
-  tip_slack: Option<f64>,
-  covariation: bool,
-  allow_negative_rate: bool,
-  outdir: String,
-  seed: Option<u64>,
-}
-
-#[derive(serde::Serialize)]
-pub struct ClockResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub clock_model: ClockModel,
-  #[serde(skip)]
-  pub regression_results: Vec<ClockRegressionResult>,
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -187,6 +138,55 @@ pub(crate) fn run_clock(
     clock_model,
     regression_results,
   })
+}
+
+/// Clock estimation request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct ClockArgs {
+  aln: Vec<String>,
+  tree: Option<String>,
+  vcf_reference: Option<String>,
+  dates: String,
+  name_column: Option<String>,
+  date_column: Option<String>,
+  sequence_length: Option<usize>,
+  #[default(GtrModelName::default())]
+  #[schema(value_type = String)]
+  gtr: GtrModelName,
+  gtr_params: Vec<String>,
+  #[default(BranchLengthMode::default())]
+  #[schema(value_type = String)]
+  branch_length_mode: BranchLengthMode,
+  #[default(MethodAncestral::default())]
+  #[schema(value_type = String)]
+  method_anc: MethodAncestral,
+  #[default = 3.0]
+  clock_filter: f64,
+  #[schema(value_type = Option<String>)]
+  reroot: Option<RerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
+  prune_short: bool,
+  tip_slack: Option<f64>,
+  covariation: bool,
+  allow_negative_rate: bool,
+  outdir: String,
+  seed: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
+pub struct ClockResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
+  #[serde(skip)]
+  pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub regression_results: Vec<ClockRegressionResult>,
 }
 
 fn gather_clock_outputs(

@@ -28,28 +28,6 @@ use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
 use utoipa::ToSchema;
 
-/// Tree-pruning request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct PruneArgs {
-  input_fastas: Vec<String>,
-  tree: String,
-  #[schema(value_type = Option<String>)]
-  alphabet: Option<AlphabetName>,
-  outdir: String,
-  prune_short: Option<f64>,
-  prune_empty: bool,
-  merge_shared_mutations: bool,
-  prune_nodes_list: Option<String>,
-  #[default = ',']
-  #[schema(value_type = String)]
-  prune_nodes_list_delimiter: char,
-  prune_nodes_list_file: Option<String>,
-  #[default = '\n']
-  #[schema(value_type = String)]
-  prune_nodes_list_file_delimiter: char,
-}
-
 pub(crate) fn run_prune(
   args: &PruneArgs,
   cancel: &dyn Cancel,
@@ -225,6 +203,28 @@ fn validate_args(args: &PruneArgs) -> Result<(), Report> {
   }
 
   Ok(())
+}
+
+/// Tree-pruning request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct PruneArgs {
+  input_fastas: Vec<String>,
+  tree: String,
+  #[schema(value_type = Option<String>)]
+  alphabet: Option<AlphabetName>,
+  outdir: String,
+  prune_short: Option<f64>,
+  prune_empty: bool,
+  merge_shared_mutations: bool,
+  prune_nodes_list: Option<String>,
+  #[default = ',']
+  #[schema(value_type = String)]
+  prune_nodes_list_delimiter: char,
+  prune_nodes_list_file: Option<String>,
+  #[default = '\n']
+  #[schema(value_type = String)]
+  prune_nodes_list_file_delimiter: char,
 }
 
 #[allow(

@@ -20,18 +20,18 @@ pub struct ProgressEvent {
 }
 
 #[derive(ToSchema)]
+pub struct LogEvent {
+  pub level: LogLevel,
+  pub message: String,
+}
+
+#[derive(ToSchema)]
 pub enum LogLevel {
   Trace,
   Debug,
   Info,
   Warn,
   Error,
-}
-
-#[derive(ToSchema)]
-pub struct LogEvent {
-  pub level: LogLevel,
-  pub message: String,
 }
 
 #[derive(ToSchema)]

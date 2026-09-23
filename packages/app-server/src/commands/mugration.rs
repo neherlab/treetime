@@ -21,28 +21,6 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_utils::io::file::create_file_or_stdout;
 use utoipa::ToSchema;
 
-/// Mugration inference request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct MugrationArgs {
-  tree: Option<String>,
-  #[default(_code = r#""country".to_owned()"#)]
-  attribute: String,
-  states: String,
-  weights: Option<String>,
-  name_column: Option<String>,
-  confidence: Option<String>,
-  pc: Option<f64>,
-  #[default(_code = r#""?".to_owned()"#)]
-  missing_data: String,
-  #[default = 0.5]
-  missing_weights_threshold: f64,
-  #[default = 5]
-  iterations: usize,
-  sampling_bias_correction: Option<f64>,
-  outdir: String,
-}
-
 pub(crate) fn run_mugration(
   args: &MugrationArgs,
   cancel: &dyn Cancel,
@@ -160,4 +138,26 @@ pub(crate) fn run_mugration(
 
   progress.report("Done", 1.0, "");
   Ok(result)
+}
+
+/// Mugration inference request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct MugrationArgs {
+  tree: Option<String>,
+  #[default(_code = r#""country".to_owned()"#)]
+  attribute: String,
+  states: String,
+  weights: Option<String>,
+  name_column: Option<String>,
+  confidence: Option<String>,
+  pc: Option<f64>,
+  #[default(_code = r#""?".to_owned()"#)]
+  missing_data: String,
+  #[default = 0.5]
+  missing_weights_threshold: f64,
+  #[default = 5]
+  iterations: usize,
+  sampling_bias_correction: Option<f64>,
+  outdir: String,
 }

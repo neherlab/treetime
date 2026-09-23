@@ -45,211 +45,6 @@ use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::create_file_or_stdout;
 use utoipa::ToSchema;
 
-/// Time-tree estimation request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct TimetreeArgs {
-  input_fastas: Vec<String>,
-  tree: Option<String>,
-  vcf_reference: Option<String>,
-  dates: Option<String>,
-  name_column: Option<String>,
-  date_column: Option<String>,
-  sequence_length: Option<usize>,
-  clock_rate: Option<f64>,
-  clock_std_dev: Option<f64>,
-  #[default(BranchLengthMode::default())]
-  #[schema(value_type = String)]
-  branch_length_mode: BranchLengthMode,
-  #[default(TimeMarginalMode::default())]
-  #[schema(value_type = String)]
-  time_marginal: TimeMarginalMode,
-  confidence: bool,
-  keep_polytomies: bool,
-  resolve_polytomies: bool,
-  relax: Vec<f64>,
-  #[default = 2]
-  max_iter: usize,
-  coalescent: Option<f64>,
-  coalescent_opt: bool,
-  coalescent_skyline: bool,
-  #[default = 20]
-  skyline_n_points: usize,
-  #[default = 2.0]
-  skyline_stiffness: f64,
-  #[default = 2.0]
-  coalescent_confidence: f64,
-  #[default = 50.0]
-  gen_per_year: f64,
-  n_branches_posterior: Option<usize>,
-  tip_labels: bool,
-  no_tip_labels: bool,
-  clock_filter: f64,
-  n_iqd: Option<f64>,
-  #[schema(value_type = Option<String>)]
-  reroot: Option<RerootMethod>,
-  reroot_tips: Vec<String>,
-  keep_root: bool,
-  allow_negative_rate: bool,
-  tip_slack: Option<f64>,
-  covariation: bool,
-  #[default(GtrModelName::default())]
-  #[schema(value_type = String)]
-  gtr: GtrModelName,
-  gtr_params: Vec<String>,
-  #[default(MethodAncestral::default())]
-  #[schema(value_type = String)]
-  method_anc: MethodAncestral,
-  #[default(AlphabetName::default())]
-  #[schema(value_type = String)]
-  alphabet: AlphabetName,
-  dense: Option<bool>,
-  aa: bool,
-  #[default(GapFill::default())]
-  #[schema(value_type = String)]
-  gap_fill: GapFill,
-  keep_overhangs: bool,
-  zero_based: bool,
-  include_leaves: bool,
-  impute_missing_data: bool,
-  reconstruct_tip_states: bool,
-  report_ambiguous: bool,
-  no_indels: bool,
-  outdir: String,
-  tracelog: Option<String>,
-  seed: Option<u64>,
-}
-
-impl TimetreeArgs {
-  fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
-
-  fn params(&self) -> TimetreeParams {
-    TimetreeParams {
-      model: self.gtr,
-      alphabet_name: self.alphabet,
-      dense: self.dense,
-      gap_fill: self.effective_gap_fill(),
-      branch_length_mode: self.branch_length_mode,
-      no_indels: self.no_indels,
-      sequence_length: self.sequence_length,
-      clock_rate: self.clock_rate,
-      clock_std_dev: self.clock_std_dev,
-      keep_root: self.keep_root,
-      reroot_spec: reroot_spec(self.reroot, &self.reroot_tips),
-      allow_negative_rate: self.allow_negative_rate,
-      clock_filter: self.clock_filter,
-      covariation: self.covariation,
-      tip_slack: self.tip_slack,
-      max_iter: self.max_iter,
-      resolve_polytomies: self.resolve_polytomies,
-      keep_polytomies: self.keep_polytomies,
-      relax: self.relax.clone(),
-      coalescent: self.coalescent,
-      coalescent_opt: self.coalescent_opt,
-      coalescent_skyline: self.coalescent_skyline,
-      skyline_n_points: self.skyline_n_points,
-      skyline_stiffness: self.skyline_stiffness,
-      coalescent_confidence: self.coalescent_confidence,
-      gen_per_year: self.gen_per_year,
-      n_branches_posterior: self.n_branches_posterior,
-      time_marginal: self.time_marginal,
-      confidence: self.confidence,
-      include_leaves: self.include_leaves || self.reconstruct_tip_states,
-      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
-      report_ambiguous: self.report_ambiguous,
-      zero_based: self.zero_based,
-      seed: self.seed,
-    }
-  }
-}
-
-struct InputData {
-  graph: Graph,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  input_leaf_order: Vec<String>,
-  alphabet: Alphabet,
-  aln: Option<Vec<FastaRecord>>,
-  dates: Option<DatesMap>,
-}
-
-fn load_input_data(args: &TimetreeArgs) -> Result<InputData, Report> {
-  let nwk_parsed = if let Some(tree_path) = &args.tree {
-    nwk_read_file(Path::new(tree_path)).wrap_err("Failed to load tree from file")?
-  } else {
-    return make_error!("Tree inference from alignment not yet implemented");
-  };
-  let confidences = nwk_parsed.confidences();
-  let names = nwk_parsed.names();
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
-  let input_leaf_order = graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      names[&key]
-        .clone()
-        .ok_or_else(|| treetime::make_report!("Leaf node {key} has no name"))
-    })
-    .collect::<Result<Vec<_>, _>>()?;
-
-  let alphabet = Alphabet::new(args.alphabet)?;
-
-  let aln = if !args.input_fastas.is_empty() {
-    let paths: Vec<PathBuf> = args.input_fastas.iter().map(PathBuf::from).collect();
-    let mut records = read_many_fasta_path(&paths, &alphabet)?;
-    let gap_fill_mode = args.effective_gap_fill();
-    for record in &mut records {
-      apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
-    }
-    Some(records)
-  } else if args.branch_length_mode != BranchLengthMode::Input {
-    return make_error!(
-      "Alignment required when branch_length_mode is not 'input'. \
-       Provide FASTA files or use branch_length_mode=input"
-    );
-  } else {
-    None
-  };
-
-  let dates = if let Some(dates_path) = &args.dates {
-    let id_columns = args
-      .name_column
-      .clone()
-      .map_or_else(default_name_candidates, |col| vec![col]);
-    let dates = read_dates(
-      Path::new(dates_path),
-      &default_metadata_delimiters(),
-      &id_columns,
-      &None,
-      &args.date_column,
-    )
-    .wrap_err("When reading dates")?;
-    load_date_constraints(&dates, &graph, &names).wrap_err("Failed to load date constraints")?;
-    Some(dates)
-  } else {
-    None
-  };
-
-  Ok(InputData {
-    graph,
-    confidences,
-    names,
-    branch_lengths,
-    input_leaf_order,
-    alphabet,
-    aln,
-    dates,
-  })
-}
-
 pub(crate) fn run_timetree(
   args: &TimetreeArgs,
   cancel: &dyn Cancel,
@@ -436,6 +231,211 @@ pub(crate) fn run_timetree(
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult { graph, nodes, edges })
+}
+
+fn load_input_data(args: &TimetreeArgs) -> Result<InputData, Report> {
+  let nwk_parsed = if let Some(tree_path) = &args.tree {
+    nwk_read_file(Path::new(tree_path)).wrap_err("Failed to load tree from file")?
+  } else {
+    return make_error!("Tree inference from alignment not yet implemented");
+  };
+  let confidences = nwk_parsed.confidences();
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let branch_lengths = nwk_parsed.branch_lengths;
+  let input_leaf_order = graph
+    .get_leaves()
+    .map(|leaf| {
+      let key = leaf.key();
+      names[&key]
+        .clone()
+        .ok_or_else(|| treetime::make_report!("Leaf node {key} has no name"))
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+
+  let alphabet = Alphabet::new(args.alphabet)?;
+
+  let aln = if !args.input_fastas.is_empty() {
+    let paths: Vec<PathBuf> = args.input_fastas.iter().map(PathBuf::from).collect();
+    let mut records = read_many_fasta_path(&paths, &alphabet)?;
+    let gap_fill_mode = args.effective_gap_fill();
+    for record in &mut records {
+      apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
+    }
+    Some(records)
+  } else if args.branch_length_mode != BranchLengthMode::Input {
+    return make_error!(
+      "Alignment required when branch_length_mode is not 'input'. \
+       Provide FASTA files or use branch_length_mode=input"
+    );
+  } else {
+    None
+  };
+
+  let dates = if let Some(dates_path) = &args.dates {
+    let id_columns = args
+      .name_column
+      .clone()
+      .map_or_else(default_name_candidates, |col| vec![col]);
+    let dates = read_dates(
+      Path::new(dates_path),
+      &default_metadata_delimiters(),
+      &id_columns,
+      &None,
+      &args.date_column,
+    )
+    .wrap_err("When reading dates")?;
+    load_date_constraints(&dates, &graph, &names).wrap_err("Failed to load date constraints")?;
+    Some(dates)
+  } else {
+    None
+  };
+
+  Ok(InputData {
+    graph,
+    confidences,
+    names,
+    branch_lengths,
+    input_leaf_order,
+    alphabet,
+    aln,
+    dates,
+  })
+}
+
+/// Time-tree estimation request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct TimetreeArgs {
+  input_fastas: Vec<String>,
+  tree: Option<String>,
+  vcf_reference: Option<String>,
+  dates: Option<String>,
+  name_column: Option<String>,
+  date_column: Option<String>,
+  sequence_length: Option<usize>,
+  clock_rate: Option<f64>,
+  clock_std_dev: Option<f64>,
+  #[default(BranchLengthMode::default())]
+  #[schema(value_type = String)]
+  branch_length_mode: BranchLengthMode,
+  #[default(TimeMarginalMode::default())]
+  #[schema(value_type = String)]
+  time_marginal: TimeMarginalMode,
+  confidence: bool,
+  keep_polytomies: bool,
+  resolve_polytomies: bool,
+  relax: Vec<f64>,
+  #[default = 2]
+  max_iter: usize,
+  coalescent: Option<f64>,
+  coalescent_opt: bool,
+  coalescent_skyline: bool,
+  #[default = 20]
+  skyline_n_points: usize,
+  #[default = 2.0]
+  skyline_stiffness: f64,
+  #[default = 2.0]
+  coalescent_confidence: f64,
+  #[default = 50.0]
+  gen_per_year: f64,
+  n_branches_posterior: Option<usize>,
+  tip_labels: bool,
+  no_tip_labels: bool,
+  clock_filter: f64,
+  n_iqd: Option<f64>,
+  #[schema(value_type = Option<String>)]
+  reroot: Option<RerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
+  allow_negative_rate: bool,
+  tip_slack: Option<f64>,
+  covariation: bool,
+  #[default(GtrModelName::default())]
+  #[schema(value_type = String)]
+  gtr: GtrModelName,
+  gtr_params: Vec<String>,
+  #[default(MethodAncestral::default())]
+  #[schema(value_type = String)]
+  method_anc: MethodAncestral,
+  #[default(AlphabetName::default())]
+  #[schema(value_type = String)]
+  alphabet: AlphabetName,
+  dense: Option<bool>,
+  aa: bool,
+  #[default(GapFill::default())]
+  #[schema(value_type = String)]
+  gap_fill: GapFill,
+  keep_overhangs: bool,
+  zero_based: bool,
+  include_leaves: bool,
+  impute_missing_data: bool,
+  reconstruct_tip_states: bool,
+  report_ambiguous: bool,
+  no_indels: bool,
+  outdir: String,
+  tracelog: Option<String>,
+  seed: Option<u64>,
+}
+
+impl TimetreeArgs {
+  fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
+
+  fn params(&self) -> TimetreeParams {
+    TimetreeParams {
+      model: self.gtr,
+      alphabet_name: self.alphabet,
+      dense: self.dense,
+      gap_fill: self.effective_gap_fill(),
+      branch_length_mode: self.branch_length_mode,
+      no_indels: self.no_indels,
+      sequence_length: self.sequence_length,
+      clock_rate: self.clock_rate,
+      clock_std_dev: self.clock_std_dev,
+      keep_root: self.keep_root,
+      reroot_spec: reroot_spec(self.reroot, &self.reroot_tips),
+      allow_negative_rate: self.allow_negative_rate,
+      clock_filter: self.clock_filter,
+      covariation: self.covariation,
+      tip_slack: self.tip_slack,
+      max_iter: self.max_iter,
+      resolve_polytomies: self.resolve_polytomies,
+      keep_polytomies: self.keep_polytomies,
+      relax: self.relax.clone(),
+      coalescent: self.coalescent,
+      coalescent_opt: self.coalescent_opt,
+      coalescent_skyline: self.coalescent_skyline,
+      skyline_n_points: self.skyline_n_points,
+      skyline_stiffness: self.skyline_stiffness,
+      coalescent_confidence: self.coalescent_confidence,
+      gen_per_year: self.gen_per_year,
+      n_branches_posterior: self.n_branches_posterior,
+      time_marginal: self.time_marginal,
+      confidence: self.confidence,
+      include_leaves: self.include_leaves || self.reconstruct_tip_states,
+      impute_missing_data: self.impute_missing_data || self.reconstruct_tip_states,
+      report_ambiguous: self.report_ambiguous,
+      zero_based: self.zero_based,
+      seed: self.seed,
+    }
+  }
+}
+
+struct InputData {
+  graph: Graph,
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  input_leaf_order: Vec<String>,
+  alphabet: Alphabet,
+  aln: Option<Vec<FastaRecord>>,
+  dates: Option<DatesMap>,
 }
 
 struct ReconstructedNucSink {

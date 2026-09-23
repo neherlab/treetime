@@ -28,77 +28,11 @@ use treetime_io::nwk::{CommentProviders, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
 use utoipa::ToSchema;
 
-/// Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
-/// valid, because optimize has no sampling dates.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum OptimizeRerootMethod {
-  MinDev,
-}
-
 impl From<OptimizeRerootMethod> for RerootMethod {
   fn from(m: OptimizeRerootMethod) -> Self {
     match m {
       OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
     }
-  }
-}
-
-/// Branch-length optimization request (openapi subset).
-#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
-#[serde(default)]
-pub struct OptimizeArgs {
-  input_fastas: Vec<String>,
-  tree: String,
-  #[schema(value_type = Option<String>)]
-  alphabet: Option<AlphabetName>,
-  #[default(GtrModelName::Infer)]
-  #[schema(value_type = String)]
-  model_name: GtrModelName,
-  dense: Option<bool>,
-  outdir: String,
-  #[default = 10]
-  max_iter: usize,
-  #[default = 0.1]
-  dp: f64,
-  #[default = 0.75]
-  damping: f64,
-  #[default(InitialGuessMode::Auto)]
-  #[schema(value_type = String)]
-  branch_length_initial_guess: InitialGuessMode,
-  #[default(BranchOptMethod::default())]
-  #[schema(value_type = String)]
-  opt_method: BranchOptMethod,
-  no_indels: bool,
-  reroot: Option<OptimizeRerootMethod>,
-  reroot_tips: Vec<String>,
-  keep_root: bool,
-  #[default(GapFill::default())]
-  #[schema(value_type = String)]
-  gap_fill: GapFill,
-  keep_overhangs: bool,
-}
-
-impl OptimizeArgs {
-  fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
-
-  fn reroot_spec(&self) -> Option<RerootSpec> {
-    if self.keep_root {
-      return None;
-    }
-    if let Some(method) = self.reroot {
-      return Some(RerootSpec::Method(RerootMethod::from(method)));
-    }
-    if !self.reroot_tips.is_empty() {
-      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
-    }
-    None
   }
 }
 
@@ -225,6 +159,72 @@ pub(crate) fn run_optimize(
   progress.report("Done", 1.0, "");
 
   Ok(OptimizeResult { graph, nodes, edges })
+}
+
+/// Branch-length optimization request (openapi subset).
+#[derive(Debug, SmartDefault, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct OptimizeArgs {
+  input_fastas: Vec<String>,
+  tree: String,
+  #[schema(value_type = Option<String>)]
+  alphabet: Option<AlphabetName>,
+  #[default(GtrModelName::Infer)]
+  #[schema(value_type = String)]
+  model_name: GtrModelName,
+  dense: Option<bool>,
+  outdir: String,
+  #[default = 10]
+  max_iter: usize,
+  #[default = 0.1]
+  dp: f64,
+  #[default = 0.75]
+  damping: f64,
+  #[default(InitialGuessMode::Auto)]
+  #[schema(value_type = String)]
+  branch_length_initial_guess: InitialGuessMode,
+  #[default(BranchOptMethod::default())]
+  #[schema(value_type = String)]
+  opt_method: BranchOptMethod,
+  no_indels: bool,
+  reroot: Option<OptimizeRerootMethod>,
+  reroot_tips: Vec<String>,
+  keep_root: bool,
+  #[default(GapFill::default())]
+  #[schema(value_type = String)]
+  gap_fill: GapFill,
+  keep_overhangs: bool,
+}
+
+impl OptimizeArgs {
+  fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
+
+  fn reroot_spec(&self) -> Option<RerootSpec> {
+    if self.keep_root {
+      return None;
+    }
+    if let Some(method) = self.reroot {
+      return Some(RerootSpec::Method(RerootMethod::from(method)));
+    }
+    if !self.reroot_tips.is_empty() {
+      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
+    }
+    None
+  }
+}
+
+/// Reroot methods available to the `optimize` command. Only the date-free minimum-deviation method is
+/// valid, because optimize has no sampling dates.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum OptimizeRerootMethod {
+  MinDev,
 }
 
 fn gather_optimize_output_maps(

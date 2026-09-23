@@ -32,6 +32,17 @@ pub(crate) fn api_routes(config: ServerConfig) -> Router {
     .route("/api/openapi.json", get(handle_openapi))
 }
 
+async fn handle_health() -> Json<Value> {
+  Json(serde_json::json!({
+    "status": "ok",
+    "version": version_info().version,
+  }))
+}
+
+async fn handle_openapi() -> Result<Json<Value>, AppError> {
+  Ok(Json(serde_json::to_value(api_doc())?))
+}
+
 pub fn api_doc() -> utoipa::openapi::OpenApi {
   let mut api = api_router().to_openapi();
   api.info.title = "TreeTime API".to_owned();
@@ -76,17 +87,6 @@ fn set_bridge_types(api: &mut utoipa::openapi::OpenApi) {
       )]));
     }
   }
-}
-
-async fn handle_health() -> Json<Value> {
-  Json(serde_json::json!({
-    "status": "ok",
-    "version": version_info().version,
-  }))
-}
-
-async fn handle_openapi() -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(api_doc())?))
 }
 
 #[utoipa::path(
