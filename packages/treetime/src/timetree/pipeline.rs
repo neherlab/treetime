@@ -13,13 +13,11 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
-use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::population_size::effective_population_size;
-use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+use crate::coalescent::skyline::SkylineParams;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::make_error;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::gather::{
   gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
@@ -34,8 +32,9 @@ use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::node_seq_inputs;
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
-use crate::timetree::coalescent::{
-  CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
+use crate::timetree::coalescent::CoalescentOutput;
+use crate::timetree::coalescent_timescale::{
+  CoalescentMode, build_coalescent_output, coalescent_mode, coalescent_timescale,
 };
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
@@ -50,15 +49,12 @@ use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
-use ndarray::{Array1, array};
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_distribution::Distribution;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::AlignmentRecord;
 use treetime_primitives::date::DatesMap;
 use treetime_utils::make_report;
@@ -606,185 +602,6 @@ pub struct TimetreeOutput {
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
-fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
-  if coalescent_skyline {
-    CoalescentMode::Skyline
-  } else if coalescent_opt {
-    CoalescentMode::Constant
-  } else if let Some(tc) = coalescent {
-    CoalescentMode::Fixed(tc)
-  } else {
-    CoalescentMode::Disabled
-  }
-}
-
-fn coalescent_timescale(
-  mode: CoalescentMode,
-  graph: &Graph,
-  skyline_params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-) -> Result<CoalescentTimescale, Report> {
-  let mode = match mode {
-    CoalescentMode::Disabled => CoalescentMode::Constant,
-    mode => mode,
-  };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times)
-    .wrap_err("Failed to estimate the coalescent timescale")?
-    .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
-}
-
-fn estimate_coalescent_tc(
-  mode: CoalescentMode,
-  graph: &Graph,
-  skyline_params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-) -> Result<Option<CoalescentTimescale>, Report> {
-  let n_points = match mode {
-    CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph, node_times).map(Some),
-    CoalescentMode::Constant => 1,
-    CoalescentMode::Skyline => skyline_params.n_points,
-  };
-  let result = optimize_skyline(
-    graph,
-    &SkylineParams {
-      n_points,
-      ..skyline_params.clone()
-    },
-    node_times,
-  )?;
-  Ok(Some(CoalescentTimescale {
-    distribution: result.tc_distribution,
-    schedule: result.tc_schedule,
-    report: Some(CoalescentTcReport {
-      segment_boundaries: result.segment_boundaries,
-      band: Some(CoalescentReportBand {
-        lower: result.tc_lower_bounds,
-        upper: result.tc_upper_bounds,
-      }),
-      log_likelihood: Some(result.log_likelihood.value()),
-    }),
-  }))
-}
-
-fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<CoalescentTimescale, Report> {
-  let lineage_counts =
-    compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let breakpoints = lineage_counts.breakpoints();
-  if breakpoints.is_empty() {
-    return make_error!("Cannot report a fixed coalescent Tc: the tree has no node times to span");
-  }
-  let t_min = breakpoints[0];
-  let t_max = breakpoints[breakpoints.len() - 1];
-  Ok(CoalescentTimescale {
-    report: Some(CoalescentTcReport {
-      segment_boundaries: array![t_min, t_max],
-      band: None,
-      log_likelihood: None,
-    }),
-    ..CoalescentTimescale::constant(tc)
-  })
-}
-
-fn build_coalescent_output(
-  requested: CoalescentMode,
-  timescale: &CoalescentTimescale,
-  gen_per_year: f64,
-  skyline_params: &SkylineParams,
-) -> Result<Option<CoalescentOutput>, Report> {
-  let Some(mode) = requested.output_mode() else {
-    return Ok(None);
-  };
-  let report = timescale.report.as_ref().ok_or_else(|| {
-    make_report!("A coalescent output ({mode:?}) must carry a per-segment report, but none was produced")
-  })?;
-
-  let tc_values = timescale.schedule.values().to_vec();
-  let boundaries = report.segment_boundaries.to_vec();
-
-  let (n_points, stiffness) = match mode {
-    CoalescentOutputMode::Skyline => (Some(skyline_params.n_points), Some(skyline_params.stiffness)),
-    CoalescentOutputMode::Fixed | CoalescentOutputMode::Constant => (None, None),
-  };
-  let confidence_n_std = report.band.as_ref().map(|_| skyline_params.n_std);
-
-  let (lower, upper) = match &report.band {
-    Some(band) => (band.lower.to_vec(), band.upper.to_vec()),
-    None => (Vec::new(), Vec::new()),
-  };
-  let band = report.band.as_ref().map(|_| CoalescentBand {
-    lower: &lower,
-    upper: &upper,
-  });
-
-  let output = CoalescentOutput::new(
-    CoalescentInputs {
-      mode,
-      n_points,
-      stiffness,
-      confidence_n_std,
-      gen_per_year,
-    },
-    &CoalescentSolve {
-      segment_boundaries: &boundaries,
-      tc_values: &tc_values,
-      band,
-      log_likelihood: report.log_likelihood,
-    },
-  )?;
-  Ok(Some(output))
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum CoalescentMode {
-  Disabled,
-  Fixed(f64),
-  Constant,
-  Skyline,
-}
-
-impl CoalescentMode {
-  fn is_optimized(self) -> bool {
-    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
-  }
-
-  fn output_mode(self) -> Option<CoalescentOutputMode> {
-    match self {
-      CoalescentMode::Disabled => None,
-      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
-      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
-      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
-    }
-  }
-}
-
-struct CoalescentTimescale {
-  distribution: Distribution,
-  schedule: PiecewiseConstantFn,
-  report: Option<CoalescentTcReport>,
-}
-
-impl CoalescentTimescale {
-  fn constant(tc: f64) -> Self {
-    Self {
-      distribution: Distribution::constant(tc),
-      schedule: PiecewiseConstantFn::new(array![], array![tc]),
-      report: None,
-    }
-  }
-}
-
-struct CoalescentTcReport {
-  segment_boundaries: Array1<f64>,
-  band: Option<CoalescentReportBand>,
-  log_likelihood: Option<f64>,
-}
-
-struct CoalescentReportBand {
-  lower: Array1<f64>,
-  upper: Array1<f64>,
-}
-
 fn initialize_partitions_from_params(
   params: &TimetreeParams,
   graph: &Graph,
@@ -909,224 +726,4 @@ fn optimize_branch_lengths_pre_step(
   let (partitions, _) = marginal_update_timetree(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
 
   Ok(partitions)
-}
-
-#[cfg(test)]
-mod tests {
-  use super::{
-    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentOutputMode, CoalescentReportBand,
-    CoalescentSolve, CoalescentTcReport, CoalescentTimescale, build_coalescent_output, coalescent_mode,
-    estimate_coalescent_tc,
-  };
-  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-  use crate::timetree::timetree_state::TimetreeState;
-  use eyre::Report;
-  use maplit::btreemap;
-  use ndarray::array;
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
-  use treetime_distribution::Distribution;
-  use treetime_graph::graph::Graph;
-  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
-  use treetime_utils::{o, pretty_assert_array_eq};
-
-  const GEN_PER_YEAR: f64 = 50.0;
-  const N_STD: f64 = 2.0;
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::disabled(       None,       false, false, CoalescentMode::Disabled)]
-  #[case::fixed(          Some(0.25), false, false, CoalescentMode::Fixed(0.25))]
-  #[case::opt_default(    None,       true,  false, CoalescentMode::Constant)]
-  #[case::opt_value_ignored(Some(0.25), true, false, CoalescentMode::Constant)]
-  #[case::skyline_default(None,       false, true,  CoalescentMode::Skyline)]
-  #[case::skyline_over_opt(Some(0.25), true, true,  CoalescentMode::Skyline)]
-  #[trace]
-  fn test_pipeline_coalescent_mode(
-    #[case] coalescent: Option<f64>,
-    #[case] coalescent_opt: bool,
-    #[case] coalescent_skyline: bool,
-    #[case] expected: CoalescentMode,
-  ) {
-    let actual = coalescent_mode(coalescent, coalescent_opt, coalescent_skyline);
-
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
-    let timescale = CoalescentTimescale::constant(1.0);
-    let params = SkylineParams {
-      n_std: N_STD,
-      ..SkylineParams::default()
-    };
-
-    let actual = build_coalescent_output(CoalescentMode::Disabled, &timescale, GEN_PER_YEAR, &params)?;
-
-    assert_eq!(None, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_pipeline_build_coalescent_output_fixed_emits_one_segment_no_band() -> Result<(), Report> {
-    let (graph, constraints) = dated_tree()?;
-    let params = SkylineParams {
-      n_std: N_STD,
-      ..SkylineParams::default()
-    };
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
-    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params, &node_times)?
-      .expect("a fixed Tc yields a coalescent timescale");
-
-    let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
-      .expect("a fixed Tc writes a coalescent output");
-
-    let expected = CoalescentOutput::new(
-      CoalescentInputs {
-        mode: CoalescentOutputMode::Fixed,
-        n_points: None,
-        stiffness: None,
-        confidence_n_std: None,
-        gen_per_year: GEN_PER_YEAR,
-      },
-      &CoalescentSolve {
-        segment_boundaries: &[2000.0, 2010.0],
-        tc_values: &[2.5],
-        band: None,
-        log_likelihood: None,
-      },
-    )?;
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_pipeline_build_coalescent_output_constant_carries_band() -> Result<(), Report> {
-    let params = SkylineParams {
-      n_std: N_STD,
-      ..SkylineParams::default()
-    };
-    let timescale = CoalescentTimescale {
-      distribution: Distribution::constant(3.0),
-      schedule: PiecewiseConstantFn::new(array![], array![3.0]),
-      report: Some(CoalescentTcReport {
-        segment_boundaries: array![2000.0, 2020.0],
-        band: Some(CoalescentReportBand {
-          lower: array![2.0],
-          upper: array![4.0],
-        }),
-        log_likelihood: Some(-7.5),
-      }),
-    };
-    let actual = build_coalescent_output(CoalescentMode::Constant, &timescale, GEN_PER_YEAR, &params)?;
-
-    let expected = CoalescentOutput::new(
-      CoalescentInputs {
-        mode: CoalescentOutputMode::Constant,
-        n_points: None,
-        stiffness: None,
-        confidence_n_std: Some(N_STD),
-        gen_per_year: GEN_PER_YEAR,
-      },
-      &CoalescentSolve {
-        segment_boundaries: &[2000.0, 2020.0],
-        tc_values: &[3.0],
-        band: Some(CoalescentBand {
-          lower: &[2.0],
-          upper: &[4.0],
-        }),
-        log_likelihood: Some(-7.5),
-      },
-    )?;
-    assert_eq!(Some(expected), actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_pipeline_build_coalescent_output_skyline_multi_segment_band() -> Result<(), Report> {
-    let params = SkylineParams {
-      n_points: 2,
-      stiffness: 3.0,
-      n_std: N_STD,
-      ..SkylineParams::default()
-    };
-    let timescale = CoalescentTimescale {
-      distribution: Distribution::constant(3.0),
-      schedule: PiecewiseConstantFn::new(array![2010.0], array![3.0, 5.0]),
-      report: Some(CoalescentTcReport {
-        segment_boundaries: array![2000.0, 2010.0, 2020.0],
-        band: Some(CoalescentReportBand {
-          lower: array![2.0, 4.0],
-          upper: array![4.0, 6.0],
-        }),
-        log_likelihood: Some(-9.0),
-      }),
-    };
-    let actual = build_coalescent_output(CoalescentMode::Skyline, &timescale, GEN_PER_YEAR, &params)?;
-
-    let expected = CoalescentOutput::new(
-      CoalescentInputs {
-        mode: CoalescentOutputMode::Skyline,
-        n_points: Some(2),
-        stiffness: Some(3.0),
-        confidence_n_std: Some(N_STD),
-        gen_per_year: GEN_PER_YEAR,
-      },
-      &CoalescentSolve {
-        segment_boundaries: &[2000.0, 2010.0, 2020.0],
-        tc_values: &[3.0, 5.0],
-        band: Some(CoalescentBand {
-          lower: &[2.0, 4.0],
-          upper: &[4.0, 6.0],
-        }),
-        log_likelihood: Some(-9.0),
-      },
-    )?;
-    assert_eq!(Some(expected), actual);
-    Ok(())
-  }
-
-  fn dated_tree() -> Result<(Graph, DateConstraints), Report> {
-    let dates: DatesMap = btreemap! {
-      o!("root") => Some(DateConstraint::exact(2000.0)),
-      o!("x")    => Some(DateConstraint::exact(2005.0)),
-      o!("a")    => Some(DateConstraint::exact(2010.0)),
-      o!("b")    => Some(DateConstraint::exact(2010.0)),
-      o!("c")    => Some(DateConstraint::exact(2010.0)),
-    };
-    let nwk_parsed = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
-    Ok((graph, constraints))
-  }
-
-  #[test]
-  fn test_pipeline_estimate_coalescent_tc_report_carries_the_skyline_solve() -> Result<(), Report> {
-    let (graph, constraints) = dated_tree()?;
-    let params = SkylineParams {
-      n_points: 3,
-      ..SkylineParams::default()
-    };
-
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
-    let solve = optimize_skyline(&graph, &params, &node_times)?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params, &node_times)?
-      .expect("skyline mode yields a coalescent timescale");
-    let report = timescale
-      .report
-      .expect("an inferred skyline carries a per-segment report");
-
-    pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
-    pretty_assert_array_eq!(solve.tc_values, timescale.schedule.values().clone());
-    assert_eq!(Some(solve.log_likelihood.value()), report.log_likelihood);
-    let band = report.band.expect("an inferred skyline carries a confidence band");
-    pretty_assert_array_eq!(solve.tc_lower_bounds, band.lower);
-    pretty_assert_array_eq!(solve.tc_upper_bounds, band.upper);
-
-    Ok(())
-  }
 }
