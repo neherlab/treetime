@@ -1,3 +1,8 @@
+#![cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(debug_remnants, reason = "the validation report is printed to stdout")
+)]
+
 use crate::testing::framework::results::TestRunOutcome;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;

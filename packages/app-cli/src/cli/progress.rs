@@ -26,6 +26,13 @@ impl Drop for BarProgress {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    debug_remnants,
+    reason = "the progress sink renders progress and log lines on stderr and has no error channel"
+  )
+)]
 impl ProgressSink for BarProgress {
   #[allow(
     clippy::as_conversions,
@@ -70,6 +77,13 @@ impl TextProgress {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    debug_remnants,
+    reason = "the progress sink renders progress and log lines on stderr and has no error channel"
+  )
+)]
 impl ProgressSink for TextProgress {
   fn report(&self, stage: &str, _fraction: f64, _message: &str) {
     if self.log_enabled(LogLevel::Info) {

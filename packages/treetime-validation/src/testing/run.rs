@@ -97,6 +97,10 @@ where
   })
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(debug_remnants, reason = "the test case listing is the command output")
+)]
 fn list_test_cases_generic<T: TestCase>(cases: &[T], suite_name: &str) {
   println!("Available {suite_name} test cases:");
   for case in cases {

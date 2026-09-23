@@ -1,3 +1,8 @@
+#![cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(debug_remnants, reason = "cargo reads build script directives from stdout")
+)]
+
 use std::env::{self, VarError};
 use std::error::Error;
 use std::path::Path;
