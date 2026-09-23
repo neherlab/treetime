@@ -182,14 +182,6 @@ pub struct PhyloxmlEvents {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PhyloxmlConfidence {
-  #[serde(rename = "$value")]
-  pub value: f64,
-  #[serde(rename = "@type")]
-  pub type_: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlId {
   #[serde(rename = "$value")]
   pub identifier: String,
@@ -208,6 +200,12 @@ pub struct PhyloxmlDistribution {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Polygon {
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub point: Vec<PhyloxmlPoint>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlPoint {
   pub lat: f64,
   pub long: f64,
@@ -216,12 +214,6 @@ pub struct PhyloxmlPoint {
   pub geodetic_datum: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub alt_unit: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Polygon {
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub point: Vec<PhyloxmlPoint>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -268,6 +260,34 @@ pub struct PhyloxmlCladeRelation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PhyloxmlAnnotation {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub desc: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub confidence: Option<PhyloxmlConfidence>,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub property: Vec<PhyloxmlProperty>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub uri: Option<PhyloxmlUri>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub ref_: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub source: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub evidence: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub type_: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PhyloxmlConfidence {
+  #[serde(rename = "$value")]
+  pub value: f64,
+  #[serde(rename = "@type")]
+  pub type_: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlUri {
   #[serde(rename = "$value")]
   pub uri: String,
@@ -293,26 +313,6 @@ pub struct PhyloxmlProperty {
   #[serde(rename = "@id_ref")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id_ref: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PhyloxmlAnnotation {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub desc: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub confidence: Option<PhyloxmlConfidence>,
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub property: Vec<PhyloxmlProperty>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub uri: Option<PhyloxmlUri>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub ref_: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub source: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub evidence: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub type_: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
