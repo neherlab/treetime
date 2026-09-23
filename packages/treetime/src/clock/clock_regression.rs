@@ -81,7 +81,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
   } else {
     info!("### Using estimated clock rate");
-    let regression = ClockRegression::from_clock_set(&root_clock_set)?;
+    let regression = ClockRegression::try_from(&root_clock_set)?;
     (Some(regression), None)
   };
 

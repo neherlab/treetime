@@ -22,7 +22,7 @@ mod tests {
   #[test]
   fn test_clock_regression_positive_rate() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     assert!(reg.clock_rate() > 0.0);
     Ok(())
   }
@@ -30,7 +30,7 @@ mod tests {
   #[test]
   fn test_clock_regression_allows_negative_rate() -> Result<(), Report> {
     let cs = clock_set_with_rate(-0.005);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     assert!(reg.clock_rate() < 0.0);
     Ok(())
   }
@@ -38,7 +38,7 @@ mod tests {
   #[test]
   fn test_clock_regression_allows_zero_rate() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.0);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     assert!((reg.clock_rate()).abs() < 1e-15);
     Ok(())
   }
@@ -46,7 +46,7 @@ mod tests {
   #[test]
   fn test_clock_regression_clock_deviation() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let dev = reg.clock_deviation(2020.0, 0.5);
     let expected = 2020.0 * reg.clock_rate() + reg.intercept() - 0.5;
     assert!((dev - expected).abs() < 1e-15);
@@ -56,7 +56,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_positive_rate() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let model = ClockModel::from_regression(&reg)?;
     assert!(model.clock_rate() > 0.0);
     Ok(())
@@ -65,7 +65,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_rejects_negative() {
     let cs = clock_set_with_rate(-0.005);
-    let reg = ClockRegression::from_clock_set(&cs).unwrap();
+    let reg = ClockRegression::try_from(&cs).unwrap();
     let err = ClockModel::from_regression(&reg).unwrap_err();
     let msg = err.to_string();
     assert!(msg.contains("non-positive"), "expected 'non-positive' in: {msg}");
@@ -75,7 +75,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_rejects_zero() {
     let cs = clock_set_with_rate(0.0);
-    let reg = ClockRegression::from_clock_set(&cs).unwrap();
+    let reg = ClockRegression::try_from(&cs).unwrap();
     let err = ClockModel::from_regression(&reg).unwrap_err();
     let msg = err.to_string();
     assert!(msg.contains("non-positive"), "expected 'non-positive' in: {msg}");
@@ -84,7 +84,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_allow_negative_builds_negative() -> Result<(), Report> {
     let cs = clock_set_with_rate(-0.005);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let model = ClockModel::from_regression_allow_negative(&reg);
     assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
     assert!(model.clock_rate() < 0.0);
@@ -94,7 +94,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_allow_negative_builds_zero() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.0);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let model = ClockModel::from_regression_allow_negative(&reg);
     assert!(model.clock_rate().abs() < 1e-15);
     Ok(())
@@ -103,7 +103,7 @@ mod tests {
   #[test]
   fn test_clock_model_from_regression_allow_negative_builds_positive() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let model = ClockModel::from_regression_allow_negative(&reg);
     assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
     assert!(model.clock_rate() > 0.0);
@@ -143,7 +143,7 @@ mod tests {
   #[test]
   fn test_clock_line_deviation_consistent_between_types() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
-    let reg = ClockRegression::from_clock_set(&cs)?;
+    let reg = ClockRegression::try_from(&cs)?;
     let model = ClockModel::from_regression(&reg)?;
     let date = 2020.0;
     let div = 0.5;

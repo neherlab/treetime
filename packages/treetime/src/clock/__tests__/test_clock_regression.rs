@@ -54,7 +54,7 @@ mod tests {
       &branch_lengths,
       None,
     )?;
-    let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
+    let clock = ClockModel::from_regression(&ClockRegression::try_from(&state.node(root_key).clock_set)?)?;
     pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
     let options = &ClockVarianceParams {
@@ -64,7 +64,7 @@ mod tests {
     };
 
     clock_regression_backward(&graph, &inputs, &mut state, options, &branch_lengths, None)?;
-    let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
+    let clock = ClockModel::from_regression(&ClockRegression::try_from(&state.node(root_key).clock_set)?)?;
     pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
     Ok(())

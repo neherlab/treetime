@@ -209,6 +209,29 @@ impl ClockLine for ClockRegression {
   }
 }
 
+impl TryFrom<&ClockSet> for ClockRegression {
+  type Error = Report;
+
+  fn try_from(clock_set: &ClockSet) -> Result<Self, Report> {
+    let det = clock_set.determinant();
+    if det <= 0.0 {
+      debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
+      debug!("ClockSet determinant: {det}");
+      return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
+    }
+
+    let clock_rate = clock_set.clock_rate(det);
+    Ok(Self {
+      clock_rate,
+      intercept: clock_set.intercept(clock_rate),
+      chisq: clock_set.chisq(),
+      r_val: clock_set.r_val(),
+      hessian: clock_set.hessian(),
+      cov: clock_set.cov(),
+    })
+  }
+}
+
 #[expect(
   clippy::same_name_method,
   reason = "the inherent accessor and the trait method return the same field"
@@ -228,25 +251,6 @@ impl ClockRegression {
 
   pub(crate) fn r_val(&self) -> f64 {
     self.r_val
-  }
-
-  pub(crate) fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
-    let det = clock_set.determinant();
-    if det <= 0.0 {
-      debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
-      debug!("ClockSet determinant: {det}");
-      return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
-    }
-
-    let clock_rate = clock_set.clock_rate(det);
-    Ok(Self {
-      clock_rate,
-      intercept: clock_set.intercept(clock_rate),
-      chisq: clock_set.chisq(),
-      r_val: clock_set.r_val(),
-      hessian: clock_set.hessian(),
-      cov: clock_set.cov(),
-    })
   }
 
   pub(crate) fn hessian(&self) -> &Array2<f64> {
