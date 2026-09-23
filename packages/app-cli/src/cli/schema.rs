@@ -14,7 +14,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use treetime_schema::{TreetimeSchemaFormat, generate_schema as generate_data_schema};
+use treetime_schema::TreetimeSchemaFormat;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
@@ -98,7 +98,7 @@ fn all_targets() -> impl Iterator<Item = SchemaTarget> {
 fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   if let Some(format) = target.data_format() {
     let path = output.to_path_buf();
-    return generate_data_schema(&format, Some(&path));
+    return treetime_schema::generate_schema(&format, Some(&path));
   }
 
   let schema = match target {

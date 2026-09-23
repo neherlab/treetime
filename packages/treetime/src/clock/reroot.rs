@@ -19,10 +19,9 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{
-  self as topology_reroot, record_merge, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
+  EdgeSplitInfo, RerootResult, apply_reroot_topology, record_merge, record_split, remove_node_if_trivial, split_edge,
+  trivial_node_branch_lengths,
 };
-
-use topology_reroot::{EdgeSplitInfo, RerootResult};
 
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
 pub struct RerootParams {
@@ -328,7 +327,7 @@ fn apply_reroot(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &ClockVarianceParams,
 ) -> Result<Vec<GraphEdgeKey>, Report> {
-  let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
+  let inverted_edge_keys = apply_reroot_topology(graph, old_root_key, new_root_key)?;
 
   for edge_key in &inverted_edge_keys {
     let edge_len = branch_lengths[edge_key].unwrap();
