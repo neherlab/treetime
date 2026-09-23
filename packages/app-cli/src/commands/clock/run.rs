@@ -21,71 +21,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::nwk_read_file;
 
-#[derive(serde::Serialize)]
-pub struct ClockResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub clock_model: ClockModel,
-  #[serde(skip)]
-  pub regression_results: Vec<ClockRegressionResult>,
-}
-
-fn gather_clock_outputs(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
-  let nodes = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      let name = names[&key].clone();
-      let node_state = state.node(key);
-      let node_input = inputs.node(key);
-      let out = ClockNodeOut {
-        name,
-        div: node_state.div,
-        time: node_input.time,
-        is_outlier: node_state.is_outlier,
-        bad_branch: node_input.bad_branch,
-      };
-      (key, out)
-    })
-    .collect();
-
-  let edges = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      (
-        key,
-        EdgeOut {
-          branch_length: branch_lengths[&key],
-        },
-      )
-    })
-    .collect();
-
-  (nodes, edges)
-}
-
-fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
-  match args.method {
-    OptimizationMethodCli::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone().into()),
-    OptimizationMethodCli::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone().into()),
-    OptimizationMethodCli::GoldenSection => {
-      BranchPointOptimizationParams::golden_section_with(args.golden_params.clone().into())
-    },
-  }
-}
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
@@ -194,6 +129,71 @@ pub fn run_clock(
     clock_model,
     regression_results,
   })
+}
+
+#[derive(serde::Serialize)]
+pub struct ClockResult {
+  #[serde(skip)]
+  pub graph: Graph,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
+  #[serde(skip)]
+  pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub regression_results: Vec<ClockRegressionResult>,
+}
+
+fn gather_clock_outputs(
+  graph: &Graph,
+  inputs: &ClockInputs,
+  state: &ClockState,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
+  let nodes = graph
+    .get_nodes()
+    .map(|node| {
+      let key = node.key();
+      let name = names[&key].clone();
+      let node_state = state.node(key);
+      let node_input = inputs.node(key);
+      let out = ClockNodeOut {
+        name,
+        div: node_state.div,
+        time: node_input.time,
+        is_outlier: node_state.is_outlier,
+        bad_branch: node_input.bad_branch,
+      };
+      (key, out)
+    })
+    .collect();
+
+  let edges = graph
+    .get_edges()
+    .map(|edge| {
+      let key = edge.key();
+      (
+        key,
+        EdgeOut {
+          branch_length: branch_lengths[&key],
+        },
+      )
+    })
+    .collect();
+
+  (nodes, edges)
+}
+
+fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
+  match args.method {
+    OptimizationMethodCli::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone().into()),
+    OptimizationMethodCli::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone().into()),
+    OptimizationMethodCli::GoldenSection => {
+      BranchPointOptimizationParams::golden_section_with(args.golden_params.clone().into())
+    },
+  }
 }
 
 fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {

@@ -19,6 +19,47 @@ pub(crate) const SCHEMA_KEY: &str = "$schema";
 
 pub(crate) const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
 
+/// The whole pipeline in typed form, used for schema generation and for dumping an example config.
+///
+/// The loader does not deserialize into this type directly: `vars`, `output_all`, and each step's
+/// outputs are resolved in a staged, backward-only pass (interpolation depends on earlier results),
+/// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
+/// and the generated schema must agree on.
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Pipeline {
+  #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
+  schema_ref: Option<String>,
+
+  #[serde(default, skip_serializing_if = "Map::is_empty")]
+  vars: Map<String, Value>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  output_all: Option<String>,
+
+  steps: Vec<PipelineStep>,
+}
+
+/// One named step: a stable id plus exactly one command invocation.
+///
+/// The `name` is explicit (not the command name) because `--steps=` selection and
+/// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PipelineStep {
+  name: String,
+  #[serde(flatten)]
+  command: PipelineStepCommand,
+}
+
+impl PipelineStep {
+  pub fn from_value(value: Value) -> Result<Self, Report> {
+    let RawStep { name, tag, payload } = RawStep::from_value(value)?;
+    let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
+      .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
+    Ok(Self { name, command })
+  }
+}
+
 /// A single analysis command invocation within a pipeline.
 ///
 /// Externally tagged and kebab-cased so a step's payload is exactly the command's serialized args
@@ -108,26 +149,6 @@ impl PipelineStepCommand {
   }
 }
 
-/// One named step: a stable id plus exactly one command invocation.
-///
-/// The `name` is explicit (not the command name) because `--steps=` selection and
-/// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct PipelineStep {
-  name: String,
-  #[serde(flatten)]
-  command: PipelineStepCommand,
-}
-
-impl PipelineStep {
-  pub fn from_value(value: Value) -> Result<Self, Report> {
-    let RawStep { name, tag, payload } = RawStep::from_value(value)?;
-    let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
-      .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
-    Ok(Self { name, command })
-  }
-}
-
 pub struct RawStep {
   pub name: String,
   pub tag: String,
@@ -166,27 +187,6 @@ impl RawStep {
 
     Ok(Self { name, tag, payload })
   }
-}
-
-/// The whole pipeline in typed form, used for schema generation and for dumping an example config.
-///
-/// The loader does not deserialize into this type directly: `vars`, `output_all`, and each step's
-/// outputs are resolved in a staged, backward-only pass (interpolation depends on earlier results),
-/// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
-/// and the generated schema must agree on.
-#[derive(Debug, Serialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Pipeline {
-  #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
-  schema_ref: Option<String>,
-
-  #[serde(default, skip_serializing_if = "Map::is_empty")]
-  vars: Map<String, Value>,
-
-  #[serde(skip_serializing_if = "Option::is_none")]
-  output_all: Option<String>,
-
-  steps: Vec<PipelineStep>,
 }
 
 pub(crate) fn commands_list() -> String {

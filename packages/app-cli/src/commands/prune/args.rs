@@ -13,6 +13,56 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone)]
+pub struct TreetimePruneArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: PathBuf,
+  pub alphabet_args: AlphabetArgs,
+  pub output: OutputCoreArgs,
+  pub output_gtr: Option<PathBuf>,
+  pub output_selection: Vec<PruneOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub prune_short: Option<f64>,
+  pub prune_empty: bool,
+  pub merge_shared_mutations: bool,
+  pub prune_nodes_list: Option<String>,
+  pub prune_nodes_list_delimiter: char,
+  pub prune_nodes_list_file: Option<PathBuf>,
+  pub prune_nodes_list_file_delimiter: char,
+}
+
+impl TreetimePruneArgs {
+  pub(crate) fn tree(&self) -> &Path {
+    &self.tree
+  }
+}
+
+impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
+    let tree = raw
+      .tree
+      .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      tree,
+      alphabet_args: raw.alphabet_args,
+      output: raw.output,
+      output_gtr: raw.output_gtr,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      prune_short: raw.prune_short,
+      prune_empty: raw.prune_empty,
+      merge_shared_mutations: raw.merge_shared_mutations,
+      prune_nodes_list: raw.prune_nodes_list,
+      prune_nodes_list_delimiter: raw.prune_nodes_list_delimiter,
+      prune_nodes_list_file: raw.prune_nodes_list_file,
+      prune_nodes_list_file_delimiter: raw.prune_nodes_list_file_delimiter,
+    })
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
@@ -115,54 +165,4 @@ pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, default_value = "\n", value_name = "DELIMITER"))]
   #[default = '\n']
   pub prune_nodes_list_file_delimiter: char,
-}
-
-#[derive(Debug, Clone)]
-pub struct TreetimePruneArgs {
-  pub alignment: AlignmentArgs,
-  pub tree: PathBuf,
-  pub alphabet_args: AlphabetArgs,
-  pub output: OutputCoreArgs,
-  pub output_gtr: Option<PathBuf>,
-  pub output_selection: Vec<PruneOutputSelection>,
-  pub topology_order: TopologyOrderArgs,
-  pub prune_short: Option<f64>,
-  pub prune_empty: bool,
-  pub merge_shared_mutations: bool,
-  pub prune_nodes_list: Option<String>,
-  pub prune_nodes_list_delimiter: char,
-  pub prune_nodes_list_file: Option<PathBuf>,
-  pub prune_nodes_list_file_delimiter: char,
-}
-
-impl TreetimePruneArgs {
-  pub(crate) fn tree(&self) -> &Path {
-    &self.tree
-  }
-}
-
-impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
-  type Error = Report;
-
-  fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
-    Ok(Self {
-      alignment: raw.alignment,
-      tree,
-      alphabet_args: raw.alphabet_args,
-      output: raw.output,
-      output_gtr: raw.output_gtr,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      prune_short: raw.prune_short,
-      prune_empty: raw.prune_empty,
-      merge_shared_mutations: raw.merge_shared_mutations,
-      prune_nodes_list: raw.prune_nodes_list,
-      prune_nodes_list_delimiter: raw.prune_nodes_list_delimiter,
-      prune_nodes_list_file: raw.prune_nodes_list_file,
-      prune_nodes_list_file_delimiter: raw.prune_nodes_list_file_delimiter,
-    })
-  }
 }

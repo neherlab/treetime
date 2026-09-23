@@ -3,20 +3,6 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "RerootMethod")]
-pub enum RerootMethodCli {
-  #[default]
-  #[cfg_attr(feature = "clap", value(alias = "best"))]
-  LeastSquares,
-  MinDev,
-  Oldest,
-  #[cfg_attr(feature = "clap", value(alias = "clock-filter"))]
-  ClockFilter,
-}
-
 impl From<RerootMethodCli> for RerootMethod {
   fn from(method: RerootMethodCli) -> Self {
     match method {
@@ -54,6 +40,20 @@ impl RerootArgs {
       RerootSpec::Tips(self.reroot_tips.clone())
     }
   }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "RerootMethod")]
+pub enum RerootMethodCli {
+  #[default]
+  #[cfg_attr(feature = "clap", value(alias = "best"))]
+  LeastSquares,
+  MinDev,
+  Oldest,
+  #[cfg_attr(feature = "clap", value(alias = "clock-filter"))]
+  ClockFilter,
 }
 
 #[cfg(test)]

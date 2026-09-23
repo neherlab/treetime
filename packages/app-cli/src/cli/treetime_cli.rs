@@ -27,6 +27,36 @@ use treetime_utils::make_report;
 static SHELLS: LazyLock<Vec<&'static str>> =
   LazyLock::new(|| vec!["bash", "elvish", "fish", "fig", "powershell", "zsh"]);
 
+pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
+  let mut command = TreetimeArgs::command();
+
+  if shell.to_lowercase() == "fig" {
+    generate(Fig, &mut command, "treetime", &mut io::stdout());
+    return Ok(());
+  }
+
+  let generator = <Shell as ValueEnum>::from_str(&shell.to_lowercase(), true)
+    .map_err(|err| make_report!("{err}: Possible values: {}", SHELLS.join(", ")))?;
+
+  let bin_name = command.get_name().to_owned();
+
+  generate(generator, &mut command, bin_name, &mut io::stdout());
+
+  Ok(())
+}
+
+pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
+  let matches = TreetimeArgs::command().get_matches();
+  let mut args = TreetimeArgs::from_arg_matches(&matches)?;
+  setup_logger(args.verbosity.get_filter_level());
+
+  if let Some((_, sub_matches)) = matches.subcommand() {
+    resolve_command_config(&mut args.command, sub_matches)?;
+  }
+
+  Ok(args)
+}
+
 #[derive(Parser, Debug, Serialize)]
 #[clap(name = "treetime")]
 #[clap(author, version = env!("TREETIME_LONG_VERSION"))]
@@ -45,6 +75,19 @@ pub struct TreetimeArgs {
 
   #[clap(subcommand)]
   pub command: TreetimeCommands,
+}
+
+fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
+  match command {
+    TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
+    TreetimeCommands::Optimize(args) => resolve(args, matches),
+    TreetimeCommands::Prune(args) => resolve(args, matches),
+    TreetimeCommands::Ancestral(args) => resolve(args, matches),
+    TreetimeCommands::Clock(args) => resolve(args, matches),
+    TreetimeCommands::Homoplasy(args) => resolve(args, matches),
+    TreetimeCommands::Mugration(args) => resolve(args, matches),
+    _ => Ok(()),
+  }
 }
 
 #[derive(Subcommand, Debug, Serialize)]
@@ -139,49 +182,6 @@ pub struct TreetimeSchemaArgs {
 
 #[derive(Parser, Debug, Serialize)]
 pub struct TreetimeAncestralReassortmentGraphArgs;
-
-pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
-  let mut command = TreetimeArgs::command();
-
-  if shell.to_lowercase() == "fig" {
-    generate(Fig, &mut command, "treetime", &mut io::stdout());
-    return Ok(());
-  }
-
-  let generator = <Shell as ValueEnum>::from_str(&shell.to_lowercase(), true)
-    .map_err(|err| make_report!("{err}: Possible values: {}", SHELLS.join(", ")))?;
-
-  let bin_name = command.get_name().to_owned();
-
-  generate(generator, &mut command, bin_name, &mut io::stdout());
-
-  Ok(())
-}
-
-pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
-  let matches = TreetimeArgs::command().get_matches();
-  let mut args = TreetimeArgs::from_arg_matches(&matches)?;
-  setup_logger(args.verbosity.get_filter_level());
-
-  if let Some((_, sub_matches)) = matches.subcommand() {
-    resolve_command_config(&mut args.command, sub_matches)?;
-  }
-
-  Ok(args)
-}
-
-fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
-  match command {
-    TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
-    TreetimeCommands::Optimize(args) => resolve(args, matches),
-    TreetimeCommands::Prune(args) => resolve(args, matches),
-    TreetimeCommands::Ancestral(args) => resolve(args, matches),
-    TreetimeCommands::Clock(args) => resolve(args, matches),
-    TreetimeCommands::Homoplasy(args) => resolve(args, matches),
-    TreetimeCommands::Mugration(args) => resolve(args, matches),
-    _ => Ok(()),
-  }
-}
 
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where

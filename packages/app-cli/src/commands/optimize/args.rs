@@ -17,79 +17,12 @@ use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 
-/// Reroot methods available in the optimize command.
-///
-/// Only date-free methods are valid here because optimize has no sampling dates.
-/// Date-dependent methods (least-squares, oldest, clock-filter) are available
-/// in the timetree and clock commands.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-pub enum OptimizeRerootMethod {
-  MinDev,
-}
-
 impl From<OptimizeRerootMethod> for RerootMethod {
   fn from(m: OptimizeRerootMethod) -> Self {
     match m {
       OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
     }
   }
-}
-
-/// Per-edge branch length optimization method.
-///
-/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
-/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
-/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "BranchOptMethod")]
-pub enum BranchOptMethodCli {
-  /// Brent's method in $t$ space (derivative-free, bracket-based).
-  ///
-  /// Finds the maximum within a bracket derived from the grid search bounds.
-  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
-  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
-  Brent,
-
-  /// Brent's method in $\sqrt{t}$ space.
-  ///
-  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
-  /// reparameterization smooths the objective, giving parabolic interpolation
-  /// a better fit. Default method for golden master comparison against v0.
-  #[default]
-  BrentSqrt,
-
-  /// Brent's method in $\ln(t)$ space.
-  ///
-  /// Smoothest objective of all parameterizations, giving the best parabolic
-  /// interpolation. Requires a finite lower bound in log-space.
-  BrentLog,
-
-  /// Newton-Raphson in $t$ space.
-  ///
-  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
-  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
-  /// branches, causing the step-size convergence criterion to fire before
-  /// the combined gradient reaches zero.
-  Newton,
-
-  /// Newton-Raphson in $\sqrt{t}$ space.
-  ///
-  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
-  /// the chain rule to transform derivatives. Reduces the indel Hessian
-  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
-  /// cases ($t < 0.001$, $k > 10$).
-  NewtonSqrt,
-
-  /// Newton-Raphson in $\ln(t)$ space.
-  ///
-  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
-  /// bounded). Natural relative tolerance. Best conditioning of all Newton
-  /// variants.
-  NewtonLog,
 }
 
 impl From<BranchOptMethodCli> for BranchOptMethod {
@@ -105,25 +38,6 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
   }
 }
 
-/// Controls whether marginal reconstruction estimates initial branch lengths
-/// from substitutions divided by effective alignment length. Preserving valid
-/// input lengths can provide a better Newton starting point.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "InitialGuessMode")]
-pub enum InitialGuessModeCli {
-  /// Estimate only edges with missing or invalid branch lengths, preserve
-  /// valid input values. No-op when all edges have finite branch lengths.
-  #[default]
-  Auto,
-  /// Estimate all edges, overwriting input branch lengths.
-  Always,
-  /// Use input branch lengths as-is. Fails if any edge has a missing or
-  /// invalid branch length.
-  Never,
-}
-
 impl From<InitialGuessModeCli> for InitialGuessMode {
   fn from(mode: InitialGuessModeCli) -> Self {
     match mode {
@@ -131,6 +45,92 @@ impl From<InitialGuessModeCli> for InitialGuessMode {
       InitialGuessModeCli::Always => InitialGuessMode::Always,
       InitialGuessModeCli::Never => InitialGuessMode::Never,
     }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct TreetimeOptimizeArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: PathBuf,
+  pub alphabet_args: AlphabetArgs,
+  pub model_args: ModelArgs,
+  pub dense: Option<bool>,
+  pub output: OutputCoreArgs,
+  pub divergence_units: DivergenceUnits,
+  pub output_augur_node_data: Option<PathBuf>,
+  pub output_gtr: Option<PathBuf>,
+  pub output_selection: Vec<OptimizeOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub max_iter: usize,
+  pub dp: f64,
+  pub damping: f64,
+  pub branch_length_initial_guess: InitialGuessMode,
+  pub opt_method: BranchOptMethod,
+  pub no_indels: bool,
+  pub reroot: Option<OptimizeRerootMethod>,
+  pub reroot_tips: Vec<String>,
+  pub keep_root: bool,
+  pub topology_ops: TopologyOps,
+  pub gap_fill_args: GapFillArgs,
+}
+
+impl TreetimeOptimizeArgs {
+  pub(crate) fn tree(&self) -> &Path {
+    &self.tree
+  }
+
+  pub(crate) fn reroot_spec(&self) -> Option<RerootSpec> {
+    if self.keep_root {
+      return None;
+    }
+
+    if let Some(method) = self.reroot {
+      return Some(RerootSpec::Method(RerootMethod::from(method)));
+    }
+
+    if !self.reroot_tips.is_empty() {
+      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
+    }
+
+    None
+  }
+}
+
+impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
+    let tree = raw
+      .tree
+      .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      tree,
+      alphabet_args: raw.alphabet_args,
+      model_args: raw.model_args,
+      dense: raw.dense,
+      output: raw.output,
+      divergence_units: raw.divergence_units,
+      output_augur_node_data: raw.output_augur_node_data,
+      output_gtr: raw.output_gtr,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      max_iter: raw.max_iter,
+      dp: raw.dp,
+      damping: raw.damping,
+      branch_length_initial_guess: raw.branch_length_initial_guess.into(),
+      opt_method: raw.opt_method.into(),
+      no_indels: raw.no_indels,
+      reroot: raw.reroot,
+      reroot_tips: raw.reroot_tips,
+      keep_root: raw.keep_root,
+      topology_ops: TopologyOps {
+        collapse_short_branches: !raw.no_collapse_short_branches,
+        merge_siblings: !raw.no_merge_siblings,
+        flip_parent_child: !raw.no_flip_parent_child,
+      },
+      gap_fill_args: raw.gap_fill_args,
+    })
   }
 }
 
@@ -311,88 +311,88 @@ pub struct TreetimeOptimizeArgsRaw {
   pub gap_fill_args: GapFillArgs,
 }
 
-#[derive(Debug, Clone)]
-pub struct TreetimeOptimizeArgs {
-  pub alignment: AlignmentArgs,
-  pub tree: PathBuf,
-  pub alphabet_args: AlphabetArgs,
-  pub model_args: ModelArgs,
-  pub dense: Option<bool>,
-  pub output: OutputCoreArgs,
-  pub divergence_units: DivergenceUnits,
-  pub output_augur_node_data: Option<PathBuf>,
-  pub output_gtr: Option<PathBuf>,
-  pub output_selection: Vec<OptimizeOutputSelection>,
-  pub topology_order: TopologyOrderArgs,
-  pub max_iter: usize,
-  pub dp: f64,
-  pub damping: f64,
-  pub branch_length_initial_guess: InitialGuessMode,
-  pub opt_method: BranchOptMethod,
-  pub no_indels: bool,
-  pub reroot: Option<OptimizeRerootMethod>,
-  pub reroot_tips: Vec<String>,
-  pub keep_root: bool,
-  pub topology_ops: TopologyOps,
-  pub gap_fill_args: GapFillArgs,
+/// Reroot methods available in the optimize command.
+///
+/// Only date-free methods are valid here because optimize has no sampling dates.
+/// Date-dependent methods (least-squares, oldest, clock-filter) are available
+/// in the timetree and clock commands.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+pub enum OptimizeRerootMethod {
+  MinDev,
 }
 
-impl TreetimeOptimizeArgs {
-  pub(crate) fn tree(&self) -> &Path {
-    &self.tree
-  }
+/// Per-edge branch length optimization method.
+///
+/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
+/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
+/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "BranchOptMethod")]
+pub enum BranchOptMethodCli {
+  /// Brent's method in $t$ space (derivative-free, bracket-based).
+  ///
+  /// Finds the maximum within a bracket derived from the grid search bounds.
+  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
+  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
+  Brent,
 
-  pub(crate) fn reroot_spec(&self) -> Option<RerootSpec> {
-    if self.keep_root {
-      return None;
-    }
+  /// Brent's method in $\sqrt{t}$ space.
+  ///
+  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
+  /// reparameterization smooths the objective, giving parabolic interpolation
+  /// a better fit. Default method for golden master comparison against v0.
+  #[default]
+  BrentSqrt,
 
-    if let Some(method) = self.reroot {
-      return Some(RerootSpec::Method(RerootMethod::from(method)));
-    }
+  /// Brent's method in $\ln(t)$ space.
+  ///
+  /// Smoothest objective of all parameterizations, giving the best parabolic
+  /// interpolation. Requires a finite lower bound in log-space.
+  BrentLog,
 
-    if !self.reroot_tips.is_empty() {
-      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
-    }
+  /// Newton-Raphson in $t$ space.
+  ///
+  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
+  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
+  /// branches, causing the step-size convergence criterion to fire before
+  /// the combined gradient reaches zero.
+  Newton,
 
-    None
-  }
+  /// Newton-Raphson in $\sqrt{t}$ space.
+  ///
+  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
+  /// the chain rule to transform derivatives. Reduces the indel Hessian
+  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
+  /// cases ($t < 0.001$, $k > 10$).
+  NewtonSqrt,
+
+  /// Newton-Raphson in $\ln(t)$ space.
+  ///
+  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
+  /// bounded). Natural relative tolerance. Best conditioning of all Newton
+  /// variants.
+  NewtonLog,
 }
 
-impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
-  type Error = Report;
-
-  fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
-    Ok(Self {
-      alignment: raw.alignment,
-      tree,
-      alphabet_args: raw.alphabet_args,
-      model_args: raw.model_args,
-      dense: raw.dense,
-      output: raw.output,
-      divergence_units: raw.divergence_units,
-      output_augur_node_data: raw.output_augur_node_data,
-      output_gtr: raw.output_gtr,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      max_iter: raw.max_iter,
-      dp: raw.dp,
-      damping: raw.damping,
-      branch_length_initial_guess: raw.branch_length_initial_guess.into(),
-      opt_method: raw.opt_method.into(),
-      no_indels: raw.no_indels,
-      reroot: raw.reroot,
-      reroot_tips: raw.reroot_tips,
-      keep_root: raw.keep_root,
-      topology_ops: TopologyOps {
-        collapse_short_branches: !raw.no_collapse_short_branches,
-        merge_siblings: !raw.no_merge_siblings,
-        flip_parent_child: !raw.no_flip_parent_child,
-      },
-      gap_fill_args: raw.gap_fill_args,
-    })
-  }
+/// Controls whether marginal reconstruction estimates initial branch lengths
+/// from substitutions divided by effective alignment length. Preserving valid
+/// input lengths can provide a better Newton starting point.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "InitialGuessMode")]
+pub enum InitialGuessModeCli {
+  /// Estimate only edges with missing or invalid branch lengths, preserve
+  /// valid input values. No-op when all edges have finite branch lengths.
+  #[default]
+  Auto,
+  /// Estimate all edges, overwriting input branch lengths.
+  Always,
+  /// Use input branch lengths as-is. Fails if any edge has a missing or
+  /// invalid branch length.
+  Never,
 }

@@ -4,18 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::alphabet::alphabet::AlphabetName;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "AlphabetName")]
-pub enum AlphabetNameCli {
-  #[default]
-  Nuc,
-  Aa,
-  #[cfg_attr(feature = "clap", value(name = "aa-no-stop"))]
-  AaNoStop,
-}
-
 impl From<AlphabetNameCli> for AlphabetName {
   fn from(name: AlphabetNameCli) -> Self {
     match name {
@@ -50,4 +38,16 @@ impl AlphabetArgs {
   pub(crate) fn alphabet_name(&self) -> Option<AlphabetName> {
     self.alphabet.map(Into::into)
   }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "AlphabetName")]
+pub enum AlphabetNameCli {
+  #[default]
+  Nuc,
+  Aa,
+  #[cfg_attr(feature = "clap", value(name = "aa-no-stop"))]
+  AaNoStop,
 }

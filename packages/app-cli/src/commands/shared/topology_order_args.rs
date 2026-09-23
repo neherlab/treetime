@@ -163,6 +163,24 @@ pub enum LadderizeArg {
   Descending,
 }
 
+impl From<TopologyOrderArg> for TopologyOrderPreset {
+  fn from(value: TopologyOrderArg) -> Self {
+    match value {
+      TopologyOrderArg::Keep => Self::Keep,
+      TopologyOrderArg::DescendantCount => Self::DescendantCount,
+      TopologyOrderArg::DescendantCountReverse => Self::DescendantCountReverse,
+      TopologyOrderArg::Height => Self::Height,
+      TopologyOrderArg::HeightReverse => Self::HeightReverse,
+      TopologyOrderArg::Divergence => Self::Divergence,
+      TopologyOrderArg::DivergenceReverse => Self::DivergenceReverse,
+      TopologyOrderArg::Label => Self::Label,
+      TopologyOrderArg::LabelReverse => Self::LabelReverse,
+      TopologyOrderArg::TargetOrder => Self::TargetOrder,
+      TopologyOrderArg::TargetOrderReverse => Self::TargetOrderReverse,
+    }
+  }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -189,24 +207,6 @@ impl TopologyOrderArg {
   }
 }
 
-impl From<TopologyOrderArg> for TopologyOrderPreset {
-  fn from(value: TopologyOrderArg) -> Self {
-    match value {
-      TopologyOrderArg::Keep => Self::Keep,
-      TopologyOrderArg::DescendantCount => Self::DescendantCount,
-      TopologyOrderArg::DescendantCountReverse => Self::DescendantCountReverse,
-      TopologyOrderArg::Height => Self::Height,
-      TopologyOrderArg::HeightReverse => Self::HeightReverse,
-      TopologyOrderArg::Divergence => Self::Divergence,
-      TopologyOrderArg::DivergenceReverse => Self::DivergenceReverse,
-      TopologyOrderArg::Label => Self::Label,
-      TopologyOrderArg::LabelReverse => Self::LabelReverse,
-      TopologyOrderArg::TargetOrder => Self::TargetOrder,
-      TopologyOrderArg::TargetOrderReverse => Self::TargetOrderReverse,
-    }
-  }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, Display)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
@@ -217,15 +217,6 @@ pub enum TopologyOrderTargetSourceArg {
   List,
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-pub enum TopologyOrderTargetAggregateArg {
-  #[default]
-  Mean,
-  Median,
-}
-
 impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
   fn from(value: TopologyOrderTargetAggregateArg) -> Self {
     match value {
@@ -233,6 +224,15 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
       TopologyOrderTargetAggregateArg::Median => Self::Median,
     }
   }
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+pub enum TopologyOrderTargetAggregateArg {
+  #[default]
+  Mean,
+  Median,
 }
 
 fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {

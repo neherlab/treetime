@@ -8,6 +8,31 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
+pub struct TreetimeHomoplasyArgs {
+  pub ancestral_args: TreetimeAncestralArgs,
+  pub constant_sites: Option<usize>,
+  pub rescale: bool,
+  pub detailed: Option<String>,
+  pub drms: Option<PathBuf>,
+  pub num_mut: usize,
+}
+
+impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeHomoplasyArgsRaw) -> Result<Self, Report> {
+    Ok(Self {
+      ancestral_args: TreetimeAncestralArgs::try_from(raw.ancestral_args)?,
+      constant_sites: raw.constant_sites,
+      rescale: raw.rescale,
+      detailed: raw.detailed,
+      drms: raw.drms,
+      num_mut: raw.num_mut,
+    })
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
@@ -36,29 +61,4 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, short = 'n', default_value_t = 10))]
   #[default = 10]
   pub num_mut: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct TreetimeHomoplasyArgs {
-  pub ancestral_args: TreetimeAncestralArgs,
-  pub constant_sites: Option<usize>,
-  pub rescale: bool,
-  pub detailed: Option<String>,
-  pub drms: Option<PathBuf>,
-  pub num_mut: usize,
-}
-
-impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
-  type Error = Report;
-
-  fn try_from(raw: TreetimeHomoplasyArgsRaw) -> Result<Self, Report> {
-    Ok(Self {
-      ancestral_args: TreetimeAncestralArgs::try_from(raw.ancestral_args)?,
-      constant_sites: raw.constant_sites,
-      rescale: raw.rescale,
-      detailed: raw.detailed,
-      drms: raw.drms,
-      num_mut: raw.num_mut,
-    })
-  }
 }

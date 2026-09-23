@@ -17,50 +17,6 @@ use std::path::{Path, PathBuf};
 use treetime_schema::TreetimeSchemaFormat;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SchemaTarget {
-  #[default]
-  All,
-  VersionInfo,
-  ProgressEvent,
-  ErrorResponse,
-  Pipeline,
-  Timetree,
-  Optimize,
-  Prune,
-  Ancestral,
-  Clock,
-  Mugration,
-}
-
-impl SchemaTarget {
-  const fn data_format(self) -> Option<TreetimeSchemaFormat> {
-    match self {
-      SchemaTarget::VersionInfo => Some(TreetimeSchemaFormat::VersionInfo),
-      SchemaTarget::ProgressEvent => Some(TreetimeSchemaFormat::ProgressEvent),
-      SchemaTarget::ErrorResponse => Some(TreetimeSchemaFormat::ErrorResponse),
-      _ => None,
-    }
-  }
-
-  const fn default_filename(self) -> Option<&'static str> {
-    match self {
-      SchemaTarget::All => None,
-      SchemaTarget::VersionInfo => Some("version-info.schema.json"),
-      SchemaTarget::ProgressEvent => Some("progress-event.schema.json"),
-      SchemaTarget::ErrorResponse => Some("error-response.schema.json"),
-      SchemaTarget::Pipeline => Some("input-config-pipeline.schema.json"),
-      SchemaTarget::Timetree => Some("input-config-timetree.schema.json"),
-      SchemaTarget::Optimize => Some("input-config-optimize.schema.json"),
-      SchemaTarget::Prune => Some("input-config-prune.schema.json"),
-      SchemaTarget::Ancestral => Some("input-config-ancestral.schema.json"),
-      SchemaTarget::Clock => Some("input-config-clock.schema.json"),
-      SchemaTarget::Mugration => Some("input-config-mugration.schema.json"),
-    }
-  }
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
@@ -117,10 +73,66 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   write_schema(&schema, output)
 }
 
+#[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SchemaTarget {
+  #[default]
+  All,
+  VersionInfo,
+  ProgressEvent,
+  ErrorResponse,
+  Pipeline,
+  Timetree,
+  Optimize,
+  Prune,
+  Ancestral,
+  Clock,
+  Mugration,
+}
+
+impl SchemaTarget {
+  const fn data_format(self) -> Option<TreetimeSchemaFormat> {
+    match self {
+      SchemaTarget::VersionInfo => Some(TreetimeSchemaFormat::VersionInfo),
+      SchemaTarget::ProgressEvent => Some(TreetimeSchemaFormat::ProgressEvent),
+      SchemaTarget::ErrorResponse => Some(TreetimeSchemaFormat::ErrorResponse),
+      _ => None,
+    }
+  }
+
+  const fn default_filename(self) -> Option<&'static str> {
+    match self {
+      SchemaTarget::All => None,
+      SchemaTarget::VersionInfo => Some("version-info.schema.json"),
+      SchemaTarget::ProgressEvent => Some("progress-event.schema.json"),
+      SchemaTarget::ErrorResponse => Some("error-response.schema.json"),
+      SchemaTarget::Pipeline => Some("input-config-pipeline.schema.json"),
+      SchemaTarget::Timetree => Some("input-config-timetree.schema.json"),
+      SchemaTarget::Optimize => Some("input-config-optimize.schema.json"),
+      SchemaTarget::Prune => Some("input-config-prune.schema.json"),
+      SchemaTarget::Ancestral => Some("input-config-ancestral.schema.json"),
+      SchemaTarget::Clock => Some("input-config-clock.schema.json"),
+      SchemaTarget::Mugration => Some("input-config-mugration.schema.json"),
+    }
+  }
+}
+
 fn pipeline_schema() -> Schema {
   let mut schema = draft2020_generator().into_root_schema_for::<Pipeline>();
   AllowTemplateStrings.transform(&mut schema);
   schema
+}
+
+pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
+  Some(match tag {
+    "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
+    "optimize" => command_schema::<TreetimeOptimizeArgsRaw>(),
+    "prune" => command_schema::<TreetimePruneArgsRaw>(),
+    "ancestral" => command_schema::<TreetimeAncestralArgsRaw>(),
+    "clock" => command_schema::<TreetimeClockArgsRaw>(),
+    "mugration" => command_schema::<TreetimeMugrationArgsRaw>(),
+    _ => return None,
+  })
 }
 
 pub(crate) fn command_schema<T: JsonSchema>() -> Schema {
@@ -141,18 +153,6 @@ fn allow_schema_ref(schema: &mut Schema) {
       }),
     );
   }
-}
-
-pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
-  Some(match tag {
-    "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
-    "optimize" => command_schema::<TreetimeOptimizeArgsRaw>(),
-    "prune" => command_schema::<TreetimePruneArgsRaw>(),
-    "ancestral" => command_schema::<TreetimeAncestralArgsRaw>(),
-    "clock" => command_schema::<TreetimeClockArgsRaw>(),
-    "mugration" => command_schema::<TreetimeMugrationArgsRaw>(),
-    _ => return None,
-  })
 }
 
 fn draft2020_generator() -> SchemaGenerator {

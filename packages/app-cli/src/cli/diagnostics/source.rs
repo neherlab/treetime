@@ -9,44 +9,44 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 use treetime_utils::{make_error, make_report};
 
-pub struct ConfigSource {
-  name: String,
-  text: String,
-  spans: BTreeMap<String, NodeSpan>,
+pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
+  let options = serde_saphyr::options! {
+    duplicate_keys: DuplicateKeyPolicy::Error,
+    reject_non_finite_typeless_float: true,
+  };
+  match serde_saphyr::from_str_with_options::<Value>(text, options) {
+    Ok(value) => Ok(value),
+    Err(err) => {
+      render_and_bail(
+        source,
+        "invalid configuration",
+        vec![RawDiagnostic::new(
+          "config::syntax",
+          format!("could not parse config: {err}"),
+        )],
+      )?;
+      unreachable!("render_and_bail returns an error whenever diagnostics are present");
+    },
+  }
 }
 
-impl ConfigSource {
-  #[cfg_attr(
-    dylint_lib = "treetime_lints",
-    expect(
-      error_dropped_by_pattern,
-      reason = "source spans are optional; parse_config_document reports the YAML error for the same text"
-    )
-  )]
-  pub(crate) fn new(name: impl Into<String>, text: impl Into<String>) -> Self {
-    let name = name.into();
-    let text = text.into();
-    let mut spans = BTreeMap::new();
-    if let Ok(docs) = MarkedYaml::load_from_str(&text) {
-      if let Some(doc) = docs.first() {
-        let table = char_byte_table(&text);
-        index_node(&mut spans, &table, doc, "");
-      }
-    }
-    Self { name, text, spans }
+pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Result<(), Report> {
+  if diags.is_empty() {
+    return Ok(());
   }
+  let related: Vec<ConfigDiagnostic> = diags.into_iter().map(|diag| diag.resolve(source)).collect();
+  let problems = related.iter().map(|diag| diag.message.as_str()).join("; ");
+  let report = ConfigReport {
+    message: top_message.to_owned(),
+    related,
+  };
 
-  fn span_for(&self, pointer: &str) -> Option<SourceSpan> {
-    self.spans.get(pointer).map(|node| node.value)
-  }
+  let mut rendered = String::new();
+  miette::GraphicalReportHandler::new()
+    .render_report(&mut rendered, &report)
+    .map_err(|err| make_report!("could not render config diagnostics: {err}"))?;
 
-  fn key_span_for(&self, pointer: &str) -> Option<SourceSpan> {
-    self.spans.get(pointer).map(|node| node.key.unwrap_or(node.value))
-  }
-
-  fn named_source(&self) -> NamedSource<String> {
-    NamedSource::new(&self.name, self.text.clone())
-  }
+  make_error!("{top_message}: {problems}").with_section(move || rendered.trim_end().to_owned())
 }
 
 pub struct RawDiagnostic {
@@ -108,43 +108,60 @@ impl RawDiagnostic {
   }
 }
 
-pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Result<(), Report> {
-  if diags.is_empty() {
-    return Ok(());
-  }
-  let related: Vec<ConfigDiagnostic> = diags.into_iter().map(|diag| diag.resolve(source)).collect();
-  let problems = related.iter().map(|diag| diag.message.as_str()).join("; ");
-  let report = ConfigReport {
-    message: top_message.to_owned(),
-    related,
-  };
-
-  let mut rendered = String::new();
-  miette::GraphicalReportHandler::new()
-    .render_report(&mut rendered, &report)
-    .map_err(|err| make_report!("could not render config diagnostics: {err}"))?;
-
-  make_error!("{top_message}: {problems}").with_section(move || rendered.trim_end().to_owned())
+pub struct ConfigSource {
+  name: String,
+  text: String,
+  spans: BTreeMap<String, NodeSpan>,
 }
 
-pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
-  let options = serde_saphyr::options! {
-    duplicate_keys: DuplicateKeyPolicy::Error,
-    reject_non_finite_typeless_float: true,
-  };
-  match serde_saphyr::from_str_with_options::<Value>(text, options) {
-    Ok(value) => Ok(value),
-    Err(err) => {
-      render_and_bail(
-        source,
-        "invalid configuration",
-        vec![RawDiagnostic::new(
-          "config::syntax",
-          format!("could not parse config: {err}"),
-        )],
-      )?;
-      unreachable!("render_and_bail returns an error whenever diagnostics are present");
-    },
+impl ConfigSource {
+  #[cfg_attr(
+    dylint_lib = "treetime_lints",
+    expect(
+      error_dropped_by_pattern,
+      reason = "source spans are optional; parse_config_document reports the YAML error for the same text"
+    )
+  )]
+  pub(crate) fn new(name: impl Into<String>, text: impl Into<String>) -> Self {
+    let name = name.into();
+    let text = text.into();
+    let mut spans = BTreeMap::new();
+    if let Ok(docs) = MarkedYaml::load_from_str(&text) {
+      if let Some(doc) = docs.first() {
+        let table = char_byte_table(&text);
+        index_node(&mut spans, &table, doc, "");
+      }
+    }
+    Self { name, text, spans }
+  }
+
+  fn span_for(&self, pointer: &str) -> Option<SourceSpan> {
+    self.spans.get(pointer).map(|node| node.value)
+  }
+
+  fn key_span_for(&self, pointer: &str) -> Option<SourceSpan> {
+    self.spans.get(pointer).map(|node| node.key.unwrap_or(node.value))
+  }
+
+  fn named_source(&self) -> NamedSource<String> {
+    NamedSource::new(&self.name, self.text.clone())
+  }
+}
+
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+#[display("{message}")]
+struct ConfigReport {
+  message: String,
+  related: Vec<ConfigDiagnostic>,
+}
+
+impl Diagnostic for ConfigReport {
+  fn severity(&self) -> Option<Severity> {
+    Some(Severity::Error)
+  }
+
+  fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn Diagnostic> + 'a>> {
+    Some(Box::new(self.related.iter().map(|diag| -> &dyn Diagnostic { diag })))
   }
 }
 
@@ -184,28 +201,6 @@ impl Diagnostic for ConfigDiagnostic {
   }
 }
 
-#[derive(Debug, derive_more::Display, derive_more::Error)]
-#[display("{message}")]
-struct ConfigReport {
-  message: String,
-  related: Vec<ConfigDiagnostic>,
-}
-
-impl Diagnostic for ConfigReport {
-  fn severity(&self) -> Option<Severity> {
-    Some(Severity::Error)
-  }
-
-  fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn Diagnostic> + 'a>> {
-    Some(Box::new(self.related.iter().map(|diag| -> &dyn Diagnostic { diag })))
-  }
-}
-
-struct NodeSpan {
-  value: SourceSpan,
-  key: Option<SourceSpan>,
-}
-
 fn index_node(spans: &mut BTreeMap<String, NodeSpan>, table: &[usize], node: &MarkedYaml, pointer: &str) {
   spans.insert(
     pointer.to_owned(),
@@ -235,6 +230,11 @@ fn index_node(spans: &mut BTreeMap<String, NodeSpan>, table: &[usize], node: &Ma
     },
     _ => {},
   }
+}
+
+struct NodeSpan {
+  value: SourceSpan,
+  key: Option<SourceSpan>,
 }
 
 fn node_key(node: &MarkedYaml) -> Option<String> {

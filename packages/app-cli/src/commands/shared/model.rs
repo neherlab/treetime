@@ -4,27 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::gtr::get_gtr::GtrModelName;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "GtrModelName")]
-pub enum GtrModelNameCli {
-  /// Infer GTR parameters from data via Fitch parsimony substitution counts.
-  #[default]
-  Infer,
-  #[serde(rename = "jc69")]
-  JC69,
-  K80,
-  F81,
-  #[serde(rename = "hky85")]
-  HKY85,
-  T92,
-  #[serde(rename = "tn93")]
-  TN93,
-  #[cfg_attr(feature = "clap", value(name = "jtt92"))]
-  Jtt92,
-}
-
 impl From<GtrModelNameCli> for GtrModelName {
   fn from(name: GtrModelNameCli) -> Self {
     match name {
@@ -75,4 +54,25 @@ impl ModelArgs {
   pub(crate) fn model_name(&self) -> GtrModelName {
     self.model.into()
   }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "GtrModelName")]
+pub enum GtrModelNameCli {
+  /// Infer GTR parameters from data via Fitch parsimony substitution counts.
+  #[default]
+  Infer,
+  #[serde(rename = "jc69")]
+  JC69,
+  K80,
+  F81,
+  #[serde(rename = "hky85")]
+  HKY85,
+  T92,
+  #[serde(rename = "tn93")]
+  TN93,
+  #[cfg_attr(feature = "clap", value(name = "jtt92"))]
+  Jtt92,
 }

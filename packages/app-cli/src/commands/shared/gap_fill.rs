@@ -4,17 +4,6 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime::seq::gap_fill::GapFill;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
-#[schemars(rename = "GapFill")]
-pub enum GapFillCli {
-  #[default]
-  OnlyTerminal,
-  All,
-  None,
-}
-
 impl From<GapFillCli> for GapFill {
   fn from(mode: GapFillCli) -> Self {
     match mode {
@@ -58,4 +47,15 @@ impl GapFillArgs {
       self.gap_fill.into()
     }
   }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "GapFill")]
+pub enum GapFillCli {
+  #[default]
+  OnlyTerminal,
+  All,
+  None,
 }
