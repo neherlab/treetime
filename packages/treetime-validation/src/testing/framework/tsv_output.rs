@@ -1,7 +1,7 @@
 use crate::testing::framework::results::{TestResult, TestRunOutcome};
 use crate::testing::framework::test_case::TestCase;
 use csv::WriterBuilder;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,7 +20,7 @@ where
         result.test_case.name(),
         result.algorithm.to_lowercase()
       );
-      fs::create_dir_all(&algorithm_dir)?;
+      fs::create_dir_all(&algorithm_dir).wrap_err_with(|| format!("When creating directory '{algorithm_dir}'"))?;
 
       write_reference_functions_tsv(result, &algorithm_dir)?;
       write_convolution_results_tsv(result, &algorithm_dir)?;
@@ -54,7 +54,7 @@ where
     );
   }
 
-  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(tsv_path)?;
+  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
 
   writer.write_record(["x", "f(x)", "g(x)"])?;
 
@@ -65,7 +65,9 @@ where
     writer.write_record(&[x.to_string(), f_val.to_string(), g_val.to_string()])?;
   }
 
-  writer.flush()?;
+  writer
+    .flush()
+    .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }
 
@@ -91,7 +93,7 @@ where
     );
   }
 
-  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(tsv_path)?;
+  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
 
   writer.write_record(["t", "expected", "actual", "absolute_error", "relative_error"])?;
 
@@ -115,7 +117,9 @@ where
     ])?;
   }
 
-  writer.flush()?;
+  writer
+    .flush()
+    .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }
 
@@ -149,7 +153,7 @@ where
     .into_iter()
     .collect();
 
-  fs::create_dir_all(output_dir)?;
+  fs::create_dir_all(output_dir).wrap_err_with(|| format!("When creating directory '{output_dir}'"))?;
   let tsv_path = format!("{output_dir}/comparative_summary.tsv");
 
   let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
@@ -189,6 +193,8 @@ where
     writer.write_record(&row)?;
   }
 
-  writer.flush()?;
+  writer
+    .flush()
+    .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }
