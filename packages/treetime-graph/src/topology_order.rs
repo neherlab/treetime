@@ -477,8 +477,8 @@ fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {
 
   let mut remaining_inbound = node_keys
     .iter()
-    .map(|node_key| (*node_key, graph.degree_in(*node_key).unwrap_or(0)))
-    .collect::<BTreeMap<_, _>>();
+    .map(|node_key| Ok((*node_key, graph.degree_in(*node_key)?)))
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
   let mut queue = remaining_inbound
     .iter()
