@@ -17,6 +17,10 @@ pub const TIME_LIMIT: f64 = 1e10;
 pub const TIME_EPSILON: f64 = 1e-10;
 const FORMULA_GRID_SIZE: usize = 200;
 
+pub type DistributionPlain = Distribution<Plain>;
+
+pub type DistributionNegLog = Distribution<NegLog>;
+
 #[must_use]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display)]
 #[strum(serialize_all = "kebab-case")]
@@ -456,19 +460,6 @@ impl Distribution<NegLog> {
   }
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
-fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
-  let n_points = FORMULA_GRID_SIZE;
-  let t = Array1::from_shape_fn(n_points, |i| {
-    f.t_min() + (f.t_max() - f.t_min()) * (i as f64 / (n_points - 1) as f64)
-  });
-  let values = f.eval_many(&t)?;
-  DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
-}
-
 pub fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
   let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
     return Distribution::Empty;
@@ -483,6 +474,19 @@ fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Di
     return Distribution::Empty;
   };
   Distribution::Function(function.shift_y(-minimum))
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
+fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
+  let n_points = FORMULA_GRID_SIZE;
+  let t = Array1::from_shape_fn(n_points, |i| {
+    f.t_min() + (f.t_max() - f.t_min()) * (i as f64 / (n_points - 1) as f64)
+  });
+  let values = f.eval_many(&t)?;
+  DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
 }
 
 fn hpd_region_function(f: &DistributionFunction<f64, Plain>, fraction: f64) -> Option<(f64, f64)> {
@@ -596,7 +600,6 @@ fn interp_cdf_at_uniform(cdf: &Array1<f64>, x_min: f64, dx: f64, pos: f64) -> f6
   let frac = idx_f - idx as f64;
   cdf[idx] + frac * (cdf[idx + 1] - cdf[idx])
 }
-
 fn interp_cdf_inverse(t: &Array1<f64>, cdf: &Array1<f64>, p: f64) -> f64 {
   let n = t.len();
   if p <= 0.0 {
@@ -619,6 +622,3 @@ fn interp_cdf_inverse(t: &Array1<f64>, cdf: &Array1<f64>, p: f64) -> f64 {
   }
   t[n - 1]
 }
-
-pub type DistributionPlain = Distribution<Plain>;
-pub type DistributionNegLog = Distribution<NegLog>;

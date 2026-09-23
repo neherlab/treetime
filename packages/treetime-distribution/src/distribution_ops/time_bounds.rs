@@ -21,17 +21,6 @@ pub fn distribution_time_bounds_union<Y: YAxisPolicy>(
   }
 }
 
-pub fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
-  dist_a: &Distribution<Y>,
-  dist_b: &Distribution<Y>,
-) -> Option<(f64, f64)> {
-  match distribution_support_intersection(dist_a.time_bounds()?, dist_b.time_bounds()?) {
-    SupportIntersection::Disjoint => None,
-    SupportIntersection::Point(t) => Some((t, t)),
-    SupportIntersection::Interval(bounds) => Some(bounds),
-  }
-}
-
 pub fn distribution_time_bounds_contains<Y: YAxisPolicy>(outer: &Distribution<Y>, inner: &Distribution<Y>) -> bool {
   let Some((t_min_inner, t_max_inner)) = inner.time_bounds() else {
     return true;
@@ -44,6 +33,17 @@ pub fn distribution_time_bounds_contains<Y: YAxisPolicy>(outer: &Distribution<Y>
 
 pub fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(dist_a: &Distribution<Y>, dist_b: &Distribution<Y>) -> bool {
   distribution_time_bounds_intersection(dist_a, dist_b).is_some()
+}
+
+pub fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
+  dist_a: &Distribution<Y>,
+  dist_b: &Distribution<Y>,
+) -> Option<(f64, f64)> {
+  match distribution_support_intersection(dist_a.time_bounds()?, dist_b.time_bounds()?) {
+    SupportIntersection::Disjoint => None,
+    SupportIntersection::Point(t) => Some((t, t)),
+    SupportIntersection::Interval(bounds) => Some(bounds),
+  }
 }
 
 #[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]

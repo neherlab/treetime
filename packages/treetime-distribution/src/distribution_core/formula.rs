@@ -18,10 +18,6 @@ pub struct DistributionFormula<Y: YAxisPolicy = Plain> {
   _policy: PolicyMarker<Y>,
 }
 
-fn default_eval_fn() -> Arc<dyn Fn(f64) -> Result<f64> + Send + Sync> {
-  Arc::new(|_t| Ok(0.0))
-}
-
 impl<Y: YAxisPolicy> DistributionFormula<Y> {
   pub fn new<F>(eval_fn: F, t_min: f64, t_max: f64) -> Self
   where
@@ -108,4 +104,8 @@ impl<Y: YAxisPolicy> PartialEq for DistributionFormula<Y> {
   fn eq(&self, other: &Self) -> bool {
     self.t_min == other.t_min && self.t_max == other.t_max
   }
+}
+
+fn default_eval_fn() -> Arc<dyn Fn(f64) -> Result<f64> + Send + Sync> {
+  Arc::new(|_t| Ok(0.0))
 }
