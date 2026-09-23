@@ -318,6 +318,13 @@ mod tests {
   }
 
   #[test]
+  #[cfg_attr(
+    dylint_lib = "treetime_lints",
+    expect(
+      typographic_characters,
+      reason = "sequence names with emoji exercise Unicode handling"
+    )
+  )]
   fn test_fasta_reader_dedent_nuc() -> Result<(), Report> {
     let actual = read_many_fasta_str(
       indoc! {r#"
@@ -390,6 +397,13 @@ mod tests {
   }
 
   #[test]
+  #[cfg_attr(
+    dylint_lib = "treetime_lints",
+    expect(
+      typographic_characters,
+      reason = "sequence names with emoji exercise Unicode handling"
+    )
+  )]
   fn test_fasta_reader_dedent_aa() -> Result<(), Report> {
     let actual = read_many_fasta_str(
       indoc! {r#"

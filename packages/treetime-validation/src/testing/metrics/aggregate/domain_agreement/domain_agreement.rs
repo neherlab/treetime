@@ -149,10 +149,10 @@ pub enum AgreementAssessment {
 impl fmt::Display for AgreementAssessment {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      AgreementAssessment::Excellent => write!(f, "🟢 EXCELLENT: Near-perfect agreement"),
-      AgreementAssessment::VeryGood => write!(f, "🟡 VERY GOOD: High agreement"),
-      AgreementAssessment::Good => write!(f, "🟠 GOOD: Reasonable agreement"),
-      AgreementAssessment::Poor => write!(f, "🔴 POOR: Low agreement"),
+      AgreementAssessment::Excellent => write!(f, "EXCELLENT: Near-perfect agreement"),
+      AgreementAssessment::VeryGood => write!(f, "VERY GOOD: High agreement"),
+      AgreementAssessment::Good => write!(f, "GOOD: Reasonable agreement"),
+      AgreementAssessment::Poor => write!(f, "POOR: Low agreement"),
     }
   }
 }
