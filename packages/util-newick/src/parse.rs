@@ -11,32 +11,13 @@ use regex::regex;
 use std::collections::BTreeMap;
 use std::io::Read;
 
-#[derive(Parser)]
-#[grammar_inline = r#"
-tree        = _{ SOI ~ rooting? ~ root_branch ~ ";" ~ EOI }
-root_branch =  { subtree ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
-subtree     =  { leaf | internal }
-internal =  { "(" ~ branch_list ~ ")" ~ label? ~ comment* }
-leaf     =  { label ~ comment* }
-
-branch_list = { branch ~ ("," ~ branch)* }
-branch      = { subtree? ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
-
-rooting        = { "[&" ~ rooting_value ~ "]" }
-rooting_value  = @{ ^"r" | ^"u" }
-
-label          = { quoted_label | unquoted_label }
-quoted_label   = @{ "'" ~ (!"'" ~ ANY | "''")* ~ "'" }
-unquoted_label = @{ safe_char+ }
-safe_char      = _{ !("(" | ")" | "[" | "]" | "," | ";" | ":" | WHITESPACE) ~ ANY }
-number  = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
-
-comment       = @{ "[" ~ comment_inner ~ "]" }
-comment_inner = _{ (!"[" ~ !"]" ~ ANY | "[" ~ comment_inner ~ "]")* }
-
-WHITESPACE = _{ " " | "\t" | NEWLINE }
-"#]
-struct NewickParser;
+pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> {
+  let mut input = String::new();
+  reader
+    .read_to_string(&mut input)
+    .wrap_err("When reading Newick input")?;
+  newick_from_string(&input)
+}
 
 pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
   let pairs = NewickParser::parse(Rule::tree, input).wrap_err("Failed to parse Newick string")?;
@@ -66,13 +47,32 @@ pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
   Ok(graph)
 }
 
-pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> {
-  let mut input = String::new();
-  reader
-    .read_to_string(&mut input)
-    .wrap_err("When reading Newick input")?;
-  newick_from_string(&input)
-}
+#[derive(Parser)]
+#[grammar_inline = r#"
+tree        = _{ SOI ~ rooting? ~ root_branch ~ ";" ~ EOI }
+root_branch =  { subtree ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
+subtree     =  { leaf | internal }
+internal =  { "(" ~ branch_list ~ ")" ~ label? ~ comment* }
+leaf     =  { label ~ comment* }
+
+branch_list = { branch ~ ("," ~ branch)* }
+branch      = { subtree? ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
+
+rooting        = { "[&" ~ rooting_value ~ "]" }
+rooting_value  = @{ ^"r" | ^"u" }
+
+label          = { quoted_label | unquoted_label }
+quoted_label   = @{ "'" ~ (!"'" ~ ANY | "''")* ~ "'" }
+unquoted_label = @{ safe_char+ }
+safe_char      = _{ !("(" | ")" | "[" | "]" | "," | ";" | ":" | WHITESPACE) ~ ANY }
+number  = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+
+comment       = @{ "[" ~ comment_inner ~ "]" }
+comment_inner = _{ (!"[" ~ !"]" ~ ANY | "[" ~ comment_inner ~ "]")* }
+
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+"#]
+struct NewickParser;
 
 fn visit_root_branch(
   pair: pest::iterators::Pair<Rule>,
@@ -115,41 +115,6 @@ fn visit_subtree(
     Rule::internal => visit_internal(inner, graph, hybrid_map),
     _ => unreachable!(),
   }
-}
-
-fn visit_leaf(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<(usize, bool), Report> {
-  let mut name = None;
-  let mut raw_comments = Vec::new();
-  let mut node_attrs = BTreeMap::new();
-
-  for inner in pair.into_inner() {
-    match inner.as_rule() {
-      Rule::label => {
-        name = Some(parse_label(inner));
-      },
-      Rule::comment => {
-        classify_comment(inner.as_str(), &mut node_attrs, &mut raw_comments);
-      },
-      _ => {},
-    }
-  }
-
-  let extraction = extract_hybrid(name)?;
-  let node_data = NewickNodeData {
-    name: extraction.clean_name,
-    confidence: None,
-    node_attrs,
-    raw_comments,
-    hybrid: extraction.hybrid.clone(),
-    children: Vec::new(),
-  };
-
-  let idx = resolve_hybrid_node(node_data, extraction.hybrid.as_ref(), graph, hybrid_map);
-  Ok((idx, extraction.is_acceptor))
 }
 
 fn visit_internal(
@@ -265,6 +230,41 @@ fn visit_branch(
   Ok((child_idx, edge_data))
 }
 
+fn visit_leaf(
+  pair: pest::iterators::Pair<Rule>,
+  graph: &mut NewickGraph,
+  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
+) -> Result<(usize, bool), Report> {
+  let mut name = None;
+  let mut raw_comments = Vec::new();
+  let mut node_attrs = BTreeMap::new();
+
+  for inner in pair.into_inner() {
+    match inner.as_rule() {
+      Rule::label => {
+        name = Some(parse_label(inner));
+      },
+      Rule::comment => {
+        classify_comment(inner.as_str(), &mut node_attrs, &mut raw_comments);
+      },
+      _ => {},
+    }
+  }
+
+  let extraction = extract_hybrid(name)?;
+  let node_data = NewickNodeData {
+    name: extraction.clean_name,
+    confidence: None,
+    node_attrs,
+    raw_comments,
+    hybrid: extraction.hybrid.clone(),
+    children: Vec::new(),
+  };
+
+  let idx = resolve_hybrid_node(node_data, extraction.hybrid.as_ref(), graph, hybrid_map);
+  Ok((idx, extraction.is_acceptor))
+}
+
 #[cfg_attr(
   dylint_lib = "treetime_lints",
   expect(
@@ -290,12 +290,6 @@ fn parse_label(pair: pest::iterators::Pair<Rule>) -> String {
     Rule::unquoted_label => inner.as_str().to_owned(),
     _ => unreachable!(),
   }
-}
-
-struct HybridExtraction {
-  clean_name: Option<String>,
-  hybrid: Option<NewickHybrid>,
-  is_acceptor: bool,
 }
 
 fn extract_hybrid(name: Option<String>) -> Result<HybridExtraction, Report> {
@@ -340,6 +334,12 @@ fn extract_hybrid(name: Option<String>) -> Result<HybridExtraction, Report> {
     hybrid: Some(NewickHybrid { kind, index }),
     is_acceptor,
   })
+}
+
+struct HybridExtraction {
+  clean_name: Option<String>,
+  hybrid: Option<NewickHybrid>,
+  is_acceptor: bool,
 }
 
 fn resolve_hybrid_node(
@@ -409,6 +409,42 @@ fn parse_beast_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a value that is not a finite number is kept as a string"
+  )
+)]
+fn parse_beast_value(s: &str) -> NewickValue {
+  let s = s.trim();
+
+  if let Some(inner) = s.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
+    let elements: Vec<NewickValue> = split_beast_pairs(inner)
+      .iter()
+      .map(|e| parse_beast_value(e.trim()))
+      .collect();
+    return NewickValue::Array(elements);
+  }
+
+  if s.eq_ignore_ascii_case("true") {
+    return NewickValue::Boolean(true);
+  }
+  if s.eq_ignore_ascii_case("false") {
+    return NewickValue::Boolean(false);
+  }
+
+  if s.starts_with(|c: char| c.is_ascii_digit() || c == '-') {
+    if let Ok(n) = s.parse::<f64>() {
+      if n.is_finite() {
+        return NewickValue::Number(n);
+      }
+    }
+  }
+
+  NewickValue::String(strip_beast_quotes(s))
+}
+
 fn split_beast_pairs(body: &str) -> Vec<String> {
   let mut pairs = Vec::new();
   let mut current = String::new();
@@ -451,40 +487,4 @@ fn strip_beast_quotes(s: &str) -> String {
     return inner.replace("''", "'");
   }
   s.to_owned()
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    error_dropped_by_pattern,
-    reason = "a value that is not a finite number is kept as a string"
-  )
-)]
-fn parse_beast_value(s: &str) -> NewickValue {
-  let s = s.trim();
-
-  if let Some(inner) = s.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
-    let elements: Vec<NewickValue> = split_beast_pairs(inner)
-      .iter()
-      .map(|e| parse_beast_value(e.trim()))
-      .collect();
-    return NewickValue::Array(elements);
-  }
-
-  if s.eq_ignore_ascii_case("true") {
-    return NewickValue::Boolean(true);
-  }
-  if s.eq_ignore_ascii_case("false") {
-    return NewickValue::Boolean(false);
-  }
-
-  if s.starts_with(|c: char| c.is_ascii_digit() || c == '-') {
-    if let Ok(n) = s.parse::<f64>() {
-      if n.is_finite() {
-        return NewickValue::Number(n);
-      }
-    }
-  }
-
-  NewickValue::String(strip_beast_quotes(s))
 }

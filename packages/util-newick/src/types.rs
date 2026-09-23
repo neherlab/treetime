@@ -4,52 +4,11 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewickGraph {
-  pub nodes: Vec<NewickNodeData>,
-  pub edges: Vec<NewickEdgeEntry>,
-  pub root: usize,
-  pub rooted: Option<bool>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewickEdgeEntry {
-  pub parent: usize,
-  pub child: usize,
-  pub data: NewickEdgeData,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewickNodeData {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
-  pub node_attrs: BTreeMap<String, NewickValue>,
-  pub raw_comments: Vec<String>,
-  pub hybrid: Option<NewickHybrid>,
-  pub children: Vec<usize>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NewickEdgeData {
-  pub branch_length: Option<f64>,
-  pub branch_attrs: BTreeMap<String, NewickValue>,
-  pub raw_comments: Vec<String>,
-  pub is_acceptor: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct NewickHybrid {
-  pub kind: Option<String>,
-  pub index: u32,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum NewickValue {
-  Boolean(bool),
-  Number(f64),
-  String(String),
-  Array(Vec<NewickValue>),
+#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
+pub struct NewickWriteOptions {
+  pub style: NwkStyle,
+  pub significant_digits: Option<u8>,
+  pub decimal_digits: Option<i8>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
@@ -61,17 +20,18 @@ pub enum NwkStyle {
   Nhx,
 }
 
-#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
-pub struct NewickWriteOptions {
-  pub style: NwkStyle,
-  pub significant_digits: Option<u8>,
-  pub decimal_digits: Option<i8>,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NexusTree {
   pub name: String,
   pub graph: NewickGraph,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewickGraph {
+  pub nodes: Vec<NewickNodeData>,
+  pub edges: Vec<NewickEdgeEntry>,
+  pub root: usize,
+  pub rooted: Option<bool>,
 }
 
 impl NewickGraph {
@@ -121,107 +81,6 @@ impl PartialEq for NewickGraph {
 }
 
 impl Eq for NewickGraph {}
-
-impl PartialEq for NewickValue {
-  fn eq(&self, other: &Self) -> bool {
-    match (self, other) {
-      (Self::Boolean(a), Self::Boolean(b)) => a == b,
-      (Self::Number(a), Self::Number(b)) => a.to_bits() == b.to_bits(),
-      (Self::String(a), Self::String(b)) => a == b,
-      (Self::Array(a), Self::Array(b)) => a == b,
-      _ => false,
-    }
-  }
-}
-
-impl Eq for NewickValue {}
-
-impl Hash for NewickValue {
-  fn hash<H: Hasher>(&self, state: &mut H) {
-    std::mem::discriminant(self).hash(state);
-    match self {
-      Self::Boolean(b) => b.hash(state),
-      Self::Number(n) => n.to_bits().hash(state),
-      Self::String(s) => s.hash(state),
-      Self::Array(a) => a.hash(state),
-    }
-  }
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    handwritten_fmt_impl,
-    reason = "array values render recursively in the Newick comment syntax"
-  )
-)]
-impl fmt::Display for NewickValue {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::Boolean(b) => write!(f, "{b}"),
-      Self::Number(n) => write!(f, "{n}"),
-      Self::String(s) => write!(f, "{s}"),
-      Self::Array(arr) => {
-        write!(f, "{{")?;
-        for (i, elem) in arr.iter().enumerate() {
-          if i > 0 {
-            write!(f, ",")?;
-          }
-          write!(f, "{elem}")?;
-        }
-        write!(f, "}}")
-      },
-    }
-  }
-}
-
-impl NewickNodeData {
-  pub fn new() -> Self {
-    Self {
-      name: None,
-      confidence: None,
-      node_attrs: BTreeMap::new(),
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    }
-  }
-
-  #[must_use]
-  pub fn with_name(mut self, name: impl Into<String>) -> Self {
-    self.name = Some(name.into());
-    self
-  }
-}
-
-impl Default for NewickNodeData {
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-impl NewickEdgeData {
-  pub fn new() -> Self {
-    Self {
-      branch_length: None,
-      branch_attrs: BTreeMap::new(),
-      raw_comments: Vec::new(),
-      is_acceptor: false,
-    }
-  }
-
-  #[must_use]
-  pub fn with_length(mut self, length: f64) -> Self {
-    self.branch_length = Some(length);
-    self
-  }
-}
-
-impl Default for NewickEdgeData {
-  fn default() -> Self {
-    Self::new()
-  }
-}
 
 fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
   let mut hasher = DefaultHasher::new();
@@ -328,6 +187,54 @@ fn eq_subtree_ordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize) 
   })
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewickEdgeEntry {
+  pub parent: usize,
+  pub child: usize,
+  pub data: NewickEdgeData,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewickNodeData {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+  pub node_attrs: BTreeMap<String, NewickValue>,
+  pub raw_comments: Vec<String>,
+  pub hybrid: Option<NewickHybrid>,
+  pub children: Vec<usize>,
+}
+
+impl NewickNodeData {
+  pub fn new() -> Self {
+    Self {
+      name: None,
+      confidence: None,
+      node_attrs: BTreeMap::new(),
+      raw_comments: Vec::new(),
+      hybrid: None,
+      children: Vec::new(),
+    }
+  }
+
+  #[must_use]
+  pub fn with_name(mut self, name: impl Into<String>) -> Self {
+    self.name = Some(name.into());
+    self
+  }
+}
+
+impl Default for NewickNodeData {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct NewickHybrid {
+  pub kind: Option<String>,
+  pub index: u32,
+}
+
 fn edge_data_eq(e1: &NewickEdgeData, e2: &NewickEdgeData) -> bool {
   let bl_eq = match (e1.branch_length, e2.branch_length) {
     (Some(a), Some(b)) => a.to_bits() == b.to_bits(),
@@ -335,4 +242,97 @@ fn edge_data_eq(e1: &NewickEdgeData, e2: &NewickEdgeData) -> bool {
     _ => false,
   };
   bl_eq && e1.branch_attrs == e2.branch_attrs && e1.raw_comments == e2.raw_comments && e1.is_acceptor == e2.is_acceptor
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewickEdgeData {
+  pub branch_length: Option<f64>,
+  pub branch_attrs: BTreeMap<String, NewickValue>,
+  pub raw_comments: Vec<String>,
+  pub is_acceptor: bool,
+}
+
+impl NewickEdgeData {
+  pub fn new() -> Self {
+    Self {
+      branch_length: None,
+      branch_attrs: BTreeMap::new(),
+      raw_comments: Vec::new(),
+      is_acceptor: false,
+    }
+  }
+
+  #[must_use]
+  pub fn with_length(mut self, length: f64) -> Self {
+    self.branch_length = Some(length);
+    self
+  }
+}
+
+impl Default for NewickEdgeData {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NewickValue {
+  Boolean(bool),
+  Number(f64),
+  String(String),
+  Array(Vec<NewickValue>),
+}
+
+impl PartialEq for NewickValue {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (Self::Boolean(a), Self::Boolean(b)) => a == b,
+      (Self::Number(a), Self::Number(b)) => a.to_bits() == b.to_bits(),
+      (Self::String(a), Self::String(b)) => a == b,
+      (Self::Array(a), Self::Array(b)) => a == b,
+      _ => false,
+    }
+  }
+}
+
+impl Eq for NewickValue {}
+
+impl Hash for NewickValue {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+    match self {
+      Self::Boolean(b) => b.hash(state),
+      Self::Number(n) => n.to_bits().hash(state),
+      Self::String(s) => s.hash(state),
+      Self::Array(a) => a.hash(state),
+    }
+  }
+}
+
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "array values render recursively in the Newick comment syntax"
+  )
+)]
+impl fmt::Display for NewickValue {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Boolean(b) => write!(f, "{b}"),
+      Self::Number(n) => write!(f, "{n}"),
+      Self::String(s) => write!(f, "{s}"),
+      Self::Array(arr) => {
+        write!(f, "{{")?;
+        for (i, elem) in arr.iter().enumerate() {
+          if i > 0 {
+            write!(f, ",")?;
+          }
+          write!(f, "{elem}")?;
+        }
+        write!(f, "}}")
+      },
+    }
+  }
 }
