@@ -14,46 +14,31 @@ use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, ProgressSink};
 use treetime_schema::ProgressEvent;
 
-enum SinkEvent {
-  Progress(ProgressEvent),
-  Log(LogEvent),
-}
-
-struct ChannelProgress {
-  tx: mpsc::UnboundedSender<SinkEvent>,
-}
-
-impl ChannelProgress {
-  fn new(tx: mpsc::UnboundedSender<SinkEvent>) -> Self {
-    Self { tx }
+pub(crate) fn handle_command<S, T>(
+  mut body: Value,
+  out_dir: &Path,
+  command: fn(&S, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
+) -> Response
+where
+  S: serde::de::DeserializeOwned + Send + 'static,
+  T: Serialize + Send + 'static,
+{
+  if let Some(obj) = body.as_object_mut() {
+    let client_outdir = obj.get("outdir").and_then(Value::as_str).unwrap_or_default().to_owned();
+    let resolved = out_dir.join(client_outdir);
+    obj.insert(
+      "outdir".to_owned(),
+      Value::String(resolved.to_string_lossy().into_owned()),
+    );
   }
-}
-
-impl ProgressSink for ChannelProgress {
-  fn report(&self, stage: &str, fraction: f64, message: &str) {
-    drop(self.tx.send(SinkEvent::Progress(ProgressEvent {
-      stage: stage.to_owned(),
-      fraction,
-      message: message.to_owned(),
-    })));
-  }
-
-  fn log(&self, level: LogLevel, message: &str) {
-    drop(self.tx.send(SinkEvent::Log(LogEvent {
-      level,
-      message: message.to_owned(),
-    })));
-  }
-
-  fn log_enabled(&self, _level: LogLevel) -> bool {
-    true
-  }
-}
-
-impl Cancel for ChannelProgress {
-  fn is_cancelled(&self) -> bool {
-    self.tx.is_closed()
-  }
+  let args: S = match serde_json::from_value(body) {
+    Ok(args) => args,
+    Err(err) => return AppError::from(err).into_response(),
+  };
+  sse_response(move |cancel, progress| {
+    let result = command(&args, cancel, progress)?;
+    serde_json::to_value(result).map_err(Report::from)
+  })
 }
 
 #[allow(
@@ -135,29 +120,44 @@ where
   Sse::new(stream).into_response()
 }
 
-pub(crate) fn handle_command<S, T>(
-  mut body: Value,
-  out_dir: &Path,
-  command: fn(&S, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
-) -> Response
-where
-  S: serde::de::DeserializeOwned + Send + 'static,
-  T: Serialize + Send + 'static,
-{
-  if let Some(obj) = body.as_object_mut() {
-    let client_outdir = obj.get("outdir").and_then(Value::as_str).unwrap_or_default().to_owned();
-    let resolved = out_dir.join(client_outdir);
-    obj.insert(
-      "outdir".to_owned(),
-      Value::String(resolved.to_string_lossy().into_owned()),
-    );
+struct ChannelProgress {
+  tx: mpsc::UnboundedSender<SinkEvent>,
+}
+
+impl ChannelProgress {
+  fn new(tx: mpsc::UnboundedSender<SinkEvent>) -> Self {
+    Self { tx }
   }
-  let args: S = match serde_json::from_value(body) {
-    Ok(args) => args,
-    Err(err) => return AppError::from(err).into_response(),
-  };
-  sse_response(move |cancel, progress| {
-    let result = command(&args, cancel, progress)?;
-    serde_json::to_value(result).map_err(Report::from)
-  })
+}
+
+impl ProgressSink for ChannelProgress {
+  fn report(&self, stage: &str, fraction: f64, message: &str) {
+    drop(self.tx.send(SinkEvent::Progress(ProgressEvent {
+      stage: stage.to_owned(),
+      fraction,
+      message: message.to_owned(),
+    })));
+  }
+
+  fn log(&self, level: LogLevel, message: &str) {
+    drop(self.tx.send(SinkEvent::Log(LogEvent {
+      level,
+      message: message.to_owned(),
+    })));
+  }
+
+  fn log_enabled(&self, _level: LogLevel) -> bool {
+    true
+  }
+}
+
+impl Cancel for ChannelProgress {
+  fn is_cancelled(&self) -> bool {
+    self.tx.is_closed()
+  }
+}
+
+enum SinkEvent {
+  Progress(ProgressEvent),
+  Log(LogEvent),
 }
