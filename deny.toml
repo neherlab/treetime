@@ -2,6 +2,20 @@
 # `just audit` recipe (it fetches the advisory database); `just check-all` runs
 # the offline bans, licenses, and sources checks.
 
+# Dependency checks cover the targets the project builds: the CLI cross-compilation matrix in
+# `dev/cross/all`, which includes the Node addon targets. Crates used only on other platforms
+# (UEFI, Redox, WebAssembly, MSVC, 32-bit Windows) are outside the shipped graph.
+[graph]
+targets = [
+  "aarch64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "aarch64-unknown-linux-musl",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-gnu",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+]
+
 [advisories]
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
