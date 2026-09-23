@@ -89,9 +89,6 @@ mod tests {
     "#};
 
     let edges = compress(nwk, fasta)?;
-    for (name, subs, dels) in &edges {
-      println!("{name}: subs={subs:?} deletions={dels:?}");
-    }
     let conflicts = conflicts(&edges);
     assert!(conflicts.is_empty(), "conflicts:\n{}", conflicts.join("\n"));
     Ok(())
@@ -114,9 +111,6 @@ mod tests {
     "#};
 
     let edges = compress(nwk, fasta)?;
-    for (name, subs, dels) in &edges {
-      println!("{name}: subs={subs:?} deletions={dels:?}");
-    }
     let conflicts = conflicts(&edges);
     assert!(conflicts.is_empty(), "conflicts:\n{}", conflicts.join("\n"));
     Ok(())
@@ -139,10 +133,6 @@ mod tests {
     "#};
 
     let edges = compress(nwk, fasta)?;
-    for (name, subs, dels) in &edges {
-      println!("{name}: subs={subs:?} deletions={dels:?}");
-    }
-
     let conflicts = conflicts(&edges);
     assert!(conflicts.is_empty(), "conflicts:\n{}", conflicts.join("\n"));
     Ok(())
