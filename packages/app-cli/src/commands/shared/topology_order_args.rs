@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use strum_macros::Display;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
@@ -206,23 +207,14 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
   }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, Display)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum TopologyOrderTargetSourceArg {
   Input,
   ReferenceTopology,
   List,
-}
-
-impl std::fmt::Display for TopologyOrderTargetSourceArg {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Input => write!(f, "input"),
-      Self::ReferenceTopology => write!(f, "reference-topology"),
-      Self::List => write!(f, "list"),
-    }
-  }
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]

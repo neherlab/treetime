@@ -15,6 +15,7 @@ use itertools::Itertools;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use strum_macros::Display;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
@@ -137,24 +138,17 @@ impl DomainAgreementMetrics {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "kebab-case")]
 pub enum AgreementAssessment {
+  #[strum(to_string = "EXCELLENT: Near-perfect agreement")]
   Excellent,
+  #[strum(to_string = "VERY GOOD: High agreement")]
   VeryGood,
+  #[strum(to_string = "GOOD: Reasonable agreement")]
   Good,
+  #[strum(to_string = "POOR: Low agreement")]
   Poor,
-}
-
-impl fmt::Display for AgreementAssessment {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      AgreementAssessment::Excellent => write!(f, "EXCELLENT: Near-perfect agreement"),
-      AgreementAssessment::VeryGood => write!(f, "VERY GOOD: High agreement"),
-      AgreementAssessment::Good => write!(f, "GOOD: Reasonable agreement"),
-      AgreementAssessment::Poor => write!(f, "POOR: Low agreement"),
-    }
-  }
 }
 
 fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssessment {
@@ -169,6 +163,13 @@ fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssess
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    handwritten_fmt_impl,
+    reason = "the multi-line metrics report is the validation output"
+  )
+)]
 impl fmt::Display for DomainAgreementMetrics {
   #[allow(
     clippy::as_conversions,
