@@ -2,6 +2,36 @@ use crate::seq_char::AsciiChar;
 use eyre::Report;
 use treetime_utils::error::make_error;
 
+impl PartialEq<Seq> for str {
+  fn eq(&self, other: &Seq) -> bool {
+    other == self
+  }
+}
+
+impl PartialEq<Seq> for String {
+  fn eq(&self, other: &Seq) -> bool {
+    other == self.as_str()
+  }
+}
+
+impl<'a> IntoIterator for &'a Seq {
+  type Item = &'a AsciiChar;
+  type IntoIter = core::slice::Iter<'a, AsciiChar>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.data.iter()
+  }
+}
+
+impl<'a> IntoIterator for &'a mut Seq {
+  type Item = &'a mut AsciiChar;
+  type IntoIter = core::slice::IterMut<'a, AsciiChar>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.data.iter_mut()
+  }
+}
+
 #[must_use]
 #[derive(Clone, PartialOrd, Ord, Default)]
 pub struct Seq {
@@ -212,18 +242,6 @@ impl PartialEq<&str> for Seq {
   }
 }
 
-impl PartialEq<Seq> for str {
-  fn eq(&self, other: &Seq) -> bool {
-    other == self
-  }
-}
-
-impl PartialEq<Seq> for String {
-  fn eq(&self, other: &Seq) -> bool {
-    other == self.as_str()
-  }
-}
-
 impl Eq for Seq {}
 
 impl core::ops::Deref for Seq {
@@ -340,24 +358,6 @@ impl std::ops::Mul<usize> for Seq {
       self.data.extend(&original);
     }
     self
-  }
-}
-
-impl<'a> IntoIterator for &'a Seq {
-  type Item = &'a AsciiChar;
-  type IntoIter = core::slice::Iter<'a, AsciiChar>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.data.iter()
-  }
-}
-
-impl<'a> IntoIterator for &'a mut Seq {
-  type Item = &'a mut AsciiChar;
-  type IntoIter = core::slice::IterMut<'a, AsciiChar>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.data.iter_mut()
   }
 }
 

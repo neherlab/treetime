@@ -4,6 +4,42 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Write as _;
 use treetime_utils::error::make_error;
 
+impl From<AsciiChar> for u8 {
+  fn from(item: AsciiChar) -> Self {
+    item.0
+  }
+}
+
+impl From<AsciiChar> for u16 {
+  fn from(item: AsciiChar) -> Self {
+    u16::from(item.0)
+  }
+}
+
+impl From<AsciiChar> for u32 {
+  fn from(item: AsciiChar) -> Self {
+    u32::from(item.0)
+  }
+}
+
+impl From<AsciiChar> for u64 {
+  fn from(item: AsciiChar) -> Self {
+    u64::from(item.0)
+  }
+}
+
+impl From<AsciiChar> for usize {
+  fn from(item: AsciiChar) -> Self {
+    usize::from(item.0)
+  }
+}
+
+impl From<AsciiChar> for char {
+  fn from(item: AsciiChar) -> Self {
+    char::from(item.0)
+  }
+}
+
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[repr(transparent)]
 pub struct AsciiChar(u8);
@@ -149,41 +185,5 @@ impl core::fmt::Display for AsciiChar {
 impl core::fmt::Debug for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     core::fmt::Display::fmt(self, f)
-  }
-}
-
-impl From<AsciiChar> for u8 {
-  fn from(item: AsciiChar) -> Self {
-    item.0
-  }
-}
-
-impl From<AsciiChar> for u16 {
-  fn from(item: AsciiChar) -> Self {
-    u16::from(item.0)
-  }
-}
-
-impl From<AsciiChar> for u32 {
-  fn from(item: AsciiChar) -> Self {
-    u32::from(item.0)
-  }
-}
-
-impl From<AsciiChar> for u64 {
-  fn from(item: AsciiChar) -> Self {
-    u64::from(item.0)
-  }
-}
-
-impl From<AsciiChar> for usize {
-  fn from(item: AsciiChar) -> Self {
-    usize::from(item.0)
-  }
-}
-
-impl From<AsciiChar> for char {
-  fn from(item: AsciiChar) -> Self {
-    char::from(item.0)
   }
 }
