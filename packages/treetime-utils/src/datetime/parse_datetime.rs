@@ -8,6 +8,13 @@ pub fn parse_datetime(datetime_str: impl AsRef<str>, options: &DateParserOptions
   parse_datetime_with_formats(datetime_str, DATETIME_FORMATS, options)
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "each accepted format is tried in turn; the final error names the unrecognized input"
+  )
+)]
 pub fn parse_datetime_with_formats(
   datetime_str: impl AsRef<str>,
   datetime_formats: impl IntoIterator<Item = impl AsRef<str>>,

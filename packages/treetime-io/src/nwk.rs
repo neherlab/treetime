@@ -371,6 +371,13 @@ pub(crate) fn nwk_write_with(
   Ok(())
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a comment value that is not a number is kept as a string"
+  )
+)]
 fn str_comments_to_newick_values(comments: &BTreeMap<String, String>) -> BTreeMap<String, NewickValue> {
   comments
     .iter()

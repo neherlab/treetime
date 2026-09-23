@@ -7,6 +7,13 @@ use eyre::{Report, WrapErr};
 use regex::Regex;
 use std::sync::LazyLock;
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "each accepted format is tried in turn; the final error names the unrecognized input"
+  )
+)]
 pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
 
@@ -23,6 +30,13 @@ pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Res
   make_error!("Unrecognized date format: {date_str}")
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "each accepted format is tried in turn; the final error names the unrecognized input"
+  )
+)]
 pub fn parse_date_with_formats(
   date_str: impl AsRef<str>,
   date_formats: impl IntoIterator<Item = impl AsRef<str>>,

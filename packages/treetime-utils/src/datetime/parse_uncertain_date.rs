@@ -12,6 +12,13 @@ use std::sync::LazyLock;
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "each accepted format is tried in turn; the final error names the unrecognized input"
+  )
+)]
 pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptions) -> Result<DateRange, Report> {
   for regex in DATE_UNCERTAIN_REGEXES.iter() {
     if let Some(caps) = regex.captures(date_uncertain_str) {
@@ -34,6 +41,13 @@ pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptio
   make_error!("Unrecognized date format: {date_uncertain_str}")
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    result_defaulted,
+    reason = "a component outside its calendar range leaves that component unresolved, so a less specific pattern can match"
+  )
+)]
 fn determine_date_range(
   year: Option<&str>,
   month: Option<&str>,

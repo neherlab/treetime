@@ -108,6 +108,13 @@ fn convert_record(
   Ok((name, date))
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  expect(
+    error_dropped_by_pattern,
+    reason = "each date notation is tried in turn; a value that matches none is reported by the caller as missing"
+  )
+)]
 pub(crate) fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateConstraint>, Report> {
   let trimmed = date_str.trim();
 
