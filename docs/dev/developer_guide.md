@@ -1,327 +1,166 @@
-# Contributing to Treetime
+# Developer guide
 
-This guide describes how to set up a development environment, build Treetime, contribute to the codebase, and maintain the project.
+This guide describes how to set up a development environment, build and test TreeTime, and maintain the project. It assumes basic familiarity with TreeTime from a user perspective.
 
-> ⚠️ This is a document for developers, maintainers of the project as well as for the most curious users. It assumes basic familiarity with Treetime program from a user perspective. If you are not familiar with Treetime, read the User Documentation first.
+The `justfile` is the entry point for every routine task. `just` lists the recipes by group, and each recipe has a one-line description.
 
-## Setup Development Environment
+## Setup
 
-### Docker (recommended)
+TreeTime builds in two ways: in the build container (recommended), or directly on the host. Both run the same `just` recipes with the same tool versions, which `mise.toml` pins and `mise.lock` locks by URL and checksum.
 
-The recommended way to develop Treetime is using the Docker-based dev environment. It provides a consistent setup with all Rust, Node.js, and build dependencies pre-installed.
+### Build container (recommended)
 
-Requirements: bash, Docker
-
-```bash
-# First run builds the Docker image (takes a few minutes)
-./dev/docker/run just l
-
-# Rebuild the image after Dockerfile changes
-DOCKER_FORCE_REBUILD=1 ./dev/docker/run echo ok
-```
-
-All `just` commands should be run inside the Docker container via `./dev/docker/run`.
-
-### Native (alternative)
-
-This guide assumes you are using Ubuntu 24.04, but the instructions will likely be similar for other Linux and Unix-like operating systems.
-
-Treetime is written in Rust, and the standard `rustup` & `cargo` workflow is used.
-
-```bash
-sudo apt-get update
-sudo apt-get install \
-  bash \
-  build-essential \
-  clang \
-  curl \
-  gcc \
-  gfortran \
-  git \
-  libbz2-dev \
-  libclang-dev \
-  liblzma-dev \
-  libopenblas-dev \
-  libssl-dev \
-  libzstd-dev \
-  make \
-  pkg-config \
-  protobuf-compiler \
-  zlib1g-dev \
-
-# (optional) To enable PNG image output ("png" cargo feature, see below), install:
-sudo apt-get install libfontconfig1-dev
-
-# Install Rustup, the Rust version manager (https://www.rust-lang.org/tools/install)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-
-# Add Rust tools to the $PATH
-export PATH="$PATH:$HOME/.cargo/bin"
-
-# Additional tools for testing and maintenance
-cargo -q install --locked cargo-nextest cargo-edit cargo-audit
-```
-
-## Obtain Source Code
-
-Treetime is an open-source project licensed under the MIT license, and its source code is available on GitHub.
+Requirements: Docker with buildx, git, and bash (the stock bash 3.2 of macOS works).
 
 ```bash
 git clone https://github.com/neherlab/treetime
+cd treetime
+./dev/docker/run just setup
+./dev/docker/run just check
 ```
 
-If you are a team member, use the SSH URL:
+`./dev/docker/run <command>` runs a command in the container, and without a command it opens a shell. The first run builds the image, which takes a while; later runs reuse it until one of its build inputs changes. Notes:
+
+- The checkout is mounted at its host path, and the git metadata is mounted read-only. Commit on the host
+- Build output goes to `.build/container/`, the cargo home and caches to `.cache/`
+- Commands run as your user, with all Linux capabilities dropped
+- On Apple Silicon and other arm64 hosts the image runs under x86_64 emulation, which is slower
+- The container uses host networking, so the dev servers are reachable from the host browser. On Docker Desktop, turn on host networking in the settings
+
+### Host
+
+Requirements: [mise](https://mise.jdx.dev), [rustup](https://rustup.rs), bash 4 or later (on macOS: `brew install bash`), a C toolchain with gfortran, OpenBLAS, and libclang. On Debian and Ubuntu:
 
 ```bash
-git clone git@github.com:neherlab/treetime.git
+sudo apt-get install build-essential gfortran libclang-dev libfontconfig-dev libopenblas-dev pkg-config
+mise install
+just setup
+just check
 ```
 
-If you are not a team member but want to contribute, make a [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) and clone your forked repository instead. You can then submit changes as a [Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request).
+Host builds go to `.build/host/`. The dylint and IQ-TREE tools are available on Linux only; run the recipes that need them in the container on other hosts.
 
-## Project Structure
+### Machine settings
+
+Optional settings go into the gitignored `.env` in the checkout; `.env.example` lists them:
+
+- `KACHE_STORE`: directory of the [kache](https://github.com/kunobi-ninja/kache) compiler cache store. Builds and clippy then compile through kache, which shares compiled crates across worktrees
+- `TREETIME_PORTLESS`: use of the [portless](https://github.com/vercel-labs/portless) proxy by the web dev server (see [Web app](#web-app))
+
+## Everyday commands
+
+| Task                                              | Command                              |
+| ------------------------------------------------- | ------------------------------------ |
+| List the recipes                                  | `just`                               |
+| Fast checks (format, clippy, TypeScript)          | `just check`                         |
+| Every check; must pass before merging             | `just check-all`                     |
+| Apply lint fixes and format (stage changes first) | `just fix`                           |
+| Build                                             | `just build` (`just b`)              |
+| Run the CLI                                       | `just run treetime ancestral --help` |
+| Rust tests, optionally filtered                   | `just test [filter]` (`just t`)      |
+| TypeScript tests                                  | `just test-js`                       |
+| Clippy                                            | `just lint` (`just l`)               |
+
+In the container, prefix each command with `./dev/docker/run`.
+
+`check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check.
+
+### Examples
+
+Replace `$v` with a dataset path under `data/`, for example `flu/h3n2/20`:
+
+```bash
+just run treetime ancestral --method-anc=marginal --tree=data/$v/tree.nwk --alignment=data/$v/aln.fasta.xz --output-all=tmp/ancestral/$v
+just run treetime clock --tree=data/$v/tree.nwk --metadata=data/$v/metadata.tsv --output-all=tmp/clock/$v
+just run treetime timetree --tree=data/$v/tree.nwk --metadata=data/$v/metadata.tsv --alignment=data/$v/aln.fasta.xz --output-all=tmp/timetree/$v
+```
+
+## Project structure
 
 ```
 packages/
-  app-cli/           Rust CLI binary
-  app-contracts/     TypeScript bridge types
-  app-desktop/       Electron shell
-  app-napi/          Rust napi addon (native Node.js module)
-  app-server/        Rust HTTP API server
-  app-ui/            Shared React components
-  app-web/           Vite SPA (browser frontend)
-  legacy/            Python v0 reference implementation
-  treetime/          Core Rust library
-  treetime-*/        Core supporting crates
-  util-phyloxml/     PhyloXML format library
-  util-usher-mat/    UShER MAT format library
+  app-cli/           CLI binary (treetime)
+  app-contracts/     TypeScript types and schemas of the bridge between the apps and the Rust code
+  app-datasets/      Bundled example datasets
+  app-desktop/       Electron shell of the desktop app
+  app-napi/          Node addon of the desktop app (Rust, napi-rs)
+  app-output/        Output writers shared by the CLI, the server, and the addon
+  app-server/        HTTP API server of the web app (treetime-server)
+  app-ui/            React components shared by the desktop and web apps
+  app-web/           Web app (Vite)
+  legacy/            TreeTime v0, the Python reference implementation
+  schemas/           Generated JSON schemas of the CLI input
+  treetime/          Core library
+  treetime-*/        Supporting crates of the core library
+  util-*/            File format libraries
+dev/                 Development scripts and the container setup
+kb/                  Knowledge base
+data/                Example datasets
 ```
 
-## Dev Shortcuts
-
-All commands are run via `./dev/docker/run just <shortcut>`. Run several in sequence with separate invocations (`just lf && just f && just t`), or use `just q` (quality), which runs lint-fix, format, then tests. Run `just --list` to see every task grouped with a one-line description.
-
-### Rust
-
-| Shortcut   | Command          | Description                           |
-| ---------- | ---------------- | ------------------------------------- |
-| `b`        | build            | Debug build                           |
-| `br`       | build-release    | Release build                         |
-| `r <bin>`  | run              | Run binary in debug mode              |
-| `rr <bin>` | run-release      | Run binary in release mode            |
-| `l`        | lint             | Clippy (includes build)               |
-| `lf`       | lint-fix         | Clippy with auto-fix                  |
-| `lc`       | lint-ci          | Clippy with -Dwarnings                |
-| `lD`       | lint-deps        | Unused dependency check (cargo-shear) |
-| `f`        | format           | rustfmt                               |
-| `fc`       | format-check     | rustfmt check only                    |
-| `t`        | test-all         | All tests (nextest)                   |
-| `tu`       | test-unit        | Unit tests only                       |
-| `ti`       | test-integration | Integration tests only                |
-| `tl`       | test-list        | List all tests                        |
-| `q`        | quality          | lint-fix + format + test              |
-| `B`        | bench-all        | Run benchmarks                        |
-| `U`        | upgrade-deps     | Upgrade Cargo dependencies            |
-| `cov`      | coverage         | HTML coverage report                  |
-| `w`        | why              | Dependency tree                       |
-| `L`        | list             | List all binaries, examples, tests    |
-
-### Desktop and Web Apps
-
-| Shortcut | Command           | Description                                                     |
-| -------- | ----------------- | --------------------------------------------------------------- |
-| `d`      | desktop-start     | Start Electron desktop app (Vite renderer + napi addon via IPC) |
-| `db`     | desktop-build     | Production build of desktop app                                 |
-| `a`      | app-start         | Start web app (Bacon server auto-restart + Vite HMR)            |
-| `ab`     | app-build         | Production build of web app                                     |
-| `ar`     | app-release       | Release build of web app                                        |
-| `arw`    | app-release-watch | Release build with watch mode                                   |
-
-### JavaScript/TypeScript (bulk, all packages)
-
-| Shortcut | Command         | Description                                |
-| -------- | --------------- | ------------------------------------------ |
-| `ji`     | js-install      | Install all npm dependencies (bun install) |
-| `ju`     | js-upgrade      | Upgrade all npm dependencies to latest     |
-| `jl`     | js-lint         | Lint all TypeScript (oxlint)               |
-| `jlf`    | js-lint-fix     | Lint with auto-fix                         |
-| `jf`     | js-format       | Format all TypeScript (prettier)           |
-| `jfc`    | js-format-check | Format check only                          |
-| `jc`     | js-check        | Typecheck all TypeScript (tsc --noEmit)    |
-| `jt`     | js-test         | Run all TypeScript tests (vitest)          |
-
-## Build and Run
-
-### CLI
+## Apps
 
-```bash
-v="flu/h3n2/20"
+### Web app
 
-# Run in debug mode
-./dev/docker/run just r treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+`just up` starts the API server and the Vite dev server in the foreground until Ctrl-C. `just health` and `just status` report whether they run and which commit they were started from. Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_API_PORT` and `TREETIME_WEB_PORT` override them.
 
-# Run in release mode
-./dev/docker/run just rr treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+When the portless proxy runs on the machine, the web server also registers `https://treetime.localhost` in the main checkout and `https://<branch>.treetime.localhost` in a linked worktree.
 
-# Clock estimation
-./dev/docker/run just r treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
-```
+### Desktop app
 
-> 💡 Set variable `v` to a different path in the `data/` directory to try other example inputs. List all examples with:
->
-> ```
-> find data -type f -name "tree.nwk" -exec dirname {} \; | sort -h
-> ```
+`just desktop` starts the Electron app in development mode. In the container it needs the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
 
-### Desktop App
+## Generated files
 
-```bash
-# Start Electron app (builds contracts, UI, starts Vite renderer + napi IPC bridge)
-./dev/docker/run just d
-```
+The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI reference documentation are generated and committed. `just gen` regenerates them, and `just generated-check`, part of `check-all`, fails when a committed copy is stale. Never edit them by hand.
 
-### Web App
+`just fixtures-check` checks the reference and golden-master test fixtures against `dev/registry/reference-files.toml`.
 
-```bash
-# Start web dev (Bacon auto-restarts Rust server on source changes, Vite serves frontend with HMR)
-./dev/docker/run just a
-```
+## Testing against the reference
 
-## Testing
+- `just compare-baseline` (host) builds the `rust` base branch and the current checkout and byte-compares the outputs of every command over the bundled datasets
+- `just smoke` runs the smoke tests of the release binary over the bundled datasets
+- `dev/docker/python treetime ...` runs TreeTime v0 from `packages/legacy`
 
-```bash
-# All Rust tests
-./dev/docker/run just t
+## Performance
 
-# Specific tests by regex
-./dev/docker/run just t gtr
+- `just bench` runs the benchmarks
+- `just build-release treetime` builds the release binary into `.out/treetime`; use it with `hyperfine`, which the container provides
+- `just profile treetime -- <args>` (host) samples a profile with samply or perf; read `dev/profile --help` first
 
-# All TypeScript tests
-./dev/docker/run just jt
+## Dependencies
 
-# Full quality check (Rust lint + format + test)
-./dev/docker/run just q
+Every dependency release must be at least seven days old before the project adopts it:
 
-# Output comparison against the rust baseline (builds the rust and current binaries, diffs every command output)
-./dev/compare-baseline
-```
+- Bun refuses younger npm packages (`minimumReleaseAge` in `bunfig.toml`)
+- Cargo has the age check as an unstable feature until Rust 1.100. `just deps-update` and `just deps-upgrade` enable it for their resolution, and `just deps-age` fails on a lockfile entry younger than seven days
+- Tools in `mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
 
-## Linting and Formatting
+Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 18.x, because Auspice runs in-process and requires it; `just lint-js` enforces this.
 
-```bash
-# Rust
-./dev/docker/run just l     # lint
-./dev/docker/run just lf    # lint with auto-fix
-./dev/docker/run just f     # format
+The dependency recipes run in the main checkout only. `just audit` checks both dependency graphs against the security advisory databases.
 
-# TypeScript (all packages)
-./dev/docker/run just jl    # lint
-./dev/docker/run just jlf   # lint with auto-fix
-./dev/docker/run just jf    # format
-```
+## Cross-compilation and releases
 
-## Monorepo Tooling
+`just cross` (host) builds the release CLI for every target in `dev/cross/targets` in its cross image, in parallel, into `.out/`. `just cross --target=aarch64-apple-darwin` builds one target. Without `just` on the host, run `./dev/cross/all treetime`.
 
-The TypeScript packages use [bun](https://bun.sh/) as the package manager and [turbo](https://turborepo.dev/) as the monorepo task runner.
+The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2.
 
-Turbo handles the dependency chain automatically: starting the desktop app (`ds`) builds contracts and UI first. No manual `npm install` or intermediate build steps needed.
+### Nightly releases
 
-```bash
-# Install all JS dependencies
-./dev/docker/run just ji
+Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). A nightly publishes every target that builds; the `x86_64-unknown-linux-gnu` binary is required.
 
-# Upgrade all JS dependencies to latest versions
-./dev/docker/run just ju
-```
+1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
+2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`
+3. `dev/publish-nightly` creates the prerelease with the built binaries
 
-Configuration:
+`./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
-- `package.json` - bun workspace definition
-- `turbo.json` - task dependencies and caching
-- `bunfig.toml` - exact version pinning
+## Continuous integration
 
-## Performance Assessment
+`.github/workflows/cli.yml` runs on pull requests and on pushes to `rust`:
 
-### Macro-benchmarks
+- The checks of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally
+- On pushes to `rust`: the release builds of every target and compatibility runs on Linux distributions, macOS, and Windows
 
-```bash
-cargo -q build --release --bin=treetime
-export v='mpox/clade-ii/500'
-hyperfine --warmup 1 --show-output "./target/release/treetime ancestral --method-anc=parsimony --outdir=tmp/$v --tree=data/$v/tree.nwk data/$v/aln.fasta.xz"
-```
-
-> 💡 Make sure you are benchmarking optimized (release) builds.
-
-### Profiling
-
-```bash
-export v='mpox/clade-ii/500'
-./dev/profile treetime ancestral --method-anc=parsimony --outdir="tmp/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz" -j1
-```
-
-> Requires additional configuration! Read comments inside the script first.
-
-## Maintenance
-
-### Upgrading Rust
-
-The Rust version is defined in `rust-toolchain.toml`. When using `cargo`, the version defined in this file is installed automatically.
-
-### Upgrading Rust Dependencies
-
-```bash
-./dev/docker/run just U
-```
-
-Note that dependency upgrades can cause breakage. The upgraded dependencies need to be reviewed, and unit tests, smoke tests and manual sanity checks may need to be performed.
-
-### Upgrading JavaScript Dependencies
-
-```bash
-./dev/docker/run just ju
-```
-
-### Versioning
-
-The workspace version in `Cargo.toml` tracks the base release version (e.g. `1.0.0`). Nightly builds append a prerelease suffix: `1.0.0-nightly.20260714T043012Z+a1b2c3d`.
-
-### Releases
-
-#### Stable releases
-
-Not yet configured. The `dev/publish-github` script is prepared for this.
-
-#### Nightly releases
-
-Automated prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases) for early testing. Every successfully built binary is attached; `x86_64-unknown-linux-gnu` is required for publication.
-
-**Schedule**: daily at 04:00 UTC via `.github/workflows/schedule-nightly.yml` on the default branch. The dispatcher calls `.github/workflows/nightly.yml` on `rust` and skips if no new Rust commits exist since the last nightly.
-
-**Manual trigger**:
-
-```bash
-./dev/trigger-nightly
-```
-
-This dispatches `schedule-nightly.yml` via `gh workflow run`. Requires `GH_TOKEN` or `gh auth login`.
-
-**Version format**: `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>` (e.g. `1.0.0-nightly.20260714T043012Z+a1b2c3d`). Always marked as prerelease.
-
-**How it works**:
-
-1. `schedule-nightly.yml` on `master` calls `nightly.yml` on `rust`
-2. `nightly.yml` resolves the current `rust` commit and calls `cli-build.yml` for the cross-compilation matrix; `x86_64-unknown-linux-gnu` is required while other targets may fail
-3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime-nightly` with every successfully built binary attached and links it to the source commit in `neherlab/treetime`
-
-**Authentication**: `NEHERLAB_BOT_GITHUB_TOKEN` publishes releases in `neherlab/treetime-nightly`; the standard `GITHUB_TOKEN` only needs read access to `neherlab/treetime`. Nightly builds do not publish TreeTime Docker images; the reused CLI workflow retains its existing Docker builder-image cache.
-
-### Continuous Integration (CI), Packaging, and Distribution
-
-CI runs on every push to `rust` and on pull requests via `.github/workflows/cli.yml`:
-
-- Cross-compilation for 7 targets (Linux gnu/musl, macOS, Windows)
-- Unit tests
-- Clippy lints
-- Compatibility tests on native macOS, Windows, and Linux runners
-- CLI documentation freshness check
-
-Both CI and the nightly workflow reuse `.github/workflows/cli-build.yml`. CI requires every target and runs validation; nightly requires `x86_64-unknown-linux-gnu` and publishes whichever other targets build successfully.
+The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images.
