@@ -23,7 +23,11 @@ mod tests {
   fn topology_order_descendant_count_reverse_sorts_children_descending() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
     let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::descendant_count(true).apply(&mut graph, &names, &__bl)?;
+    TopologyOrderSpec {
+      preset: TopologyOrderPreset::DescendantCountReverse,
+      ..TopologyOrderSpec::default()
+    }
+    .apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, &names, "root")?;
@@ -37,7 +41,11 @@ mod tests {
   fn topology_order_keep_preserves_outbound_order() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
     let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::keep().apply(&mut graph, &names, &__bl)?;
+    TopologyOrderSpec {
+      preset: TopologyOrderPreset::Keep,
+      ..TopologyOrderSpec::default()
+    }
+    .apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, &names, "root")?;

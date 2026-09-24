@@ -60,8 +60,4 @@ impl GraphEdgeKey {
   pub(crate) const fn as_usize(self) -> usize {
     self.0
   }
-
-  pub(crate) fn invalid() -> Self {
-    Self(usize::MAX)
-  }
 }

@@ -86,7 +86,7 @@ mod tests {
   #[test]
   fn test_reparent_edge_rejects_an_unknown_edge() -> Result<(), Report> {
     let (mut graph, [root, _, _, _], _) = fixture()?;
-    assert!(graph.reparent_edge(GraphEdgeKey::invalid(), root).is_err());
+    assert!(graph.reparent_edge(GraphEdgeKey(usize::MAX), root).is_err());
     Ok(())
   }
 }

@@ -30,24 +30,6 @@ impl Default for TopologyOrderSpec {
 }
 
 impl TopologyOrderSpec {
-  fn keep() -> Self {
-    Self {
-      preset: TopologyOrderPreset::Keep,
-      ..Self::default()
-    }
-  }
-
-  fn descendant_count(reverse: bool) -> Self {
-    Self {
-      preset: if reverse {
-        TopologyOrderPreset::DescendantCountReverse
-      } else {
-        TopologyOrderPreset::DescendantCount
-      },
-      ..Self::default()
-    }
-  }
-
   #[allow(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
