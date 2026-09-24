@@ -100,39 +100,6 @@ mod tests {
   }
 
   #[test]
-  fn test_gaussian_evaluate() {
-    let params = GaussianParams {
-      mu: 0.0,
-      sigma: 1.0,
-      amplitude: 1.0,
-    };
-    let grid = array![-1.0, 0.0, 1.0];
-    let values = gaussian_evaluate(&params, &grid);
-
-    assert_ulps_eq!(values[1], 1.0, max_ulps = 4);
-    assert_ulps_eq!(values[0], values[2], max_ulps = 4);
-  }
-
-  #[test]
-  fn test_gaussian_convolution_same_width() {
-    let a = GaussianParams {
-      mu: 0.0,
-      sigma: 1.0,
-      amplitude: 1.0,
-    };
-    let b = GaussianParams {
-      mu: 0.0,
-      sigma: 1.0,
-      amplitude: 1.0,
-    };
-    let grid = array![-3.0, 0.0, 3.0];
-    let conv = gaussian_convolution(&a, &b, &grid);
-
-    assert!(conv[1] > conv[0]);
-    assert!(conv[1] > conv[2]);
-  }
-
-  #[test]
   fn test_gaussian_pdf_at_mean() {
     let mu = 0.0;
     let sigma = 1.0;

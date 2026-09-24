@@ -4,7 +4,7 @@ pub fn exponential_pdf_grid(rate: f64, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| exponential_pdf(rate, x))
 }
 
-pub fn exponential_pdf(rate: f64, x: f64) -> f64 {
+fn exponential_pdf(rate: f64, x: f64) -> f64 {
   debug_assert!(rate > 0.0, "exponential_pdf: rate must be positive");
   if x < 0.0 { 0.0 } else { rate * (-rate * x).exp() }
 }
@@ -13,7 +13,7 @@ pub fn exponential_convolution_grid(a: f64, b: f64, grid: &Array1<f64>) -> Array
   grid.mapv(|x| exponential_convolution(a, b, x))
 }
 
-pub fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
+fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
   debug_assert!(a > 0.0 && b > 0.0, "exponential_convolution: rates must be positive");
   if x < 0.0 {
     0.0

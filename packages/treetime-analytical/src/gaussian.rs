@@ -13,7 +13,7 @@ pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> Scaled
   ScaledArray::new(normalized, result.log_scale)
 }
 
-pub fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResult {
+pub(crate) fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResult {
   debug_assert!(
     params.iter().all(|p| p.sigma > 0.0),
     "gaussian_product_params: all sigma values must be positive"
@@ -49,15 +49,11 @@ pub struct GaussianProductResult {
   pub(crate) log_scale: f64,
 }
 
-pub fn gaussian_evaluate(params: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
-  grid.mapv(|x| params.amplitude * (-(0.5 * ((x - params.mu) / params.sigma).powi(2))).exp())
-}
-
 pub fn gaussian_pdf_grid(mu: f64, sigma: f64, grid: &Array1<f64>) -> Array1<f64> {
   grid.mapv(|x| gaussian_pdf(mu, sigma, x))
 }
 
-pub fn gaussian_pdf(mu: f64, sigma: f64, x: f64) -> f64 {
+pub(crate) fn gaussian_pdf(mu: f64, sigma: f64, x: f64) -> f64 {
   debug_assert!(sigma > 0.0, "gaussian_pdf: sigma must be positive");
   (-(0.5 * ((x - mu) / sigma).powi(2))).exp() / (sigma * (2.0 * PI).sqrt())
 }
@@ -66,18 +62,9 @@ pub fn gaussian_convolution_pdf_grid(sigma_f: f64, sigma_g: f64, mu: f64, grid: 
   grid.mapv(|x| gaussian_convolution_pdf(sigma_f, sigma_g, mu, x))
 }
 
-pub fn gaussian_convolution_pdf(sigma_f: f64, sigma_g: f64, mu: f64, x: f64) -> f64 {
+pub(crate) fn gaussian_convolution_pdf(sigma_f: f64, sigma_g: f64, mu: f64, x: f64) -> f64 {
   let variance_sum = sigma_f.powi(2) + sigma_g.powi(2);
   (-(0.5 * (x - mu).powi(2) / variance_sum)).exp() / (2.0 * PI * variance_sum).sqrt()
-}
-
-pub fn gaussian_convolution(a: &GaussianParams, b: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
-  let sigma_conv = a.sigma.hypot(b.sigma);
-  let mu_conv = a.mu + b.mu;
-
-  let normalization = a.amplitude * b.amplitude * std::f64::consts::TAU.sqrt() * a.sigma * b.sigma / sigma_conv;
-
-  grid.mapv(|x| normalization * (-(0.5 * ((x - mu_conv) / sigma_conv).powi(2))).exp())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

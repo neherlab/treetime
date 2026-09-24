@@ -5,7 +5,7 @@ pub fn gaussian_exponential_convolution_grid(a: f64, grid: &Array1<f64>) -> Arra
   grid.mapv(|x| gaussian_exponential_convolution(a, x))
 }
 
-pub fn gaussian_exponential_convolution(a: f64, x: f64) -> f64 {
+fn gaussian_exponential_convolution(a: f64, x: f64) -> f64 {
   0.5 * a * (-x * a + 0.5 * a.powi(2)).exp() * erfc((a - x) / 2_f64.sqrt())
 }
 
