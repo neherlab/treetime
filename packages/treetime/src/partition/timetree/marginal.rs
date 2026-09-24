@@ -169,6 +169,13 @@ impl PartitionTimetree {
     }
   }
 
+  pub(crate) fn edge_sub_count(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
+    match self {
+      Self::Dense(family) => Ok(Some(family.edge_subs(graph, edge_key)?.len())),
+      Self::Sparse(family) => Ok(family.edges.estimates.get(&edge_key).map(Vec::len)),
+    }
+  }
+
   fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Dense(family) => family.edge_indels(edge_key),

@@ -3,7 +3,8 @@ use crate::partition::timetree::partition::PartitionTimetree;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use crate::timetree::timetree_state::TimetreeState;
-use eyre::Report;
+use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use log::debug;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -159,7 +160,7 @@ fn collect_children(
       Ok(ChildInfo {
         edge_key,
         time,
-        mutations: edge_mutation_count(graph, partitions, edge_key, mutation_length, total_length),
+        mutations: edge_mutation_count(graph, partitions, edge_key, mutation_length, total_length)?,
       })
     })
     .collect()
@@ -181,11 +182,12 @@ fn edge_mutation_count(
   edge_key: GraphEdgeKey,
   mutation_length: Option<f64>,
   total_length: usize,
-) -> u32 {
+) -> Result<u32, Report> {
   let exact: Option<usize> = partitions
     .iter()
-    .map(|partition| partition.edge_subs(graph, edge_key).ok().map(|subs| subs.len()))
-    .sum();
+    .map(|partition| partition.edge_sub_count(graph, edge_key))
+    .process_results(|counts| counts.sum())
+    .wrap_err_with(|| format!("When counting the substitutions on edge {edge_key}"))?;
 
   let count = exact.unwrap_or_else(|| {
     let estimate = mutation_length.unwrap_or(0.0) * total_length as f64;
@@ -196,7 +198,7 @@ fn edge_mutation_count(
     }
   });
 
-  u32::try_from(count).unwrap_or(u32::MAX)
+  Ok(u32::try_from(count).unwrap_or(u32::MAX))
 }
 
 fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, Report> {
