@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use crate::distribution_core::formula::DistributionFormula;
   use crate::Distribution;
   use crate::policy::{NegLog, Plain};
   use ndarray::array;
-  use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_utils::{assert_error, make_error, pretty_assert_ulps_eq};
 
   #[test]
   fn test_distribution_time_bounds_empty_is_none() {
@@ -27,6 +28,22 @@ mod tests {
   fn test_distribution_time_bounds_function_spans_grid() {
     let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap();
     assert_eq!(Some((0.0, 2.0)), func.time_bounds());
+  }
+
+  #[test]
+  fn test_distribution_y_formula_evaluates_bounds() {
+    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.0, 3.0));
+    assert_eq!(array![2.0, 6.0], formula.y().unwrap());
+  }
+
+  #[test]
+  fn test_distribution_y_formula_propagates_evaluation_error() {
+    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(
+      |t| make_error!("no value at {t}"),
+      1.0,
+      3.0,
+    ));
+    assert_error!(formula.y(), "When evaluating a formula distribution at its bounds [1, 3]: no value at 1");
   }
 
   #[test]

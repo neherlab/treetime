@@ -5,7 +5,7 @@ use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::negate::distribution_negation;
 use crate::policy::{NegLog, Plain, YAxisPolicy};
 use approx::ulps_eq;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
@@ -100,16 +100,22 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn y(&self) -> Array1<f64> {
+  pub fn y(&self) -> Result<Array1<f64>, Report> {
     match self {
-      Self::Point(p) => ndarray::array![p.amplitude()],
-      Self::Range(r) => ndarray::array![r.amplitude(), r.amplitude()],
-      Self::Function(f) => f.y().clone(),
+      Self::Point(p) => Ok(ndarray::array![p.amplitude()]),
+      Self::Range(r) => Ok(ndarray::array![r.amplitude(), r.amplitude()]),
+      Self::Function(f) => Ok(f.y().clone()),
       Self::Formula(f) => {
         let t = ndarray::array![f.t_min(), f.t_max()];
-        f.eval_many(&t).unwrap_or_else(|_| ndarray::array![0.0, 0.0])
+        f.eval_many(&t).wrap_err_with(|| {
+          format!(
+            "When evaluating a formula distribution at its bounds [{}, {}]",
+            f.t_min(),
+            f.t_max()
+          )
+        })
       },
-      Self::Empty => ndarray::array![],
+      Self::Empty => Ok(ndarray::array![]),
     }
   }
 

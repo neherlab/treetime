@@ -63,8 +63,8 @@ mod tests {
       let product = distribution_multiplication(&range, &function).unwrap();
 
       let actual = distribution_division(&product, &function).unwrap();
-      let expected = Array1::from_elem(actual.y().len(), 3.0);
-      prop_assert_array_ulps_eq!(expected, actual.y(), max_ulps = 4);
+      let expected = Array1::from_elem(actual.y().unwrap().len(), 3.0);
+      prop_assert_array_ulps_eq!(expected, actual.y().unwrap(), max_ulps = 4);
       assert_intersection(&actual, (start, end.min(4.0)))?;
     }
   }

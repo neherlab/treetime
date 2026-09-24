@@ -12,7 +12,7 @@ mod tests {
   fn test_multiply_by_fn_constant_is_uniform_shift() {
     let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
     let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0)).unwrap();
-    assert_abs_diff_eq!(array![4.0, 0.0, 3.0], actual.y(), epsilon = 1e-15);
+    assert_abs_diff_eq!(array![4.0, 0.0, 3.0], actual.y().unwrap(), epsilon = 1e-15);
   }
 
   #[test]

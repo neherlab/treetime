@@ -136,7 +136,7 @@ mod tests {
     let expected_t = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
     let expected_y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
     assert_eq!(expected_t, actual.t());
-    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_y, actual.y().unwrap(), epsilon = 1e-12);
   }
 
   #[test]
@@ -172,7 +172,7 @@ mod tests {
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![1.0, 4.0, 5.0, 2.0];
     assert_eq!(expected_t, actual.t());
-    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_y, actual.y().unwrap(), epsilon = 1e-12);
   }
 
   #[test]
@@ -226,7 +226,7 @@ mod tests {
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![0.5, 2.0, 2.0, 0.5];
     assert_eq!(expected_t, actual.t());
-    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_y, actual.y().unwrap(), epsilon = 1e-12);
   }
 
   #[test]
@@ -285,7 +285,7 @@ mod tests {
     let expected_t = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
     let expected_y = array![0.03, 0.13, 0.18, 0.13, 0.03];
     assert_eq!(expected_t, actual.t());
-    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_y, actual.y().unwrap(), epsilon = 1e-12);
   }
 
   #[test]

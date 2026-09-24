@@ -21,7 +21,7 @@ where
   }
 
   let times = distribution.t();
-  let ordinates = distribution.y();
+  let ordinates = distribution.y()?;
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;
   let combined = ordinates + weights;

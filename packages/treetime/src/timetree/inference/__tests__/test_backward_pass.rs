@@ -353,7 +353,7 @@ mod tests {
       let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
       let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
       Ok((
-        dist.y(),
+        dist.y()?,
         dist.likely_time().expect("distribution should have a likely_time"),
       ))
     };

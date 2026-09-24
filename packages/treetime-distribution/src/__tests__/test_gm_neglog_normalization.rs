@@ -35,7 +35,7 @@ mod tests {
     pretty_assert_ulps_eq!(Array1::from_vec(expected.time_points.clone()), actual.t(), max_ulps = 4);
     pretty_assert_abs_diff_eq!(
       Array1::from_vec(expected.probabilities_relative.clone()),
-      actual.y(),
+      actual.y().unwrap(),
       epsilon = 1e-12,
     );
     pretty_assert_ulps_eq!(expected.peak_position, actual.likely_time().unwrap(), max_ulps = 4);
@@ -88,7 +88,7 @@ mod tests {
         let distribution = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
         let actual = neglog_to_plain_normalized(&distribution);
         let expected = array![(-4.0_f64).exp(), 1.0, (-3.0_f64).exp()];
-        pretty_assert_ulps_eq!(expected, actual.y(), max_ulps = 4);
+        pretty_assert_ulps_eq!(expected, actual.y().unwrap(), max_ulps = 4);
       }
 
       #[test]
