@@ -13,10 +13,12 @@ Flags marked *hidden* are accepted but not listed in `--help`.
 
 | Command     | Flags                                                                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ancestral` | `--zero-based`, `--report-ambiguous`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                              |
+| `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--report-ambiguous`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                              |
 | `clock`     | `--alignment`/`--aln`, `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--seed`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden) |
 | `mugration` | `--seed`                                                                                                                                                                                                           |
-| `timetree`  | `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden)                            |
+| `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden)                            |
+
+`optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-cli/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
 Tracked elsewhere, with their own `expect` reasons:
 
@@ -36,6 +38,7 @@ The `timetree` command copies these flags into `TimetreeParams` in `packages/tre
 - `--prune-short` in `clock` leaves short branches in the tree
 - `--seed` in `clock` and `mugration` does not make runs reproducible, because the value never reaches a random number generator
 - `--model` and `--model-params` in `clock` do not change the substitution model
+- `--model-params` in `ancestral`, `optimize`, and `timetree` does not change the parameters of the selected model, so a named model always uses its default parameters
 - `--greedy-resolve` and `--stochastic-resolve` in `timetree` do not select a polytomy resolution strategy; see [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md)
 
 ## Potential solutions
