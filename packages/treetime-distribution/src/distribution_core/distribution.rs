@@ -8,10 +8,12 @@ use approx::ulps_eq;
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
+use ndarray_stats::errors::MinMaxError;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
+use treetime_utils::make_error;
 
 const TIME_LIMIT: f64 = 1e10;
 const FORMULA_GRID_SIZE: usize = 200;
@@ -180,36 +182,57 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 impl Distribution<Plain> {}
 
 impl Distribution<NegLog> {
-  pub fn normalize(&self) -> Self {
+  pub fn normalize(&self) -> Result<Self, Report> {
     match self {
-      Distribution::Empty => Distribution::Empty,
+      Distribution::Empty => Ok(Distribution::Empty),
       Distribution::Point(p) => {
-        if p.amplitude().is_finite() {
-          Distribution::point(p.t(), 0.0)
-        } else {
-          Distribution::Empty
-        }
+        Ok(neglog_peak(p.amplitude(), "point")?.map_or(Distribution::Empty, |_| Distribution::point(p.t(), 0.0)))
       },
-      Distribution::Range(r) => {
-        if r.amplitude().is_finite() {
-          Distribution::range((r.start(), r.end()), 0.0)
-        } else {
-          Distribution::Empty
-        }
-      },
+      Distribution::Range(r) => Ok(
+        neglog_peak(r.amplitude(), "range")?
+          .map_or(Distribution::Empty, |_| Distribution::range((r.start(), r.end()), 0.0)),
+      ),
       Distribution::Function(f) => neglog_function_normalize(f),
       Distribution::Formula(f) => {
-        discretize_formula(f).map_or(Distribution::Empty, |df| neglog_function_normalize(&df))
+        let discretized = discretize_formula(f).wrap_err_with(|| {
+          format!(
+            "When discretizing a formula distribution on [{}, {}] for normalization",
+            f.t_min(),
+            f.t_max()
+          )
+        })?;
+        neglog_function_normalize(&discretized)
       },
     }
   }
 }
 
-fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Distribution<NegLog> {
-  let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
-    return Distribution::Empty;
+fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Result<Distribution<NegLog>, Report> {
+  let minimum = match function.y().min() {
+    Ok(&minimum) => minimum,
+    Err(MinMaxError::EmptyInput) => return Ok(Distribution::Empty),
+    Err(MinMaxError::UndefinedOrder) => {
+      return make_error!(
+        "Cannot normalize a distribution on [{}, {}]: its negative log-likelihood values contain NaN",
+        function.x_min(),
+        function.x_max()
+      );
+    },
   };
-  Distribution::Function(function.shift_y(-minimum))
+  let context = format!("function on [{}, {}]", function.x_min(), function.x_max());
+  Ok(neglog_peak(minimum, &context)?.map_or(Distribution::Empty, |minimum| {
+    Distribution::Function(function.shift_y(-minimum))
+  }))
+}
+
+fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {
+  if minimum.is_finite() {
+    Ok(Some(minimum))
+  } else if minimum.is_infinite() && minimum.is_sign_positive() {
+    Ok(None)
+  } else {
+    make_error!("Cannot normalize a distribution {context}: its peak negative log-likelihood is {minimum}")
+  }
 }
 
 #[allow(

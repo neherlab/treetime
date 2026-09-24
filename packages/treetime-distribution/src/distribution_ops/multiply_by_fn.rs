@@ -40,5 +40,5 @@ where
     Distribution::function(times, combined)?
   };
 
-  Ok(result.normalize())
+  result.normalize()
 }

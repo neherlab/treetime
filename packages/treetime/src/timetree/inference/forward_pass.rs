@@ -1,7 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled, warn};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -109,7 +109,9 @@ fn refine_distribution_from_parent(
   };
   let dist_from_parent = convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)?;
 
-  let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
+  let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?
+    .normalize()
+    .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
   log_refinement(names, key, parent_time_dist, &combined);
 
   if combined.likely_time().is_none() && date_constraint.is_some() {

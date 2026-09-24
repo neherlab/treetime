@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::pretty_assert_ulps_eq;
+  use treetime_utils::assert_error;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::timetree_state::TimetreeState;
@@ -39,6 +40,34 @@ mod tests {
     pretty_assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
     assert!(likely_time < 2013.0, "Parent should be older than child");
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_backward_pass_nan_leaf_likelihood_error_reaches_caller() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("((A:2.5)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+    let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
+    let mut state = TimetreeState::new(&graph);
+    state.node_mut(leaf_key).time_distribution = Some(Arc::new(Distribution::point(2013.0, f64::NAN)));
+    set_edge_branch_dist(&graph, &mut state, leaf_key, 2.5);
+
+    let edge_key = graph
+      .get_edges()
+      .into_iter()
+      .find(|edge| edge.target() == leaf_key)
+      .expect("edge above leaf A not found")
+      .key();
+    let result = propagate_distributions_backward(&graph, &DateConstraints::default(), None, &mut state);
+
+    assert_error!(
+      result,
+      format!("When sending the time message backward along edge {edge_key}: Cannot normalize a distribution point: its peak negative log-likelihood is NaN")
+    );
+    assert_eq!(None, node_time_distribution(&state, internal_key));
     Ok(())
   }
 

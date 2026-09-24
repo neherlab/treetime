@@ -11,10 +11,10 @@ pub fn rewindow_to_mass(
   grid_points: usize,
 ) -> Result<Distribution<NegLog>, Report> {
   let Distribution::Function(f) = dist else {
-    return Ok(dist.normalize());
+    return dist.normalize();
   };
   let Some(normalized) = peak_normalized_if_mass_sizable(f) else {
-    return Ok(dist.normalize());
+    return dist.normalize();
   };
   let (lo, hi) = mass_bounded_domain(&normalized, eps)?;
   resample_to_mass_window(&normalized, lo, hi, grid_points)

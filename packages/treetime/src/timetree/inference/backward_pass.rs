@@ -2,7 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
@@ -39,7 +39,9 @@ fn propagate_distributions_backward_node(
   let distribution = apply_date_constraint(date_constraint.as_ref(), distribution)?;
 
   if !matches!(distribution, Distribution::Empty) {
-    let distribution = distribution.normalize();
+    let distribution = distribution
+      .normalize()
+      .wrap_err_with(|| format!("When normalizing the time distribution of node {}", context.key))?;
     node.time_distribution = Some(Arc::new(distribution));
   }
 
@@ -119,7 +121,7 @@ fn send_backward_message(
   node: &DateNodeState,
   parent_edge: Option<(GraphEdgeKey, &DateEdgeState)>,
 ) -> Result<Option<DateEdgeState>, Report> {
-  let Some((_, edge)) = parent_edge else {
+  let Some((edge_key, edge)) = parent_edge else {
     return Ok(None);
   };
   let mut edge = edge.clone();
@@ -143,7 +145,8 @@ fn send_backward_message(
   let outgoing = leaf_weighted.as_ref().unwrap_or_else(|| distribution.as_ref());
 
   let negated_branch = branch_length_distribution.negate()?;
-  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
+  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)
+    .wrap_err_with(|| format!("When sending the time message backward along edge {edge_key}"))?;
   edge.msg_to_parent = Some(Arc::new(message));
 
   Ok(Some(edge))

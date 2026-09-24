@@ -108,7 +108,7 @@ mod tests {
   fn test_mass_domain_rewindow_point_is_shift_only_normalize() {
     let point: Distribution<NegLog> = Distribution::point(3.0, 7.5);
     let rewindowed = rewindow_to_mass(&point, EPS, GRID_POINTS).unwrap();
-    assert_eq!(rewindowed, point.normalize());
+    assert_eq!(rewindowed, point.normalize().unwrap());
   }
 
   mod helpers {

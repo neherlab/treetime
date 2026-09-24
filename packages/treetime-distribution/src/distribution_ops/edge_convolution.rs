@@ -20,10 +20,10 @@ pub fn convolve_across_edge(
     Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
   };
   let Distribution::Function(conv) = conv else {
-    return Ok(conv.normalize());
+    return conv.normalize();
   };
   let Some(normalized) = peak_normalized_if_mass_sizable(&conv) else {
-    return Ok(Distribution::Function(conv).normalize());
+    return Distribution::Function(conv).normalize();
   };
 
   let (lo, hi) = match convolution_output_window(a, b, eps) {
