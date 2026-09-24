@@ -49,21 +49,32 @@ Optional settings go into the gitignored `.env` in the checkout; `.env.example` 
 
 ## Everyday commands
 
-| Task                                              | Command                              |
-| ------------------------------------------------- | ------------------------------------ |
-| List the recipes                                  | `just`                               |
-| Fast checks (format, clippy, TypeScript)          | `just check`                         |
-| Every check; must pass before merging             | `just check-all`                     |
-| Apply lint fixes and format (stage changes first) | `just fix`                           |
-| Build                                             | `just build` (`just b`)              |
-| Run the CLI                                       | `just run treetime ancestral --help` |
-| Rust tests, optionally filtered                   | `just test [filter]` (`just t`)      |
-| TypeScript tests                                  | `just test-js`                       |
-| Clippy                                            | `just lint` (`just l`)               |
+| Task                                             | Command                               |
+| ------------------------------------------------ | ------------------------------------- |
+| List the recipes                                 | `just`                                |
+| Fast checks (format, clippy, TypeScript)         | `just check`                          |
+| Every check; must pass before merging            | `just check-all`                      |
+| Fast lint fixes and format (stage changes first) | `just fix`                            |
+| Every lint fix, dylint included, and format      | `just fix-all`                        |
+| Build                                            | `just build` (`just b`)               |
+| Run the CLI                                      | `just run treetime ancestral --help`  |
+| Rust tests, optionally filtered                  | `just test-rs [filter]` (`just t`)    |
+| TypeScript tests                                 | `just test-ts`                        |
+| Clippy                                           | `just lint-rs` (`just l`)             |
+| TypeScript lints                                 | `just lint-ts`                        |
+| Format one toolchain                             | `just fmt-rs`, `fmt-ts`, `fmt-other`  |
 
 In the container, prefix each command with `./dev/docker/run`.
 
-`check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check.
+Recipe names follow one scheme:
+
+- **Leaf recipes** run one tool in one mode. The suffix `-rs` or `-ts` names the toolchain, Rust or TypeScript; tools that serve one toolchain only keep their own name, such as `dylint`, `hawk`, or `knip`
+- **Combined recipes** without a language suffix, such as `lint`, `test`, `fmt`, or `fix`, run the leaves of both toolchains and call no tool themselves
+- **The suffix `-all`** adds the slow tools to the fast set of the same name: `fix-all` adds the dylint fixes, `lint-all` the custom lint libraries, hawk, and the dependency and config lints, `test-all` the tests of the lint libraries, and `check-all` the full gate
+
+While working on one toolchain, run its leaves (`just fmt-rs`, `just l`, `just t`) and leave the slow tools to `check-all`.
+
+`check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check. The full gate consists of groups, one CI job each; `just check-group <group>` runs one group serially, as its CI job does.
 
 ### Examples
 
@@ -151,7 +162,7 @@ Every dependency release must be at least seven days old before the project adop
 - Cargo has the age check as an unstable feature until Rust 1.100. `just deps-update` and `just deps-upgrade` enable it for their resolution, and `just deps-age` fails on a lockfile entry younger than seven days
 - Tools in `mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
 
-Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 18.x, because Auspice runs in-process and requires it; `just lint-js` enforces this.
+Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 18.x, because Auspice runs in-process and requires it; `just lint-ts` enforces this.
 
 The dependency recipes run in the main checkout only. `just audit` checks both dependency graphs against the security advisory databases.
 
@@ -175,7 +186,7 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 
 `.github/workflows/cli.yml` runs on pull requests and on pushes to `rust`:
 
-- The checks of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally
+- The check groups of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally
 - On pushes to `rust`: the release builds of every target and compatibility runs on Linux distributions, macOS, and Windows
 
 The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images.

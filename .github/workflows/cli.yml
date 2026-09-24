@@ -23,8 +23,9 @@ env:
   FORCE_COLOR: "1"
 
 jobs:
-  # The checks of `just check-all` except hawk, split into parallel jobs. Each job
-  # runs its recipes in the build container through dev/run-checks.
+  # The check groups of `just check-all` except hawk, one parallel job each. The
+  # justfile owns the recipes of each group; `just check-group` runs them in the
+  # build container through dev/run-checks.
   check:
     name: "Check (${{ matrix.name }})"
     runs-on: ubuntu-24.04
@@ -34,17 +35,17 @@ jobs:
       matrix:
         include:
           - name: "format and config lints"
-            recipes: "fmt-check deny shear lint-shell lint-docker lint-toml lint-workflows fixtures-check"
+            group: "format"
           - name: "clippy"
-            recipes: "lint"
+            group: "clippy"
           - name: "custom lints"
-            recipes: "dylint"
+            group: "dylint"
           - name: "tests"
-            recipes: "test"
+            group: "tests"
           - name: "generated files"
-            recipes: "generated-check"
+            group: "generated"
           - name: "typescript"
-            recipes: "typecheck lint-js knip test-js"
+            group: "typescript"
 
     steps:
       - name: "Check out"
@@ -57,8 +58,8 @@ jobs:
           dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           dockerhub-token: ${{ github.event_name == 'push' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
 
-      - name: "Run ${{ matrix.recipes }}"
-        run: dev/docker/run bash -c "just _js && TREETIME_JS_READY=1 dev/run-checks --serial ${{ matrix.recipes }}"
+      - name: "Run the ${{ matrix.group }} checks"
+        run: dev/docker/run just check-group ${{ matrix.group }}
 
   build-cli:
     name: "Build CLI"
