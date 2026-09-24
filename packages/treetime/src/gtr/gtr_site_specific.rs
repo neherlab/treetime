@@ -140,6 +140,7 @@ impl GTRSiteSpecific {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
+  #[builder]
   pub fn random(
     n_states: usize,
     seq_len: usize,
