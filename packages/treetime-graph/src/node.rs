@@ -53,36 +53,6 @@ impl Node {
   }
 
   #[inline]
-  pub fn is_internal(&self) -> bool {
-    !self.is_leaf() && !self.is_root()
-  }
-
-  #[inline]
-  pub fn has_parents(&self) -> bool {
-    self.degree_in() > 0
-  }
-
-  #[inline]
-  pub fn has_one_parent(&self) -> bool {
-    self.degree_in() == 1
-  }
-
-  #[inline]
-  pub fn has_at_most_one_parent(&self) -> bool {
-    self.degree_in() <= 1
-  }
-
-  #[inline]
-  pub fn has_children(&self) -> bool {
-    self.degree_out() > 0
-  }
-
-  #[inline]
-  pub fn has_one_child(&self) -> bool {
-    self.degree_out() == 1
-  }
-
-  #[inline]
   pub(crate) fn has_at_most_one_child(&self) -> bool {
     self.degree_out() <= 1
   }

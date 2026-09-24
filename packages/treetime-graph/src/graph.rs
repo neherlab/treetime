@@ -60,17 +60,6 @@ impl Graph {
       .filter_map(move |&edge_key| self.get_edge(edge_key).map(|edge| (edge.source(), edge_key)))
   }
 
-  pub fn exactly_one_parent_of(&self, node: &Node) -> Result<(GraphNodeKey, GraphEdgeKey), Report> {
-    self.one_parent_of(node)?.ok_or_else(|| {
-      make_internal_report!(
-        "No parents found for node {} (context: is_root={} is_leaf={})",
-        node.key(),
-        node.is_root(),
-        node.is_leaf()
-      )
-    })
-  }
-
   fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
     match node.inbound().len() {
       0 => Ok(None),
@@ -152,32 +141,16 @@ impl Graph {
     self.roots.iter().filter_map(|key| self.get_node(*key))
   }
 
-  pub fn root_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
-    self.roots.iter().copied()
-  }
-
   pub fn get_leaves(&self) -> impl Iterator<Item = &Node> + '_ {
     self.leaves.iter().filter_map(|key| self.get_node(*key))
-  }
-
-  pub fn leaf_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
-    self.leaves.iter().copied()
   }
 
   pub fn get_internal_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
     self.get_nodes().filter(|node| !node.is_leaf())
   }
 
-  pub fn get_inner_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
-    self.get_nodes().filter(|node| !node.is_leaf() && !node.is_root())
-  }
-
   pub fn get_edges(&self) -> impl DoubleEndedIterator<Item = &Edge> {
     self.edges.iter().filter_map(Option::as_ref)
-  }
-
-  pub fn edge_keys(&self) -> impl DoubleEndedIterator<Item = GraphEdgeKey> + '_ {
-    self.get_edges().map(Edge::key)
   }
 
   pub(crate) fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<GraphNodeKey>, Report> {
@@ -240,42 +213,11 @@ impl Graph {
     self.leaves.contains(&node_key)
   }
 
-  pub fn is_internal(&self, node_key: GraphNodeKey) -> bool {
-    !self.is_leaf(node_key) && !self.is_root(node_key)
-  }
-
-  pub fn degree_out(&self, key: GraphNodeKey) -> Result<usize, Report> {
-    self
-      .get_node(key)
-      .map(Node::degree_out)
-      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
-  }
-
   pub(crate) fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
       .map(Node::degree_in)
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))
-  }
-
-  pub fn has_parents(&self, node_key: GraphNodeKey) -> bool {
-    self.get_node(node_key).is_some_and(Node::has_parents)
-  }
-
-  pub fn has_one_parent(&self, node_key: GraphNodeKey) -> bool {
-    self.get_node(node_key).is_some_and(Node::has_one_parent)
-  }
-
-  pub fn has_at_most_one_parent(&self, node_key: GraphNodeKey) -> bool {
-    self.get_node(node_key).is_some_and(Node::has_at_most_one_parent)
-  }
-
-  pub fn has_children(&self, node_key: GraphNodeKey) -> bool {
-    self.get_node(node_key).is_some_and(Node::has_children)
-  }
-
-  pub fn has_one_child(&self, node_key: GraphNodeKey) -> bool {
-    self.get_node(node_key).is_some_and(Node::has_one_child)
   }
 
   pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
