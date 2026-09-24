@@ -45,7 +45,7 @@ impl<W: Write + Send> CsvStructWriter<W> {
 }
 
 pub struct CsvVecFileWriter {
-  pub writer: CsvVecWriter<Box<dyn Write + Send>>,
+  writer: CsvVecWriter<Box<dyn Write + Send>>,
 }
 
 impl CsvVecFileWriter {}
@@ -62,7 +62,7 @@ pub trait VecWriter {
 }
 
 pub struct CsvVecWriter<W: Write + Send> {
-  pub writer: Writer<W>,
+  writer: Writer<W>,
 }
 
 impl<W: Write + Send> CsvVecWriter<W> {}

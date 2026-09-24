@@ -99,7 +99,7 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::o;
 
-    pub(super) fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
+    fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
       let nwk_parsed = nwk_read_str(nwk)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;

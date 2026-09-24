@@ -377,7 +377,7 @@ impl SparseReconstruction {
     self.partition.edge_indel_count(edge_key)
   }
 
-  pub(crate) fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.partition.node_sequence(&self.node_states, node_key)
   }
 

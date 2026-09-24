@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::*;
+  use crate::gaussian::*;
   use std::f64::consts::PI;
 
   use approx::assert_ulps_eq;

@@ -8,11 +8,8 @@ pub mod traits;
 #[cfg(test)]
 mod __tests__;
 
-pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve, convolve_fft, convolve_riemann};
-pub use multiplication::{
-  AggressiveMultiply, LogScaleMultiply, PointwiseMultiply, multiply_many, multiply_many_lazy_normalize,
-  multiply_many_naive,
-};
+pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve_fft};
+pub use multiplication::{AggressiveMultiply, LogScaleMultiply, PointwiseMultiply};
 pub use traits::{ConvolveAlgo, MultiplyAlgo};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

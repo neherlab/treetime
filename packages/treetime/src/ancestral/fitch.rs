@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
   resolve_root_forward, resolve_variable_positions_backward,
@@ -10,6 +9,7 @@ use crate::partition::storage::sparse::{FitchNodeData, FitchSeqDistribution, Fit
 use crate::seq::alignment::NodeSeqInput;
 use crate::seq::alignment::get_common_length_of_node_inputs;
 use crate::seq::composition::Composition;
+use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;

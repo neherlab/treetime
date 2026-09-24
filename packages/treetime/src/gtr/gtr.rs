@@ -155,7 +155,7 @@ pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, R
   Ok(pi.dot(W).dot(pi))
 }
 
-pub(super) fn eig_single_site(
+fn eig_single_site(
   W: &Array2<f64>,
   pi: ArrayView1<'_, f64>,
 ) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {

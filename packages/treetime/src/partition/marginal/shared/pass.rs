@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::assign_sequence;
 use crate::partition::marginal::shared::data::DenseInputs;
@@ -10,6 +9,7 @@ use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForwa
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution, DenseSeqInfo,
 };
+use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;

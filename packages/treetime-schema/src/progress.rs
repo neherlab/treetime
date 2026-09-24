@@ -9,7 +9,7 @@ pub struct ProgressEvent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ErrorResponse {
+pub(crate) struct ErrorResponse {
   code: String,
   message: String,
 }

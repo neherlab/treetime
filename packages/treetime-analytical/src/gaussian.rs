@@ -44,9 +44,9 @@ pub fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResu
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GaussianProductResult {
-  pub mu: f64,
-  pub sigma: f64,
-  pub log_scale: f64,
+  pub(crate) mu: f64,
+  pub(crate) sigma: f64,
+  pub(crate) log_scale: f64,
 }
 
 pub fn gaussian_evaluate(params: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {

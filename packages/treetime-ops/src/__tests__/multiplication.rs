@@ -5,9 +5,9 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::*;
+  use crate::multiplication::*;
   use approx::assert_ulps_eq;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use std::iter::repeat_n;
 
   #[test]
