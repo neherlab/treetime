@@ -9,15 +9,16 @@ Two-pass message passing for time inference on the phylogenetic tree (<a id="cit
 v1: [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs), [`packages/treetime/src/timetree/inference/forward_pass.rs`](../../packages/treetime/src/timetree/inference/forward_pass.rs).
 v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/legacy/treetime/treetime/node_interpolator.py).
 
-- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time; multiplies each node's fixed input date constraint into the combined child messages
-- `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22](../../packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22): preserves internal node times when forward pass yields `None`
+- `run_timetree()` (`#run_timetree`) [packages/treetime/src/timetree/inference/runner.rs](../../packages/treetime/src/timetree/inference/runner.rs): one time inference as a function of its inputs. It derives the bad-branch flags, builds the branch likelihoods, runs both passes and returns a `TimeInference` with one map per role: bad-branch flags, branch likelihoods, backward output (subtree distributions and messages to the parent) and posterior (distribution, committed time, contradicted flag). No value from a previous call enters the next one
+- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): a bad node (outlier or dateless leaf, or an undated node whose children are all bad) sends no message, so it does not constrain its parent's time; multiplies each node's fixed input date constraint into the combined child messages. A node without child messages and without a date has no subtree distribution
+- `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): the posterior of a node without subtree distribution is the message from its parent alone, as in v0 (`clock_tree.py#L890-L891`); otherwise the parent posterior divided by this node's message, convolved across the edge and multiplied by the subtree distribution
 
 What separates a leaf from an internal node here is not that it is a leaf but whether its date is
 exact. A node given an exact date is pinned to it: nothing to refine, and no projection onto the
 parent time. Every other node -- internal, or a leaf whose date is uncertain, ranged, or missing --
 has its time inferred, and the forward pass refines it against the message coming down from the
-parent. The date read from the input is held separately from the time distribution and re-applied
-by every backward pass, so refining in place never consumes it. See
+parent. The date read from the input is an input of every backward pass, and the posterior is a
+separate output, so a refined posterior never feeds back as evidence. See
 [kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md).
 
 ---
@@ -166,9 +167,9 @@ where $\mu$ is the whole-alignment mutation rate and $\kappa(t)$ is the per-bran
 - `simulate_subtree()` in [packages/treetime/src/timetree/optimization/polytomy/sweep.rs](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs) performs pure seeded simulation and returns a validated merger plan. It rejects non-finite times and rates, rejects rate overflow, and leaves residual polytomies when the parent bound stops the sweep.
 - `apply_plan()` in [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs) validates the complete plan before graph mutation, then creates internal nodes and reparents children.
 - `resolve_polytomies()` in [packages/treetime/src/timetree/optimization/polytomy/resolve.rs](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs) collects exact reconstructed substitution counts when available, applies the plan, removes obsolete single-child nodes, and rebuilds the graph.
-- `validate_tree_before_topology_change()` and `prepare_tree_after_topology_change()` preserve the refinement loop's complete-state boundary around topology mutation.
+- `resolve_polytomies()` returns the times of the nodes it creates. `require_internal_node_times()` checks that every internal node has a finite time, before the first graph mutation and again for the resolved tree.
 
-After resolution, partition data is reconciled with the new topology before inference resumes. The same seed and input state produce the same sampled plan. See [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md) and the three `timetree-stochastic-resolve-*` entries in [kb/v0-errata/](../v0-errata/README.md).
+After resolution, partition data is reconciled with the new topology before inference resumes. The same seed and input state produce the same sampled plan. See [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md) and the three `timetree-stochastic-resolve-*` entries in [kb/v0-errata/](../v0-errata/).
 
 ---
 
@@ -178,7 +179,8 @@ IQD-based outlier detection that marks leaves with anomalous root-to-tip diverge
 
 v1: [`packages/treetime/src/timetree/optimization/clock_filter.rs`](../../packages/treetime/src/timetree/optimization/clock_filter.rs).
 
-- `apply_outlier_bad_branches()` (`#apply_outlier_bad_branches`) [packages/treetime/src/timetree/optimization/clock_filter.rs#L75-L95](../../packages/treetime/src/timetree/optimization/clock_filter.rs#L75-L95): sets `bad_branch=true` on outlier leaves, then postorder propagation marks internal nodes bad only when all children are bad
+- `mark_outlier_leaves()` (`#mark_outlier_leaves`) [packages/treetime/src/timetree/optimization/clock_filter.rs](../../packages/treetime/src/timetree/optimization/clock_filter.rs): adds the outlier leaves to the leaf bad-branch flags, which start as the leaves without a date
+- `derive_bad_branches()` (`#derive_bad_branches`) [packages/treetime/src/timetree/inference/bad_branches.rs](../../packages/treetime/src/timetree/inference/bad_branches.rs): derives the flags of the current tree at the start of every time inference. A node with its own date is never bad; any other internal node is bad when all its children are bad. See [kb/decisions/timetree-dated-internal-node-never-bad-branch.md](../decisions/timetree-dated-internal-node-never-bad-branch.md)
 
 ---
 
@@ -211,7 +213,7 @@ Alternates sequence reconstruction (E-step) and time inference (M-step), iterati
 
 v1: [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs).
 
-- `Refinement::run()` (`#Refinement::run`) [packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs): owns one complete refinement context and names each state transition: relaxed-clock update, topology refinement, inference rebuild, ancestral-state comparison, and clock re-estimation. `TopologyOutcome` distinguishes an unchanged tree from a changed tree with a resolved-node count, so callers handle topology status explicitly. A changed topology triggers partition reconciliation, bad-branch propagation, marginal reconstruction, coalescent-free time inference, and then inference with the active coalescent prior.
+- `Refinement::run()` (`#Refinement::run`) [packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs): owns one complete refinement context and names each state transition: relaxed-clock update, topology refinement, inference rebuild, ancestral-state comparison, and clock re-estimation. `TopologyOutcome` distinguishes an unchanged tree from a changed tree with a resolved-node count, so callers handle topology status explicitly. A changed topology triggers partition reconciliation, a reset of the relaxed-clock rate multipliers to 1, marginal reconstruction, coalescent-free time inference, and then inference with the active coalescent prior. The round returns the latest `TimeInference` and rate multipliers as values.
 
 ---
 

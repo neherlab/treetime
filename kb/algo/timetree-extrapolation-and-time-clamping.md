@@ -80,7 +80,7 @@ The extrapolation policy above can change where posterior modes occur, but it do
 
 ### Current implementation
 
-After extracting the mode from the combined distribution, `set_likely_time()` commits the following value for every non-root, non-leaf internal node:
+After extracting the mode from the combined distribution, `committed_time()` commits the following value for every non-root, non-leaf internal node:
 
 ```
 child_t = max(marginal_mode, parent_t)

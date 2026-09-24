@@ -5,8 +5,8 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 ## v1 behavior
 
 - `Refinement::run` calls `apply_relaxed_clock` before `refine_topology` ([packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs))
-- `refine_topology` calls `TimetreeState::reset_date_edges_for_topology_change`, which sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/timetree_state.rs](../../packages/treetime/src/timetree/timetree_state.rs))
-- New edges already default to 1.0 without the reset, and re-parented children keep their edge keys
+- `refine_topology` replaces the gamma map with `unit_gammas()` for the resolved tree, which sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/inference/time_inference.rs](../../packages/treetime/src/timetree/inference/time_inference.rs))
+- The next round recomputes the multipliers at its start, so the reset lasts for the rest of the round that resolved polytomies, and for the final outputs when that round is the last one
 
 ## v0 behavior
 
@@ -15,4 +15,9 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 
 ## Impact
 
-With `--relax` and `--resolve-polytomies`, the relaxed clock has no effect in rounds that resolve polytomies. v0 parity is: keep gamma on existing edges, 1.0 on new edges.
+- With `--relax` and `--resolve-polytomies`, the relaxed clock has no effect in rounds that resolve polytomies
+- When the last round resolves polytomies, the reported gamma of every edge is 1.0
+
+## Open question
+
+v0 parity is: keep gamma on existing edges, 1.0 on new edges. The alternative is to refit the relaxed clock on the resolved tree before the rebuild. Either changes outputs and needs approval.
