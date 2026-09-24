@@ -1,20 +1,14 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.8
+FROM debian:12.14-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
-ARG HOST_TUPLE_DEBIAN
-ARG HOST_TUPLE
-ARG HOST_TUPLE_UPPER
-ARG HOST_TUPLE_SAFE
-ARG HOST_GCC_TRIPLET
-
-ENV HOST_TUPLE_DEBIAN="${HOST_TUPLE_DEBIAN}"
-ENV HOST_TUPLE="${HOST_TUPLE}"
-ENV HOST_TUPLE_UPPER="${HOST_TUPLE_UPPER}"
-ENV HOST_TUPLE_SAFE="${HOST_TUPLE_SAFE}"
-ENV HOST_GCC_TRIPLET="${HOST_GCC_TRIPLET}"
+ENV HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
+ENV HOST_TUPLE="x86_64-unknown-linux-gnu"
+ENV HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+ENV HOST_TUPLE_SAFE="x86_64_unknown_linux_gnu"
+ENV HOST_GCC_TRIPLET="x86_64-unknown-linux-gnu"
 
 ARG CROSS_COMPILE
 ARG CROSS_COMPILE_UPPER
@@ -30,9 +24,8 @@ ENV CROSS_GCC_TRIPLET="${CROSS_GCC_TRIPLET}"
 
 RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \
-&& apt-get update -qq --yes \
-&& apt-get install -qq --no-install-recommends --yes \
-  bash \
+&& apt-get update -qq \
+&& apt-get install --no-install-recommends --yes -qq \
   ca-certificates \
   curl \
   file \
@@ -41,70 +34,29 @@ RUN set -euxo pipefail >/dev/null \
   pigz \
   pixz \
   pkg-config \
-  sudo \
-  tar \
-  time \
   unzip \
-  util-linux \
   xz-utils \
   zstd \
 >/dev/null \
-&& rm -rf /var/lib/apt/lists/* \
 && apt-get clean autoclean >/dev/null \
-&& apt-get autoremove --yes >/dev/null
+&& apt-get autoremove --yes >/dev/null \
+&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+COPY dev/docker/files/fetch dev/docker/files/checksums /
 
 ENV PREFIX_HOST="/opt/host"
 ENV HOST_GCC_DIR="${PREFIX_HOST}"
-COPY --link "dev/docker/files/install-gcc-cross" "/"
-RUN /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}"
-
-COPY --link "dev/docker/files/install-llvm" "/"
-RUN /install-llvm
-
-COPY --link "dev/docker/files/install-protobuf" "/"
-RUN /install-protobuf
-
-COPY --link "dev/docker/files/install-kache" "/"
-RUN /install-kache
-
-COPY --link "dev/docker/files/install-libbzip2" "/"
-RUN /install-libbzip2 "${HOST_TUPLE}" "${PREFIX_HOST}"
-
-COPY --link "dev/docker/files/install-liblzma" "/"
-RUN /install-liblzma "${HOST_TUPLE}" "${PREFIX_HOST}"
-
-COPY --link "dev/docker/files/install-libz" "/"
-RUN /install-libz "${HOST_TUPLE}" "${PREFIX_HOST}"
-
-COPY --link "dev/docker/files/install-libzstd" "/"
-RUN /install-libzstd "${HOST_TUPLE}" "${PREFIX_HOST}"
-ENV ZSTD_SYS_USE_PKG_CONFIG="1"
-
-
-
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
-COPY --link "dev/docker/files/install-osxcross" "/"
-RUN /install-osxcross "${OSX_CROSS_PATH}"
-
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY --link "dev/docker/files/install-openblas" "/"
-RUN /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libbzip2" "/"
-RUN /install-libbzip2 "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-liblzma" "/"
-RUN /install-liblzma "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libz" "/"
-RUN /install-libz "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libzstd" "/"
-RUN /install-libzstd "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-ENV ZSTD_SYS_USE_PKG_CONFIG="1"
-ENV LIBZ_SYS_STATIC="1"
-
+COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-protobuf dev/docker/files/install-osxcross dev/docker/files/install-openblas /
+RUN set -euxo pipefail >/dev/null \
+&& /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
+&& /install-llvm "/usr/local" \
+&& /install-protobuf "/usr/local" \
+&& /install-osxcross "${OSX_CROSS_PATH}" \
+&& /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
+&& rm /install-gcc-cross /install-llvm /install-protobuf /install-osxcross /install-openblas
 
 ENV OSXCROSS_MP_INC="1"
 ENV MACOSX_DEPLOYMENT_TARGET="10.12"
@@ -126,20 +78,18 @@ ENV OTOOL_${CROSS_COMPILE_SAFE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ot
 ENV RANLIB_${CROSS_COMPILE_SAFE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ranlib"
 ENV STRIP_${CROSS_COMPILE_SAFE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-strip"
 
-
 ENV BINDGEN_EXTRA_CLANG_ARGS_${CROSS_COMPILE_SAFE}="--sysroot=${CROSS_SYSROOT}"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_AR="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ar"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_LINKER="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-clang"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_STRIP="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-strip"
-
 
 ENV HOST_SYSROOT="${HOST_GCC_DIR}/${HOST_GCC_TRIPLET}/sysroot"
 
 ENV HOST_GCC="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc"
 ENV HOST_GXX="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-g++"
 ENV HOST_GFORTRAN="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gfortran"
-ENV HOST_CLANG="/usr/bin/clang"
-ENV HOST_CLANGPP="/usr/bin/clang++"
+ENV HOST_CLANG="/usr/local/bin/clang"
+ENV HOST_CLANGPP="/usr/local/bin/clang++"
 ENV HOST_ADDR2LINE="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-addr2line"
 ENV HOST_AR="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-ar"
 ENV HOST_AS="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-as"
@@ -193,14 +143,13 @@ ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_AR="${HOST_AR}"
 ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_LINKER="${HOST_GCC}"
 ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_STRIP="${HOST_STRIP}"
 
-
-ENV CROSS_C_INCLUDE_PATH="${PREFIX_CROSS}/include:${CROSS_GCC_DIR}/include"
+ENV CROSS_C_INCLUDE_PATH="${PREFIX_CROSS}/include"
 ENV HOST_C_INCLUDE_PATH="${PREFIX_HOST}/include:${HOST_GCC_DIR}/include"
 
 ENV CROSS_CPLUS_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}"
 ENV HOST_CPLUS_INCLUDE_PATH="${HOST_C_INCLUDE_PATH}"
 
-ENV CROSS_LIBRARY_PATH="${PREFIX_CROSS}/lib:${PREFIX_CROSS}/lib64:${CROSS_GCC_DIR}/lib:${CROSS_GCC_DIR}/lib64:${OSX_CROSS_PATH}/lib/gcc/${CROSS_APPLE_TRIPLET}/14.2.0:${OSX_CROSS_PATH}/lib/gcc/${CROSS_GCC_TRIPLET}/14.2.0:${LIBRARY_PATH}"
+ENV CROSS_LIBRARY_PATH="${PREFIX_CROSS}/lib:${PREFIX_CROSS}/lib64:${OSX_CROSS_PATH}/lib/gcc/${CROSS_APPLE_TRIPLET}/14.2.0:${OSX_CROSS_PATH}/lib/gcc/${CROSS_GCC_TRIPLET}/14.2.0"
 ENV HOST_LIBRARY_PATH="${HOST_GCC_DIR}/lib:${HOST_GCC_DIR}/lib64"
 
 ENV C_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}:${HOST_C_INCLUDE_PATH}"
@@ -232,29 +181,15 @@ ENV CMAKE_PREFIX_PATH="${PREFIX_CROSS}"
 
 ENV LD_LIBRARY_PATH="${OSX_CROSS_PATH}/lib"
 
-
-ARG USER=user
-ARG GROUP=user
-ARG UID
-ARG GID
-
-ENV USER=$USER
-ENV GROUP=$GROUP
-ENV UID=$UID
-ENV GID=$GID
-ENV TERM="xterm-256color"
-ENV HOME="/home/${USER}"
-
-COPY --link "dev/docker/files/create-user" "/"
-RUN /create-user
-
-
-USER ${USER}
-
-
-ENV CARGO_HOME="${HOME}/.cargo"
-ENV PATH="${CARGO_HOME}/bin:${PATH}"
-COPY --link --chown="${UID}:${GID}" "rust-toolchain.toml" "${CARGO_HOME}/rust-toolchain.toml"
-COPY --link "dev/docker/files/install-rust" "/"
+# The Rust toolchain of rust-toolchain.toml with the target. dev/docker/run runs
+# as the host user with HOME=/tmp/home and the cargo home in the checkout.
+ENV RUSTUP_HOME="/usr/local/rustup"
+ENV CARGO_HOME="/usr/local/cargo"
+ENV PATH="/usr/local/cargo/bin:${PATH}"
+COPY dev/docker/files/install-rust /
+COPY rust-toolchain.toml /tmp/rust/
 RUN set -euxo pipefail >/dev/null \
-&& /install-rust "${CROSS_COMPILE}" "${CARGO_HOME}"
+&& /install-rust "/tmp/rust" "${CROSS_COMPILE}" \
+&& rm -rf /install-rust /tmp/rust \
+&& mkdir -p "/tmp/home" \
+&& chmod 1777 "/tmp/home"

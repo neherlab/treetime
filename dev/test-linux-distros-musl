@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./lib/utils.sh
-source "${BASH_SOURCE%/*}/lib/utils.sh"
 
 # Run a command on different Linux distros, to ensure compatibility.
 # Here we check distros which have either very old glibc or none at all.
@@ -13,7 +10,7 @@ source "${BASH_SOURCE%/*}/lib/utils.sh"
 # Dependencies:
 #   sudo apt-get install -y bash parallel
 
-info "Docker version:"
+printf "Docker version:\n"
 docker version
 
 export args="${*:?}"
@@ -53,10 +50,10 @@ function run_one_distro() {
   local distro="${1}"
   local -a command_args=()
   read -r -a command_args <<<"${args}"
-  info "Running '${args}' on '${distro}'"
+  printf "Running %s\n" "'${args}' on '${distro}'"
   docker pull -q "$distro" >/dev/null
   if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
-    err "Failed running '${RUN_COMMAND}' on '$distro'"
+    printf "Failed running '%s' on '%s'\n" "${args}" "${distro}" >&2
     exit 1
   fi
 }

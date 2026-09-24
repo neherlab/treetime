@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <Cargo.lock>...
+#
+# Fail when a crates.io package in the given lockfiles was published less than
+# TREETIME_MIN_PUBLISH_AGE_DAYS (default 7) days ago. The publish time comes
+# from the crates.io sparse index. Needs network access.
+#
+# Until the pinned Rust toolchain enforces `registry.global-min-publish-age` on
+# its own (stable in Rust 1.100), this is the check for crates that reach the
+# lockfile through `cargo update` without the age filter.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+min_days="${TREETIME_MIN_PUBLISH_AGE_DAYS:-7}"
+
+index_path() {
+  local name
+  name="$(printf '%s' "${1}" | tr '[:upper:]' '[:lower:]')"
+  case "${#name}" in
+  1) printf '1/%s' "${name}" ;;
+  2) printf '2/%s' "${name}" ;;
+  3) printf '3/%s/%s' "${name:0:1}" "${name}" ;;
+  *) printf '%s/%s/%s' "${name:0:2}" "${name:2:2}" "${name}" ;;
+  esac
+}
+
+# Print "<name> <version> <pubtime>" of one package from the sparse index.
+pubtime() {
+  local name="${1}" version="${2}" url
+  url="https://index.crates.io/$(index_path "${name}")"
+  curl -fsS --retry 3 "${url}" |
+    jq -r --arg v "${version}" --arg n "${name}" 'select(.vers == $v) | "\($n) \($v) \(.pubtime // "unknown")"'
+}
+
+main() {
+  if (($# == 0)); then
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
+    exit 1
+  fi
+  export -f index_path pubtime
+
+  local results
+  # shellcheck disable=SC2016 # the xargs child bash expands $0 and $1
+  results="$(
+    for lockfile in "$@"; do
+      yq -p toml -o json '.package[]' "${lockfile}" |
+        jq -r 'select(.source == "registry+https://github.com/rust-lang/crates.io-index") | "\(.name) \(.version)"'
+    done | LC_ALL=C sort -u | xargs -P 16 -n 2 bash -c 'pubtime "$0" "$1"'
+  )"
+
+  local young
+  young="$(jq -Rr --argjson days "${min_days}" '
+    split(" ") as [$name, $version, $time]
+    | select($time == "unknown" or ((now - ($time | fromdateiso8601)) < ($days * 86400)))
+    | "  \($name) \($version) published \($time)"' <<<"${results}")"
+
+  if [[ -n "${young}" ]]; then
+    printf 'Crates published less than %s days ago:\n%s\n' "${min_days}" "${young}" >&2
+    exit 1
+  fi
+}
+
+main "$@"

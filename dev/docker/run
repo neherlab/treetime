@@ -1,272 +1,207 @@
 #!/usr/bin/env bash
+#
+# Usage: dev/docker/run [command [args...]]
+#
+# Run a command inside a TreeTime build container. With no command, start an
+# interactive shell. The image is built on first use and rebuilt whenever one of
+# its build inputs changes.
+#
+# The checkout is mounted read-write at its host path, so paths in build output,
+# git worktree links, and per-worktree port resolution match the host. The git
+# metadata is mounted read-only: nothing inside the container can plant a hook or
+# a config entry that later runs on the host.
+#
+# Environment:
+#   CROSS_COMPILE           Target of the image: `native` (default, development
+#                           image) or one of the release targets in dev/cross/targets
+#   TREETIME_DOCKER_IMAGE   `jupyter` selects the v0 Python image instead
+#   TREETIME_DOCKER_X11=1   Share the host X11 display (desktop app development)
+#   TREETIME_DOCKER_PUSH=1  Push the built image and its layer cache to the
+#                           registry (CI on the base branch only)
+#   KACHE_STORE             Host directory of the optional kache compiler cache;
+#                           mounted at the same path when set (see .env.example)
+#   PORTLESS_STATE_DIR      State directory of the optional portless proxy
+#                           (default ~/.portless); mounted when it exists
+#
+# Examples:
+#   dev/docker/run just check
+#   CROSS_COMPILE=aarch64-apple-darwin dev/docker/run dev/cross/build treetime
+#
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./../lib/utils.sh
-source "${BASH_SOURCE%/*}/../lib/utils.sh"
 
-load_env_maybe "$(project_root)/.env.local"
-load_env_maybe "$(project_root)/.env"
-load_env "$(project_root)/.env.example"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
+load_env_file "${root}/.env"
 
-CROSS_COMPILE="${CROSS_COMPILE:-"native"}"
-PROJECT_DOCKER_REPO="${PROJECT_DOCKER_BUILDER_REPO:?}"
-USER="user"
-GROUP="user"
+registry="neherlab/treetime_builder"
+platform="linux/amd64"
+target="${CROSS_COMPILE:-native}"
+kind="${TREETIME_DOCKER_IMAGE:-${target}}"
 
-cache_dir="$(get_cache_dir "${CROSS_COMPILE}")"
-# Cargo downloads (registry, git deps, installed host tools) are architecture
-# independent, so share one directory across all cross targets instead of
-# duplicating them per target.
-cargo_dir="$(project_root)/.cache/cargo"
+# Cross images: the Dockerfile and the toolchain names of each release target.
+cross_image() {
+  dockerfile="dev/docker/${1}.dockerfile"
+  build_args=(
+    --build-arg="CROSS_COMPILE=${target}"
+    --build-arg="CROSS_COMPILE_UPPER=$(printf '%s' "${target//-/_}" | tr '[:lower:]' '[:upper:]')"
+    --build-arg="CROSS_COMPILE_SAFE=${target//-/_}"
+    --build-arg="CROSS_GCC_TRIPLET=${2}"
+    --build-arg="CROSS_ARCH=${3:-}"
+    --build-arg="CROSS_ARCH_DEBIAN=${4:-}"
+    --build-arg="CROSS_RUNNER=${5:-}"
+    --build-arg="CROSS_APPLE_TRIPLET=${6:-}"
+  )
+}
 
-HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
-HOST_TUPLE="x86_64-unknown-linux-gnu"
-HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
-HOST_TUPLE_SAFE="x86_64_unknown_linux_gnu"
-HOST_GCC_TRIPLET="${HOST_TUPLE}"
-
-CROSS_GCC_TRIPLET="${CROSS_COMPILE}"
-case "${CROSS_COMPILE}" in
-x86_64-unknown-linux-gnu)
-  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
-  CROSS_ARCH_DEBIAN="amd64"
-  CROSS_ARCH="x86_64"
-  CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
-  CROSS_COMPILE_SAFE="x86_64_unknown_linux_gnu"
-  CROSS_RUNNER="qemu-${CROSS_ARCH}"
+build_args=()
+case "${kind}" in
+native) dockerfile="dev/docker/native.dockerfile" ;;
+jupyter)
+  dockerfile="dev/docker/jupyter.dockerfile"
+  build_args=(--build-arg="UID=$(id -u)" --build-arg="GID=$(id -g)")
   ;;
-x86_64-unknown-linux-musl)
-  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
-  CROSS_ARCH_DEBIAN="amd64"
-  CROSS_ARCH="x86_64"
-  CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_MUSL"
-  CROSS_COMPILE_SAFE="x86_64_unknown_linux_musl"
-  CROSS_RUNNER="qemu-${CROSS_ARCH}"
-  ;;
-aarch64-unknown-linux-gnu)
-  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
-  CROSS_ARCH_DEBIAN="arm64"
-  CROSS_ARCH="aarch64"
-  CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_GNU"
-  CROSS_COMPILE_SAFE="aarch64_unknown_linux_gnu"
-  CROSS_RUNNER="qemu-${CROSS_ARCH}"
-  ;;
-aarch64-unknown-linux-musl)
-  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
-  CROSS_ARCH_DEBIAN="arm64"
-  CROSS_ARCH="aarch64"
-  CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_MUSL"
-  CROSS_COMPILE_SAFE="aarch64_unknown_linux_musl"
-  CROSS_RUNNER="qemu-${CROSS_ARCH}"
-  ;;
-x86_64-apple-darwin)
-  dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
-  CROSS_COMPILE_UPPER="X86_64_APPLE_DARWIN"
-  CROSS_COMPILE_SAFE="x86_64_apple_darwin"
-  CROSS_APPLE_TRIPLET="x86_64-apple-darwin20.2"
-  CROSS_GCC_TRIPLET="x86_64-apple-darwin20.2"
-  ;;
-aarch64-apple-darwin)
-  dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
-  CROSS_COMPILE_UPPER="AARCH64_APPLE_DARWIN"
-  CROSS_COMPILE_SAFE="aarch64_apple_darwin"
-  CROSS_APPLE_TRIPLET="arm64-apple-darwin20.2"
-  CROSS_GCC_TRIPLET="aarch64-apple-darwin20.2"
-  ;;
-x86_64-pc-windows-gnu)
-  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
-  CROSS_ARCH_DEBIAN="amd64"
-  CROSS_ARCH="x86_64"
-  CROSS_COMPILE_UPPER="X86_64_PC_WINDOWS_GNU"
-  CROSS_COMPILE_SAFE="x86_64_pc_windows_gnu"
-  CROSS_GCC_TRIPLET="x86_64-w64-mingw32"
-  CROSS_RUNNER="/usr/lib/wine/wine64"
-  ;;
-native)
-  dockerfile="$(project_root)/dev/docker/native.dockerfile"
-  ;;
+x86_64-unknown-linux-gnu) cross_image cross-linux "${target}" x86_64 amd64 qemu-x86_64 ;;
+x86_64-unknown-linux-musl) cross_image cross-linux "${target}" x86_64 amd64 qemu-x86_64 ;;
+aarch64-unknown-linux-gnu) cross_image cross-linux "${target}" aarch64 arm64 qemu-aarch64 ;;
+aarch64-unknown-linux-musl) cross_image cross-linux "${target}" aarch64 arm64 qemu-aarch64 ;;
+x86_64-pc-windows-gnu) cross_image cross-linux x86_64-w64-mingw32 x86_64 amd64 /usr/lib/wine/wine64 ;;
+x86_64-apple-darwin) cross_image cross-darwin x86_64-apple-darwin20.2 "" "" "" x86_64-apple-darwin20.2 ;;
+aarch64-apple-darwin) cross_image cross-darwin aarch64-apple-darwin20.2 "" "" "" arm64-apple-darwin20.2 ;;
 *)
-  printf "Unsupported CROSS_COMPILE value: %s\n" "${CROSS_COMPILE}"
+  printf 'Unsupported image: %s. Supported: native, jupyter, and the targets in dev/cross/targets\n' "${kind}" >&2
   exit 1
   ;;
 esac
 
-docker_file_hash="$("$(project_root)/dev/docker/checksum")"
-docker_repo_name_safe="${PROJECT_DOCKER_REPO//\//-}"
-docker_image_tag="${CROSS_COMPILE}-${docker_file_hash}"
-docker_container_name="${docker_repo_name_safe}-${docker_image_tag}-$(datetime_ms_safe)-${RANDOM}"
-docker_builder_name="${docker_repo_name_safe}-${CROSS_COMPILE}_buildx_builder"
-
-images=(
-  "${PROJECT_DOCKER_REPO}:${CROSS_COMPILE}"
-  "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
+# The image tag is a hash of the build inputs, their paths included, so any
+# change to them builds a new image and an unchanged set reuses the tag.
+build_inputs=(
+  "${dockerfile}"
+  "${dockerfile}.dockerignore"
+  dev/docker/files
+  rust-toolchain.toml
 )
-
-# Authenticate mise's GitHub API calls during the image build. mise fetches
-# `ubi:` and `github:` tools from the GitHub API, which throttles anonymous
-# callers to 60 requests/hour/IP and then fails the build with 403. Pass a token
-# as a BuildKit secret (never a build-arg, which is recorded in image history).
-# Source it from the environment, else from `gh auth token`. Optional: with no
-# token the build proceeds against the anonymous limit.
-github_secret_flags=()
-if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  if [[ -n "${GH_TOKEN:-}" ]]; then
-    GITHUB_TOKEN="${GH_TOKEN}"
-  elif command -v gh >/dev/null 2>&1; then
-    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
-  fi
-fi
-if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  export GITHUB_TOKEN
-  github_secret_flags=(--secret="id=github_token,env=GITHUB_TOKEN")
-fi
+case "${kind}" in
+native) build_inputs+=(mise.toml mise.lock dev/lints/dylint-custom/rust-toolchain.toml dev/lints/dylint-mordant/rust-toolchain.toml dev/lints/dylint-trailofbits/rust-toolchain.toml) ;;
+jupyter) build_inputs+=(requirements.txt) ;;
+esac
+image_hash="$(cd "${root}" && hash_files "${build_inputs[@]}" "${build_args[@]+"${build_args[@]}"}" "${platform}")"
+image="${registry}:${kind}-${image_hash}"
 
 build_image() {
-  local build_params=("$@")
-
-  export BUILDKIT_PROGRESS=plain
-  export PROGRESS_NO_TRUNC=1
+  local flags=()
+  if [[ "${TREETIME_DOCKER_PUSH:-}" == 1 ]]; then
+    local builder="treetime-${kind}"
+    docker buildx inspect "${builder}" >/dev/null 2>&1 || docker buildx create --name="${builder}" --driver=docker-container >/dev/null
+    flags=(
+      --builder="${builder}"
+      --push
+      --cache-from="type=registry,ref=${registry}:cache-${kind}"
+      --cache-to="type=registry,mode=max,ref=${registry}:cache-${kind}"
+    )
+  else
+    flags=(--load)
+  fi
   docker buildx build \
-    --file="${dockerfile}" \
-    "${images[@]/#/--tag=}" \
-    "${github_secret_flags[@]}" \
-    --network=host \
-    --build-arg="UID=$(id -u)" \
-    --build-arg="GID=$(id -g)" \
-    --build-arg="USER=${USER}" \
-    --build-arg="GROUP=${GROUP}" \
-    --build-arg="CROSS_ARCH_DEBIAN=${CROSS_ARCH_DEBIAN:-}" \
-    --build-arg="CROSS_ARCH=${CROSS_ARCH:-}" \
-    --build-arg="CROSS_COMPILE=${CROSS_COMPILE:-}" \
-    --build-arg="CROSS_COMPILE_UPPER=${CROSS_COMPILE_UPPER:-}" \
-    --build-arg="CROSS_COMPILE_SAFE=${CROSS_COMPILE_SAFE:-}" \
-    --build-arg="CROSS_APPLE_TRIPLET=${CROSS_APPLE_TRIPLET:-}" \
-    --build-arg="CROSS_GCC_TRIPLET=${CROSS_GCC_TRIPLET:-}" \
-    --build-arg="CROSS_RUNNER=${CROSS_RUNNER:-}" \
-    --build-arg="HOST_TUPLE_DEBIAN=${HOST_TUPLE_DEBIAN}" \
-    --build-arg="HOST_TUPLE=${HOST_TUPLE}" \
-    --build-arg="HOST_TUPLE_UPPER=${HOST_TUPLE_UPPER}" \
-    --build-arg="HOST_TUPLE_SAFE=${HOST_TUPLE_SAFE}" \
-    --build-arg="HOST_GCC_TRIPLET=${HOST_GCC_TRIPLET}" \
-    --load \
-    "${build_params[@]}" \
-    . >/dev/null
+    --platform="${platform}" \
+    --file="${root}/${dockerfile}" \
+    --tag="${image}" \
+    "${build_args[@]+"${build_args[@]}"}" \
+    "${flags[@]}" \
+    --progress=plain \
+    "${root}" >&2
 }
 
-if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-  # CI: check registry first, only build if image doesn't exist
-  if [ -z "${DOCKER_FORCE_REBUILD:-}" ] && docker manifest inspect "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null; then
-    docker pull --quiet "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
-  else
-    if ! docker buildx inspect "${docker_builder_name}" &>/dev/null; then
-      docker buildx create --name="${docker_builder_name}" --driver="docker-container" --driver-opt="network=host" >/dev/null
-    fi
-    build_image \
-      "--builder=${docker_builder_name}" \
-      "--push" \
-      "--cache-to=type=registry,mode=max,ref=${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
-      "${images[@]/#/--cache-from=}"
-    parallel -j ${#images[@]} docker push --quiet ::: "${images[@]}"
-  fi
-else
-  # Local: check local image, build without push
-  if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
+if ! docker image inspect "${image}" >/dev/null 2>&1; then
+  if ! docker pull --quiet --platform="${platform}" "${image}" >/dev/null 2>&1; then
+    printf 'Building image %s\n' "${image}" >&2
     build_image
+    if [[ "${TREETIME_DOCKER_PUSH:-}" == 1 ]]; then
+      docker pull --quiet --platform="${platform}" "${image}" >/dev/null
+    fi
   fi
 fi
 
-# Resolve build directories (handles symlinks from worktrees to main repo)
-# These match ralph's BUILD_DIRS: node_modules, target, .build, .cache
-declare -A build_dirs=()
-for dir in node_modules target .build .cache; do
-  if [[ -e "${dir}" ]] || [[ -L "${dir}" ]]; then
-    build_dirs["${dir}"]=$(readlink -f "${dir}")
-  else
-    build_dirs["${dir}"]="$(pwd)/${dir}"
-  fi
-done
-mkdir -p "${build_dirs[@]}"
-
-declare -A volumes=(
-  ["${build_dirs[node_modules]}"]="/workdir/node_modules"
-  ["${build_dirs[target]}"]="/workdir/target"
-  ["${build_dirs[.build]}"]="/workdir/.build"
-  ["${build_dirs[.cache]}"]="/workdir/.cache"
-  ["${cargo_dir}/git"]="/home/${USER}/.cargo/git"
-  ["${cargo_dir}/install"]="/home/${USER}/.cargo/install"
-  ["${cargo_dir}/registry/cache"]="/home/${USER}/.cargo/registry/cache"
-  ["${cargo_dir}/registry/index"]="/home/${USER}/.cargo/registry/index"
-  ["${cargo_dir}/registry/src"]="/home/${USER}/.cargo/registry/src"
-  ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
+run_flags=(
+  --rm
+  --interactive
+  --init
+  --platform="${platform}"
+  --network=host
+  --cap-drop=ALL
+  --security-opt=no-new-privileges
+  --user="$(id -u):$(id -g)"
+  --volume="${root}:${root}"
+  --env="TREETIME_CONTAINER=1"
+  --env="TREETIME_ROOT=${root}"
+  --env="TERM=${TERM:-xterm-256color}"
+  --env="TZ=Etc/UTC"
+  --env="LANG=C.UTF-8"
+  --env="DO_NOT_TRACK=1"
+  --env="MISE_DISABLE_UPDATE_WARNING=1"
+  --env="TURBO_TELEMETRY_DISABLED=1"
 )
-
-git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
-if [[ "${git_common_dir}" != "$(pwd)/.git" ]]; then
-  volumes["${git_common_dir}"]="${git_common_dir}"
+if [[ -t 0 && -t 1 ]]; then
+  run_flags+=(--tty)
 fi
 
-# Compiler cache (optional). Forward kache and standard cargo cache variables
-# from the environment (see .env) into the container. Set none of them and the
-# build compiles directly, exactly as before. The local-disk store
-# (KACHE_CACHE_DIR) is bind-mounted at the same location inside the container.
-# Values containing spaces (e.g. CC="kache cc") survive because each becomes a
-# single --env arg.
-cache_env_flags=()
-for name in RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER CARGO_INCREMENTAL CC CXX "${!KACHE_@}"; do
+# The working directory follows the caller when it is inside the checkout.
+cwd="$(pwd -P)"
+case "${cwd}/" in
+"${root}/"*) run_flags+=(--workdir="${cwd}") ;;
+*) run_flags+=(--workdir="${root}") ;;
+esac
+
+# A linked worktree keeps its git directory under the main checkout, outside the
+# mounted root; mount the common directory read-only so git works inside.
+if git_common_dir="$(git -C "${root}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  run_flags+=(--volume="${git_common_dir}:${git_common_dir}:ro")
+fi
+
+for name in CI GITHUB_ACTIONS COLORTERM NO_COLOR FORCE_COLOR TREETIME_BUILD_MODE TREETIME_VERSION_SUFFIX TREETIME_API_PORT TREETIME_WEB_PORT TREETIME_PORTLESS; do
   if [[ -n "${!name+x}" ]]; then
-    cache_env_flags+=(--env="${name}=${!name}")
+    run_flags+=(--env="${name}=${!name}")
   fi
 done
 
-if [[ "${KACHE_CACHE_DIR:-}" == /* ]]; then
-  volumes["${KACHE_CACHE_DIR}"]="${KACHE_CACHE_DIR}"
-fi
-
-mkdir -p "${!volumes[@]}"
-
-version_flags=()
-if [[ -n "${TREETIME_BUILD_MODE+x}" ]]; then
-  version_flags+=(--env="TREETIME_BUILD_MODE=${TREETIME_BUILD_MODE}")
-fi
-if [[ -n "${TREETIME_VERSION_SUFFIX+x}" ]]; then
-  version_flags+=(--env="TREETIME_VERSION_SUFFIX=${TREETIME_VERSION_SUFFIX}")
-fi
-
-x11_flags=()
-if [[ -n "${DISPLAY:-}" ]]; then
-  x11_flags=(
-    --volume="/tmp/.X11-unix:/tmp/.X11-unix:ro"
-    --volume="${XAUTHORITY:-$HOME/.Xauthority}:/tmp/.Xauthority:ro"
-    --env="DISPLAY=${DISPLAY}"
-    --env="XAUTHORITY=/tmp/.Xauthority"
-    --env="ELECTRON_DISABLE_SANDBOX=1"
-    --ipc=host
+case "${kind}" in
+jupyter)
+  mkdir -p "${root}/.cache/jupyter"
+  run_flags+=(--volume="${root}/.cache/jupyter:/home/user/.jupyter" --env="JUPYTER_PORT=${JUPYTER_PORT:-10000}")
+  ;;
+*)
+  # The cargo home and the bun cache live under .cache of the checkout; build
+  # output goes to .build/container, apart from host builds in .build/host.
+  mkdir -p "${root}/.cache/cargo" "${root}/.cache/bun" "${root}/.build/container"
+  run_flags+=(
+    --env="HOME=/tmp/home"
+    --env="MISE_TRUSTED_CONFIG_PATHS=${root}"
+    --env="CARGO_HOME=${root}/.cache/cargo"
+    --env="DYLINT_DRIVER_PATH=${root}/.cache/cargo/dylint_drivers"
+    --env="TREETIME_BUILD_DIR=${root}/.build/container"
+    --env="BUN_INSTALL_CACHE_DIR=${root}/.cache/bun"
+    --env="electron_config_cache=${root}/.cache/electron"
   )
-fi
+  if [[ -n "${KACHE_STORE:-}" ]]; then
+    mkdir -p "${KACHE_STORE}"
+    run_flags+=(--env="KACHE_STORE=${KACHE_STORE}" --volume="${KACHE_STORE}:${KACHE_STORE}")
+  fi
+  portless_dir="${PORTLESS_STATE_DIR:-${HOME}/.portless}"
+  if [[ -d "${portless_dir}" ]]; then
+    run_flags+=(--env="PORTLESS_STATE_DIR=${portless_dir}" --volume="${portless_dir}:${portless_dir}")
+  fi
+  if [[ "${TREETIME_DOCKER_X11:-}" == 1 && -n "${DISPLAY:-}" ]]; then
+    run_flags+=(
+      --volume="/tmp/.X11-unix:/tmp/.X11-unix:ro"
+      --volume="${XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.Xauthority:ro"
+      --env="DISPLAY=${DISPLAY}"
+      --env="XAUTHORITY=/tmp/.Xauthority"
+      --env="ELECTRON_DISABLE_SANDBOX=1"
+      --ipc=host
+    )
+  fi
+  ;;
+esac
 
-# shellcheck disable=SC2046
-docker run --rm -i $(tty -s && echo "-t") \
-  --init \
-  --network=host \
-  --name="${docker_container_name}" \
-  --user="$(id -u):$(id -g)" \
-  --workdir="/workdir" \
-  --volume="$(pwd):/workdir" \
-  $(for path in "${!volumes[@]}"; do echo "--volume=${path}:${volumes[$path]}"; done) \
-  --env="UID=$(id -u)" \
-  --env="GID=$(id -g)" \
-  --env="USER=${USER}" \
-  --env="GROUP=${GROUP}" \
-  --env="PS1=\${USER}@\${HOST}" \
-  --env="TERM=xterm-256color" \
-  --env="TZ=Etc/UTC" \
-  --env="LANG=C.UTF-8" \
-  --env="DO_NOT_TRACK=1" \
-  --env="TURBO_TELEMETRY_DISABLED=1" \
-  --env="electron_config_cache=/workdir/.cache/electron" \
-  "${cache_env_flags[@]}" \
-  "${version_flags[@]}" \
-  "${x11_flags[@]}" \
-  --ulimit="core=0" \
-  "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
-  "${@:-bash}"
+exec docker run "${run_flags[@]}" "${image}" "${@:-bash}"

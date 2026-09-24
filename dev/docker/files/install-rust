@@ -1,44 +1,27 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <directory-with-rust-toolchain.toml> [target...]
+#
+# Install rustup and the toolchain that rust-toolchain.toml in the given
+# directory pins, plus the given compilation targets. RUSTUP_HOME and CARGO_HOME
+# select the installation directories; both end up writable by every user, so a
+# container running as the host user can add to them.
+#
 set -euxo pipefail
 
-triplet=${1}
-dest=${2:-"/opt/rust-${1}"}
-mkdir -p "${dest}"
+toolchain_dir="${1:?directory with rust-toolchain.toml}"
+shift
 
-export PATH="${dest}/bin:${PATH:+":${PATH}"}"
+/fetch "https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-unknown-linux-gnu/rustup-init" "/tmp/rustup-init"
+chmod +x "/tmp/rustup-init"
+/tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain none
+rm "/tmp/rustup-init"
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain=none
-
-rustup set profile minimal
-
-if [ ! -f "${dest}/rust-toolchain.toml" ]; then
-  echo "$0: file not found: '${dest}/rust-toolchain.toml'" >&2
-  exit 1
+cd "${toolchain_dir}"
+rustup toolchain install
+rustup default "$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)"
+if (($# > 0)); then
+  rustup target add "$@"
 fi
-
-# `rustup show` installs toolchain version specified in `rust-toolchain.toml` in the current directory
-cd "${dest}"
-rustup show
-
-rustup component add clippy rustfmt llvm-tools-preview
-
-if [ -n "${triplet:-}" ]; then
-  rustup target add "${triplet}"
-fi
-
-rustc --version --verbose
-cargo --version --verbose
-
-CARGO_LLVM_COV_VERSION="0.8.5"
-curl -sSL "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${CARGO_LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-llvm-cov"
-chmod +x "${dest}/bin/cargo-llvm-cov"
-cargo llvm-cov --version
-
-CARGO_SHEAR_VERSION="1.11.2"
-curl -sSL "https://github.com/Boshen/cargo-shear/releases/download/v${CARGO_SHEAR_VERSION}/cargo-shear-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-shear"
-chmod +x "${dest}/bin/cargo-shear"
-cargo shear --version
-
-BACON_VERSION="3.23.0"
-cargo -q install --locked bacon --version "${BACON_VERSION}"
-bacon --version
+chmod -R a+w "${RUSTUP_HOME:?}" "${CARGO_HOME:?}"
+rustc --version

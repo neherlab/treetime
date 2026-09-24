@@ -1,0 +1,6 @@
+*
+!dev/docker/files/
+!dev/lints/*/rust-toolchain.toml
+!mise.lock
+!mise.toml
+!rust-toolchain.toml

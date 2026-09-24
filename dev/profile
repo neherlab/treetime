@@ -41,12 +41,12 @@ trap "exit" INT
 THIS_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 PROJECT_DIR="$(dirname "${THIS_DIR}")"
 
-BIN_DIR=".build/docker/profiling"
+BIN_DIR=".build/container/cargo/profiling"
 SAMPLE_RATE=1234
 
 build_binary() {
   local program="${1}"
-  "${THIS_DIR}/docker/run" just bp "${program}" >&2
+  "${THIS_DIR}/docker/run" just build-profiling "${program}" >&2
 }
 
 profile_perf() {

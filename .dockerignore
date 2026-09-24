@@ -1,7 +1,0 @@
-*
-!/dev/docker/files/
-!/dev/lints/dylint-custom/rust-toolchain.toml
-!/requirements.txt
-!/rust-toolchain.toml
-!/mise.toml
-!/mise.lock

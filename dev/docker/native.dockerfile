@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.8
-
+#
+# Development image: Rust and Bun toolchains, lint and test tools, and the
+# libraries the desktop app needs. dev/docker/run builds it and runs every
+# command as the host user, with HOME=/tmp/home and the cargo home in the
+# checkout. Ubuntu 24.04 keeps the glibc of the binaries built here no newer than
+# on current hosts, so profiling builds run on the host.
+FROM ubuntu:noble-20260905@sha256:a053cbffda9d424679c103c5b4f452297efc3774a1e491c110289f726fbb5d34
 SHELL ["bash", "-euxo", "pipefail", "-c"]
-
-ENV HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
-ENV HOST_TUPLE="x86_64-unknown-linux-gnu"
 
 RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \
-&& apt-get update -qq --yes \
-&& apt-get install -qq --no-install-recommends --yes \
-  bash \
-  bash-completion \
+&& apt-get update -qq \
+&& apt-get install --no-install-recommends --yes -qq \
   ca-certificates \
   curl \
   file \
@@ -20,153 +20,114 @@ RUN set -euxo pipefail >/dev/null \
   libc6-dev \
   libfontconfig-dev \
   libssl-dev \
-  lsb-release \
   make \
-  parallel \
   pigz \
   pixz \
   pkg-config \
   python3 \
-  python3-pip \
-  sudo \
-  tar \
-  time \
   unzip \
-  util-linux \
   xz-utils \
   zstd \
 >/dev/null \
-&& rm -rf /var/lib/apt/lists/* \
 && apt-get clean autoclean >/dev/null \
-&& apt-get autoremove --yes >/dev/null
+&& apt-get autoremove --yes >/dev/null \
+&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-
-
-ENV HOST_GCC_DIR="/usr/local"
-ENV HOSTCC="${HOST_GCC_DIR}/bin/gcc"
-ENV HOSTCXX="${HOST_GCC_DIR}/bin/g++"
-ENV HOSTFC="${HOST_GCC_DIR}/bin/gfortran"
-ENV C_INCLUDE_PATH="/usr/include::/usr/local/include:/usr/include/${HOST_TUPLE_DEBIAN}"
-ENV CPLUS_INCLUDE_PATH="${C_INCLUDE_PATH}"
-ENV LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/lib/${HOST_TUPLE_DEBIAN}"
-ENV LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/lib/${HOST_TUPLE_DEBIAN}"
-
-COPY --link "dev/docker/files/install-gcc" "/"
-RUN /install-gcc "${HOST_GCC_DIR}"
-
-COPY --link "dev/docker/files/install-llvm" "/"
-RUN /install-llvm
-
-COPY --link "dev/docker/files/install-protobuf" "/"
-RUN /install-protobuf
-
-COPY --link "dev/docker/files/install-hyperfine" "/"
-RUN /install-hyperfine
-
-COPY --link "dev/docker/files/install-seqkit" "/"
-RUN /install-seqkit
-
-COPY --link "dev/docker/files/install-iqtree" "/"
-RUN /install-iqtree
-
-COPY --link "dev/docker/files/install-kache" "/"
-RUN /install-kache
-
-COPY --link "dev/docker/files/install-nodejs" "/"
-RUN /install-nodejs
-
-COPY --link "dev/docker/files/install-electron-deps" "/"
-RUN /install-electron-deps
-
-ENV GTK_THEME="Adwaita:dark"
-
+# Runtime libraries of Electron, for the desktop app in development.
 RUN set -euxo pipefail >/dev/null \
-&& mkdir -p "/etc/gtk-3.0" \
-&& printf '[Settings]\ngtk-application-prefer-dark-theme=1\n' > "/etc/gtk-3.0/settings.ini"
+&& export DEBIAN_FRONTEND=noninteractive \
+&& apt-get update -qq \
+&& apt-get install --no-install-recommends --yes -qq \
+  dbus \
+  libasound2t64 \
+  libatk-bridge2.0-0t64 \
+  libatk1.0-0t64 \
+  libatspi2.0-0t64 \
+  libcairo2 \
+  libcups2t64 \
+  libdbus-1-3 \
+  libdrm2 \
+  libgbm1 \
+  libgl1 \
+  libgl1-mesa-dri \
+  libglib2.0-0t64 \
+  libgtk-3-0t64 \
+  libnss3 \
+  libpango-1.0-0 \
+  libx11-6 \
+  libxcb1 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxext6 \
+  libxfixes3 \
+  libxkbcommon0 \
+  libxrandr2 \
+  libxshmfence1 \
+  xdg-utils \
+>/dev/null \
+&& apt-get clean autoclean >/dev/null \
+&& apt-get autoremove --yes >/dev/null \
+&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-ENV HOST_PREFIX="/usr"
-ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"
-ENV OPENBLAS_LIB_DIR="${HOST_PREFIX}/lib"
-COPY --link "dev/docker/files/install-openblas" "/"
-RUN /install-openblas "${HOST_TUPLE}" "${HOST_PREFIX}"
+COPY dev/docker/files/fetch dev/docker/files/checksums /
 
-COPY --link "dev/docker/files/install-libbzip2" "/"
-RUN /install-libbzip2 "${HOST_TUPLE}" "${HOST_PREFIX}"
-
-COPY --link "dev/docker/files/install-liblzma" "/"
-RUN /install-liblzma "${HOST_TUPLE}" "${HOST_PREFIX}"
-
-COPY --link "dev/docker/files/install-libz" "/"
-RUN /install-libz "${HOST_TUPLE}" "${HOST_PREFIX}"
-
-COPY --link "dev/docker/files/install-libzstd" "/"
-RUN /install-libzstd "${HOST_TUPLE}" "${HOST_PREFIX}"
-ENV ZSTD_SYS_USE_PKG_CONFIG="1"
-ENV LIBZ_SYS_STATIC="1"
-
-
-
-ARG USER=user
-ARG GROUP=user
-ARG UID
-ARG GID
-
-ENV USER=$USER
-ENV GROUP=$GROUP
-ENV UID=$UID
-ENV GID=$GID
-ENV TERM="xterm-256color"
-ENV HOME="/home/${USER}"
-
-COPY --link "dev/docker/files/create-user" "/"
-RUN /create-user
-
-
-USER ${USER}
-
-
-ENV CARGO_HOME="${HOME}/.cargo"
-ENV PATH="${CARGO_HOME}/bin:${PATH}"
-COPY --link --chown="${UID}:${GID}" "rust-toolchain.toml" "${CARGO_HOME}/rust-toolchain.toml"
-COPY --link "dev/docker/files/install-rust" "/"
+# GCC 14 is the C compiler and link driver; it also provides the static
+# libgfortran that the OpenBLAS archive needs. It does not know the Debian
+# multiarch layout, so the include and library paths name it.
+# LLVM provides libclang for bindgen.
+ENV C_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
+ENV CPLUS_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
+ENV LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
+ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib"
+COPY dev/docker/files/install-gcc dev/docker/files/install-llvm dev/docker/files/install-openblas /
 RUN set -euxo pipefail >/dev/null \
-&& /install-rust "${HOST_TUPLE}" "${CARGO_HOME}"
+&& /install-gcc "/usr/local" \
+&& /install-llvm "/usr/local" \
+&& /install-openblas "x86_64-unknown-linux-gnu" "/usr/local" \
+&& rm /install-gcc /install-llvm /install-openblas
 
-COPY --link "dev/docker/files/install-dylint" "/"
-COPY --link --chown="${UID}:${GID}" "dev/lints/dylint-custom/rust-toolchain.toml" "/tmp/lints/dylint/rust-toolchain.toml"
+# The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
+# libraries and the toolchain that cargo-hawk is built against.
+ENV RUSTUP_HOME="/usr/local/rustup"
+ENV CARGO_HOME="/usr/local/cargo"
+ENV PATH="/usr/local/cargo/bin:${PATH}"
+COPY dev/docker/files/install-rust /
+COPY rust-toolchain.toml /tmp/rust/
+COPY dev/lints/dylint-custom/rust-toolchain.toml /tmp/lints/dylint-custom/
+COPY dev/lints/dylint-mordant/rust-toolchain.toml /tmp/lints/dylint-mordant/
+COPY dev/lints/dylint-trailofbits/rust-toolchain.toml /tmp/lints/dylint-trailofbits/
+COPY dev/docker/files/hawk-toolchain /tmp/
+# hadolint ignore=DL3003
 RUN set -euxo pipefail >/dev/null \
-&& /install-dylint \
-&& rm -rf "/tmp/lints"
+&& /install-rust "/tmp/rust" \
+&& for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install); done \
+&& rustup toolchain install "$(cat /tmp/hawk-toolchain)" --profile minimal --component rustc-dev,llvm-tools-preview,rust-src \
+&& chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
+&& rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain
 
-COPY --link "dev/docker/files/install-hawk" "dev/docker/files/hawk-toolchain" "/"
+# mise installs every tool of mise.toml at the URL and sha256 of mise.lock and
+# links their executables into /usr/local/bin. The cargo registry that source
+# builds fetch is a BuildKit cache, so it stays out of the image.
+ENV MISE_DATA_DIR="/opt/mise"
+ENV MISE_CACHE_DIR="/tmp/mise/cache"
+ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY mise.toml mise.lock /tmp/mise/project/
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+  set -euxo pipefail >/dev/null \
+&& /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \
+&& tar -xzf "/tmp/mise.tar.gz" --strip-components=2 -C "/usr/local/bin" "mise/bin/mise" \
+&& export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
+&& mise -C "/tmp/mise/project" install \
+&& for dir in $(mise -C "/tmp/mise/project" bin-paths); do \
+  find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + ; \
+done \
+&& chmod -R a+rX "${MISE_DATA_DIR}" \
+&& rm -rf "/tmp/mise" "/tmp/mise.tar.gz" \
+&& just --version \
+&& cargo nextest --version \
+&& cargo dylint --version
+
+# dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \
-&& /install-hawk
-
-
-# Developer tooling via mise, pinned and checksummed in mise.lock. This layer is
-# last so the expensive toolchain layers above stay cached. mise.toml / mise.lock
-# are inputs to dev/docker/checksum, so a tool change rebuilds the image. At run
-# time the mise shims resolve the same versions from the global config below.
-#
-# mise fetches `ubi:` and `github:` tools through the GitHub API, which caps
-# anonymous callers at 60 requests/hour/IP and fails the whole build once that is
-# spent. dev/docker/run passes a token through a BuildKit secret so mise
-# authenticates; `env=GITHUB_TOKEN` exposes it only for this RUN, so it never
-# reaches an image layer or the build history. The secret is optional: with no
-# token GITHUB_TOKEN stays unset and mise falls back to anonymous access.
-ENV MISE_DATA_DIR="${HOME}/.local/share/mise"
-ENV MISE_GLOBAL_CONFIG_FILE="${HOME}/tools/mise.toml"
-ENV MISE_TRUSTED_CONFIG_PATHS="/workdir:${HOME}/tools"
-ENV MISE_NOT_FOUND_AUTO_INSTALL="0"
-ENV PATH="${HOME}/.local/bin:${MISE_DATA_DIR}/shims:${PATH}"
-ARG MISE_VERSION="v2026.9.11"
-COPY --link --chown="${UID}:${GID}" "mise.toml" "mise.lock" "${HOME}/tools/"
-RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -euxo pipefail >/dev/null \
-&& curl -fsSL https://mise.run | MISE_INSTALL_PATH="${HOME}/.local/bin/mise" MISE_VERSION="${MISE_VERSION}" sh \
-&& mise trust "${HOME}/tools/mise.toml" \
-&& mise install \
-&& mise reshim \
-&& mise ls \
-&& just --version
-
-ENV RUSTFLAGS="-Clink-arg=-B/usr/lib/${HOST_TUPLE_DEBIAN}/"
+&& mkdir -p "/tmp/home" \
+&& chmod 1777 "/tmp/home"

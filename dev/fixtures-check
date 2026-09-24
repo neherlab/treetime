@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Check the reference and golden-master fixtures against their registry,
+# dev/registry/reference-files.toml: every owning test and listed file must
+# exist, and every tracked file under a registered root must be claimed by an
+# entry. Exits 1 on any finding.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+registry="dev/registry/reference-files.toml"
+json="$(yq -p toml -o json '.' "${registry}")"
+rc=0
+
+while IFS=$'\t' read -r name test; do
+  if [[ -n "${test}" && ! -f "${test}" ]]; then
+    printf "group '%s': owning test not found: %s\n" "${name}" "${test}" >&2
+    rc=1
+  fi
+done < <(jq -r '.reference[] | [.name, (.test // "")] | @tsv' <<<"${json}")
+
+covered="$(jq -r '[.reference[].files[]] | unique | .[]' <<<"${json}")"
+while IFS= read -r file; do
+  if [[ ! -f "${file}" ]]; then
+    printf 'listed fixture is missing: %s\n' "${file}" >&2
+    rc=1
+  fi
+done <<<"${covered}"
+
+mapfile -t roots < <(jq -r '.roots[]' <<<"${json}")
+unclaimed="$(comm -23 <(git ls-files -- "${roots[@]}" | grep -v '_capture$' | LC_ALL=C sort -u) <(LC_ALL=C sort -u <<<"${covered}"))"
+if [[ -n "${unclaimed}" ]]; then
+  printf 'tracked fixtures that no registry entry claims (register them in %s or delete them):\n' "${registry}" >&2
+  while IFS= read -r file; do
+    printf '  %s\n' "${file}" >&2
+  done <<<"${unclaimed}"
+  rc=1
+fi
+
+exit "${rc}"

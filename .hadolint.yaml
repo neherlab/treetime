@@ -3,9 +3,12 @@
 # read the steps as POSIX sh.
 # APT packages follow the repositories of each pinned base image. Exact package versions
 # become unavailable when those repositories update, so the Dockerfiles cannot maintain them.
-# Hadolint reports SC2086 on complete RUN instructions even when each variable use is quoted.
+# Hadolint reports SC2086 on complete RUN instructions even when each variable use is quoted,
+# and hadolint 2.15 forgets the bash SHELL after ARG and ENV, so it reports bash syntax
+# (SC3015, SC3040) as POSIX sh (https://github.com/hadolint/hadolint/issues/1241).
 ignored:
   - DL3008
   - SC2086
   - SC2239
+  - SC3015
   - SC3040

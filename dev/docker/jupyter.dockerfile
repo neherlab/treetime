@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.8
+FROM debian:12.14-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
@@ -22,7 +22,6 @@ RUN set -euxo pipefail >/dev/null \
   pkg-config \
   python3 \
   python3-pip \
-  sudo \
   tar \
   time \
   unzip \
@@ -48,7 +47,7 @@ ENV TERM="xterm-256color"
 ENV HOME="/home/${USER}"
 ENV CONDA_DIR="${HOME}/.conda"
 
-COPY --link "dev/docker/files/create-user" "/"
+COPY --link "dev/docker/files/fetch" "dev/docker/files/checksums" "dev/docker/files/create-user" "/"
 RUN /create-user
 
 
@@ -58,6 +57,8 @@ COPY --link "dev/docker/files/start-jupyter" "/"
 RUN set -euxo pipefail >/dev/null \
 && cp -r /.conda "${CONDA_DIR}/" \
 && chown -R "${UID}:${GID}" "${CONDA_DIR}"
+
+COPY --link --chmod=0755 "dev/docker/files/usr/bin/treetime" "/usr/bin/treetime"
 
 
 USER ${USER}
@@ -75,7 +76,7 @@ RUN set -euxo pipefail >/dev/null \
 && echo 'blas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
 && echo 'conda-forge::blas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
 && echo 'conda-forge::libblas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
-&& curl -fsSLo "${CONDA_DIR}/bin/micromamba" "https://github.com/mamba-org/micromamba-releases/releases/download/2.0.2-2/micromamba-linux-64" \
+&& /fetch "https://github.com/mamba-org/micromamba-releases/releases/download/2.0.2-2/micromamba-linux-64" "${CONDA_DIR}/bin/micromamba" \
 && chmod +x "${CONDA_DIR}/bin/micromamba" \
 && micromamba install --yes \
   --root-prefix="${CONDA_DIR}" \
@@ -120,8 +121,3 @@ RUN set -euxo pipefail >/dev/null \
 RUN set -euxo pipefail >/dev/null \
 && python -c "import matplotlib.pyplot"
 
-# Copy TreeTime legacy wrapper script (as root)
-USER root
-COPY --link "dev/docker/files/usr/bin/treetime" "/usr/bin/treetime"
-RUN chmod +x /usr/bin/treetime
-USER ${USER}

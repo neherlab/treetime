@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <binary> [target]
+#
+# Print the linkage of a cross-compiled binary. Fails when a musl binary is not
+# static or depends on glibc or libgcc; glibc binaries link glibc by design.
+#
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./lib/utils.sh
-source "${BASH_SOURCE%/*}/lib/utils.sh"
 
 bin="${1:?}"
 target="${2:-"${CROSS_COMPILE:-}"}"
 target_safe="${target//-/_}"
 
 has_error=0
+must_be_static=0
+[[ "${target}" == *-linux-musl ]] && must_be_static=1
 
 function run_for_linux() {
   : "${CROSS_SYSROOT:?}"
@@ -21,20 +26,20 @@ function run_for_linux() {
   output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
   if ! echo "$output" | grep -qE 'statically linked|not a dynamic executable'; then
     echo "Not a static executable: '$1'" >&2
-    has_error=1
+    has_error="${must_be_static}"
   fi
 
   dump=$("${OBJDUMP}" -p "$1" 2>&1 || true)
   glibc_version=$(echo "${dump}" | grep 'GLIBC_' | awk '{print $NF}' | sed 's/GLIBC_//' | sort -V | tail -n 1)
   if [ -n "$glibc_version" ]; then
     echo "Depends on glibc $glibc_version" >&2
-    has_error=1
+    has_error="${must_be_static}"
   fi
 
   libgcc_version=$(echo "${dump}" | grep 'GCC_' | awk '{print $NF}' | sed 's/GCC_//' | sort -V | tail -n 1)
   if [ -n "${libgcc_version}" ]; then
     echo "Depends on libgcc ${libgcc_version}" >&2
-    has_error=1
+    has_error="${must_be_static}"
   fi
 
   needs=$("${OBJDUMP}" -p "${1}" | awk '$1 == "NEEDED" {print $2}' | tr -s ' ' | sort)
@@ -93,11 +98,13 @@ function main() {
   elif [[ "${target}" =~ (linux) ]]; then
     run_for_linux "${bin}"
   else
-    warn "Unknown target platform: ${target}"
+    printf "Unknown target platform: %s\n" "${target}" >&2
+    has_error=1
   fi
 
   if [ "$has_error" != "0" ]; then
-    echo "$0: Error: static binary checks failed (see above): '$1'" >&2
+    printf '%s: static binary checks failed (see above): %s\n' "$0" "${bin}" >&2
+    exit 1
   fi
 }
 

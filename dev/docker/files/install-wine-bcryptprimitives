@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <directory>
+#
+# Install a bcryptprimitives.dll stub, which Rust programs need to start under
+# Wine; dev/cross/run copies it into the Wine prefix.
+#
+set -euxo pipefail
+
+dest="${1:?directory}"
+release="2024-11-04_16-27-34"
+archive="/tmp/bcryptprimitives.dll.gz"
+mkdir -p "${dest}"
+
+/fetch "https://github.com/binarylandia/wine_bcryptprimitives_dll_mock/releases/download/${release}/bcryptprimitives.dll-${release}.gz" "${archive}"
+gzip -dc "${archive}" >"${dest}/bcryptprimitives.dll"
+rm "${archive}"

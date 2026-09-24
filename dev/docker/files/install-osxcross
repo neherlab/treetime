@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <prefix>
+#
+# Install the osxcross toolchain and the macOS SDK into a prefix.
+#
 set -euxo pipefail
 
-dest=${1:-"/opt/osxcross"}
+dest="${1:?prefix}"
+release="2024-12-22_17-20-35"
+archive="/tmp/osxcross.tar.xz"
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/build_osxcross/releases/download/2024-12-22_17-20-35/osxcross-full-41f3856-2024-12-22_17-20-35.tar.xz" |
-  pixz -dp "$(nproc)" |
-  tar -C "${dest}" -x
+/fetch "https://github.com/binarylandia/build_osxcross/releases/download/${release}/osxcross-full-41f3856-${release}.tar.xz" "${archive}"
+pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
+rm "${archive}"

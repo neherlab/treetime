@@ -14,12 +14,6 @@ else
   groupmod --new-name "${GROUP}" "${GROUP_EXISTING}"
 fi
 
-if [ -f /etc/debian_version ]; then
-  SUDO_GROUP="sudo"
-else
-  SUDO_GROUP="wheel"
-fi
-
 if [ -z "$(getent passwd ${UID})" ]; then
   useradd \
     --system \
@@ -27,7 +21,7 @@ if [ -z "$(getent passwd ${UID})" ]; then
     --create-home \
     --shell "/bin/bash" \
     --gid "${GROUP}" \
-    --groups "${SUDO_GROUP},${GROUP}" \
+    --groups "${GROUP}" \
     --uid ${UID} \
     "${USER}"
 else
@@ -41,7 +35,7 @@ else
       --home "${HOME}" \
       --shell "/bin/bash" \
       --gid "${GID}" \
-      --groups "${SUDO_GROUP},${GROUP}" \
+      --groups "${GROUP}" \
       --uid "${UID}" \
       --login "${USER}" \
       "${USER_EXISTING}"
@@ -51,15 +45,6 @@ else
 fi
 
 cp -a /etc/skel/. "${HOME}"/
-
-sed -i'' \
-  -e 's|^%sudo.*|%sudo ALL=(ALL:ALL) NOPASSWD: ALL|g' \
-  -e 's|^root.*|root ALL=(ALL:ALL) NOPASSWD: ALL|g' \
-  -e 's|^#includedir.*||g' \
-  "/etc/sudoers"
-
-echo "%sudo ALL=(ALL) NOPASSWD:ALL" >>"/etc/sudoers"
-echo "${USER} ALL=(ALL) NOPASSWD:ALL" >>"/etc/sudoers"
 
 cat <<'EOF' >>"${HOME}/.bashrc"
 HISTSIZE=100000

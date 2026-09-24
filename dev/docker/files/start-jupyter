@@ -17,4 +17,4 @@ jupyter lab \
   --ServerApp.log_level=ERROR \
   --ExtensionApp.log_level=ERROR \
   --LabApp.log_level=ERROR \
-  --FileCheckpoints.checkpoint_dir=/workdir/.cache/.ipynb_checkpoints
+  --FileCheckpoints.checkpoint_dir="${TREETIME_ROOT:?}/.cache/.ipynb_checkpoints"

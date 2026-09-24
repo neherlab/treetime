@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <generate|check> [group...]
+#
+# Regenerate the committed generated files, or check that the committed copies
+# match a fresh generation. `check` writes nothing into the working tree. Without
+# groups, every group is processed.
+#
+# Groups:
+#   schemas     packages/schemas/*.schema.json, from the CLI and data types (schemars)
+#   openapi     packages/app-contracts/openapi.yaml, from the app-server handlers (utoipa)
+#   ts-client   packages/app-contracts/src/generated/, from openapi.yaml (@hey-api/openapi-ts)
+#   napi-types  packages/app-napi/index.d.ts, from the #[napi] exports of the Node addon
+#   cli-docs    docs/docs/reference.md, from the CLI help tree
+#
+# Examples:
+#   $0 check
+#   $0 generate openapi ts-client
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "${root}"
+
+all_groups=(schemas openapi ts-client napi-types cli-docs)
+
+# Each produce_<group> writes the files of the group below the given directory,
+# at their repository-relative paths, and prints those paths.
+produce_schemas() {
+  mkdir -p "${1}/packages/schemas"
+  cargo run --locked --quiet --bin treetime -- schema --for all -o "${1}/packages/schemas" >&2
+  printf 'packages/schemas\n'
+}
+
+produce_openapi() {
+  mkdir -p "${1}/packages/app-contracts"
+  cargo run --locked --quiet -p app-server --bin generate-openapi -- "${1}/packages/app-contracts/openapi.yaml" >&2
+  printf 'packages/app-contracts/openapi.yaml\n'
+}
+
+produce_ts_client() {
+  mkdir -p "${1}/packages/app-contracts/src/generated"
+  (cd packages/app-contracts && bun run --silent generate --output "${1}/packages/app-contracts/src/generated") >&2
+  printf 'packages/app-contracts/src/generated\n'
+}
+
+produce_napi_types() {
+  mkdir -p "${1}/packages/app-napi"
+  (cd packages/app-napi && RUSTC_WRAPPER="" node_modules/.bin/napi build --platform --no-js --no-dts-header --output-dir "${1}/packages/app-napi") >&2
+  printf 'packages/app-napi/index.d.ts\n'
+}
+
+produce_cli_docs() {
+  cargo build --locked --quiet --bin treetime >&2
+  docs/generate-reference-docs "${CARGO_TARGET_DIR:-target}/debug/treetime" "${1}/docs/docs/reference.md"
+  printf 'docs/docs/reference.md\n'
+}
+
+main() {
+  local mode="${1:-}"
+  case "${mode}" in
+  generate | check) shift ;;
+  -h | --help | *)
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+    [[ "${mode}" == -h || "${mode}" == --help ]]
+    return
+    ;;
+  esac
+
+  local groups=("$@")
+  if ((${#groups[@]} == 0)); then
+    groups=("${all_groups[@]}")
+  fi
+
+  out="$(mktemp -d)"
+  trap 'rm -rf "${out}"' EXIT
+
+  local group path rc=0
+  for group in "${groups[@]}"; do
+    case " ${all_groups[*]} " in
+    *" ${group} "*) ;;
+    *)
+      printf 'Unknown group: %s (%s)\n' "${group}" "${all_groups[*]}" >&2
+      return 1
+      ;;
+    esac
+    printf '==> %s\n' "${group}" >&2
+    path="$("produce_${group//-/_}" "${out}")"
+    if [[ "${mode}" == generate ]]; then
+      if [[ ! -e "${out}/${path}" ]]; then
+        printf 'The generator produced no %s\n' "${path}" >&2
+        return 1
+      fi
+      rm -rf "${path:?}"
+      cp -R "${out}/${path}" "${path}"
+    elif ! diff -ru "${path}" "${out}/${path}" >&2; then
+      printf 'The committed %s is stale; regenerate it with: just gen %s\n' "${path}" "${group}" >&2
+      rc=1
+    fi
+  done
+  return "${rc}"
+}
+
+main "$@"

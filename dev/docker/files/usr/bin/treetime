@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+#
+# Usage: treetime [args...]
+#
+# Run TreeTime v0, the Python reference implementation in
+# packages/legacy/treetime of the checkout (TREETIME_ROOT, set by dev/docker/run).
+#
 set -euo pipefail
 
-# TreeTime legacy Python wrapper
-# Runs the legacy Python TreeTime from packages/legacy/treetime/
-
-# Add the legacy treetime directory to PYTHONPATH
-export PYTHONPATH="/workdir/packages/legacy/treetime${PYTHONPATH:+:$PYTHONPATH}"
-
-# Run the treetime module with all passed arguments
+export PYTHONPATH="${TREETIME_ROOT:?}/packages/legacy/treetime${PYTHONPATH:+:${PYTHONPATH}}"
 exec python3 -m treetime "$@"

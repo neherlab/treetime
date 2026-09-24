@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [cargo-mutants args...]
+#
+# Mutation testing with cargo-mutants (settings in .cargo/mutants.toml). Without
+# scope arguments, only the code changed on this branch is mutated: the diff
+# from the recorded worktree fork point, or from the merge base with `rust`.
+# `--workspace`, `--package`, `--file`, or `--in-diff` select the scope
+# explicitly.
+#
+# Examples:
+#   $0
+#   $0 --package treetime-utils
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+for arg in "$@"; do
+  case "${arg}" in
+  --workspace | -p | --package | --package=* | -f | --file | --file=* | --in-diff | --in-diff=*)
+    exec cargo mutants "$@"
+    ;;
+  esac
+done
+
+branch="$(git branch --show-current)"
+base="$(git config --get "branch.${branch}.fork-point" || git merge-base rust HEAD)"
+diff="$(mktemp)"
+trap 'rm -f "${diff}"' EXIT
+git diff "${base}..HEAD" >"${diff}"
+if [[ ! -s "${diff}" ]]; then
+  printf 'No changes since %s; pass --workspace or --package to select mutants\n' "${base}" >&2
+  exit 1
+fi
+printf 'Mutating the diff since %s\n' "${base}" >&2
+cargo mutants --in-diff "${diff}" "$@"

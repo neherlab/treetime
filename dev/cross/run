@@ -1,25 +1,29 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <bin> [target] [args...]
+#
+# Run a cross-compiled binary from .out/ with the runner of its cross image
+# (QEMU for Linux targets, Wine for Windows). macOS binaries cannot run here.
+#
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./../lib/utils.sh
-source "${BASH_SOURCE%/*}/../lib/utils.sh"
+shopt -s inherit_errexit
 
-# Run cross-compiled binary using cross-runner, e.g. qemu or wine
-function run() {
-  trap "exit" INT
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
 
-  local bin="${1:?}"
-  local target="${2:-"${CROSS_COMPILE:-}"}"
-  local final_bin
-  final_bin="$(get_final_bin_path "${bin}" "${target}")"
-  if [ -n "${CROSS_RUNNER:-}" ]; then
-    (
-      set -x
-      "${CROSS_RUNNER}" "${final_bin}" "${@:3}"
-    )
-  fi
-}
+bin="${1:?binary name}"
+target="${2:-${CROSS_COMPILE:?target}}"
+shift 2 || shift $#
+ext=""
+[[ "${target}" == *windows* ]] && ext=".exe"
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  run "$@"
+if [[ -z "${CROSS_RUNNER:-}" ]]; then
+  printf 'No runner for %s in this image\n' "${target}" >&2
+  exit 1
 fi
+if [[ "${target}" == *windows* ]]; then
+  export WINEPREFIX="${HOME}/wine"
+  mkdir -p "${WINEPREFIX}/drive_c/windows/system32"
+  cp /opt/wine/bcryptprimitives.dll "${WINEPREFIX}/drive_c/windows/system32/"
+fi
+exec "${CROSS_RUNNER}" ".out/${bin}-${target}${ext}" "$@"

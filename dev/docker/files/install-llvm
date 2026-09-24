@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <prefix>
+#
+# Install LLVM and Clang 19, which bindgen needs (libclang), into a prefix.
+#
 set -euxo pipefail
 
-dest=${1:-"/usr/local"}
+dest="${1:?prefix}"
+release="llvm-19.1.5-2024-12-21_14-43-03"
+archive="/tmp/llvm.tar.gz"
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/build_llvm/releases/download/llvm-19.1.5-2024-12-21_14-43-03/llvm-19.1.5-2024-12-21_14-43-03.tar.gz" |
-  pigz -d -p "$(nproc)" |
-  tar -C "${dest}" -x
-
-ls "${dest}/bin/clang"
-"${dest}/bin/clang" -v
-
-ls "${dest}/bin/llvm-ar"
-"${dest}/bin/llvm-ar" --version
+/fetch "https://github.com/binarylandia/build_llvm/releases/download/${release}/${release}.tar.gz" "${archive}"
+pigz -dc -p "$(nproc)" "${archive}" | tar -C "${dest}" -x
+rm "${archive}"
+"${dest}/bin/clang" --version

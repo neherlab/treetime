@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [--serial] <recipe>...
+#
+# Run just recipes as checks, in parallel by default, and keep going past
+# failures. Each check writes its output to tmp/checks/<recipe>.log. A result
+# line is printed as each check finishes; the output of every failed check is
+# printed at the end. Exits 1 when any check failed.
+#
+# Options:
+#   -h, --help   Show this help
+#   --serial     Run the checks one after another, with output streamed
+#
+# Examples:
+#   $0 fmt-check lint typecheck
+#   $0 --serial test
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+log_dir="${root}/tmp/checks"
+
+show_help() {
+  sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+}
+
+seconds_since() {
+  printf '%s' "$(($(date +%s) - ${1}))"
+}
+
+run_serial() {
+  local recipe start failed=()
+  for recipe in "$@"; do
+    printf '\n==> %s\n' "${recipe}" >&2
+    start="$(date +%s)"
+    if just "${recipe}" 2>&1 | tee "${log_dir}/${recipe}.log"; then
+      printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
+    else
+      printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
+      failed+=("${recipe}")
+    fi
+  done
+  report "${failed[@]+"${failed[@]}"}"
+}
+
+run_parallel() {
+  local recipe pids=() start
+  start="$(date +%s)"
+  for recipe in "$@"; do
+    (
+      if just "${recipe}" >"${log_dir}/${recipe}.log" 2>&1; then
+        printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
+      else
+        printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
+        exit 1
+      fi
+    ) &
+    pids+=("$!")
+  done
+  printf 'Running %s checks in parallel; logs in %s\n' "$#" "${log_dir#"${root}/"}" >&2
+
+  local i failed=()
+  for i in "${!pids[@]}"; do
+    if ! wait "${pids[${i}]}"; then
+      failed+=("${@:$((i + 1)):1}")
+    fi
+  done
+  for recipe in "${failed[@]+"${failed[@]}"}"; do
+    printf '\n==> Output of failed check %s (%s)\n' "${recipe}" "tmp/checks/${recipe}.log" >&2
+    cat "${log_dir}/${recipe}.log" >&2
+  done
+  report "${failed[@]+"${failed[@]}"}"
+}
+
+report() {
+  if (($# == 0)); then
+    printf '\nAll checks passed\n' >&2
+    return 0
+  fi
+  printf '\nFailed checks:\n' >&2
+  printf '  %s\n' "$@" >&2
+  return 1
+}
+
+main() {
+  local serial=""
+  while (($# > 0)); do
+    case "${1}" in
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --serial)
+      serial=1
+      shift
+      ;;
+    -*)
+      printf 'Unknown option: %s\n' "${1}" >&2
+      exit 1
+      ;;
+    *) break ;;
+    esac
+  done
+  if (($# == 0)); then
+    show_help >&2
+    exit 1
+  fi
+
+  mkdir -p "${log_dir}"
+  if [[ -n "${serial}" ]]; then
+    run_serial "$@"
+  else
+    run_parallel "$@"
+  fi
+}
+
+main "$@"

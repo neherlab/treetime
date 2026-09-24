@@ -5,11 +5,14 @@
 /.cache
 /.env
 /.env.local
+/.idea
 /.out
-/.vscode*
+/.vscode
+/coverage
 /data_dev
 /tmp*
 node_modules
 target
 .turbo
 dist
+dist-electron

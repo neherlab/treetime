@@ -1,29 +1,20 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <bin> [target]
+#
+# Check a cross-compiled binary in .out/: print its format and linkage, and fail
+# when a binary that must be static is not (musl and Windows targets).
+#
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./../lib/utils.sh
-source "${BASH_SOURCE%/*}/../lib/utils.sh"
+shopt -s inherit_errexit
 
-# Check cross-compiled binary (whether it is static, its format, arch etc.)
-function check() {
-  trap "exit" INT
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
 
-  local bin="${1:?}"
-  local target="${2:-"${CROSS_COMPILE:-}"}"
-  local final_bin
-  final_bin="$(get_final_bin_path "${bin}" "${target}")"
+bin="${1:?binary name}"
+target="${2:-${CROSS_COMPILE:?target}}"
+ext=""
+[[ "${target}" == *windows* ]] && ext=".exe"
 
-  (
-    set -x
-    ./dev/is-static-binary "${final_bin}" "${target}"
-  ) || true
-
-  (
-    set -x
-    file -h "${final_bin}" || true >/dev/null
-  ) || true
-}
-
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  check "$@"
-fi
+file -h ".out/${bin}-${target}${ext}"
+dev/is-static-binary ".out/${bin}-${target}${ext}" "${target}"

@@ -1,10 +1,10 @@
-# Registry of committed reference, golden-master, and vendored test fixtures (A3).
+# Registry of committed reference, golden-master, and vendored test fixtures.
 #
 # One entry per fixture group. Each records the owning test, where the data came
 # from, the reference revision, the command that recaptures it, and any
 # normalization applied before comparison. `files` is the exact oracle data set
 # the owning test reads; `*_capture` regeneration scripts are named under
-# `capture`, not listed as data. `just fixtures-unused` (A5) walks `roots`,
+# `capture`, not listed as data. `just fixtures-check` walks `roots`,
 # subtracts everything listed here, and reports any tracked fixture that no entry
 # claims.
 
@@ -115,7 +115,7 @@ files = [
 [[reference]]
 name = "gm_relaxed_clock"
 kind = "golden-master"
-test = "packages/treetime/src/timetree/optimization/__tests__/test_gm_relaxed_clock.rs"
+test = "packages/treetime/src/timetree/optimization/__tests__/test_relaxed_clock.rs"
 origin = "TreeTime v0 (Python) relaxed clock"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_capture"

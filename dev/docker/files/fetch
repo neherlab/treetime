@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <url> <output-file>
+#
+# Download a file and verify it against its sha256 in the checksums file next to
+# this script, keyed by the file name of the URL. A download with no recorded
+# checksum, or with a different one, is removed and fails the build; the error
+# prints the computed checksum to record after reviewing the source.
+#
+set -euo pipefail
+
+url="${1:?url}"
+out="${2:?output file}"
+checksums="$(dirname "${BASH_SOURCE[0]}")/checksums"
+name="${url##*/}"
+
+expected="$(awk -v name="${name}" '$2 == name { print $1 }' "${checksums}")"
+curl -fsSL --retry 3 -o "${out}" "${url}"
+actual="$(sha256sum "${out}" | cut -d' ' -f1)"
+
+if [[ -z "${expected}" ]]; then
+  rm -f "${out}"
+  printf 'No checksum recorded for %s in dev/docker/files/checksums.\nDownloaded sha256: %s  %s\n' "${url}" "${actual}" "${name}" >&2
+  exit 1
+fi
+if [[ "${actual}" != "${expected}" ]]; then
+  rm -f "${out}"
+  printf 'Checksum mismatch for %s: expected %s, got %s\n' "${url}" "${expected}" "${actual}" >&2
+  exit 1
+fi

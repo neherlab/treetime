@@ -8,7 +8,7 @@
 //! only test targets: its items are not reported, and its uses of other crates'
 //! items still count.
 //!
-//! Findings are warnings and leave the exit status at 0. A workspace target
+//! Findings fail the report with exit status 1. A workspace target
 //! whose record is missing or unreadable makes the report incomplete: it is
 //! named and the exit status is 1.
 
@@ -34,6 +34,7 @@ fn main() -> ExitCode {
     };
     match run(Path::new(&records_dir), &args.manifest_path, &args.excluded_crates) {
         Ok(Completeness::Complete) => ExitCode::SUCCESS,
+        Ok(Completeness::Findings) => ExitCode::FAILURE,
         Ok(Completeness::Incomplete) => ExitCode::FAILURE,
         Err(err) => {
             eprintln!("error: pub-unused-report: {err}");
@@ -79,9 +80,10 @@ fn run(records_dir: &Path, manifest_path: &Path, excluded_crates: &BTreeSet<Stri
     }
     if !unused.is_empty() {
         eprintln!(
-            "warning: pub_unused_in_workspace: {} public item(s) that no workspace crate uses",
+            "error: pub_unused_in_workspace: {} public item(s) that no workspace crate uses",
             unused.len()
         );
+        return Ok(Completeness::Findings);
     }
     Ok(Completeness::Complete)
 }
@@ -111,6 +113,7 @@ fn parse_args(mut args: impl Iterator<Item = OsString>) -> Option<Args> {
 #[derive(Debug, PartialEq)]
 enum Completeness {
     Complete,
+    Findings,
     Incomplete,
 }
 

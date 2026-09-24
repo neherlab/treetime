@@ -14,7 +14,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-BINARY="${BINARY:-target/release/treetime}"
+BINARY="${BINARY:-.out/treetime}"
 DATASET="${1:-data/mpox/clade-ii/2000}"
 CORE_COUNTS="${CORE_COUNTS:-1 2 4 8}"   # space-separated list
 RUNS="${RUNS:-3}"                        # repetitions per configuration (median is reported)
@@ -99,9 +99,9 @@ benchmark() {
 
   # Sort and pick median index
   local sorted_wall sorted_rss sorted_cpu
-  sorted_wall=($(printf '%s\n' "${wall_vals[@]}" | sort -n))
-  sorted_rss=($(printf '%s\n' "${rss_vals[@]}" | sort -n))
-  sorted_cpu=($(printf '%s\n' "${cpu_vals[@]}" | sort -n))
+  mapfile -t sorted_wall < <(printf '%s\n' "${wall_vals[@]}" | sort -n)
+  mapfile -t sorted_rss < <(printf '%s\n' "${rss_vals[@]}" | sort -n)
+  mapfile -t sorted_cpu < <(printf '%s\n' "${cpu_vals[@]}" | sort -n)
 
   local mid=$(( (RUNS - 1) / 2 ))
   local med_wall="${sorted_wall[$mid]}"

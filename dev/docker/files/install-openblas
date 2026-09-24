@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <triplet> <prefix>
+#
+# Install a static OpenBLAS built for a target into a prefix.
+#
 set -euxo pipefail
 
-triplet="${1}"
-dest=${2:-"/usr/local/${triplet}"}
+triplet="${1:?triplet}"
+dest="${2:?prefix}"
+release="2026-08-17_15-28-38"
+archive="/tmp/openblas.tar.xz"
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/build_openblas/releases/download/2026-08-17_15-28-38/openblas-static-0.3.28-${triplet}-2026-08-17_15-28-38.tar.xz" |
-  pixz -dp "$(nproc)" |
-  tar -C "${dest}" -x
-
-ls "${dest}/lib/libopenblas.a"
+/fetch "https://github.com/binarylandia/build_openblas/releases/download/${release}/openblas-static-0.3.28-${triplet}-${release}.tar.xz" "${archive}"
+pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
+rm "${archive}"
+test -f "${dest}/lib/libopenblas.a"

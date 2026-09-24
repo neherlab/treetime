@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <up|health|status>
+#
+# Development servers of the web app: the API server (treetime-server) and the
+# Vite dev server, which proxies /api to it.
+#
+#   up       Start both servers in the foreground until Ctrl-C
+#   health   Probe both servers; exit 1 when one is absent, not answering, or
+#            started from another commit than the checkout HEAD
+#   status   Print the resolved ports and URLs and what each server was started from
+#
+# Each checkout resolves its own port pair from its path, so worktrees run side
+# by side. TREETIME_API_PORT and TREETIME_WEB_PORT override the resolved ports.
+#
+# When the portless proxy (https://github.com/vercel-labs/portless) is set up on
+# the machine, the web server also registers https://<name>.localhost:<proxy-port>,
+# where <name> is `treetime` in the main checkout and `<branch>.treetime` in a
+# linked worktree. TREETIME_PORTLESS selects the behavior: `allowed` (default)
+# registers when the proxy state directory exists, `off` never registers, and
+# `required` fails when the proxy is not set up.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "${root}"
+
+state_dir="${root}/tmp/app"
+
+api_base_port=3100
+web_base_port=5173
+
+resolve() {
+  local toplevel offset branch
+  toplevel="$(git rev-parse --show-toplevel)"
+  offset="$(($(printf '%s' "${toplevel}" | cksum | cut -d' ' -f1) % 512))"
+  export TREETIME_API_PORT="${TREETIME_API_PORT:-$((api_base_port + offset))}"
+  export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$((web_base_port + offset))}"
+
+  if [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]; then
+    TREETIME_HOSTNAME="treetime"
+  else
+    branch="$(git branch --show-current)"
+    branch="${branch#worktree/}"
+    branch="$(printf '%s' "${branch}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
+    branch="${branch#-}"
+    TREETIME_HOSTNAME="${branch%-}.treetime"
+  fi
+  export TREETIME_HOSTNAME
+}
+
+commit() {
+  git rev-parse --short HEAD
+}
+
+probe() {
+  curl -fsS -o /dev/null --max-time 3 "${1}"
+}
+
+# Poll a URL until it answers. The server is a separate process whose only
+# readiness signal is the socket; the timeout bounds a cold compile.
+wait_ready() {
+  local url="${1}" timeout="${2}" elapsed=0
+  until probe "${url}"; do
+    ((elapsed < timeout)) || return 1
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+}
+
+write_state() {
+  mkdir -p "${state_dir}"
+  jq -n --arg url "${2}" --arg commit "$(commit)" '{url: $url, commit: $commit}' >"${state_dir}/${1}.json"
+}
+
+prefix() {
+  local line
+  while IFS= read -r line; do
+    printf '[%s] %s\n' "${1}" "${line}"
+  done
+}
+
+stop_servers() {
+  local pid
+  for pid in "${pids[@]}"; do
+    kill -TERM -- "-${pid}" 2>/dev/null || true
+  done
+}
+
+up() {
+  resolve
+  rm -rf "${state_dir}"
+  local api_url="http://127.0.0.1:${TREETIME_API_PORT}/api/version"
+  local web_url="http://127.0.0.1:${TREETIME_WEB_PORT}/"
+  pids=()
+  # Each server runs in its own process group, so stopping it reaches cargo's child too.
+  set -m
+  trap stop_servers EXIT
+
+  printf 'Starting the API server on http://127.0.0.1:%s\n' "${TREETIME_API_PORT}" >&2
+  PORT="${TREETIME_API_PORT}" cargo run --locked --bin treetime-server -- --data-dir=data --out-dir=tmp/web \
+    > >(prefix api) 2>&1 &
+  pids+=("$!")
+  wait_ready "${api_url}" 900 || {
+    printf 'The API server did not answer at %s\n' "${api_url}" >&2
+    return 1
+  }
+  write_state api "${api_url}"
+
+  printf 'Starting the web server on http://127.0.0.1:%s\n' "${TREETIME_WEB_PORT}" >&2
+  bun run --cwd packages/app-web dev > >(prefix web) 2>&1 &
+  pids+=("$!")
+  wait_ready "${web_url}" 300 || {
+    printf 'The web server did not answer at %s\n' "${web_url}" >&2
+    return 1
+  }
+  write_state web "${web_url}"
+
+  printf 'Ready: %s (Ctrl-C to stop)\n' "${web_url}" >&2
+  wait
+}
+
+health() {
+  local svc state url started rc=0
+  for svc in api web; do
+    state="${state_dir}/${svc}.json"
+    if [[ ! -f "${state}" ]]; then
+      printf '%s: not started (start it with: just up)\n' "${svc}" >&2
+      rc=1
+      continue
+    fi
+    url="$(jq -r '.url' "${state}")"
+    started="$(jq -r '.commit' "${state}")"
+    if ! probe "${url}"; then
+      printf '%s: not answering at %s\n' "${svc}" "${url}" >&2
+      rc=1
+    elif [[ "${started}" != "$(commit)" ]]; then
+      printf '%s: stale, started from %s while the checkout is at %s\n' "${svc}" "${started}" "$(commit)" >&2
+      rc=1
+    else
+      printf '%s: ok at %s\n' "${svc}" "${url}"
+    fi
+  done
+  return "${rc}"
+}
+
+status() {
+  resolve
+  printf 'api  port %s\n' "${TREETIME_API_PORT}"
+  printf 'web  port %s\n' "${TREETIME_WEB_PORT}"
+  printf 'portless name %s.localhost (TREETIME_PORTLESS=%s)\n' "${TREETIME_HOSTNAME}" "${TREETIME_PORTLESS:-allowed}"
+  printf 'checkout HEAD %s\n' "$(commit)"
+  local svc
+  for svc in api web; do
+    if [[ -f "${state_dir}/${svc}.json" ]]; then
+      jq -r --arg svc "${svc}" '"\($svc)  started from \(.commit) at \(.url)"' "${state_dir}/${svc}.json"
+    else
+      printf '%s  not started\n' "${svc}"
+    fi
+  done
+}
+
+case "${1:-}" in
+up | health | status) "${1}" ;;
+*)
+  sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
+  exit 1
+  ;;
+esac

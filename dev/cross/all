@@ -2,195 +2,91 @@
 #
 # Usage: $0 [options] <bin>...
 #
-# Cross-compile CLI binaries for all supported platforms.
+# Cross-compile release binaries for every target in dev/cross/targets, each in
+# its cross image, in parallel. Output goes to .out/<bin>-<target>, one log per
+# target to tmp/cross/<target>.log.
 #
 # Options:
-#   -h, --help           Show this help
-#   --serial             Build targets sequentially (default: parallel)
-#   --parallel           Build targets in parallel with GNU parallel
-#   --split              Build targets in tmux split panes
-#   --target=<triple>    Build a single target only
-#   --run                Run binary after building
+#   -h, --help          Show this help
+#   --target=<triple>   Build this target only (repeatable)
+#   --serial            Build one target after another, with output streamed
+#   --run               Run each binary with `--help` after building (QEMU, Wine)
 #
 # Examples:
 #   $0 treetime
-#   $0 --serial treetime
-#   $0 --split treetime --run
+#   $0 --target=aarch64-apple-darwin --target=x86_64-pc-windows-gnu treetime
 #
 set -euo pipefail
-trap "exit" INT
-# shellcheck source=./../lib/utils.sh
-source "${BASH_SOURCE%/*}/../lib/utils.sh"
-load_env_maybe "$(project_root)/.env"
-load_env "$(project_root)/.env.example"
+shopt -s inherit_errexit
 
-targets=(
-  "x86_64-unknown-linux-gnu"
-  "x86_64-unknown-linux-musl"
-  "aarch64-unknown-linux-gnu"
-  "aarch64-unknown-linux-musl"
-  "x86_64-pc-windows-gnu"
-  "aarch64-apple-darwin"
-  "x86_64-apple-darwin"
-)
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
 
-export build_time="${BUILD_TIME:-$(datetime_safe)}"
-
-function run_one() {
-  set -euo pipefail
-  trap "exit" INT
-
-  local target="${1:?}"
+build_one() {
+  local target="${1}"
   shift
-
-  local -a bin=()
-  local run=""
-  local arg
-  for arg in "$@"; do
-    case "${arg}" in
-    --run) run=1 ;;
-    *) bin+=("${arg}") ;;
-    esac
-  done
-
-  info "Building for ${target}"
-  (
-    trap "exit" INT
-    export CROSS_COMPILE="${target}"
-    export BUILD_TIME="${build_time}"
-    ./dev/docker/run ./dev/cross/build "${bin[@]}" "${target}" || {
-      printf "Build failed for %s\n" "${target}" >&2
-      exit 1
-    }
-    ./dev/docker/run ./dev/cross/check "${bin[@]}" "${target}"
-    if [[ -n "${run}" ]]; then
-      ./dev/docker/run ./dev/cross/run "${bin[@]}" "${target}" || {
-        printf "Run failed for %s\n" "${target}" >&2
-        exit 1
-      }
+  local bin
+  for bin in "${bins[@]}"; do
+    CROSS_COMPILE="${target}" dev/docker/run dev/cross/build "${bin}" "${target}"
+    CROSS_COMPILE="${target}" dev/docker/run dev/cross/check "${bin}" "${target}"
+    if [[ -n "${run}" && "${target}" != *-apple-darwin ]]; then
+      CROSS_COMPILE="${target}" dev/docker/run dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
-  )
-}
-export -f run_one
-
-function run_serial() {
-  set -euo pipefail
-  trap "exit" INT
-
-  local target
-  for target in "${targets[@]}"; do
-    run_one "${target}" "$@"
   done
 }
 
-function run_parallel() {
-  set -euo pipefail
-  trap "exit" INT
-
-  # shellcheck disable=SC2016
-  parallel \
-    --halt now,fail=1 \
-    --line-buffer \
-    --tag --tagstring '|{#}| \033[34m{= sprintf("%-s", $_) =}\033[0m' \
-    --jobs="${#targets[@]}" \
-    run_one {} "$@" \
-    ::: "${targets[@]}"
-}
-
-function run_in_tmux_split() {
-  set -euo pipefail
-  trap "exit" INT
-
-  local session
-  session=$(datetime_ms_safe)
-
-  # Kill tmux server with Ctrl+b followed by k (change b to your prefix if non-default)
-  tmux new-session -d -s "${session}"
-  tmux send-keys -t "${session}" 'exit' C-m # Close the initial shell to start with a clean layout
-
-  tmux set -g mouse on
-  tmux set -g default-terminal "screen-256color"
-  tmux unbind k
-  tmux bind k kill-session
-  tmux set -g pane-border-status top
-  tmux set -g pane-border-format "#{pane_title}"
-  tmux set -g pane-border-style "bg=colour235,fg=colour8"
-  tmux set -g pane-active-border-style "bg=colour242,fg=colour237"
-
-  local target
-  for target in "${targets[@]}"; do
-    tmux split-window -v -t "${session}" bash -c "${0} --target=${target} ${*} || true; exec ${SHELL}"
-    tmux select-layout -t "${session}" even-vertical
-    tmux select-pane -t "" -T "${target}"
-  done
-
-  tmux kill-pane -t 0 # Remove the initial empty pane
-  tmux attach -t "${session}"
-}
-
-function main() {
-  show_help() {
-    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
-  }
-
-  local -a bin=()
-  local split="" serial="" single_target=""
-
-  # shfmt:off
+main() {
+  local targets=() serial="" target
+  run=""
+  bins=()
   while (($# > 0)); do
     case "${1}" in
     -h | --help)
-      show_help
+      sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
       exit 0
       ;;
-    --split)
-      split=1
-      shift
-      ;;
-    --serial)
-      serial=1
-      shift
-      ;;
-    --parallel) shift ;;
-    --target=*)
-      single_target="${1#--target=}"
-      shift
-      ;;
-    --run)
-      bin+=("--run")
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
+    --target=*) targets+=("${1#--target=}") ;;
+    --serial) serial=1 ;;
+    --run) run=1 ;;
     -*)
-      printf "Unknown option: %s\n" "${1}" >&2
+      printf 'Unknown option: %s\n' "${1}" >&2
       exit 1
       ;;
-    *) break ;;
+    *) bins+=("${1}") ;;
     esac
+    shift
   done
-  # shfmt:on
-
-  bin+=("$@")
-
-  if ((${#bin[@]} == 0)); then
-    show_help >&2
+  if ((${#bins[@]} == 0)); then
+    printf 'No binary given; see --help\n' >&2
     exit 1
   fi
-
-  if [[ -n "${single_target}" ]]; then
-    run_one "${single_target}" "${bin[@]}"
-  elif [[ -n "${split}" ]]; then
-    run_in_tmux_split "${bin[@]}"
-  elif [[ -n "${serial}" ]]; then
-    run_serial "${bin[@]}"
-  else
-    run_parallel "${bin[@]}"
+  if ((${#targets[@]} == 0)); then
+    mapfile -t targets <dev/cross/targets
   fi
+
+  mkdir -p tmp/cross
+  if [[ -n "${serial}" ]]; then
+    for target in "${targets[@]}"; do
+      build_one "${target}"
+    done
+    return
+  fi
+
+  local pids=() failed=() i
+  for target in "${targets[@]}"; do
+    build_one "${target}" >"tmp/cross/${target}.log" 2>&1 &
+    pids+=("$!")
+  done
+  printf 'Building %s targets in parallel; logs in tmp/cross/\n' "${#targets[@]}" >&2
+  for i in "${!pids[@]}"; do
+    if wait "${pids[${i}]}"; then
+      printf 'PASS %s\n' "${targets[${i}]}" >&2
+    else
+      printf 'FAIL %s (tmp/cross/%s.log)\n' "${targets[${i}]}" "${targets[${i}]}" >&2
+      failed+=("${targets[${i}]}")
+    fi
+  done
+  ((${#failed[@]} == 0))
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
+main "$@"

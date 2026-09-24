@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Print the tracked bash scripts of the repository outside vendored and legacy
+# code, one per line, for shellcheck and shfmt.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+git ls-files -z -- dev docs scripts ':!:dev/lints' |
+  xargs -0 grep -lIE '^#!(/usr/bin/env bash|/bin/bash)' |
+  LC_ALL=C sort
