@@ -6,7 +6,7 @@
 
 The extraction and restoration transaction is implemented in `fn with_graph_payloads()` [packages/treetime-graph/src/pass.rs#L14-L63](../../packages/treetime-graph/src/pass.rs#L14-L63). Marginal, timetree, and clock passes invoke fallible dependency-ready callbacks while those payloads are detached [packages/treetime/src/partition/marginal/shared/pass.rs](../../packages/treetime/src/partition/marginal/shared/pass.rs), [packages/treetime/src/clock/clock_filter.rs](../../packages/treetime/src/clock/clock_filter.rs), [packages/treetime/src/clock/rtt.rs](../../packages/treetime/src/clock/rtt.rs).
 
-The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime-graph/src/pass/**tests**/test_pass.rs](../../packages/treetime-graph/src/pass/__tests__/test_pass.rs).
+The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime-graph/src/__tests__/test_pass.rs](../../packages/treetime-graph/src/__tests__/test_pass.rs).
 
 ## Options
 
