@@ -327,7 +327,7 @@ impl InDel {
     Self::new(range, seq, InDelKind::Deletion)
   }
 
-  fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
+  pub(crate) fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
     let seq = seq.into();
     let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
       return make_error!(
