@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::sparse_edge_obs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -219,7 +220,7 @@ mod tests {
         a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
       },
       obs_edges: btreemap! {
-        edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]),
+        edge_to_a_key => sparse_edge_obs(vec![sub_original], vec![indel_original]),
       },
     };
     let node_states = btreemap! {
@@ -360,7 +361,7 @@ mod tests {
         a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
       obs_edges: btreemap! {
-        edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![indel]),
+        edge_to_a_key => sparse_edge_obs(vec![], vec![indel]),
       },
     };
     let node_states = btreemap! {

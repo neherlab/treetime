@@ -8,8 +8,16 @@ mod tests {
 
   fn two_tip_cost_fn() -> EdgeCostFn<DivStats> {
     EdgeCostFn {
-      to_parent: DivStats::new(1.0, 0.1, 0.01),
-      to_child: DivStats::new(1.0, 0.3, 0.09),
+      to_parent: DivStats {
+        count: 1.0,
+        d_sum: 0.1,
+        dsq_sum: 0.01,
+      },
+      to_child: DivStats {
+        count: 1.0,
+        d_sum: 0.3,
+        dsq_sum: 0.09,
+      },
       branch_length: 0.4,
       branch_variance: 0.0,
       is_leaf: false,

@@ -56,24 +56,12 @@ pub enum BranchPointOptimizationParams {
 }
 
 impl BranchPointOptimizationParams {
-  pub(crate) fn brent() -> Self {
-    Self::Brent(BrentParams::default())
-  }
-
   pub fn brent_with(params: BrentParams) -> Self {
     Self::Brent(params)
   }
 
-  pub(crate) fn golden_section() -> Self {
-    Self::GoldenSection(GoldenSectionParams::default())
-  }
-
   pub fn golden_section_with(params: GoldenSectionParams) -> Self {
     Self::GoldenSection(params)
-  }
-
-  pub(crate) fn grid() -> Self {
-    Self::Grid(GridSearchParams::default())
   }
 
   pub fn grid_with(params: GridSearchParams) -> Self {

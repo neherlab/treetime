@@ -23,10 +23,8 @@ pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
-  ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
   ambiguous_keys: StateSet,
   determined: StateSet,
-  undetermined: StateSet,
   unknown: AsciiChar,
   gap: AsciiChar,
   profile_map: ProfileMap,
@@ -158,10 +156,8 @@ impl Alphabet {
     Ok(Self {
       all,
       canonical,
-      ambiguous,
       ambiguous_keys,
       determined,
-      undetermined,
       unknown,
       gap,
       profile_map,
@@ -197,14 +193,6 @@ impl Alphabet {
       }
     }
     Ok(profile)
-  }
-
-  pub(crate) fn get_code(&self, profile: &Array1<f64>) -> Result<AsciiChar, Report> {
-    self
-      .profile_map
-      .iter()
-      .find_map(|(&c, p)| (p == profile).then_some(c))
-      .ok_or_else(|| make_report!("When accessing profile map: Unknown profile: '{profile}'"))
   }
 
   #[allow(
@@ -245,10 +233,6 @@ impl Alphabet {
     })
   }
 
-  pub(crate) fn n_chars(&self) -> usize {
-    self.all.len()
-  }
-
   pub(crate) fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.canonical.iter()
   }
@@ -265,16 +249,8 @@ impl Alphabet {
     self.canonical.len()
   }
 
-  pub(crate) fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
-    self.ambiguous_keys.iter()
-  }
-
   pub fn is_ambiguous(&self, c: AsciiChar) -> bool {
     self.ambiguous_keys.contains(c)
-  }
-
-  pub(crate) fn n_ambiguous(&self) -> usize {
-    self.ambiguous.len()
   }
 
   pub(crate) fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
@@ -283,22 +259,6 @@ impl Alphabet {
 
   pub(crate) fn is_determined(&self, c: AsciiChar) -> bool {
     self.determined.contains(c)
-  }
-
-  pub(crate) fn n_determined(&self) -> usize {
-    self.determined.len()
-  }
-
-  pub(crate) fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
-    self.undetermined.iter()
-  }
-
-  pub(crate) fn is_undetermined(&self, c: AsciiChar) -> bool {
-    self.undetermined.contains(c)
-  }
-
-  pub(crate) fn n_undetermined(&self) -> usize {
-    self.undetermined.len()
   }
 
   pub fn unknown(&self) -> AsciiChar {

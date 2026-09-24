@@ -31,10 +31,6 @@ impl DiscreteStates {
     self.states.len()
   }
 
-  fn is_empty(&self) -> bool {
-    self.states.is_empty()
-  }
-
   pub(crate) fn get_index(&self, name: &str) -> Option<usize> {
     if self.is_missing(name) {
       return None;
@@ -52,10 +48,6 @@ impl DiscreteStates {
 
   pub fn iter(&self) -> impl Iterator<Item = &str> {
     self.states.iter().map(String::as_str)
-  }
-
-  fn missing_marker(&self) -> &str {
-    &self.missing
   }
 }
 
@@ -125,15 +117,6 @@ mod tests {
     let values: [&str; 0] = [];
     let states = DiscreteStates::from_values(values.iter().copied(), "?");
 
-    assert!(states.is_empty());
     assert_eq!(states.len(), 0);
-  }
-
-  #[test]
-  fn test_missing_marker() {
-    let values = ["USA"];
-    let states = DiscreteStates::from_values(values.iter().copied(), "N/A");
-
-    assert_eq!(states.missing_marker(), "N/A");
   }
 }

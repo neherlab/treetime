@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::test_utils::insertion;
+  use crate::test_utils::sparse_edge_obs;
 
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -276,17 +278,15 @@ mod tests {
     let mut recon = make_sparse_reconstruction(100)?;
     populate_test_nodes(&mut recon, &graph);
 
-    let collapsed_indel = InDel::ins((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice()).unwrap();
+    let collapsed_indel = insertion((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice());
     let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
 
-    recon.obs_edges.insert(
-      ri_key,
-      SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![collapsed_indel.clone()]),
-    );
-    recon.obs_edges.insert(
-      ia_key,
-      SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![child_a_indel.clone()]),
-    );
+    recon
+      .obs_edges
+      .insert(ri_key, sparse_edge_obs(vec![], vec![collapsed_indel.clone()]));
+    recon
+      .obs_edges
+      .insert(ia_key, sparse_edge_obs(vec![], vec![child_a_indel.clone()]));
     recon.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut sparse = vec![recon];

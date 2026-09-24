@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::test_utils::insertion;
+  use crate::test_utils::sparse_edge_obs;
 
   use crate::o;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
@@ -738,16 +740,14 @@ mod tests {
     };
 
     let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice())?;
-    let child_indel = InDel::ins((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice())?;
+    let child_indel = insertion((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice());
 
-    partition.obs_edges.insert(
-      root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![parent_indel]),
-    );
-    partition.obs_edges.insert(
-      internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![child_indel]),
-    );
+    partition
+      .obs_edges
+      .insert(root_internal_edge_key, sparse_edge_obs(vec![], vec![parent_indel]));
+    partition
+      .obs_edges
+      .insert(internal_a_edge_key, sparse_edge_obs(vec![], vec![child_indel]));
     partition
       .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());

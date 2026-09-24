@@ -16,7 +16,7 @@ pub(crate) fn optimize_brent<S: RootStats>(
   edge: GraphEdgeKey,
   cost_fn: &EdgeCostFn<S>,
   params: &BrentParams,
-) -> Result<FindRootResult<S>, Report> {
+) -> Result<FindRootResult, Report> {
   let solver = BrentOpt::new(0.0, 1.0).set_tolerance(f64::EPSILON.sqrt(), params.brent_tolerance);
 
   let result = Executor::new(cost_fn, solver)
@@ -29,12 +29,10 @@ pub(crate) fn optimize_brent<S: RootStats>(
     .best_param
     .ok_or_else(|| make_report!("Brent optimization returned no parameter for edge {edge}"))?;
   let best_score = result.state.best_cost;
-  let best_stats = cost_fn.evaluate(best_split);
 
   Ok(FindRootResult {
     edge: Some(edge),
     split: best_split,
-    stats: best_stats,
     score: best_score,
   })
 }

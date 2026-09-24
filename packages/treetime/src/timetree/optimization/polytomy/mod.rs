@@ -120,7 +120,6 @@ fn resolve_single_polytomy(
   let child_refs: Vec<ChildRef> = children
     .iter()
     .map(|child| ChildRef {
-      node_key: child.node_key,
       edge_key: child.edge_key,
       time: child.time,
     })
@@ -164,7 +163,6 @@ fn collect_children(
       let mutation_length = branch_lengths.get(&edge_key).copied().flatten();
 
       Ok(ChildInfo {
-        node_key: child_key,
         edge_key,
         time,
         mutations: edge_mutation_count(graph, partitions, edge_key, mutation_length, total_length),
@@ -174,7 +172,6 @@ fn collect_children(
 }
 
 struct ChildInfo {
-  node_key: GraphNodeKey,
   edge_key: GraphEdgeKey,
   time: f64,
   mutations: u32,

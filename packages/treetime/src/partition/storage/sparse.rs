@@ -121,14 +121,6 @@ impl SparseEdgeObs {
     }
   }
 
-  pub(crate) fn with_fitch_subs_and_indels(subs: Vec<Sub>, indels: Vec<InDel>) -> Self {
-    Self {
-      subs_fitch: subs,
-      indels,
-      ..Default::default()
-    }
-  }
-
   pub(crate) fn fitch_subs(&self) -> &[Sub] {
     &self.subs_fitch
   }

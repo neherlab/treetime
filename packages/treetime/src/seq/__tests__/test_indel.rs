@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::seq::indel::{InDel, compose_indels, sort_indels};
+  use crate::test_utils::insertion;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::Seq;
@@ -10,7 +11,7 @@ mod tests {
   }
 
   fn ins(start: usize, end: usize, seq: &str) -> InDel {
-    InDel::ins((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
+    insertion((start, end), Seq::try_from_str(seq).unwrap())
   }
 
   #[test]

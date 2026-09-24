@@ -7,15 +7,9 @@ use std::ops::{Add, Sub};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct DivStats {
-  count: f64,
-  d_sum: f64,
-  dsq_sum: f64,
-}
-
-impl DivStats {
-  pub(crate) fn new(count: f64, d_sum: f64, dsq_sum: f64) -> Self {
-    Self { count, d_sum, dsq_sum }
-  }
+  pub(crate) count: f64,
+  pub(crate) d_sum: f64,
+  pub(crate) dsq_sum: f64,
 }
 
 impl RootStats for DivStats {

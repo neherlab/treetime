@@ -25,14 +25,22 @@ mod tests {
   fn test_div_stats_score_two_tips_analytical() {
     let d1 = 0.1;
     let d2 = 0.3;
-    let stats = DivStats::new(2.0, d1 + d2, d1.powi(2) + d2.powi(2));
+    let stats = DivStats {
+      count: 2.0,
+      d_sum: d1 + d2,
+      dsq_sum: d1.powi(2) + d2.powi(2),
+    };
     let expected = (d1 - d2).powi(2) / 4.0;
     assert_ulps_eq!(stats.score(), expected, max_ulps = 4);
   }
 
   #[test]
   fn test_div_stats_score_zero_when_equidistant() {
-    let stats = DivStats::new(2.0, 0.4, 2.0 * 0.2_f64.powi(2));
+    let stats = DivStats {
+      count: 2.0,
+      d_sum: 0.4,
+      dsq_sum: 2.0 * 0.2_f64.powi(2),
+    };
     assert_ulps_eq!(stats.score(), 0.0, max_ulps = 4);
   }
 
@@ -55,7 +63,11 @@ mod tests {
 
   #[test]
   fn test_div_stats_propagate_zero_variance_accumulates() {
-    let stats = DivStats::new(2.0, 0.4, 0.10);
+    let stats = DivStats {
+      count: 2.0,
+      d_sum: 0.4,
+      dsq_sum: 0.10,
+    };
     let bl = 0.3;
     let propagated = stats.propagate(bl, 0.0);
     assert_ulps_eq!(propagated.count(), 2.0, max_ulps = 4);
@@ -69,8 +81,16 @@ mod tests {
 
   #[test]
   fn test_div_stats_add_is_elementwise() {
-    let a = DivStats::new(1.0, 0.2, 0.04);
-    let b = DivStats::new(2.0, 0.5, 0.13);
+    let a = DivStats {
+      count: 1.0,
+      d_sum: 0.2,
+      dsq_sum: 0.04,
+    };
+    let b = DivStats {
+      count: 2.0,
+      d_sum: 0.5,
+      dsq_sum: 0.13,
+    };
     let sum = a + b;
     assert_ulps_eq!(sum.count(), 3.0, max_ulps = 4);
     assert_ulps_eq!(sum.d_sum(), 0.7, max_ulps = 4);
@@ -79,8 +99,16 @@ mod tests {
 
   #[test]
   fn test_div_stats_sub_inverts_add() {
-    let a = DivStats::new(3.0, 0.7, 0.17);
-    let b = DivStats::new(2.0, 0.5, 0.13);
+    let a = DivStats {
+      count: 3.0,
+      d_sum: 0.7,
+      dsq_sum: 0.17,
+    };
+    let b = DivStats {
+      count: 2.0,
+      d_sum: 0.5,
+      dsq_sum: 0.13,
+    };
     let diff = a + b - b;
     assert_ulps_eq!(diff.count(), a.count(), max_ulps = 4);
     assert_ulps_eq!(diff.d_sum(), a.d_sum(), max_ulps = 4);

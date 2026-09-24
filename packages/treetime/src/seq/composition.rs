@@ -1,6 +1,5 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_primitives::AsciiChar;
@@ -18,13 +17,6 @@ impl Composition {
   {
     let counts = alphabet_chars.into_iter().map(|c| (c, 0)).collect();
     Self { counts, gap }
-  }
-
-  pub(crate) fn from_counts<I: IntoIterator<Item = (AsciiChar, usize)>>(counts: I, gap: AsciiChar) -> Self {
-    Self {
-      counts: counts.into_iter().collect(),
-      gap,
-    }
   }
 
   pub(crate) fn get(&self, c: AsciiChar) -> Option<usize> {
@@ -45,15 +37,6 @@ impl Composition {
     this
   }
 
-  pub(crate) fn with_seq_str(
-    sequence: &str,
-    alphabet_chars: impl IntoIterator<Item = AsciiChar>,
-    gap: AsciiChar,
-  ) -> Result<Self, Report> {
-    let seq = Self::str_to_chars(sequence)?;
-    Ok(Self::with_seq(seq, alphabet_chars, gap))
-  }
-
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
@@ -67,15 +50,6 @@ impl Composition {
       let c = AsciiChar::from_byte_unchecked(index as u8);
       *self.counts.entry(c).or_default() += count;
     }
-  }
-
-  pub(crate) fn add_seq_str(&mut self, sequence: &str) -> Result<(), Report> {
-    self.add_seq(Self::str_to_chars(sequence)?);
-    Ok(())
-  }
-
-  fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
-    s.bytes().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()
   }
 
   pub(crate) fn add_sub(&mut self, sub: &Sub) {

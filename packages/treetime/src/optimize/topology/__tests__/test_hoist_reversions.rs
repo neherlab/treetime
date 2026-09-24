@@ -5,6 +5,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::indel::InDelKind;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::insertion;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -237,7 +238,7 @@ mod tests {
       ],
     );
     let del = InDel::del((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
-    let ins = InDel::ins((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
+    let ins = insertion((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice());
     {
       let p = &mut partition;
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];

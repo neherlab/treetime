@@ -122,7 +122,7 @@ mod tests {
     assert!(optimizer.next_iter().is_some());
     optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, &state, None)?;
     let actual = optimizer
-      .trace()
+      .trace
       .first()
       .expect("one convergence metric must be recorded")
       .log_lh_total

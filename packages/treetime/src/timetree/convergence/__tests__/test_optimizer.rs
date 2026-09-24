@@ -19,8 +19,8 @@ mod tests {
     optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(1, optimizer.iteration_count());
-    assert_eq!(1, optimizer.trace().len());
+    assert_eq!(1, optimizer.i);
+    assert_eq!(1, optimizer.trace.len());
 
     Ok(())
   }
@@ -54,7 +54,7 @@ mod tests {
     )?;
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(2, optimizer.iteration_count());
+    assert_eq!(2, optimizer.i);
 
     Ok(())
   }
@@ -73,15 +73,11 @@ mod tests {
     optimizer.record(0, 0, settled, &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(2, optimizer.iteration_count());
+    assert_eq!(2, optimizer.i);
 
     Ok(())
   }
 
-  #[expect(
-    clippy::missing_asserts_for_indexing,
-    reason = "the test indexes the trace after asserting the iteration count"
-  )]
   #[test]
   fn test_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = helpers::empty_graph();
@@ -98,9 +94,9 @@ mod tests {
     optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(3, optimizer.iteration_count());
+    assert_eq!(3, optimizer.i);
 
-    let trace = optimizer.trace();
+    let trace = &optimizer.trace;
     assert_eq!(3, trace.len());
     assert_eq!(10, trace[0].n_diff);
     assert_eq!(3, trace[1].n_diff);
@@ -121,8 +117,8 @@ mod tests {
     }
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(3, optimizer.iteration_count());
-    assert_eq!(3, optimizer.trace().len());
+    assert_eq!(3, optimizer.i);
+    assert_eq!(3, optimizer.trace.len());
 
     Ok(())
   }
@@ -140,7 +136,7 @@ mod tests {
     optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
-    assert_eq!(2, optimizer.iteration_count());
+    assert_eq!(2, optimizer.i);
 
     Ok(())
   }
@@ -159,7 +155,7 @@ mod tests {
     assert!(optimizer.next_iter().is_some());
     optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
-    assert_eq!(2, optimizer.trace().len());
+    assert_eq!(2, optimizer.trace.len());
     assert_eq!(2, count.load(Ordering::Relaxed));
     Ok(())
   }

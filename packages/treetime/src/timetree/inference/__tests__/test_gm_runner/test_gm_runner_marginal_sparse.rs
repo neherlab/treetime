@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_gm_runner_support::support::{
-    ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
+    ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
   };
   use crate::seq::alignment::node_seq_inputs;
 
@@ -17,7 +17,7 @@ mod tests {
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
-  use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
+  use crate::timetree::utils::initialize_node_divergences;
 
   use crate::partition::timetree::partition::PartitionTimetree;
   use eyre::Report;

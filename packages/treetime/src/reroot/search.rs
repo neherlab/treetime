@@ -14,14 +14,13 @@ pub(crate) fn find_best_root<S>(
   variance: &VarianceModel,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &BrentParams,
-) -> Result<FindRootResult<S>, Report>
+) -> Result<FindRootResult, Report>
 where
   S: RootStats,
 {
   let mut best = FindRootResult {
     edge: None,
     split: 0.0,
-    stats: root_stats.clone(),
     score: root_stats.score(),
   };
 

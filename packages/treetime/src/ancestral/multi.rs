@@ -40,7 +40,7 @@ pub(crate) fn reconstruct_marginal_partition(
   let created = create_marginal_partition(
     graph,
     index,
-    alphabet.clone(),
+    alphabet,
     &node_inputs,
     gtr_model,
     params.dense,
@@ -104,8 +104,6 @@ pub(crate) fn reconstruct_marginal_partition(
   Ok(ReconstructedPartition {
     name,
     partition,
-    alphabet,
-    model_name: created.model_name,
     annotation,
     reference_override,
   })
@@ -132,8 +130,6 @@ pub struct MarginalPartitionParams {
 pub(crate) struct ReconstructedPartition {
   pub(crate) name: String,
   pub(crate) partition: AncestralPartition,
-  pub(crate) alphabet: Alphabet,
-  pub(crate) model_name: GtrModelName,
   pub(crate) annotation: Option<AugurNodeDataJsonAnnotationEntry>,
   pub(crate) reference_override: Option<Seq>,
 }

@@ -16,7 +16,7 @@ pub(crate) fn find_best_split<S>(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
   params: &BrentParams,
-) -> Result<FindRootResult<S>, Report>
+) -> Result<FindRootResult, Report>
 where
   S: RootStats,
 {
@@ -50,12 +50,10 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct FindRootResult<S> {
+pub struct FindRootResult {
   pub(crate) edge: Option<GraphEdgeKey>,
 
   pub(crate) split: f64,
-
-  pub(crate) stats: S,
 
   pub(crate) score: f64,
 }

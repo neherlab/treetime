@@ -10,7 +10,6 @@ mod tests {
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::seq::composition::Composition;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
@@ -170,17 +169,15 @@ mod tests {
     let root_node = &recon.partition.obs_nodes[&new_root_key];
     let c = AsciiChar::from_byte_unchecked;
     #[rustfmt::skip]
-    let expected_comp = Composition::from_counts(
-      btreemap! {
+    let expected_comp =       btreemap! {
         c(b'-') => 4, c(b'A') => 3, c(b'B') => 0, c(b'C') => 4,
         c(b'D') => 0, c(b'G') => 2, c(b'H') => 0, c(b'K') => 0,
         c(b'M') => 0, c(b'N') => 0, c(b'R') => 0, c(b'S') => 0,
         c(b'T') => 3, c(b'V') => 0, c(b'W') => 0, c(b'Y') => 0,
-      },
-      c(b'-'),
-    );
+      };
     assert_eq!(
-      expected_comp, root_node.composition,
+      &expected_comp,
+      root_node.composition.counts(),
       "new root node composition should match root_sequence character counts"
     );
 

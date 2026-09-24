@@ -35,24 +35,6 @@ mod tests {
   }
 
   #[rstest]
-  #[case::nuc(AlphabetName::Nuc, 10)]
-  #[case::aa(AlphabetName::Aa, 3)]
-  #[trace]
-  fn test_alphabet_new_n_ambiguous(#[case] name: AlphabetName, #[case] expected: usize) {
-    let alphabet = Alphabet::new(name).unwrap();
-    assert_eq!(expected, alphabet.n_ambiguous());
-  }
-
-  #[rstest]
-  #[case::nuc(AlphabetName::Nuc, 2)]
-  #[case::aa(AlphabetName::Aa, 2)]
-  #[trace]
-  fn test_alphabet_new_n_undetermined(#[case] name: AlphabetName, #[case] expected: usize) {
-    let alphabet = Alphabet::new(name).unwrap();
-    assert_eq!(expected, alphabet.n_undetermined());
-  }
-
-  #[rstest]
   #[case::nuc(AlphabetName::Nuc, b'N')]
   #[case::aa(AlphabetName::Aa, b'X')]
   #[trace]
@@ -155,17 +137,6 @@ mod tests {
 
   #[rstest]
   #[case::n(b'N', true)]
-  #[case::gap(b'-', true)]
-  #[case::a(b'A', false)]
-  #[case::r(b'R', false)]
-  #[trace]
-  fn test_alphabet_nuc_is_undetermined(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    assert_eq!(expected, alphabet.is_undetermined(AsciiChar::from_byte_unchecked(c)));
-  }
-
-  #[rstest]
-  #[case::n(b'N', true)]
   #[case::gap(b'-', false)]
   #[case::a(b'A', false)]
   #[trace]
@@ -195,20 +166,6 @@ mod tests {
   fn test_alphabet_nuc_contains(#[case] c: u8, #[case] expected: bool) {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.contains(AsciiChar::from_byte_unchecked(c)));
-  }
-
-  #[test]
-  fn test_alphabet_nuc_n_chars() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    let expected = 16;
-    assert_eq!(expected, alphabet.n_chars());
-  }
-
-  #[test]
-  fn test_alphabet_nuc_n_determined() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    let expected = 14;
-    assert_eq!(expected, alphabet.n_determined());
   }
 
   #[rstest]
@@ -273,23 +230,6 @@ mod tests {
     let profile_n = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
     let expected_n = array![1.0, 1.0, 1.0, 1.0];
     pretty_assert_ulps_eq!(expected_n, profile_n, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_alphabet_nuc_get_code() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-
-    let actual = alphabet.get_code(&array![1.0, 0.0, 0.0, 0.0]).unwrap();
-    let expected = AsciiChar::from_byte_unchecked(b'A');
-    assert_eq!(expected, actual);
-
-    let actual = alphabet.get_code(&array![0.0, 1.0, 0.0, 1.0]).unwrap();
-    let expected = AsciiChar::from_byte_unchecked(b'Y');
-    assert_eq!(expected, actual);
-
-    let actual = alphabet.get_code(&array![1.0, 1.0, 1.0, 1.0]).unwrap();
-    let expected = AsciiChar::from_byte_unchecked(b'N');
-    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -375,18 +315,6 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_aa_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
-    let ambiguous = alphabet.ambiguous().collect_vec();
-    let expected = vec![
-      AsciiChar::from_byte_unchecked(b'B'),
-      AsciiChar::from_byte_unchecked(b'J'),
-      AsciiChar::from_byte_unchecked(b'Z'),
-    ];
-    assert_eq!(expected, ambiguous);
-  }
-
-  #[test]
   fn test_alphabet_aa_b_maps_to_nd() {
     let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'B'));
@@ -439,34 +367,6 @@ mod tests {
     assert!(determined.contains(&AsciiChar::from_byte_unchecked(b'R')));
     assert!(!determined.contains(&AsciiChar::from_byte_unchecked(b'N')));
     assert!(!determined.contains(&AsciiChar::from_byte_unchecked(b'-')));
-  }
-
-  #[test]
-  fn test_alphabet_nuc_undetermined_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    let undetermined = alphabet.undetermined().collect_vec();
-    let expected_len = 2;
-    assert_eq!(expected_len, undetermined.len());
-    assert!(undetermined.contains(&AsciiChar::from_byte_unchecked(b'N')));
-    assert!(undetermined.contains(&AsciiChar::from_byte_unchecked(b'-')));
-  }
-
-  #[test]
-  fn test_alphabet_nuc_ambiguous_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    let ambiguous = alphabet.ambiguous().collect_vec();
-    let expected_len = 10;
-    assert_eq!(expected_len, ambiguous.len());
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'R')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'Y')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'S')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'W')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'K')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'M')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'D')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'H')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'B')));
-    assert!(ambiguous.contains(&AsciiChar::from_byte_unchecked(b'V')));
   }
 
   #[test]
@@ -536,8 +436,7 @@ mod tests {
     let expected_n_canonical = 3;
     assert_eq!(expected_n_canonical, alphabet.n_canonical());
 
-    let expected_n_ambiguous = 1;
-    assert_eq!(expected_n_ambiguous, alphabet.n_ambiguous());
+    assert!(alphabet.is_ambiguous(AsciiChar::from_byte_unchecked(b'W')));
 
     let expected_unknown = AsciiChar::from_byte_unchecked(b'?');
     assert_eq!(expected_unknown, alphabet.unknown());
@@ -729,10 +628,11 @@ mod tests {
     let deserialized: Alphabet = json_read_str(&json)?;
 
     assert_eq!(original.n_canonical(), deserialized.n_canonical());
-    assert_eq!(original.n_ambiguous(), deserialized.n_ambiguous());
-    assert_eq!(original.n_chars(), deserialized.n_chars());
-    assert_eq!(original.n_determined(), deserialized.n_determined());
-    assert_eq!(original.n_undetermined(), deserialized.n_undetermined());
+    assert_eq!(original.chars().collect_vec(), deserialized.chars().collect_vec());
+    assert_eq!(
+      original.determined().collect_vec(),
+      deserialized.determined().collect_vec()
+    );
     assert_eq!(original.unknown(), deserialized.unknown());
     assert_eq!(original.gap(), deserialized.gap());
     Ok(())
