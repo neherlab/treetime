@@ -19,7 +19,7 @@ export function createDesktopBridge(ipc: IpcRendererLike): TreeTimeBridge {
   return createBridge(createDesktopTransport(ipc));
 }
 
-export function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
+function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
   async function query(endpoint: string): Promise<unknown> {
     return decode(await ipc.invoke(`treetime:${endpoint}`));
   }

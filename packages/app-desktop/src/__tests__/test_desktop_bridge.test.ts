@@ -1,7 +1,7 @@
 import { CancelledError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { createDesktopBridge, createDesktopTransport, type IpcRendererLike } from "../desktop-bridge";
+import { createDesktopBridge, type IpcRendererLike } from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
 
@@ -74,6 +74,7 @@ describe("desktop_bridge streaming command path", () => {
 
     const received: string[] = [];
     const bridge = createDesktopBridge(fake);
+
     const result = await bridge.ancestral(
       { tree: "t", outdir: "o" },
       {
@@ -105,8 +106,8 @@ describe("desktop_bridge streaming command path", () => {
     );
 
     const controller = new AbortController();
-    const transport = createDesktopTransport(fake);
-    const pending = transport.command("ancestral", { tree: "t", outdir: "o" }, { signal: controller.signal });
+    const bridge = createDesktopBridge(fake);
+    const pending = bridge.ancestral({ tree: "t", outdir: "o" }, { signal: controller.signal });
 
     controller.abort();
     expect(fake.sent).toContain("treetime:cancel");

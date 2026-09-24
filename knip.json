@@ -15,19 +15,19 @@
     },
     "packages/app-contracts": {
       "entry": ["src/bridge.ts!", "src/generated/index.ts"],
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts!"]
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}!"]
     },
     "packages/app-web": {
       "entry": ["index.html!", "src/bridge-web.ts!"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx,css}!"]
     },
     "packages/app-desktop": {
       "entry": ["src/preload.ts!", "renderer/index.html!"],
-      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!"]
     },
     "packages/app-napi": {
       "entry": [],
