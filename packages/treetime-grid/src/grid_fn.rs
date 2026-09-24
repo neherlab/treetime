@@ -100,15 +100,6 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y_uniform)
   }
 
-  pub fn from_n_points<F>((x_min, x_max): (T, T), n_points: usize, y_fn: F) -> Result<Self, Report>
-  where
-    T: Float,
-    F: Fn(T) -> T,
-  {
-    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
-    Self::from_grid_fn(grid, y_fn)
-  }
-
   pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
   where
     T: Float,
@@ -132,29 +123,6 @@ impl<T: InterpElem> GridFn<T> {
   {
     let grid = Grid::from_range_n_points(x_min, x_max, y.len())?;
     Self::from_grid_array(grid, y)
-  }
-
-  pub fn constant((x_min, x_max): (T, T), n_points: usize, value: T) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
-    let y = Array1::from_elem(n_points, value);
-    Self::from_grid_array(grid, y)
-  }
-
-  pub fn zeros((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    Self::constant((x_min, x_max), n_points, T::zero())
-  }
-
-  pub fn ones((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    Self::constant((x_min, x_max), n_points, T::one())
   }
 
   pub fn x(&self) -> Array1<T>

@@ -3,7 +3,7 @@ pub(crate) mod distribution_ops;
 pub(crate) mod policy;
 
 pub use distribution_core::distribution::{
-  Distribution, DistributionNegLog, DistributionPlain, TIME_EPSILON, TIME_LIMIT,
+  Distribution, DistributionNegLog, DistributionPlain, TIME_LIMIT,
 };
 pub use distribution_core::formula::DistributionFormula;
 pub use distribution_core::function::DistributionFunction;

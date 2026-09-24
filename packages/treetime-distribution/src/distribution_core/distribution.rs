@@ -14,7 +14,6 @@ use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
 
 pub const TIME_LIMIT: f64 = 1e10;
-pub const TIME_EPSILON: f64 = 1e-10;
 const FORMULA_GRID_SIZE: usize = 200;
 
 pub type DistributionPlain = Distribution<Plain>;
