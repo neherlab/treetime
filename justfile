@@ -163,11 +163,9 @@ mutants *args:
 [group("report")]
 duplication *args:
     jscpd --config .jscpd.json "$@"
-
-# Explain why a crate is in the dependency tree: just why <crate>
-[group("report")]
-why crate:
-    cargo tree --locked --invert {{ quote(crate) }}
+# Explain why a crate is in the dependency tree: just why <crate> [cargo tree options]
+why crate *args:
+    cargo tree --locked --invert "$@"
 
 # Inventory of lint suppressions and other review-sensitive settings
 [group("report")]
@@ -249,7 +247,7 @@ lint-docker:
 # TOML formatting (taplo)
 [group("lint")]
 lint-toml:
-    taplo fmt --check --diff
+    RUST_LOG=warn taplo fmt --check --diff
 
 # GitHub Actions workflows (actionlint)
 [group("lint")]
@@ -262,7 +260,7 @@ fmt: _js
     cargo fmt --all
     bun run --silent format
     shfmt --write $(dev/shell-files)
-    taplo fmt
+    RUST_LOG=warn taplo fmt
     just --fmt
 
 # Check formatting of Rust, TypeScript, shell, TOML, and the justfile
@@ -271,7 +269,7 @@ fmt-check: _js
     cargo fmt --all --check
     bun run --silent format:check
     shfmt --diff $(dev/shell-files)
-    taplo fmt --check
+    RUST_LOG=warn taplo fmt --check
     just --fmt --check
 
 # Regenerate the committed generated files: just gen [schemas|openapi|ts-client|napi-types|cli-docs]...

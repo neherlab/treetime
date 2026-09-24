@@ -173,7 +173,7 @@ jupyter)
 *)
   # The cargo home and the bun cache live under .cache of the checkout; build
   # output goes to .build/container, apart from host builds in .build/host.
-  mkdir -p "${root}/.cache/cargo" "${root}/.cache/bun" "${root}/.build/container"
+  mkdir -p "${root}/.cache/cargo/dylint_drivers" "${root}/.cache/bun" "${root}/.build/container"
   run_flags+=(
     --env="HOME=/tmp/home"
     --env="MISE_TRUSTED_CONFIG_PATHS=${root}"

@@ -7,7 +7,7 @@ exclude = [
   ".cache/**",
   ".out/**",
   "target/**",
-  "node_modules/**",
+  "**/node_modules/**",
   ".repos/**",
   "tmp/**",
   "packages/legacy/**",
