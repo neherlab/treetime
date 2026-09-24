@@ -15,10 +15,6 @@ pub struct SpatialMetrics {
 }
 
 impl SpatialMetrics {
-  fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>, dx: f64) -> eyre::Result<Self> {
-    Self::new_with_config(x, actual, expected, dx, &SpatialConfig::default())
-  }
-
   pub(crate) fn new_with_config(
     x: &Array1<f64>,
     actual: &Array1<f64>,
@@ -52,7 +48,7 @@ mod tests {
   fn test_perfect_agreement() {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 3.0, 2.0, 1.0];
-    let result = SpatialMetrics::new(&x, &y, &y, 1.0).unwrap();
+    let result = SpatialMetrics::new_with_config(&x, &y, &y, 1.0, &SpatialConfig::default()).unwrap();
 
     assert_eq!(5, result.total_points);
     assert_ulps_eq!(result.cumulative.summary.final_value, 0.0, max_ulps = 4);
@@ -65,7 +61,7 @@ mod tests {
     let expected = array![0.0, 0.0, 0.0, 0.0, 0.0];
     let actual = array![0.1, 0.1, 0.1, 0.1, 0.1];
 
-    let result = SpatialMetrics::new(&x, &actual, &expected, 1.0).unwrap();
+    let result = SpatialMetrics::new_with_config(&x, &actual, &expected, 1.0, &SpatialConfig::default()).unwrap();
 
     assert_ulps_eq!(result.cumulative.summary.final_value, 0.5, max_ulps = 4);
     assert_ulps_eq!(result.cumulative.summary.max_abs, 0.5, max_ulps = 4);

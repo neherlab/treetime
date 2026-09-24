@@ -16,10 +16,6 @@ pub struct PointwiseMetrics {
 }
 
 impl PointwiseMetrics {
-  fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
-    Self::new_with_config(x, actual, expected, &PointwiseConfig::default())
-  }
-
   pub(crate) fn new_with_config(
     x: &Array1<f64>,
     actual: &Array1<f64>,
@@ -83,7 +79,7 @@ mod tests {
   fn test_perfect_agreement() {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 3.0, 2.0, 1.0];
-    let result = PointwiseMetrics::new(&x, &y, &y).unwrap();
+    let result = PointwiseMetrics::new_with_config(&x, &y, &y, &PointwiseConfig::default()).unwrap();
 
     assert_eq!(5, result.total_points);
     assert_ulps_eq!(result.errors.summary.abs_max, 0.0, max_ulps = 4);
@@ -96,7 +92,7 @@ mod tests {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let expected = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let actual = &expected + 0.5;
-    let result = PointwiseMetrics::new(&x, &actual, &expected).unwrap();
+    let result = PointwiseMetrics::new_with_config(&x, &actual, &expected, &PointwiseConfig::default()).unwrap();
 
     for i in 0..5 {
       assert_ulps_eq!(result.errors.absolute[i], 0.5, max_ulps = 4);
