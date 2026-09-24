@@ -10,8 +10,8 @@ preserve-uniform-field-visibility = true
 # items unreachable from a root are candidates for the `hawk::dead_public`
 # diagnostic. `[[doctest]]` restricts the doctest reachability pass to the named
 # packages. `[[exclude]]` silences diagnostics for a module or file; whole library
-# crates at an external API boundary are excluded through the `public_api_crates`
-# justfile variable, which the `hawk` recipe reads.
+# crates at an external API boundary, and the crates only tests use, are excluded
+# through the `public_api_crates` justfile variable, which the `hawk` recipe reads.
 # `[[override]]` records a single item deliberately kept public
 # despite being unreachable, each with a mandatory reason.
 

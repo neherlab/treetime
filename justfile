@@ -26,8 +26,10 @@ pub_unused_dir := dylint_dir / "treetime_lints/pub_unused"
 # unused-public-code checks (hawk and pub-unused-report): the shared utility and
 # file-format libraries publish a complete API for reuse, including operations no
 # current caller needs, and the Node addon's `#[napi]` surface is consumed by
-# JavaScript, not by a Rust target.
-public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi"
+# JavaScript, not by a Rust target. The test-infrastructure crates
+# (treetime_validation, treetime_analytical) serve only test targets, which
+# neither check counts as users.
+public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi treetime_validation treetime_analytical"
 
 # Show the grouped task list (default).
 default:

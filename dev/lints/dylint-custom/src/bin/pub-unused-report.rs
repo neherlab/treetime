@@ -4,8 +4,9 @@
 //!
 //! Usage: `pub-unused-report <workspace-manifest-path> [--exclude-crate <crate>]...`,
 //! with the records directory in `TREETIME_LINTS_PUB_UNUSED_DIR` as for the lint.
-//! An excluded crate publishes its API for users outside the workspace: its
-//! items are not reported, and its uses of other crates' items still count.
+//! An excluded crate publishes its API for users outside the workspace or serves
+//! only test targets: its items are not reported, and its uses of other crates'
+//! items still count.
 //!
 //! Findings are warnings and leave the exit status at 0. A workspace target
 //! whose record is missing or unreadable makes the report incomplete: it is
