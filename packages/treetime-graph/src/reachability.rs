@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
   dylint_lib = "treetime_lints",
   allow(
     pub_unused_in_workspace,
-    reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    reason = "graph query API without a production caller, covered by this crate's tests"
   )
 )]
 pub fn exists_forward_path_between(graph: &Graph, start: GraphNodeKey, finish: GraphNodeKey) -> bool {

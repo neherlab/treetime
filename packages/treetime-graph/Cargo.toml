@@ -33,6 +33,8 @@ serde = { workspace = true }
 ctor = { workspace = true }
 maplit = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
+rstest = { workspace = true }
 
 [lints]
 workspace = true

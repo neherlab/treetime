@@ -1,4 +1,11 @@
 mod test_dependency_queue;
+mod test_edge;
 mod test_graph_ops;
+mod test_graph_ops_collapse_edge;
+pub(crate) mod test_graph_support;
+mod test_graph_traverse;
 mod test_pass;
+mod test_prop_graph_ops_collapse_edge;
+mod test_prop_reachability;
+mod test_reachability;
 mod test_topology_order;

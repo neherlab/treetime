@@ -2,7 +2,7 @@
 mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use treetime_graph::reachability::exists_forward_path_between;
+  use crate::reachability::exists_forward_path_between;
 
   use self::helpers::graph_with_edges;
 
@@ -25,8 +25,8 @@ mod tests {
 
   mod helpers {
     use eyre::Report;
-    use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+    use crate::graph::Graph;
+    use crate::node::GraphNodeKey;
 
     pub(super) fn graph_with_edges(
       node_count: usize,
