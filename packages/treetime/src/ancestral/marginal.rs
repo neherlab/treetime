@@ -14,11 +14,11 @@ pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
 
 pub(crate) fn ancestral_reconstruction(
   graph: &Graph,
-  mut advance: impl FnMut(&GraphNodeForward) -> Option<()>,
+  mut advance: impl FnMut(&GraphNodeForward) -> Result<bool, Report>,
 ) -> Result<Vec<GraphNodeKey>, Report> {
   let mut emitted_nodes = Vec::new();
   graph.iter_depth_first_preorder_forward(|node| {
-    if advance(&node).is_some() {
+    if advance(&node)? {
       emitted_nodes.push(node.key);
     }
     Ok(())

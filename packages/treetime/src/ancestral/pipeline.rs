@@ -198,8 +198,9 @@ pub fn run(
           cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
           let emitted_nodes = ancestral_reconstruction(graph, |node| {
-            partition
-              .reconstruct_node_sequence(
+            Ok(
+              partition
+                .reconstruct_node_sequence(
                 &mut node_states,
                 node,
                 TipStates {
@@ -209,7 +210,8 @@ pub fn run(
                 params.sample_from_profile,
                 &mut rng,
               )
-              .map(|_| ())
+              .is_some(),
+              )
           })?;
 
           progress.report("Done", 1.0, "");

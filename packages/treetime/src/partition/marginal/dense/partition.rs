@@ -179,7 +179,7 @@ impl PartitionMarginalDense {
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
     let seq = {
-      let seq_info = node_states.get(&node.key)?;
+      let seq_info = &node_states[&node.key];
       if node.is_leaf {
         let mut seq = seq_info.seq.sequence.clone();
         if tips.impute && seq_info.profile.dis.nrows() == seq.len() {
@@ -203,9 +203,9 @@ impl PartitionMarginalDense {
       }
     };
 
-    if let Some(node_data) = node_states.get_mut(&node.key) {
-      node_data.seq.sequence = seq.clone();
-    }
+    node_states
+      .entry(node.key)
+      .and_modify(|node_data| node_data.seq.sequence = seq.clone());
 
     if !tips.include_leaves && node.is_leaf {
       return None;

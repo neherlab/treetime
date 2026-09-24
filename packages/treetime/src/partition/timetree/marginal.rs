@@ -71,7 +71,7 @@ pub(crate) fn ancestral_reconstruction_timetree(
       return Ok(());
     }
 
-    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng);
+    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng)?;
     match reconstructed {
       Some(seq) => {
         visitor(node.key, &seq)?;
@@ -144,13 +144,13 @@ impl PartitionTimetree {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Option<Seq> {
+  ) -> Result<Option<Seq>, Report> {
     match self {
-      Self::Dense(family) => {
+      Self::Dense(family) => Ok(
         family
           .partition
-          .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng)
-      },
+          .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng),
+      ),
       Self::Sparse(family) => family.partition.reconstruct_node_sequence(
         &mut family.node_states,
         &family.edges.forward,

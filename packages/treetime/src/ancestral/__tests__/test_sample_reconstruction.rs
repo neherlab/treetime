@@ -113,7 +113,7 @@ mod tests {
           ..
         } = &mut recon;
         ancestral_reconstruction(&graph, |node| {
-          let seq = partition.reconstruct_node_sequence(
+          let Some(seq) = partition.reconstruct_node_sequence(
             node_states,
             &edges.forward,
             node,
@@ -123,9 +123,11 @@ mod tests {
             },
             mode,
             &mut rng,
-          )?;
+          )? else {
+            return Ok(false);
+          };
           out.insert(names[&node.key].clone().unwrap_or_default(), seq.to_string());
-          Some(())
+          Ok(true)
         })?;
       }
       Ok(out)

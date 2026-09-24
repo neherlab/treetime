@@ -13,7 +13,7 @@ use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
 use crate::seq::mutation::Sub;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
@@ -130,40 +130,41 @@ impl PartitionMarginalSparse {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Option<()> {
+  ) -> Result<bool, Report> {
     let (parent_state, msg_from_parent) = if node.is_root {
       (None, None)
     } else {
-      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
+      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)
+        .wrap_err_with(|| format!("When reconstructing the sequence of node {}", node.key))?;
       (
-        node_states.get(parent_key).cloned(),
-        forward.get(edge_key).map(|f| f.msg_from_parent.clone()),
+        Some(node_states[parent_key].clone()),
+        Some(forward[edge_key].msg_from_parent.clone()),
       )
     };
 
-    let node_obs = self.obs_nodes.get(&node.key)?;
-    let node_data = node_states.get(&node.key)?;
-    let sample = sample_mode.samples_node(node.is_root);
-    if node.is_leaf {
-      let seq = reconstruct_leaf_sequence(
+    let node_obs = &self.obs_nodes[&node.key];
+    let node_data = &node_states[&node.key];
+    let emitted = if node.is_leaf {
+      Some(reconstruct_leaf_sequence(
         node_data,
         node_obs,
         msg_from_parent.as_ref(),
         parent_state.as_ref(),
         tips.impute,
         &self.alphabet,
-      );
-      node_states.get_mut(&node.key)?.emitted = Some(seq);
-    } else if sample {
-      let seq = map_seq_sampled(node_data, &self.alphabet, &mut Resolve::Sample(rng));
-      node_states.get_mut(&node.key)?.emitted = Some(seq);
+      ))
+    } else if sample_mode.samples_node(node.is_root) {
+      Some(map_seq_sampled(node_data, &self.alphabet, &mut Resolve::Sample(rng)))
+    } else {
+      None
+    };
+    if let Some(seq) = emitted {
+      node_states
+        .entry(node.key)
+        .and_modify(|node_data| node_data.emitted = Some(seq));
     }
 
-    if !tips.include_leaves && node.is_leaf {
-      return None;
-    }
-
-    Some(())
+    Ok(tips.include_leaves || !node.is_leaf)
   }
 
   pub(crate) fn reconstruct_node_sequence(
@@ -174,9 +175,11 @@ impl PartitionMarginalSparse {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Option<Seq> {
-    self.advance_node_state(node_states, forward, node, tips, sample_mode, rng)?;
-    Some(self.node_sequence(node_states, node.key))
+  ) -> Result<Option<Seq>, Report> {
+    if !self.advance_node_state(node_states, forward, node, tips, sample_mode, rng)? {
+      return Ok(None);
+    }
+    Ok(Some(self.node_sequence(node_states, node.key)))
   }
 }
 

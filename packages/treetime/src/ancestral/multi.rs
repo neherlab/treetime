@@ -79,8 +79,9 @@ pub(crate) fn reconstruct_marginal_partition(
         mut node_states, edges, ..
       } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(graph, |node| {
-        partition
-          .reconstruct_node_sequence(
+        Ok(
+          partition
+            .reconstruct_node_sequence(
             &mut node_states,
             node,
             TipStates {
@@ -90,7 +91,8 @@ pub(crate) fn reconstruct_marginal_partition(
             params.sample_from_profile,
             rng,
           )
-          .map(|_| ())
+          .is_some(),
+          )
       })?;
       AncestralPartition::Dense(DenseReconstruction {
         partition,

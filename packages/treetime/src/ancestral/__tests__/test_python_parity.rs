@@ -92,7 +92,7 @@ mod tests {
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(&graph, |node| {
-        let seq = partition.reconstruct_node_sequence(
+        let Some(seq) = partition.reconstruct_node_sequence(
           node_states,
           node,
           TipStates {
@@ -101,11 +101,13 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )?;
+        ) else {
+          return Ok(false);
+        };
         if names[&node.key].as_deref() == Some("NODE_0000000") {
           root_seq = seq.to_string();
         }
-        Some(())
+        Ok(true)
       })?;
     }
 

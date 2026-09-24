@@ -24,6 +24,9 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
+  use treetime_graph::graph_traverse::GraphNodeForward;
+  use rstest::rstest;
+  use treetime_utils::assert_error;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
@@ -180,7 +183,7 @@ mod tests {
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(&graph, |node| {
-        let seq = partition.reconstruct_node_sequence(
+        let Some(seq) = partition.reconstruct_node_sequence(
           node_states,
           &edges.forward,
           node,
@@ -190,9 +193,11 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )?;
+        )? else {
+          return Ok(false);
+        };
         actual.insert(names[&node.key].clone(), seq.to_string());
-        Some(())
+        Ok(true)
       })?;
     }
 
@@ -488,7 +493,7 @@ mod tests {
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(&graph, |node| {
-        let seq = partition.reconstruct_node_sequence(
+        let Some(seq) = partition.reconstruct_node_sequence(
           node_states,
           &edges.forward,
           node,
@@ -498,15 +503,96 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )?;
+        )? else {
+          return Ok(false);
+        };
         seqs_by_name.insert(names[&node.key].clone().expect("all test nodes should have names"), seq);
-        Some(())
+        Ok(true)
       })?;
     }
 
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_sparse_reconstruct_node_without_parent_errors_and_keeps_state() -> Result<(), Report> {
+    let (graph, names, mut recon) = helpers::small_sparse_reconstruction()?;
+    let key = find_node_key_by_name(&graph, &names, "AB").expect("node AB not found");
+    let orphan = GraphNodeForward {
+      is_root: false,
+      is_leaf: false,
+      key,
+      parent_keys: vec![],
+      child_edge_keys: vec![],
+    };
+    let before = json_write_str(&recon.node_states, JsonPretty(false))?;
+
+    let SparseReconstruction {
+      partition,
+      node_states,
+      edges,
+      ..
+    } = &mut recon;
+    let result = partition.reconstruct_node_sequence(
+      node_states,
+      &edges.forward,
+      &orphan,
+      TipStates {
+        include_leaves: true,
+        impute: false,
+      },
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+    );
+
+    assert_error!(
+      result,
+      format!("When reconstructing the sequence of node {key}: Expected exactly one element, but found 0")
+    );
+    assert_eq!(before, json_write_str(&recon.node_states, JsonPretty(false))?);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::excluded_leaf("A",  false, false)]
+  #[case::included_leaf("A",  true,  true)]
+  #[case::internal_node("AB", false, true)]
+  #[trace]
+  fn test_marginal_sparse_reconstruct_node_sequence_honours_leaf_inclusion(
+    #[case] name: &str,
+    #[case] include_leaves: bool,
+    #[case] expected_returned: bool,
+  ) -> Result<(), Report> {
+    let (graph, names, mut recon) = helpers::small_sparse_reconstruction()?;
+    let key = find_node_key_by_name(&graph, &names, name).expect("node not found");
+    let mut actual = None;
+    {
+      let SparseReconstruction {
+        partition,
+        node_states,
+        edges,
+        ..
+      } = &mut recon;
+      ancestral_reconstruction(&graph, |node| {
+        let seq = partition.reconstruct_node_sequence(
+          node_states,
+          &edges.forward,
+          node,
+          TipStates { include_leaves, impute: false },
+          SampleMode::Argmax,
+          &mut rand::thread_rng(),
+        )?;
+        if node.key == key {
+          actual = seq.map(|seq| seq.to_string());
+        }
+        Ok(true)
+      })?;
+    }
+    assert_eq!(expected_returned, actual.is_some());
     Ok(())
   }
 
@@ -522,6 +608,34 @@ mod tests {
   mod helpers {
     use super::*;
     use rayon::ThreadPoolBuilder;
+
+    pub(super) fn small_sparse_reconstruction()
+    -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, SparseReconstruction), Report> {
+      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+        indoc! {r#"
+        >A
+        ACATCGCCNNA--GAC
+        >B
+        GCATCCCTGTA-NG--
+        >C
+        CCGGCGATGTRTTG--
+        >D
+        TCGGCCGTGTRTTG--
+      "#},
+        &*NUC_ALPHABET,
+      )?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
+      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
+      let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+      let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
+      let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&nwk_parsed.branch_lengths))?;
+      Ok((graph, names, recon))
+    }
 
     pub(super) fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
       let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";

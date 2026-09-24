@@ -69,7 +69,7 @@ mod tests {
         ancestral_reconstruction(&graph, |node| {
           partition
             .reconstruct_node_sequence(node_states, &edges.forward, node, TipStates { include_leaves: true, impute: false }, SampleMode::Argmax, &mut rng)
-            .map(|_| ())
+            .map(|seq| seq.is_some())
         })
         .unwrap();
       }

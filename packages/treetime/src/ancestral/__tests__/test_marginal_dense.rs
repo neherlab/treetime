@@ -153,7 +153,7 @@ mod tests {
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(&graph, |node| {
-        let seq = partition.reconstruct_node_sequence(
+        let Some(seq) = partition.reconstruct_node_sequence(
           node_states,
           node,
           TipStates {
@@ -162,9 +162,11 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )?;
+        ) else {
+          return Ok(false);
+        };
         actual.insert(names[&node.key].clone(), seq.to_string());
-        Some(())
+        Ok(true)
       })?;
     }
 
