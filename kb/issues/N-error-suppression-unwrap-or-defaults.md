@@ -43,6 +43,19 @@ Returns `Ok(...)` with a `warn!` log when GTR inference does not converge. No co
 
 Uses `saturating_add_signed` which silently clamps to 0 on underflow. A negative composition count indicates a data integrity problem that should be reported, not masked.
 
+### Empty sequence for a missing node
+
+- `partition/marginal/dense/partition.rs:161:` `extract_ancestral_sequence()` returns an empty sequence when the node has no marginal state
+- `partition/marginal/sparse/partition.rs:57:` `node_sequence()` returns an empty sequence when the node has no marginal state
+
+A missing node state is a broken invariant. An empty sequence is written to the output as if the node had no sites.
+
+### Mass-sizing errors read as "not sizable"
+
+`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:40:`
+
+`peak_normalized_if_mass_sizable()` discards a `total_mass()` error through `is_ok_and`, so a distribution with an undeclared tail or fewer than two grid points is treated the same as one without finite total mass. Callers then take the fallback window intended for the second case.
+
 ## Impact
 
 - Silent data corruption in release builds from unchecked substitution chains
