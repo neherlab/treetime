@@ -1,3 +1,4 @@
+use crate::cli::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::clock_result::ClockNodeOut;
@@ -118,6 +119,11 @@ pub(crate) fn run_clock(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
     write_clock_regression_result_csv(&regression_results, path, b',')?;
+  }
+
+  if let Some(outdir) = &clock_args.output.output_all {
+    write_clock_regression_chart_svg(&regression_results, &clock_model, outdir.join("clock.svg"))?;
+    write_clock_regression_chart_png(&regression_results, &clock_model, outdir.join("clock.png"))?;
   }
 
   progress.report("Done", 1.0, "");

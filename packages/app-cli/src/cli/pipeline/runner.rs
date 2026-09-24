@@ -1,9 +1,11 @@
 use crate::cli::diagnostics::entry::check_pipeline;
 use crate::cli::diagnostics::source::{ConfigSource, parse_config_document};
+use crate::cli::pipeline::check::print_pipeline_plan;
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
+use crate::cli::pipeline::safety::validate_plan;
 use crate::cli::pipeline::suggest::suggestion_suffix;
 use crate::cli::pipeline::types::PipelineStepCommand;
-use crate::cli::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
+use crate::cli::treetime_cli::TreetimePipelineArgs;
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::run::run_ancestral_reconstruction;
 use crate::commands::clock::args::TreetimeClockArgs;
@@ -25,6 +27,17 @@ use treetime::cancel::NoopCancel;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
+
+pub(crate) fn run_pipeline_command(args: &TreetimePipelineArgs, progress: &dyn ProgressSink) -> Result<(), Report> {
+  let pipeline = load_pipeline(&args.config)?;
+  let selected = (!args.steps.is_empty()).then(|| args.steps.iter().cloned().collect::<BTreeSet<String>>());
+  validate_plan(&pipeline, selected.as_ref())?;
+  if args.check {
+    print_pipeline_plan(&pipeline, selected.as_ref())
+  } else {
+    run_pipeline(&pipeline, selected.as_ref(), progress)
+  }
+}
 
 pub(crate) fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
   let text = read_file_to_string(config)?;
@@ -115,20 +128,7 @@ fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Repo
     },
     PipelineStepCommand::Clock(args) => {
       let args = TreetimeClockArgs::try_from(args.clone())?;
-      let result = run_clock(&args, &NoopCancel, progress)?;
-      if let Some(outdir) = &args.output.output_all {
-        write_clock_regression_chart_svg(
-          &result.regression_results,
-          &result.clock_model,
-          outdir.join("clock.svg"),
-        )?;
-        write_clock_regression_chart_png(
-          &result.regression_results,
-          &result.clock_model,
-          outdir.join("clock.png"),
-        )?;
-      }
-      Ok(())
+      run_clock(&args, &NoopCancel, progress).map(|_| ())
     },
   }
 }
