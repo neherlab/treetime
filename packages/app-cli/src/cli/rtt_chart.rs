@@ -35,7 +35,7 @@ pub(crate) fn write_clock_regression_chart_svg(
 }
 
 #[cfg(feature = "png")]
-pub fn write_clock_regression_chart_png(
+pub(crate) fn write_clock_regression_chart_png(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,

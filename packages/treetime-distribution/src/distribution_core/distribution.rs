@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
 
-pub(crate) const TIME_LIMIT: f64 = 1e10;
+const TIME_LIMIT: f64 = 1e10;
 const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]

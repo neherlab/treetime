@@ -15,7 +15,7 @@ impl ConvolveAlgo for RiemannConvolve {
   }
 }
 
-pub fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   let mut result = Array1::zeros(f_values.len() + g_values.len() - 1);
 
   for (i, &f_val) in f_values.iter().enumerate() {
@@ -39,7 +39,7 @@ impl ConvolveAlgo for NdarrayConvolve {
   }
 }
 
-pub fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
   let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
   let continuous_conv = &discrete_conv * dx;
   Ok(continuous_conv)

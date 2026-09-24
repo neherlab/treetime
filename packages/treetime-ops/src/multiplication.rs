@@ -21,7 +21,7 @@ impl MultiplyAlgo for PointwiseMultiply {
   }
 }
 
-pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
+fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
     return ScaledArray::empty(0);
   }
@@ -63,7 +63,7 @@ impl MultiplyAlgo for LogScaleMultiply {
   }
 }
 
-pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArray {
+pub(crate) fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
     return ScaledArray::empty(0);
   }
@@ -121,7 +121,7 @@ impl MultiplyAlgo for AggressiveMultiply {
   }
 }
 
-pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
+pub(crate) fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
     return ScaledArray::empty(0);
   }
