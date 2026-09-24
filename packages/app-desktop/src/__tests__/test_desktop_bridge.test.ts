@@ -74,7 +74,14 @@ describe("desktop_bridge streaming command path", () => {
 
     const received: string[] = [];
     const bridge = createDesktopBridge(fake);
-    const result = await bridge.ancestral({ tree: "t", outdir: "o" }, { onProgress: (e) => received.push(e.stage) });
+    const result = await bridge.ancestral(
+      { tree: "t", outdir: "o" },
+      {
+        onProgress: (e) => {
+          received.push(e.stage);
+        },
+      },
+    );
 
     expect(result).toStrictEqual({ model_name: "JC69" });
     expect(received).toStrictEqual(["infer"]);

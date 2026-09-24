@@ -59,7 +59,14 @@ describe("bridge streaming and cancellation", () => {
 
     const received: ProgressEvent[] = [];
     const bridge = createBridge(stubTransport({ command }));
-    const result = await bridge.ancestral({ tree: "t", outdir: "o" }, { onProgress: (e) => received.push(e) });
+    const result = await bridge.ancestral(
+      { tree: "t", outdir: "o" },
+      {
+        onProgress: (e) => {
+          received.push(e);
+        },
+      },
+    );
 
     expect(result).toStrictEqual({ model_name: "JC69" });
     expect(received).toStrictEqual(progress);

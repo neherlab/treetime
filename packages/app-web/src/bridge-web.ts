@@ -1,4 +1,3 @@
-import { fetchEventSource } from "@microsoft/fetch-event-source";
 import {
   CancelledError,
   createBridge,
@@ -8,16 +7,15 @@ import {
   type CommandOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
+import { EventSourceParserStream } from "eventsource-parser/stream";
 
 export interface WebBridgeDeps {
   fetchFn?: typeof fetch;
-  fetchEventSourceFn?: typeof fetchEventSource;
   apiBase?: string;
 }
 
 export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   const fetchFn = deps.fetchFn ?? globalThis.fetch.bind(globalThis);
-  const fetchEventSourceFn = deps.fetchEventSourceFn ?? fetchEventSource;
   const apiBase = deps.apiBase ?? "/api";
 
   const debug = readDebugFlag();
@@ -42,28 +40,31 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     let received = false;
 
     try {
-      await fetchEventSourceFn(`${apiBase}/${command}`, {
+      const response = await fetchFn(`${apiBase}/${command}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify(args),
         signal: options?.signal ?? null,
-        onmessage(msg) {
-          if (debug) console.debug("[TreeTime]", JSON.stringify(msg));
-
-          if (msg.event === "progress") {
-            options?.onProgress?.(parseProgressEvent(JSON.parse(msg.data)));
-          } else if (msg.event === "log") {
-            logToConsole(parseLogEvent(JSON.parse(msg.data)));
-          } else if (msg.event === "result") {
-            result = JSON.parse(msg.data);
-            received = true;
-          }
-        },
-        onerror(err) {
-          throw err;
-        },
-        openWhenHidden: true,
       });
+
+      if (!response.ok || response.body === null) {
+        throw new Error(`POST ${command}: ${response.status} ${response.statusText}`);
+      }
+
+      const events = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream());
+
+      for await (const message of events) {
+        if (debug) console.debug("[TreeTime]", JSON.stringify(message));
+
+        if (message.event === "progress") {
+          options?.onProgress?.(parseProgressEvent(JSON.parse(message.data)));
+        } else if (message.event === "log") {
+          logToConsole(parseLogEvent(JSON.parse(message.data)));
+        } else if (message.event === "result") {
+          result = JSON.parse(message.data);
+          received = true;
+        }
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         throw new CancelledError();
@@ -90,7 +91,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
 function readDebugFlag(): boolean {
   const env = import.meta.env;
 
-  return env.TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.TREETIME_DEBUG_FETCH !== "false");
+  return env.VITE_TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.VITE_TREETIME_DEBUG_FETCH !== "false");
 }
 
 function logToConsole(log: { level: string; message: string }): void {

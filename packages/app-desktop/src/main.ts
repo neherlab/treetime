@@ -14,7 +14,7 @@ if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
 
 const projectRoot = process.env["TREETIME_PROJECT_ROOT"];
 
-if (projectRoot) {
+if (projectRoot !== undefined && projectRoot !== "") {
   process.chdir(projectRoot);
 }
 
@@ -83,7 +83,7 @@ async function createWindow(): Promise<void> {
 
   const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 
-  if (devServerUrl) {
+  if (devServerUrl !== undefined && devServerUrl !== "") {
     await win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: "bottom" });
   } else {

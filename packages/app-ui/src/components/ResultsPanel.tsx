@@ -238,7 +238,7 @@ function StatCard({ label, value, unit }: { label: string; value: string; unit?:
     <div className="border-line bg-surface-1 rounded-md border px-3 py-2">
       <div className="text-2xs text-ink-muted">{label}</div>
       <div className="text-ink font-mono text-sm font-medium">{value}</div>
-      {unit && <div className="text-2xs text-ink-faint">{unit}</div>}
+      {unit !== undefined && unit !== "" && <div className="text-2xs text-ink-faint">{unit}</div>}
     </div>
   );
 }
@@ -563,7 +563,7 @@ function MockPruneSummary() {
 function MockAuspiceLink() {
   return (
     <div className="border-line flex flex-col items-center gap-3 rounded-md border border-dashed p-8">
-      <p className="text-ink-muted text-sm">Open the Auspice v2 JSON in Nextstrain's tree viewer</p>
+      <p className="text-ink-muted text-sm">Open the Auspice v2 JSON in the Nextstrain tree viewer</p>
       <Button variant="solid" size="md">
         Open in Auspice
       </Button>

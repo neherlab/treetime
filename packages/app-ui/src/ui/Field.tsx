@@ -1,4 +1,4 @@
-import { Field as BaseField } from "@base-ui-components/react/field";
+import { Field as BaseField } from "@base-ui/react/field";
 
 import { cn } from "./cn";
 

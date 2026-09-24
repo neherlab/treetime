@@ -110,11 +110,11 @@ describe("zod_schemas integer fields", () => {
     expect(schema.safeParse({ ...base, [field]: Number.NaN }).success).toBe(false);
   });
 
-  test.each(INT_CASES.filter((c) => !c.int64))("$name rejects a numeric string", ({ schema, base, field }) => {
+  test.each(INT_CASES.filter((c) => c.int64 !== true))("$name rejects a numeric string", ({ schema, base, field }) => {
     expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(false);
   });
 
-  test.each(INT_CASES.filter((c) => c.int64))(
+  test.each(INT_CASES.filter((c) => c.int64 === true))(
     "$name accepts a numeric string because JSON cannot carry a 64-bit integer",
     ({ schema, base, field }) => {
       expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(true);

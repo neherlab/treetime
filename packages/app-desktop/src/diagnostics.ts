@@ -15,7 +15,7 @@ export function initDiagnostics(title: string): void {
   const diagnosticDir = resolve(process.env["TREETIME_DIAGNOSTIC_DIR"] ?? resolve(process.cwd(), "tmp/diagnostics"));
   mkdirSync(diagnosticDir, { recursive: true });
 
-  if (process.report) {
+  if (process.report !== undefined) {
     process.report.directory = diagnosticDir;
     process.report.reportOnFatalError = true;
     process.report.reportOnSignal = true;

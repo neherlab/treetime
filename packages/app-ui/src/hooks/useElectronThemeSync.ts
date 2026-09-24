@@ -11,7 +11,7 @@ export function useElectronThemeSync() {
   const { theme } = useTheme();
 
   useEffect(() => {
-    if (theme) {
+    if (theme !== undefined) {
       window.electronTheme?.setTheme(theme);
     }
   }, [theme]);

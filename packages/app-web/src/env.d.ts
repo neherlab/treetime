@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly TREETIME_DEBUG_FETCH?: string;
+  readonly VITE_TREETIME_DEBUG_FETCH?: string;
 }
 
 interface ImportMeta {
