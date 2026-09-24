@@ -20,6 +20,8 @@ treetime timetree --tree=data/lassa/L/20/tree.nwk --dates=data/lassa/L/20/metada
 
 This is the `timetree/lassa/L/20/basic` case of `dev/smoke`.
 
+The same abort occurs on `data/dengue/1000` (`timetree/dengue/1000/basic`, with `--name-column=genbank_accession`), in round 1 at node 240, on a distribution over [1846.41, 1966.49]. The `rust` branch fails on this dataset with `Cannot divide by empty distribution` instead, the error of [H-timetree-empty-distribution-division.md](H-timetree-empty-distribution-division.md).
+
 Whether the dates of this dataset also have disjoint support is unknown until the `NaN` is removed.
 
 ## Impact and scope
