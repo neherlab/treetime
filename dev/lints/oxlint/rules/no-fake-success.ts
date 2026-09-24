@@ -319,9 +319,8 @@ function statementCompletions(statement: ESTree.Statement, handled: boolean, ana
   }
 
   if (statement.type === "LabeledStatement") {
-    return statementCompletions(statement.body, handled, analysis).map(
-      (path): Completion =>
-        path.kind === "break" && path.label === statement.label.name ? { kind: "normal", handled: path.handled } : path,
+    return statementCompletions(statement.body, handled, analysis).map((path): Completion =>
+      path.kind === "break" && path.label === statement.label.name ? { kind: "normal", handled: path.handled } : path,
     );
   }
 
@@ -431,8 +430,8 @@ function tryCompletions(statement: ESTree.TryStatement, handled: boolean, analys
   }
 
   return caught.flatMap((path) =>
-    statementCompletions(finalizer, path.handled, analysis).map(
-      (final): Completion => (final.kind === "normal" ? completionHandled(path, final.handled) : final),
+    statementCompletions(finalizer, path.handled, analysis).map((final): Completion =>
+      final.kind === "normal" ? completionHandled(path, final.handled) : final,
     ),
   );
 }
@@ -510,9 +509,7 @@ function loopCompletions(statement: LoopStatement, handled: boolean, analysis: R
             const advanced = loopAdvanceCompletions(statement, result.handled, analysis);
 
             for (const next of advanced) {
-              if (next.kind !== "normal") {
-                exits.push(next);
-              } else {
+              if (next.kind === "normal") {
                 if (statement.type === "DoWhileStatement" && truth !== true) {
                   exits.push(next);
                 }
@@ -520,6 +517,8 @@ function loopCompletions(statement: LoopStatement, handled: boolean, analysis: R
                 if (statement.type !== "DoWhileStatement" || truth !== false) {
                   pending.push(next.handled);
                 }
+              } else {
+                exits.push(next);
               }
             }
           } else {
@@ -684,9 +683,8 @@ function switchBranchCompletions(
     statement.cases.slice(index).flatMap((branch) => branch.consequent),
     handled,
     { ...analysis, switchEntries: new Map([...analysis.switchEntries, [statement, index]]) },
-  ).map(
-    (path): Completion =>
-      path.kind === "break" && path.label === undefined ? { kind: "normal", handled: path.handled } : path,
+  ).map((path): Completion =>
+    path.kind === "break" && path.label === undefined ? { kind: "normal", handled: path.handled } : path,
   );
 }
 
@@ -723,9 +721,8 @@ function expressionCompletions(
     return expressionCompletions(runtime, node, handled, analysis);
   }
 
-  return evaluationCompletions(expression, handled, analysis, "propagate").map(
-    (path): Completion =>
-      path.kind === "normal" ? { kind: "return", node, value: expression, handled: path.handled } : path,
+  return evaluationCompletions(expression, handled, analysis, "propagate").map((path): Completion =>
+    path.kind === "normal" ? { kind: "return", node, value: expression, handled: path.handled } : path,
   );
 }
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false,
+      "passThroughEnv": [
+        "CARGO_*",
+        "RUSTUP_*",
+        "KACHE_*",
+        "PATH",
+        "HOME",
+        "LIBRARY_PATH",
+        "LD_LIBRARY_PATH",
+        "PKG_CONFIG_PATH"
+      ]
+    }
+  }
+}

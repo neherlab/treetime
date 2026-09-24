@@ -382,6 +382,7 @@ function comparePrimitives(left: Primitive, right: Primitive, mode: EqualityMode
     return true;
   }
 
+  // oxlint-disable-next-line eslint/eqeqeq -- models the loose equality of assert.equal and assert.notEqual
   return left == right;
 }
 

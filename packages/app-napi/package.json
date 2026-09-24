@@ -4,6 +4,13 @@
   "private": true,
   "description": "TreeTime desktop application - Rust native addon for Electron",
   "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "RUSTC_WRAPPER= napi build --platform --release --no-dts-header"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.10.3"
+  },
   "napi": {
     "binaryName": "app-napi",
     "targets": [
@@ -11,12 +18,5 @@
       "x86_64-apple-darwin",
       "aarch64-apple-darwin"
     ]
-  },
-  "scripts": {
-    "build": "CARGO_TERM_QUIET=true napi build --platform --release --target-dir=../../.build/docker --no-js --no-dts-header",
-    "build:debug": "CARGO_TERM_QUIET=true napi build --platform --target-dir=../../.build/docker --no-js --no-dts-header"
-  },
-  "devDependencies": {
-    "@napi-rs/cli": "3.6.2"
   }
 }

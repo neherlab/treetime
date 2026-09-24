@@ -1,24 +1,8 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
-  "globalDependencies": ["bun.lock", "tsconfig.base.json", "turbo.json"],
-  "globalEnv": [
-    "C_INCLUDE_PATH",
-    "CPLUS_INCLUDE_PATH",
-    "HOST_TUPLE",
-    "HOST_TUPLE_DEBIAN",
-    "HOSTCC",
-    "LIBRARY_PATH",
-    "LD_LIBRARY_PATH",
-    "LIBZ_SYS_STATIC",
-    "NODE_ENV",
-    "OPENBLAS_LIB_DIR",
-    "PKG_CONFIG_PATH",
-    "RUSTFLAGS",
-    "TREETIME_DEBUG_FETCH",
-    "VITE_*",
-    "ZSTD_SYS_USE_PKG_CONFIG"
-  ],
+  "globalDependencies": ["bun.lock", "tsconfig.base.json"],
+  "globalEnv": ["NODE_ENV", "VITE_*"],
   "globalPassThroughEnv": [
     "CI",
     "TERM",
@@ -27,62 +11,27 @@
     "DO_NOT_TRACK",
     "TURBO_TELEMETRY_DISABLED",
     "electron_config_cache",
-    "LD_PRELOAD",
-    "PORT",
-    "VITE_DEV_SERVER_URL",
     "ELECTRON_DISABLE_SANDBOX",
     "ELECTRON_OVERRIDE_DIST_PATH",
+    "DISPLAY",
+    "XAUTHORITY",
+    "LD_PRELOAD",
     "TREETIME_PROJECT_ROOT"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": ["dist/**"],
-      "outputLogs": "errors-only",
-      "cache": true
+      "outputs": ["dist/**", "dist-electron/**"],
+      "outputLogs": "errors-only"
     },
     "dev": {
       "dependsOn": ["^build"],
       "persistent": true,
       "cache": false
     },
-    "release": {
-      "dependsOn": ["^build"],
-      "persistent": true,
-      "cache": false
-    },
-    "lint": {
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [],
-      "cache": true
-    },
-    "lint:fix": {
-      "cache": false
-    },
-    "format": {
-      "cache": false
-    },
-    "format:check": {
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [],
-      "cache": true
-    },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [],
-      "cache": true
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [],
-      "cache": true
-    },
-    "upgrade": {
-      "outputLogs": "errors-only",
-      "cache": false
+      "dependsOn": ["^typecheck"],
+      "outputs": []
     }
   }
 }

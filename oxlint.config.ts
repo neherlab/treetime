@@ -9,6 +9,17 @@ const PACKAGES_DIR = join(import.meta.dirname, "packages");
 
 const WORKSPACE_SCOPE = "@neherlab/";
 
+const IMPORT_BOUNDARY_PATTERNS = [
+  {
+    group: ["@neherlab/*/src/*", "@neherlab/*/src/**", "@neherlab/*/dist/*", "@neherlab/*/dist/**"],
+    message: "Import a workspace package through its entry point, not a deep internal path.",
+  },
+  {
+    group: ["../../*", "../../**"],
+    message: "A relative path must not reach into a sibling package. Import it by its @neherlab/* name.",
+  },
+];
+
 const PACKAGE_GRAPH_MESSAGE =
   "This package may import only the workspace packages it declares. Add the dependency to its package.json, or route through an allowed package.";
 
@@ -41,7 +52,10 @@ function packageBoundaryOverrides(): OxlintOverride[] {
       {
         files: [`packages/${entry.dir}/**`],
         rules: {
-          "no-restricted-imports": ["error", { patterns: [{ group: banned, message: PACKAGE_GRAPH_MESSAGE }] }],
+          "no-restricted-imports": [
+            "error",
+            { patterns: [...IMPORT_BOUNDARY_PATTERNS, { group: banned, message: PACKAGE_GRAPH_MESSAGE }] },
+          ],
         },
       },
     ];
@@ -191,7 +205,7 @@ export default defineConfig({
     "typescript/switch-exhaustiveness-check": "error",
     "typescript/await-thenable": "error",
     "typescript/no-for-in-array": "error",
-    "typescript/require-await": "warn",
+    "typescript/require-await": "error",
 
     "import/no-cycle": "error",
 
@@ -230,21 +244,88 @@ export default defineConfig({
     "anti-slop/require-readable-spacing": "error",
     "oxc/no-accumulating-spread": "error",
 
-    "no-restricted-imports": [
-      "error",
-      {
-        patterns: [
-          {
-            group: ["@neherlab/*/src/*", "@neherlab/*/src/**", "@neherlab/*/dist/*", "@neherlab/*/dist/**"],
-            message: "Import a workspace package through its entry point, not a deep internal path.",
-          },
-          {
-            group: ["../../*", "../../**"],
-            message: "A relative path must not reach into a sibling package. Import it by its @neherlab/* name.",
-          },
-        ],
-      },
-    ],
+    "no-restricted-imports": ["error", { patterns: IMPORT_BOUNDARY_PATTERNS }],
+
+    "react/rules-of-hooks": "error",
+    "react/checked-requires-onchange-or-readonly": "error",
+    "react/display-name": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/jsx-no-useless-fragment": "error",
+    "react/no-unescaped-entities": "error",
+
+    "typescript/ban-types": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/no-confusing-void-expression": ["error", { ignoreArrowShorthand: true }],
+    "typescript/no-mixed-enums": "error",
+    "typescript/prefer-enum-initializers": "error",
+    "typescript/prefer-includes": "error",
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/related-getter-setter-pairs": "error",
+    "typescript/restrict-plus-operands": "error",
+    "typescript/return-await": "error",
+    "typescript/strict-boolean-expressions": "error",
+    "typescript/strict-void-return": "error",
+
+    "eslint/accessor-pairs": "error",
+    "eslint/array-callback-return": "error",
+    "eslint/eqeqeq": ["error", "always", { null: "ignore" }],
+    "eslint/no-array-constructor": "error",
+    "eslint/no-case-declarations": "error",
+    "eslint/no-constructor-return": "error",
+    "eslint/no-else-return": "error",
+    "eslint/no-loop-func": "error",
+    "eslint/no-new-wrappers": "error",
+    "eslint/no-object-constructor": "error",
+    "eslint/no-promise-executor-return": "error",
+    "eslint/no-prototype-builtins": "error",
+    "eslint/no-useless-return": "error",
+    "eslint/radix": "error",
+    "eslint/require-unicode-regexp": "error",
+    "eslint/symbol-description": "error",
+
+    "unicorn/consistent-assert": "error",
+    "unicorn/consistent-empty-array-spread": "error",
+    "unicorn/escape-case": "error",
+    "unicorn/explicit-length-check": "error",
+    "unicorn/new-for-builtins": "error",
+    "unicorn/no-hex-escape": "error",
+    "unicorn/no-immediate-mutation": "error",
+    "unicorn/no-instanceof-array": "error",
+    "unicorn/no-negated-condition": "error",
+    "unicorn/no-negation-in-equality-check": "error",
+    "unicorn/no-new-buffer": "error",
+    "unicorn/no-object-as-default-parameter": "error",
+    "unicorn/no-static-only-class": "error",
+    "unicorn/no-this-assignment": "error",
+    "unicorn/no-typeof-undefined": "error",
+    "unicorn/no-unnecessary-array-flat-depth": "error",
+    "unicorn/no-unnecessary-array-splice-count": "error",
+    "unicorn/no-unnecessary-slice-end": "error",
+    "unicorn/no-unreadable-iife": "error",
+    "unicorn/no-useless-promise-resolve-reject": "error",
+    "unicorn/no-useless-switch-case": "error",
+    "unicorn/prefer-array-flat": "error",
+    "unicorn/prefer-array-some": "error",
+    "unicorn/prefer-at": "error",
+    "unicorn/prefer-blob-reading-methods": "error",
+    "unicorn/prefer-code-point": "error",
+    "unicorn/prefer-import-meta-properties": "error",
+    "unicorn/prefer-math-min-max": "error",
+    "unicorn/prefer-math-trunc": "error",
+    "unicorn/prefer-native-coercion-functions": "error",
+    "unicorn/prefer-number-coercion": "error",
+    "unicorn/prefer-prototype-methods": "error",
+    "unicorn/prefer-regexp-test": "error",
+    "unicorn/prefer-single-call": "error",
+    "unicorn/prefer-string-replace-all": "error",
+    "unicorn/prefer-string-slice": "error",
+    "unicorn/prefer-top-level-await": "error",
+    "unicorn/prefer-type-error": "error",
+    "unicorn/require-number-to-fixed-digits-argument": "error",
+
+    "oxc/branches-sharing-code": "error",
   },
 
   overrides: [
@@ -256,7 +337,7 @@ export default defineConfig({
       },
     },
     {
-      files: ["packages/app-ui/src/**", "packages/app-web/src/**"],
+      files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-desktop/renderer/**"],
       rules: {
         "web/tailwind-classes": "error",
 
@@ -291,10 +372,11 @@ export default defineConfig({
       files: ["packages/app-desktop/src/**"],
       rules: {
         "import/no-nodejs-modules": "off",
+        "unicorn/prefer-top-level-await": "off",
       },
     },
     {
-      files: ["**/vite.config.ts", "**/*.config.ts", "**/scripts/**", "packages/app-napi/**"],
+      files: ["**/vite.config.ts", "**/*.config.ts", "**/scripts/**"],
       rules: {
         "import/no-nodejs-modules": "off",
         "treetime/no-module-level-mutable": "off",

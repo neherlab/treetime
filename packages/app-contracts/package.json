@@ -2,30 +2,20 @@
   "name": "@neherlab/app-contracts",
   "version": "0.0.1",
   "private": true,
-  "description": "TypeScript type definitions for TreeTime bridge interface",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "description": "TypeScript types and schemas of the TreeTime bridge interface",
+  "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    }
+    ".": "./src/index.ts"
   },
   "scripts": {
     "generate": "openapi-ts",
-    "lint": "bun --bun oxlint src/",
-    "lint:fix": "bun --bun oxlint --fix src/",
-    "format": "bun --bun oxfmt --write src/",
-    "format:check": "bun --bun oxfmt --check src/",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "test": "vitest run"
+    "typecheck": "../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "typescript": "6.0.3",
-    "vitest": "catalog:"
+    "typescript": "6.0.3"
   }
 }

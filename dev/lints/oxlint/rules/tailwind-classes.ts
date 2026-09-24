@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import { defineRule } from "@oxlint/plugins";
 import type { Ranged } from "@oxlint/plugins";
@@ -22,7 +22,7 @@ interface TailwindModule {
   ): DesignSystem;
 }
 
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
 const CSS_ENTRY = resolve(PROJECT_ROOT, "packages/app-web/src/index.css");
 
@@ -44,7 +44,7 @@ export const tailwindClassesRule = defineRule({
   },
   createOnce(context) {
     function check(node: Ranged, value: string): void {
-      const tokens = value.split(/\s+/).filter(Boolean);
+      const tokens = value.split(/\s+/u).filter(Boolean);
       const seen = new Set<string>();
       const keyToClass = new Map<string, string>();
 
@@ -64,10 +64,10 @@ export const tailwindClassesRule = defineRule({
 
         const prior = keyToClass.get(key);
 
-        if (prior !== undefined) {
-          context.report({ node, messageId: "conflict", data: { prior, token } });
-        } else {
+        if (prior === undefined) {
           keyToClass.set(key, token);
+        } else {
+          context.report({ node, messageId: "conflict", data: { prior, token } });
         }
       }
     }
@@ -179,11 +179,11 @@ function classRuleKey(className: string): string | null {
     } else if (line === "}") {
       context.pop();
     } else {
-      const match = /^(--[\w-]+|[a-zA-Z-]+)\s*:/.exec(line);
+      const match = /^(--[\w-]+|[a-zA-Z-]+)\s*:/u.exec(line);
       const property = match?.[1];
 
       if (property !== undefined) {
-        const path = context.slice(1).join(" >> ");
+        const path = context.filter((selector) => !selector.startsWith(".")).join(" >> ");
         const props = byContext.get(path) ?? [];
         props.push(property);
         byContext.set(path, props);
@@ -191,13 +191,33 @@ function classRuleKey(className: string): string | null {
     }
   }
 
-  const key = JSON.stringify(
-    [...byContext.entries()]
+  const key = JSON.stringify({
+    variants: variantPrefix(className),
+    rules: [...byContext.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([path, props]) => ({ path, props: props.slice().sort((left, right) => left.localeCompare(right)) })),
-  );
+  });
 
   classKeyCache.set(className, key);
 
   return key;
+}
+
+function variantPrefix(className: string): string {
+  let depth = 0;
+  let split = -1;
+
+  for (let index = 0; index < className.length; index += 1) {
+    const char = className.charAt(index);
+
+    if (char === "[" || char === "(") {
+      depth += 1;
+    } else if (char === "]" || char === ")") {
+      depth -= 1;
+    } else if (char === ":" && depth === 0) {
+      split = index;
+    }
+  }
+
+  return className.slice(0, Math.max(split, 0));
 }

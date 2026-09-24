@@ -1,8 +1,6 @@
 telemetry = false
 logLevel = "warn"
-
-[run]
-bun = true
+env = false
 
 [install]
 exact = true

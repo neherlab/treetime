@@ -1,6 +1,5 @@
 {
-  "$schema": "https://unpkg.com/knip@6.35.1/schema.json",
-  "ignoreWorkspaces": ["packages/app-server"],
+  "$schema": "https://unpkg.com/knip@6.36.0/schema.json",
   "ignoreIssues": {
     "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"]
   },
@@ -12,12 +11,7 @@
         "dev/lints/oxlint-anti-slop/**/*.test.ts",
         "test/**/*.test.ts"
       ],
-      "project": [
-        "*.ts",
-        "dev/lints/oxlint/**/*.ts",
-        "dev/lints/oxlint-anti-slop/**/*.ts",
-        "test/**/*.ts"
-      ]
+      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts", "test/**/*.ts"]
     },
     "packages/app-contracts": {
       "entry": ["src/bridge.ts!", "src/generated/index.ts"],
@@ -25,32 +19,15 @@
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": [
-        "@base-ui-components/react",
-        "@fontsource/ibm-plex-mono",
-        "@fontsource/lato",
-        "@tanstack/react-query",
-        "class-variance-authority",
-        "cn",
-        "lucide-react",
-        "next-themes",
-        "react-error-boundary",
-        "zustand"
-      ]
+      "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/app-web": {
       "entry": ["index.html!", "src/bridge-web.ts!"],
-      "project": ["src/**/*.{ts,tsx,css}"],
-      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
+      "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/app-desktop": {
-      "entry": [
-        "src/preload.ts!",
-        "renderer/index.html!"
-      ],
-      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"],
-      "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
+      "entry": ["src/preload.ts!", "renderer/index.html!"],
+      "project": ["src/**/*.{ts,tsx}", "renderer/**/*.{ts,tsx,css}"]
     },
     "packages/app-napi": {
       "entry": [],

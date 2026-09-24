@@ -1,6 +1,6 @@
 import type { ESTree, Ranged } from "@oxlint/plugins";
 
-export const VERSIONED_NAME = /(?:_v\d+|_old|_new|_fixed|_deprecated|_copy\d*|_backup|_bak|_temp|_tmp)$/i;
+export const VERSIONED_NAME = /(?:_v\d+|_old|_new|_fixed|_deprecated|_copy\d*|_backup|_bak|_temp|_tmp)$/iu;
 
 export const VAGUE_NAMES = new Set(["utils", "helpers", "misc", "tmp"]);
 

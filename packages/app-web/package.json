@@ -3,46 +3,29 @@
   "version": "0.0.1",
   "private": true,
   "description": "TreeTime web application - browser frontend",
+  "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "nodemon -q --exec 'bun install && vite'",
-    "dev:nowatch": "vite",
-    "release": "vite build --watch",
-    "lint": "bun --bun oxlint src/",
-    "lint:fix": "bun --bun oxlint --fix src/",
-    "format": "bun --bun oxfmt --write src/",
-    "format:check": "bun --bun oxfmt --check src/",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "test": "vitest run"
+    "dev": "vite",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "2.0.1",
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
-    "@tailwindcss/vite": "4.3.0",
+    "eventsource-parser": "4.1.1",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "4.3.0"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "6.0.2",
-    "nodemon": "3.1.9",
+    "@vitejs/plugin-react": "catalog:",
+    "portless": "0.15.6",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "8.0.14",
-    "vitest": "catalog:",
+    "vite": "catalog:",
     "zod": "catalog:"
-  },
-  "nodemonConfig": {
-    "watch": [
-      "package.json",
-      "../app-contracts/package.json",
-      "../app-ui/package.json",
-      "../../package.json",
-      "../../bun.lock"
-    ],
-    "ext": "json,lock",
-    "delay": 300
   }
 }

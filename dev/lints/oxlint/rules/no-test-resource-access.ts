@@ -2,7 +2,7 @@ import { defineRule } from "@oxlint/plugins";
 
 import { bindingVariable } from "./binding.ts";
 
-const EXEMPT_TEST_FILE = /(?:\.integration|\.process|\.migration|\.gm)\.test\.tsx?$|(?:^|[/\\])test_gm_/;
+const EXEMPT_TEST_FILE = /(?:\.integration|\.process|\.migration|\.gm)\.test\.tsx?$|(?:^|[/\\])test_gm_/u;
 
 const RESOURCE_GLOBALS = new Set([
   "setTimeout",

@@ -1,8 +1,8 @@
 import { defineRule } from "@oxlint/plugins";
 
-const DISABLE_DIRECTIVE = /^\s*oxlint-disable(?:-next-line|-line)?\b/;
+const DISABLE_DIRECTIVE = /^\s*oxlint-disable(?:-next-line|-line)?\b/u;
 
-const HAS_REASON = /\s--\s+\S/;
+const HAS_REASON = /\s--\s+\S/u;
 
 export const requireSuppressionReasonRule = defineRule({
   meta: {

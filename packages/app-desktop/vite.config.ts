@@ -1,9 +1,10 @@
-import { resolve } from "node:path";
 import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import electron from "vite-plugin-electron/simple";
 import { defineConfig } from "vite";
+import electron from "vite-plugin-electron/simple";
 
 const projectRoot = resolve(__dirname, "../..");
 
@@ -17,6 +18,8 @@ if (existsSync(napiNode)) {
 
 process.env["TREETIME_PROJECT_ROOT"] ??= projectRoot;
 
+const electronArgs = process.env["ELECTRON_DISABLE_SANDBOX"] === "1" ? ["--no-sandbox"] : [];
+
 export default defineConfig({
   root: "renderer",
   plugins: [
@@ -27,13 +30,13 @@ export default defineConfig({
           build: {
             outDir: resolve(__dirname, "dist-electron"),
             sourcemap: true,
-            rollupOptions: {
+            rolldownOptions: {
               external: ["@neherlab/app-napi"],
             },
           },
         },
         async onstart(args) {
-          await args.startup([".", "--no-sandbox", "--enable-logging", "--remote-debugging-port=9229"]);
+          await args.startup([__dirname, ...electronArgs, "--enable-logging"]);
         },
       },
       preload: {
@@ -50,10 +53,6 @@ export default defineConfig({
     react(),
   ],
   clearScreen: false,
-  server: {
-    port: 5174,
-    strictPort: true,
-  },
   build: {
     outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,

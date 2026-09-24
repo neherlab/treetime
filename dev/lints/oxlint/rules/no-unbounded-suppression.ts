@@ -1,8 +1,8 @@
 import { defineRule } from "@oxlint/plugins";
 
-const FILE_DISABLE = /^\s*oxlint-disable(?!-next-line|-line)\b/;
+const FILE_DISABLE = /^\s*oxlint-disable(?!-next-line|-line)\b/u;
 
-const ENABLE = /^\s*oxlint-enable\b/;
+const ENABLE = /^\s*oxlint-enable\b/u;
 
 export const noUnboundedSuppressionRule = defineRule({
   meta: {

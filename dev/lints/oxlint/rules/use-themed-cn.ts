@@ -15,7 +15,7 @@ export const useThemedCnRule = defineRule({
   createOnce(context) {
     return {
       ImportDeclaration(node) {
-        const isThemedModule = context.filename.replace(/\\/g, "/").endsWith("app-ui/src/ui/cn.ts");
+        const isThemedModule = context.filename.replaceAll("\\", "/").endsWith("app-ui/src/ui/cn.ts");
 
         if (isThemedModule) {
           return;

@@ -1,12 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -21,7 +19,6 @@
     "noPropertyAccessFromIndexSignature": true,
     "isolatedModules": true,
 
-    "noUncheckedSideEffectImports": true,
     "noImplicitOverride": true,
     "erasableSyntaxOnly": true,
     "resolveJsonModule": true

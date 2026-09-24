@@ -21,7 +21,7 @@ export const noUppercaseTestTitleRule = defineRule({
 
         const title = node.arguments[0];
 
-        if (title?.type === "Literal" && typeof title.value === "string" && /^[A-Z]/.test(title.value)) {
+        if (title?.type === "Literal" && typeof title.value === "string" && /^[A-Z]/u.test(title.value)) {
           context.report({ node: title, messageId: "uppercase" });
         }
       },

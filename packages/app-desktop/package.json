@@ -5,60 +5,27 @@
   "description": "TreeTime desktop application - Electron shell",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint": "bun --bun oxlint src/ renderer/",
-    "lint:fix": "bun --bun oxlint --fix src/ renderer/",
-    "format": "bun --bun oxfmt --write src/ renderer/",
-    "format:check": "bun --bun oxfmt --check src/ renderer/",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "test": "vitest run"
+    "dev": "vite",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
-    "@neherlab/app-contracts": "workspace:*",
-    "@neherlab/app-napi": "workspace:*",
-    "@neherlab/app-ui": "workspace:*",
-    "@tailwindcss/vite": "4.3.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "4.3.0"
+    "@neherlab/app-napi": "workspace:*"
   },
   "devDependencies": {
+    "@neherlab/app-contracts": "workspace:*",
+    "@neherlab/app-ui": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "6.0.2",
-    "electron": "42.2.0",
+    "@vitejs/plugin-react": "catalog:",
+    "electron": "44.4.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "8.0.14",
-    "vite-plugin-electron": "0.29.1",
-    "vitest": "catalog:"
-  },
-  "build": {
-    "appId": "org.neherlab.treetime",
-    "productName": "TreeTime",
-    "directories": {
-      "output": "../../.build/desktop/release"
-    },
-    "files": [
-      "dist-electron/**/*",
-      "dist/**/*"
-    ],
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ]
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    }
+    "vite": "catalog:",
+    "vite-plugin-electron": "1.1.2"
   }
 }
