@@ -13,12 +13,6 @@ pub fn auspice_write_file(filepath: impl AsRef<Path>, tree: &AuspiceTree) -> Res
   writeln!(f).wrap_err_with(context)
 }
 
-pub fn auspice_write_str(tree: &AuspiceTree) -> Result<String, Report> {
-  let mut buf = Vec::new();
-  auspice_write(&mut buf, tree).wrap_err("When writing Auspice v2 JSON string")?;
-  Ok(String::from_utf8(buf)?)
-}
-
 fn auspice_write(writer: &mut impl Write, tree: &AuspiceTree) -> Result<(), Report> {
   json_write(writer, tree, JsonPretty(true)).wrap_err("When writing Auspice v2 JSON")
 }

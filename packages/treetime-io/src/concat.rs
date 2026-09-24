@@ -16,18 +16,9 @@ where
   I: Iterator,
   <I as Iterator>::Item: Read,
 {
-  pub fn from(iter: I) -> Concat<I> {
-    Self::with_delimiter(iter, None)
-  }
-
   pub(crate) fn with_delimiter(mut iter: I, delimiter: Option<Vec<u8>>) -> Concat<I> {
     let curr = iter.next();
     Concat { iter, curr, delimiter }
-  }
-
-  #[inline]
-  pub const fn current(&self) -> Option<&<I as Iterator>::Item> {
-    self.curr.as_ref()
   }
 }
 

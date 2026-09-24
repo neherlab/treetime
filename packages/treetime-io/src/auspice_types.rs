@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::slice::Iter;
-use traversal::{Bft, DftPost, DftPre};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct AuspiceGraphMeta {
@@ -22,14 +20,7 @@ pub struct AuspiceTreeNodeAttrF64 {
   other: serde_json::Value,
 }
 
-impl AuspiceTreeNodeAttrF64 {
-  pub fn new(value: f64) -> Self {
-    Self {
-      value,
-      other: serde_json::Value::default(),
-    }
-  }
-}
+impl AuspiceTreeNodeAttrF64 {}
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -39,16 +30,7 @@ pub enum DivergenceUnits {
   NumSubstitutionsPerYear,
 }
 
-impl DivergenceUnits {
-  pub fn guess_from_max_divergence(max_divergence: f64) -> DivergenceUnits {
-    const HACK_MAX_DIVERGENCE_THRESHOLD: f64 = 5.0;
-    if max_divergence <= HACK_MAX_DIVERGENCE_THRESHOLD {
-      DivergenceUnits::NumSubstitutionsPerYearPerSite
-    } else {
-      DivergenceUnits::NumSubstitutionsPerYear
-    }
-  }
-}
+impl DivergenceUnits {}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTree {
@@ -56,57 +38,6 @@ pub struct AuspiceTree {
   pub data: AuspiceTreeData,
 
   pub tree: AuspiceTreeNode,
-}
-
-impl AuspiceTree {
-  pub fn iter_breadth_first<'a>(
-    &'a self,
-  ) -> Bft<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
-    Bft::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
-  }
-
-  pub fn iter_depth_first_preorder<'a>(
-    &'a self,
-  ) -> DftPre<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
-    DftPre::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
-  }
-
-  pub fn iter_depth_first_postorder<'a>(
-    &'a self,
-  ) -> DftPost<'a, AuspiceTreeNode, AuspiceTreeNodeIterFn<'a>, AuspiceTreeNodeIter<'a>> {
-    DftPost::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
-  }
-
-  fn map_nodes_rec(depth: usize, node: &AuspiceTreeNode, action: fn((usize, &AuspiceTreeNode))) {
-    action((depth, node));
-    for child in &node.children {
-      Self::map_nodes_rec(depth + 1, child, action);
-    }
-  }
-
-  pub fn map_nodes(&self, action: fn((usize, &AuspiceTreeNode))) {
-    Self::map_nodes_rec(0, &self.tree, action);
-  }
-
-  fn map_nodes_mut_rec(depth: usize, node: &mut AuspiceTreeNode, action: fn((usize, &mut AuspiceTreeNode))) {
-    action((depth, node));
-    for child in &mut node.children {
-      Self::map_nodes_mut_rec(depth + 1, child, action);
-    }
-  }
-
-  pub fn map_nodes_mut(&mut self, action: fn((usize, &mut AuspiceTreeNode))) {
-    Self::map_nodes_mut_rec(0, &mut self.tree, action);
-  }
-
-  pub fn root_sequence(&self) -> Option<&str> {
-    self
-      .data
-      .root_sequence
-      .as_ref()
-      .and_then(|root_sequence| root_sequence.get("nuc"))
-      .map(String::as_str)
-  }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
@@ -267,10 +198,6 @@ pub struct StartEnd {
   #[serde(flatten)]
   pub other: serde_json::Value,
 }
-
-pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
-
-pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AuspiceTreeNode {

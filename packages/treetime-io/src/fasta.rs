@@ -7,17 +7,8 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, Seq};
 use treetime_utils::fmt::string::quote_single;
-use treetime_utils::io::compression::Decompressor;
-use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
-
-pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A) -> Result<FastaRecord, Report> {
-  let filepath = filepath.as_ref();
-  let mut reader = FastaReader::from_path(filepath, alphabet)?;
-  let mut record = FastaRecord::default();
-  reader.read(&mut record)?;
-  Ok(record)
-}
 
 pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
   filepaths: &[P],
@@ -25,13 +16,6 @@ pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
 ) -> Result<Vec<FastaRecord>, Report> {
   let reader = FastaReader::from_paths(filepaths, alphabet)?;
   read_many_fasta(reader)
-}
-
-pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<FastaRecord, Report> {
-  let mut reader = FastaReader::from_str(&contents, alphabet)?;
-  let mut record = FastaRecord::default();
-  reader.read(&mut record)?;
-  Ok(record)
 }
 
 pub fn read_many_fasta_str<A: AlphabetLike>(
@@ -81,20 +65,6 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
   fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b A) -> Result<Self, Report> {
     let reader = contents.as_ref().as_bytes();
     Ok(Self::new(Box::new(reader), alphabet))
-  }
-
-  pub fn from_str_and_path(
-    contents: &'static str,
-    filepath: impl AsRef<Path>,
-    alphabet: &'b A,
-  ) -> Result<Self, Report> {
-    let decompressor = Decompressor::from_str_and_path(contents, filepath)?;
-    let reader = BufReader::new(decompressor);
-    Ok(Self::new(Box::new(reader), alphabet))
-  }
-
-  pub fn from_path(filepath: impl AsRef<Path>, alphabet: &'b A) -> Result<Self, Report> {
-    Self::from_paths(&[filepath], alphabet)
   }
 
   fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b A) -> Result<Self, Report> {
@@ -236,16 +206,6 @@ impl FastaRecord {
   }
 }
 
-pub fn write_one_fasta(
-  filepath: impl AsRef<Path>,
-  seq_name: impl AsRef<str>,
-  desc: &Option<String>,
-  seq: &Seq,
-) -> Result<(), Report> {
-  let mut writer = FastaWriter::from_path(&filepath)?;
-  writer.write(seq_name, desc, seq)
-}
-
 pub struct FastaWriter {
   writer: Box<dyn Write>,
 }
@@ -255,18 +215,10 @@ impl FastaWriter {
     Self { writer }
   }
 
-  pub fn from_path(filepath: impl AsRef<Path>) -> Result<Self, Report> {
-    Ok(Self::new(create_file_or_stdout(filepath)?))
-  }
-
   pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
     let seq_name = seq_name.as_ref();
     write_fasta_record(&mut self.writer, seq_name, desc.as_deref(), seq)
       .wrap_err_with(|| format!("When writing FASTA record '{seq_name}'"))
-  }
-
-  pub fn flush(&mut self) -> Result<(), Report> {
-    self.writer.flush().wrap_err("When flushing FASTA output")
   }
 }
 

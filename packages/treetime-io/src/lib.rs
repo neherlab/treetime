@@ -13,7 +13,6 @@ pub mod graphviz;
 pub mod nex;
 pub mod nwk;
 pub mod parse_delimited;
-pub mod phyloxml;
 pub mod usher_mat;
 
 #[cfg(test)]

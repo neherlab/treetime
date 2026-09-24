@@ -3,7 +3,7 @@ use smart_default::SmartDefault;
 use std::io::Write;
 use std::path::Path;
 use treetime_utils::io::file::create_file_or_stdout;
-use treetime_utils::io::json::{JsonPretty, json_write, json_write_file, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub use util_usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 
@@ -27,18 +27,6 @@ pub fn usher_mat_json_write_file(
   json_write_file(filepath, tree, JsonPretty(options.pretty))
     .wrap_err_with(|| format!("When writing Usher MAT JSON file: '{}'", filepath.display()))?;
   Ok(())
-}
-
-pub fn usher_mat_json_write_str(tree: &UsherTree, options: &UsherMatJsonOptions) -> Result<String, Report> {
-  json_write_str(tree, JsonPretty(options.pretty)).wrap_err("When writing Usher MAT JSON string")
-}
-
-pub fn usher_mat_json_write(
-  writer: &mut impl Write,
-  tree: &UsherTree,
-  options: &UsherMatJsonOptions,
-) -> Result<(), Report> {
-  json_write(writer, tree, JsonPretty(options.pretty)).wrap_err("When writing Usher MAT JSON")
 }
 
 #[derive(SmartDefault)]

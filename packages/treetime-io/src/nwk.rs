@@ -124,17 +124,6 @@ pub struct NwkNodeMeta {
   confidence: Option<f64>,
 }
 
-pub fn nwk_write_file(
-  filepath: impl AsRef<Path>,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NwkWriteOptions,
-) -> Result<(), Report> {
-  let providers = CommentProviders::new();
-  nwk_write_file_with(filepath, graph, names, weights, options, &providers)
-}
-
 pub fn nwk_write_file_with(
   filepath: impl AsRef<Path>,
   graph: &Graph,
@@ -157,29 +146,6 @@ pub fn nwk_write_str(
 ) -> Result<String, Report> {
   let providers = CommentProviders::new();
   nwk_write_str_with(graph, names, weights, options, &providers)
-}
-
-pub fn nwk_write(
-  writer: &mut impl Write,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NwkWriteOptions,
-) -> Result<(), Report> {
-  let providers = CommentProviders::new();
-  nwk_write_with(writer, graph, names, weights, options, &providers)
-}
-
-fn nwk_write_with(
-  writer: &mut impl Write,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NwkWriteOptions,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let text = nwk_write_str_with(graph, names, weights, options, providers)?;
-  writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
 }
 
 pub(crate) fn nwk_write_str_with(

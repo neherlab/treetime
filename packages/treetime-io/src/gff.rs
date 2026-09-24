@@ -29,11 +29,6 @@ const NAME_ATTRS_CDS: &[&str] = &[
   "ID",
 ];
 
-pub fn read_gff3_cds_features(path: &Path) -> Result<Vec<GffCdsFeature>, Report> {
-  let contents = read_file_to_string(path)?;
-  parse_gff3_cds_features(&contents, path)
-}
-
 pub fn read_gff3_cds_features_filtered(path: &Path, cdses: &[String]) -> Result<Vec<GffCdsFeature>, Report> {
   let contents = read_file_to_string(path)?;
   let features = parse_gff3_cds_features(&contents, path)?;

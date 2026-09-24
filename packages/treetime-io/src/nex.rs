@@ -11,20 +11,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::file::create_file_or_stdout;
 use util_newick::NwkStyle;
 
-pub fn nex_write_file(
-  filepath: impl AsRef<Path>,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NexWriteOptions,
-) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  let context = || format!("When writing Nexus file '{}'", filepath.display());
-  let mut f = create_file_or_stdout(filepath)?;
-  nex_write(&mut f, graph, names, weights, options).wrap_err_with(context)?;
-  writeln!(f).wrap_err_with(context)
-}
-
 pub fn nex_write_file_with(
   filepath: impl AsRef<Path>,
   graph: &Graph,
@@ -50,17 +36,6 @@ pub fn nex_write_str_with(
   let mut buf = Vec::new();
   nex_write_with(&mut buf, graph, names, weights, options, providers)?;
   Ok(String::from_utf8(buf)?)
-}
-
-pub fn nex_write(
-  w: &mut impl Write,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NexWriteOptions,
-) -> Result<(), Report> {
-  let providers = CommentProviders::new();
-  nex_write_with(w, graph, names, weights, options, &providers)
 }
 
 fn nex_write_with(

@@ -1,13 +1,12 @@
 use csv::{ReaderBuilder, Trim, Writer, WriterBuilder};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::io::{BufRead, Write};
-use std::path::{Path, PathBuf};
-use treetime_utils::error::to_eyre_error;
+use std::path::Path;
 use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::io::file::create_file_or_stdout;
-use treetime_utils::io::fs::{extension, read_file_to_string};
+use treetime_utils::io::fs::extension;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 
@@ -46,23 +45,10 @@ impl<W: Write + Send> CsvStructWriter<W> {
 }
 
 pub struct CsvVecFileWriter {
-  pub filepath: PathBuf,
-  pub headers: Vec<String>,
   pub writer: CsvVecWriter<Box<dyn Write + Send>>,
 }
 
-impl CsvVecFileWriter {
-  pub fn new(filepath: impl AsRef<Path>, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
-    let filepath = filepath.as_ref();
-    let file = create_file_or_stdout(filepath)?;
-    let writer = CsvVecWriter::new(file, delimiter, headers)?;
-    Ok(Self {
-      filepath: filepath.to_owned(),
-      headers: headers.to_owned(),
-      writer,
-    })
-  }
-}
+impl CsvVecFileWriter {}
 
 impl VecWriter for CsvVecFileWriter {
   fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
@@ -76,42 +62,16 @@ pub trait VecWriter {
 }
 
 pub struct CsvVecWriter<W: Write + Send> {
-  pub headers: Vec<String>,
   pub writer: Writer<W>,
 }
 
-impl<W: Write + Send> CsvVecWriter<W> {
-  pub fn new(writer: W, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
-    let mut writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
-    writer.write_record(headers)?;
-    Ok(Self {
-      headers: headers.to_owned(),
-      writer,
-    })
-  }
-}
+impl<W: Write + Send> CsvVecWriter<W> {}
 
 impl<W: Write + Send> VecWriter for CsvVecWriter<W> {
   fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
     self.writer.write_record(values)?;
     Ok(())
   }
-}
-
-pub fn csv_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<Vec<T>, Report> {
-  let filepath = filepath.as_ref();
-  let data = read_file_to_string(filepath)?;
-  csv_read_str(data)
-}
-
-pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result<Vec<T>, Report> {
-  let reader = ReaderBuilder::new()
-    .has_headers(true)
-    .from_reader(data.as_ref().as_bytes());
-  reader
-    .into_deserialize::<T>()
-    .map(to_eyre_error)
-    .collect::<Result<Vec<T>, Report>>()
 }
 
 pub fn default_name_candidates() -> Vec<String> {
