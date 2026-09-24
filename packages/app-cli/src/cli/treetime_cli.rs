@@ -117,10 +117,10 @@ pub(crate) enum TreetimeCommands {
   /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
   Prune(TreetimePruneArgsRaw),
 
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout.
+  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
   Ancestral(TreetimeAncestralArgsRaw),
 
-  /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root.
+  /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`.
   Clock(TreetimeClockArgsRaw),
 
   /// Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar.

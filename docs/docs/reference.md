@@ -51,8 +51,8 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 * `timetree` — Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional)
 * `optimize` — Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences
 * `prune` — Prunes short branches and/or branches without mutations from a phylogenetic tree
-* `ancestral` — Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout
-* `clock` — Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root
+* `ancestral` — Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
+* `clock` — Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`
 * `homoplasy` — Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 * `mugration` — Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
 * `pipeline` — Runs an ordered list of analysis commands from one config file, on one dataset, in one process
@@ -752,7 +752,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 ## `treetime ancestral`
 
-Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout
+Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
 
 **Usage:** `treetime ancestral [OPTIONS]`
 
@@ -966,7 +966,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
 
 ## `treetime clock`
 
-Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root
+Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`
 
 **Usage:** `treetime clock [OPTIONS]`
 
