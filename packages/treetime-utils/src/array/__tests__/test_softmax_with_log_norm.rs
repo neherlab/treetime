@@ -205,7 +205,10 @@ mod tests {
         normalized.iter().all(|v| v.is_nan()),
         "all-NaN input must propagate to every probability: {normalized}"
       );
-      assert!(log_norm.is_nan(), "all-NaN input must propagate to log_norm: {log_norm}");
+      assert!(
+        log_norm.is_nan(),
+        "all-NaN input must propagate to log_norm: {log_norm}"
+      );
     }
 
     #[test]

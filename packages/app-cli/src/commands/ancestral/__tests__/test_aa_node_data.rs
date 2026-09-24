@@ -24,12 +24,7 @@ mod tests {
 
   #[test]
   fn test_validate_aa_args_accepts_cds_placeholder() {
-    let result = validate_aa_args(
-      Some(CDS_TEMPLATE),
-      &["S".to_owned()],
-      None,
-      None,
-    );
+    let result = validate_aa_args(Some(CDS_TEMPLATE), &["S".to_owned()], None, None);
     result.unwrap();
   }
 

@@ -7,7 +7,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_utils::assert_error;
 
-
   fn fixture() -> Result<(Graph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
     let mut graph = Graph::new();
     let root = graph.add_node();
