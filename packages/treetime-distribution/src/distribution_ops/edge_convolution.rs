@@ -26,7 +26,7 @@ pub fn convolve_across_edge(
     return Distribution::Function(conv).normalize();
   };
 
-  let (lo, hi) = match convolution_output_window(a, b, eps) {
+  let (lo, hi) = match convolution_output_window(a, b, eps)? {
     Some((mut lo, mut hi)) => {
       match soft {
         Side::Left => hi = hi.min(normalized.x_max()),
@@ -44,17 +44,24 @@ pub fn convolve_across_edge(
   resample_to_mass_window(&normalized, lo, hi, grid_points)
 }
 
-fn convolution_output_window(a: &Distribution<NegLog>, b: &Distribution<NegLog>, eps: f64) -> Option<(f64, f64)> {
-  let (lo_a, hi_a) = operand_mass_domain(a, eps)?;
-  let (lo_b, hi_b) = operand_mass_domain(b, eps)?;
-  Some((lo_a + lo_b, hi_a + hi_b))
+fn convolution_output_window(
+  a: &Distribution<NegLog>,
+  b: &Distribution<NegLog>,
+  eps: f64,
+) -> Result<Option<(f64, f64)>, Report> {
+  let (Some((lo_a, hi_a)), Some((lo_b, hi_b))) = (operand_mass_domain(a, eps)?, operand_mass_domain(b, eps)?) else {
+    return Ok(None);
+  };
+  Ok(Some((lo_a + lo_b, hi_a + hi_b)))
 }
 
-fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Option<(f64, f64)> {
+fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Result<Option<(f64, f64)>, Report> {
   match dist {
-    Distribution::Point(p) => Some((p.t(), p.t())),
-    Distribution::Range(r) => Some((r.start(), r.end())),
-    Distribution::Function(f) => mass_bounded_domain(f, eps).ok(),
-    Distribution::Empty | Distribution::Formula(_) => None,
+    Distribution::Point(p) => Ok(Some((p.t(), p.t()))),
+    Distribution::Range(r) => Ok(Some((r.start(), r.end()))),
+    Distribution::Function(f) => peak_normalized_if_mass_sizable(f)
+      .map(|normalized| mass_bounded_domain(&normalized, eps))
+      .transpose(),
+    Distribution::Empty | Distribution::Formula(_) => Ok(None),
   }
 }

@@ -2,6 +2,8 @@
 mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
+  use crate::distribution_ops::mass_domain::peak_normalized_if_mass_sizable;
+  use crate::policy::NegLog;
   use crate::{Distribution, convolve_across_edge};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -44,15 +46,39 @@ mod tests {
     Ok(())
   }
 
-  fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
-    let t = Array1::linspace(-6.0, 6.0, 241);
-    let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
-    let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
-    let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
-    let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
-    let f = f
-      .with_left_extrap(BoundaryBehavior::Linear(left))?
-      .with_right_extrap(BoundaryBehavior::Linear(right))?;
-    Ok(Distribution::Function(f))
+  #[test]
+  fn test_edge_convolution_operand_without_mass_uses_result_window() -> Result<(), Report> {
+    let untailed = Distribution::Function(gaussian_grid(1.0)?);
+    assert_eq!(None, peak_normalized_if_mass_sizable(&gaussian_grid(1.0)?));
+
+    let result = convolve_across_edge(&untailed, &gaussian(1.0)?, Side::Right, 1e-6, 400)?;
+
+    let Distribution::Function(f) = &result else {
+      panic!("expected a gridded Function message");
+    };
+    assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = f.dx());
+    Ok(())
   }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
+      let f = gaussian_grid(sigma)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let f = f
+        .with_left_extrap(BoundaryBehavior::Linear(left))?
+        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+      Ok(Distribution::Function(f))
+    }
+
+    pub(super) fn gaussian_grid(sigma: f64) -> Result<DistributionFunction<f64, NegLog>, Report> {
+      let t = Array1::linspace(-6.0, 6.0, 241);
+      let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
+      DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)
+    }
+  }
+
+  use helpers::*;
 }
