@@ -55,7 +55,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     assert!(
       metrics.log_lh.value() > -1.0,
@@ -84,7 +84,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     assert!(
       metrics.log_lh.value() < -10.0 || metrics.log_lh.value() == f64::NEG_INFINITY,

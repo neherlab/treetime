@@ -19,7 +19,7 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_dense_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
   }
@@ -35,7 +35,7 @@ mod tests {
       &make_dense_seq_dis(match_child),
       &gtr,
     );
-    let match_metrics = evaluate_dense_contribution(&match_contribution, 0.0).expect("valid branch length");
+    let match_metrics = evaluate_dense_contribution(&match_contribution, 0.0, true).expect("valid branch length");
 
     let mismatch_parent = array![[1.0, 0.0, 0.0, 0.0]];
     let mismatch_child = array![[0.0, 1.0, 0.0, 0.0]];
@@ -44,7 +44,7 @@ mod tests {
       &make_dense_seq_dis(mismatch_child),
       &gtr,
     );
-    let mismatch_metrics = evaluate_dense_contribution(&mismatch_contribution, 0.0).expect("valid branch length");
+    let mismatch_metrics = evaluate_dense_contribution(&mismatch_contribution, 0.0, true).expect("valid branch length");
 
     assert!(
       match_metrics.log_lh.value() > mismatch_metrics.log_lh.value(),
@@ -69,7 +69,7 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    let metrics = evaluate_dense_contribution(&contribution, branch_length).expect("valid branch length");
+    let metrics = evaluate_dense_contribution(&contribution, branch_length, true).expect("valid branch length");
     assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
     assert!(metrics.derivative.is_finite(), "derivative should be finite");
     assert!(metrics.second_derivative.is_finite(), "second_derivative should be finite");

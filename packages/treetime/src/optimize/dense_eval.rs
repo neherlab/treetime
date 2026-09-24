@@ -6,13 +6,6 @@ use eyre::Report;
 pub(crate) fn evaluate_dense_contribution(
   contribution: &optimize::dense::PartitionContribution,
   branch_length: f64,
-) -> Result<OptimizationMetrics, Report> {
-  evaluate_dense_contribution_impl(contribution, branch_length, true)
-}
-
-pub(crate) fn evaluate_dense_contribution_impl(
-  contribution: &optimize::dense::PartitionContribution,
-  branch_length: f64,
   compute_derivatives: bool,
 ) -> Result<OptimizationMetrics, Report> {
   let sites = contribution.coefficients.outer_iter().map(|row| (1.0, row));

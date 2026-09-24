@@ -23,7 +23,7 @@ mod tests {
     let row_sum = contribution.coefficients.sum_axis(Axis(1));
     pretty_assert_ulps_eq!(row_sum[0], 0.25, max_ulps = 10);
 
-    let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_dense_contribution(&contribution, 0.0, true).expect("valid branch length");
     pretty_assert_ulps_eq!(metrics.log_lh.value(), 0.25_f64.ln(), max_ulps = 100);
   }
 
@@ -67,7 +67,7 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_dense_contribution(&contribution, 0.0, true).expect("valid branch length");
     assert!(
       metrics.log_lh.value() > -1.0,
       "log-LH should be high for matching states"
@@ -85,7 +85,7 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_dense_contribution(&contribution, 0.0, true).expect("valid branch length");
     assert!(
       metrics.log_lh.value() < -10.0 || metrics.log_lh.value() == f64::NEG_INFINITY,
       "log-LH should be very low for mismatched states at zero branch length"

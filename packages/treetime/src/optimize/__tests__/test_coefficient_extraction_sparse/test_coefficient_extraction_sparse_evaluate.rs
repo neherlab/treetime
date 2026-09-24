@@ -20,7 +20,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     let coeff_sum: f64 = 0.5 + 0.2 + 0.2 + 0.1;
     pretty_assert_ulps_eq!(metrics.log_lh.value(), coeff_sum.ln(), max_ulps = 100);
@@ -40,7 +40,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     let coeff_sum: f64 = 0.5 + 0.2 + 0.2 + 0.1;
     let expected_log_lh = 10.0 * coeff_sum.ln();
@@ -71,8 +71,8 @@ mod tests {
       gtr,
     };
 
-    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1).expect("valid branch length");
-    let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1).expect("valid branch length");
+    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1, true).expect("valid branch length");
+    let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1, true).expect("valid branch length");
 
     pretty_assert_ulps_eq!(metrics5.log_lh.value(), 5.0 * metrics1.log_lh.value(), max_ulps = 100);
   }
@@ -99,8 +99,8 @@ mod tests {
       gtr: gtr.clone(),
     };
 
-    let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1).expect("valid branch length");
-    let metrics_b = evaluate_sparse_contribution(&contribution_b, 0.1).expect("valid branch length");
+    let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1, true).expect("valid branch length");
+    let metrics_b = evaluate_sparse_contribution(&contribution_b, 0.1, true).expect("valid branch length");
 
     let contribution_both = PartitionContribution {
       site_contributions: vec![
@@ -115,7 +115,7 @@ mod tests {
       ],
       gtr,
     };
-    let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1).expect("valid branch length");
+    let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1, true).expect("valid branch length");
 
     pretty_assert_ulps_eq!(
       metrics_both.log_lh.value(),

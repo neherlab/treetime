@@ -14,6 +14,7 @@ mod tests {
   use crate::optimize::gather::{
     gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
   };
+  use crate::optimize::likelihood::evaluate_mixed;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -329,9 +330,7 @@ mod tests {
       .map(|edge_ref| {
         let child_key = edge_ref.target();
         let child_name = names[&child_key].clone().unwrap();
-        let metrics = contribution(edge_ref.key())?
-          .evaluate(branch_length)
-          .expect("valid branch length");
+        let metrics = evaluate_mixed(&[contribution(edge_ref.key())?], branch_length).expect("valid branch length");
         Ok((
           child_name,
           (metrics.log_lh.value(), metrics.derivative, metrics.second_derivative),

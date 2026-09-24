@@ -1,19 +1,9 @@
-use crate::optimize::dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
+use crate::optimize::dense_eval::evaluate_dense_contribution;
 use crate::optimize::indel::poisson_indel_log_lh;
-use crate::optimize::sparse_eval::{evaluate_sparse_contribution, evaluate_sparse_contribution_impl};
+use crate::optimize::sparse_eval::evaluate_sparse_contribution;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
 use treetime_primitives::LogLh;
-
-#[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
-impl OptimizationContribution {
-  pub(crate) fn evaluate(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
-    match self {
-      OptimizationContribution::Dense(contribution) => evaluate_dense_contribution(contribution, branch_length),
-      OptimizationContribution::Sparse(contribution) => evaluate_sparse_contribution(contribution, branch_length),
-    }
-  }
-}
 
 pub(crate) fn evaluate_with_indels(
   contributions: &[OptimizationContribution],
@@ -59,8 +49,8 @@ fn evaluate_mixed_impl(
   let mut total_metrics = OptimizationMetrics::default();
   for contribution in contributions {
     let metrics = match contribution {
-      OptimizationContribution::Dense(c) => evaluate_dense_contribution_impl(c, branch_length, compute_derivatives),
-      OptimizationContribution::Sparse(c) => evaluate_sparse_contribution_impl(c, branch_length, compute_derivatives),
+      OptimizationContribution::Dense(c) => evaluate_dense_contribution(c, branch_length, compute_derivatives),
+      OptimizationContribution::Sparse(c) => evaluate_sparse_contribution(c, branch_length, compute_derivatives),
     }?;
     total_metrics.add(&metrics);
   }

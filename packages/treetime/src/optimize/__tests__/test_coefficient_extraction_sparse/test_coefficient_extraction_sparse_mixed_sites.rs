@@ -28,7 +28,7 @@ mod tests {
     };
 
     let branch_length = 0.1;
-    let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
 
     let variable_contribution = PartitionContribution {
       site_contributions: vec![SiteContribution {
@@ -46,8 +46,9 @@ mod tests {
     };
 
     let variable_metrics =
-      evaluate_sparse_contribution(&variable_contribution, branch_length).expect("valid branch length");
-    let fixed_metrics = evaluate_sparse_contribution(&fixed_contribution, branch_length).expect("valid branch length");
+      evaluate_sparse_contribution(&variable_contribution, branch_length, true).expect("valid branch length");
+    let fixed_metrics =
+      evaluate_sparse_contribution(&fixed_contribution, branch_length, true).expect("valid branch length");
 
     let expected_log_lh = variable_metrics.log_lh.value() + fixed_metrics.log_lh.value();
     pretty_assert_ulps_eq!(metrics.log_lh.value(), expected_log_lh, max_ulps = 100);
@@ -75,7 +76,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
     assert!(metrics.log_lh.value().is_finite());
     let fixed_coeff_sum: f64 = 0.9 + 0.03 + 0.03 + 0.04;

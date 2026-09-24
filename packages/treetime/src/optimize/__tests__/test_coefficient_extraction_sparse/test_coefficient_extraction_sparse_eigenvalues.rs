@@ -19,8 +19,8 @@ mod tests {
       gtr,
     };
 
-    let metrics_short = evaluate_sparse_contribution(&contribution, 0.01).expect("valid branch length");
-    let metrics_long = evaluate_sparse_contribution(&contribution, 1.0).expect("valid branch length");
+    let metrics_short = evaluate_sparse_contribution(&contribution, 0.01, true).expect("valid branch length");
+    let metrics_long = evaluate_sparse_contribution(&contribution, 1.0, true).expect("valid branch length");
 
     assert!(
       (metrics_short.log_lh.value() - metrics_long.log_lh.value()).abs() > 1e-6,
