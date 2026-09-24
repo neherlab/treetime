@@ -1,5 +1,5 @@
 use crate::commands::support::{default_output_plan, default_topology_order, reroot_spec};
-use app_output::clock_result::{ClockNodeOut, EdgeOut};
+use app_output::clock_result::ClockNodeOut;
 use app_output::clock_tree_output::write_clock_tree_outputs;
 use app_output::output_plan::{CommandKind, OutputSelection};
 use app_output::rtt::write_clock_regression_result_csv;
@@ -22,7 +22,6 @@ use treetime::make_error;
 use treetime::make_report;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::ProgressSink;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
@@ -110,7 +109,7 @@ pub(crate) fn run_clock(
   default_topology_order().apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
-  let (nodes, edges) = gather_clock_outputs(&graph, &inputs, &state, &names, &branch_lengths);
+  let nodes = gather_clock_outputs(&graph, &inputs, &state, &names);
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(
@@ -132,9 +131,6 @@ pub(crate) fn run_clock(
 
   progress.report("Done", 1.0, "");
   Ok(ClockResult {
-    graph,
-    nodes,
-    edges,
     clock_model,
     regression_results,
   })
@@ -177,15 +173,7 @@ pub(crate) struct ClockArgs {
 
 #[derive(serde::Serialize)]
 pub(crate) struct ClockResult {
-  #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
-  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
-  #[serde(skip)]
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
   pub clock_model: ClockModel,
-  #[serde(skip)]
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
@@ -194,9 +182,8 @@ fn gather_clock_outputs(
   inputs: &ClockInputs,
   state: &ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
-  let nodes = graph
+) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
+  graph
     .get_nodes()
     .map(|node| {
       let key = node.key();
@@ -212,20 +199,5 @@ fn gather_clock_outputs(
       };
       (key, out)
     })
-    .collect();
-
-  let edges = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      (
-        key,
-        EdgeOut {
-          branch_length: branch_lengths[&key],
-        },
-      )
-    })
-    .collect();
-
-  (nodes, edges)
+    .collect()
 }

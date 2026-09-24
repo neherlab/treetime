@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 pub(crate) mod ancestral;
 pub(crate) mod clock;
 pub(crate) mod mugration;

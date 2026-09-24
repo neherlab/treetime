@@ -41,6 +41,10 @@ tower-http = { workspace = true }
 utoipa = { workspace = true }
 utoipa-axum = { workspace = true }
 
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
 tikv-jemallocator = { workspace = true }
 
