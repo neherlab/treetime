@@ -118,8 +118,23 @@ The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI refer
 
 ## Testing against the reference
 
-- `just compare-baseline` (host) builds the `rust` base branch and the current checkout and byte-compares the outputs of every command over the bundled datasets
-- `just smoke` runs the smoke tests of the release binary over the bundled datasets
+`dev/smoke` (host, needs Docker) runs the CLI over a matrix of commands, datasets and flag variants, stores the outputs in a snapshot under `snapshots/<id>/` named after the git state that built the binary, and compares them byte for byte with a baseline snapshot, by default the one of the `rust` branch. It reports crashes, timeouts, missing outputs and changed outputs, and writes `report.md` and `report.tsv` into `snapshots/<id>/compare/<baseline-id>/`. `./dev/smoke --help` describes the options, the snapshot layout and the exit codes.
+
+- `just smoke` compares the quick tier (datasets of at most 100 sequences) with `rust`
+- `just smoke-full` compares every case with `rust`
+- `just smoke-run` runs the cases without a baseline: crash, timeout and output checks only
+- `just smoke-failed` runs again the cases that did not pass in the last run
+- `just smoke-prune` deletes the snapshots of dirty working trees other than the current one
+
+```bash
+./dev/smoke                    # quick tier against rust
+./dev/smoke --tier full        # every case
+./dev/smoke --against <ref>    # another commit, branch or snapshot id as the baseline
+./dev/smoke --no-compare       # statuses only
+./dev/smoke --only <regex>     # cases whose id matches
+./dev/smoke --rerun-failed     # cases that did not pass in the last run
+```
+
 - `dev/docker/python treetime ...` runs TreeTime v0 from `packages/legacy`
 
 ## Performance

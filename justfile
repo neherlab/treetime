@@ -60,6 +60,7 @@ alias rr := run-release
 alias t := test
 alias tu := test-unit
 alias ti := test-integration
+alias sm := smoke
 alias l := lint
 alias lf := lint-fix
 alias f := fmt
@@ -140,6 +141,31 @@ test-integration *args:
 [group("test")]
 test-list *args:
     cargo nextest list --locked --workspace "$@"
+
+# Smoke-test the CLI and compare outputs with the rust branch, quick tier (host only, needs Docker): just smoke [--only REGEX] [--against REF]
+[group("test")]
+smoke *args:
+    dev/smoke "$@"
+
+# Smoke-test every dataset and the slow extra commands against the rust branch (host only, needs Docker)
+[group("test")]
+smoke-full *args:
+    dev/smoke --tier full "$@"
+
+# Smoke-test the CLI without a baseline: crash, timeout and output checks only (host only, needs Docker)
+[group("test")]
+smoke-run *args:
+    dev/smoke --no-compare "$@"
+
+# Smoke-test again the cases that did not pass in the last run (host only, needs Docker)
+[group("test")]
+smoke-failed *args:
+    dev/smoke --rerun-failed "$@"
+
+# Delete the smoke snapshots of dirty working trees other than the current one
+[group("test")]
+smoke-prune:
+    dev/smoke --prune
 
 # TypeScript tests (vitest) and the custom oxlint rule tests
 [group("test")]
@@ -321,16 +347,6 @@ build-desktop: _js
 [group("bench")]
 bench *args:
     cargo bench --locked --workspace --benches "$@"
-
-# Smoke tests of a release binary over the bundled datasets: just smoke [binary]
-[group("bench")]
-smoke binary=".out/treetime" *args: (build-release "treetime")
-    dev/run-smoke-tests {{ quote(binary) }} "${@:2}"
-
-# Byte-compare command outputs against the `rust` base branch (host only, needs Docker)
-[group("bench")]
-compare-baseline *args:
-    dev/compare-baseline "$@"
 
 # Sample a profile of a binary (host only, needs Docker and perf or samply): just profile treetime -- <args>
 [group("bench")]

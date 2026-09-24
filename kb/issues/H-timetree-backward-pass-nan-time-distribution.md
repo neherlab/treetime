@@ -18,7 +18,7 @@ treetime timetree --tree=data/lassa/L/20/tree.nwk --dates=data/lassa/L/20/metada
   --aln=data/lassa/L/20/aln.fasta.xz --output-all=<dir>
 ```
 
-This is the `timetree/lassa/L/20/basic` case in `dev/compare-baseline`.
+This is the `timetree/lassa/L/20/basic` case of `dev/smoke`.
 
 Whether the dates of this dataset also have disjoint support is unknown until the `NaN` is removed.
 
