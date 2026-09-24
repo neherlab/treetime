@@ -9,8 +9,6 @@ use eyre::Report;
 use std::path::Path;
 
 pub(crate) trait ResolveOutputs {
-  fn command_kind(&self) -> CommandKind;
-
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
 }
 
@@ -22,10 +20,6 @@ macro_rules! impl_resolve_outputs {
   ($kind:ident; $($ty:ty),+ $(,)?; |$s:ident| $files:expr) => {
     $(
       impl ResolveOutputs for $ty {
-        fn command_kind(&self) -> CommandKind {
-          CommandKind::$kind
-        }
-
         fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
           let $s = self;
           $s.output

@@ -286,8 +286,8 @@ v1: `todo!()` at [`packages/treetime/src/commands/timetree/initialization.rs#L34
 Writes inferred node dates to TSV for downstream analysis. The output includes all tree nodes (leaves and internal).
 
 v0: [`packages/legacy/treetime/treetime/CLI_io.py#L136-L158`](../../packages/legacy/treetime/treetime/CLI_io.py#L136-L158).
-v1: `todo!()` stub at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../packages/treetime/src/commands/timetree/output/dates.rs#L20).
-Known issue: [write_node_dates() is a todo!() stub](../issues/N-timetree-node-dates-output-unimplemented.md).
+v1: not implemented.
+Known issue: [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md).
 
 v0 format with confidence (`#node\tdate\tnumeric date\tlower bound\tupper bound`): bounds come from `get_max_posterior_region(n, fraction=0.9)`. Bad branches get `--` placeholders.
 
@@ -299,7 +299,7 @@ v0 format without confidence (`#node\tdate\tnumeric date`): no bounds columns.
 
 Diagnostic visualizations: root-to-tip regression scatter plot and time-scaled phylogenetic tree. CLI flags `--plot-rtt` and `--plot-tree` are hidden pending implementation.
 
-v1: `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`](../../packages/treetime/src/commands/timetree/output/plots.rs#L11) (root-to-tip) and [`packages/treetime/src/commands/timetree/output/plots.rs#L20`](../../packages/treetime/src/commands/timetree/output/plots.rs#L20) (time tree).
+v1: not implemented.
 
 ---
 

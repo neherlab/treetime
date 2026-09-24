@@ -6,7 +6,7 @@ use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
-use app_output::output_plan::{CommandKind, ResolvedOutputs};
+use app_output::output_plan::ResolvedOutputs;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -51,15 +51,6 @@ pub(crate) struct PipelineStep {
   command: PipelineStepCommand,
 }
 
-impl PipelineStep {
-  pub(crate) fn from_value(value: Value) -> Result<Self, Report> {
-    let RawStep { name, tag, payload } = RawStep::from_value(value)?;
-    let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
-      .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
-    Ok(Self { name, command })
-  }
-}
-
 /// A single analysis command invocation within a pipeline.
 ///
 /// Externally tagged and kebab-cased so a step's payload is exactly the command's serialized args
@@ -87,17 +78,6 @@ impl PipelineStepCommand {
       Self::Ancestral(_) => "ancestral",
       Self::Clock(_) => "clock",
       Self::Mugration(_) => "mugration",
-    }
-  }
-
-  pub(crate) fn command_kind(&self) -> CommandKind {
-    match self {
-      Self::Timetree(_) => CommandKind::Timetree,
-      Self::Optimize(_) => CommandKind::Optimize,
-      Self::Prune(_) => CommandKind::Prune,
-      Self::Ancestral(_) => CommandKind::Ancestral,
-      Self::Clock(_) => CommandKind::Clock,
-      Self::Mugration(_) => CommandKind::Mugration,
     }
   }
 
@@ -195,17 +175,11 @@ pub(crate) fn commands_list() -> String {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+
+  use helpers::{method_anc, parse_step};
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use treetime_utils::assert_error;
-
-  fn method_anc(command: &PipelineStepCommand) -> Option<String> {
-    match command {
-      PipelineStepCommand::Ancestral(args) => Some(format!("{:?}", args.method_anc)),
-      _ => None,
-    }
-  }
 
   #[test]
   fn test_types_step_parses_ancestral_with_snake_case_fields() {
@@ -213,22 +187,21 @@ mod tests {
       "name": "anc",
       "ancestral": { "tree": "t.nwk", "method_anc": "marginal", "dense": true }
     });
-    let step = PipelineStep::from_value(value).unwrap();
+    let step = parse_step(value).unwrap();
     assert_eq!("anc", step.name);
     assert_eq!("ancestral", step.command.tag());
-    assert_eq!(CommandKind::Ancestral, step.command.command_kind());
     assert_eq!(Some("Marginal".to_owned()), method_anc(&step.command));
   }
 
   #[test]
   fn test_types_step_parses_timetree_tag() {
-    let step = PipelineStep::from_value(json!({ "name": "tt", "timetree": { "clock_rate": 0.003 } })).unwrap();
+    let step = parse_step(json!({ "name": "tt", "timetree": { "clock_rate": 0.003 } })).unwrap();
     assert_eq!("timetree", step.command.tag());
   }
 
   #[test]
   fn test_types_step_rejects_utility_command_tag() {
-    let result = PipelineStep::from_value(json!({ "name": "x", "debug": {} }));
+    let result = parse_step(json!({ "name": "x", "debug": {} }));
     assert_error!(
       result,
       "in pipeline step `x`: unknown command `debug`; valid values: `ancestral`, `clock`, `mugration`, `optimize`, `prune`, `timetree`"
@@ -237,7 +210,7 @@ mod tests {
 
   #[test]
   fn test_types_step_suggests_closest_command_for_typo() {
-    let result = PipelineStep::from_value(json!({ "name": "x", "timtree": {} }));
+    let result = parse_step(json!({ "name": "x", "timtree": {} }));
     assert_error!(
       result,
       "in pipeline step `x`: unknown command `timtree`; did you mean `timetree`? Valid values: `ancestral`, `clock`, `mugration`, `optimize`, `prune`, `timetree`"
@@ -246,7 +219,7 @@ mod tests {
 
   #[test]
   fn test_types_step_rejects_multiple_commands() {
-    let result = PipelineStep::from_value(json!({ "name": "x", "timetree": {}, "clock": {} }));
+    let result = parse_step(json!({ "name": "x", "timetree": {}, "clock": {} }));
     assert_error!(
       result,
       "pipeline step `x` has more than one command (`clock`, `timetree`); a step runs exactly one command"
@@ -255,7 +228,7 @@ mod tests {
 
   #[test]
   fn test_types_step_rejects_missing_command() {
-    let result = PipelineStep::from_value(json!({ "name": "x" }));
+    let result = parse_step(json!({ "name": "x" }));
     assert_error!(
       result,
       "pipeline step `x` has no command; expected one of `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`"
@@ -264,14 +237,33 @@ mod tests {
 
   #[test]
   fn test_types_step_rejects_missing_name() {
-    let result = PipelineStep::from_value(json!({ "timetree": {} }));
+    let result = parse_step(json!({ "timetree": {} }));
     assert_error!(result, "pipeline step is missing a `name`");
   }
 
   #[test]
   fn test_types_step_ignores_schema_key() {
     let value = json!({ "$schema": "./input-config-pipeline.schema.json", "name": "tt", "timetree": {} });
-    let step = PipelineStep::from_value(value).unwrap();
+    let step = parse_step(value).unwrap();
     assert_eq!("timetree", step.command.tag());
+  }
+
+  mod helpers {
+    use super::super::*;
+    use treetime_utils::make_report;
+
+    pub(super) fn parse_step(value: Value) -> Result<PipelineStep, Report> {
+      let RawStep { name, tag, payload } = RawStep::from_value(value)?;
+      let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
+        .map_err(|err| make_report!("in pipeline step `{name}`: {err}"))?;
+      Ok(PipelineStep { name, command })
+    }
+
+    pub(super) fn method_anc(command: &PipelineStepCommand) -> Option<String> {
+      match command {
+        PipelineStepCommand::Ancestral(args) => Some(format!("{:?}", args.method_anc)),
+        _ => None,
+      }
+    }
   }
 }

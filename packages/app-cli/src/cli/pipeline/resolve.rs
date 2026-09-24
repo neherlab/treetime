@@ -62,7 +62,6 @@ pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<Resolve
 }
 
 pub(crate) struct PipelineDoc {
-  pub schema_ref: Option<String>,
   pub vars: Map<String, Value>,
   pub output_all: Option<String>,
   pub steps: Vec<RawStep>,
@@ -83,11 +82,11 @@ impl PipelineDoc {
       }
     }
 
-    let schema_ref = match map.remove("$schema") {
-      Some(Value::String(reference)) => Some(reference),
-      Some(_) => return make_error!("top-level `$schema` must be a string"),
-      None => None,
-    };
+    if let Some(schema) = map.remove("$schema")
+      && !schema.is_string()
+    {
+      return make_error!("top-level `$schema` must be a string");
+    }
 
     let vars = match map.remove("vars") {
       Some(Value::Object(vars)) => vars,
@@ -118,7 +117,6 @@ impl PipelineDoc {
     }
 
     Ok(Self {
-      schema_ref,
       vars,
       output_all,
       steps,
