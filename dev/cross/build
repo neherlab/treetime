@@ -17,7 +17,6 @@ cd "${root}"
 
 bin="${1:?binary name}"
 target="${2:-${CROSS_COMPILE:?target}}"
-target_upper="$(printf '%s' "${target//-/_}" | tr '[:lower:]' '[:upper:]')"
 target_safe="${target//-/_}"
 
 case "${target}" in
@@ -59,7 +58,9 @@ case "${target}" in
 esac
 
 c_flags="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
-export "CARGO_TARGET_${target_upper}_RUSTFLAGS=${rustflags}"
+# RUSTFLAGS replaces the target rustflags of .cargo/config.toml (native mold
+# linking and development flags) instead of adding to them.
+export RUSTFLAGS="${rustflags}"
 export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_flags}"
 export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_flags}"
 export "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_flags}"

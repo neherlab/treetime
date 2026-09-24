@@ -18,25 +18,25 @@ must_be_static=0
 function run_for_linux() {
   : "${CROSS_SYSROOT:?}"
 
-  local LDD OBJDUMP STRINGS output dump glibc_version libgcc_version needs
+  local LDD OBJDUMP STRINGS ldd_output output dump glibc_version libgcc_version needs
   LDD="$(printenv "LDD_${target_safe}" || printenv "LDD" || echo "ldd")"
   OBJDUMP="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
   STRINGS="$(printenv "STRINGS_${target_safe}" || printenv "STRINGS" || echo "strings")"
 
-  output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
-  if ! echo "$output" | grep -qE 'statically linked|not a dynamic executable'; then
+  ldd_output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
+  if ! echo "${ldd_output}" | grep -qE 'statically linked|not a dynamic executable'; then
     echo "Not a static executable: '$1'" >&2
     has_error="${must_be_static}"
   fi
 
   dump=$("${OBJDUMP}" -p "$1" 2>&1 || true)
-  glibc_version=$(echo "${dump}" | grep 'GLIBC_' | awk '{print $NF}' | sed 's/GLIBC_//' | sort -V | tail -n 1)
+  glibc_version=$(awk '/GLIBC_/ {v = $NF; sub(/GLIBC_/, "", v); print v}' <<<"${dump}" | sort -V | tail -n 1)
   if [ -n "$glibc_version" ]; then
     echo "Depends on glibc $glibc_version" >&2
     has_error="${must_be_static}"
   fi
 
-  libgcc_version=$(echo "${dump}" | grep 'GCC_' | awk '{print $NF}' | sed 's/GCC_//' | sort -V | tail -n 1)
+  libgcc_version=$(awk '/GCC_/ {v = $NF; sub(/GCC_/, "", v); print v}' <<<"${dump}" | sort -V | tail -n 1)
   if [ -n "${libgcc_version}" ]; then
     echo "Depends on libgcc ${libgcc_version}" >&2
     has_error="${must_be_static}"
@@ -52,8 +52,8 @@ function run_for_linux() {
     done
   fi
 
-  output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 | awk '/=>/ {print $(NF-1)}' | while read -r lib_path; do
-    version="$("${STRINGS}" "${CROSS_SYSROOT}$lib_path" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)' | sort -u | head -n 1)"
+  output=$(awk '/=>/ {print $(NF-1)}' <<<"${ldd_output}" | while read -r lib_path; do
+    version="$("${STRINGS}" "${CROSS_SYSROOT}$lib_path" | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) {print substr($0, RSTART, RLENGTH)}' | sort -u | head -n 1)"
     if [ -n "$version" ]; then
       lib_name="$(basename "$lib_path")"
       if [[ ! "$lib_name" =~ ^(libc.so|libgcc) ]]; then
