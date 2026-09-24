@@ -53,29 +53,12 @@ mod tests {
   }
 
   #[test]
-  fn test_bitset128_clear() {
-    let mut actual = bitset128! {'a', 'b', 'c'};
-    actual.clear();
-    let expected = BitSet128::new();
-    assert_eq!(actual, expected);
-  }
-
-  #[test]
   fn test_bitset128_insert() {
     let mut actual = bitset128! {};
     actual.insert('a');
     actual.insert('a');
     actual.insert('b');
     let expected = bitset128! {'a', 'b'};
-    assert_eq!(actual, expected);
-  }
-
-  #[test]
-  fn test_bitset128_remove() {
-    let mut actual = bitset128! {'a', 'b', 'c'};
-    actual.remove('b');
-    actual.remove('b');
-    let expected = bitset128! {'a', 'c'};
     assert_eq!(actual, expected);
   }
 
@@ -317,27 +300,6 @@ mod tests {
     let actual = a.difference(&b);
     let expected = bitset128! {'a'};
     assert_eq!(actual, expected);
-  }
-
-  #[test]
-  fn test_bitset128_is_disjoint() {
-    let a = bitset128! {'a', 'b', 'c'};
-    let b = bitset128! {'x', 'y', 'z'};
-    assert!(a.is_disjoint(&b));
-  }
-
-  #[test]
-  fn test_bitset128_is_subset() {
-    let a = bitset128! {'a', 'b'};
-    let b = bitset128! {'a', 'b', 'c'};
-    assert!(a.is_subset(&b));
-  }
-
-  #[test]
-  fn test_bitset128_is_superset() {
-    let a = bitset128! {'a', 'b', 'c'};
-    let b = bitset128! {'a', 'b'};
-    assert!(a.is_superset(&b));
   }
 
   #[test]

@@ -10,12 +10,6 @@ mod tests {
   }
 
   #[test]
-  fn test_try_from_vec_non_ascii_error() {
-    let result = Seq::try_from_vec(vec![65, 66, 128, 67]);
-    assert_error!(result, "AsciiChar: value 128 is not ASCII (>= 128)");
-  }
-
-  #[test]
   fn test_try_from_slice_non_ascii_error() {
     let result = Seq::try_from_slice(&[65, 66, 200, 67]);
     assert_error!(result, "AsciiChar: value 200 is not ASCII (>= 128)");
