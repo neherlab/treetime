@@ -8,6 +8,8 @@ mod tests {
   use treetime_primitives::Seq;
   use treetime_utils::o;
 
+  const CDS_TEMPLATE: &str = "out/{cds}.fasta";
+
   #[test]
   fn test_validate_aa_args_requires_cds_placeholder() {
     let err = validate_aa_args(Some("translations.fasta"), &["S".to_owned()], None, None).unwrap_err();
@@ -22,9 +24,8 @@ mod tests {
 
   #[test]
   fn test_validate_aa_args_accepts_cds_placeholder() {
-    let template = ["{", "cds", "}"].concat();
     let result = validate_aa_args(
-      Some(format!("out/{template}.fasta").as_str()),
+      Some(CDS_TEMPLATE),
       &["S".to_owned()],
       None,
       None,
@@ -34,9 +35,8 @@ mod tests {
 
   #[test]
   fn test_validate_aa_args_empty_cdses_with_annotation_ok() {
-    let template = ["{", "cds", "}"].concat();
     let result = validate_aa_args(
-      Some(format!("out/{template}.fasta").as_str()),
+      Some(CDS_TEMPLATE),
       &[],
       Some(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
       None,
@@ -46,8 +46,7 @@ mod tests {
 
   #[test]
   fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
-    let template = ["{", "cds", "}"].concat();
-    let err = validate_aa_args(Some(format!("out/{template}.fasta").as_str()), &[], None, None).unwrap_err();
+    let err = validate_aa_args(Some(CDS_TEMPLATE), &[], None, None).unwrap_err();
     assert!(err.to_string().contains("--cdses"));
   }
 

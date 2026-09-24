@@ -29,15 +29,18 @@ mod tests {
   #[test]
   fn test_metrics_with_custom_config() {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
-    let y = array![1.0, 2.0, 3.0, 2.0, 1.0];
+    let expected = array![1.0, 2.0, 3.0, 2.0, 1.0];
+    let actual = array![1.0, 2.0, 3.0, 2.0, 1.5];
 
     let mut config = MetricsConfig::default();
     config.distribution.histogram_bins = 20;
     config.spatial.window_half_width = 2;
 
-    let metrics = ValidationMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
+    let metrics = ValidationMetrics::new_with_config(&x, &actual, &expected, 50.0, &config).unwrap();
 
     assert_eq!(20, metrics.distribution.histograms.abs_error_histogram.bin_counts.len());
     assert_ulps_eq!(metrics.aggregate.execution_time_ms, 50.0, max_ulps = 4);
+    let expected_sliding_max = array![0.0, 0.0, 0.5, 0.5, 0.5];
+    assert_ulps_eq!(expected_sliding_max, metrics.spatial.windowed.sliding_max, max_ulps = 0);
   }
 }
