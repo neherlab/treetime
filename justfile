@@ -142,14 +142,14 @@ test-integration *args:
 test-list *args:
     cargo nextest list --locked --workspace "$@"
 
-# Smoke-test the CLI and compare outputs with the rust branch, quick tier (host only, needs Docker): just smoke [--only REGEX] [--against REF]
+# Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]
 [group("test")]
 smoke *args:
     dev/smoke "$@"
 
-# Smoke-test every dataset and the slow extra commands against the rust branch (host only, needs Docker)
+# Smoke-test all cases, every dataset and the slow extra commands, against the rust branch (host only, needs Docker)
 [group("test")]
-smoke-full *args:
+smoke-all *args:
     dev/smoke --tier full "$@"
 
 # Smoke-test the CLI without a baseline: crash, timeout and output checks only (host only, needs Docker)

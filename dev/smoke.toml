@@ -19,7 +19,7 @@
 
 
 # Size classes by sequence count. A dataset belongs to the first class whose `max_sequences` it does not exceed.
-# `tier`: quick cases run in `just smoke`, full cases only in `just smoke-full`. `timeout` is in seconds.
+# `tier`: quick cases run in `just smoke`, full cases only in `just smoke-all`. `timeout` is in seconds.
 [sizes]
 small = { max_sequences = 100, tier = "quick", timeout = 120 }
 medium = { max_sequences = 500, tier = "full", timeout = 600 }
