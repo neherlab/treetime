@@ -351,7 +351,8 @@ mod tests {
         },
         SampleMode::Argmax,
         &mut rng,
-      )? else {
+      )?
+      else {
         return Ok(false);
       };
       actual.insert(

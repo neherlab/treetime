@@ -3,7 +3,6 @@ mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::pretty_assert_ulps_eq;
-  use treetime_utils::assert_error;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::timetree_state::TimetreeState;
@@ -16,6 +15,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
@@ -65,7 +65,9 @@ mod tests {
 
     assert_error!(
       result,
-      format!("When sending the time message backward along edge {edge_key}: Cannot normalize a distribution point: its peak negative log-likelihood is NaN")
+      format!(
+        "When sending the time message backward along edge {edge_key}: Cannot normalize a distribution point: its peak negative log-likelihood is NaN"
+      )
     );
     assert_eq!(None, node_time_distribution(&state, internal_key));
     Ok(())
@@ -156,7 +158,8 @@ mod tests {
 
     let state = run_backward_pass(&graph, &DateConstraints::default(), state, Some(&coalescent_model))?;
 
-    let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time().unwrap());
+    let actual =
+      node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time().unwrap());
     let expected = Some(2012.0);
     assert_eq!(expected, actual);
 

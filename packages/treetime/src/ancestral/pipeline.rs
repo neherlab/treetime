@@ -201,17 +201,17 @@ pub fn run(
             Ok(
               partition
                 .reconstruct_node_sequence(
-                &mut node_states,
-                node,
-                TipStates {
-                  include_leaves: params.include_leaves,
-                  impute: params.impute_missing_data,
-                },
-                params.sample_from_profile,
-                &mut rng,
-              )
-              .is_some(),
-              )
+                  &mut node_states,
+                  node,
+                  TipStates {
+                    include_leaves: params.include_leaves,
+                    impute: params.impute_missing_data,
+                  },
+                  params.sample_from_profile,
+                  &mut rng,
+                )
+                .is_some(),
+            )
           })?;
 
           progress.report("Done", 1.0, "");

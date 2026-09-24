@@ -23,9 +23,9 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
+  use rstest::rstest;
   use treetime_graph::graph::Graph;
   use treetime_graph::graph_traverse::GraphNodeForward;
-  use rstest::rstest;
   use treetime_utils::assert_error;
 
   use ndarray::prelude::*;
@@ -193,7 +193,8 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )? else {
+        )?
+        else {
           return Ok(false);
         };
         actual.insert(names[&node.key].clone(), seq.to_string());
@@ -503,7 +504,8 @@ mod tests {
           },
           SampleMode::Argmax,
           &mut rng,
-        )? else {
+        )?
+        else {
           return Ok(false);
         };
         seqs_by_name.insert(names[&node.key].clone().expect("all test nodes should have names"), seq);

@@ -30,7 +30,9 @@ pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<Stri
 }
 
 pub(crate) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-  TimetreeState::seed_from_values(graph, constraints).coalescent_node_times().unwrap()
+  TimetreeState::seed_from_values(graph, constraints)
+    .coalescent_node_times()
+    .unwrap()
 }
 
 pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<SkylineResult, Report> {

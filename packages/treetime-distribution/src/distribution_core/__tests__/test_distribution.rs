@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution_core::formula::DistributionFormula;
   use crate::Distribution;
+  use crate::distribution_core::formula::DistributionFormula;
   use crate::policy::{NegLog, Plain};
   use ndarray::array;
   use rstest::rstest;
@@ -39,12 +39,12 @@ mod tests {
 
   #[test]
   fn test_distribution_y_formula_propagates_evaluation_error() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(
-      |t| make_error!("no value at {t}"),
-      1.0,
-      3.0,
-    ));
-    assert_error!(formula.y(), "When evaluating a formula distribution at its bounds [1, 3]: no value at 1");
+    let formula =
+      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
+    assert_error!(
+      formula.y(),
+      "When evaluating a formula distribution at its bounds [1, 3]: no value at 1"
+    );
   }
 
   #[test]
@@ -67,13 +67,19 @@ mod tests {
   #[test]
   fn test_distribution_neglog_normalize_point_maps_to_unit_probability() {
     let expected = Distribution::<NegLog>::point(2.0, 0.0);
-    assert_eq!(expected, Distribution::<NegLog>::point(2.0, 1000.0).normalize().unwrap());
+    assert_eq!(
+      expected,
+      Distribution::<NegLog>::point(2.0, 1000.0).normalize().unwrap()
+    );
   }
 
   #[test]
   fn test_distribution_neglog_normalize_range_maps_to_unit_probability() {
     let expected = Distribution::<NegLog>::range((1.0, 3.0), 0.0);
-    assert_eq!(expected, Distribution::<NegLog>::range((1.0, 3.0), 1000.0).normalize().unwrap());
+    assert_eq!(
+      expected,
+      Distribution::<NegLog>::range((1.0, 3.0), 1000.0).normalize().unwrap()
+    );
   }
 
   #[test]
@@ -114,7 +120,8 @@ mod tests {
 
   #[test]
   fn test_distribution_neglog_normalize_formula_propagates_evaluation_error() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
+    let formula =
+      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
     assert_error!(
       formula.normalize(),
       "When discretizing a formula distribution on [1, 3] for normalization: no value at 1"
@@ -129,7 +136,8 @@ mod tests {
 
   #[test]
   fn test_distribution_likely_time_formula_propagates_evaluation_error() {
-    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
+    let formula =
+      Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
     assert_error!(
       formula.likely_time(),
       "When finding the most likely time of a formula distribution on [1, 3]: no value at 1"

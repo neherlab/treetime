@@ -157,7 +157,8 @@ mod tests {
         },
         SampleMode::Argmax,
         &mut rng,
-      )? else {
+      )?
+      else {
         return Ok(false);
       };
       out.insert(names[&node.key].clone().expect("named node"), seq.as_str().to_owned());

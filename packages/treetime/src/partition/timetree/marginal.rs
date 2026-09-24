@@ -146,11 +146,13 @@ impl PartitionTimetree {
     rng: &mut dyn rand::RngCore,
   ) -> Result<Option<Seq>, Report> {
     match self {
-      Self::Dense(family) => Ok(
-        family
-          .partition
-          .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng),
-      ),
+      Self::Dense(family) => {
+        Ok(
+          family
+            .partition
+            .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng),
+        )
+      },
       Self::Sparse(family) => family.partition.reconstruct_node_sequence(
         &mut family.node_states,
         &family.edges.forward,

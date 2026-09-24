@@ -82,17 +82,17 @@ pub(crate) fn reconstruct_marginal_partition(
         Ok(
           partition
             .reconstruct_node_sequence(
-            &mut node_states,
-            node,
-            TipStates {
-              include_leaves: params.include_leaves,
-              impute: params.impute_missing_data,
-            },
-            params.sample_from_profile,
-            rng,
-          )
-          .is_some(),
-          )
+              &mut node_states,
+              node,
+              TipStates {
+                include_leaves: params.include_leaves,
+                impute: params.impute_missing_data,
+              },
+              params.sample_from_profile,
+              rng,
+            )
+            .is_some(),
+        )
       })?;
       AncestralPartition::Dense(DenseReconstruction {
         partition,

@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::timetree_state::TimetreeState;
-  use eyre::Report;
-  use pretty_assertions::assert_eq;
-  use std::sync::Arc;
   use crate::clock::date_constraints::DateConstraints;
   use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::timetree_state::TimetreeState;
+  use eyre::Report;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
-  use treetime_utils::assert_error;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_timetree_state_reset_date_edges_clears_distribution_and_message() -> Result<(), Report> {

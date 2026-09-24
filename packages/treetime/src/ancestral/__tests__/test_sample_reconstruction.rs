@@ -123,7 +123,8 @@ mod tests {
             },
             mode,
             &mut rng,
-          )? else {
+          )?
+          else {
             return Ok(false);
           };
           out.insert(names[&node.key].clone().unwrap_or_default(), seq.to_string());
