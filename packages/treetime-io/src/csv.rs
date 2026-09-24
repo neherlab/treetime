@@ -12,7 +12,6 @@ use treetime_utils::make_error;
 use treetime_utils::make_report;
 
 pub struct CsvStructFileWriter {
-  filepath: PathBuf,
   writer: CsvStructWriter<Box<dyn Write + Send>>,
 }
 
@@ -21,10 +20,7 @@ impl CsvStructFileWriter {
     let filepath = filepath.as_ref();
     let file = create_file_or_stdout(filepath)?;
     let writer = CsvStructWriter::new(file, delimiter)?;
-    Ok(Self {
-      filepath: filepath.to_owned(),
-      writer,
-    })
+    Ok(Self { writer })
   }
 
   pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {

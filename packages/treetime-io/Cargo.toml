@@ -26,7 +26,6 @@ util-phyloxml = { workspace = true }
 util-usher-mat = { workspace = true }
 
 # [external]
-bytes = { workspace = true }
 csv = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
@@ -40,6 +39,7 @@ traversal = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
+bytes = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
 pretty_assertions = { workspace = true }

@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::usher_mat::{usher_mat_pb_write_bytes, usher_mat_pb_write_file};
+  use crate::usher_mat::usher_mat_pb_write_file;
+  use bytes::BytesMut;
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
   use std::fs;
   use tempfile::TempDir;
-  use util_usher_mat::usher_mat_pb_read_bytes;
+  use util_usher_mat::{usher_mat_pb_read_bytes, usher_mat_pb_write_bytes};
 
   #[test]
   fn test_usher_mat_pb_write_file_matches_encoded_bytes() -> Result<(), Report> {
@@ -16,7 +17,9 @@ mod tests {
     usher_mat_pb_write_file(&path, &tree)?;
 
     let written = fs::read(&path).wrap_err("When reading the written file")?;
-    assert_eq!(usher_mat_pb_write_bytes(&tree)?, written);
+    let mut expected = BytesMut::new();
+    usher_mat_pb_write_bytes(&mut expected, &tree)?;
+    assert_eq!(expected.to_vec(), written);
     Ok(())
   }
 

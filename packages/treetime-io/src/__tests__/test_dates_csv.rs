@@ -110,7 +110,7 @@ mod tests {
   }
 
   #[test]
-  fn test_read_dates_from_str() -> Result<(), Report> {
+  fn test_read_dates_from_reader() -> Result<(), Report> {
     let content = r#"name	 date
 A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409	2013.40520192
 A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409	2012.83778234
@@ -133,7 +133,7 @@ A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416	2011.65160849
 A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
 "#;
 
-    let actual = read_dates_from_str(content, b'\t', &[], &Some(o!("name")), &Some(o!("date")))?;
+    let actual = read_dates_from_reader(content.as_bytes(), b'\t', &[], Some("name"), Some("date"))?;
 
     let expected = btreemap! {
       o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2013.40520192)),

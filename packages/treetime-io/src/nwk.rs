@@ -1,9 +1,8 @@
-use crate::fasta::FastaRecord;
 use eyre::{Report, WrapErr};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -11,7 +10,6 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::Seq;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
@@ -22,113 +20,6 @@ pub use util_newick::NwkStyle;
 use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
-
-#[derive(Debug)]
-pub struct NwkFastaInput {
-  graph: Graph,
-  nodes: BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
-  edges: BTreeMap<GraphEdgeKey, NwkFastaEdgeInput>,
-}
-
-impl NwkFastaInput {
-  pub fn from_parse_and_aln(parse: NwkParse, aln: Vec<FastaRecord>) -> Self {
-    let NwkParse {
-      graph,
-      nodes: metas,
-      branch_lengths,
-    } = parse;
-
-    let nodes = build_node_inputs(&graph, metas, aln);
-    let edges = branch_lengths
-      .into_iter()
-      .map(|(key, branch_length)| (key, NwkFastaEdgeInput { branch_length }))
-      .collect();
-
-    Self { graph, nodes, edges }
-  }
-
-  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
-    self.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect()
-  }
-
-  pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-    self
-      .edges
-      .iter()
-      .map(|(key, edge)| (*key, edge.branch_length))
-      .collect()
-  }
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct NwkFastaEdgeInput {
-  branch_length: Option<f64>,
-}
-
-pub fn nwk_fasta_node_inputs(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  aln: Vec<FastaRecord>,
-) -> BTreeMap<GraphNodeKey, NwkFastaNodeInput> {
-  let metas = names
-    .iter()
-    .map(|(key, name)| {
-      (
-        *key,
-        NwkNodeMeta {
-          name: name.clone(),
-          confidence: None,
-        },
-      )
-    })
-    .collect();
-  build_node_inputs(graph, metas, aln)
-}
-
-fn build_node_inputs(
-  graph: &Graph,
-  metas: BTreeMap<GraphNodeKey, NwkNodeMeta>,
-  aln: Vec<FastaRecord>,
-) -> BTreeMap<GraphNodeKey, NwkFastaNodeInput> {
-  let mut records_by_name: BTreeMap<String, FastaRecord> = BTreeMap::new();
-  for record in aln {
-    records_by_name.entry(record.seq_name.clone()).or_insert(record);
-  }
-
-  let leaf_keys: BTreeSet<GraphNodeKey> = graph.get_leaves().map(|leaf| leaf.key()).collect();
-
-  metas
-    .into_iter()
-    .map(|(key, meta)| {
-      let record = if leaf_keys.contains(&key) {
-        meta.name.as_deref().and_then(|name| records_by_name.remove(name))
-      } else {
-        None
-      };
-      let (aln, desc) = match record {
-        Some(record) => (Some(record.seq), record.desc),
-        None => (None, None),
-      };
-      (
-        key,
-        NwkFastaNodeInput {
-          name: meta.name,
-          confidence: meta.confidence,
-          aln,
-          desc,
-        },
-      )
-    })
-    .collect()
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct NwkFastaNodeInput {
-  name: Option<String>,
-  confidence: Option<f64>,
-  aln: Option<Seq>,
-  desc: Option<String>,
-}
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
   let filepath = filepath.as_ref();

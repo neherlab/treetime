@@ -1,4 +1,3 @@
-use bytes::BytesMut;
 use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::Write;
@@ -13,12 +12,6 @@ pub fn usher_mat_pb_write_file(filepath: impl AsRef<Path>, tree: &UsherTree) -> 
   let mut f = create_file_or_stdout(filepath)?;
   usher_mat_pb_write(&mut f, tree)
     .wrap_err_with(|| format!("When writing Usher MAT protobuf file '{}'", filepath.display()))
-}
-
-pub(crate) fn usher_mat_pb_write_bytes(tree: &UsherTree) -> Result<Vec<u8>, Report> {
-  let mut buf = BytesMut::new();
-  util_usher_mat::usher_mat_pb_write_bytes(&mut buf, tree).wrap_err("When writing Usher MAT protobuf bytes")?;
-  Ok(buf.to_vec())
 }
 
 fn usher_mat_pb_write(writer: &mut impl Write, tree: &UsherTree) -> Result<(), Report> {

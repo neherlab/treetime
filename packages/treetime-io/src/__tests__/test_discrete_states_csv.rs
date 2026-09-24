@@ -18,7 +18,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, delimiter, &default_name_candidates(), &None, &Some(o!("location")), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_reader(content.as_bytes(), delimiter, &default_name_candidates(), None, Some("location"), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -43,7 +43,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, _) =
-      read_discrete_attrs_from_str(content, b'\t', &default_name_candidates(), &name_column, &Some(o!("location")), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &default_name_candidates(), name_column.as_deref(), Some("location"), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -65,7 +65,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, b'\t', &default_name_candidates(), &None, &Some(o!(value_col_name)), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &default_name_candidates(), None, Some(value_col_name), |s| Ok(s.to_owned()))?;
 
     assert_eq!(attr_name, value_col_name);
     assert!(values.contains_key(&o!("A")));
@@ -78,7 +78,7 @@ mod tests {
     let content = "#name#\t#location#\nA\tusa\nB\teurope";
 
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, b'\t', &[], &Some(o!("name")), &Some(o!("location")), |s| {
+      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &[], Some("name"), Some("location"), |s| {
         Ok(s.to_owned())
       })?;
 
@@ -97,12 +97,12 @@ mod tests {
   fn test_discrete_states_csv_custom_parser() -> Result<(), Report> {
     let content = "name\tweight\nA\t1.5\nB\t2.0\nC\t0.5";
 
-    let (values, attr_name) = read_discrete_attrs_from_str(
-      content,
+    let (values, attr_name) = read_discrete_attrs_from_reader(
+      content.as_bytes(),
       b'\t',
       &default_name_candidates(),
-      &None,
-      &Some(o!("weight")),
+      None,
+      Some("weight"),
       |s| Ok(s.parse::<f64>()?),
     )?;
 
@@ -122,12 +122,12 @@ mod tests {
   fn test_discrete_states_csv_whitespace_trimming() -> Result<(), Report> {
     let content = "name\tlocation\n  A  \t  usa  \n  B  \t  europe  ";
 
-    let (values, _) = read_discrete_attrs_from_str(
-      content,
+    let (values, _) = read_discrete_attrs_from_reader(
+      content.as_bytes(),
       b'\t',
       &default_name_candidates(),
-      &None,
-      &Some(o!("location")),
+      None,
+      Some("location"),
       |s| Ok(s.to_owned()),
     )?;
 

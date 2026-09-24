@@ -40,16 +40,6 @@ pub fn nex_write_file_with(
   writeln!(f).wrap_err_with(context)
 }
 
-pub(crate) fn nex_write_str(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &NexWriteOptions,
-) -> Result<String, Report> {
-  let providers = CommentProviders::new();
-  nex_write_str_with(graph, names, weights, options, &providers)
-}
-
 pub fn nex_write_str_with(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

@@ -12,23 +12,6 @@ use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
-pub(crate) fn read_dates_from_str(
-  content: &str,
-  delimiter: u8,
-  name_candidates: &[String],
-  name_column: &Option<String>,
-  date_column: &Option<String>,
-) -> Result<DatesMap, Report> {
-  let reader = content.as_bytes();
-  read_dates_from_reader(
-    reader,
-    delimiter,
-    name_candidates,
-    name_column.as_deref(),
-    date_column.as_deref(),
-  )
-}
-
 pub fn read_dates(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
@@ -54,7 +37,7 @@ pub fn read_dates(
   .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
 }
 
-fn read_dates_from_reader(
+pub(crate) fn read_dates_from_reader(
   reader: impl Read,
   delimiter: u8,
   name_candidates: &[String],

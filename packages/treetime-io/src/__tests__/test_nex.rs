@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::nex::{NexWriteOptions, nex_write_str};
+  use crate::nex::{NexWriteOptions, nex_write_str_with};
+  use crate::nwk::CommentProviders;
   use crate::nwk::{NwkParse, nwk_read_str};
   use eyre::Report;
   use indoc::indoc;
@@ -58,7 +59,7 @@ mod tests {
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;
-    let actual = nex_write_str(&graph, &names, &branch_lengths, &NexWriteOptions::default())?;
+    let actual = nex_write_str_with(&graph, &names, &branch_lengths, &NexWriteOptions::default(), &CommentProviders::new())?;
     assert_eq!(expected, actual);
     Ok(())
   }

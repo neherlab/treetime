@@ -7,24 +7,6 @@ use std::path::Path;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report};
 
-pub(crate) fn read_discrete_attrs_from_str<T>(
-  content: &str,
-  delimiter: u8,
-  name_candidates: &[String],
-  name_column: &Option<String>,
-  value_column: &Option<String>,
-  parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(BTreeMap<String, T>, String), Report> {
-  read_discrete_attrs_from_reader(
-    content.as_bytes(),
-    delimiter,
-    name_candidates,
-    name_column.as_deref(),
-    value_column.as_deref(),
-    parser,
-  )
-}
-
 pub fn read_discrete_attrs<T>(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
@@ -52,7 +34,7 @@ pub fn read_discrete_attrs<T>(
   .wrap_err_with(|| format!("When reading discrete attributes from file: '{}'", filepath.display()))
 }
 
-fn read_discrete_attrs_from_reader<T>(
+pub(crate) fn read_discrete_attrs_from_reader<T>(
   reader: impl Read,
   delimiter: u8,
   name_candidates: &[String],
