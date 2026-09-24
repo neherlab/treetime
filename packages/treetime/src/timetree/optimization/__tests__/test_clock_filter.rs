@@ -40,7 +40,7 @@ mod tests {
 
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
-    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(constraints));
+    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(constraints).unwrap());
     (inputs, ClockState::new(graph))
   }
 

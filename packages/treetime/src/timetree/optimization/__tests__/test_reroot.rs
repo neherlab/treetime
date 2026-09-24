@@ -110,7 +110,7 @@ mod tests {
 
     let clock_params = ClockVarianceParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints));
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints)?);
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(
       &graph,
@@ -477,7 +477,7 @@ mod tests {
 
     let clock_params = ClockVarianceParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints));
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints)?);
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(
       &graph,

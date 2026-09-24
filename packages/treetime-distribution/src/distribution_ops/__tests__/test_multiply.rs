@@ -185,7 +185,7 @@ mod tests {
     assert!(f.x_min() >= overlap_min - 0.1);
     assert!(f.x_max() <= overlap_max + 0.1);
 
-    let likely = result.likely_time().unwrap();
+    let likely = result.likely_time().unwrap().unwrap();
     assert!((likely - 1.0).abs() < 0.2, "Product peak at {likely}, expected ~1.0");
   }
 
@@ -208,7 +208,7 @@ mod tests {
     };
     assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
-    let peak = result.likely_time().unwrap();
+    let peak = result.likely_time().unwrap().unwrap();
     assert!(peak > 5.5 && peak < 7.5, "Peak at {peak}, expected ~6.5");
   }
 
@@ -238,7 +238,7 @@ mod tests {
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
-    assert!(result.likely_time().is_some());
+    assert!(result.likely_time().unwrap().is_some());
   }
 
   #[test]
@@ -263,7 +263,7 @@ mod tests {
     };
     assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
-    let peak = result.likely_time().unwrap();
+    let peak = result.likely_time().unwrap().unwrap();
     assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
   }
 
@@ -328,7 +328,7 @@ mod tests {
     };
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
-    assert!(result.likely_time().is_some());
+    assert!(result.likely_time().unwrap().is_some());
   }
 
   #[test]
@@ -391,7 +391,7 @@ mod tests {
     assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     assert!(
-      accum.likely_time().is_some(),
+      accum.likely_time().unwrap().is_some(),
       "Accumulated result must have a likely_time"
     );
   }

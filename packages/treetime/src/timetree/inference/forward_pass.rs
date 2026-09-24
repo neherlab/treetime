@@ -65,7 +65,7 @@ fn propagate_distributions_forward_node(
     context.parent,
     context.is_leaf,
     &mut node,
-  );
+  )?;
   let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
@@ -114,7 +114,7 @@ fn refine_distribution_from_parent(
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
   log_refinement(names, key, parent_time_dist, &combined);
 
-  if combined.likely_time().is_none() && date_constraint.is_some() {
+  if combined.likely_time()?.is_none() && date_constraint.is_some() {
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
     return Ok(Refinement::ContradictedGivenDate);
   }
@@ -135,13 +135,13 @@ fn commit_node_time(
   parent: Option<&DateNodeState>,
   is_leaf: bool,
   node: &mut DateNodeState,
-) {
+) -> Result<(), Report> {
   let parent_time = (!has_exact_date(date_constraint))
     .then(|| parent_time(parent))
     .flatten();
 
   let is_dateable = !is_leaf || date_constraint.is_some();
-  if set_likely_time(node, parent_time).is_none() && is_dateable {
+  if set_likely_time(node, parent_time)?.is_none() && is_dateable {
     let name = node_name(names, key);
     let name = name.as_deref().unwrap_or("<unnamed>");
     warn!(
@@ -150,6 +150,7 @@ fn commit_node_time(
        and the times the rest of the tree implies have disjoint support."
     );
   }
+  Ok(())
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
@@ -160,15 +161,17 @@ fn parent_time(parent: Option<&DateNodeState>) -> Option<f64> {
   parent?.time
 }
 
-pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>) -> Option<f64> {
-  let time = node
-    .time_distribution
-    .as_ref()
-    .and_then(|time_dist| time_dist.likely_time())?;
+pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>) -> Result<Option<f64>, Report> {
+  let Some(time_dist) = &node.time_distribution else {
+    return Ok(None);
+  };
+  let Some(time) = time_dist.likely_time()? else {
+    return Ok(None);
+  };
 
   let time = parent_time.map_or(time, |parent_time| time.max(parent_time));
   node.time = Some(time);
-  Some(time)
+  Ok(Some(time))
 }
 
 fn log_refinement(

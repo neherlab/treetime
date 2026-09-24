@@ -74,8 +74,8 @@ mod tests {
         .all(|node| { state.node(node.key()).time_distribution.is_some() })
     );
 
-    let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times())?;
-    let model = CoalescentModel::new(&compute_lineage_counts(&graph, &state.coalescent_node_times())?, &tc)?;
+    let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times()?)?;
+    let model = CoalescentModel::new(&compute_lineage_counts(&graph, &state.coalescent_node_times()?)?, &tc)?;
     let node_lh = -graph
       .get_nodes()
       .map(|node| {
@@ -83,7 +83,7 @@ mod tests {
           .node(node.key())
           .time_distribution
           .as_ref()
-          .and_then(|distribution| distribution.likely_time())
+          .and_then(|distribution| distribution.likely_time().unwrap())
           .expect("refined node must have a likely time");
         if node.is_leaf() {
           Ok(model.leaf_contribution(time))
@@ -270,7 +270,7 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -337,7 +337,7 @@ mod tests {
   ) -> Result<(Vec<PartitionTimetree>, RefinementOutcome), Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
     let coalescent = CoalescentModel::new(
-      &compute_lineage_counts(graph, &state.coalescent_node_times())?,
+      &compute_lineage_counts(graph, &state.coalescent_node_times()?)?,
       coalescent_tc.unwrap_or(&pinned_tc),
     )?;
     let merger_rate =

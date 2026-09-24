@@ -38,7 +38,7 @@ mod tests {
       actual.y().unwrap(),
       epsilon = 1e-12,
     );
-    pretty_assert_ulps_eq!(expected.peak_position, actual.likely_time().unwrap(), max_ulps = 4);
+    pretty_assert_ulps_eq!(expected.peak_position, actual.likely_time()?.unwrap(), max_ulps = 4);
 
     Ok(())
   }

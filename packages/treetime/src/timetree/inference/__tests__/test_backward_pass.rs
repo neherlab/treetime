@@ -34,7 +34,7 @@ mod tests {
     let time_dist = node_time_distribution(&state, internal_key)
       .expect("internal node should have time distribution after backward pass");
     let likely_time = time_dist
-      .likely_time()
+      .likely_time()?
       .expect("time distribution should have likely_time");
 
     pretty_assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
@@ -91,7 +91,7 @@ mod tests {
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let time_dist = node_time_distribution(&state, internal_key).expect("internal node should have time distribution");
     let likely_time = time_dist
-      .likely_time()
+      .likely_time()?
       .expect("time distribution should have likely_time");
 
     pretty_assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
@@ -156,7 +156,7 @@ mod tests {
 
     let state = run_backward_pass(&graph, &DateConstraints::default(), state, Some(&coalescent_model))?;
 
-    let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time());
+    let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time().unwrap());
     let expected = Some(2012.0);
     assert_eq!(expected, actual);
 
@@ -242,7 +242,7 @@ mod tests {
           .msg_to_parent
           .as_ref()
           .expect("edge should have msg_to_parent after backward pass");
-        let msg_time = msg.likely_time().expect("message should have likely_time");
+        let msg_time = msg.likely_time()?.expect("message should have likely_time");
         pretty_assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
       }
     }
@@ -273,7 +273,7 @@ mod tests {
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let time_dist = node_time_distribution(&state, internal_key).expect("internal node should have time distribution");
     let likely_time = time_dist
-      .likely_time()
+      .likely_time()?
       .expect("time distribution should have likely_time");
 
     pretty_assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
@@ -295,7 +295,7 @@ mod tests {
     let ref_internal_key = find_node_key_by_name(&ref_graph, &ref_names, "I").expect("internal I not found");
     let ref_time = node_time_distribution(&ref_state, ref_internal_key)
       .expect("should have time dist")
-      .likely_time()
+      .likely_time()?
       .expect("should have likely_time");
 
     let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
@@ -316,7 +316,7 @@ mod tests {
     let test_internal_key = find_node_key_by_name(&test_graph, &test_names, "I").expect("internal I not found");
     let test_time = node_time_distribution(&test_state, test_internal_key)
       .expect("should have time dist")
-      .likely_time()
+      .likely_time()?
       .expect("should have likely_time");
 
     pretty_assert_ulps_eq!(ref_time, test_time, max_ulps = 4);
@@ -350,7 +350,7 @@ mod tests {
 
     let grid = dist.t();
     let spacing = grid[1] - grid[0];
-    let peak = dist.likely_time().expect("distribution should have a likely_time");
+    let peak = dist.likely_time()?.expect("distribution should have a likely_time");
     assert_abs_diff_eq!(peak, 2005.0, epsilon = spacing);
 
     for t in [2004.0_f64, 2005.0, 2006.0] {
@@ -383,7 +383,7 @@ mod tests {
       let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
       Ok((
         dist.y()?,
-        dist.likely_time().expect("distribution should have a likely_time"),
+        dist.likely_time()?.expect("distribution should have a likely_time"),
       ))
     };
 
@@ -419,7 +419,7 @@ mod tests {
 
     let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
-    let likely_time = dist.likely_time().expect("distribution should have a likely_time");
+    let likely_time = dist.likely_time()?.expect("distribution should have a likely_time");
 
     let grid = dist.t();
     let spacing = grid[1] - grid[0];

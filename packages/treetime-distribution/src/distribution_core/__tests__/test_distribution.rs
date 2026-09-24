@@ -120,4 +120,28 @@ mod tests {
       "When discretizing a formula distribution on [1, 3] for normalization: no value at 1"
     );
   }
+
+  #[test]
+  fn test_distribution_likely_time_formula_selects_min_neglog() {
+    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| Ok((t - 1.0).abs()), 0.0, 1.99));
+    pretty_assert_ulps_eq!(1.0, formula.likely_time().unwrap().unwrap(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_distribution_likely_time_formula_propagates_evaluation_error() {
+    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|t| make_error!("no value at {t}"), 1.0, 3.0));
+    assert_error!(
+      formula.likely_time(),
+      "When finding the most likely time of a formula distribution on [1, 3]: no value at 1"
+    );
+  }
+
+  #[test]
+  fn test_distribution_likely_time_formula_rejects_nan() {
+    let formula = Distribution::<NegLog>::Formula(DistributionFormula::new(|_| Ok(f64::NAN), 1.0, 3.0));
+    assert_error!(
+      formula.likely_time(),
+      "Cannot find the most likely time of a formula distribution on [1, 3]: its values contain NaN"
+    );
+  }
 }

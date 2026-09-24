@@ -13,7 +13,7 @@ mod tests {
     let result = convolve_across_edge(&gaussian(1.0)?, &gaussian(1.0)?, Side::Right, 1e-6, 400)?;
 
     let y0 = result.eval(0.0)?;
-    assert_abs_diff_eq!(0.0, result.likely_time().unwrap(), epsilon = 0.05);
+    assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
     assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-6);
     assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-5);
     Ok(())

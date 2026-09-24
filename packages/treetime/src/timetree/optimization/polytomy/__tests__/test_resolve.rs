@@ -407,7 +407,7 @@ mod tests {
         .node(abc_key)
         .time_distribution
         .as_ref()
-        .and_then(|distribution| distribution.likely_time())
+        .and_then(|distribution| distribution.likely_time().unwrap())
         .expect("internal node time distribution must be rebuilt"),
       1990.0,
       epsilon = 1e-10

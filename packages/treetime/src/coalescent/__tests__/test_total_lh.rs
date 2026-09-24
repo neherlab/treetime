@@ -128,7 +128,7 @@ mod tests {
     node_times
       .get_mut(&leaf_key)
       .expect("leaf1 in node times")
-      .time_dist_likely = Distribution::<NegLog>::point(1990.0, 1.0).likely_time();
+      .time_dist_likely = Distribution::<NegLog>::point(1990.0, 1.0).likely_time()?;
 
     let error = collect_coalescent_edges(&graph, &node_times).unwrap_err();
 

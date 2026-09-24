@@ -219,7 +219,7 @@ impl Refinement<'_> {
       .collect();
     self.clock_state.reseed_transitional(self.graph);
     let mut clock_inputs = ClockInputs::new(self.graph);
-    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(self.constraints), &edge_inputs);
+    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(self.constraints)?, &edge_inputs);
     let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       self.graph,
       &mut clock_inputs,

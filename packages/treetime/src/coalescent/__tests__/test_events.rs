@@ -147,7 +147,7 @@ mod tests {
       new_key,
       CoalescentNodeTime {
         time: Some(2002.0),
-        time_dist_likely: Distribution::<NegLog>::point(2002.0, 1.0).likely_time(),
+        time_dist_likely: Distribution::<NegLog>::point(2002.0, 1.0).likely_time()?,
         bad_branch: false,
       },
     );

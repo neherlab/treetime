@@ -121,7 +121,7 @@ mod tests {
   #[test]
   fn test_distribution_function_likely_time_plain_selects_max_ordinate() -> Result<(), Report> {
     let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![1.0, 5.0, 2.0, 4.0])?;
-    pretty_assert_ulps_eq!(f.likely_time().unwrap(), 1.0);
+    pretty_assert_ulps_eq!(f.likely_time()?.unwrap(), 1.0);
     Ok(())
   }
 
@@ -129,7 +129,17 @@ mod tests {
   fn test_distribution_function_likely_time_neglog_selects_min_ordinate() -> Result<(), Report> {
     let neg_log = array![1.0, 5.0, 2.0, 4.0].mapv(|p: f64| -p.ln());
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), neg_log)?;
-    pretty_assert_ulps_eq!(f.likely_time().unwrap(), 1.0);
+    pretty_assert_ulps_eq!(f.likely_time()?.unwrap(), 1.0);
+    Ok(())
+  }
+
+  #[test]
+  fn test_distribution_function_likely_time_rejects_nan() -> Result<(), Report> {
+    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 3.0), array![1.0, f64::NAN, 2.0, 4.0])?;
+    assert_error!(
+      f.likely_time(),
+      "Cannot find the most likely time of a distribution function: its values contain NaN"
+    );
     Ok(())
   }
 }

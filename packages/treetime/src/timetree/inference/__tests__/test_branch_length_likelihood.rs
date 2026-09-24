@@ -45,7 +45,7 @@ mod tests {
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
 
-    let peak_time = distribution.likely_time().expect("distribution has a peak");
+    let peak_time = distribution.likely_time()?.expect("distribution has a peak");
     assert_abs_diff_eq!(peak_time, 0.0, epsilon = 1e-12);
 
     let Distribution::Function(function) = distribution.as_ref() else {
@@ -135,7 +135,7 @@ mod tests {
     let t_mle_bl = indel_count as f64 / indel_rate;
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
-    let peak_time = distribution.likely_time().expect("distribution has a peak");
+    let peak_time = distribution.likely_time()?.expect("distribution has a peak");
     assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }
@@ -163,7 +163,7 @@ mod tests {
     let t_mle_bl = indel_count as f64 / indel_rate;
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
-    let peak_time = distribution.likely_time().expect("distribution has a peak");
+    let peak_time = distribution.likely_time()?.expect("distribution has a peak");
     assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }

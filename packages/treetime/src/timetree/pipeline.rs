@@ -123,7 +123,7 @@ pub fn run(
     ..RerootParams::default()
   };
   clock_state.reseed_transitional(&input.graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times(&date_constraints));
+  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times(&date_constraints)?);
   let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
     &mut clock_inputs,
@@ -201,7 +201,7 @@ pub fn run(
   if params.clock_filter > 0.0 {
     timetree_state.reseed_from_values(&input.graph);
 
-    let given_dates = timetree_state.likely_times(&date_constraints);
+    let given_dates = timetree_state.likely_times(&date_constraints)?;
     clock_state.reseed_transitional(&input.graph);
     let clock_inputs = ClockInputs::seed_from_times(&input.graph, &given_dates);
     let result = clock_filter_inplace(
@@ -301,7 +301,7 @@ pub fn run(
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
-  let coalescent_node_times = timetree_state.coalescent_node_times();
+  let coalescent_node_times = timetree_state.coalescent_node_times()?;
 
   let lineage_counts = compute_lineage_counts(&input.graph, &coalescent_node_times)
     .wrap_err("Failed to compute coalescent lineage counts")?;
@@ -372,7 +372,7 @@ pub fn run(
         coalescent,
         &input.graph,
         &skyline_params,
-        &timetree_state.coalescent_node_times(),
+        &timetree_state.coalescent_node_times()?,
       )?;
     }
     let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;

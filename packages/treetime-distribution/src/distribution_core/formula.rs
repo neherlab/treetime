@@ -1,10 +1,12 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
-use eyre::Result;
+use eyre::{Result, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
+use ndarray_stats::errors::MinMaxError;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
+use treetime_utils::{make_error, make_internal_error};
 
 const FORMULA_GRID_SIZE: usize = 200;
 
@@ -55,23 +57,30 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub(crate) fn likely_time(&self) -> f64 {
-    let midpoint = f64::midpoint(self.t_min, self.t_max);
+  pub(crate) fn likely_time(&self) -> Result<f64> {
     let n_points = FORMULA_GRID_SIZE;
     let t = Array1::from_shape_fn(n_points, |i| {
       self.t_min + (self.t_max - self.t_min) * (i as f64 / (n_points - 1) as f64)
     });
-    let Ok(values) = self.eval_many(&t) else {
-      return midpoint;
-    };
+    let values = self.eval_many(&t).wrap_err_with(|| {
+      format!(
+        "When finding the most likely time of a formula distribution on [{}, {}]",
+        self.t_min, self.t_max
+      )
+    })?;
     let extremum = if Y::likely_is_maximum() {
       values.argmax()
     } else {
       values.argmin()
     };
     match extremum {
-      Ok(idx) => t[idx],
-      Err(_) => midpoint,
+      Ok(idx) => Ok(t[idx]),
+      Err(MinMaxError::UndefinedOrder) => make_error!(
+        "Cannot find the most likely time of a formula distribution on [{}, {}]: its values contain NaN",
+        self.t_min,
+        self.t_max
+      ),
+      Err(MinMaxError::EmptyInput) => make_internal_error!("The formula evaluation grid has no points"),
     }
   }
 }

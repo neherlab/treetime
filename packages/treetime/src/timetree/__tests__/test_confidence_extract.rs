@@ -186,7 +186,7 @@ mod tests {
 
     let dist_fn = treetime_distribution::DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
     let dist = Distribution::Function(dist_fn);
-    let peak_time = dist.likely_time().unwrap();
+    let peak_time = dist.likely_time().unwrap().unwrap();
 
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();

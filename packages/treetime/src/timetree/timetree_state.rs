@@ -1,6 +1,6 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -110,37 +110,37 @@ impl TimetreeState {
     }
   }
 
-  #[must_use]
-  pub(crate) fn likely_times(&self, constraints: &DateConstraints) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  pub(crate) fn likely_times(
+    &self,
+    constraints: &DateConstraints,
+  ) -> Result<BTreeMap<GraphNodeKey, Option<f64>>, Report> {
     self
       .nodes
       .iter()
       .map(|(key, node)| {
-        let time = constraints
+        let distribution = constraints
           .date_constraints
           .get(key)
           .cloned()
           .flatten()
-          .as_ref()
-          .or(node.time_distribution.as_ref())
-          .and_then(|dist| dist.likely_time());
-        (*key, time)
+          .or_else(|| node.time_distribution.clone());
+        let time = likely_time_of_node(*key, distribution.as_deref())?;
+        Ok((*key, time))
       })
       .collect()
   }
 
-  #[must_use]
-  pub(crate) fn coalescent_node_times(&self) -> CoalescentNodeTimes {
+  pub(crate) fn coalescent_node_times(&self) -> Result<CoalescentNodeTimes, Report> {
     self
       .nodes
       .iter()
       .map(|(key, node)| {
         let entry = CoalescentNodeTime {
           time: node.time,
-          time_dist_likely: node.time_distribution.as_ref().and_then(|dist| dist.likely_time()),
+          time_dist_likely: likely_time_of_node(*key, node.time_distribution.as_deref())?,
           bad_branch: node.bad_branch,
         };
-        (*key, entry)
+        Ok((*key, entry))
       })
       .collect()
   }
@@ -229,4 +229,12 @@ pub struct DateEdgeState {
   pub time_length: Option<f64>,
   #[default = 1.0]
   pub gamma: f64,
+}
+
+fn likely_time_of_node(key: GraphNodeKey, distribution: Option<&Distribution<NegLog>>) -> Result<Option<f64>, Report> {
+  distribution.map_or(Ok(None), |distribution| {
+    distribution
+      .likely_time()
+      .wrap_err_with(|| format!("When finding the most likely time of node {key}"))
+  })
 }

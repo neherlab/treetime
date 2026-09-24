@@ -192,7 +192,7 @@ mod tests {
         .edge(edge_key)
         .branch_length_distribution
         .as_ref()
-        .and_then(|distribution| distribution.likely_time())
+        .and_then(|distribution| distribution.likely_time().unwrap())
     );
     Ok(())
   }

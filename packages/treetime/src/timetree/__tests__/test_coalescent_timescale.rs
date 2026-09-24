@@ -66,7 +66,7 @@ mod tests {
       n_std: N_STD,
       ..SkylineParams::default()
     };
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
     let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params, &node_times)?
       .expect("a fixed Tc yields a coalescent timescale");
 
@@ -201,7 +201,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
     let solve = optimize_skyline(&graph, &params, &node_times)?;
     let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params, &node_times)?
       .expect("skyline mode yields a coalescent timescale");

@@ -45,7 +45,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
 
 let (graph, names, partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
     let mut state = TimetreeState::new(&graph);
     let mut clock_state = ClockState::new(&graph);
@@ -122,7 +122,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);

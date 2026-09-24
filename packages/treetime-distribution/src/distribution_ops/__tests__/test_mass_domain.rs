@@ -56,7 +56,7 @@ mod tests {
     let once = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
 
     let mass_once = total_mass(&once).unwrap();
-    let mode_once = once.likely_time().unwrap();
+    let mode_once = once.likely_time().unwrap().unwrap();
     let dx = once.dx();
 
     let mut current = once;
@@ -65,7 +65,7 @@ mod tests {
     }
 
     let mass_100 = total_mass(&current).unwrap();
-    let mode_100 = current.likely_time().unwrap();
+    let mode_100 = current.likely_time().unwrap().unwrap();
     assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
     assert!(
       (mode_100 - mode_once).abs() <= dx,

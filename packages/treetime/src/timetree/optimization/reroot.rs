@@ -46,7 +46,7 @@ pub(crate) fn reroot_tree(
   );
 
   clock_state.reseed_transitional(graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times(constraints));
+  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times(constraints)?);
   let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(
     graph,
     &mut clock_inputs,

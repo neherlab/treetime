@@ -3,10 +3,12 @@ use approx::UlpsEq;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
+use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, Side, SoftTailLaw};
+use treetime_utils::make_error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
@@ -249,7 +251,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(())
   }
 
-  pub(crate) fn likely_time(&self) -> Option<T>
+  pub(crate) fn likely_time(&self) -> Result<Option<T>, Report>
   where
     T: Float,
   {
@@ -259,7 +261,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     } else {
       y_values.argmin()
     };
-    extremum.ok().map(|idx| self.t()[idx])
+    match extremum {
+      Ok(idx) => Ok(Some(self.t()[idx])),
+      Err(MinMaxError::EmptyInput) => Ok(None),
+      Err(MinMaxError::UndefinedOrder) => {
+        make_error!("Cannot find the most likely time of a distribution function: its values contain NaN")
+      },
+    }
   }
 
   #[must_use]

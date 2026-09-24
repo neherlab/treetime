@@ -26,14 +26,14 @@ mod tests {
   #[test]
   fn test_forward_pass_set_likely_time_empty_distribution_returns_none() {
     let mut node = node_with_distribution(Some(Distribution::empty()));
-    assert_eq!(None, set_likely_time(&mut node, None));
+    assert_eq!(None, set_likely_time(&mut node, None).unwrap());
     assert_eq!(None, node.time);
   }
 
   #[test]
   fn test_forward_pass_set_likely_time_missing_distribution_returns_none() {
     let mut node = node_with_distribution(None);
-    assert_eq!(None, set_likely_time(&mut node, None));
+    assert_eq!(None, set_likely_time(&mut node, None).unwrap());
     assert_eq!(None, node.time);
   }
 
@@ -48,7 +48,9 @@ mod tests {
     #[case] expected: f64,
   ) {
     let mut node = node_with_distribution(Some(Distribution::point(5.0, 1.0)));
-    let assigned = set_likely_time(&mut node, parent_time).expect("a time should be assigned");
+    let assigned = set_likely_time(&mut node, parent_time)
+      .unwrap()
+      .expect("a time should be assigned");
     pretty_assert_ulps_eq!(assigned, expected, max_ulps = 4);
     let committed = node.time.expect("node time should be committed");
     pretty_assert_ulps_eq!(committed, expected, max_ulps = 4);

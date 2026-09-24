@@ -196,7 +196,7 @@ mod tests {
     }
 
     pub(super) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-      TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
+      TimetreeState::seed_from_values(graph, constraints).coalescent_node_times().unwrap()
     }
   }
 }

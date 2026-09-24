@@ -177,7 +177,7 @@ fn compute_branch_distributions_marginal_mode(
           gamma,
         )?;
 
-        let time_length = distribution.likely_time();
+        let time_length = distribution.likely_time()?;
         if let Some(likely_time) = time_length {
           debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
         }

@@ -74,13 +74,13 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     matches!(self, Self::Point(_))
   }
 
-  pub fn likely_time(&self) -> Option<f64> {
+  pub fn likely_time(&self) -> Result<Option<f64>, Report> {
     match self {
-      Self::Empty => None,
-      Self::Point(p) => Some(p.t()),
-      Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
+      Self::Empty => Ok(None),
+      Self::Point(p) => Ok(Some(p.t())),
+      Self::Range(r) => Ok(Some(f64::midpoint(r.start(), r.end()))),
       Self::Function(f) => f.likely_time(),
-      Self::Formula(f) => Some(f.likely_time()),
+      Self::Formula(f) => f.likely_time().map(Some),
     }
   }
 

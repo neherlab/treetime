@@ -139,7 +139,7 @@ mod tests {
     )?;
     let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
