@@ -48,29 +48,29 @@ export function RunButton() {
 
     try {
       const tree = buildDataPath(files, "tree");
-      const outdir = `tmp/web/${activeCommand}`;
-      const aln = files.alignment ? { input_fastas: [buildDataPath(files, "alignment")] } : {};
-      const dates = files.dates ? { dates: buildDataPath(files, "dates") } : {};
-      const states = files.states ? { states: buildDataPath(files, "states") } : {};
+      const outputAll = `tmp/web/${activeCommand}`;
+      const alignment = files.alignment ? [buildDataPath(files, "alignment")] : [];
+      const metadata = files.dates ? buildDataPath(files, "dates") : null;
+      const states = files.states ? buildDataPath(files, "states") : null;
 
       switch (activeCommand) {
         case "timetree":
-          await bridge.timetree({ tree, outdir, ...dates, ...aln }, options);
+          await bridge.timetree({ tree, output_all: outputAll, metadata, alignment }, options);
           break;
         case "ancestral":
-          await bridge.ancestral({ tree, outdir, ...aln }, options);
+          await bridge.ancestral({ tree, output_all: outputAll, alignment }, options);
           break;
         case "clock":
-          await bridge.clock({ tree, outdir, dates: dates.dates ?? "" }, options);
+          await bridge.clock({ tree, output_all: outputAll, metadata }, options);
           break;
         case "mugration":
-          await bridge.mugration({ tree, outdir, states: states.states ?? "", attribute: "country" }, options);
+          await bridge.mugration({ tree, output_all: outputAll, metadata: states, attribute: "country" }, options);
           break;
         case "optimize":
-          await bridge.optimize({ tree, outdir, ...aln }, options);
+          await bridge.optimize({ tree, output_all: outputAll, alignment }, options);
           break;
         case "prune":
-          await bridge.prune({ tree, outdir, ...aln }, options);
+          await bridge.prune({ tree, output_all: outputAll, alignment }, options);
           break;
       }
 

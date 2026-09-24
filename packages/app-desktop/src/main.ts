@@ -1,9 +1,10 @@
 import * as path from "path";
 
-import { parseBridgeEvent } from "@neherlab/app-contracts";
+import { parseJobEvent } from "@neherlab/app-contracts";
 import * as addon from "@neherlab/app-napi";
 import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 
+import { JOB_EVENT_CHANNEL } from "./desktop-bridge";
 import { initDiagnostics } from "./diagnostics";
 
 initDiagnostics("treetime-desktop");
@@ -38,6 +39,8 @@ function isThemeSource(value: string): value is "system" | "light" | "dark" {
 }
 
 function registerIpcHandlers(): void {
+  const runner = new addon.CommandRunner();
+
   ipcMain.handle("treetime:version", () => {
     return addon.version();
   });
@@ -46,28 +49,31 @@ function registerIpcHandlers(): void {
     return addon.datasets();
   });
 
-  ipcMain.on("treetime:cancel", () => {
-    addon.cancel();
+  ipcMain.handle("treetime:check-config", (_event: Electron.IpcMainInvokeEvent, requestJson: string) => {
+    return addon.checkConfigJson(requestJson);
   });
 
-  const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
+  ipcMain.on("treetime:cancel", (_event: Electron.IpcMainEvent, jobId: string) => {
+    runner.cancel(jobId);
+  });
 
-  for (const cmd of commands) {
-    ipcMain.handle(`treetime:${cmd}`, (event: Electron.IpcMainInvokeEvent, argsJson: string) => {
-      console.log(`[TreeTime IPC] ${cmd} called`);
+  ipcMain.handle(
+    "treetime:run",
+    (event: Electron.IpcMainInvokeEvent, jobId: string, command: string, configJson: string) => {
+      console.log(`[TreeTime IPC] ${command} job ${jobId} started`);
 
-      return addon[cmd](argsJson, (err: Error | null, eventJson: string) => {
+      return runner.run(jobId, command, configJson, (err: Error | null, eventJson: string) => {
         if (err || event.sender.isDestroyed()) return;
 
         try {
-          const parsed = parseBridgeEvent(JSON.parse(eventJson));
-          event.sender.send(`treetime:${parsed.type}`, parsed.data);
+          parseJobEvent(JSON.parse(eventJson));
+          event.sender.send(JOB_EVENT_CHANNEL, jobId, eventJson);
         } catch (error: unknown) {
-          console.error(`[TreeTime IPC] ${cmd} event failed`, error);
+          console.error(`[TreeTime IPC] ${command} job ${jobId} event failed`, error);
         }
       });
-    });
-  }
+    },
+  );
 }
 
 async function createWindow(): Promise<void> {

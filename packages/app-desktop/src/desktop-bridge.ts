@@ -1,10 +1,11 @@
 import {
   CancelledError,
   createBridge,
-  parseLogEvent,
-  parseProgressEvent,
+  parseJobEvent,
+  type AppCommand,
   type BridgeTransport,
-  type CommandOptions,
+  type LogEvent,
+  type TransportCommandOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
 
@@ -15,48 +16,62 @@ export interface IpcRendererLike {
   send(channel: string, ...args: unknown[]): void;
 }
 
-export function createDesktopBridge(ipc: IpcRendererLike): TreeTimeBridge {
-  return createBridge(createDesktopTransport(ipc));
+export const JOB_EVENT_CHANNEL = "treetime:job-event";
+
+export function createDesktopBridge(ipc: IpcRendererLike, newJobId: () => string = randomJobId): TreeTimeBridge {
+  return createBridge(createDesktopTransport(ipc, newJobId));
 }
 
-function createDesktopTransport(ipc: IpcRendererLike): BridgeTransport {
+function createDesktopTransport(ipc: IpcRendererLike, newJobId: () => string): BridgeTransport {
   async function query(endpoint: string): Promise<unknown> {
     return decode(await ipc.invoke(`treetime:${endpoint}`));
   }
 
-  async function command(endpoint: string, args: unknown, options?: CommandOptions): Promise<unknown> {
-    const progressHandler = (_event: unknown, data: unknown) => {
-      options?.onProgress?.(parseProgressEvent(data));
-    };
+  async function request(endpoint: string, body: unknown): Promise<unknown> {
+    return decode(await ipc.invoke(`treetime:${endpoint}`, JSON.stringify(body)));
+  }
 
-    const logHandler = (_event: unknown, data: unknown) => {
-      logToConsole(parseLogEvent(data));
+  async function command(command: AppCommand, config: unknown, options: TransportCommandOptions): Promise<unknown> {
+    const jobId = newJobId();
+
+    const eventHandler = (_event: unknown, eventJobId: unknown, eventJson: unknown) => {
+      if (eventJobId !== jobId || typeof eventJson !== "string") {
+        return;
+      }
+
+      const event = parseJobEvent(JSON.parse(eventJson));
+
+      if (event.type === "log") {
+        logToConsole(event.data);
+      }
+
+      options.onEvent(event);
     };
 
     const abortHandler = () => {
-      ipc.send("treetime:cancel");
+      ipc.send("treetime:cancel", jobId);
     };
 
-    ipc.on("treetime:progress", progressHandler);
-    ipc.on("treetime:log", logHandler);
-    options?.signal?.addEventListener("abort", abortHandler);
+    if (options.signal?.aborted === true) {
+      throw new CancelledError();
+    }
+
+    ipc.on(JOB_EVENT_CHANNEL, eventHandler);
+    options.signal?.addEventListener("abort", abortHandler);
 
     try {
-      return decode(await ipc.invoke(`treetime:${endpoint}`, JSON.stringify(args)));
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes("cancelled")) {
-        throw new CancelledError();
-      }
-
-      throw err;
+      return decode(await ipc.invoke("treetime:run", jobId, command, JSON.stringify(config)));
     } finally {
-      ipc.removeListener("treetime:progress", progressHandler);
-      ipc.removeListener("treetime:log", logHandler);
-      options?.signal?.removeEventListener("abort", abortHandler);
+      ipc.removeListener(JOB_EVENT_CHANNEL, eventHandler);
+      options.signal?.removeEventListener("abort", abortHandler);
     }
   }
 
-  return { query, command };
+  return { query, request, command };
+}
+
+function randomJobId(): string {
+  return globalThis.crypto.randomUUID();
 }
 
 function decode(value: unknown): unknown {
@@ -69,15 +84,17 @@ function decode(value: unknown): unknown {
   return parsed;
 }
 
-function logToConsole(log: { level: string; message: string }): void {
+function logToConsole(log: LogEvent): void {
   switch (log.level) {
-    case "Error":
+    case "error":
       console.error(`[TreeTime] ${log.message}`);
       break;
-    case "Warn":
+    case "warn":
       console.warn(`[TreeTime] ${log.message}`);
       break;
-    default:
+    case "info":
+    case "debug":
+    case "trace":
       console.log(`[TreeTime] [${log.level}] ${log.message}`);
       break;
   }

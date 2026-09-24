@@ -1,45 +1,35 @@
 import * as z from "zod";
 
 import type {
-  AncestralArgs,
-  AncestralResult,
-  ClockArgs,
-  ClockResult,
+  AncestralConfig,
+  AppCommand,
+  CheckConfigRequest,
+  ClockConfig,
+  CommandOutcome,
   DatasetInfo,
+  JobEvent,
   LogEvent,
-  MugrationArgs,
-  MugrationResult,
-  OptimizeArgs,
-  OptimizeResult,
+  MugrationConfig,
+  OptimizeConfig,
   ProgressEvent,
-  PruneArgs,
-  PruneResult,
-  TimetreeArgs,
-  TimetreeResult,
+  PruneConfig,
+  TerminalEvent,
+  TimetreeConfig,
   VersionInfo,
 } from "./generated/types.gen";
-import {
-  zAncestralResult,
-  zClockResult,
-  zDatasetInfo,
-  zLogEvent,
-  zMugrationResult,
-  zOptimizeResult,
-  zProgressEvent,
-  zPruneResult,
-  zTimetreeResult,
-  zVersionInfo,
-} from "./generated/zod.gen";
+import { zCheckConfigResponse, zDatasetInfo, zJobEvent, zTerminalEvent, zVersionInfo } from "./generated/zod.gen";
 
-const zBridgeEvent = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("progress"), data: zProgressEvent }),
-  z.object({ type: z.literal("log"), data: zLogEvent }),
-]);
-
-export type BridgeEvent = z.infer<typeof zBridgeEvent>;
+export type CheckConfigResult = z.infer<typeof zCheckConfigResponse>;
 
 export interface CommandOptions {
+  onStarted?: (jobId: string) => void;
   onProgress?: (event: ProgressEvent) => void;
+  onLog?: (event: LogEvent) => void;
+  signal?: AbortSignal;
+}
+
+export interface TransportCommandOptions {
+  onEvent: (event: JobEvent) => void;
   signal?: AbortSignal;
 }
 
@@ -50,23 +40,53 @@ export class CancelledError extends Error {
   }
 }
 
+export class CommandError extends Error {
+  readonly jobId: string;
+  readonly causes: string[];
+
+  constructor(jobId: string, message: string, causes: string[]) {
+    super(message);
+    this.name = "CommandError";
+    this.jobId = jobId;
+    this.causes = causes;
+  }
+}
+
 export interface BridgeTransport {
   query(endpoint: string): Promise<unknown>;
-  command(endpoint: string, args: unknown, options?: CommandOptions): Promise<unknown>;
+  request(endpoint: string, body: unknown): Promise<unknown>;
+  command(command: AppCommand, config: unknown, options: TransportCommandOptions): Promise<unknown>;
 }
 
 export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
   datasets(): Promise<DatasetInfo[]>;
-  ancestral(args: AncestralArgs, options?: CommandOptions): Promise<AncestralResult>;
-  clock(args: ClockArgs, options?: CommandOptions): Promise<ClockResult>;
-  timetree(args: TimetreeArgs, options?: CommandOptions): Promise<TimetreeResult>;
-  mugration(args: MugrationArgs, options?: CommandOptions): Promise<MugrationResult>;
-  optimize(args: OptimizeArgs, options?: CommandOptions): Promise<OptimizeResult>;
-  prune(args: PruneArgs, options?: CommandOptions): Promise<PruneResult>;
+  checkConfig(request: CheckConfigRequest): Promise<CheckConfigResult>;
+  timetree(config: TimetreeConfig, options?: CommandOptions): Promise<CommandOutcome>;
+  optimize(config: OptimizeConfig, options?: CommandOptions): Promise<CommandOutcome>;
+  prune(config: PruneConfig, options?: CommandOptions): Promise<CommandOutcome>;
+  ancestral(config: AncestralConfig, options?: CommandOptions): Promise<CommandOutcome>;
+  clock(config: ClockConfig, options?: CommandOptions): Promise<CommandOutcome>;
+  mugration(config: MugrationConfig, options?: CommandOptions): Promise<CommandOutcome>;
 }
 
 export function createBridge(transport: BridgeTransport): TreeTimeBridge {
+  async function run(command: AppCommand, config: unknown, options: CommandOptions = {}): Promise<CommandOutcome> {
+    const onEvent = (event: JobEvent) => {
+      dispatchEvent(event, options);
+    };
+
+    const transportOptions: TransportCommandOptions = { onEvent };
+
+    if (options.signal !== undefined) {
+      transportOptions.signal = options.signal;
+    }
+
+    const terminal = parseTerminalEvent(await transport.command(command, config, transportOptions));
+
+    return commandOutcome(terminal);
+  }
+
   return {
     async version() {
       return zVersionInfo.parse(await transport.query("version"));
@@ -74,35 +94,50 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
     async datasets() {
       return z.array(zDatasetInfo).parse(await transport.query("datasets"));
     },
-    async ancestral(args, options) {
-      return zAncestralResult.parse(await transport.command("ancestral", args, options));
+    async checkConfig(request) {
+      return zCheckConfigResponse.parse(await transport.request("check-config", request));
     },
-    async clock(args, options) {
-      return zClockResult.parse(await transport.command("clock", args, options));
-    },
-    async timetree(args, options) {
-      return zTimetreeResult.parse(await transport.command("timetree", args, options));
-    },
-    async mugration(args, options) {
-      return zMugrationResult.parse(await transport.command("mugration", args, options));
-    },
-    async optimize(args, options) {
-      return zOptimizeResult.parse(await transport.command("optimize", args, options));
-    },
-    async prune(args, options) {
-      return zPruneResult.parse(await transport.command("prune", args, options));
-    },
+    timetree: (config, options) => run("timetree", config, options),
+    optimize: (config, options) => run("optimize", config, options),
+    prune: (config, options) => run("prune", config, options),
+    ancestral: (config, options) => run("ancestral", config, options),
+    clock: (config, options) => run("clock", config, options),
+    mugration: (config, options) => run("mugration", config, options),
   };
 }
 
-export function parseProgressEvent(data: unknown): ProgressEvent {
-  return zProgressEvent.parse(data);
+function commandOutcome(terminal: TerminalEvent): CommandOutcome {
+  if (terminal.status === "error") {
+    throw new CommandError(terminal.job_id, terminal.message, terminal.causes);
+  }
+
+  if (terminal.status === "cancelled") {
+    throw new CancelledError();
+  }
+
+  return terminal.result;
 }
 
-export function parseLogEvent(data: unknown): LogEvent {
-  return zLogEvent.parse(data);
+function dispatchEvent(event: JobEvent, options: CommandOptions): void {
+  switch (event.type) {
+    case "started":
+      options.onStarted?.(event.data.job_id);
+      break;
+    case "progress":
+      options.onProgress?.(event.data);
+      break;
+    case "log":
+      options.onLog?.(event.data);
+      break;
+    case "terminal":
+      break;
+  }
 }
 
-export function parseBridgeEvent(data: unknown): BridgeEvent {
-  return zBridgeEvent.parse(data);
+export function parseJobEvent(data: unknown): JobEvent {
+  return zJobEvent.parse(data);
+}
+
+function parseTerminalEvent(data: unknown): TerminalEvent {
+  return zTerminalEvent.parse(data);
 }

@@ -43,7 +43,7 @@
     },
     "/api/check-config": {
       "post": {
-        "operationId": "checkConfig",
+        "operationId": "configCheck",
         "requestBody": {
           "required": true,
           "content": {
@@ -120,7 +120,7 @@
     },
     "/api/jobs/{job_id}/cancel": {
       "post": {
-        "operationId": "cancelJob",
+        "operationId": "jobCancel",
         "parameters": [
           {
             "name": "job_id",
@@ -3072,7 +3072,10 @@
           {
             "type": "object",
             "properties": {
-              "config": true,
+              "config": {
+                "type": "object",
+                "additionalProperties": true
+              },
               "status": {
                 "type": "string",
                 "const": "valid"

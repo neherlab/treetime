@@ -185,7 +185,7 @@ async fn handle_datasets(State(state): State<Arc<AppState>>) -> Result<Json<Valu
 #[utoipa::path(
   post,
   path = "/api/check-config",
-  operation_id = "checkConfig",
+  operation_id = "configCheck",
   responses((status = 200, description = "The configuration with every default filled in, or the problems found in it"))
 )]
 async fn handle_check_config(Json(body): Json<Value>) -> Response {
@@ -198,7 +198,7 @@ async fn handle_check_config(Json(body): Json<Value>) -> Response {
 #[utoipa::path(
   post,
   path = "/api/jobs/{job_id}/cancel",
-  operation_id = "cancelJob",
+  operation_id = "jobCancel",
   params(("job_id" = String, Path, description = "Id of the job, from its `started` event")),
   responses(
     (status = 200, description = "Cancellation requested; the job ends with a `cancelled` terminal event", body = CancelJobResponse),

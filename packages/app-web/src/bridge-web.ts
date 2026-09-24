@@ -1,10 +1,11 @@
 import {
   CancelledError,
   createBridge,
-  parseLogEvent,
-  parseProgressEvent,
+  parseJobEvent,
+  type AppCommand,
   type BridgeTransport,
-  type CommandOptions,
+  type LogEvent,
+  type TransportCommandOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
 import { EventSourceParserStream } from "eventsource-parser/stream";
@@ -35,35 +36,74 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     return data;
   }
 
-  async function postSse(command: string, args: unknown, options?: CommandOptions): Promise<unknown> {
-    let result: unknown;
-    let received = false;
+  async function postJson(path: string, body: unknown): Promise<unknown> {
+    if (debug) console.debug("[TreeTime] POST", path);
+
+    const response = await fetchFn(`${apiBase}/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`POST ${path}: ${response.status} ${response.statusText}`);
+    }
+
+    const data: unknown = await response.json();
+
+    return data;
+  }
+
+  async function postSse(command: AppCommand, config: unknown, options: TransportCommandOptions): Promise<unknown> {
+    const { signal } = options;
+    let jobId: string | undefined;
+
+    const requestCancel = () => {
+      if (jobId !== undefined) {
+        void postJson(`jobs/${jobId}/cancel`, {}).catch((error: unknown) => {
+          console.warn("[TreeTime] cancellation request failed", error);
+        });
+      }
+    };
+
+    signal?.addEventListener("abort", requestCancel);
 
     try {
       const response = await fetchFn(`${apiBase}/${command}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify(args),
-        signal: options?.signal ?? null,
+        body: JSON.stringify(config),
       });
 
       if (!response.ok || response.body === null) {
         throw new Error(`POST ${command}: ${response.status} ${response.statusText}`);
       }
 
-      const events = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream());
+      const messages = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream());
 
-      for await (const message of events) {
+      for await (const message of messages) {
         if (debug) console.debug("[TreeTime]", JSON.stringify(message));
 
-        if (message.event === "progress") {
-          options?.onProgress?.(parseProgressEvent(JSON.parse(message.data)));
-        } else if (message.event === "log") {
-          logToConsole(parseLogEvent(JSON.parse(message.data)));
-        } else if (message.event === "result") {
-          result = JSON.parse(message.data);
-          received = true;
+        const data: unknown = JSON.parse(message.data);
+        const event = parseJobEvent({ type: message.event, data });
+
+        if (event.type === "terminal") {
+          return event.data;
         }
+
+        if (event.type === "started") {
+          jobId = event.data.job_id;
+
+          if (signal?.aborted === true) {
+            requestCancel();
+          }
+        }
+
+        if (event.type === "log") {
+          logToConsole(event.data);
+        }
+
+        options.onEvent(event);
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -71,18 +111,17 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       }
 
       throw err;
+    } finally {
+      signal?.removeEventListener("abort", requestCancel);
     }
 
-    if (!received) {
-      throw new Error(`${command}: no result received`);
-    }
-
-    return result;
+    throw new Error(`${command}: the event stream ended without a terminal event`);
   }
 
   const transport: BridgeTransport = {
     query: (endpoint) => getJson(endpoint),
-    command: (endpoint, args, options) => postSse(endpoint, args, options),
+    request: (endpoint, body) => postJson(endpoint, body),
+    command: (command, config, options) => postSse(command, config, options),
   };
 
   return createBridge(transport);
@@ -94,15 +133,17 @@ function readDebugFlag(): boolean {
   return env.VITE_TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.VITE_TREETIME_DEBUG_FETCH !== "false");
 }
 
-function logToConsole(log: { level: string; message: string }): void {
+function logToConsole(log: LogEvent): void {
   switch (log.level) {
-    case "Error":
+    case "error":
       console.error(`[TreeTime] ${log.message}`);
       break;
-    case "Warn":
+    case "warn":
       console.warn(`[TreeTime] ${log.message}`);
       break;
-    default:
+    case "info":
+    case "debug":
+    case "trace":
       console.log(`[TreeTime] [${log.level}] ${log.message}`);
       break;
   }

@@ -23,20 +23,15 @@ export type { CommandName } from "./types";
 export { COMMANDS } from "./types";
 
 export type {
-  AncestralArgs,
-  AncestralResult,
-  ClockArgs,
-  ClockResult,
+  AncestralConfig,
+  ClockConfig,
+  CommandOutcome,
   ErrorResponse,
-  MugrationArgs,
-  MugrationResult,
-  OptimizeArgs,
-  OptimizeResult,
+  MugrationConfig,
+  OptimizeConfig,
   ProgressEvent,
-  PruneArgs,
-  PruneResult,
-  TimetreeArgs,
-  TimetreeResult,
+  PruneConfig,
+  TimetreeConfig,
   TreeTimeBridge,
   VersionInfo,
 } from "@neherlab/app-contracts";

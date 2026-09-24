@@ -1,17 +1,12 @@
 import type {
-  AncestralArgs,
-  AncestralResult,
-  ClockArgs,
-  ClockResult,
+  AncestralConfig,
+  ClockConfig,
+  CommandOutcome,
   DatasetInfo,
-  MugrationArgs,
-  MugrationResult,
-  OptimizeArgs,
-  OptimizeResult,
-  PruneArgs,
-  PruneResult,
-  TimetreeArgs,
-  TimetreeResult,
+  MugrationConfig,
+  OptimizeConfig,
+  PruneConfig,
+  TimetreeConfig,
   VersionInfo,
 } from "@neherlab/app-contracts";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -41,7 +36,7 @@ export function useDatasets() {
 export function useAncestral() {
   const bridge = useBridge();
 
-  return useMutation<AncestralResult, Error, AncestralArgs>({
+  return useMutation<CommandOutcome, Error, AncestralConfig>({
     mutationFn: (args) => bridge.ancestral(args),
   });
 }
@@ -49,7 +44,7 @@ export function useAncestral() {
 export function useClock() {
   const bridge = useBridge();
 
-  return useMutation<ClockResult, Error, ClockArgs>({
+  return useMutation<CommandOutcome, Error, ClockConfig>({
     mutationFn: (args) => bridge.clock(args),
   });
 }
@@ -57,7 +52,7 @@ export function useClock() {
 export function useTimetree() {
   const bridge = useBridge();
 
-  return useMutation<TimetreeResult, Error, TimetreeArgs>({
+  return useMutation<CommandOutcome, Error, TimetreeConfig>({
     mutationFn: (args) => bridge.timetree(args),
   });
 }
@@ -65,7 +60,7 @@ export function useTimetree() {
 export function useMugration() {
   const bridge = useBridge();
 
-  return useMutation<MugrationResult, Error, MugrationArgs>({
+  return useMutation<CommandOutcome, Error, MugrationConfig>({
     mutationFn: (args) => bridge.mugration(args),
   });
 }
@@ -73,7 +68,7 @@ export function useMugration() {
 export function useOptimize() {
   const bridge = useBridge();
 
-  return useMutation<OptimizeResult, Error, OptimizeArgs>({
+  return useMutation<CommandOutcome, Error, OptimizeConfig>({
     mutationFn: (args) => bridge.optimize(args),
   });
 }
@@ -81,7 +76,7 @@ export function useOptimize() {
 export function usePrune() {
   const bridge = useBridge();
 
-  return useMutation<PruneResult, Error, PruneArgs>({
+  return useMutation<CommandOutcome, Error, PruneConfig>({
     mutationFn: (args) => bridge.prune(args),
   });
 }

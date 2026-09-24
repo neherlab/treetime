@@ -1,134 +1,96 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  zAncestralArgs,
-  zClockArgs,
+  zAncestralConfig,
+  zClockConfig,
   zErrorResponse,
   zLogEvent,
   zLogLevel,
-  zMugrationArgs,
-  zOptimizeArgs,
-  zPruneArgs,
-  zTimetreeArgs,
+  zMugrationConfig,
+  zOptimizeConfig,
+  zPruneConfig,
+  zTerminalEvent,
+  zTimetreeConfig,
   zVersionInfo,
 } from "../generated/zod.gen";
 
 interface SchemaCase {
   name: string;
   schema: { safeParse(value: unknown): { success: boolean } };
-  base: Record<string, unknown>;
 }
 
-const SCHEMA_CASES: SchemaCase[] = [
-  { name: "AncestralArgs", schema: zAncestralArgs, base: { tree: "t.nwk", outdir: "out" } },
-  { name: "ClockArgs", schema: zClockArgs, base: { dates: "d.tsv", outdir: "out" } },
-  { name: "TimetreeArgs", schema: zTimetreeArgs, base: { outdir: "out" } },
-  {
-    name: "MugrationArgs",
-    schema: zMugrationArgs,
-    base: { attribute: "country", states: "s.tsv", outdir: "out" },
-  },
-  { name: "OptimizeArgs", schema: zOptimizeArgs, base: { tree: "t.nwk", outdir: "out" } },
-  { name: "PruneArgs", schema: zPruneArgs, base: { tree: "t.nwk", outdir: "out" } },
+const CONFIG_CASES: SchemaCase[] = [
+  { name: "TimetreeConfig", schema: zTimetreeConfig },
+  { name: "OptimizeConfig", schema: zOptimizeConfig },
+  { name: "PruneConfig", schema: zPruneConfig },
+  { name: "AncestralConfig", schema: zAncestralConfig },
+  { name: "ClockConfig", schema: zClockConfig },
+  { name: "MugrationConfig", schema: zMugrationConfig },
 ];
 
-describe("zod_schemas optional fields", () => {
-  test.each(SCHEMA_CASES)("$name accepts only its required fields", ({ schema, base }) => {
-    expect(schema.safeParse(base).success).toBe(true);
-  });
-
-  test.each(SCHEMA_CASES)("$name accepts an empty object because every field carries a default", ({ schema }) => {
+describe("zod_schemas command configs", () => {
+  test.each(CONFIG_CASES)("$name accepts an empty object because every setting has a default", ({ schema }) => {
     expect(schema.safeParse({}).success).toBe(true);
   });
 
-  test("ancestral args accept optional fields when present", () => {
-    const parsed = zAncestralArgs.safeParse({
-      tree: "t.nwk",
-      outdir: "out",
-      input_fastas: ["a.fasta"],
-      dense: true,
-      seed: 7,
-    });
-
-    expect(parsed.success).toBe(true);
+  test.each(CONFIG_CASES)("$name accepts the input and output settings", ({ schema }) => {
+    expect(schema.safeParse({ tree: "t.nwk", output_all: "out", output_selection: ["Nwk"] }).success).toBe(true);
   });
 
-  test("ancestral args reject a wrong type in an optional field", () => {
-    expect(zAncestralArgs.safeParse({ tree: "t.nwk", outdir: "out", dense: "yes" }).success).toBe(false);
+  test.each(CONFIG_CASES)("$name rejects an output selection outside its enum", ({ schema }) => {
+    expect(schema.safeParse({ output_selection: ["NotAnOutput"] }).success).toBe(false);
+  });
+
+  test("timetree config fills the clock filter default", () => {
+    const parsed = zTimetreeConfig.parse({});
+    expect(parsed.clock_filter).toBe(3);
+  });
+
+  test("timetree config accepts nested settings", () => {
+    expect(zTimetreeConfig.safeParse({ tree: "t.nwk", relax: [1, 0.5], max_iter: 4, seed: 7 }).success).toBe(true);
+  });
+
+  test("clock config accepts nested branch split settings", () => {
+    expect(zClockConfig.safeParse({ branch_split: { method: "brent", brent_max_iters: 20 } }).success).toBe(true);
+  });
+
+  test("clock config rejects an unknown branch split method", () => {
+    expect(zClockConfig.safeParse({ branch_split: { method: "newton" } }).success).toBe(false);
+  });
+
+  test("ancestral config rejects a wrong type", () => {
+    expect(zAncestralConfig.safeParse({ tree: "t.nwk", dense: "yes" }).success).toBe(false);
+  });
+
+  test("ancestral config rejects an unknown method", () => {
+    expect(zAncestralConfig.safeParse({ method_anc: "bogus" }).success).toBe(false);
+  });
+
+  test("mugration config accepts a fractional pseudocount", () => {
+    expect(zMugrationConfig.safeParse({ attribute: "country", pc: 0.01 }).success).toBe(true);
+  });
+
+  test("optimize config rejects a negative iteration count", () => {
+    expect(zOptimizeConfig.safeParse({ max_iter: -3 }).success).toBe(false);
+  });
+
+  test("prune config rejects a non-numeric branch length threshold", () => {
+    expect(zPruneConfig.safeParse({ prune_short: "short" }).success).toBe(false);
   });
 });
 
-interface IntCase {
-  name: string;
-  schema: { safeParse(value: unknown): { success: boolean } };
-  base: Record<string, unknown>;
-  field: string;
-  int64?: boolean;
-}
-
-const INT_CASES: IntCase[] = [
-  {
-    name: "AncestralArgs.gtr_iterations",
-    schema: zAncestralArgs,
-    base: { tree: "t", outdir: "o" },
-    field: "gtr_iterations",
-  },
-  { name: "AncestralArgs.seed", schema: zAncestralArgs, base: { tree: "t", outdir: "o" }, field: "seed", int64: true },
-  {
-    name: "ClockArgs.sequence_length",
-    schema: zClockArgs,
-    base: { dates: "d", outdir: "o" },
-    field: "sequence_length",
-  },
-  { name: "TimetreeArgs.max_iter", schema: zTimetreeArgs, base: { outdir: "o" }, field: "max_iter" },
-  {
-    name: "MugrationArgs.iterations",
-    schema: zMugrationArgs,
-    base: { attribute: "a", states: "s", outdir: "o" },
-    field: "iterations",
-  },
-  { name: "OptimizeArgs.max_iter", schema: zOptimizeArgs, base: { tree: "t", outdir: "o" }, field: "max_iter" },
-];
-
-describe("zod_schemas integer fields", () => {
-  test.each(INT_CASES)("$name accepts a whole number", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: 4 }).success).toBe(true);
+describe("zod_schemas terminal events", () => {
+  test("an ok terminal event carries the outcome", () => {
+    const event = { status: "ok", job_id: "j", result: { command: "clock", output_files: ["out/clock.nwk"] } };
+    expect(zTerminalEvent.safeParse(event).success).toBe(true);
   });
 
-  test.each(INT_CASES)(
-    "$name rejects a negative whole number because the Rust type is unsigned",
-    ({ schema, base, field }) => {
-      expect(schema.safeParse({ ...base, [field]: -3 }).success).toBe(false);
-    },
-  );
-
-  test.each(INT_CASES)("$name rejects a fractional number", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: 2.5 }).success).toBe(false);
+  test("an error terminal event needs the cause chain", () => {
+    expect(zTerminalEvent.safeParse({ status: "error", job_id: "j", message: "failed" }).success).toBe(false);
   });
 
-  test.each(INT_CASES)("$name rejects NaN", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: Number.NaN }).success).toBe(false);
-  });
-
-  test.each(INT_CASES.filter((c) => c.int64 !== true))("$name rejects a numeric string", ({ schema, base, field }) => {
-    expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(false);
-  });
-
-  test.each(INT_CASES.filter((c) => c.int64 === true))(
-    "$name accepts a numeric string because JSON cannot carry a 64-bit integer",
-    ({ schema, base, field }) => {
-      expect(schema.safeParse({ ...base, [field]: "4" }).success).toBe(true);
-    },
-  );
-});
-
-describe("zod_schemas number fields keep fractional values", () => {
-  test("clock args accept a fractional clock filter", () => {
-    expect(zClockArgs.safeParse({ dates: "d", outdir: "o", clock_filter: 2.5 }).success).toBe(true);
-  });
-
-  test("mugration args accept a fractional pseudocount", () => {
-    expect(zMugrationArgs.safeParse({ attribute: "a", states: "s", outdir: "o", pc: 0.01 }).success).toBe(true);
+  test("a terminal event rejects an unknown status", () => {
+    expect(zTerminalEvent.safeParse({ status: "done", job_id: "j" }).success).toBe(false);
   });
 });
 
@@ -141,16 +103,16 @@ describe("zod_schemas error and enum shapes", () => {
     expect(zErrorResponse.safeParse({ code: "E_BAD" }).success).toBe(false);
   });
 
-  test.each(["Trace", "Debug", "Info", "Warn", "Error"])("LogLevel accepts %s", (level) => {
+  test.each(["trace", "debug", "info", "warn", "error"])("LogLevel accepts %s, the spelling Rust sends", (level) => {
     expect(zLogLevel.safeParse(level).success).toBe(true);
   });
 
   test("log level rejects an unknown level", () => {
-    expect(zLogLevel.safeParse("Fatal").success).toBe(false);
+    expect(zLogLevel.safeParse("fatal").success).toBe(false);
   });
 
   test("log event rejects an out-of-alphabet level", () => {
-    expect(zLogEvent.safeParse({ level: "Verbose", message: "x" }).success).toBe(false);
+    expect(zLogEvent.safeParse({ level: "verbose", message: "x" }).success).toBe(false);
   });
 
   test("version info rejects a non-string version", () => {
