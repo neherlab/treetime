@@ -297,7 +297,7 @@ mod tests {
   mod helpers {
     use ndarray::Array1;
 
-    pub fn regenerate_uniform(x_min: f64, dx: f64, n: usize) -> Array1<f64> {
+    pub(super) fn regenerate_uniform(x_min: f64, dx: f64, n: usize) -> Array1<f64> {
       Array1::from_shape_fn(n, |i| x_min + dx * i as f64)
     }
   }

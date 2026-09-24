@@ -360,7 +360,7 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 }
 
-pub fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
+pub(crate) fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {

@@ -16,7 +16,7 @@ use treetime::gtr::get_gtr::GtrModelName;
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum AaModelName {
+pub(crate) enum AaModelName {
   /// Infer an amino-acid GTR from the data over the stop-inclusive alphabet. Matches augur.
   #[default]
   Infer,

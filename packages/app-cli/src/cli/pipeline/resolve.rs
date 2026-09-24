@@ -61,7 +61,7 @@ pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<Resolve
   })
 }
 
-pub struct PipelineDoc {
+pub(crate) struct PipelineDoc {
   pub schema_ref: Option<String>,
   pub vars: Map<String, Value>,
   pub output_all: Option<String>,
@@ -126,7 +126,7 @@ impl PipelineDoc {
   }
 }
 
-pub struct ResolvedPipeline {
+pub(crate) struct ResolvedPipeline {
   pub workdir: Option<PathBuf>,
   pub steps: Vec<ResolvedStep>,
 }
@@ -263,13 +263,13 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
   }
 }
 
-pub struct ResolvedStep {
+pub(crate) struct ResolvedStep {
   pub name: String,
   pub command: PipelineStepCommand,
   pub outputs: StepOutputs,
 }
 
-pub struct StepOutputs {
+pub(crate) struct StepOutputs {
   pub output_all: Option<PathBuf>,
   pub by_selection: BTreeMap<OutputSelection, Vec<PathBuf>>,
 }

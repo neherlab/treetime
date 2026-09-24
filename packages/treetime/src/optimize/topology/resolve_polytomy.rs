@@ -15,7 +15,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn resolve_polytomies(
+pub(crate) fn resolve_polytomies(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],

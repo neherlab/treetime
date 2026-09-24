@@ -1,21 +1,21 @@
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(transparent)]
-pub struct CalendarTime(f64);
+pub(crate) struct CalendarTime(f64);
 
 impl CalendarTime {
-  pub fn new(value: f64) -> Self {
+  pub(crate) fn new(value: f64) -> Self {
     Self(value)
   }
 
-  pub fn value(self) -> f64 {
+  pub(crate) fn value(self) -> f64 {
     self.0
   }
 
-  pub fn max(self, other: Self) -> Self {
+  pub(crate) fn max(self, other: Self) -> Self {
     if self.0 >= other.0 { self } else { other }
   }
 
-  pub fn is_finite(self) -> bool {
+  pub(crate) fn is_finite(self) -> bool {
     self.0.is_finite()
   }
 }

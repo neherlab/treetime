@@ -10,7 +10,7 @@ use schemars::Schema;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
+pub(crate) fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
   let Some(steps) = value.get("steps").and_then(Value::as_array) else {
     return diags;
@@ -35,7 +35,7 @@ pub fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   diags
 }
 
-pub fn schema_diagnostics(value: &Value, schema: &Schema, skip_templates: bool) -> Vec<RawDiagnostic> {
+pub(crate) fn schema_diagnostics(value: &Value, schema: &Schema, skip_templates: bool) -> Vec<RawDiagnostic> {
   schema_diagnostics_prefixed(value, schema, skip_templates, "")
 }
 
@@ -111,7 +111,7 @@ fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: b
   diags
 }
 
-pub fn pipeline_structural_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
+pub(crate) fn pipeline_structural_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
   let Value::Object(map) = value else {
     diags.push(
@@ -264,7 +264,7 @@ fn structural_step_diagnostics(
   }
 }
 
-pub fn interpolation_diagnostics(
+pub(crate) fn interpolation_diagnostics(
   value: &Value,
   vars: &Map<String, Value>,
   step_names: &[String],
@@ -416,7 +416,7 @@ enum Scope {
   Other,
 }
 
-pub fn config_vars(value: &Value) -> Map<String, Value> {
+pub(crate) fn config_vars(value: &Value) -> Map<String, Value> {
   value
     .get("vars")
     .and_then(Value::as_object)
@@ -424,7 +424,7 @@ pub fn config_vars(value: &Value) -> Map<String, Value> {
     .unwrap_or_default()
 }
 
-pub fn config_step_names(value: &Value) -> Vec<String> {
+pub(crate) fn config_step_names(value: &Value) -> Vec<String> {
   value
     .get("steps")
     .and_then(Value::as_array)

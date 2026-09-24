@@ -859,14 +859,14 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn expected_jc_bl(count: usize, length: usize) -> f64 {
+    pub(super) fn expected_jc_bl(count: usize, length: usize) -> f64 {
       if length == 0 || count == 0 {
         return 0.0;
       }
       jukes_cantor_distance(count as f64 / length as f64, 4)
     }
 
-    pub fn extract_branch_lengths(
+    pub(super) fn extract_branch_lengths(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -882,7 +882,7 @@ mod tests {
         .collect()
     }
 
-    pub fn extract_edge_mutation_counts<'a>(
+    pub(super) fn extract_edge_mutation_counts<'a>(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       partition: &PartitionMarginalSparse,
@@ -907,7 +907,7 @@ mod tests {
       result
     }
 
-    pub fn build_shared_unique_subs<'a>(
+    pub(super) fn build_shared_unique_subs<'a>(
       n_shared: usize,
       n_unique_a: usize,
       n_unique_b: usize,
@@ -937,7 +937,7 @@ mod tests {
       ]
     }
 
-    pub fn make_second_partition(
+    pub(super) fn make_second_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,

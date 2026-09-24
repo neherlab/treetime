@@ -37,7 +37,7 @@ use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-pub fn run_ancestral_reconstruction(
+pub(crate) fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,

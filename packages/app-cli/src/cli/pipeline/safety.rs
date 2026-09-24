@@ -7,7 +7,7 @@ use treetime_utils::make_error;
 
 const STDIO_PATH: &str = "-";
 
-pub fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
+pub(crate) fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   reject_stdio_paths(pipeline)?;
   reject_output_collisions(pipeline)?;
   reject_self_truncation(pipeline)?;

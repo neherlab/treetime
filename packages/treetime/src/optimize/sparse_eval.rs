@@ -3,14 +3,14 @@ use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::optimize;
 use eyre::Report;
 
-pub fn evaluate_sparse_contribution(
+pub(crate) fn evaluate_sparse_contribution(
   contribution: &optimize::sparse::PartitionContribution,
   branch_length: f64,
 ) -> Result<OptimizationMetrics, Report> {
   evaluate_sparse_contribution_impl(contribution, branch_length, true)
 }
 
-pub fn evaluate_sparse_contribution_impl(
+pub(crate) fn evaluate_sparse_contribution_impl(
   contribution: &optimize::sparse::PartitionContribution,
   branch_length: f64,
   compute_derivatives: bool,

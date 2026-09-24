@@ -167,11 +167,11 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn c(b: u8) -> AsciiChar {
+    pub(super) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
   }

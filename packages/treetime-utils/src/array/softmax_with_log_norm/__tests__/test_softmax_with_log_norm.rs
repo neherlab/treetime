@@ -221,7 +221,7 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use ndarray::Array1;
 
-    pub fn assert_valid_distribution(normalized: &Array1<f64>) {
+    pub(super) fn assert_valid_distribution(normalized: &Array1<f64>) {
       assert!(
         normalized.iter().all(|&v| v >= 0.0),
         "all probabilities must be non-negative: {normalized}"

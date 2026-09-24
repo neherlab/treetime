@@ -15,7 +15,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn create_marginal_partition(
+pub(crate) fn create_marginal_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
@@ -62,13 +62,13 @@ pub fn create_marginal_partition(
   }
 }
 
-pub struct PartitionCreated {
+pub(crate) struct PartitionCreated {
   pub partition: MarginalPartition,
   pub gtr: GTR,
   pub model_name: GtrModelName,
 }
 
-pub enum MarginalPartition {
+pub(crate) enum MarginalPartition {
   Sparse(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>),
   Dense(PartitionMarginalDense),
 }

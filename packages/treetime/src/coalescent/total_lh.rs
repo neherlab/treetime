@@ -7,7 +7,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
-pub fn compute_coalescent_total_lh(
+pub(crate) fn compute_coalescent_total_lh(
   graph: &Graph,
   tc_dist: &Distribution,
   node_times: &CoalescentNodeTimes,

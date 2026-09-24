@@ -15,7 +15,7 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
-pub fn optimize_golden_section(
+pub(crate) fn optimize_golden_section(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &GoldenSectionParams,

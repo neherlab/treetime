@@ -4,7 +4,12 @@ use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNode
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;
 
-pub fn parsimony_seq(parent_seq: &Seq, edge_obs: &SparseEdgeObs, node_obs: &SparseNodeObs, alphabet: &Alphabet) -> Seq {
+pub(crate) fn parsimony_seq(
+  parent_seq: &Seq,
+  edge_obs: &SparseEdgeObs,
+  node_obs: &SparseNodeObs,
+  alphabet: &Alphabet,
+) -> Seq {
   let mut seq = parent_seq.clone();
 
   for sub in edge_obs.fitch_subs() {
@@ -26,11 +31,11 @@ pub fn parsimony_seq(parent_seq: &Seq, edge_obs: &SparseEdgeObs, node_obs: &Spar
   seq
 }
 
-pub fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
+pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
   map_seq_sampled(node, alphabet, &mut Resolve::Argmax)
 }
 
-pub fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
+pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
   let mut seq = node.sequence.clone();
 
   for (&pos, var) in &node.profile.variable {
@@ -53,7 +58,7 @@ pub fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mu
   seq
 }
 
-pub fn reconstruct_leaf_sequence(
+pub(crate) fn reconstruct_leaf_sequence(
   node: &SparseNodeState,
   node_obs: &SparseNodeObs,
   msg_from_parent: Option<&SparseSeqDistribution>,
@@ -92,7 +97,7 @@ pub fn reconstruct_leaf_sequence(
   seq
 }
 
-pub fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
+pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   match node.profile.variable.get(&pos) {
     Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
     None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),

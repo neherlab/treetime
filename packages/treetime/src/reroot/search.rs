@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-pub fn find_best_root<S>(
+pub(crate) fn find_best_root<S>(
   graph: &Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,

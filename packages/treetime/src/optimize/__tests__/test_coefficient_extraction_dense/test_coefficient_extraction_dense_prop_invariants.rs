@@ -47,18 +47,18 @@ mod tests {
     use ndarray::Array1;
     use proptest::prelude::*;
 
-    pub fn probability_vector() -> impl Strategy<Value = Array1<f64>> {
+    pub(super) fn probability_vector() -> impl Strategy<Value = Array1<f64>> {
       prop::array::uniform4(1e-6..1.0_f64).prop_map(|raw| {
         let sum: f64 = raw.iter().sum();
         Array1::from_vec(raw.iter().map(|x| x / sum).collect())
       })
     }
 
-    pub fn branch_length() -> impl Strategy<Value = f64> {
+    pub(super) fn branch_length() -> impl Strategy<Value = f64> {
       1e-6..2.0_f64
     }
 
-    pub fn multiplicity() -> impl Strategy<Value = f64> {
+    pub(super) fn multiplicity() -> impl Strategy<Value = f64> {
       1.0..500.0_f64
     }
   }

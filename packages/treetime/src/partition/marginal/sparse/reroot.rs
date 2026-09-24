@@ -10,7 +10,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_primitives::Seq;
 
-pub fn reroot_sparse(
+pub(crate) fn reroot_sparse(
   partition: PartitionMarginalSparse,
   gtr: GTR,
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,

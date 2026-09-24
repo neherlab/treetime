@@ -10,7 +10,7 @@ const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("vcf-reference", &["vcf_reference"]),
 ];
 
-pub fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
+pub(crate) fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
   Ok(
     labeled_input_paths(command)?
       .into_iter()
@@ -19,7 +19,7 @@ pub fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report>
   )
 }
 
-pub fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'static str, String)>, Report> {
+pub(crate) fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'static str, String)>, Report> {
   let args = command.args_value()?;
   Ok(
     INPUT_FIELDS

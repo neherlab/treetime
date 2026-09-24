@@ -16,7 +16,7 @@ use treetime_utils::collections::container::get_exactly_one;
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn find_best_root(
+pub(crate) fn find_best_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,

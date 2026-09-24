@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
 
   use crate::prune::prune::prune_nodes;
@@ -511,14 +511,14 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
-    pub fn c(b: u8) -> AsciiChar {
+    pub(crate) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
+    pub(crate) fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
       let alphabet = partition.alphabet.clone();
       let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
       if partition.root_sequence.is_empty() {
@@ -533,7 +533,7 @@ pub mod tests {
       }
     }
 
-    pub fn create_test_graph_with_partitions(
+    pub(crate) fn create_test_graph_with_partitions(
       nwk: &str,
       edge_mutations: &[(usize, Option<usize>)],
     ) -> Result<
@@ -587,7 +587,7 @@ pub mod tests {
       Ok((graph, names, partitions, branch_lengths))
     }
 
-    pub fn create_test_graph_with_named_edge_mutations(
+    pub(crate) fn create_test_graph_with_named_edge_mutations(
       nwk: &str,
       edge_mutations: &[(&str, &str, Option<usize>)],
     ) -> Result<

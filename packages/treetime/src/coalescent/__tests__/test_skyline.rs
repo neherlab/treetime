@@ -246,7 +246,10 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
+    pub(super) fn create_graph_with_dates(
+      tree_nwk: &str,
+      dates: &DatesMap,
+    ) -> Result<(Graph, DateConstraints), Report> {
       let nwk_parsed = nwk_read_str(tree_nwk)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;

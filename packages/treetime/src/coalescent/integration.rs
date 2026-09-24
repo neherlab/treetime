@@ -9,7 +9,7 @@ pub(super) fn compute_merger_rate_total_scalar(k: f64, tc: f64) -> f64 {
   compute_merger_rate_total(compute_merger_rate_lineage_count(k), tc)
 }
 
-pub fn compute_integral_merger_rate(
+pub(super) fn compute_integral_merger_rate(
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
 ) -> Result<PiecewiseLinearFn, Report> {

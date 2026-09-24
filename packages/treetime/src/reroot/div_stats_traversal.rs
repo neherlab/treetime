@@ -8,7 +8,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn compute_div_stats(
+pub(crate) fn compute_div_stats(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
@@ -100,7 +100,7 @@ pub fn compute_div_stats(
   Ok(DivStatsField { edge_stats, root_stats })
 }
 
-pub struct DivStatsField {
+pub(crate) struct DivStatsField {
   pub edge_stats: BTreeMap<GraphEdgeKey, (DivStats, DivStats)>,
   pub root_stats: DivStats,
 }

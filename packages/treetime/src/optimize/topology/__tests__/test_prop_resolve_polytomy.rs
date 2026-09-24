@@ -101,7 +101,7 @@ mod tests {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> BTreeSet<String> {
+    pub(super) fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> BTreeSet<String> {
       graph
         .get_nodes()
         .filter(|n| n.is_leaf())
@@ -109,7 +109,7 @@ mod tests {
         .collect()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
+    pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .filter_map(|e| recon.obs_edges.get(&e.key()))
@@ -117,7 +117,7 @@ mod tests {
         .sum()
     }
 
-    pub fn build_case(
+    pub(super) fn build_case(
       n_children: usize,
       k: usize,
       revert_masks: &[u32],
@@ -168,7 +168,7 @@ mod tests {
       (graph, node_names, partition, node_states, total, branch_lengths)
     }
 
-    pub fn build_bifurcating_case(
+    pub(super) fn build_bifurcating_case(
       g: usize,
       a: usize,
       own_counts: &[usize],

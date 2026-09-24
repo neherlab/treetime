@@ -17,7 +17,7 @@ use treetime_utils::{make_error, make_report};
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct TopologyOrderArgs {
+pub(crate) struct TopologyOrderArgs {
   /// Order tree topology before writing output files.
   #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order"))]
@@ -157,7 +157,7 @@ impl TopologyOrderArgs {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum LadderizeArg {
+pub(crate) enum LadderizeArg {
   None,
   Ascending,
   Descending,
@@ -184,7 +184,7 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum TopologyOrderArg {
+pub(crate) enum TopologyOrderArg {
   Keep,
   #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
   DescendantCount,
@@ -211,7 +211,7 @@ impl TopologyOrderArg {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
-pub enum TopologyOrderTargetSourceArg {
+pub(crate) enum TopologyOrderTargetSourceArg {
   Input,
   ReferenceTopology,
   List,
@@ -229,7 +229,7 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum TopologyOrderTargetAggregateArg {
+pub(crate) enum TopologyOrderTargetAggregateArg {
   #[default]
   Mean,
   Median,

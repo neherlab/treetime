@@ -144,7 +144,7 @@ mod tests {
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-    pub struct SampleCase {
+    pub(super) struct SampleCase {
       graph: Graph,
       names: BTreeMap<GraphNodeKey, Option<String>>,
       times: BTreeMap<GraphNodeKey, Option<f64>>,
@@ -197,7 +197,7 @@ mod tests {
       }
     }
 
-    pub fn sample_case() -> SampleCase {
+    pub(super) fn sample_case() -> SampleCase {
       let mut graph = Graph::new();
       let mut names = BTreeMap::new();
       let mut times = BTreeMap::new();

@@ -36,7 +36,7 @@ mod tests {
   mod helpers {
     use crate::usher_mat::UsherTree;
 
-    pub fn tree() -> UsherTree {
+    pub(super) fn tree() -> UsherTree {
       UsherTree {
         newick: "(A:1,B:2)root;".to_owned(),
         ..UsherTree::default()

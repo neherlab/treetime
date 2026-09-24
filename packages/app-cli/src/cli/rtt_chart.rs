@@ -23,7 +23,7 @@ use treetime_utils::io::file::create_file_or_stdout;
 const CHART_SIZE: (u32, u32) = (1200, 800);
 const FALLBACK_TERMINAL_SIZE: (u16, u16) = (120, 40);
 
-pub fn write_clock_regression_chart_svg(
+pub(crate) fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
@@ -48,7 +48,7 @@ pub fn write_clock_regression_chart_png(
 }
 
 #[cfg(not(feature = "png"))]
-pub fn write_clock_regression_chart_png(
+pub(crate) fn write_clock_regression_chart_png(
   _results: &[ClockRegressionResult],
   _clock_model: &ClockModel,
   _filepath: impl AsRef<Path>,
@@ -83,7 +83,10 @@ fn write_clock_regression_chart_bitmap(
     reason = "output that is not a terminal has no size; the chart uses a fixed default"
   )
 )]
-pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<(), Report> {
+pub(crate) fn print_clock_regression_chart(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+) -> Result<(), Report> {
   let mut table = Table::new();
   table
     .load_preset(UTF8_FULL)

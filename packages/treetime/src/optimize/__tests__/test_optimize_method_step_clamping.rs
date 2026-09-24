@@ -124,10 +124,10 @@ mod tests {
 
   mod generators {
     use proptest::prelude::*;
-    pub fn gen_s() -> impl Strategy<Value = f64> {
+    pub(super) fn gen_s() -> impl Strategy<Value = f64> {
       0.0_f64..1e3_f64
     }
-    pub fn gen_t() -> impl Strategy<Value = f64> {
+    pub(super) fn gen_t() -> impl Strategy<Value = f64> {
       1e-10_f64..1e6_f64
     }
   }

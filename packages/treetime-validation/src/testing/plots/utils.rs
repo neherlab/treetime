@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use ndarray::Array1;
 
-pub fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
+pub(crate) fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
   arrays
     .iter()
     .flat_map(|array| array.iter())
@@ -10,7 +10,7 @@ pub fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
     .map_or((0.0, 1.0), |(min, max)| (*min, *max))
 }
 
-pub fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
+pub(crate) fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
   if !min_value.is_finite() || !max_value.is_finite() {
     return (-1.0, 1.0);
   }
@@ -27,7 +27,7 @@ pub fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn tolerance_label(value: f64) -> String {
+pub(crate) fn tolerance_label(value: f64) -> String {
   let idx = (value + 0.5).floor() as i32;
   match idx {
     0 => "Strict".to_owned(),

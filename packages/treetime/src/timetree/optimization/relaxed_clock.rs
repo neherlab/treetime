@@ -5,7 +5,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn apply_relaxed_clock(
+pub(crate) fn apply_relaxed_clock(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &[f64],

@@ -147,7 +147,7 @@ pub(crate) fn run_mugration(
 /// Mugration inference request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct MugrationArgs {
+pub(crate) struct MugrationArgs {
   tree: Option<String>,
   #[default(_code = r#""country".to_owned()"#)]
   attribute: String,

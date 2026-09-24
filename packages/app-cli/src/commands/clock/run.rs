@@ -25,7 +25,7 @@ use treetime_io::nwk::nwk_read_file;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn run_clock(
+pub(crate) fn run_clock(
   clock_args: &TreetimeClockArgs,
   cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,
@@ -132,7 +132,7 @@ pub fn run_clock(
 }
 
 #[derive(serde::Serialize)]
-pub struct ClockResult {
+pub(crate) struct ClockResult {
   #[serde(skip)]
   pub graph: Graph,
   #[serde(skip)]

@@ -15,7 +15,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput};
 use treetime_grid::Side;
 
-pub fn propagate_distributions_backward(
+pub(crate) fn propagate_distributions_backward(
   graph: &Graph,
   constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,

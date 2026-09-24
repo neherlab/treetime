@@ -21,7 +21,7 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn generate_schema(target: SchemaTarget, output: Option<&PathBuf>) -> Result<(), Report> {
+pub(crate) fn generate_schema(target: SchemaTarget, output: Option<&PathBuf>) -> Result<(), Report> {
   if matches!(target, SchemaTarget::All) {
     let dir = output.map_or_else(|| PathBuf::from("."), Clone::clone);
     for one in all_targets() {
@@ -75,7 +75,7 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
 
 #[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum SchemaTarget {
+pub(crate) enum SchemaTarget {
   #[default]
   All,
   VersionInfo,
@@ -256,7 +256,7 @@ mod tests {
   mod helpers {
     use serde_json::Value;
 
-    pub fn contains_template_pattern(value: &Value) -> bool {
+    pub(super) fn contains_template_pattern(value: &Value) -> bool {
       match value {
         Value::Object(map) => {
           let here = map

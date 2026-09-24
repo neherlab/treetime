@@ -6,7 +6,7 @@ use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct RerootArgs {
+pub(crate) struct RerootArgs {
   /// Reroot the tree by temporal-signal optimization.
   ///
   /// Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
@@ -35,7 +35,7 @@ impl RerootArgs {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "RerootMethod")]
-pub enum RerootMethodCli {
+pub(crate) enum RerootMethodCli {
   #[default]
   #[cfg_attr(feature = "clap", value(alias = "best"))]
   LeastSquares,

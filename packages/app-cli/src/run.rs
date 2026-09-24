@@ -34,7 +34,6 @@ use treetime_utils::init::openblas::get_openblas_info_str;
 use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-
 pub fn run_cli() -> Result<(), Report> {
   let args = treetime_parse_cli_args()?;
 

@@ -199,20 +199,20 @@ mod tests {
     use std::fs::read_to_string;
 
     #[derive(Debug, Deserialize)]
-    pub struct ExpQtEntry {
+    pub(super) struct ExpQtEntry {
       pub time: f64,
       #[serde(rename = "expQt")]
       pub exp_qt: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct ProfileOutput {
+    pub(super) struct ProfileOutput {
       pub propagate_profile: serde_json::Value,
       pub evolve: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct GtrSiteSpecificOutput {
+    pub(super) struct GtrSiteSpecificOutput {
       pub eigenvals: serde_json::Value,
       #[serde(rename = "expQts")]
       pub exp_qts: Vec<ExpQtEntry>,
@@ -220,33 +220,33 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct InferOutput {
+    pub(super) struct InferOutput {
       #[serde(rename = "W")]
       pub W: serde_json::Value,
       pub pi: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct ApproxOutput {
+    pub(super) struct ApproxOutput {
       #[serde(rename = "expQts")]
       pub exp_qts: Vec<ExpQtEntry>,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct AllOutputs {
+    pub(super) struct AllOutputs {
       pub site_specific: IndexMap<String, GtrSiteSpecificOutput>,
       pub approximate: IndexMap<String, ApproxOutput>,
       pub infer: IndexMap<String, InferOutput>,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct AllInputs {
+    pub(super) struct AllInputs {
       pub site_specific: IndexMap<String, serde_json::Value>,
       pub profiles: IndexMap<String, serde_json::Value>,
       pub infer: IndexMap<String, serde_json::Value>,
     }
 
-    pub fn load_gm_inputs() -> AllInputs {
+    pub(super) fn load_gm_inputs() -> AllInputs {
       let path = format!(
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_inputs.json",
         env!("CARGO_MANIFEST_DIR")
@@ -255,7 +255,7 @@ mod tests {
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 
-    pub fn load_gm_outputs() -> AllOutputs {
+    pub(super) fn load_gm_outputs() -> AllOutputs {
       let path = format!(
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_outputs.json",
         env!("CARGO_MANIFEST_DIR")

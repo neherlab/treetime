@@ -150,7 +150,7 @@ fn arb_tree_caterpillar_inner(taxa: Vec<String>) -> BoxedStrategy<String> {
   }
 }
 
-pub fn arb_tree_topology(taxa: Vec<String>) -> BoxedStrategy<String> {
+pub(crate) fn arb_tree_topology(taxa: Vec<String>) -> BoxedStrategy<String> {
   let taxa_for_filter = taxa.clone();
   prop_oneof![
     2 => arb_tree_bisection_inner(taxa.clone()),
@@ -169,7 +169,7 @@ fn arb_newick(n_taxa: usize) -> impl Strategy<Value = String> {
   arb_tree_topology(taxa).prop_map(|tree| format!("({tree})root:0.001;"))
 }
 
-pub fn taxa_names(n: usize) -> Vec<String> {
+pub(crate) fn taxa_names(n: usize) -> Vec<String> {
   (0..n).map(|i| format!("T{i}")).collect()
 }
 

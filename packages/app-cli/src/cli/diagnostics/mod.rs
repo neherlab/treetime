@@ -1,3 +1,3 @@
-pub mod checks;
-pub mod entry;
-pub mod source;
+pub(crate) mod checks;
+pub(crate) mod entry;
+pub(crate) mod source;

@@ -69,11 +69,11 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::AlignmentRecord;
 
-    pub const ROOT_NAME: &str = "root";
+    pub(super) const ROOT_NAME: &str = "root";
 
     const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-    pub fn reconstruct(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
+    pub(super) fn reconstruct(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
         >A

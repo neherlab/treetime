@@ -204,7 +204,7 @@ mod tests {
       .unwrap()
     }
 
-    pub fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
+    pub(super) fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -267,7 +267,7 @@ mod tests {
       }
     }
 
-    pub fn write_json(
+    pub(super) fn write_json(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
@@ -278,7 +278,7 @@ mod tests {
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
-    pub fn reconstruct_json(method: MethodAncestralCli, dense: Option<bool>, model: GtrModelNameCli) -> String {
+    pub(super) fn reconstruct_json(method: MethodAncestralCli, dense: Option<bool>, model: GtrModelNameCli) -> String {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
@@ -310,7 +310,7 @@ mod tests {
       std::fs::read_to_string(node_data_path).unwrap()
     }
 
-    pub fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {
+    pub(super) fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
@@ -350,7 +350,7 @@ mod tests {
       json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
     }
 
-    pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
+    pub(super) fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
       let (graph, names, partition) = mutation_case();
       let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
@@ -391,7 +391,7 @@ mod tests {
       .unwrap()
     }
 
-    pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {
+    pub(super) fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {
       AugurNodeDataJsonAncestral {
         generated_by: Some(AugurNodeDataJsonGeneratedBy {
           program: "treetime".to_owned(),
@@ -459,7 +459,7 @@ mod tests {
       }
     }
 
-    pub fn expected_invariant_json() -> String {
+    pub(super) fn expected_invariant_json() -> String {
       format!(
         r#"{{
   "generated_by": {{

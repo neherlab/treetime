@@ -26,12 +26,12 @@ use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::{make_error, make_internal_report};
 
-pub const COLORING_BAD_BRANCH: &str = "bad_branch";
+pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
-pub const COLORING_NUM_DATE: &str = "num_date";
-pub const NUC_TRACK: &str = "nuc";
+pub(crate) const COLORING_NUM_DATE: &str = "num_date";
+pub(crate) const NUC_TRACK: &str = "nuc";
 
-pub fn write_tree_outputs<A, M>(
+pub(crate) fn write_tree_outputs<A, M>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -94,7 +94,7 @@ where
   Ok(())
 }
 
-pub fn auspice_data(
+pub(crate) fn auspice_data(
   title: &str,
   updated: &str,
   mut colorings: Vec<AuspiceColoring>,
@@ -127,7 +127,7 @@ pub fn auspice_data(
   }
 }
 
-pub fn sequence_auspice_node(
+pub(crate) fn sequence_auspice_node(
   name: &str,
   div: Option<f64>,
   confidence: Option<f64>,
@@ -156,7 +156,7 @@ pub fn sequence_auspice_node(
   Ok(node)
 }
 
-pub fn auspice_node(
+pub(crate) fn auspice_node(
   name: String,
   div: Option<f64>,
   date: Option<f64>,
@@ -191,7 +191,7 @@ pub fn auspice_node(
   }
 }
 
-pub fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
+pub(crate) fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
 where
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
@@ -228,7 +228,7 @@ where
   clippy::field_scoped_visibility_modifiers,
   reason = "crate-internal fields are the record interface"
 )]
-pub struct GraphNodeContext {
+pub(crate) struct GraphNodeContext {
   pub(crate) node_key: GraphNodeKey,
   pub(crate) edge_key: Option<GraphEdgeKey>,
 }
@@ -266,7 +266,7 @@ fn attach_auspice_children(
   Ok(())
 }
 
-pub fn mutation_free_mat(
+pub(crate) fn mutation_free_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -274,7 +274,7 @@ pub fn mutation_free_mat(
   mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
-pub fn mat_from_graph<F>(
+pub(crate) fn mat_from_graph<F>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -320,7 +320,11 @@ where
   })
 }
 
-pub fn mat_mutation(mutation: &Mutation, reference: Option<&str>, node_name: &str) -> Result<UsherMutation, Report> {
+pub(crate) fn mat_mutation(
+  mutation: &Mutation,
+  reference: Option<&str>,
+  node_name: &str,
+) -> Result<UsherMutation, Report> {
   if mutation.track != MutationTrack::Nucleotide {
     return make_error!("Node '{node_name}' has an amino-acid mutation that UShER MAT cannot represent");
   }
@@ -366,7 +370,7 @@ fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<
   }
 }
 
-pub fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
+pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   let mut grouped = BTreeMap::new();
   for mutation in mutations {
     let track = match &mutation.track {
@@ -427,13 +431,13 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
   clippy::field_scoped_visibility_modifiers,
   reason = "crate-internal fields are the record interface"
 )]
-pub struct TraitValue {
+pub(crate) struct TraitValue {
   pub(crate) value: String,
   pub(crate) confidence: BTreeMap<String, f64>,
   pub(crate) entropy: Option<f64>,
 }
 
-pub fn cumulative_branch_length_from(
+pub(crate) fn cumulative_branch_length_from(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut key: GraphNodeKey,
@@ -449,11 +453,11 @@ pub fn cumulative_branch_length_from(
   Ok(Some(total))
 }
 
-pub fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
+pub(crate) fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }
 
-pub fn finite_number(
+pub(crate) fn finite_number(
   value: Option<f64>,
   precision: i32,
   command: &str,
@@ -471,7 +475,7 @@ fn ensure_optional_finite(value: Option<f64>, command: &str, node_name: &str, fi
   Ok(())
 }
 
-pub fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
+pub(crate) fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
   if value.is_finite() {
     Ok(())
   } else {
@@ -484,7 +488,7 @@ pub fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) ->
   clippy::expect_used,
   reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
 )]
-pub fn format_number(number: f64, precision: i32) -> f64 {
+pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
   if number == 0.0 || !number.is_finite() {
     return number;
   }
@@ -500,7 +504,7 @@ pub fn format_number(number: f64, precision: i32) -> f64 {
     .expect("a float formatted in scientific notation must parse back")
 }
 
-pub fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
+pub(crate) fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   AuspiceColoring {
     key: key.to_owned(),
     title: title.to_owned(),
@@ -509,6 +513,6 @@ pub fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   }
 }
 
-pub fn generation_date() -> String {
+pub(crate) fn generation_date() -> String {
   Utc::now().format("%Y-%m-%d").to_string()
 }

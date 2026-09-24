@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-pub fn gather_edge_contributions(
+pub(crate) fn gather_edge_contributions(
   graph: &Graph,
   dense: &[DenseReconstruction],
   sparse: &[SparseReconstruction],
@@ -32,7 +32,7 @@ pub fn gather_edge_contributions(
     .collect()
 }
 
-pub fn gather_edge_indel_counts(
+pub(crate) fn gather_edge_indel_counts(
   graph: &Graph,
   dense: &[DenseReconstruction],
   sparse: &[SparseReconstruction],
@@ -56,7 +56,7 @@ pub fn gather_edge_indel_counts(
     .collect()
 }
 
-pub fn gather_edge_sub_counts(
+pub(crate) fn gather_edge_sub_counts(
   graph: &Graph,
   dense: &[DenseReconstruction],
   sparse: &[SparseReconstruction],
@@ -79,7 +79,7 @@ pub fn gather_edge_sub_counts(
     .collect()
 }
 
-pub fn gather_edge_effective_lengths(
+pub(crate) fn gather_edge_effective_lengths(
   graph: &Graph,
   dense: &[DenseReconstruction],
   sparse: &[SparseReconstruction],
@@ -102,12 +102,12 @@ pub fn gather_edge_effective_lengths(
     .collect()
 }
 
-pub fn total_sequence_length(dense: &[DenseReconstruction], sparse: &[SparseReconstruction]) -> usize {
+pub(crate) fn total_sequence_length(dense: &[DenseReconstruction], sparse: &[SparseReconstruction]) -> usize {
   dense.iter().map(DenseReconstruction::sequence_length).sum::<usize>()
     + sparse.iter().map(SparseReconstruction::sequence_length).sum::<usize>()
 }
 
-pub fn gather_timetree_edge_contributions(
+pub(crate) fn gather_timetree_edge_contributions(
   graph: &Graph,
   partitions: &[PartitionTimetree],
 ) -> Result<BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>, Report> {
@@ -128,7 +128,7 @@ pub fn gather_timetree_edge_contributions(
     .collect()
 }
 
-pub fn gather_timetree_edge_indel_counts(
+pub(crate) fn gather_timetree_edge_indel_counts(
   graph: &Graph,
   partitions: &[PartitionTimetree],
 ) -> BTreeMap<GraphEdgeKey, usize> {
@@ -149,6 +149,6 @@ pub fn gather_timetree_edge_indel_counts(
     .collect()
 }
 
-pub fn timetree_total_sequence_length(partitions: &[PartitionTimetree]) -> usize {
+pub(crate) fn timetree_total_sequence_length(partitions: &[PartitionTimetree]) -> usize {
   partitions.iter().map(PartitionTimetree::sequence_length).sum()
 }

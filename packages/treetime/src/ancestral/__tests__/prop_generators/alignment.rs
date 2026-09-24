@@ -21,7 +21,7 @@ fn arb_sequence_no_gaps(len: usize) -> impl Strategy<Value = String> {
   prop::collection::vec(arb_nucleotide_no_gaps(), len).prop_map(|chars| chars.into_iter().collect())
 }
 
-pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
+pub(crate) fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence(seq_len), n).prop_map(move |sequences| {
     taxa
@@ -35,7 +35,7 @@ pub fn arb_alignment(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value =
   })
 }
 
-pub fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
+pub(crate) fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl Strategy<Value = Vec<AlignmentRecord>> {
   let n = taxa.len();
   prop::collection::vec(arb_sequence_no_gaps(seq_len), n).prop_map(move |sequences| {
     taxa

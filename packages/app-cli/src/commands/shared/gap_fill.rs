@@ -12,7 +12,7 @@ use treetime::seq::gap_fill::GapFill;
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct GapFillArgs {
+pub(crate) struct GapFillArgs {
   /// How to handle gap characters in input sequences
   ///
   /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
@@ -43,7 +43,7 @@ impl GapFillArgs {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "GapFill")]
-pub enum GapFillCli {
+pub(crate) enum GapFillCli {
   #[default]
   OnlyTerminal,
   All,

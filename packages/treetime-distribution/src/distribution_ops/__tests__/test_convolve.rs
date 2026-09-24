@@ -381,7 +381,7 @@ mod tests {
     use ndarray::array;
 
     #[derive(Clone, Copy, Debug)]
-    pub enum DistributionVariant {
+    pub(super) enum DistributionVariant {
       Empty,
       Point,
       Range,
@@ -389,7 +389,7 @@ mod tests {
       Formula,
     }
 
-    pub fn distribution(variant: DistributionVariant) -> DistributionPlain {
+    pub(super) fn distribution(variant: DistributionVariant) -> DistributionPlain {
       match variant {
         DistributionVariant::Empty => DistributionPlain::empty(),
         DistributionVariant::Point => DistributionPlain::point(0.0, 1.0),

@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod support {
+pub(super) mod support {
   use crate::alphabet::alphabet::Alphabet;
   use eyre::Report;
   use serde::Deserialize;
@@ -15,13 +15,13 @@ pub mod support {
     "/src/timetree/inference/__tests__/__fixtures__"
   );
 
-  pub static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
+  pub(crate) static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_runner_outputs.json");
     let content = fs::read_to_string(&path).expect("Failed to read gm_runner_outputs.json");
     serde_json::from_str(&content).expect("Failed to parse gm_runner_outputs.json")
   });
 
-  pub static ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+  pub(crate) static ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   static INPUTS: LazyLock<BTreeMap<String, DatasetInput>> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_runner_inputs.json");
@@ -38,7 +38,7 @@ pub mod support {
   });
 
   #[derive(Debug, Deserialize)]
-  pub struct DatasetOutputs {
+  pub(crate) struct DatasetOutputs {
     rerooted_tree_nwk: String,
     clock_rate: f64,
     sequence_length: usize,
@@ -75,7 +75,7 @@ pub mod support {
     name_column: Option<String>,
   }
 
-  pub fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
+  pub(crate) fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
     let input = &INPUTS[dataset];
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
     read_dates(
@@ -87,7 +87,7 @@ pub mod support {
     )
   }
 
-  pub fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {
+  pub(crate) fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {
     let input = &INPUTS[dataset];
     let aln_path = PROJECT_ROOT.join(&input.aln_path);
     read_many_fasta_path(&[&aln_path], &*ALPHABET)

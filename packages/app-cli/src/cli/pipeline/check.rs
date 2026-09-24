@@ -7,7 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
 use std::path::Path;
 
-pub fn print_pipeline_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
+pub(crate) fn print_pipeline_plan(
+  pipeline: &ResolvedPipeline,
+  selected: Option<&BTreeSet<String>>,
+) -> Result<(), Report> {
   let steps = select_steps(pipeline, selected)?;
   let producers = producers_by_path(pipeline);
   let step_inputs = steps

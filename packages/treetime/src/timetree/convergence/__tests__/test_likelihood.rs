@@ -136,14 +136,14 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn single_root_graph() -> Result<(Graph, GraphNodeKey), Report> {
+    pub(super) fn single_root_graph() -> Result<(Graph, GraphNodeKey), Report> {
       let mut graph = Graph::new();
       let root_key = graph.add_node();
       graph.build()?;
       Ok((graph, root_key))
     }
 
-    pub fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetree, Report> {
+    pub(super) fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetree, Report> {
       let partition = PartitionMarginalDense::new(0, Alphabet::default(), 1);
       let mut node_states = BTreeMap::new();
       node_states.insert(
@@ -160,7 +160,7 @@ mod tests {
       )))
     }
 
-    pub fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
       let nwk_parsed = nwk_read_str("(child:0.1)root;")?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -168,7 +168,7 @@ mod tests {
       Ok((graph, names))
     }
 
-    pub fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
+    pub(super) fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
       let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
       let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
       let mut state = TimetreeState::new(graph);
@@ -179,7 +179,7 @@ mod tests {
       state
     }
 
-    pub fn coalescent_graph() -> Result<(Graph, DateConstraints), Report> {
+    pub(super) fn coalescent_graph() -> Result<(Graph, DateConstraints), Report> {
       let dates = btreemap! {
         o!("root") => Some(DateConstraint::exact(2000.0)),
         o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -195,7 +195,7 @@ mod tests {
       Ok((graph, constraints))
     }
 
-    pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
+    pub(super) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
       TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
     }
   }

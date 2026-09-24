@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -38,7 +38,7 @@ pub mod tests {
 
   const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
 
-  pub const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
+  pub(crate) const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 
   #[test]
   fn test_initial_guess_mode_default_is_auto() {
@@ -465,17 +465,17 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
-    pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+    pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
       graph
         .get_edges()
         .map(|e| branch_lengths[&e.key()].unwrap_or(f64::NAN))
         .collect()
     }
 
-    pub fn set_first_branch_length(
+    pub(crate) fn set_first_branch_length(
       graph: &Graph,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       branch_length: f64,
@@ -484,7 +484,7 @@ pub mod tests {
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
-    pub fn set_branch_length_by_target_name(
+    pub(crate) fn set_branch_length_by_target_name(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -505,7 +505,10 @@ pub mod tests {
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
-    pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
+    pub(crate) fn inject_indel_on_first_edge(
+      graph: &Graph,
+      partitions: &mut [DenseReconstruction],
+    ) -> Result<(), Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       for partition in partitions.iter_mut() {
         partition.edges.estimates.get_mut(&edge_key).unwrap().indels =
@@ -514,7 +517,7 @@ pub mod tests {
       Ok(())
     }
 
-    pub fn setup_dense_with_marginal(
+    pub(crate) fn setup_dense_with_marginal(
       newick: &str,
     ) -> Result<
       (

@@ -418,7 +418,7 @@ mod tests {
       BTreeMap<GraphEdgeKey, Option<f64>>,
     );
 
-    pub fn build_polytomy(
+    pub(super) fn build_polytomy(
       n_children: usize,
       n_shared: usize,
       unique_counts: &[usize],
@@ -453,7 +453,7 @@ mod tests {
       (graph, node_names, edge_mutations, length, branch_lengths)
     }
 
-    pub fn make_partition(
+    pub(super) fn make_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
@@ -466,7 +466,7 @@ mod tests {
       make_partition_from_static(graph, names, length, &refs).unwrap()
     }
 
-    pub fn make_partition_from_static(
+    pub(super) fn make_partition_from_static(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
@@ -475,7 +475,7 @@ mod tests {
       make_partition_from_static_indexed(graph, names, 0, length, edge_mutations)
     }
 
-    pub fn make_partition_from_static_indexed(
+    pub(super) fn make_partition_from_static_indexed(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,

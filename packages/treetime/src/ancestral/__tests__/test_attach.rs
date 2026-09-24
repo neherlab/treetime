@@ -90,28 +90,28 @@ fn test_sanitize_to_alphabet_folds_stop_into_unknown_for_no_stop_alphabet() {
 mod helpers {
   use super::*;
 
-  pub fn two_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub(super) fn two_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     (graph, names)
   }
 
-  pub fn three_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub(super) fn three_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     (graph, names)
   }
 
-  pub fn four_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub(super) fn four_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap();
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     (graph, names)
   }
 
-  pub fn records(entries: &[(&str, &str)]) -> Vec<AlignmentRecord> {
+  pub(super) fn records(entries: &[(&str, &str)]) -> Vec<AlignmentRecord> {
     entries
       .iter()
       .map(|(name, seq)| AlignmentRecord {
@@ -121,7 +121,7 @@ mod helpers {
       .collect()
   }
 
-  pub fn by_name(records: Vec<AlignmentRecord>) -> BTreeMap<String, Seq> {
+  pub(super) fn by_name(records: Vec<AlignmentRecord>) -> BTreeMap<String, Seq> {
     records.into_iter().map(|record| (record.name, record.seq)).collect()
   }
 }

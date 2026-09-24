@@ -13,7 +13,7 @@ macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-    pub enum $name {
+    pub(crate) enum $name {
       All,
       Nwk,
       Nexus,
@@ -76,7 +76,7 @@ per_command_output_selection!(PruneOutputSelection { Gtr });
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct OutputCoreArgs {
+pub(crate) struct OutputCoreArgs {
   /// Write all default output files into this directory.
   ///
   /// Produces the default set of tree and non-tree outputs for the command, using
@@ -216,7 +216,7 @@ impl OutputCoreArgs {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum NwkStyleArg {
+pub(crate) enum NwkStyleArg {
   Plain,
   Beast,
   Nhx,
@@ -235,7 +235,7 @@ impl From<NwkStyleArg> for NwkStyle {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum DivergenceUnits {
+pub(crate) enum DivergenceUnits {
   #[default]
   MutationsPerSite,
   Mutations,

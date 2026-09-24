@@ -2,9 +2,9 @@ use num_traits::pow::pow;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 
-pub const DAMPING_FLOOR: f64 = 0.01;
+pub(crate) const DAMPING_FLOOR: f64 = 0.01;
 
-pub fn apply_damping(
+pub(crate) fn apply_damping(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   old_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   damping: f64,

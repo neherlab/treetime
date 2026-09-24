@@ -2,7 +2,7 @@ use crate::Distribution;
 use crate::policy::Plain;
 use serde::{Deserialize, Serialize};
 
-pub const NORMALIZATION_DRIFT_THRESHOLD: f64 = 1e-10;
+pub(crate) const NORMALIZATION_DRIFT_THRESHOLD: f64 = 1e-10;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ScaledDistribution {

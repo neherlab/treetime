@@ -27,7 +27,7 @@ pub(crate) const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "an
 /// and the generated schema must agree on.
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct Pipeline {
+pub(crate) struct Pipeline {
   #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
   schema_ref: Option<String>,
 
@@ -45,14 +45,14 @@ pub struct Pipeline {
 /// The `name` is explicit (not the command name) because `--steps=` selection and
 /// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
 #[derive(Debug, Serialize, JsonSchema)]
-pub struct PipelineStep {
+pub(crate) struct PipelineStep {
   name: String,
   #[serde(flatten)]
   command: PipelineStepCommand,
 }
 
 impl PipelineStep {
-  pub fn from_value(value: Value) -> Result<Self, Report> {
+  pub(crate) fn from_value(value: Value) -> Result<Self, Report> {
     let RawStep { name, tag, payload } = RawStep::from_value(value)?;
     let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
       .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
@@ -69,7 +69,7 @@ impl PipelineStep {
 /// panic.
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
-pub enum PipelineStepCommand {
+pub(crate) enum PipelineStepCommand {
   Timetree(Box<TreetimeTimetreeArgsRaw>),
   Optimize(TreetimeOptimizeArgsRaw),
   Prune(TreetimePruneArgsRaw),
@@ -90,7 +90,7 @@ impl PipelineStepCommand {
     }
   }
 
-  pub fn command_kind(&self) -> CommandKind {
+  pub(crate) fn command_kind(&self) -> CommandKind {
     match self {
       Self::Timetree(_) => CommandKind::Timetree,
       Self::Optimize(_) => CommandKind::Optimize,
@@ -149,7 +149,7 @@ impl PipelineStepCommand {
   }
 }
 
-pub struct RawStep {
+pub(crate) struct RawStep {
   pub name: String,
   pub tag: String,
   pub payload: Value,

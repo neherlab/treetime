@@ -114,14 +114,14 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn as_function(dist: Distribution<NegLog>) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn as_function(dist: Distribution<NegLog>) -> DistributionFunction<f64, NegLog> {
       match dist {
         Distribution::Function(f) => f,
         other => panic!("expected a Function distribution, got {other:?}"),
       }
     }
 
-    pub fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn exponential_neglog(lambda: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| -lambda.ln() + lambda * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -132,7 +132,7 @@ mod tests {
         .unwrap()
     }
 
-    pub fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn laplace_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(-t_max, t_max, n);
       let y = t.mapv(|ti| slope * ti.abs());
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -144,7 +144,7 @@ mod tests {
         .unwrap()
     }
 
-    pub fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+    pub(super) fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
       let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();

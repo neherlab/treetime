@@ -16,7 +16,7 @@ mod tests {
     use ndarray::prelude::*;
     use proptest::prelude::*;
 
-    pub fn arb_gtr_site_specific(seq_len: usize) -> impl Strategy<Value = GTRSiteSpecific> {
+    pub(super) fn arb_gtr_site_specific(seq_len: usize) -> impl Strategy<Value = GTRSiteSpecific> {
       (
         arb_w_nuc(),
         prop::collection::vec(arb_pi_nuc(), seq_len),
@@ -40,7 +40,7 @@ mod tests {
         })
     }
 
-    pub fn arb_gtr_site_specific_approx(seq_len: usize) -> impl Strategy<Value = GTRSiteSpecific> {
+    pub(super) fn arb_gtr_site_specific_approx(seq_len: usize) -> impl Strategy<Value = GTRSiteSpecific> {
       (
         arb_w_nuc(),
         prop::collection::vec(arb_pi_nuc(), seq_len),
@@ -359,7 +359,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn profile_times_transition(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
+    pub(super) fn profile_times_transition(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
       let n_sites = profile.nrows();
       let mut result = Array2::zeros(profile.raw_dim());
       for a in 0..n_sites {
@@ -368,7 +368,7 @@ mod tests {
       result
     }
 
-    pub fn profile_times_transition_t(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
+    pub(super) fn profile_times_transition_t(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
       let n_sites = profile.nrows();
       let mut result = Array2::zeros(profile.raw_dim());
       for a in 0..n_sites {
@@ -379,7 +379,7 @@ mod tests {
       result
     }
 
-    pub fn two_site_model() -> GTRSiteSpecific {
+    pub(super) fn two_site_model() -> GTRSiteSpecific {
       let pi = array![[0.25, 0.1], [0.25, 0.2], [0.25, 0.3], [0.25, 0.4]];
       GTRSiteSpecific::builder()
         .n_states(4)

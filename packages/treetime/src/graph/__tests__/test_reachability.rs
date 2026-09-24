@@ -28,7 +28,10 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
 
-    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph, Vec<GraphNodeKey>), Report> {
+    pub(super) fn graph_with_edges(
+      node_count: usize,
+      edges: &[(usize, usize)],
+    ) -> Result<(Graph, Vec<GraphNodeKey>), Report> {
       let mut graph = Graph::new();
       let keys = std::iter::repeat_with(|| graph.add_node())
         .take(node_count)

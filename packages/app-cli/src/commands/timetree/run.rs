@@ -36,7 +36,7 @@ use treetime_io::nwk::CommentProviders;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::create_file_or_stdout;
 
-pub fn run_timetree_estimation(
+pub(crate) fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
   cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,

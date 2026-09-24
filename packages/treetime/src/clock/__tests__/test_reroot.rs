@@ -385,7 +385,7 @@ mod tests {
         .collect()
     }
 
-    pub fn setup_reroot_test_graph_with_dates(
+    pub(super) fn setup_reroot_test_graph_with_dates(
       dates: &BTreeMap<String, f64>,
     ) -> Result<
       (
@@ -414,7 +414,7 @@ mod tests {
       Ok((graph, names, options, inputs, state, branch_lengths))
     }
 
-    pub fn setup_reroot_test_graph() -> Result<
+    pub(super) fn setup_reroot_test_graph() -> Result<
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,

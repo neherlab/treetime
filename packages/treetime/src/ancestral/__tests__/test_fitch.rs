@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
@@ -489,14 +489,14 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
-    pub fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
+    pub(crate) fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
       names[&key].clone().expect("node has name")
     }
 
-    pub fn collect_edge_subs(
+    pub(crate) fn collect_edge_subs(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
@@ -517,7 +517,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn get_root_variable_positions(graph: &Graph, partition: &PartitionFitch) -> Vec<usize> {
+    pub(crate) fn get_root_variable_positions(graph: &Graph, partition: &PartitionFitch) -> Vec<usize> {
       let root = graph.get_exactly_one_root().expect("graph has exactly one root");
       let root_key = root.key();
       partition.nodes[&root_key]
@@ -529,7 +529,7 @@ pub mod tests {
         .collect_vec()
     }
 
-    pub fn get_root_state_sets(graph: &Graph, partition: &PartitionFitch) -> BTreeMap<usize, String> {
+    pub(crate) fn get_root_state_sets(graph: &Graph, partition: &PartitionFitch) -> BTreeMap<usize, String> {
       let root = graph.get_exactly_one_root().expect("graph has exactly one root");
       let root_key = root.key();
       partition.nodes[&root_key]
@@ -541,7 +541,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn get_node_variable_positions_by_name(
+    pub(crate) fn get_node_variable_positions_by_name(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
@@ -562,13 +562,13 @@ pub mod tests {
       panic!("Node {name} not found");
     }
 
-    pub fn get_root_seq(graph: &Graph, partition: &PartitionFitch) -> String {
+    pub(crate) fn get_root_seq(graph: &Graph, partition: &PartitionFitch) -> String {
       let root = graph.get_exactly_one_root().expect("graph has exactly one root");
       let root_key = root.key();
       partition.nodes[&root_key].seq.sequence.as_str().to_owned()
     }
 
-    pub fn get_internal_sequences(
+    pub(crate) fn get_internal_sequences(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
@@ -583,7 +583,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn collect_edge_indels(
+    pub(crate) fn collect_edge_indels(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
@@ -604,6 +604,6 @@ pub mod tests {
         .collect()
     }
 
-    pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+    pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
   }
 }

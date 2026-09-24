@@ -156,7 +156,7 @@ pub(crate) fn run_optimize(
 /// Branch-length optimization request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct OptimizeArgs {
+pub(crate) struct OptimizeArgs {
   input_fastas: Vec<String>,
   tree: String,
   #[schema(value_type = Option<String>)]
@@ -215,7 +215,7 @@ impl OptimizeArgs {
 /// valid, because optimize has no sampling dates.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
-pub enum OptimizeRerootMethod {
+pub(crate) enum OptimizeRerootMethod {
   MinDev,
 }
 

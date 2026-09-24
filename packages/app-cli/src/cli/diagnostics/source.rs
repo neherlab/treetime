@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 use treetime_utils::{make_error, make_report};
 
-pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
+pub(crate) fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
   let options = serde_saphyr::options! {
     duplicate_keys: DuplicateKeyPolicy::Error,
     reject_non_finite_typeless_float: true,
@@ -28,7 +28,11 @@ pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value,
   }
 }
 
-pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Result<(), Report> {
+pub(crate) fn render_and_bail(
+  source: &ConfigSource,
+  top_message: &str,
+  diags: Vec<RawDiagnostic>,
+) -> Result<(), Report> {
   if diags.is_empty() {
     return Ok(());
   }
@@ -47,7 +51,7 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
   make_error!("{top_message}: {problems}").with_section(move || rendered.trim_end().to_owned())
 }
 
-pub struct RawDiagnostic {
+pub(crate) struct RawDiagnostic {
   pub pointer: Option<String>,
   pub use_key_span: bool,
   pub code: String,
@@ -95,7 +99,7 @@ impl RawDiagnostic {
   }
 }
 
-pub struct ConfigSource {
+pub(crate) struct ConfigSource {
   name: String,
   text: String,
   spans: BTreeMap<String, NodeSpan>,
@@ -251,7 +255,7 @@ fn byte_of(table: &[usize], char_index: usize) -> usize {
     .unwrap_or_else(|| table.last().copied().unwrap_or(0))
 }
 
-pub fn escape_pointer(segment: &str) -> String {
+pub(crate) fn escape_pointer(segment: &str) -> String {
   segment.replace('~', "~0").replace('/', "~1")
 }
 

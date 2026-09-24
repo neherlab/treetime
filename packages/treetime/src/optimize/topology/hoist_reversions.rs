@@ -11,7 +11,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 
-pub fn count_child_reversions(
+pub(crate) fn count_child_reversions(
   sparse: &[PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
@@ -57,7 +57,7 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
   (augmented, sibling_sourced)
 }
 
-pub fn slide_bifurcating_root_for_child(
+pub(crate) fn slide_bifurcating_root_for_child(
   sparse: &mut [PartitionMarginalSparse],
   node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
   root_key: GraphNodeKey,
@@ -128,7 +128,7 @@ pub fn slide_bifurcating_root_for_child(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn hoist_reverting_child(
+pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,

@@ -15,7 +15,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_grid::Side;
 
-pub fn propagate_distributions_forward(
+pub(crate) fn propagate_distributions_forward(
   graph: &Graph,
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

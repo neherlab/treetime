@@ -208,7 +208,7 @@ mod tests {
         .collect()
     }
 
-    pub fn write_json(nwk: &str) -> String {
+    pub(super) fn write_json(nwk: &str) -> String {
       let parse = nwk_read_str(nwk).unwrap();
       let names = parse.names();
       let confidences = parse.confidences();
@@ -226,11 +226,11 @@ mod tests {
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
-    pub fn write_and_read(nwk: &str) -> AugurNodeDataJsonRefine {
+    pub(super) fn write_and_read(nwk: &str) -> AugurNodeDataJsonRefine {
       json_read_str(write_json(nwk)).unwrap()
     }
 
-    pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
+    pub(super) fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read_str(nwk).unwrap();
       let names = parse.names();
       let confidences = parse.confidences();
@@ -253,7 +253,7 @@ mod tests {
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
 
-    pub fn project_root() -> PathBuf {
+    pub(super) fn project_root() -> PathBuf {
       PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())
@@ -261,7 +261,7 @@ mod tests {
         .expect("project has workspace root")
     }
 
-    pub fn build_augur_node_data_json_from_output(
+    pub(super) fn build_augur_node_data_json_from_output(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       output: &treetime::optimize::pipeline::OptimizeOutput,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,

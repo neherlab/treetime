@@ -211,9 +211,9 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
 
-    pub type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
+    pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
 
-    pub fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimetreeState {
+    pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimetreeState {
       let mut state = TimetreeState::new(graph);
       for (key, time, dist) in entries {
         let node = state.node_mut(*key);
@@ -223,7 +223,7 @@ mod tests {
       state
     }
 
-    pub fn add_named(
+    pub(super) fn add_named(
       graph: &mut Graph,
       names: &mut BTreeMap<GraphNodeKey, Option<String>>,
       name: Option<&str>,

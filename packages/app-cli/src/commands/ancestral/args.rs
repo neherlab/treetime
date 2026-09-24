@@ -36,7 +36,7 @@ pub(crate) fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams 
 }
 
 #[derive(Debug, Clone)]
-pub struct TreetimeAncestralArgs {
+pub(crate) struct TreetimeAncestralArgs {
   pub alignment: AlignmentArgs,
   pub vcf_reference: Option<PathBuf>,
   pub tree: PathBuf,
@@ -126,7 +126,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeAncestralArgsRaw {
+pub(crate) struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -338,7 +338,7 @@ pub struct TreetimeAncestralArgsRaw {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "SampleMode")]
-pub enum SampleModeCli {
+pub(crate) enum SampleModeCli {
   #[default]
   Argmax,
   Root,

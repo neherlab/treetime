@@ -208,7 +208,7 @@ fn validate_args(args: &PruneArgs) -> Result<(), Report> {
 /// Tree-pruning request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct PruneArgs {
+pub(crate) struct PruneArgs {
   input_fastas: Vec<String>,
   tree: String,
   #[schema(value_type = Option<String>)]

@@ -68,11 +68,11 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn c(b: u8) -> AsciiChar {
+    pub(super) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn seq(s: &str) -> Seq {
+    pub(super) fn seq(s: &str) -> Seq {
       Seq::try_from_str(s).unwrap()
     }
   }

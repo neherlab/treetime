@@ -22,15 +22,15 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub const GRID_POINTS: usize = 300;
+pub(crate) const GRID_POINTS: usize = 300;
 
-pub const EPS: f64 = 5e-4;
+pub(crate) const EPS: f64 = 5e-4;
 
 #[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-pub fn run_timetree(
+pub(crate) fn run_timetree(
   graph: &Graph,
   constraints: &DateConstraints,
   partitions: &[PartitionTimetree],
@@ -71,9 +71,9 @@ pub fn run_timetree(
   Ok(state)
 }
 
-pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
+pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 
-pub fn commit_clock_branch_lengths(
+pub(crate) fn commit_clock_branch_lengths(
   graph: &Graph,
   clock_rate: f64,
   damping: f64,
@@ -231,7 +231,7 @@ pub(super) fn create_branch_distributions_input_mode(
   Ok(())
 }
 
-pub fn timetree_branch_lengths(
+pub(crate) fn timetree_branch_lengths(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,

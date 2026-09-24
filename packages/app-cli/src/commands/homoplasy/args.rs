@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-pub struct TreetimeHomoplasyArgs {
+pub(crate) struct TreetimeHomoplasyArgs {
   pub ancestral_args: TreetimeAncestralArgs,
   pub constant_sites: Option<usize>,
   pub rescale: bool,
@@ -36,7 +36,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeHomoplasyArgsRaw {
+pub(crate) struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub ancestral_args: TreetimeAncestralArgsRaw,
 

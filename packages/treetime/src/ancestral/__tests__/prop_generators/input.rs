@@ -49,7 +49,7 @@ fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
 }
 
 #[derive(Debug, Clone)]
-pub struct MarginalTestInput {
+pub(crate) struct MarginalTestInput {
   pub newick: String,
   pub alignment: Vec<AlignmentRecord>,
   pub gtr: GTR,
@@ -78,7 +78,7 @@ fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Strateg
     })
 }
 
-pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
+pub(crate) fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
 
@@ -99,11 +99,11 @@ pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strateg
     })
 }
 
-pub fn arb_marginal_input() -> impl Strategy<Value = MarginalTestInput> {
+pub(crate) fn arb_marginal_input() -> impl Strategy<Value = MarginalTestInput> {
   (3_usize..=6, 5_usize..=20).prop_flat_map(|(n_taxa, seq_len)| arb_marginal_input_with_params(n_taxa, seq_len))
 }
 
-pub fn arb_marginal_input_small() -> impl Strategy<Value = MarginalTestInput> {
+pub(crate) fn arb_marginal_input_small() -> impl Strategy<Value = MarginalTestInput> {
   (3_usize..=4, 3_usize..=10).prop_flat_map(|(n_taxa, seq_len)| arb_marginal_input_with_params(n_taxa, seq_len))
 }
 

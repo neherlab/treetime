@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
-pub fn resolve_variable_positions_backward(
+pub(crate) fn resolve_variable_positions_backward(
   children: &[(&FitchSeqInfo, &SparseEdgeObs)],
   discovered: &[usize],
   non_char: &[(usize, usize)],
@@ -76,7 +76,7 @@ pub fn resolve_variable_positions_backward(
   variable
 }
 
-pub fn discover_fixed_disagreements_backward(
+pub(crate) fn discover_fixed_disagreements_backward(
   children: &[(&FitchSeqInfo, &SparseEdgeObs)],
   alphabet: &Alphabet,
   sequence: &mut Seq,
@@ -103,7 +103,7 @@ pub fn discover_fixed_disagreements_backward(
   discovered
 }
 
-pub fn resolve_root_forward(
+pub(crate) fn resolve_root_forward(
   sequence: &mut Seq,
   variable: &BTreeMap<usize, StateSet>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
@@ -116,7 +116,7 @@ pub fn resolve_root_forward(
   }
 }
 
-pub fn resolve_nonroot_substitutions_forward(
+pub(crate) fn resolve_nonroot_substitutions_forward(
   sequence: &mut Seq,
   gaps: &[(usize, usize)],
   variable: &mut BTreeMap<usize, StateSet>,
@@ -171,7 +171,7 @@ fn choose_state(states: StateSet, alphabet: &Alphabet) -> AsciiChar {
   alphabet.first_canonical(states).unwrap_or_else(|| states.get_one())
 }
 
-pub fn finalize_sequence_forward(
+pub(crate) fn finalize_sequence_forward(
   sequence: &mut Seq,
   gaps: &[(usize, usize)],
   unknown: &[(usize, usize)],

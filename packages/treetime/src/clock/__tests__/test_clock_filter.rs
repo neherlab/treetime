@@ -149,7 +149,7 @@ mod tests {
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
 
-    pub fn setup_low_cardinality_graph(
+    pub(super) fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
     ) -> Result<
       (

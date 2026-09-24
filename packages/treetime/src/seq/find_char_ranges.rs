@@ -1,12 +1,12 @@
 use treetime_primitives::{AsciiChar, Seq};
 
 #[inline]
-pub fn find_letter_ranges(seq: &Seq, letter: AsciiChar) -> Vec<(usize, usize)> {
+pub(crate) fn find_letter_ranges(seq: &Seq, letter: AsciiChar) -> Vec<(usize, usize)> {
   find_letter_ranges_by(seq, |candidate: AsciiChar| candidate == letter)
 }
 
 #[inline]
-pub fn find_letter_ranges_by<F>(seq: &Seq, pred: F) -> Vec<(usize, usize)>
+pub(crate) fn find_letter_ranges_by<F>(seq: &Seq, pred: F) -> Vec<(usize, usize)>
 where
   F: Fn(AsciiChar) -> bool + Copy,
 {

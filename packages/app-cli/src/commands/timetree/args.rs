@@ -29,10 +29,10 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
   Ok(n)
 }
 
-pub use treetime::timetree::params::TimeMarginalMode;
+pub(crate) use treetime::timetree::params::TimeMarginalMode;
 
 #[derive(Debug, Clone)]
-pub struct TreetimeTimetreeArgs {
+pub(crate) struct TreetimeTimetreeArgs {
   pub alignment: AlignmentArgs,
   pub tree: Option<PathBuf>,
   pub vcf_reference: Option<PathBuf>,
@@ -177,7 +177,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeTimetreeArgsRaw {
+pub(crate) struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -571,7 +571,7 @@ pub struct TreetimeTimetreeArgsRaw {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "TimeMarginalMode")]
-pub enum TimeMarginalModeCli {
+pub(crate) enum TimeMarginalModeCli {
   #[default]
   Never,
   Always,

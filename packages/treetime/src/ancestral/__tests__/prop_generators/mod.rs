@@ -1,4 +1,4 @@
-pub mod alignment;
-pub mod branch_length;
-pub mod input;
-pub mod tree;
+pub(super) mod alignment;
+pub(super) mod branch_length;
+pub(super) mod input;
+pub(super) mod tree;

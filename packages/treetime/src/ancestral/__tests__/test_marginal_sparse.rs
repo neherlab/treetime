@@ -523,7 +523,7 @@ mod tests {
     use super::*;
     use rayon::ThreadPoolBuilder;
 
-    pub fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
+    pub(super) fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
       let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
       let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
@@ -579,7 +579,7 @@ mod tests {
         .collect()
     }
 
-    pub fn expected_edge_subs_by_edge(
+    pub(super) fn expected_edge_subs_by_edge(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalSparse,

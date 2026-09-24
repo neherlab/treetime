@@ -121,7 +121,7 @@ mod tests {
     use treetime_utils::io::json::json_read_file;
 
     #[derive(Debug, Deserialize)]
-    pub struct GmMugrationInput {
+    pub(super) struct GmMugrationInput {
       tree_path: String,
       metadata_path: String,
       attribute: String,
@@ -130,7 +130,7 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct GmMugrationParameters {
+    pub(super) struct GmMugrationParameters {
       pub missing_data: String,
       pub pc: Option<f64>,
       pub sampling_bias_correction: Option<f64>,
@@ -139,13 +139,13 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct GmMugrationOutput {
+    pub(super) struct GmMugrationOutput {
       pub states: Vec<String>,
       pub trait_assignments: BTreeMap<String, String>,
       pub confidence: BTreeMap<String, Vec<f64>>,
     }
 
-    pub fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {
+    pub(super) fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {
       let path = format!(
         "{}/src/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
         env!("CARGO_MANIFEST_DIR")
@@ -153,7 +153,7 @@ mod tests {
       json_read_file(&path).unwrap()
     }
 
-    pub fn load_gm_mugration_outputs() -> IndexMap<String, GmMugrationOutput> {
+    pub(super) fn load_gm_mugration_outputs() -> IndexMap<String, GmMugrationOutput> {
       let path = format!(
         "{}/src/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
         env!("CARGO_MANIFEST_DIR")
@@ -161,7 +161,7 @@ mod tests {
       json_read_file(&path).unwrap()
     }
 
-    pub fn run_gm_mugration_case(
+    pub(super) fn run_gm_mugration_case(
       fixture: &GmMugrationInput,
     ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -218,11 +218,11 @@ mod tests {
       Ok((output, names))
     }
 
-    pub fn states_vec(output: &MugrationOutput) -> Vec<String> {
+    pub(super) fn states_vec(output: &MugrationOutput) -> Vec<String> {
       output.states.iter().map(|s| s.to_owned()).collect()
     }
 
-    pub fn trait_assignments_by_name(
+    pub(super) fn trait_assignments_by_name(
       output: &MugrationOutput,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
     ) -> BTreeMap<String, String> {
@@ -237,7 +237,7 @@ mod tests {
         .collect()
     }
 
-    pub fn confidence_by_name(
+    pub(super) fn confidence_by_name(
       output: &MugrationOutput,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
     ) -> BTreeMap<String, Array1<f64>> {

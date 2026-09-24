@@ -13,6 +13,7 @@ mod mutation_detailed {
   #![allow(
     dead_code,
     unnameable_types,
+    unreachable_pub,
     unknown_lints,
     no_comments,
     topological_ordering,
@@ -25,6 +26,7 @@ mod parsimony {
   #![allow(
     dead_code,
     unnameable_types,
+    unreachable_pub,
     unknown_lints,
     no_comments,
     topological_ordering,
@@ -37,6 +39,7 @@ mod taxodium {
   #![allow(
     dead_code,
     unnameable_types,
+    unreachable_pub,
     unknown_lints,
     no_comments,
     topological_ordering,

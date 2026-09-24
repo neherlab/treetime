@@ -389,9 +389,9 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_utils::o;
 
-    pub type Names = BTreeMap<GraphNodeKey, String>;
+    pub(super) type Names = BTreeMap<GraphNodeKey, String>;
 
-    pub fn fixture_tree() -> Result<(Graph, Names), Report> {
+    pub(super) fn fixture_tree() -> Result<(Graph, Names), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let ab = graph.add_node();
@@ -416,7 +416,7 @@ mod tests {
       Ok((graph, names))
     }
 
-    pub fn fixture_chain() -> Result<(Graph, Vec<GraphNodeKey>), Report> {
+    pub(super) fn fixture_chain() -> Result<(Graph, Vec<GraphNodeKey>), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let mid = graph.add_node();
@@ -427,7 +427,7 @@ mod tests {
       Ok((graph, vec![root, mid, leaf]))
     }
 
-    pub fn fixture_ordering() -> Result<(Graph, GraphNodeKey), Report> {
+    pub(super) fn fixture_ordering() -> Result<(Graph, GraphNodeKey), Report> {
       let mut graph = Graph::new();
       let parent = graph.add_node();
       let first_child = graph.add_node();
@@ -438,12 +438,12 @@ mod tests {
       Ok((graph, parent))
     }
 
-    pub fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
+    pub(super) fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
       let node = graph.get_node(parent).expect("Parent must exist");
       graph.children_of(node).map(|(child, _)| child.key()).collect()
     }
 
-    pub fn own_value_pass_values(
+    pub(super) fn own_value_pass_values(
       graph: &Graph,
       names: &Names,
     ) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
@@ -465,7 +465,7 @@ mod tests {
       (nodes, edges)
     }
 
-    pub fn run_backward_sum(
+    pub(super) fn run_backward_sum(
       graph: &Graph,
       names: &Names,
       threads: usize,
@@ -488,7 +488,7 @@ mod tests {
       })
     }
 
-    pub fn run_forward_sum(
+    pub(super) fn run_forward_sum(
       graph: &Graph,
       names: &Names,
       threads: usize,
@@ -511,7 +511,7 @@ mod tests {
       })
     }
 
-    pub fn edge_values_by_child_name(
+    pub(super) fn edge_values_by_child_name(
       graph: &Graph,
       names: &Names,
       values: &BTreeMap<GraphEdgeKey, usize>,
@@ -525,7 +525,7 @@ mod tests {
         .collect()
     }
 
-    pub fn values_by_name(names: &Names, values: &BTreeMap<GraphNodeKey, usize>) -> BTreeMap<String, usize> {
+    pub(super) fn values_by_name(names: &Names, values: &BTreeMap<GraphNodeKey, usize>) -> BTreeMap<String, usize> {
       values.iter().map(|(key, value)| (names[key].clone(), *value)).collect()
     }
   }

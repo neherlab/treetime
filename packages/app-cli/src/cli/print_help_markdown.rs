@@ -5,7 +5,7 @@ use regex::Regex;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-pub fn print_help_markdown() -> Result<(), Report> {
+pub(crate) fn print_help_markdown() -> Result<(), Report> {
   let help = help_markdown()?;
 
   writeln!(io::stdout().lock(), "{help}").wrap_err("When writing help to standard output")?;

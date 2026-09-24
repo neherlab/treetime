@@ -4,7 +4,7 @@
 )]
 
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::ancestral_result::AncestralNodeOut;
   use crate::ancestral_tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
   use crate::clock_tree_output::{clock_to_auspice, clock_to_mat};
@@ -270,7 +270,7 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
     use crate::ancestral_result::AncestralOutputMaps;
     use crate::clock_result::ClockNodeOut;
@@ -303,7 +303,7 @@ pub mod tests {
     const MODEL_TREE: &str = "(A:0.1,B:0,C:0.5)root;";
 
     #[derive(Clone, Copy)]
-    pub enum Mutations {
+    pub(crate) enum Mutations {
       None,
       NucleotideSubstitution,
       Indel,
@@ -311,7 +311,7 @@ pub mod tests {
       IndelAndAminoAcid,
     }
 
-    pub fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
+    pub(crate) fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
       let Some(partition) = partition else {
         return AncestralOutputMaps::default();
       };
@@ -355,7 +355,7 @@ pub mod tests {
       BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
     );
 
-    pub fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
+    pub(crate) fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
       let nwk_parsed = nwk_read_str("(A:0.5,B:0)root;")?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -439,7 +439,7 @@ pub mod tests {
       ))
     }
 
-    pub fn ancestral_nodes(
+    pub(crate) fn ancestral_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -459,7 +459,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn ancestral_confidences(
+    pub(crate) fn ancestral_confidences(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
@@ -470,7 +470,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn ancestral_graph_without_partition() -> Result<
+    pub(crate) fn ancestral_graph_without_partition() -> Result<
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
@@ -485,7 +485,7 @@ pub mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub fn all_auspice_documents() -> Result<Vec<Value>, Report> {
+    pub(crate) fn all_auspice_documents() -> Result<Vec<Value>, Report> {
       let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition, ancestral_aa, ancestral_aa_annotations) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
@@ -540,7 +540,7 @@ pub mod tests {
         .collect()
     }
 
-    pub fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
+    pub(crate) fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
       let (ancestral, ancestral_names, mut ancestral_bl) = ancestral_graph_without_partition()?;
       set_mat_branch_lengths(&ancestral, &ancestral_names, &mut ancestral_bl)?;
       let (optimize, optimize_names, mut optimize_bl) = optimize_graph()?;
@@ -571,7 +571,7 @@ pub mod tests {
       ])
     }
 
-    pub fn auspice_validator() -> Result<Validator, Report> {
+    pub(crate) fn auspice_validator() -> Result<Validator, Report> {
       let schema = json_read_str(AUSPICE_SCHEMA)?;
       Ok(
         jsonschema::draft6::options()
@@ -580,7 +580,7 @@ pub mod tests {
       )
     }
 
-    pub fn optimize_auspice_without_required_node_data() -> Result<AuspiceTree, Report> {
+    pub(crate) fn optimize_auspice_without_required_node_data() -> Result<AuspiceTree, Report> {
       let (graph, names, mut branch_lengths) = optimize_graph()?;
       set_branch_length(&graph, &names, &mut branch_lengths, "A", None)?;
       optimize_to_auspice(
@@ -592,7 +592,7 @@ pub mod tests {
       )
     }
 
-    pub fn auspice_child<'a>(tree: &'a AuspiceTree, name: &str) -> &'a AuspiceTreeNode {
+    pub(crate) fn auspice_child<'a>(tree: &'a AuspiceTree, name: &str) -> &'a AuspiceTreeNode {
       tree
         .tree
         .children
@@ -601,7 +601,7 @@ pub mod tests {
         .expect("fixture child must exist")
     }
 
-    pub fn branch_length(
+    pub(crate) fn branch_length(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -623,7 +623,7 @@ pub mod tests {
         .expect("fixture node must exist")
     }
 
-    pub fn c(value: u8) -> AsciiChar {
+    pub(crate) fn c(value: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(value)
     }
 

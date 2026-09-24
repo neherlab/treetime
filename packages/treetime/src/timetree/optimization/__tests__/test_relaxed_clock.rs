@@ -370,7 +370,7 @@ mod tests {
     use super::*;
 
     #[derive(Deserialize)]
-    pub struct GmInput {
+    pub(super) struct GmInput {
       pub name: String,
       pub newick: String,
       pub clock_rate: f64,
@@ -381,31 +381,31 @@ mod tests {
     }
 
     #[derive(Deserialize)]
-    pub struct GmBranchInput {
+    pub(super) struct GmBranchInput {
       pub clock_length: f64,
     }
 
     #[derive(Deserialize)]
-    pub struct GmOutput {
+    pub(super) struct GmOutput {
       pub name: String,
       pub gammas: BTreeMap<String, f64>,
     }
 
-    pub fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, branch_lengths))
     }
 
-    pub fn build_deep_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn build_deep_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, branch_lengths))
     }
 
-    pub fn seed_state_scaled(
+    pub(super) fn seed_state_scaled(
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       factor: f64,
@@ -417,7 +417,7 @@ mod tests {
       state
     }
 
-    pub fn compute_variance(values: &[f64]) -> f64 {
+    pub(super) fn compute_variance(values: &[f64]) -> f64 {
       let n = values.len() as f64;
       let mean = values.iter().sum::<f64>() / n;
       values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n

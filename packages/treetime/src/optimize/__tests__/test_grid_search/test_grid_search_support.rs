@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::likelihood::evaluate_mixed;
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
@@ -8,12 +8,12 @@ pub mod tests {
   use ndarray::Array2;
   use ordered_float::OrderedFloat;
 
-  pub fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
+  pub(crate) fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
     OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
-  pub fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
+  pub(crate) fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
     let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
 
     branch_lengths

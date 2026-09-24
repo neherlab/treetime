@@ -9,7 +9,7 @@ use treetime_primitives::LogLh;
   single_use_lifetimes,
   reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
 )]
-pub fn evaluate_site_contributions<'a>(
+pub(crate) fn evaluate_site_contributions<'a>(
   sites: impl Iterator<Item = (f64, ArrayView1<'a, f64>)>,
   eigvals: &Array1<f64>,
   branch_length: f64,

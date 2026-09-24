@@ -3,14 +3,14 @@ use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::optimize;
 use eyre::Report;
 
-pub fn evaluate_dense_contribution(
+pub(crate) fn evaluate_dense_contribution(
   contribution: &optimize::dense::PartitionContribution,
   branch_length: f64,
 ) -> Result<OptimizationMetrics, Report> {
   evaluate_dense_contribution_impl(contribution, branch_length, true)
 }
 
-pub fn evaluate_dense_contribution_impl(
+pub(crate) fn evaluate_dense_contribution_impl(
   contribution: &optimize::dense::PartitionContribution,
   branch_length: f64,
   compute_derivatives: bool,

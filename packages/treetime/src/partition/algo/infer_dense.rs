@@ -1,3 +1,3 @@
-pub fn infer_dense() -> bool {
+pub(crate) fn infer_dense() -> bool {
   false
 }

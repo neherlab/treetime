@@ -1,15 +1,15 @@
-pub mod convolve;
-pub mod divide;
-pub mod edge_convolution;
-pub mod map;
-pub mod mass_domain;
-pub mod multiply;
-pub mod multiply_by_fn;
-pub mod negate;
-pub mod product;
-pub mod scalar_multiply;
-pub mod subtract;
-pub mod time_bounds;
+pub(crate) mod convolve;
+pub(crate) mod divide;
+pub(crate) mod edge_convolution;
+pub(crate) mod map;
+pub(crate) mod mass_domain;
+pub(crate) mod multiply;
+pub(crate) mod multiply_by_fn;
+pub(crate) mod negate;
+pub(crate) mod product;
+pub(crate) mod scalar_multiply;
+pub(crate) mod subtract;
+pub(crate) mod time_bounds;
 
 #[cfg(test)]
 mod __tests__;

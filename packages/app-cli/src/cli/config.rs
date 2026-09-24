@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use treetime_utils::io::fs::read_file_to_string;
 
-pub fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
+pub(crate) fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
   T: Serialize + DeserializeOwned + Default + JsonSchema,
 {

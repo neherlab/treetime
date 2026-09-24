@@ -16,7 +16,7 @@ use treetime_utils::{make_error, make_report};
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn estimate_indel_rate(
+pub(crate) fn estimate_indel_rate(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -42,7 +42,7 @@ pub fn estimate_indel_rate(
   }
 }
 
-pub fn total_indel_log_lh(
+pub(crate) fn total_indel_log_lh(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -74,7 +74,7 @@ pub fn total_indel_log_lh(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
+pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
   validate_branch_length_value(t)?;
 
   if mu == 0.0 {

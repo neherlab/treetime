@@ -161,7 +161,7 @@ mod tests {
     use treetime_primitives::LogLh;
 
     #[derive(Clone, Deserialize)]
-    pub struct GmOptimizeCase {
+    pub(super) struct GmOptimizeCase {
       pub tree: String,
       pub aln: String,
       pub damping: f64,
@@ -169,12 +169,12 @@ mod tests {
     }
 
     #[derive(Deserialize)]
-    pub struct GmOptimizeExpected {
+    pub(super) struct GmOptimizeExpected {
       pub final_total_branch_length: f64,
       pub final_branch_lengths: BTreeMap<String, f64>,
     }
 
-    pub struct OptimizeResult {
+    pub(super) struct OptimizeResult {
       pub graph: Graph,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
       pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -182,21 +182,21 @@ mod tests {
       pub stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }
 
-    pub fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {
+    pub(super) fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {
       let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src/optimize/__tests__/__fixtures__/gm_optimize_inputs.json");
       let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
-    pub fn load_gm_outputs() -> BTreeMap<String, GmOptimizeExpected> {
+    pub(super) fn load_gm_outputs() -> BTreeMap<String, GmOptimizeExpected> {
       let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json");
       let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
-    pub fn setup_and_run(
+    pub(super) fn setup_and_run(
       workspace_root: &Path,
       case: &GmOptimizeCase,
       method: BranchOptMethod,

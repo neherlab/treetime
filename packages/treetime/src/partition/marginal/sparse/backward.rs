@@ -16,7 +16,7 @@ use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOut
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
-pub fn process_backward_indexed(
+pub(crate) fn process_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   graph: &Graph,

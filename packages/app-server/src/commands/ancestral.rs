@@ -218,7 +218,7 @@ fn read_nwk_fasta(
 /// Ancestral reconstruction request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct AncestralArgs {
+pub(crate) struct AncestralArgs {
   input_fastas: Vec<String>,
   aln: Option<String>,
   vcf_reference: Option<String>,

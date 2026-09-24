@@ -7,7 +7,7 @@ use std::iter::once;
 
 const SPATIAL_PLOT_SIZE: (u32, u32) = (1200, 900);
 
-pub fn plot_spatial_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_spatial_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {

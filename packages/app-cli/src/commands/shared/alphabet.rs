@@ -15,7 +15,7 @@ use treetime::alphabet::alphabet::AlphabetName;
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct AlphabetArgs {
+pub(crate) struct AlphabetArgs {
   /// Sequence alphabet
   ///
   /// When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
@@ -34,7 +34,7 @@ impl AlphabetArgs {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "AlphabetName")]
-pub enum AlphabetNameCli {
+pub(crate) enum AlphabetNameCli {
   #[default]
   Nuc,
   Aa,

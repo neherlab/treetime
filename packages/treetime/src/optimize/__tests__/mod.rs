@@ -1,7 +1,7 @@
 mod test_branch_length_validation;
 mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;
-pub mod test_convergence;
+pub(super) mod test_convergence;
 mod test_convergence_conditions;
 mod test_convergence_sc2;
 mod test_damping;

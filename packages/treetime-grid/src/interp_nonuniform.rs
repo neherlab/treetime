@@ -5,7 +5,12 @@ use ndarray::Array1;
 use num::Float;
 use treetime_utils::make_error;
 
-pub fn interp_nonuniform<T, F>(x: &Array1<T>, y: &Array1<T>, n_query: usize, x_query_fn: F) -> Result<Array1<T>, Report>
+pub(crate) fn interp_nonuniform<T, F>(
+  x: &Array1<T>,
+  y: &Array1<T>,
+  n_query: usize,
+  x_query_fn: F,
+) -> Result<Array1<T>, Report>
 where
   T: Float,
   F: Fn(usize) -> T,

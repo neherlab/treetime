@@ -26,7 +26,7 @@ use treetime::progress::ProgressSink;
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
 
-pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
+pub(crate) fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
   let text = read_file_to_string(config)?;
   let source = ConfigSource::new(config.display().to_string(), text.clone());
 
@@ -44,7 +44,7 @@ fn process_env() -> Value {
   Value::Object(env)
 }
 
-pub fn run_pipeline(
+pub(crate) fn run_pipeline(
   pipeline: &ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
   progress: &dyn ProgressSink,

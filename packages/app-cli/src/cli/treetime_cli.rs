@@ -27,7 +27,7 @@ use treetime_utils::make_report;
 static SHELLS: LazyLock<Vec<&'static str>> =
   LazyLock::new(|| vec!["bash", "elvish", "fish", "fig", "powershell", "zsh"]);
 
-pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
+pub(crate) fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   let mut command = TreetimeArgs::command();
 
   if shell.to_lowercase() == "fig" {
@@ -45,7 +45,7 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   Ok(())
 }
 
-pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
+pub(crate) fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   let matches = TreetimeArgs::command().get_matches();
   let mut args = TreetimeArgs::from_arg_matches(&matches)?;
   setup_logger(args.verbosity.get_filter_level());
@@ -66,7 +66,7 @@ pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
 ///
 /// Documentation: https://treetime.readthedocs.io/en/stable/
 /// Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
-pub struct TreetimeArgs {
+pub(crate) struct TreetimeArgs {
   #[clap(flatten, next_help_heading = "Parallelism")]
   pub jobs: Jobs,
 
@@ -93,7 +93,7 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
 #[derive(Subcommand, Debug, Serialize)]
 #[clap(verbatim_doc_comment)]
 #[serde(rename_all = "kebab-case")]
-pub enum TreetimeCommands {
+pub(crate) enum TreetimeCommands {
   /// Generate shell completions.
   ///
   /// This will print the completions file contents to the console. Refer to your shell's documentation on how to install the completions.
@@ -153,7 +153,7 @@ pub enum TreetimeCommands {
 }
 
 #[derive(Parser, Debug, Serialize)]
-pub struct TreetimePipelineArgs {
+pub(crate) struct TreetimePipelineArgs {
   /// Pipeline configuration file (JSON or YAML) describing an ordered list of steps.
   #[clap(long, value_hint = ValueHint::FilePath)]
   pub config: PathBuf,
@@ -170,7 +170,7 @@ pub struct TreetimePipelineArgs {
 }
 
 #[derive(Parser, Debug, Serialize)]
-pub struct TreetimeSchemaArgs {
+pub(crate) struct TreetimeSchemaArgs {
   /// Which schema to generate
   #[clap(long = "for", value_enum, default_value_t = SchemaTarget::default())]
   pub target: SchemaTarget,
@@ -181,7 +181,7 @@ pub struct TreetimeSchemaArgs {
 }
 
 #[derive(Parser, Debug, Serialize)]
-pub struct TreetimeAncestralReassortmentGraphArgs;
+pub(crate) struct TreetimeAncestralReassortmentGraphArgs;
 
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where

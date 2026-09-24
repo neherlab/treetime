@@ -172,25 +172,25 @@ mod tests {
     use treetime_utils::array::serde::{array1_from_vec, array2_from_vec, option_array1_from_vec};
 
     #[derive(Debug, Deserialize)]
-    pub struct JC69Input {
+    pub(super) struct JC69Input {
       pub mu: f64,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct K80Input {
+    pub(super) struct K80Input {
       pub mu: f64,
       pub kappa: f64,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct F81Input {
+    pub(super) struct F81Input {
       pub mu: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
       pub pi: Option<Array1<f64>>,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct HKY85Input {
+    pub(super) struct HKY85Input {
       pub mu: f64,
       pub kappa: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
@@ -198,14 +198,14 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct T92Input {
+    pub(super) struct T92Input {
       pub mu: f64,
       pub kappa: f64,
       pub pi_gc: f64,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct TN93Input {
+    pub(super) struct TN93Input {
       pub mu: f64,
       pub kappa1: f64,
       pub kappa2: f64,
@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct CustomInput {
+    pub(super) struct CustomInput {
       pub mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
       pub pi: Array1<f64>,
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct AllInputs {
+    pub(super) struct AllInputs {
       pub jc69: IndexMap<String, JC69Input>,
       pub k80: IndexMap<String, K80Input>,
       pub f81: IndexMap<String, F81Input>,
@@ -234,14 +234,14 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct ExpQtEntry {
+    pub(super) struct ExpQtEntry {
       time: f64,
       #[serde(rename = "expQt", deserialize_with = "array2_from_vec")]
       exp_qt: Array2<f64>,
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct GtrOutput {
+    pub(super) struct GtrOutput {
       mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
       pi: Array1<f64>,
@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[derive(Debug, Deserialize)]
-    pub struct AllOutputs {
+    pub(super) struct AllOutputs {
       pub jc69: IndexMap<String, GtrOutput>,
       pub k80: IndexMap<String, GtrOutput>,
       pub f81: IndexMap<String, GtrOutput>,
@@ -266,7 +266,7 @@ mod tests {
       pub custom: IndexMap<String, GtrOutput>,
     }
 
-    pub fn load_gm_gtr_inputs() -> AllInputs {
+    pub(super) fn load_gm_gtr_inputs() -> AllInputs {
       let path = format!(
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json",
         env!("CARGO_MANIFEST_DIR")
@@ -275,7 +275,7 @@ mod tests {
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 
-    pub fn load_gm_gtr_outputs() -> AllOutputs {
+    pub(super) fn load_gm_gtr_outputs() -> AllOutputs {
       let path = format!(
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json",
         env!("CARGO_MANIFEST_DIR")
@@ -284,7 +284,7 @@ mod tests {
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 
-    pub fn compare_gtr(gtr: &GTR, expected: &GtrOutput) {
+    pub(super) fn compare_gtr(gtr: &GTR, expected: &GtrOutput) {
       assert_abs_diff_eq!(gtr.mu, expected.mu, epsilon = 1e-14);
       assert_abs_diff_eq!(gtr.pi, expected.pi, epsilon = 1e-14);
       assert_abs_diff_eq!(gtr.W, expected.w, epsilon = 1e-14);

@@ -16,7 +16,7 @@ const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct MetadataIdArgs {
+pub(crate) struct MetadataIdArgs {
   /// Candidate column name(s) holding the taxon identifier that links metadata to tree tips
   ///
   /// The first listed column that is present in the header is used. Matching is case-insensitive.
@@ -52,7 +52,7 @@ pub struct MetadataIdArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct DateColumnArgs {
+pub(crate) struct DateColumnArgs {
   /// Label of the column to be used as sampling date (auto-detected when omitted)
   #[cfg_attr(feature = "clap", clap(long = "date-column", value_name = "COLUMN"))]
   pub date_column: Option<String>,

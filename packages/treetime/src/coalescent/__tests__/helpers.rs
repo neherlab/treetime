@@ -12,7 +12,7 @@ use treetime_utils::o;
 
 const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
 
-pub fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
   let dates = btreemap! {
     o!("root") => Some(DateConstraint::exact(2000.0)),
     o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -28,6 +28,6 @@ pub fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, D
   Ok((graph, names, constraints))
 }
 
-pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
+pub(crate) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
   TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
 }

@@ -423,15 +423,15 @@ mod tests {
     use maplit::btreemap;
     use treetime_primitives::{AsciiChar, Seq};
 
-    pub fn c(b: u8) -> AsciiChar {
+    pub(super) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub struct Hoisted {
+    pub(super) struct Hoisted {
       pub v: GraphNodeKey,
       pub un: GraphEdgeKey,
       pub nv: GraphEdgeKey,
@@ -463,15 +463,15 @@ mod tests {
       }
     }
 
-    pub fn edge_subs(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<Sub> {
+    pub(super) fn edge_subs(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<Sub> {
       recon.obs_edges[&edge_key].fitch_subs().to_vec()
     }
 
-    pub fn edge_indels(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    pub(super) fn edge_indels(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<InDel> {
       recon.obs_edges[&edge_key].indels.clone()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
+    pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .filter_map(|e| recon.obs_edges.get(&e.key()))
@@ -479,7 +479,7 @@ mod tests {
         .sum()
     }
 
-    pub fn make_partition(
+    pub(super) fn make_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,

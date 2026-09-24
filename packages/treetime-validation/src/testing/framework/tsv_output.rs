@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use treetime_utils::make_error;
 
-pub fn generate_tsv_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
+pub(crate) fn generate_tsv_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
 where
   T: TestCase,
 {

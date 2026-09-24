@@ -77,7 +77,7 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
   }
 }
 
-pub fn try_extract_aligned_function_arrays<'a>(
+pub(crate) fn try_extract_aligned_function_arrays<'a>(
   distributions: &'a [&'a ScaledDistribution],
 ) -> Option<AlignedFunctionArrays<'a>> {
   let first = distributions.first()?;
@@ -106,7 +106,7 @@ pub fn try_extract_aligned_function_arrays<'a>(
   Some(AlignedFunctionArrays { arrays, x_min, dx })
 }
 
-pub struct AlignedFunctionArrays<'a> {
+pub(crate) struct AlignedFunctionArrays<'a> {
   arrays: Vec<&'a Array1<f64>>,
   x_min: f64,
   dx: f64,

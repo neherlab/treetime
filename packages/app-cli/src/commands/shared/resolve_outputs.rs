@@ -8,7 +8,7 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use eyre::Report;
 use std::path::Path;
 
-pub trait ResolveOutputs {
+pub(crate) trait ResolveOutputs {
   fn command_kind(&self) -> CommandKind;
 
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;

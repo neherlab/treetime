@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -643,18 +643,18 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
-    pub fn c(b: u8) -> AsciiChar {
+    pub(crate) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    pub(crate) fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn empty_sparse_recon() -> Result<SparseReconstruction, Report> {
+    pub(crate) fn empty_sparse_recon() -> Result<SparseReconstruction, Report> {
       Ok(SparseReconstruction {
         partition: PartitionMarginalSparse {
           index: 0,
@@ -670,7 +670,7 @@ pub mod tests {
       })
     }
 
-    pub fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
+    pub(crate) fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
       let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
         .take(recon.partition.length)
         .collect();

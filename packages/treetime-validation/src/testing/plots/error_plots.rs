@@ -9,7 +9,7 @@ const ABSOLUTE_ERROR_PLOT_SIZE: (u32, u32) = (960, 480);
 const TOLERANCE_PLOT_SIZE: (u32, u32) = (800, 600);
 const ERROR_HISTOGRAM_PLOT_SIZE: (u32, u32) = (960, 640);
 
-pub fn plot_absolute_error<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_absolute_error<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {
@@ -65,7 +65,7 @@ where
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {
@@ -125,7 +125,7 @@ where
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {

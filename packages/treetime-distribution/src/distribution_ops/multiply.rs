@@ -169,7 +169,7 @@ fn multiply_function_function<Y: YAxisPolicy>(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn multiply_functions<Y: YAxisPolicy>(
+pub(crate) fn multiply_functions<Y: YAxisPolicy>(
   functions: &[&DistributionFunction<f64, Y>],
 ) -> Result<Distribution<Y>, Report> {
   let ordered = canonical_operand_order(functions);
@@ -431,7 +431,7 @@ fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Resu
   }
 }
 
-pub fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
+pub(crate) fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
   match d {
     Distribution::Empty => None,
     Distribution::Point(p) => Some(point_hard_domain(p)),
@@ -441,26 +441,26 @@ pub fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<H
   }
 }
 
-pub fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
+pub(crate) fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
   ((p.t(), p.t()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -> HardDomain {
+pub(crate) fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -> HardDomain {
   ((r.start(), r.end()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
-pub fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) -> HardDomain {
+pub(crate) fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) -> HardDomain {
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 
-pub fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
+pub(crate) fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
   (
     (f.t_min(), f.t_max()),
     (BoundaryBehavior::Error, BoundaryBehavior::Error),
   )
 }
 
-pub fn guarded_empty_result<Y: YAxisPolicy>(
+pub(crate) fn guarded_empty_result<Y: YAxisPolicy>(
   operation: &str,
   a: Option<HardDomain>,
   b: Option<HardDomain>,
@@ -482,9 +482,9 @@ pub fn guarded_empty_result<Y: YAxisPolicy>(
   }
 }
 
-pub type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
+pub(crate) type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
 
-pub fn hard_domains_disjoint(
+pub(crate) fn hard_domains_disjoint(
   a_bounds: (f64, f64),
   a_tails: (BoundaryBehavior, BoundaryBehavior),
   b_bounds: (f64, f64),

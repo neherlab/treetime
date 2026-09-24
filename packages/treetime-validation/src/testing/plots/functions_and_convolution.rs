@@ -6,7 +6,7 @@ use plotters::prelude::*;
 
 const FUNCTIONS_PLOT_SIZE: (u32, u32) = (960, 640);
 
-pub fn plot_functions_and_convolution<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_functions_and_convolution<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {

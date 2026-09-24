@@ -3,7 +3,7 @@ use crate::gtr::infer_gtr::site_specific::MutationCountsSiteSpecific;
 use ndarray::Array3;
 use ndarray::prelude::*;
 
-pub fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCountsSiteSpecific {
+pub(crate) fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCountsSiteSpecific {
   let n = gtr.pi.nrows();
   let seq_len = gtr.seq_len;
 
@@ -33,7 +33,7 @@ pub fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCounts
   }
 }
 
-pub fn value_to_array2(value: &serde_json::Value) -> Array2<f64> {
+pub(crate) fn value_to_array2(value: &serde_json::Value) -> Array2<f64> {
   let rows: Vec<Vec<f64>> = serde::Deserialize::deserialize(value).unwrap();
   let nrows = rows.len();
   let ncols = rows[0].len();
@@ -41,7 +41,7 @@ pub fn value_to_array2(value: &serde_json::Value) -> Array2<f64> {
   Array2::from_shape_vec((nrows, ncols), flat).unwrap()
 }
 
-pub fn value_to_array3(value: &serde_json::Value) -> Array3<f64> {
+pub(crate) fn value_to_array3(value: &serde_json::Value) -> Array3<f64> {
   let dim0: Vec<Vec<Vec<f64>>> = serde::Deserialize::deserialize(value).unwrap();
   let d0 = dim0.len();
   let d1 = dim0[0].len();

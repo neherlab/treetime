@@ -56,11 +56,11 @@ mod tests {
     use super::helpers::RandomParams;
     use proptest::prelude::*;
 
-    pub fn arb_shape_and_seed() -> impl Strategy<Value = (usize, usize, u64)> {
+    pub(super) fn arb_shape_and_seed() -> impl Strategy<Value = (usize, usize, u64)> {
       (2_usize..=20, 1_usize..=8, any::<u64>())
     }
 
-    pub fn arb_random_params() -> impl Strategy<Value = RandomParams> {
+    pub(super) fn arb_random_params() -> impl Strategy<Value = RandomParams> {
       (0.01_f64..10.0, 0.5_f64..5.0, 0.5_f64..5.0, 0.5_f64..5.0).prop_map(
         |(avg_mu, pi_dirichlet_alpha, W_dirichlet_alpha, mu_gamma_alpha)| RandomParams {
           avg_mu,
@@ -76,14 +76,14 @@ mod tests {
     use super::*;
 
     #[derive(Clone, Copy, Debug)]
-    pub struct RandomParams {
+    pub(super) struct RandomParams {
       pub avg_mu: f64,
       pub pi_dirichlet_alpha: f64,
       pub W_dirichlet_alpha: f64,
       pub mu_gamma_alpha: f64,
     }
 
-    pub fn random_gtr(n_states: usize, seq_len: usize, seed: u64, params: RandomParams) -> GTRSiteSpecific {
+    pub(super) fn random_gtr(n_states: usize, seq_len: usize, seed: u64, params: RandomParams) -> GTRSiteSpecific {
       GTRSiteSpecific::random()
         .n_states(n_states)
         .seq_len(seq_len)

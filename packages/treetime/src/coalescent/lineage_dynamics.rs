@@ -12,7 +12,7 @@ use treetime_utils::make_error;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn compute_lineage_count_distribution(
+pub(super) fn compute_lineage_count_distribution(
   events: &[(CalendarTime, i32)],
   terminal_lineage_count: i32,
 ) -> Result<PiecewiseConstantFn, Report> {

@@ -9,7 +9,7 @@ use treetime_utils::make_error;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn collect_tree_events(
+pub(super) fn collect_tree_events(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
 ) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report> {

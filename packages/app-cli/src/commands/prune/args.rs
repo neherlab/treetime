@@ -14,7 +14,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
-pub struct TreetimePruneArgs {
+pub(crate) struct TreetimePruneArgs {
   pub alignment: AlignmentArgs,
   pub tree: PathBuf,
   pub alphabet_args: AlphabetArgs,
@@ -66,7 +66,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimePruneArgsRaw {
+pub(crate) struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,

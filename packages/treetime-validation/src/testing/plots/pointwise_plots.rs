@@ -8,7 +8,7 @@ use std::iter::once;
 const POINTWISE_PLOT_SIZE: (u32, u32) = (1200, 900);
 const DERIVATIVE_PLOT_SIZE: (u32, u32) = (1200, 450);
 
-pub fn plot_pointwise_error_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_pointwise_error_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {
@@ -124,7 +124,7 @@ where
   Ok(())
 }
 
-pub fn plot_derivative_errors<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_derivative_errors<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
 {

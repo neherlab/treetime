@@ -18,7 +18,7 @@ use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 
 #[derive(Debug, Clone)]
-pub struct TreetimeOptimizeArgs {
+pub(crate) struct TreetimeOptimizeArgs {
   pub alignment: AlignmentArgs,
   pub tree: PathBuf,
   pub alphabet_args: AlphabetArgs,
@@ -106,7 +106,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeOptimizeArgsRaw {
+pub(crate) struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -288,7 +288,7 @@ pub struct TreetimeOptimizeArgsRaw {
 #[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum OptimizeRerootMethod {
+pub(crate) enum OptimizeRerootMethod {
   MinDev,
 }
 
@@ -309,7 +309,7 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "BranchOptMethod")]
-pub enum BranchOptMethodCli {
+pub(crate) enum BranchOptMethodCli {
   /// Brent's method in $t$ space (derivative-free, bracket-based).
   ///
   /// Finds the maximum within a bracket derived from the grid search bounds.
@@ -375,7 +375,7 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "InitialGuessMode")]
-pub enum InitialGuessModeCli {
+pub(crate) enum InitialGuessModeCli {
   /// Estimate only edges with missing or invalid branch lengths, preserve
   /// valid input values. No-op when all edges have finite branch lengths.
   #[default]

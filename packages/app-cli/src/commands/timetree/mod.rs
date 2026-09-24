@@ -1,7 +1,7 @@
-pub mod args;
+pub(crate) mod args;
 pub(crate) mod initialization;
-pub mod output;
-pub mod run;
+pub(crate) mod output;
+pub(crate) mod run;
 
 #[cfg(test)]
 mod __tests__;

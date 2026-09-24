@@ -12,7 +12,7 @@ const NORM_POINT_COLOR: RGBColor = RGBColor(8, 232, 140);
 const OUTLIER_POINT_COLOR: RGBColor = RGBColor(255, 105, 97);
 const REGRESSION_LINE_COLOR: RGBColor = RGBColor(8, 140, 232);
 
-pub fn draw_chart<'a, DB>(
+pub(super) fn draw_chart<'a, DB>(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   drawing_area: &'a DrawingArea<DB, Shift>,

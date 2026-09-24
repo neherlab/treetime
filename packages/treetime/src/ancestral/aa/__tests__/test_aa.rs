@@ -96,7 +96,7 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::AlignmentRecord;
 
-    pub fn node_name_to_key(
+    pub(super) fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
     ) -> BTreeMap<String, GraphNodeKey> {
@@ -110,14 +110,14 @@ mod tests {
         .collect()
     }
 
-    pub fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub(super) fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       (graph, names)
     }
 
-    pub fn fitch_partition(
+    pub(super) fn fitch_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       leaf_sequences: &[&str],

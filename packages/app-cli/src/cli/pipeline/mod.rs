@@ -1,8 +1,8 @@
-pub mod check;
+pub(crate) mod check;
 pub(crate) mod inputs;
-pub mod interpolate;
-pub mod resolve;
-pub mod runner;
-pub mod safety;
+pub(crate) mod interpolate;
+pub(crate) mod resolve;
+pub(crate) mod runner;
+pub(crate) mod safety;
 pub(crate) mod suggest;
-pub mod types;
+pub(crate) mod types;

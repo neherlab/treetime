@@ -93,7 +93,7 @@ fn collect_var_dependencies(
   Ok(())
 }
 
-pub struct Interpolator {
+pub(crate) struct Interpolator {
   env: Environment<'static>,
 }
 

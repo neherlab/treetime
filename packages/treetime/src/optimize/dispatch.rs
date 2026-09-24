@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-pub fn run_optimize_mixed(
+pub(crate) fn run_optimize_mixed(
   graph: &Graph,
   total_length: usize,
   contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
@@ -40,7 +40,7 @@ pub fn run_optimize_mixed(
 }
 
 #[cfg(test)]
-pub fn run_optimize_mixed_with_indel_rate(
+pub(crate) fn run_optimize_mixed_with_indel_rate(
   graph: &Graph,
   total_length: usize,
   contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
@@ -70,7 +70,7 @@ pub fn run_optimize_mixed_with_indel_rate(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-pub fn run_optimize_mixed_inner(
+pub(crate) fn run_optimize_mixed_inner(
   graph: &Graph,
   total_length: usize,
   contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
@@ -258,7 +258,7 @@ impl BifurcatingRootState {
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-pub fn initial_guess_mixed(
+pub(crate) fn initial_guess_mixed(
   graph: &Graph,
   total_length: usize,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,

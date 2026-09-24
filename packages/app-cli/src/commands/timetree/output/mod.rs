@@ -1,5 +1,5 @@
 #[cfg(test)]
 mod __tests__;
 
-pub mod dates;
-pub mod plots;
+pub(crate) mod dates;
+pub(crate) mod plots;

@@ -51,7 +51,7 @@ mod tests {
     };
     use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
-    pub fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
+    pub(super) fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
       let nwk_parsed = nwk_read_str(newick)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;

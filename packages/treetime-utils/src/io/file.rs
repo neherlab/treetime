@@ -78,7 +78,7 @@ mod non_wasm {
     treetime /path/to/file
 "#;
 
-  pub fn warn_if_tty() {
+  pub(super) fn warn_if_tty() {
     if stdin().is_terminal() {
       warn!("{TTY_WARNING}");
     }

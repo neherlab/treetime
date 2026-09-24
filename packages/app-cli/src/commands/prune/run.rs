@@ -25,7 +25,7 @@ use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
 
-pub fn run_prune(
+pub(crate) fn run_prune(
   args: &TreetimePruneArgs,
   cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,

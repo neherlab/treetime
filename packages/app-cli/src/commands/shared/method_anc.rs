@@ -16,7 +16,7 @@ impl From<MethodAncestralCli> for MethodAncestral {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "MethodAncestral")]
-pub enum MethodAncestralCli {
+pub(crate) enum MethodAncestralCli {
   #[default]
   Marginal,
   Parsimony,

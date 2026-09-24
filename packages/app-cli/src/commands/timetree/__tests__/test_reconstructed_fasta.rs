@@ -115,7 +115,7 @@ mod tests {
         .expect("project has workspace root")
     }
 
-    pub fn input_leaves() -> Result<BTreeMap<String, Seq>, Report> {
+    pub(super) fn input_leaves() -> Result<BTreeMap<String, Seq>, Report> {
       let alignment = project_root().join("data/flu/h3n2/20/aln.fasta.xz");
       let records = read_many_fasta_path(&[alignment], &Alphabet::default())?;
       Ok(
@@ -126,7 +126,7 @@ mod tests {
       )
     }
 
-    pub fn run_reconstructed_fasta(
+    pub(super) fn run_reconstructed_fasta(
       subdir: &str,
       configure: impl FnOnce(&mut TreetimeTimetreeArgs),
     ) -> Result<Vec<FastaRecord>, Report> {

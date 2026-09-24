@@ -3,7 +3,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn find_node_key_by_name(
+pub(crate) fn find_node_key_by_name(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   name: &str,
@@ -17,7 +17,7 @@ pub fn find_node_key_by_name(
   None
 }
 
-pub fn find_edge_key(
+pub(crate) fn find_edge_key(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   source_name: &str,

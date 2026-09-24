@@ -143,7 +143,7 @@ pub(crate) fn run_clock(
 /// Clock estimation request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct ClockArgs {
+pub(crate) struct ClockArgs {
   aln: Vec<String>,
   tree: Option<String>,
   vcf_reference: Option<String>,
@@ -176,7 +176,7 @@ pub struct ClockArgs {
 }
 
 #[derive(serde::Serialize)]
-pub struct ClockResult {
+pub(crate) struct ClockResult {
   #[serde(skip)]
   pub graph: Graph,
   #[serde(skip)]

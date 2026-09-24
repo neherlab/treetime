@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::seq::alignment::node_seq_inputs;
 
   use std::collections::BTreeMap;
@@ -23,11 +23,11 @@ pub mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_primitives::AlignmentRecord;
 
-  pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+  pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  pub const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+  pub(crate) const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  pub fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+  pub(crate) fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
       read_many_fasta_str(
         indoc! {r#"
@@ -48,7 +48,7 @@ pub mod tests {
     )
   }
 
-  pub fn setup_dense_only(
+  pub(crate) fn setup_dense_only(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
@@ -68,7 +68,7 @@ pub mod tests {
     Ok(partitions)
   }
 
-  pub fn setup_sparse_only(
+  pub(crate) fn setup_sparse_only(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
@@ -87,7 +87,7 @@ pub mod tests {
     Ok(partitions)
   }
 
-  pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .map(|edge| branch_lengths[&edge.key()].unwrap_or(0.0))

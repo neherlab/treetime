@@ -7,7 +7,7 @@ fn default_jobs() -> usize {
 }
 
 #[derive(Args, Debug, Clone)]
-pub struct Jobs {
+pub(crate) struct Jobs {
   /// Number of processing jobs. If not specified, all available CPU threads will be used.
   #[clap(
     global = true,

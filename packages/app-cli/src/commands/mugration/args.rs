@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
-pub struct TreetimeMugrationArgs {
+pub(crate) struct TreetimeMugrationArgs {
   pub tree: Option<PathBuf>,
   pub attribute: String,
   pub metadata: PathBuf,
@@ -90,7 +90,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeMugrationArgsRaw {
+pub(crate) struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,

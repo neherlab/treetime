@@ -14,7 +14,7 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 const VERBOSE_LABEL_WIDTH: usize = 32;
 
-pub struct ValidationConsole;
+pub(crate) struct ValidationConsole;
 
 impl ValidationConsole {
   pub(crate) fn print_test_configuration<A: Display>(

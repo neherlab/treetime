@@ -1,1 +1,1 @@
-pub mod infer_dense;
+pub(crate) mod infer_dense;

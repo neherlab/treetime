@@ -13,7 +13,7 @@ pub(super) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64
   if indel_count > 0 { one_mutation * 0.01 } else { 0.0 }
 }
 
-pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
+pub(crate) fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
   if !contributions
     .iter()
     .all(|contrib| contrib.has_unimodal_branch_likelihood())

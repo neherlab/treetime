@@ -1,4 +1,4 @@
-pub mod helpers;
+pub(super) mod helpers;
 mod test_coalescent_model;
 mod test_events;
 mod test_gm_coalescent;

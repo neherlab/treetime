@@ -37,7 +37,7 @@ pub fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> R
   Ok((lo, hi))
 }
 
-pub fn peak_normalized_if_mass_sizable(
+pub(crate) fn peak_normalized_if_mass_sizable(
   f: &DistributionFunction<f64, NegLog>,
 ) -> Option<DistributionFunction<f64, NegLog>> {
   let y_peak = f.grid_fn().y_min();
@@ -58,7 +58,7 @@ pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> 
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn resample_to_mass_window(
+pub(crate) fn resample_to_mass_window(
   normalized: &DistributionFunction<f64, NegLog>,
   lo: f64,
   hi: f64,
@@ -77,7 +77,9 @@ pub fn resample_to_mass_window(
   Ok(Distribution::Function(resampled))
 }
 
-pub fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<DistributionFunction<f64, NegLog>, Report> {
+pub(crate) fn refit_soft_tails(
+  f: DistributionFunction<f64, NegLog>,
+) -> Result<DistributionFunction<f64, NegLog>, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))?

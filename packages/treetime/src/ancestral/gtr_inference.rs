@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-pub fn infer_gtr_fitch(
+pub(crate) fn infer_gtr_fitch(
   partition: &PartitionFitch,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -24,7 +24,7 @@ pub fn infer_gtr_fitch(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn get_mutation_counts_fitch(
+pub(crate) fn get_mutation_counts_fitch(
   graph: &Graph,
   partition: &PartitionFitch,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,

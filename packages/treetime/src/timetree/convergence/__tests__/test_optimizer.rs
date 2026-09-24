@@ -173,7 +173,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use treetime_graph::graph::Graph;
 
-    pub struct CountingSink(pub Arc<AtomicUsize>);
+    pub(super) struct CountingSink(pub Arc<AtomicUsize>);
 
     impl TraceSink for CountingSink {
       fn emit(&mut self, _metric: &ConvergenceMetrics) -> Result<(), Report> {
@@ -182,14 +182,14 @@ mod tests {
       }
     }
 
-    pub fn moved_by(years: f64) -> NodeTimeChange {
+    pub(super) fn moved_by(years: f64) -> NodeTimeChange {
       NodeTimeChange {
         max: Some(years),
         rms: Some(years),
       }
     }
 
-    pub fn empty_graph() -> Graph {
+    pub(super) fn empty_graph() -> Graph {
       let mut graph = Graph::new();
       graph.add_node();
       graph.build().expect("build graph");

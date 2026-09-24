@@ -20,7 +20,7 @@ use treetime_graph::reroot::RerootChanges;
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-pub fn reroot_tree(
+pub(crate) fn reroot_tree(
   graph: &mut Graph,
   constraints: &DateConstraints,
   clock_state: &mut ClockState,

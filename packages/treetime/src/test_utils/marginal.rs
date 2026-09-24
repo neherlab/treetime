@@ -12,9 +12,9 @@ use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::nwk_read_str;
 use treetime_primitives::AlignmentRecord;
 
-pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
+pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read_str(newick)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
@@ -34,7 +34,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) ->
   Ok(log_lh.value())
 }
 
-pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
+pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read_str(newick)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;

@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -17,7 +17,7 @@ pub mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  pub fn analytical_two_taxon_likelihood(gtr: &GTR, obs_a: usize, obs_b: usize, t1: f64, t2: f64) -> f64 {
+  pub(crate) fn analytical_two_taxon_likelihood(gtr: &GTR, obs_a: usize, obs_b: usize, t1: f64, t2: f64) -> f64 {
     let exp_qt1 = gtr.expQt(t1);
     let exp_qt2 = gtr.expQt(t2);
 
@@ -28,7 +28,7 @@ pub mod tests {
     likelihood
   }
 
-  pub fn analytical_star_tree_likelihood(gtr: &GTR, observations: &[usize], t: f64) -> f64 {
+  pub(crate) fn analytical_star_tree_likelihood(gtr: &GTR, observations: &[usize], t: f64) -> f64 {
     let exp_qt = gtr.expQt(t);
 
     let mut likelihood = 0.0;
@@ -42,7 +42,7 @@ pub mod tests {
     likelihood
   }
 
-  pub fn analytical_three_taxon_likelihood(
+  pub(crate) fn analytical_three_taxon_likelihood(
     gtr: &GTR,
     obs_a: usize,
     obs_b: usize,
@@ -67,7 +67,7 @@ pub mod tests {
     likelihood
   }
 
-  pub fn state_index(c: char) -> usize {
+  pub(crate) fn state_index(c: char) -> usize {
     match c {
       'A' => 0,
       'C' => 1,
@@ -77,7 +77,7 @@ pub mod tests {
     }
   }
 
-  pub fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
+  pub(crate) fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read_str(newick)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;

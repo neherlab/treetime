@@ -15,7 +15,7 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
-pub fn optimize_brent(
+pub(crate) fn optimize_brent(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &BrentParams,

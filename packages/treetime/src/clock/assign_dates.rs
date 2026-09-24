@@ -8,7 +8,7 @@ use treetime_primitives::date::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
-pub fn assign_dates(
+pub(crate) fn assign_dates(
   graph: &Graph,
   dates: &DatesMap,
   inputs: &mut ClockInputs,

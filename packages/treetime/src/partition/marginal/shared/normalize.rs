@@ -7,7 +7,7 @@ use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
+pub(crate) fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
   let n_cols = dis.ncols() as f64;
   let mut log_lh = 0.0;
@@ -24,7 +24,7 @@ pub fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   log_lh
 }
 
-pub fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
+pub(crate) fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   let mut dis = Array2::zeros(log_dis.raw_dim());
   let mut total_log_lh = 0.0;
 
@@ -37,7 +37,7 @@ pub fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   (dis, total_log_lh)
 }
 
-pub fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
+pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
   if node_log_lh == LogLh::IMPOSSIBLE && child_log_lh == LogLh::IMPOSSIBLE {
     LogLh::ZERO
   } else {
@@ -45,7 +45,7 @@ pub fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> L
   }
 }
 
-pub fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
+pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
   if normalization == f64::NEG_INFINITY {
     log_lh
   } else {

@@ -13,7 +13,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::iterator::difference::iterator_difference;
 
-pub fn merge_shared_mutation_branches(
+pub(crate) fn merge_shared_mutation_branches(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -36,7 +36,7 @@ pub fn merge_shared_mutation_branches(
   Ok(total_merged)
 }
 
-pub fn merge_single_polytomy(
+pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   node_key: GraphNodeKey,

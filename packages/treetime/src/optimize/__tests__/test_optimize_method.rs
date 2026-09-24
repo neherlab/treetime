@@ -4,7 +4,7 @@
 )]
 
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
@@ -669,29 +669,29 @@ pub mod tests {
     Ok(())
   }
 
-  pub mod generators {
+  pub(crate) mod generators {
     use proptest::prelude::*;
-    pub fn gen_s() -> impl Strategy<Value = f64> {
+    pub(crate) fn gen_s() -> impl Strategy<Value = f64> {
       1e-6_f64..1e3_f64
     }
-    pub fn gen_t() -> impl Strategy<Value = f64> {
+    pub(crate) fn gen_t() -> impl Strategy<Value = f64> {
       1e-10_f64..1e3_f64
     }
-    pub fn gen_dl_dt() -> impl Strategy<Value = f64> {
+    pub(crate) fn gen_dl_dt() -> impl Strategy<Value = f64> {
       -1e6_f64..1e6_f64
     }
-    pub fn gen_d2l_dt2() -> impl Strategy<Value = f64> {
+    pub(crate) fn gen_d2l_dt2() -> impl Strategy<Value = f64> {
       -1e8_f64..1e8_f64
     }
-    pub fn gen_scalar() -> impl Strategy<Value = f64> {
+    pub(crate) fn gen_scalar() -> impl Strategy<Value = f64> {
       prop_oneof![-1e3_f64..-1e-3_f64, 1e-3_f64..1e3_f64]
     }
   }
 
-  pub mod helpers {
+  pub(crate) mod helpers {
     use super::*;
 
-    pub fn setup_with_indels(
+    pub(crate) fn setup_with_indels(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -720,7 +720,7 @@ pub mod tests {
       Ok((dense_partitions, sparse_partitions, indel_rate))
     }
 
-    pub fn eval_combined_first_edge(
+    pub(crate) fn eval_combined_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
       sparse: &[SparseReconstruction],
@@ -743,7 +743,7 @@ pub mod tests {
       Ok(sub_lh + indel_lh)
     }
 
-    pub fn eval_metrics_first_edge(
+    pub(crate) fn eval_metrics_first_edge(
       graph: &Graph,
       dense: &[DenseReconstruction],
       sparse: &[SparseReconstruction],
@@ -761,7 +761,7 @@ pub mod tests {
       Ok(metrics)
     }
 
-    pub fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
+    pub(crate) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
     }
 

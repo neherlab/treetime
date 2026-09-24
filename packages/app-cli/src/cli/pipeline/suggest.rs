@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use strsim::levenshtein;
 
-pub fn suggestion_suffix(input: &str, candidates: &[&str]) -> String {
+pub(crate) fn suggestion_suffix(input: &str, candidates: &[&str]) -> String {
   match did_you_mean(input, candidates) {
     Some(best) => format!("did you mean `{best}`? Valid values: {}", valid_values(candidates)),
     None => format!("valid values: {}", valid_values(candidates)),
@@ -19,7 +19,7 @@ fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
     .map(|(_, candidate)| candidate.to_owned())
 }
 
-pub fn valid_values(candidates: &[&str]) -> String {
+pub(crate) fn valid_values(candidates: &[&str]) -> String {
   candidates
     .iter()
     .sorted()

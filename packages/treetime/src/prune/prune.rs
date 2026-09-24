@@ -8,7 +8,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn prune_nodes(
+pub(crate) fn prune_nodes(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
@@ -77,7 +77,7 @@ fn prune_internal_nodes(
   })
 }
 
-pub fn get_edge_num_muts(
+pub(crate) fn get_edge_num_muts(
   partitions: &[PartitionMarginalSparse],
   edge_key: GraphEdgeKey,
 ) -> Result<Option<usize>, Report> {
@@ -124,7 +124,7 @@ fn prune_leaves(
   })
 }
 
-pub fn collapse_sparse_edges_from_leaf_recursive(
+pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   edge_key: GraphEdgeKey,

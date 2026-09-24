@@ -14,7 +14,7 @@ use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
 use treetime_io::nwk::nwk_read_file;
 
-pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
+pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
   let (graph, confidences, names, branch_lengths): (
     Graph,
     BTreeMap<GraphNodeKey, Option<f64>>,
@@ -85,7 +85,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   })
 }
 
-pub struct InputData {
+pub(crate) struct InputData {
   pub graph: Graph,
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,

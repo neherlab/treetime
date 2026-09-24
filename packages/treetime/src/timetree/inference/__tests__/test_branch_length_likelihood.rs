@@ -279,11 +279,11 @@ mod tests {
 
     use super::*;
 
-    pub fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
+    pub(super) fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)
     }
 
-    pub fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
+    pub(super) fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
       const N: usize = 2_000_001;
       let t_far = 60.0;
       let dt = t_far / (N as f64 - 1.0);
@@ -302,7 +302,7 @@ mod tests {
       inside / total
     }
 
-    pub fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
+    pub(super) fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(&contributions, 0, 1.0, 1.0, 1e-3, GRID_POINTS, 1.0, 1.0)
     }

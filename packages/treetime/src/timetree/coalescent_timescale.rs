@@ -12,7 +12,11 @@ use treetime_graph::graph::Graph;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_report;
 
-pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
+pub(crate) fn coalescent_mode(
+  coalescent: Option<f64>,
+  coalescent_opt: bool,
+  coalescent_skyline: bool,
+) -> CoalescentMode {
   if coalescent_skyline {
     CoalescentMode::Skyline
   } else if coalescent_opt {
@@ -24,7 +28,7 @@ pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent
   }
 }
 
-pub fn coalescent_timescale(
+pub(crate) fn coalescent_timescale(
   mode: CoalescentMode,
   graph: &Graph,
   skyline_params: &SkylineParams,
@@ -39,7 +43,7 @@ pub fn coalescent_timescale(
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
 
-pub fn estimate_coalescent_tc(
+pub(crate) fn estimate_coalescent_tc(
   mode: CoalescentMode,
   graph: &Graph,
   skyline_params: &SkylineParams,
@@ -92,7 +96,7 @@ fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> 
   })
 }
 
-pub fn build_coalescent_output(
+pub(crate) fn build_coalescent_output(
   requested: CoalescentMode,
   timescale: &CoalescentTimescale,
   gen_per_year: f64,
@@ -142,7 +146,7 @@ pub fn build_coalescent_output(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CoalescentMode {
+pub(crate) enum CoalescentMode {
   Disabled,
   Fixed(f64),
   Constant,
@@ -150,11 +154,11 @@ pub enum CoalescentMode {
 }
 
 impl CoalescentMode {
-  pub fn is_optimized(self) -> bool {
+  pub(crate) fn is_optimized(self) -> bool {
     matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
   }
 
-  pub fn output_mode(self) -> Option<CoalescentOutputMode> {
+  pub(crate) fn output_mode(self) -> Option<CoalescentOutputMode> {
     match self {
       CoalescentMode::Disabled => None,
       CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
@@ -164,14 +168,14 @@ impl CoalescentMode {
   }
 }
 
-pub struct CoalescentTimescale {
+pub(crate) struct CoalescentTimescale {
   pub distribution: Distribution,
   pub schedule: PiecewiseConstantFn,
   pub report: Option<CoalescentTcReport>,
 }
 
 impl CoalescentTimescale {
-  pub fn constant(tc: f64) -> Self {
+  pub(crate) fn constant(tc: f64) -> Self {
     Self {
       distribution: Distribution::constant(tc),
       schedule: PiecewiseConstantFn::new(array![], array![tc]),
@@ -180,13 +184,13 @@ impl CoalescentTimescale {
   }
 }
 
-pub struct CoalescentTcReport {
+pub(crate) struct CoalescentTcReport {
   pub segment_boundaries: Array1<f64>,
   pub band: Option<CoalescentReportBand>,
   pub log_likelihood: Option<f64>,
 }
 
-pub struct CoalescentReportBand {
+pub(crate) struct CoalescentReportBand {
   pub lower: Array1<f64>,
   pub upper: Array1<f64>,
 }

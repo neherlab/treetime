@@ -92,11 +92,11 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn run_root_sampled(seed: u64) -> Result<BTreeMap<String, String>, Report> {
+    pub(super) fn run_root_sampled(seed: u64) -> Result<BTreeMap<String, String>, Report> {
       run_sampled(SampleMode::Root, seed)
     }
 
-    pub fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
+    pub(super) fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
       let sequences: Vec<AlignmentRecord> =

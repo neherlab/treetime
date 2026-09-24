@@ -5,7 +5,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub fn invalid_branch_length_descriptions(
+pub(crate) fn invalid_branch_length_descriptions(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -26,11 +26,11 @@ pub fn invalid_branch_length_descriptions(
     .collect()
 }
 
-pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
+pub(crate) fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
   branch_length.is_some_and(is_valid_branch_length_value)
 }
 
-pub fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
+pub(crate) fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
   if is_valid_branch_length_value(branch_length) {
     Ok(())
   } else {
@@ -40,7 +40,7 @@ pub fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
   }
 }
 
-pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
+pub(crate) fn is_valid_branch_length_value(branch_length: f64) -> bool {
   branch_length.is_finite() && branch_length >= 0.0
 }
 

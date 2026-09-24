@@ -17,7 +17,7 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::create_file_or_stdout;
 
-pub fn run_mugration(
+pub(crate) fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
   cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,

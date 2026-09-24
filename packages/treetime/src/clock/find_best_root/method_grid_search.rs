@@ -10,7 +10,7 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn optimize_grid_search(
+pub(crate) fn optimize_grid_search(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &GridSearchParams,

@@ -284,7 +284,7 @@ mod tests {
     use eyre::{Report, WrapErr};
     use std::path::{Path, PathBuf};
 
-    pub fn find_files_recursive(dir: &Path, filename: &str) -> Result<Vec<PathBuf>, Report> {
+    pub(super) fn find_files_recursive(dir: &Path, filename: &str) -> Result<Vec<PathBuf>, Report> {
       let mut results = Vec::new();
       for entry in std::fs::read_dir(dir).wrap_err("When listing the fixture directory")? {
         let path = entry.wrap_err("When reading a fixture directory entry")?.path();

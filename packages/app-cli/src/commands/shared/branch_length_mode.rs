@@ -16,7 +16,7 @@ impl From<BranchLengthModeCli> for BranchLengthMode {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "BranchLengthMode")]
-pub enum BranchLengthModeCli {
+pub(crate) enum BranchLengthModeCli {
   Input,
   #[default]
   Marginal,

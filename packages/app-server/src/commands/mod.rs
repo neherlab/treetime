@@ -1,7 +1,7 @@
-pub mod ancestral;
-pub mod clock;
-pub mod mugration;
-pub mod optimize;
-pub mod prune;
+pub(crate) mod ancestral;
+pub(crate) mod clock;
+pub(crate) mod mugration;
+pub(crate) mod optimize;
+pub(crate) mod prune;
 pub(crate) mod support;
-pub mod timetree;
+pub(crate) mod timetree;

@@ -306,7 +306,7 @@ fn load_input_data(args: &TimetreeArgs) -> Result<InputData, Report> {
 /// Time-tree estimation request (openapi subset).
 #[derive(Debug, SmartDefault, Deserialize, ToSchema)]
 #[serde(default)]
-pub struct TimetreeArgs {
+pub(crate) struct TimetreeArgs {
   input_fastas: Vec<String>,
   tree: Option<String>,
   vcf_reference: Option<String>,

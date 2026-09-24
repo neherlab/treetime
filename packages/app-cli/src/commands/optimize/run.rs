@@ -25,7 +25,7 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
 
-pub fn run_optimize(
+pub(crate) fn run_optimize(
   args: &TreetimeOptimizeArgs,
   cancel: &dyn treetime::cancel::Cancel,
   progress: &dyn treetime::progress::ProgressSink,

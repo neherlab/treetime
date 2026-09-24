@@ -23,7 +23,7 @@ use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutp
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
-pub fn process_forward_indexed(
+pub(crate) fn process_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   graph: &Graph,

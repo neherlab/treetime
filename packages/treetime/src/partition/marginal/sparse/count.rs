@@ -16,7 +16,7 @@ use treetime_utils::array::ndarray::argmax_first;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn count_transitions_sparse(
+pub(crate) fn count_transitions_sparse(
   gtr: &GTR,
   length: usize,
   graph: &Graph,

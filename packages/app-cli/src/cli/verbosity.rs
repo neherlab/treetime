@@ -5,7 +5,7 @@ use serde::Serialize;
 use treetime::progress::LogLevel;
 
 #[derive(Args, Debug, Clone)]
-pub struct Verbosity {
+pub(crate) struct Verbosity {
   /// Set verbosity level of console output
   #[clap(long, global = true, value_parser = PossibleValuesParser::new(["off", "error", "warn", "info", "debug", "trace"])
       .map(|s| s.parse::<LevelFilter>().unwrap()))]
@@ -59,7 +59,7 @@ impl Verbosity {
     }
   }
 
-  pub fn get_log_level(&self) -> Option<LogLevel> {
+  pub(crate) fn get_log_level(&self) -> Option<LogLevel> {
     match self.get_filter_level() {
       LevelFilter::Off => None,
       LevelFilter::Error => Some(LogLevel::Error),

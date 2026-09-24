@@ -7,7 +7,7 @@ use crate::testing::plots::spatial_plots::plot_spatial_profiles;
 use eyre::{Report, WrapErr};
 use std::fs;
 
-pub fn generate_plot_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
+pub(crate) fn generate_plot_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
 where
   T: TestCase,
 {

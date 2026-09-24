@@ -13,7 +13,7 @@ use treetime_grid::GridFn;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
 
-pub fn compute_branch_length_distribution(
+pub(crate) fn compute_branch_length_distribution(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,

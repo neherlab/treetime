@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-pub fn collapse_edge(
+pub(crate) fn collapse_edge(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   edge_key: GraphEdgeKey,

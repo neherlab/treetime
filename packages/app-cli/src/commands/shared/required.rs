@@ -2,7 +2,7 @@ use eyre::Report;
 use treetime::make_report;
 
 #[cfg(feature = "clap")]
-pub fn missing_required_args<C: clap::CommandFactory>(missing_ids: &[&str]) -> Report {
+pub(crate) fn missing_required_args<C: clap::CommandFactory>(missing_ids: &[&str]) -> Report {
   let command = C::command();
   let list = missing_ids
     .iter()

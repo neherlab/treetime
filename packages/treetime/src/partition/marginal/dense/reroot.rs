@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
-pub fn reroot_dense(
+pub(crate) fn reroot_dense(
   partition: PartitionMarginalDense,
   gtr: GTR,
   node_states: BTreeMap<GraphNodeKey, DenseNodeState>,

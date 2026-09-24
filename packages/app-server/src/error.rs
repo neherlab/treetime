@@ -4,7 +4,7 @@ use axum::response::{IntoResponse, Response};
 use eyre::Report;
 use log::error;
 
-pub struct AppError(Report);
+pub(crate) struct AppError(Report);
 
 impl IntoResponse for AppError {
   fn into_response(self) -> Response {

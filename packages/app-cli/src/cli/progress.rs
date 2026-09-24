@@ -3,13 +3,13 @@ use indicatif::{ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, ProgressSink};
 
-pub struct BarProgress {
+pub(crate) struct BarProgress {
   bar: ProgressBar,
   min_level: LogLevel,
 }
 
 impl BarProgress {
-  pub fn new(min_level: LogLevel) -> Result<Self, Report> {
+  pub(crate) fn new(min_level: LogLevel) -> Result<Self, Report> {
     let bar = ProgressBar::new(1000);
     bar.set_style(
       ProgressStyle::with_template("{spinner:.green} [{bar:30.cyan/dim}] {percent}% {msg}")
@@ -63,13 +63,13 @@ impl ProgressSink for BarProgress {
   }
 }
 
-pub struct TextProgress {
+pub(crate) struct TextProgress {
   min_level: LogLevel,
   last_stage: Mutex<String>,
 }
 
 impl TextProgress {
-  pub fn new(min_level: LogLevel) -> Self {
+  pub(crate) fn new(min_level: LogLevel) -> Self {
     Self {
       min_level,
       last_stage: Mutex::new(String::new()),

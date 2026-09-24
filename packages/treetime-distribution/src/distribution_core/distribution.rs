@@ -460,7 +460,7 @@ impl Distribution<NegLog> {
   }
 }
 
-pub fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
+pub(crate) fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
   let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
     return Distribution::Empty;
   };

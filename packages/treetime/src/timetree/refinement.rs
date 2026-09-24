@@ -26,7 +26,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
-pub struct Refinement<'a> {
+pub(crate) struct Refinement<'a> {
   pub graph: &'a mut Graph,
   pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
@@ -45,7 +45,7 @@ pub struct Refinement<'a> {
 }
 
 impl Refinement<'_> {
-  pub fn run(mut self) -> Result<(TimetreeState, Vec<PartitionTimetree>, RefinementOutcome), Report> {
+  pub(crate) fn run(mut self) -> Result<(TimetreeState, Vec<PartitionTimetree>, RefinementOutcome), Report> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
@@ -240,7 +240,7 @@ impl Refinement<'_> {
   }
 }
 
-pub struct RefinementOptions {
+pub(crate) struct RefinementOptions {
   pub relax: Vec<f64>,
   pub topology: TopologyRefinement,
   pub clock_rate: Option<f64>,
@@ -248,30 +248,30 @@ pub struct RefinementOptions {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TopologyRefinement {
+pub(crate) enum TopologyRefinement {
   Disabled,
   Resolve,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RefinementOutcome {
+pub(crate) struct RefinementOutcome {
   pub sequence_changes: usize,
   pub time_change: NodeTimeChange,
   pub topology: TopologyOutcome,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TopologyOutcome {
+pub(crate) enum TopologyOutcome {
   Unchanged,
   Changed { resolved_nodes: usize },
 }
 
 impl TopologyOutcome {
-  pub fn changed(self) -> bool {
+  pub(crate) fn changed(self) -> bool {
     matches!(self, Self::Changed { .. })
   }
 
-  pub fn resolved_nodes(self) -> usize {
+  pub(crate) fn resolved_nodes(self) -> usize {
     match self {
       Self::Unchanged => 0,
       Self::Changed { resolved_nodes } => resolved_nodes,

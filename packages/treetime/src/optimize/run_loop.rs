@@ -28,7 +28,7 @@ use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
-pub fn run_optimize_loop(
+pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
   sparse_partitions: Vec<SparseReconstruction>,
   dense_partitions: Vec<DenseReconstruction>,
@@ -178,7 +178,7 @@ pub fn run_optimize_loop(
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct OptimizeLoopResult {
+pub(crate) struct OptimizeLoopResult {
   pub sparse_partitions: Vec<SparseReconstruction>,
 
   pub dense_partitions: Vec<DenseReconstruction>,
@@ -195,7 +195,7 @@ pub struct OptimizeLoopResult {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConvergenceReason {
+pub(crate) enum ConvergenceReason {
   Converged,
   Oscillating,
   Worsened,
@@ -234,7 +234,7 @@ fn compute_iteration(
   })
 }
 
-pub fn marginal_update_sparse(
+pub(crate) fn marginal_update_sparse(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   sparse: Vec<SparseReconstruction>,
@@ -248,7 +248,7 @@ pub fn marginal_update_sparse(
     })
 }
 
-pub fn marginal_update_dense(
+pub(crate) fn marginal_update_dense(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   dense: Vec<DenseReconstruction>,
@@ -277,7 +277,7 @@ struct OptimizeIterationLikelihood {
   indel_rate: f64,
 }
 
-pub fn find_zero_optimal_internal_edges(
+pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
   sparse_partitions: &[SparseReconstruction],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -304,7 +304,7 @@ pub fn find_zero_optimal_internal_edges(
     .collect_vec()
 }
 
-pub fn prune_and_merge_in_loop(
+pub(crate) fn prune_and_merge_in_loop(
   graph: &mut Graph,
   sparse_partitions: Vec<SparseReconstruction>,
   dense_partitions: Vec<DenseReconstruction>,
@@ -395,7 +395,7 @@ pub fn prune_and_merge_in_loop(
   })
 }
 
-pub struct TopologyCleanup {
+pub(crate) struct TopologyCleanup {
   pub sparse_partitions: Vec<SparseReconstruction>,
   pub dense_partitions: Vec<DenseReconstruction>,
   pub topology_changed: bool,
@@ -437,7 +437,7 @@ fn join_dense(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-pub fn apply_initial_guess_mode(
+pub(crate) fn apply_initial_guess_mode(
   graph: &Graph,
   total_length: usize,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
@@ -496,7 +496,7 @@ pub fn apply_initial_guess_mode(
   }
 }
 
-pub fn any_indel_edge_has_zero_branch_length(
+pub(crate) fn any_indel_edge_has_zero_branch_length(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -527,7 +527,7 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn normalize_partition_rates(
+pub(crate) fn normalize_partition_rates(
   partitions: &mut [(usize, &mut GTR)],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {

@@ -12,7 +12,7 @@ use treetime_graph::edge::GraphEdgeKey;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn optimize_brent<S: RootStats>(
+pub(crate) fn optimize_brent<S: RootStats>(
   edge: GraphEdgeKey,
   cost_fn: &EdgeCostFn<S>,
   params: &BrentParams,

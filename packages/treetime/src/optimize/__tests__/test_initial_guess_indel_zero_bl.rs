@@ -104,7 +104,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn setup_dense(
+    pub(super) fn setup_dense(
       newick: &str,
     ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;

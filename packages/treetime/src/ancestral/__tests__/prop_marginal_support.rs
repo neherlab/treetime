@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::fitch::create_fitch_partition;
@@ -14,7 +14,7 @@ pub mod tests {
 
   use treetime_io::nwk::nwk_read_str;
 
-  pub fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
+  pub(crate) fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
     let nwk_parsed = nwk_read_str(&input.newick)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -31,7 +31,7 @@ pub mod tests {
     Ok((log_lh, recon))
   }
 
-  pub fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
+  pub(crate) fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
     let nwk_parsed = nwk_read_str(&input.newick)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;

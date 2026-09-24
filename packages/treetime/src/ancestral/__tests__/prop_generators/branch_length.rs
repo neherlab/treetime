@@ -2,7 +2,7 @@ use proptest::prelude::*;
 
 const MIN_BRANCH_LENGTH: f64 = 0.001;
 
-pub fn arb_branch_length() -> impl Strategy<Value = f64> {
+pub(crate) fn arb_branch_length() -> impl Strategy<Value = f64> {
   prop_oneof![
     1 => Just(MIN_BRANCH_LENGTH),
     4 => 0.001..0.1_f64,

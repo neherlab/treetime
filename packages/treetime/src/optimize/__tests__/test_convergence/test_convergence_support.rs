@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(crate) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -27,9 +27,9 @@ pub mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  pub const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+  pub(crate) const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  pub fn simple_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+  pub(crate) fn simple_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
       read_many_fasta_str(
         indoc! {r#"
@@ -50,7 +50,7 @@ pub mod tests {
     )
   }
 
-  pub fn setup_partitions(
+  pub(crate) fn setup_partitions(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
@@ -100,7 +100,7 @@ pub mod tests {
     Ok((dense_partitions, sparse_partitions))
   }
 
-  pub fn compute_total_lh(
+  pub(crate) fn compute_total_lh(
     graph: &Graph,
     dense_partitions: Vec<DenseReconstruction>,
     sparse_partitions: Vec<SparseReconstruction>,

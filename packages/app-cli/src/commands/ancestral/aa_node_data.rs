@@ -13,7 +13,7 @@ use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
-pub fn validate_aa_args(
+pub(crate) fn validate_aa_args(
   translations: Option<&str>,
   cdses: &[String],
   annotation: Option<&Path>,
@@ -66,13 +66,13 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
 
 const CDS_PLACEHOLDERS: &[&str] = &["{cds}", "%GENE"];
 
-pub fn template_has_cds_placeholder(template: &str) -> bool {
+pub(crate) fn template_has_cds_placeholder(template: &str) -> bool {
   CDS_PLACEHOLDERS
     .iter()
     .any(|placeholder| template.contains(placeholder))
 }
 
-pub fn translation_path(template: &str, cds: &str) -> PathBuf {
+pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
   let mut path = template.to_owned();
   for placeholder in CDS_PLACEHOLDERS {
     path = path.replace(placeholder, cds);
@@ -80,7 +80,7 @@ pub fn translation_path(template: &str, cds: &str) -> PathBuf {
   PathBuf::from(path)
 }
 
-pub fn read_aa_root_sequences(
+pub(crate) fn read_aa_root_sequences(
   path: Option<&Path>,
   cdses: &[String],
   recon_alphabet: &Alphabet,
@@ -119,7 +119,7 @@ fn validate_aa_root_sequence_cdses(
   Ok(())
 }
 
-pub fn read_gff3_annotations(
+pub(crate) fn read_gff3_annotations(
   path: Option<&Path>,
   cdses: &[String],
 ) -> Result<BTreeMap<String, AugurNodeDataJsonAnnotationEntry>, Report> {

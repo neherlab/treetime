@@ -13,7 +13,7 @@ use treetime::gtr::get_gtr::GtrModelName;
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct ModelArgs {
+pub(crate) struct ModelArgs {
   /// Substitution model to use
   ///
   /// `--model infer` infers a model from the data. Alternatively, specify the model type. If the
@@ -45,7 +45,7 @@ impl ModelArgs {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 #[schemars(rename = "GtrModelName")]
-pub enum GtrModelNameCli {
+pub(crate) enum GtrModelNameCli {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,

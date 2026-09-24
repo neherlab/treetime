@@ -4,7 +4,7 @@
 )]
 
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -45,7 +45,7 @@ pub mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
 
-  pub fn inject_indels_on_first_edge(
+  pub(crate) fn inject_indels_on_first_edge(
     graph: &Graph,
     dense_partitions: &mut [DenseReconstruction],
     sparse_partitions: &mut [SparseReconstruction],
@@ -69,7 +69,7 @@ pub mod tests {
     )
   }
 
-  pub fn setup_identical_partitions(
+  pub(crate) fn setup_identical_partitions(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -773,7 +773,7 @@ pub mod tests {
   mod generators {
     use proptest::prelude::*;
 
-    pub fn poisson_params() -> impl Strategy<Value = (usize, f64, f64)> {
+    pub(super) fn poisson_params() -> impl Strategy<Value = (usize, f64, f64)> {
       (1..200_usize, 0.1..1000.0_f64, 1e-8..100.0_f64)
     }
   }

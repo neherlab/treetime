@@ -1,11 +1,11 @@
 #[cfg(test)]
-pub mod tests {
-  pub mod generators {
+pub(super) mod tests {
+  pub(crate) mod generators {
     use crate::gtr::gtr::GTR;
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
 
-    pub fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
+    pub(crate) fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
       prop::collection::vec(0.0_f64..0.5, 4).prop_map(|offsets| {
         let bases = [0.5, 0.75, 1.0, 1.25];
         let raw: Vec<f64> = bases.iter().zip(offsets.iter()).map(|(b, o)| b + o).collect();
@@ -21,7 +21,7 @@ pub mod tests {
       })
     }
 
-    pub fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
+    pub(crate) fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(0.0_f64..1.0, 6).prop_map(|offsets| {
         let bases = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
         let mut w = Array2::zeros((4, 4));
@@ -52,11 +52,11 @@ pub mod tests {
       })
     }
 
-    pub fn arb_branch_len() -> impl Strategy<Value = f64> {
+    pub(crate) fn arb_branch_len() -> impl Strategy<Value = f64> {
       (-10.0_f64..2.0).prop_map(|exp| 10.0_f64.powf(exp))
     }
 
-    pub fn arb_profile_nuc(len: usize) -> impl Strategy<Value = Array2<f64>> {
+    pub(crate) fn arb_profile_nuc(len: usize) -> impl Strategy<Value = Array2<f64>> {
       prop::collection::vec(prop::collection::vec(0.1_f64..2.0, 4), len).prop_map(|raw| {
         let rows: Vec<Array1<f64>> = raw
           .iter()
@@ -69,7 +69,7 @@ pub mod tests {
       })
     }
 
-    pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
+    pub(crate) fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
       (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
         GTR::builder()
           .n_states(4)

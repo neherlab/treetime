@@ -18,7 +18,7 @@ const EPS: f64 = 1e-4;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn combine_messages(
+pub(crate) fn combine_messages(
   composition: &Composition,
   messages: &[SparseSeqDistribution],
   variable_pos: &BTreeMap<usize, AsciiChar>,
@@ -91,7 +91,7 @@ pub fn combine_messages(
   Ok(seq_dis)
 }
 
-pub fn propagate_raw(
+pub(crate) fn propagate_raw(
   exp_qt: &Array2<f64>,
   seq_dis: &SparseSeqDistribution,
   transmission: Option<&[(usize, usize)]>,
@@ -132,7 +132,7 @@ pub fn propagate_raw(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub fn propagate_raw_per_site(
+pub(crate) fn propagate_raw_per_site(
   gtr: &GTR,
   branch_length: f64,
   transpose: bool,
@@ -195,7 +195,7 @@ fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn normalize_1d_inplace(dis: &mut Array1<f64>, weight: f64) -> f64 {
+pub(crate) fn normalize_1d_inplace(dis: &mut Array1<f64>, weight: f64) -> f64 {
   let norm = dis.sum();
   if norm > 0.0 && norm.is_finite() {
     *dis /= norm;

@@ -14,7 +14,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
-pub struct AlignmentArgs {
+pub(crate) struct AlignmentArgs {
   /// Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
   /// `xz`, `zstd`) files and detects compression by extension. With no files,
   /// reads uncompressed FASTA from standard input.

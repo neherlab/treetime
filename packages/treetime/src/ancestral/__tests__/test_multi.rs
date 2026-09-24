@@ -56,7 +56,7 @@ mod helpers {
   use super::*;
   use treetime_primitives::{AlignmentRecord, Seq};
 
-  pub fn plan(name: &str, alphabet: &Alphabet, seqs: &[(&str, &str)]) -> PartitionPlan {
+  pub(super) fn plan(name: &str, alphabet: &Alphabet, seqs: &[(&str, &str)]) -> PartitionPlan {
     PartitionPlan {
       name: name.to_owned(),
       alphabet: alphabet.clone(),

@@ -11,7 +11,7 @@ use treetime_utils::make_error;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn collect_coalescent_edges(
+pub(crate) fn collect_coalescent_edges(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
 ) -> Result<Vec<CoalescentEdgeData>, Report> {
@@ -70,7 +70,10 @@ fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
   entry.time.or(entry.time_dist_likely)
 }
 
-pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<LogLh, Report> {
+pub(crate) fn coalescent_log_likelihood(
+  edges: &[CoalescentEdgeData],
+  model: &CoalescentModel,
+) -> Result<LogLh, Report> {
   let total_contribution = edges
     .iter()
     .map(|edge| model.edge_contribution(edge))
@@ -79,14 +82,14 @@ pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &Coalescen
 }
 
 #[derive(Clone, Debug)]
-pub struct CoalescentEdgeData {
+pub(crate) struct CoalescentEdgeData {
   child_time: CalendarTime,
   parent_time: CalendarTime,
   n_siblings: f64,
 }
 
 impl CoalescentEdgeData {
-  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_siblings: f64) -> Self {
+  pub(crate) fn new(child_time: CalendarTime, parent_time: CalendarTime, n_siblings: f64) -> Self {
     Self {
       child_time,
       parent_time,
@@ -94,15 +97,15 @@ impl CoalescentEdgeData {
     }
   }
 
-  pub fn child_time(&self) -> CalendarTime {
+  pub(crate) fn child_time(&self) -> CalendarTime {
     self.child_time
   }
 
-  pub fn parent_time(&self) -> CalendarTime {
+  pub(crate) fn parent_time(&self) -> CalendarTime {
     self.parent_time
   }
 
-  pub fn n_siblings(&self) -> f64 {
+  pub(crate) fn n_siblings(&self) -> f64 {
     self.n_siblings
   }
 }

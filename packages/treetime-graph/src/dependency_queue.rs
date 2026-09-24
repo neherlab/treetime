@@ -9,7 +9,7 @@ use treetime_utils::make_internal_report;
   clippy::disallowed_methods,
   reason = "the flagged call is required and safe in this context"
 )]
-pub fn run_dependency_queue(
+pub(crate) fn run_dependency_queue(
   prerequisites: &[usize],
   successors: &[Vec<usize>],
   visit: impl Fn(usize) -> Result<(), Report> + Sync + Send,
@@ -51,7 +51,7 @@ pub fn run_dependency_queue(
   error.into_inner().map_or(Ok(()), Err)
 }
 
-pub fn validate_dependency_graph(prerequisites: &[usize], successors: &[Vec<usize>]) -> Result<(), Report> {
+pub(crate) fn validate_dependency_graph(prerequisites: &[usize], successors: &[Vec<usize>]) -> Result<(), Report> {
   if prerequisites.len() != successors.len() {
     return Err(make_internal_report!(
       "Dependency graph has {} nodes but {} successor lists",

@@ -286,11 +286,11 @@ mod tests {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
+    pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .filter_map(|e| recon.obs_edges.get(&e.key()))
@@ -298,14 +298,14 @@ mod tests {
         .sum()
     }
 
-    pub fn reversion_present(graph: &Graph, recon: &PartitionMarginalSparse, needle: &Sub) -> bool {
+    pub(super) fn reversion_present(graph: &Graph, recon: &PartitionMarginalSparse, needle: &Sub) -> bool {
       graph
         .get_edges()
         .filter_map(|e| recon.obs_edges.get(&e.key()))
         .any(|e| e.fitch_subs().contains(needle))
     }
 
-    pub fn make_partition(
+    pub(super) fn make_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,

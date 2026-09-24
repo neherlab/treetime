@@ -5,7 +5,10 @@ use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
-pub fn compute_lineage_counts(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<PiecewiseConstantFn, Report> {
+pub(crate) fn compute_lineage_counts(
+  graph: &Graph,
+  node_times: &CoalescentNodeTimes,
+) -> Result<PiecewiseConstantFn, Report> {
   let (_, events, terminal_lineage_count) = collect_tree_events(graph, node_times)?;
   compute_lineage_count_distribution(&events, terminal_lineage_count)
 }

@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod tests {
+pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -22,7 +22,7 @@ pub mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  pub fn assert_dense_profile_stable(profile: &DenseSeqDistribution, max_ulps: u32) {
+  pub(crate) fn assert_dense_profile_stable(profile: &DenseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.value().is_finite(),
       "Profile log_lh is not finite: {}",
@@ -35,7 +35,7 @@ pub mod tests {
     }
   }
 
-  pub fn assert_sparse_profile_stable(profile: &SparseSeqDistribution, max_ulps: u32) {
+  pub(crate) fn assert_sparse_profile_stable(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.value().is_finite(),
       "Profile log_lh is not finite: {}",
@@ -55,7 +55,7 @@ pub mod tests {
     }
   }
 
-  pub fn run_dense_marginal_with_partitions(
+  pub(crate) fn run_dense_marginal_with_partitions(
     newick: &str,
     aln_str: &str,
     gtr: GTR,
@@ -79,7 +79,7 @@ pub mod tests {
     Ok((log_lh, recon))
   }
 
-  pub fn run_sparse_marginal_with_partitions(
+  pub(crate) fn run_sparse_marginal_with_partitions(
     newick: &str,
     aln_str: &str,
     gtr: GTR,
