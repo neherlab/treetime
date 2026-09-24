@@ -53,16 +53,4 @@ mod tests {
     pretty_assert_ulps_eq!(actual.breakpoints(), &array![1.0], max_ulps = 4);
     pretty_assert_ulps_eq!(actual.values(), &array![5.0, 7.0], max_ulps = 4);
   }
-
-  #[test]
-  fn test_piecewise_constant_eval_many() {
-    let pc = PiecewiseConstantFn::new(array![1.0, 5.0], array![0.0, 1.0, 2.0]);
-    let ts = array![0.0, 1.0, 3.0, 5.0, 10.0];
-    let result = pc.eval_many(&ts);
-    pretty_assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(result[1], 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(result[2], 1.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(result[3], 2.0, max_ulps = 4);
-    pretty_assert_ulps_eq!(result[4], 2.0, max_ulps = 4);
-  }
 }

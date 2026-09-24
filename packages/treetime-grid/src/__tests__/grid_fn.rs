@@ -53,21 +53,16 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    assert_error!(
-      grid_fn.resample_range_dx((0.0, 1.0), 0.4),
-      "GridFn evaluated at 1.2000000000000002, above the support boundary 1.0, but no extrapolation policy is set for that side"
-    );
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4)?;
     assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
   #[test]
-  fn test_gridfn_resample_range_dx_clamped_matches_plain_within_support() -> Result<(), Report> {
+  fn test_gridfn_resample_range_dx_clamped_interpolates_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let plain = grid_fn.resample_range_dx((0.0, 1.0), 0.5)?;
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5)?;
-    assert_ulps_eq!(clamped.y(), plain.y(), max_ulps = 4);
+    assert_ulps_eq!(clamped.y(), &array![0.0, 5.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
@@ -99,16 +94,6 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_interp_many() -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let queries = array![0.5, 1.0, 1.5];
-    let expected = array![5.0, 10.0, 15.0];
-    let actual = grid_fn.interp_many(&queries)?;
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
   fn test_gridfn_from_grid() -> Result<(), Report> {
     let grid_fn = GridFn::from_grid((0.0, 1.0), 0.25, |x| x * x)?;
     assert_eq!(grid_fn.x().len(), 5);
@@ -134,15 +119,6 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_mapv() -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    let expected = GridFn::from_range_values((0.0, 2.0), array![2.0, 4.0, 6.0])?;
-    let actual = grid_fn.mapv(|y| y * 2.0);
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
   fn test_gridfn_negate_arg_inplace() -> Result<(), Report> {
     let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     grid_fn.negate_arg_inplace()?;
@@ -154,7 +130,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_finer() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
+    let resampled = grid_fn.resample_range_n_points((0.0, 2.0), 5)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_ulps_eq!(resampled.dx(), 0.5);

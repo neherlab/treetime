@@ -50,22 +50,4 @@ impl PiecewiseConstantFn {
 
     Self::new(Array1::from(breakpoints), values)
   }
-
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub(crate) fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
-    debug_assert!(queries.as_slice().unwrap().is_sorted());
-
-    let breakpoints = self.base.breakpoints_slice();
-    let mut bp_iter = breakpoints.iter().peekable();
-
-    queries.mapv(|t| {
-      while bp_iter.peek().is_some_and(|&&bp| bp <= t) {
-        bp_iter.next();
-      }
-      self.base.values()[breakpoints.len() - bp_iter.len()]
-    })
-  }
 }

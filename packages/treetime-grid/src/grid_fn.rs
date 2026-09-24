@@ -276,17 +276,6 @@ impl<T: InterpElem> GridFn<T> {
     Ok(self.interpolate_at(xi, idx))
   }
 
-  pub(crate) fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let values = queries
-      .iter()
-      .map(|&q| self.interp(q))
-      .collect::<Result<Vec<T>, Report>>()?;
-    Ok(Array1::from_vec(values))
-  }
-
   pub fn interp_many_with_extrap(
     &self,
     queries: &Array1<T>,
@@ -368,17 +357,6 @@ impl<T: InterpElem> GridFn<T> {
     let y1 = self.y[idx + 1];
     let t = (q - x0) / self.grid.dx();
     y0 + t * (y1 - y0)
-  }
-
-  #[must_use]
-  pub(crate) fn mapv<F>(&self, f: F) -> Self
-  where
-    F: Fn(T) -> T,
-  {
-    Self {
-      grid: self.grid,
-      y: self.y.mapv(f),
-    }
   }
 
   #[allow(
@@ -478,15 +456,6 @@ impl<T: InterpElem> GridFn<T> {
   {
     let (x_min, x_max) = x_range;
     let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
-    self.resample(&grid)
-  }
-
-  pub(crate) fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let (x_min, x_max) = x_range;
-    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
     self.resample(&grid)
   }
 
