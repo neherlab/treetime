@@ -7,7 +7,7 @@ Negative numdates arise legitimately when the molecular clock regression extrapo
 ## Reproduction
 
 ```bash
-./dev/docker/run ./dev/dev r treetime -- timetree \
+./dev/docker/run just run treetime timetree \
   --tree=data/lassa/L/20/tree.nwk \
   --dates=data/lassa/L/20/metadata.tsv \
   --output-all=tmp/smoke-tests/timetree/lassa/L/20/basic \

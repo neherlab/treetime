@@ -16,12 +16,12 @@ The full CLI also shows the disparity:
 
 ```bash
 # Fast
-./dev/docker/run ./dev/dev r treetime -- timetree \
+./dev/docker/run just run treetime timetree \
   --tree=data/flu/h3n2/20/tree.nwk --dates=data/flu/h3n2/20/metadata.tsv \
   --outdir=tmp/timetree/flu/h3n2/20 data/flu/h3n2/20/aln.fasta.xz
 
 # Slow
-./dev/docker/run ./dev/dev r treetime -- timetree \
+./dev/docker/run just run treetime timetree \
   --tree=data/mpox/clade-ii/20/tree.nwk --dates=data/mpox/clade-ii/20/metadata.tsv \
   --outdir=tmp/timetree/mpox/clade-ii/20 data/mpox/clade-ii/20/aln.fasta.xz
 ```

@@ -1,23 +1,28 @@
-# Cargo does not enforce the minimum publish age
+# Cargo does not enforce the minimum publish age on its own
 
 ## Summary
 
-`.cargo/config.toml` sets `registry.global-min-publish-age = "7 days"` so that the resolver refuses crate versions published less than seven days ago. The pinned toolchain in `rust-toolchain.toml` is Rust 1.95.0, and its Cargo does not know this setting. `cargo update`, `cargo add`, and `cargo generate-lockfile` therefore resolve to the newest compatible versions, including versions published minutes earlier. The seven-day policy holds for Rust dependencies only when a developer checks publish dates by hand.
+Cargo can refuse crate versions published less than seven days ago through `registry.global-min-publish-age`. The pinned toolchain, Rust 1.98.1, has this only as the unstable `-Zmin-publish-age` feature; it becomes stable in Rust 1.100, and a stable Cargo warns on every command when the key is set in `.cargo/config.toml`. A plain `cargo update`, `cargo add`, or `cargo generate-lockfile` therefore resolves to the newest compatible versions, including versions published minutes earlier.
 
 The JavaScript side is enforced: Bun reads `minimumReleaseAge` in `bunfig.toml` and refuses newer packages.
 
+## Current mitigation
+
+- `just deps-update` and `just deps-upgrade` run Cargo with `RUSTC_BOOTSTRAP=1 -Zmin-publish-age` and the setting passed with `--config`, which enables the unstable feature on the stable toolchain for the resolution only
+- `just deps-age` (`dev/crate-age`, part of `just audit`) reads every crates.io entry of `Cargo.lock` and of the lint workspace lockfiles, and fails on a version younger than seven days. It needs network access, so it is not part of the offline gates
+- Builds run with `--locked`, so no other recipe changes `Cargo.lock`
+
+## Remaining gap
+
+- A direct `cargo update` or `cargo add` outside the recipes still accepts a young release. `just deps-age` finds it, but only when someone runs it
+- `cargo install` of the `cargo:` tools in `mise.toml` does not apply the age check at all, in any Cargo version
+- Git dependencies in `[patch.crates-io]` have no publish time
+
+## Resolution
+
+Raise `rust-toolchain.toml` to Rust 1.100 or later once it is at least seven days old, set `registry.global-min-publish-age = "7 days"` in `.cargo/config.toml`, and drop the flags of the dependency recipes (`cargo_min_age` in the justfile). Cargo does not check versions already in `Cargo.lock` ([rust-lang/cargo#17246](https://github.com/rust-lang/cargo/issues/17246)), so `just deps-age` keeps its value for lockfiles written by other tools.
+
 ## Evidence
 
-- Cargo added the setting as the unstable `-Zmin-publish-age` flag in [rust-lang/cargo#17012](https://github.com/rust-lang/cargo/pull/17012), merged 2026-06-18, and stabilized it for Rust 1.100 in [rust-lang/cargo#17335](https://github.com/rust-lang/cargo/pull/17335). Rust 1.95 contains neither.
-- The Dylint toolchain (`nightly-2026-05-28`) is also older than the unstable flag, so Dylint runs cannot enforce the age either. Nightly Cargo reads the `[unstable]` table and does not know the key, so every Dylint build prints `warning: unused config key 'unstable.min-publish-age'`. The Dylint nightly is pinned to the toolchain of the `clippy_utils` revision that Dylint 6.0.4 is built against, so moving it past the flag means upgrading Dylint and every lint workspace together.
-- Lockfile refreshes in this repository locked versions younger than seven days, for example `libredox 0.1.25` in the vendored Dylint workspace. Each one had to be held back by hand with `cargo update --precise`.
-
-## Impact
-
-- A compromised crate release can enter `Cargo.lock` on the next lockfile update, which defeats the purpose of the delay.
-- Rust and JavaScript dependencies follow different rules: a too-new Bun package fails the install, while a too-new crate is accepted without a warning.
-
-## Potential solutions
-
-- Raise `rust-toolchain.toml` to Rust 1.100 or later once it is released. The resolver then honors `registry.global-min-publish-age` with no other change. This covers new resolutions only: Cargo does not check versions already in `Cargo.lock` ([rust-lang/cargo#17246](https://github.com/rust-lang/cargo/issues/17246)).
-- Add a read-only check to `just check-all` that compares every registry entry in `Cargo.lock` with its crates.io publish time and fails on versions younger than seven days. This also covers lockfiles written by older Cargo versions or edited by hand, but it needs network access, so it fits `just audit` better than the offline gates.
+- Cargo added the setting as the unstable `-Zmin-publish-age` flag in [rust-lang/cargo#17012](https://github.com/rust-lang/cargo/pull/17012) and stabilized it for Rust 1.100 in [rust-lang/cargo#17335](https://github.com/rust-lang/cargo/pull/17335)
+- Cargo treats `RUSTC_BOOTSTRAP=1` as a development channel that allows unstable features (`src/cargo/core/features.rs`, `channel()`)

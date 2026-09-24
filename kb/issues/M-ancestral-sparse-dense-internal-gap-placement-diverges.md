@@ -7,8 +7,8 @@ For the same tree and alignment, the sparse and dense marginal ancestral backend
 ## Reproduction
 
 ```
-./dev/docker/run ./dev/dev r treetime -- ancestral --method-anc=marginal --tree=data/rsv/a/20/tree.nwk --aln=data/rsv/a/20/aln.fasta.xz --output-all=tmp/gap/sparse
-./dev/docker/run ./dev/dev r treetime -- ancestral --method-anc=marginal --dense=true --tree=data/rsv/a/20/tree.nwk --aln=data/rsv/a/20/aln.fasta.xz --output-all=tmp/gap/dense
+./dev/docker/run just run treetime ancestral --method-anc=marginal --tree=data/rsv/a/20/tree.nwk --aln=data/rsv/a/20/aln.fasta.xz --output-all=tmp/gap/sparse
+./dev/docker/run just run treetime ancestral --method-anc=marginal --dense=true --tree=data/rsv/a/20/tree.nwk --aln=data/rsv/a/20/aln.fasta.xz --output-all=tmp/gap/dense
 ```
 
 Then, for each shared node, count positions where exactly one backend has `-`. The internal nodes accumulate 47 such positions on this dataset.

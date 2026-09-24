@@ -103,7 +103,7 @@ Point (delta) distributions assume zero uncertainty. When backward and forward p
 ## Repro
 
 ```bash
-./dev/docker/run ./dev/dev r treetime -- timetree --clock-filter=0 \
+./dev/docker/run just run treetime timetree --clock-filter=0 \
   --branch-length-mode=input \
   --tree=data/flu/h3n2/20/tree.nwk \
   --dates=data/flu/h3n2/20/metadata.tsv \
