@@ -99,11 +99,11 @@ mod tests {
     let set1 = vec![(1, 5), (10, 15)];
     let set2 = vec![(3, 8), (12, 18)];
     let set3 = vec![(6, 10), (14, 20)];
-    let actual1 = range_intersection(&[set1.clone(), set2.clone(), set3.clone()]);
-    let actual2 = range_intersection(&[set1.clone(), set2.clone()]);
-    let actual3 = range_intersection(&[set2.clone(), set3.clone()]);
-    let actual2_3 = range_intersection(&[actual2.clone(), set3.clone()]);
-    assert_eq!(actual1, actual2_3);
+    let all_at_once = range_intersection(&[set1.clone(), set2.clone(), set3.clone()]);
+    let left_first = range_intersection(&[range_intersection(&[set1.clone(), set2.clone()]), set3.clone()]);
+    let right_first = range_intersection(&[set1.clone(), range_intersection(&[set2.clone(), set3.clone()])]);
+    assert_eq!(all_at_once, left_first);
+    assert_eq!(all_at_once, right_first);
   }
 
   #[rstest]
@@ -114,7 +114,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_range_intersection_absorption() {
+  fn test_range_intersection_repeated_operand_is_idempotent() {
     let set1 = vec![(1, 5), (10, 15)];
     let set2 = vec![(3, 8), (12, 18)];
     let actual = range_intersection(&[set1.clone(), set2.clone(), set1.clone()]);

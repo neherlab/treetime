@@ -1,6 +1,6 @@
 #![allow(
   clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+  reason = "small index and state counts convert to f64 exactly"
 )]
 
 #[cfg(test)]

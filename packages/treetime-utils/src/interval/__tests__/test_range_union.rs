@@ -111,7 +111,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_range_union_absorption() {
+  fn test_range_union_with_subset_returns_superset() {
     let input1 = vec![(1, 5), (10, 15)];
     let input2 = vec![(2, 4)];
     let union_result = range_union(&[input1.clone(), input2.clone()]);

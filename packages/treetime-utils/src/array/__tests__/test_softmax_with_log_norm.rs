@@ -1,6 +1,6 @@
 #![allow(
   clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+  reason = "small index and state counts convert to f64 exactly"
 )]
 
 #[cfg(test)]
@@ -190,22 +190,22 @@ mod tests {
     fn test_softmax_with_log_norm_nan_must_propagate() {
       let input = array![0.0, f64::NAN, -1.0, -2.0];
       let (normalized, log_norm) = softmax_with_log_norm(input.view());
-      let has_nan = normalized.iter().any(|v| v.is_nan()) || log_norm.is_nan();
       assert!(
-        has_nan,
-        "NaN input must propagate: normalized={normalized}, log_norm={log_norm}"
+        normalized.iter().all(|v| v.is_nan()),
+        "NaN input must propagate to every probability: {normalized}"
       );
+      assert!(log_norm.is_nan(), "NaN input must propagate to log_norm: {log_norm}");
     }
 
     #[test]
     fn test_softmax_with_log_norm_all_nan_must_propagate() {
       let input = Array1::from_elem(4, f64::NAN);
       let (normalized, log_norm) = softmax_with_log_norm(input.view());
-      let has_nan = normalized.iter().any(|v| v.is_nan()) || log_norm.is_nan();
       assert!(
-        has_nan,
-        "all-NaN input must propagate: normalized={normalized}, log_norm={log_norm}"
+        normalized.iter().all(|v| v.is_nan()),
+        "all-NaN input must propagate to every probability: {normalized}"
       );
+      assert!(log_norm.is_nan(), "all-NaN input must propagate to log_norm: {log_norm}");
     }
 
     #[test]

@@ -25,10 +25,11 @@ mod tests {
   }
 
   #[rstest]
-  #[case::sig_only((1.23456, Some(3), None   ), "1.23")]
-  #[case::dec_only((1.23456, None,    Some(2)), "1.23")]
-  #[case::both_constraints((1.23456, Some(3), Some(2)), "1.23")]
-  #[case::default_behavior((1.23456, None,    None   ), "1.23")]
+  #[case::sig_only(            (12.3456, Some(4), None   ), "12.35")]
+  #[case::dec_only(            (12.3456, None,    Some(3)), "12.346")]
+  #[case::both_decimal_stricter((12.3456, Some(5), Some(1)), "12.3")]
+  #[case::both_sig_stricter(   (12.3456, Some(2), Some(3)), "12")]
+  #[case::default_behavior(    (12.3456, None,    None   ), "12.3")]
   #[trace]
   fn test_float_to_digits(
     #[case] (input, sig_digits, dec_digits): (f64, Option<u8>, Option<i8>),
@@ -56,10 +57,11 @@ mod tests {
   }
 
   #[rstest]
-  #[case::f64_sig_only((1.23456_f64, Some(3), None   ), "1.23")]
-  #[case::f32_dec_only((1.23456_f32, None,    Some(2)), "1.23")]
-  #[case::f64_both((1.23456_f64, Some(3), Some(2)), "1.23")]
-  #[case::f32_default((1.23456_f32, None,    None   ), "1.23")]
+  #[case::f64_sig_only(             (12.3456_f64, Some(4), None   ), "12.35")]
+  #[case::f32_dec_only(             (12.3456_f32, None,    Some(3)), "12.346")]
+  #[case::f64_both_decimal_stricter((12.3456_f64, Some(5), Some(1)), "12.3")]
+  #[case::f32_both_sig_stricter(    (12.3456_f32, Some(2), Some(3)), "12")]
+  #[case::f32_default(              (12.3456_f32, None,    None   ), "12.3")]
   #[trace]
   fn test_trait_to_digits(
     #[case] (input, sig_digits, dec_digits): (impl FloatFormatExt, Option<u8>, Option<i8>),
