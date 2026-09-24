@@ -45,3 +45,8 @@ reason = "the shipped treetime-server binary is a product entry point"
 # item = "some::intentional::api"
 # level = "expect"
 # reason = "part of the stable library API consumed by an external crate"
+
+[[exclude]]
+crate = "app_server"
+module = "contract"
+reason = "OpenAPI schema declarations consumed by the generated TypeScript client, not by Rust code"

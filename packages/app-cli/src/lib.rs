@@ -1,5 +1,6 @@
-pub mod cli;
-pub mod commands;
+mod cli;
+mod commands;
+pub mod run;
 
 #[cfg(test)]
 mod tests {

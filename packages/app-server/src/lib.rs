@@ -1,8 +1,8 @@
-pub mod commands;
+mod commands;
 pub mod contract;
-pub mod error;
+mod error;
 pub mod routes;
-pub mod sse;
+mod sse;
 pub mod state;
 
 use crate::state::ServerConfig;
