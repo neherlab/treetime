@@ -1,1 +1,0 @@
-mod test_softmax_with_log_norm;

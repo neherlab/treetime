@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
 use eyre::Report;

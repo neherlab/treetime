@@ -4,6 +4,8 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
+  use std::path::Path;
   use treetime_utils::o;
 
   #[test]

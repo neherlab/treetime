@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::parse_delimited::*;
+  use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
 

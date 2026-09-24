@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use eyre::Report;
 use std::{
   io::{BufRead, Cursor},

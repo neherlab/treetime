@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use ndarray::{Array1, ArrayView1};
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;

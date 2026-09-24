@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::edge::{Edge, GraphEdgeKey};
 use crate::graph::Graph;
 use crate::node::{GraphNodeKey, Node};

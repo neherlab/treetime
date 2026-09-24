@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"

@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use std::sync::LazyLock;
 
 use num_traits::Float;
@@ -70,7 +67,7 @@ fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
   clippy::string_slice,
   reason = "the index comes from str::find on the ASCII exponent marker"
 )]
-fn trim_trailing_zeros(input: &str) -> String {
+pub(super) fn trim_trailing_zeros(input: &str) -> String {
   let (mantissa, exponent) = match input.find(['e', 'E']) {
     Some(pos) => (&input[..pos], Some(&input[pos..])),
     None => (input, None),

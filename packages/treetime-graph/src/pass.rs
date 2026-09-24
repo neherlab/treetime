@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::dependency_queue::{run_dependency_queue, validate_dependency_graph};
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;

@@ -8,6 +8,7 @@ mod tests {
   use crate::array::softmax_with_log_norm::*;
   use crate::pretty_assert_neg_inf;
   use approx::assert_ulps_eq;
+  use ndarray::Array1;
   use ndarray::array;
   use rstest::rstest;
 

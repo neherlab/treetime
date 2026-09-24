@@ -4,6 +4,7 @@ mod rate_matrix;
 mod test_gm_gtr;
 mod test_gtr_hierarchy;
 mod test_gtr_numerical_edge;
+mod test_jc_distance;
 mod test_prop_gtr_eigen;
 mod test_prop_gtr_expqt;
 mod test_prop_gtr_numerical;

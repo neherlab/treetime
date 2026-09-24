@@ -3,6 +3,7 @@ mod tests {
   use crate::optimize::indel::*;
   use crate::pretty_assert_neg_inf;
   use approx::assert_abs_diff_eq;
+  use statrs::function::factorial::ln_factorial;
 
   #[test]
   fn test_optimize_indel_poisson_zero_rate() {

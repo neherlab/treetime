@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::interval::range::{from_interval_set, to_interval_sets};
 use gcollections::ops::{Empty, Intersection};
 use intervallum::interval_set::IntervalSet;

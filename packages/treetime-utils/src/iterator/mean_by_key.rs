@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use num::{FromPrimitive, Zero};
 use std::ops::{Add, Div};
 

@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::testing::metrics::aggregate::aggregate::AggregateMetrics;
 use crate::testing::metrics::config::MetricsConfig;
 use crate::testing::metrics::distribution::distribution::DistributionMetrics;
@@ -9,9 +6,6 @@ use crate::testing::metrics::spatial::spatial::SpatialMetrics;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
-
-#[cfg(test)]
-use approx::assert_ulps_eq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationMetrics {
@@ -34,7 +28,7 @@ impl ValidationMetrics {
     Self::new_with_config(x, actual, expected, execution_time_ms, &MetricsConfig::default())
   }
 
-  fn new_with_config(
+  pub(super) fn new_with_config(
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,

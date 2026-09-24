@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use ndarray::{Array2, Array3, Axis};
 
 pub fn matmul_3d(lhs: &Array3<f64>, rhs: &Array3<f64>) -> Array3<f64> {

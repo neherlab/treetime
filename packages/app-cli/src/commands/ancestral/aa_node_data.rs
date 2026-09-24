@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use eyre::Report;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -102,7 +99,7 @@ pub(crate) fn read_aa_root_sequences(
   Ok(by_cds)
 }
 
-fn validate_aa_root_sequence_cdses(
+pub(super) fn validate_aa_root_sequence_cdses(
   path: &Path,
   by_cds: &BTreeMap<String, Seq>,
   cdses: &[String],

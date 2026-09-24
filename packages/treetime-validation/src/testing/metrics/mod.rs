@@ -4,3 +4,6 @@ pub mod distribution;
 pub mod metrics;
 pub mod pointwise;
 pub mod spatial;
+
+#[cfg(test)]
+mod __tests__;

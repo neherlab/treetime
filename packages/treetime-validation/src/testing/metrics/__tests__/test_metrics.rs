@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::testing::metrics::config::MetricsConfig;
   use crate::testing::metrics::metrics::*;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]

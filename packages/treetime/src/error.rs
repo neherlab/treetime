@@ -47,6 +47,3 @@ impl From<Report> for OperationError {
     }
   }
 }
-
-#[cfg(test)]
-mod __tests__;

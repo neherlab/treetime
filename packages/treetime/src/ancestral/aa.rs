@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::AncestralPartition;
 use crate::make_error;
@@ -160,7 +157,7 @@ pub struct AaCdsNodeData {
   pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
 }
 
-fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {
+pub(super) fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {
   if reference.len() != query.len() {
     return make_error!(
       "Cannot diff sequences with lengths {} and {}",

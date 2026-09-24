@@ -1,7 +1,14 @@
 #[cfg(test)]
 mod tests {
+  use crate::edge::GraphEdgeKey;
+  use crate::graph::Graph;
+  use crate::node::GraphNodeKey;
   use crate::topology_order::*;
+  use eyre::Report;
+  use itertools::Itertools;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
+  use treetime_utils::make_report;
 
   #[test]
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
