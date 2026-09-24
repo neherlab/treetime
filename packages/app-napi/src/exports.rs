@@ -1,39 +1,31 @@
-use crate::commands::ancestral::{AncestralArgs, run_ancestral};
-use crate::commands::clock::{ClockArgs, run_clock};
-use crate::commands::mugration::{MugrationArgs, run_mugration};
-use crate::commands::optimize::{OptimizeArgs, run_optimize};
-use crate::commands::prune::{PruneArgs, run_prune};
-use crate::commands::timetree::{TimetreeArgs, run_timetree};
-use crate::progress::{self, NapiCancel, NapiProgressSink};
+use crate::jobs::{PendingJob, start_job};
+use app_commands::command::{CheckConfigRequest, check_config};
+use app_commands::job::{JobId, JobRegistry};
 use app_datasets::discover_datasets;
+use log::error;
 use napi::Task;
-use napi::threadsafe_function::ThreadsafeFunction;
+use napi::bindgen_prelude::AsyncTask;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use std::path::Path;
 use std::sync::Arc;
-use treetime::cancel::{CancelledError, NoopCancel};
-use treetime::progress::NoopProgress;
 use treetime_schema::version_info;
 use treetime_utils::env::env_var_optional;
 
 const DATA_DIR_ENV: &str = "DATA_DIR";
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 #[napi]
-pub fn version() -> String {
-  serde_json::to_string(&version_info()).expect("version_info serialization failed")
+pub fn version() -> napi::Result<String> {
+  serde_json::to_string(&version_info()).map_err(|err| to_napi(&err.into()))
 }
 
 #[napi]
 pub fn datasets() -> napi::Result<String> {
   let data_dir = env_var_optional(DATA_DIR_ENV)
-    .map_err(|e| eyre_to_napi(&e))?
+    .map_err(|err| to_napi(&err))?
     .unwrap_or_else(|| "data".to_owned());
-  let datasets = discover_datasets(Path::new(&data_dir)).map_err(|e| eyre_to_napi(&e))?;
-  serde_json::to_string(&datasets).map_err(|e| json_to_napi(&e))
+  let datasets = discover_datasets(Path::new(&data_dir)).map_err(|err| to_napi(&err))?;
+  serde_json::to_string(&datasets).map_err(|err| to_napi(&err.into()))
 }
 
 #[napi]
@@ -41,85 +33,79 @@ pub fn datasets() -> napi::Result<String> {
   clippy::needless_pass_by_value,
   reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
 )]
-pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
-  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-  let result = run_ancestral(&args, &NoopCancel, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
-  serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
+pub fn check_config_json(request_json: String) -> napi::Result<String> {
+  let request: CheckConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
+  serde_json::to_string(&check_config(&request)).map_err(|err| to_napi(&err.into()))
 }
 
 #[napi]
-pub fn cancel() {
-  progress::cancel();
+pub struct CommandRunner {
+  jobs: Arc<JobRegistry>,
 }
 
-#[napi(
-  ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
-  ts_return_type = "Promise<string>"
-)]
-#[allow(
-  clippy::needless_pass_by_value,
-  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-)]
-pub fn ancestral(
-  args_json: String,
-  _on_event: Arc<ThreadsafeFunction<String, ()>>,
-) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTask>> {
-  let args: AncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTask { args }))
-}
-
-pub struct AncestralTask {
-  args: AncestralArgs,
-}
-
-macro_rules! define_task {
-  ($task_name:ident, $args_type:ty, $run_fn:path, $napi_fn:ident) => {
-    pub struct $task_name {
-      args: $args_type,
-      on_event: Arc<ThreadsafeFunction<String, ()>>,
+#[napi]
+impl CommandRunner {
+  #[napi(constructor)]
+  pub fn new() -> Self {
+    Self {
+      jobs: Arc::new(JobRegistry::default()),
     }
+  }
 
-    impl Task for $task_name {
-      type Output = String;
-      type JsValue = String;
+  #[napi(
+    ts_args_type = "jobId: string, command: string, configJson: string, onEvent: (err: Error | null, eventJson: string) => void",
+    ts_return_type = "Promise<string>"
+  )]
+  #[allow(
+    clippy::needless_pass_by_value,
+    reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+  )]
+  pub fn run(
+    &self,
+    job_id: String,
+    command: String,
+    config_json: String,
+    on_event: Arc<ThreadsafeFunction<String, ()>>,
+  ) -> napi::Result<AsyncTask<CommandTask>> {
+    let job = start_job(&self.jobs, &job_id, &command, &config_json).map_err(|err| to_napi(&err))?;
+    Ok(AsyncTask::new(CommandTask {
+      job: Some(job),
+      on_event,
+    }))
+  }
 
-      fn compute(&mut self) -> napi::Result<Self::Output> {
-        progress::reset_cancel();
-        let sink = NapiProgressSink::new(self.on_event.clone());
-        let result = $run_fn(&self.args, &NapiCancel, &sink).map_err(|e| eyre_to_napi(&e))?;
-        serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
-      }
-
-      fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
-        Ok(output)
-      }
-    }
-
-    #[napi(
-      ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
-      ts_return_type = "Promise<string>"
-    )]
-    #[allow(
-  clippy::needless_pass_by_value,
-  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-)]
-    pub fn $napi_fn(
-      args_json: String,
-      on_event: Arc<ThreadsafeFunction<String, ()>>,
-    ) -> napi::Result<napi::bindgen_prelude::AsyncTask<$task_name>> {
-      let args: $args_type = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
-      Ok(napi::bindgen_prelude::AsyncTask::new($task_name { args, on_event }))
-    }
-  };
+  #[napi]
+  #[allow(
+    clippy::needless_pass_by_value,
+    reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+  )]
+  pub fn cancel(&self, job_id: String) -> bool {
+    JobId::parse(&job_id).is_ok_and(|job_id| self.jobs.cancel(&job_id))
+  }
 }
 
-impl Task for AncestralTask {
+pub struct CommandTask {
+  job: Option<PendingJob>,
+  on_event: Arc<ThreadsafeFunction<String, ()>>,
+}
+
+impl Task for CommandTask {
   type Output = String;
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let result = run_ancestral(&self.args, &NoopCancel, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
-    serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
+    let job = self
+      .job
+      .take()
+      .ok_or_else(|| napi::Error::new(napi::Status::GenericFailure, "the job has already run".to_owned()))?;
+    let on_event = Arc::clone(&self.on_event);
+    let terminal = job.run(move |event| match serde_json::to_string(&event) {
+      Ok(json) => {
+        on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+      },
+      Err(err) => error!("When serializing a job event: {err}"),
+    });
+    serde_json::to_string(&terminal).map_err(|err| to_napi(&err.into()))
   }
 
   fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
@@ -127,20 +113,6 @@ impl Task for AncestralTask {
   }
 }
 
-fn eyre_to_napi(err: &eyre::Report) -> napi::Error {
-  if err.downcast_ref::<CancelledError>().is_some() {
-    napi::Error::new(napi::Status::Cancelled, "Operation cancelled".to_owned())
-  } else {
-    napi::Error::new(napi::Status::GenericFailure, format!("{err:#}"))
-  }
+fn to_napi(err: &eyre::Report) -> napi::Error {
+  napi::Error::new(napi::Status::GenericFailure, format!("{err:#}"))
 }
-
-fn json_to_napi(err: &serde_json::Error) -> napi::Error {
-  napi::Error::new(napi::Status::InvalidArg, format!("{err}"))
-}
-
-define_task!(ClockTask, ClockArgs, run_clock, clock);
-define_task!(TimetreeTask, TimetreeArgs, run_timetree, timetree);
-define_task!(MugrationTask, MugrationArgs, run_mugration, mugration);
-define_task!(OptimizeTask, OptimizeArgs, run_optimize, optimize);
-define_task!(PruneTask, PruneArgs, run_prune, prune);

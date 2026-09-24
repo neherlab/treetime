@@ -16,31 +16,26 @@ crate-type = ["cdylib", "lib"]
 doctest = false
 
 [dependencies]
+app-commands = { workspace = true, features = ["clap"] }
 app-datasets = { workspace = true }
-app-output = { workspace = true }
-treetime = { workspace = true }
-treetime-graph = { workspace = true }
-treetime-io = { workspace = true }
-treetime-primitives = { workspace = true }
 treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 
 eyre = { workspace = true }
-itertools = { workspace = true }
 log = { workspace = true }
-maplit = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
-smart-default = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }
+parking_lot = { workspace = true }
+pretty_assertions = { workspace = true }
 rayon = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

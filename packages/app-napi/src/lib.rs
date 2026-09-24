@@ -1,6 +1,8 @@
-pub mod commands;
+#[cfg(test)]
+mod __tests__;
+
 pub mod exports;
-pub mod progress;
+pub mod jobs;
 
 #[cfg(test)]
 mod tests {

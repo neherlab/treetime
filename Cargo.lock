@@ -239,24 +239,19 @@ dependencies = [
 name = "app-napi"
 version = "1.0.0"
 dependencies = [
+ "app-commands",
  "app-datasets",
- "app-output",
  "ctor",
  "eyre",
- "itertools",
  "log",
- "maplit",
  "napi",
  "napi-build",
  "napi-derive",
+ "parking_lot",
+ "pretty_assertions",
  "rayon",
- "serde",
  "serde_json",
- "smart-default",
- "treetime",
- "treetime-graph",
- "treetime-io",
- "treetime-primitives",
+ "tempfile",
  "treetime-schema",
  "treetime-utils",
 ]
