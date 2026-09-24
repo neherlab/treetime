@@ -133,6 +133,10 @@ run_flags=(
   --security-opt=no-new-privileges
   --user="$(id -u):$(id -g)"
   --volume="${root}:${root}"
+  # The init process delivers signals to the whole process group, as a terminal
+  # does: just ignores SIGHUP and SIGINT because it expects its children to
+  # receive them directly.
+  --env="TINI_KILL_PROCESS_GROUP=1"
   --env="TREETIME_CONTAINER=1"
   --env="TREETIME_ROOT=${root}"
   --env="TERM=${TERM:-xterm-256color}"

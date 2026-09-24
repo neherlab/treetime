@@ -61,9 +61,10 @@ probe() {
 # Poll a URL until it answers. The server is a separate process whose only
 # readiness signal is the socket; the timeout bounds a cold compile.
 wait_ready() {
-  local url="${1}" timeout="${2}" elapsed=0
+  local url="${1}" timeout="${2}" pid="${3}" elapsed=0
   until probe "${url}"; do
     ((elapsed < timeout)) || return 1
+    kill -0 "${pid}" 2>/dev/null || return 1
     sleep 1
     elapsed=$((elapsed + 1))
   done
@@ -93,16 +94,28 @@ up() {
   rm -rf "${state_dir}"
   local api_url="http://127.0.0.1:${TREETIME_API_PORT}/api/version"
   local web_url="http://127.0.0.1:${TREETIME_WEB_PORT}/"
+  local url
+  for url in "${api_url}" "${web_url}"; do
+    if probe "${url}"; then
+      printf 'A server already answers at %s; stop it before starting another (just status)\n' "${url}" >&2
+      return 1
+    fi
+  done
+
   pids=()
   # Each server runs in its own process group, so stopping it reaches cargo's child too.
+  # A signal ends the script through exit, so the EXIT trap stops both groups.
   set -m
   trap stop_servers EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
 
   printf 'Starting the API server on http://127.0.0.1:%s\n' "${TREETIME_API_PORT}" >&2
   PORT="${TREETIME_API_PORT}" cargo run --locked --bin treetime-server -- --data-dir=data --out-dir=tmp/web \
     > >(prefix api) 2>&1 &
   pids+=("$!")
-  wait_ready "${api_url}" 900 || {
+  wait_ready "${api_url}" 900 "${pids[0]}" || {
     printf 'The API server did not answer at %s\n' "${api_url}" >&2
     return 1
   }
@@ -111,14 +124,14 @@ up() {
   printf 'Starting the web server on http://127.0.0.1:%s\n' "${TREETIME_WEB_PORT}" >&2
   bun run --cwd packages/app-web dev > >(prefix web) 2>&1 &
   pids+=("$!")
-  wait_ready "${web_url}" 300 || {
+  wait_ready "${web_url}" 300 "${pids[1]}" || {
     printf 'The web server did not answer at %s\n' "${web_url}" >&2
     return 1
   }
   write_state web "${web_url}"
 
   printf 'Ready: %s (Ctrl-C to stop)\n' "${web_url}" >&2
-  wait
+  wait -n "${pids[@]}"
 }
 
 health() {
