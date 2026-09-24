@@ -99,50 +99,6 @@ impl AsciiChar {
 
   #[allow(
     clippy::as_conversions,
-    reason = "narrowing to u8 is exact after the guard proves value < 128"
-  )]
-  pub fn try_from_u16(value: u16) -> Result<Self, Report> {
-    if value >= 128 {
-      return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
-    }
-    Ok(Self(value as u8))
-  }
-
-  #[allow(
-    clippy::as_conversions,
-    reason = "narrowing to u8 is exact after the guard proves value < 128"
-  )]
-  pub fn try_from_u32(value: u32) -> Result<Self, Report> {
-    if value >= 128 {
-      return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
-    }
-    Ok(Self(value as u8))
-  }
-
-  #[allow(
-    clippy::as_conversions,
-    reason = "narrowing to u8 is exact after the guard proves value < 128"
-  )]
-  pub fn try_from_u64(value: u64) -> Result<Self, Report> {
-    if value >= 128 {
-      return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
-    }
-    Ok(Self(value as u8))
-  }
-
-  #[allow(
-    clippy::as_conversions,
-    reason = "narrowing to u8 is exact after the guard proves value < 128"
-  )]
-  pub fn try_from_usize(value: usize) -> Result<Self, Report> {
-    if value >= 128 {
-      return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
-    }
-    Ok(Self(value as u8))
-  }
-
-  #[allow(
-    clippy::as_conversions,
     reason = "narrowing char to u8 is exact after the is_ascii guard"
   )]
   pub fn try_from_char(value: char) -> Result<Self, Report> {

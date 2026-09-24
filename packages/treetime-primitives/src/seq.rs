@@ -49,11 +49,6 @@ impl Seq {
     }
   }
 
-  pub fn try_from_elem<T: Into<u8>>(elem: T, n: usize) -> Result<Self, Report> {
-    let ch = AsciiChar::try_new(elem.into())?;
-    Ok(Self { data: vec![ch; n] })
-  }
-
   pub fn try_from_str(s: &str) -> Result<Self, Report> {
     if !s.is_ascii() {
       return make_error!("Seq: input contains non-ASCII characters");
@@ -94,28 +89,12 @@ impl Seq {
     self.data.clear();
   }
 
-  pub fn truncate(&mut self, len: usize) {
-    self.data.truncate(len);
-  }
-
   pub fn push(&mut self, byte: AsciiChar) {
     self.data.push(byte);
   }
 
-  pub fn pop(&mut self) -> Option<AsciiChar> {
-    self.data.pop()
-  }
-
-  pub fn capacity(&self) -> usize {
-    self.data.capacity()
-  }
-
   pub fn reserve(&mut self, additional: usize) {
     self.data.reserve(additional);
-  }
-
-  pub fn reserve_exact(&mut self, additional: usize) {
-    self.data.reserve_exact(additional);
   }
 
   #[allow(
@@ -135,69 +114,6 @@ impl Seq {
 
   pub fn as_mut_slice(&mut self) -> &mut [AsciiChar] {
     &mut self.data
-  }
-
-  pub fn try_insert(&mut self, index: usize, byte: u8) -> Result<(), Report> {
-    let ch = AsciiChar::try_new(byte)?;
-    self.data.insert(index, ch);
-    Ok(())
-  }
-
-  pub fn remove(&mut self, index: usize) -> u8 {
-    self.data.remove(index).into()
-  }
-
-  pub fn try_append(&mut self, other: &mut Vec<u8>) -> Result<(), Report> {
-    for byte in other.drain(..) {
-      self.data.push(AsciiChar::try_new(byte)?);
-    }
-    Ok(())
-  }
-
-  pub fn try_push_str(&mut self, s: &str) -> Result<(), Report> {
-    if !s.is_ascii() {
-      return make_error!("Seq: input contains non-ASCII characters");
-    }
-    self
-      .data
-      .extend(s.as_bytes().iter().copied().map(AsciiChar::from_byte_unchecked));
-    Ok(())
-  }
-
-  pub fn contains_str(&self, s: &str) -> bool {
-    self.as_str().contains(s)
-  }
-
-  pub fn starts_with(&self, prefix: &str) -> bool {
-    self.as_str().starts_with(prefix)
-  }
-
-  pub fn ends_with(&self, suffix: &str) -> bool {
-    self.as_str().ends_with(suffix)
-  }
-
-  pub fn find(&self, substring: &str) -> Option<usize> {
-    self.as_str().find(substring)
-  }
-
-  pub fn rfind(&self, substring: &str) -> Option<usize> {
-    self.as_str().rfind(substring)
-  }
-
-  pub fn try_replace(&mut self, from: &str, to: &str) -> Result<&mut Self, Report> {
-    let replaced = self.as_str().replace(from, to);
-    self.data = replaced
-      .into_bytes()
-      .into_iter()
-      .map(AsciiChar::try_new)
-      .collect::<Result<Vec<_>, _>>()?;
-    Ok(self)
-  }
-
-  pub fn split_off(&mut self, at: usize) -> Seq {
-    Seq {
-      data: self.data.split_off(at),
-    }
   }
 }
 

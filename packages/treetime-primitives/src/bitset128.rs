@@ -142,14 +142,6 @@ impl BitSet128 {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
   }
 
-  #[allow(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
-  pub fn last(&self) -> Option<AsciiChar> {
-    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.ilog2() as u8))
-  }
-
   fn get_one_maybe(&self) -> Option<AsciiChar> {
     self.first()
   }
@@ -160,15 +152,6 @@ impl BitSet128 {
   )]
   pub fn get_one(&self) -> AsciiChar {
     self.get_one_maybe().expect("BitSet128 is empty")
-  }
-
-  pub fn get_one_exactly(&self) -> AsciiChar {
-    assert_eq!(1, self.len(), "expected exactly one element");
-    self.get_one()
-  }
-
-  pub fn to_vec(&self) -> Vec<AsciiChar> {
-    self.iter().collect()
   }
 }
 
