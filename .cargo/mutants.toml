@@ -1,7 +1,9 @@
-# cargo-mutants configuration. See https://mutants.rs/config-file.html
+# cargo-mutants configuration, driven by `just mutants`.
+# https://mutants.rs/config-file.html
 #
-# Tests run through cargo-nextest, matching the project's test runner. The
-# `just mutants` and `just mutants-full` recipes drive it.
+# Exclusions go here as `exclude_re` or `exclude_globs` entries, each preceded by
+# a comment that gives the reason.
+
 test_tool = "nextest"
 
 # Timeouts are multiples of the measured baseline test and build runtime. The
@@ -10,11 +12,4 @@ timeout_multiplier = 5.0
 build_timeout_multiplier = 5.0
 minimum_test_timeout = 300
 
-# Mutation output goes under tmp/ so git ignores it.
 output = "tmp/mutants"
-
-# Exclusions are NOT declared here. They live in mutants-exclusions.toml beside
-# this file, one entry per exclusion, each carrying a reason. The mutation
-# recipes validate that file and derive the --exclude / --exclude-re flags from
-# it, and reject any exclude_globs, exclude_re, examine_globs, or examine_re key
-# placed here, so no exclusion can enter without a reason.

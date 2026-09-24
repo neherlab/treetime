@@ -3,9 +3,3 @@
 # dylint driver can locate and load it.
 [target.'cfg(all())']
 linker = "dylint-link"
-
-# A dylint plugin cdylib must unwind (the dylint driver relies on unwinding), so
-# the release profile of this crate states the panic strategy explicitly instead
-# of inheriting whatever the enclosing checkout configures.
-[profile.release]
-panic = "unwind"

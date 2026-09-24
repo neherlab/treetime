@@ -10,7 +10,7 @@ fn main() -> Result<(), Report> {
         "schemas/parsimony.proto",
         "schemas/taxodium.proto",
       ],
-      &["src/gen/"],
+      &["schemas/"],
     )
     .wrap_err("When compiling the UShER protobuf schemas")?;
   Ok(())

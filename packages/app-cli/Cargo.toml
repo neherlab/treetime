@@ -4,6 +4,7 @@ authors.workspace = true
 description.workspace = true
 documentation.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 homepage.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -61,16 +62,7 @@ strsim = { workspace = true }
 strum_macros = { workspace = true }
 textplots = { workspace = true }
 
-[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "musl"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
+[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 tikv-jemallocator = { workspace = true }
 
 [features]

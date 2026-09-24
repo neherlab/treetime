@@ -8,23 +8,12 @@ preserve-uniform-field-visibility = true
 
 # `[[production]]` names the reachability roots (the shipped binaries). Public
 # items unreachable from a root are candidates for the `hawk::dead_public`
-# diagnostic. `[[doctest]]` restricts the doctest reachability pass to the named
-# packages. `[[exclude]]` silences diagnostics for a module or file; whole library
+# diagnostic.
+# `[[exclude]]` silences diagnostics for a module or file; whole library
 # crates at an external API boundary, and the crates only tests use, are excluded
 # through the `public_api_crates` justfile variable, which the `hawk` recipe reads.
 # `[[override]]` records a single item deliberately kept public
 # despite being unreachable, each with a mandatory reason.
-
-# Doctest reachability pass. Hawk runs `cargo test --doc` for the listed packages
-# only; without this it compiles every package's doctests. `treetime-primitives`
-# is the only package besides `treetime-utils` that carries doctests, and the
-# `treetime-utils` `argmax_first` doctest does not compile (its empty `array![]`
-# leaves the element type unconstrained), which would abort Hawk's instrumented
-# build before it reports anything. The two `treetime-utils` doctests only call
-# utilities already reachable from the product binaries, so scoping the pass to
-# `treetime-primitives` costs no dead-public coverage.
-[[doctest]]
-package = "treetime-primitives"
 
 # Shipped command-line binary; reachability root for the whole workspace.
 [[production]]

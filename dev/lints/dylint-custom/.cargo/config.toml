@@ -3,10 +3,3 @@
 # dylint driver can locate and load it.
 [target.'cfg(all())']
 linker = "dylint-link"
-
-# The repository-root .cargo/config.toml sets `panic = "abort"` for release
-# builds. A dylint plugin cdylib must unwind (the dylint driver relies on
-# unwinding), so override the panic strategy here. Closest config wins, so this
-# takes precedence over the inherited setting.
-[profile.release]
-panic = "unwind"

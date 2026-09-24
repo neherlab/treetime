@@ -4,6 +4,7 @@ authors.workspace = true
 description.workspace = true
 documentation.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 homepage.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -25,10 +26,13 @@ treetime-utils = { workspace = true }
 # [external]
 approx = { workspace = true }
 bon = { workspace = true }
+csv = { workspace = true }
 clap = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
 itertools = { workspace = true }
+ndarray = { workspace = true }
+ndarray-stats = { workspace = true }
 ordered-float = { workspace = true }
 plotters = { workspace = true }
 rayon = { workspace = true }
@@ -39,11 +43,6 @@ strum_macros = { workspace = true }
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-csv = { workspace = true }
-ndarray = { workspace = true }
-ndarray-stats = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

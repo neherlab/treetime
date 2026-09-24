@@ -1,134 +1,28 @@
-[unstable]
-min-publish-age = true
-
-[registry]
-global-min-publish-age = "7 days"
-
-[alias]
-build-release = "build --release"
-run-release = "run --release --bin"
-lint = "-q clippy -q --all-targets --all"
-lint-fix = "lint --fix --allow-staged"
-lint-ci = "clippy --all-targets --all -- -Dwarnings"
-test-all = "-q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always" # cargo install cargo-nextest
-test-unit = "test-all --lib"
-test-integration = "test-all --test='*'"
-format-check = "fmt --check"
-bench-all = "bench --workspace --benches"
-bench-debug = "bench --workspace --benches --profile=profiling"
-example = "run --example"
-example-release = "run --release --example"
-upgrade-deps = "-q upgrade --pinned --incompatible --verbose --recursive" # cargo install cargo-edit
-why = "tree -i -p"
-
-b = "build"
-br = "build-release"
-r = "run --bin"
-rr = "run-release"
-l = "lint"
-lf = "lint-fix"
-lc = "lint-ci"
-t = "test-all"
-tu = "test-unit"
-ti = "test-integration"
-f = "fmt"
-fc = "format-check"
-B = "bench-all"
-Bd = "bench-debug"
-E = "example"
-Er = "example-release"
-U = "upgrade-deps"
-
-
+# Normalize the build path so every checkout and worktree produces identical
+# kache cache keys.
 [env]
-DYNAMIC_ARCH = "1" # https://github.com/xianyi/OpenBLAS#support-for-multiple-targets-in-a-single-library=
 KACHE_BASE_DIR = { value = ".", relative = true, force = true }
-KACHE_HEARTBEAT_SECS = { value = "0", force = true }
+
+# The same flags for every native build, test, lint, and addon build, so these
+# never invalidate each other's artifacts:
+# - mold links fast; the link runs on every edit and is never cached
+# - frame pointers and v0 symbol mangling give profilers and backtraces full
+#   stacks and generic paths
+# - the static OpenBLAS archive needs libgfortran and pthreads, which the
+#   openblas-src build script does not declare; both link statically, so the
+#   binaries and the Node addon do not depend on the compiler runtime
+# Release cross builds set their own flags in dev/cross/build.
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+  "-Clink-arg=-fuse-ld=mold",
+  "-Cforce-frame-pointers=yes",
+  "-Csymbol-mangling-version=v0",
+  "-Clink-arg=-pthread",
+  "-Clink-arg=-lopenblas",
+  "-Clink-arg=-lgfortran",
+  "-Clink-arg=-static-libgfortran",
+  "-Clink-arg=-static-libgcc",
+]
 
 [future-incompat-report]
-frequency = 'always'
-
-[profile.dev]
-codegen-units = 4096
-incremental = true
-lto = "off"
-
-[profile.dev.package."*"]
-opt-level = 2
-[profile.dev.package.backtrace]
-opt-level = 3
-[profile.dev.package.color-spantrace]
-opt-level = 3
-[profile.dev.package.tracing]
-opt-level = 3
-[profile.dev.package.tracing-error]
-opt-level = 3
-[profile.dev.package.tracing-subscriber]
-opt-level = 3
-[profile.dev.package.pretty_assertions]
-opt-level = 3
-
-[profile.profiling]
-inherits = "release"
-debug = 1
-strip = false
-
-[profile.profiling.package."*"]
-opt-level = 2
-[profile.profiling.package.backtrace]
-opt-level = 3
-[profile.profiling.package.color-spantrace]
-opt-level = 3
-[profile.profiling.package.tracing]
-opt-level = 3
-[profile.profiling.package.tracing-error]
-opt-level = 3
-[profile.profiling.package.tracing-subscriber]
-opt-level = 3
-[profile.profiling.package.pretty_assertions]
-opt-level = 3
-
-[profile.release]
-codegen-units = 1
-debug = 1
-incremental = false
-lto = "fat"
-opt-level = 3
-overflow-checks = true
-panic = "abort"
-strip = false
-
-# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
-# `release` stays the tuned artifact (fat LTO, one codegen unit); this trades some runtime speed for
-# a much cheaper build+link. Do not benchmark against this profile - use `release` or `profiling`.
-[profile.quick]
-inherits = "release"
-codegen-units = 16
-debug = false
-incremental = true
-lto = "off"
-
-[profile.bench]
-codegen-units = 1
-incremental = false
-lto = "fat"
-opt-level = 3
-strip = "debuginfo"
-
-[profile.test]
-debug = true
-
-[profile.test.package."*"]
-opt-level = 2
-[profile.test.package.backtrace]
-opt-level = 3
-[profile.test.package.color-spantrace]
-opt-level = 3
-[profile.test.package.tracing]
-opt-level = 3
-[profile.test.package.tracing-error]
-opt-level = 3
-[profile.test.package.tracing-subscriber]
-opt-level = 3
-[profile.test.package.pretty_assertions]
-opt-level = 3
+frequency = "always"

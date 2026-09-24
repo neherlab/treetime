@@ -41,6 +41,7 @@ documentation = "https://treetime.readthedocs.io/en/stable/"
 repository = "https://github.com/neherlab/treetime"
 homepage = "https://github.com/neherlab/treetime"
 edition = "2024"
+rust-version = "1.98"
 license = "MIT"
 publish = false
 keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
@@ -74,60 +75,60 @@ ndarray-rand = "=0.15.0"
 ndarray-stats = "=0.6.0"
 openblas-src = { version = "=0.10.12", features = ["system"] }
 
-bzip2 = { version = "=0.6.0", features = ["static"] }
-flate2 = "=1.1.2"
+bzip2 = { version = "=0.6.1", features = ["static"] }
+flate2 = "=1.1.10"
 xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
 approx = "=0.5.1"
-argmin = { version = "=0.10.0", features = [] }
+argmin = "=0.10.0"
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 async-stream = "=0.3.6"
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", features = ["json"] }
 bio = { version = "=2.3.0", features = ["phylogeny"] }
-bon = "=3.9.3"
-bytes = { version = "1.10.1", features = ["serde"] }
-chrono = { version = "=0.4.42", default-features = false, features = ["clock", "alloc", "std", "serde"] }
+bon = "=3.10.1"
+bytes = { version = "=1.12.1", features = ["serde"] }
+chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
-clap = { version = "=4.5.48", features = ["derive"] }
+clap = { version = "=4.6.7", features = ["derive"] }
 clap-markdown = "=0.1.5"
-clap_complete = "=4.5.58"
+clap_complete = "=4.6.11"
 clap_complete_fig = "=4.5.2"
 color-eyre = "=0.6.5"
 comfy-table = "=7.2.1"
 criterion = { version = "=0.7.0", features = ["html_reports"] }
-crossbeam-channel = "=0.5.15"
+crossbeam-channel = "=0.5.17"
 crossterm = "=0.29.0"
-csv = "=1.3.1"
+csv = "=1.4.0"
 ctor = "=1.0.13"
-derive_more = { version = "=2.0.1", features = ["full"] }
-env_logger = "=0.11.8"
-eyre = "=0.6.12"
-gcollections = "=1.5.0"
-getset = "=0.1.6"
-image = { version = "=0.25.8", default-features = false, features = ["png"] }
+derive_more = { version = "=2.1.1", features = ["full"] }
+env_logger = "=0.11.11"
+eyre = "=0.6.14"
+gcollections = "=1.6.0"
+getset = "=0.1.7"
+image = { version = "=0.25.10", default-features = false, features = ["png"] }
 indexmap = { version = "=2.14.2", features = ["rayon", "serde"] }
-indicatif = "=0.18.4"
-indoc = "=2.0.6"
+indicatif = "=0.18.6"
+indoc = "=2.0.7"
 intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.13.0"
 jsonschema = { version = "=0.48.1", default-features = false }
-log = "=0.4.28"
-maplit = { version = "=1.0.2", features = [] }
+log = "=0.4.34"
+maplit = "=1.0.2"
 miette = { version = "=7.6.0", features = ["fancy"] }
 minijinja = { version = "=2.24.0", features = ["debug", "deserialization"] }
-napi = { version = "=3.9.0", features = ["napi4", "serde-json"] }
-napi-build = "=2.3.2"
-napi-derive = "=3.5.6"
-ndarray-conv = { version = "=0.5.0", features = [] }
+napi = { version = "=3.12.6", features = ["napi4", "serde-json"] }
+napi-build = "=2.4.3"
+napi-derive = "=3.6.7"
+ndarray-conv = "=0.5.0"
 num = "=0.4.3"
 num-traits = "=0.2.19"
 ordered-float = { version = "=5.5.0", default-features = false }
-parking_lot = { version = "=0.12.4", features = ["arc_lock", "serde", "deadlock_detection", "hardware-lock-elision"] }
+parking_lot = { version = "=0.12.5", features = ["arc_lock", "serde"] }
 percent-encoding = "=2.3.2"
-pest = "=2.8.6"
-pest_derive = "=2.8.6"
+pest = "=2.9.1"
+pest_derive = "=2.9.1"
 petgraph = { version = "=0.6.5", features = ["serde", "stable_graph"] }
 plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.1"
@@ -136,19 +137,19 @@ proptest = "=1.6.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
 quick-xml = { version = "=0.42.0", features = ["serde", "serialize"] }
-rand = { version = "=0.8.5", features = ["serde", "log"] }
+rand = { version = "=0.8.8", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
-rayon = "=1.11.0"
-regex = { version = "=1.13.1", features = [] }
-rgb = "=0.8.52"
+rayon = "=1.12.0"
+regex = "=1.13.1"
+rgb = "=0.8.53"
 rstest = "=0.26.1"
 saphyr = "=0.0.12"
-schemars = { version = "=1.2.1", features = ["derive"] }
-serde = { version = "=1.0.225", features = ["derive", "rc"] }
+schemars = { version = "=1.2.2", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive", "rc"] }
 serde-saphyr = { version = "=1.3.0", default-features = false, features = ["deserialize"] }
-serde_json = { version = "=1.0.145", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-serde_stacker = { version = "=0.1.14" }
+serde_json = { version = "=1.0.151", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+serde_stacker = "=0.1.14"
 smart-default = "=0.7.1"
 statrs = "=0.18.0"
 strsim = "=0.11.1"
@@ -157,8 +158,8 @@ strum_macros = "=0.27.2"
 tempfile = "=3.27.0"
 textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
-tokio = { version = "=1.52.3", features = ["full"] }
-tokio-stream = "=0.1.18"
+tokio = { version = "=1.53.1", features = ["full"] }
+tokio-stream = "=0.1.19"
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 utoipa = { version = "=5.5.0", features = ["axum_extras", "yaml"] }
 utoipa-axum = "=0.2.0"
@@ -178,6 +179,36 @@ treetime-utils = { path = "packages/treetime-utils" }
 util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
 util-newick = { path = "packages/util-newick" }
 util-usher-mat = { path = "packages/util-usher-mat" }
+
+# Dependencies build optimized in development and tests, so the math-heavy test
+# suites stay fast while the workspace crates keep fast incremental builds.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.test.package."*"]
+opt-level = 2
+
+# The shipped artifact: fat LTO and one codegen unit for speed, line tables for
+# readable backtraces, and overflow checks kept on for numeric correctness.
+[profile.release]
+codegen-units = 1
+debug = "line-tables-only"
+lto = "fat"
+overflow-checks = true
+
+# Release optimizations with full debug info, for profilers.
+[profile.profiling]
+inherits = "release"
+debug = true
+
+# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
+# Not for benchmarks: use `release` or `profiling`.
+[profile.quick]
+inherits = "release"
+codegen-units = 16
+debug = false
+incremental = true
+lto = "off"
 
 [workspace.metadata.cargo-shear]
 ignored = ["blas-src", "openblas-src", "argmin-math"]
@@ -319,6 +350,10 @@ impl_trait_in_params = "allow"
 implicit_hasher = "allow"
 implicit_return = "allow"
 inconsistent_digit_grouping = "allow"
+# Restriction lints that contradict the project conventions: inline `mod tests`
+# blocks and inline trait bounds are the house style.
+inline_modules = "allow"
+inline_trait_bounds = "allow"
 iter_nth_zero = "allow"
 large_digit_groups = "allow"
 len_zero = "allow"
