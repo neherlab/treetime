@@ -5,8 +5,9 @@ mod tests {
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
   use crate::progress::NoopProgress;
-  use crate::timetree::optimization::clock_filter::propagate_bad_branches;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::inference::time_inference::likely_times;
+  use crate::timetree::optimization::clock_filter::mark_outlier_leaves;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -24,24 +25,20 @@ mod tests {
     graph: &Graph,
     dates: &BTreeMap<String, f64>,
   ) -> DateConstraints {
-    let mut time_distributions = BTreeMap::new();
+    let mut date_constraints = BTreeMap::new();
     for n in graph.get_leaves() {
       let name = names.get(&n.key()).cloned().flatten();
       if let Some(name) = name {
         if let Some(&date) = dates.get(&name) {
-          time_distributions.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
+          date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
         }
       }
     }
-    DateConstraints {
-      time_distributions,
-      ..DateConstraints::default()
-    }
+    DateConstraints { date_constraints }
   }
 
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
-    let date_state = TimetreeState::seed_from_values(graph, constraints);
-    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(constraints).unwrap());
+    let inputs = ClockInputs::seed_from_times(graph, &likely_times(graph, constraints, None).unwrap());
     (inputs, ClockState::new(graph))
   }
 
@@ -222,35 +219,26 @@ mod tests {
   }
 
   #[test]
-  fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
+  fn test_clock_filter_mark_outlier_leaves_adds_outliers_to_leaf_flags() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
-    let mut state = TimetreeState::new(&graph);
-    for node in graph.get_leaves() {
-      let is_bad = names
-        .get(&node.key())
-        .and_then(|x| x.as_deref())
-        .is_some_and(|name| name != "C");
-      state.node_mut(node.key()).bad_branch = is_bad;
-    }
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
 
-    propagate_bad_branches(&graph, &mut state)?;
+    let mut clock_state = ClockState::new(&graph);
+    clock_state.nodes.entry(key("B")).or_default().is_outlier = true;
+    let leaf_bad_branches = btreemap! {
+      key("A") => true,
+      key("B") => false,
+      key("C") => false,
+    };
 
-    let actual = graph
-      .get_nodes()
-      .map(|node| {
-        let name = names[&node.key()].clone().expect("Every fixture node must be named");
-        (name, state.node(node.key()).bad_branch)
-      })
-      .collect::<BTreeMap<_, _>>();
+    let actual = mark_outlier_leaves(&graph, &clock_state, &leaf_bad_branches);
+
     let expected = btreemap! {
-      "A".to_owned() => true,
-      "AB".to_owned() => true,
-      "B".to_owned() => true,
-      "C".to_owned() => false,
-      "root".to_owned() => false,
+      key("A") => true,
+      key("B") => true,
+      key("C") => false,
     };
     assert_eq!(expected, actual);
 

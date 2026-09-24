@@ -2,7 +2,7 @@ use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, SkylineResult, optimize_skyline};
 use crate::progress::NoopProgress;
-use crate::timetree::timetree_state::TimetreeState;
+use crate::test_utils::constraint_coalescent_node_times;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
@@ -31,9 +31,7 @@ pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<Stri
 }
 
 pub(crate) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-  TimetreeState::seed_from_values(graph, constraints)
-    .coalescent_node_times()
-    .unwrap()
+  constraint_coalescent_node_times(graph, constraints).unwrap()
 }
 
 pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<SkylineResult, Report> {

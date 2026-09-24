@@ -14,10 +14,9 @@ use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, c
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, commit_clock_branch_lengths, run_timetree, timetree_branch_lengths,
 };
-use crate::timetree::optimization::clock_filter::propagate_bad_branches;
-use crate::timetree::optimization::polytomy::resolve::{prepare_tree_after_topology_change, resolve_polytomies};
+use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
+use crate::timetree::optimization::polytomy::resolve::{require_internal_node_times, resolve_polytomies};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
-use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -38,7 +37,9 @@ pub(crate) struct Refinement<'a> {
   pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
   pub constraints: &'a DateConstraints,
-  pub state: TimetreeState,
+  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  pub inference: TimeInference,
+  pub gammas: BTreeMap<GraphEdgeKey, f64>,
   pub clock_state: &'a mut ClockState,
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
   pub branch_lengths: &'a mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -47,11 +48,11 @@ pub(crate) struct Refinement<'a> {
 }
 
 impl Refinement<'_> {
-  pub(crate) fn run(mut self) -> Result<(TimetreeState, Vec<PartitionTimetree>, RefinementOutcome), Report> {
+  pub(crate) fn run(mut self) -> Result<RefinementResult, Report> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
-    let previous_times = capture_node_times(self.graph, &self.state);
+    let previous_times = capture_node_times(self.graph, &self.inference);
     let previous_states = capture_ancestral_states(self.graph, &self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
@@ -61,12 +62,13 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       CLOCK_BRANCH_LENGTH_DAMPING,
       self.clock_branch_lengths,
-      &self.state,
+      &self.inference.node_times(),
+      &self.gammas,
       self.progress,
     );
 
     let current_states = capture_ancestral_states(self.graph, &self.partitions);
-    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, &self.state));
+    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, &self.inference));
 
     self.update_clock_model()?;
 
@@ -75,7 +77,12 @@ impl Refinement<'_> {
       time_change,
       topology,
     };
-    Ok((self.state, self.partitions, outcome))
+    Ok(RefinementResult {
+      inference: self.inference,
+      gammas: self.gammas,
+      partitions: self.partitions,
+      outcome,
+    })
   }
 
   fn total_sequence_length(&self) -> usize {
@@ -108,14 +115,15 @@ impl Refinement<'_> {
       self.options.relax.first().copied().unwrap_or(1.0),
       self.options.relax.get(1).copied().unwrap_or(1.0)
     );
-    apply_relaxed_clock(
+    self.gammas = apply_relaxed_clock(
       self.graph,
       self.branch_lengths,
       &self.options.relax,
       1.0 / total_length as f64,
       self.clock_model.clock_rate(),
-      &mut self.state,
-    )
+      &self.inference.branches,
+    )?;
+    Ok(())
   }
 
   #[allow(
@@ -129,7 +137,8 @@ impl Refinement<'_> {
 
     let total_mutation_rate = self.clock_model.clock_rate() * total_length as f64;
 
-    let resolved_nodes = resolve_polytomies(
+    let mut node_times = self.inference.node_times();
+    let merger_times = resolve_polytomies(
       self.graph,
       &self.partitions,
       total_mutation_rate,
@@ -137,9 +146,10 @@ impl Refinement<'_> {
       self.merger_rate,
       self.rng,
       self.branch_lengths,
-      &mut self.state,
+      &node_times,
     )
     .wrap_err("Polytomy resolution failed")?;
+    let resolved_nodes = merger_times.len();
     if resolved_nodes == 0 {
       return Ok(TopologyOutcome::Unchanged);
     }
@@ -149,10 +159,9 @@ impl Refinement<'_> {
       "Resolved polytomies, introduced {resolved_nodes} new nodes"
     );
     *self.names = assign_node_names(std::mem::take(self.names), self.graph)?;
-    propagate_bad_branches(self.graph, &mut self.state)?;
-    prepare_tree_after_topology_change(self.graph, &mut self.state)
-      .wrap_err("Failed to prepare tree after topology change")?;
-    self.state.reset_date_edges_for_topology_change(self.graph);
+    node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
+    require_internal_node_times(self.graph, &node_times).wrap_err("Failed to prepare tree after topology change")?;
+    self.gammas = unit_gammas(self.graph);
     let graph = &*self.graph;
     let partitions = std::mem::take(&mut self.partitions)
       .into_iter()
@@ -165,7 +174,8 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       1.0,
       self.clock_branch_lengths,
-      &self.state,
+      &node_times,
+      &self.gammas,
       self.progress,
     );
 
@@ -191,16 +201,17 @@ impl Refinement<'_> {
         self.progress,
         "Tree structure changed - rebuilding node-time state before coalescent inference"
       );
-      self.state = run_timetree(
+      self.inference = run_timetree(
         self.graph,
         self.constraints,
+        self.leaf_bad_branches,
+        &self.gammas,
         &self.partitions,
         run_branch_lengths,
         run_names,
         self.clock_model,
         None,
         self.options.no_indels,
-        std::mem::take(&mut self.state),
         self.clock_state,
         self.progress,
       )
@@ -212,16 +223,17 @@ impl Refinement<'_> {
       progress_info!(self.progress, "Updating node times via timetree inference");
     }
 
-    self.state = run_timetree(
+    self.inference = run_timetree(
       self.graph,
       self.constraints,
+      self.leaf_bad_branches,
+      &self.gammas,
       &self.partitions,
       run_branch_lengths,
       run_names,
       self.clock_model,
       self.prior,
       self.options.no_indels,
-      std::mem::take(&mut self.state),
       self.clock_state,
       self.progress,
     )
@@ -231,14 +243,15 @@ impl Refinement<'_> {
 
   fn update_clock_model(&mut self) -> Result<(), Report> {
     let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = self
-      .state
-      .edges
+      .inference
+      .branches
       .iter()
-      .map(|(key, edge)| (*key, (edge.time_length, edge.gamma)))
+      .map(|(key, branch)| (*key, (branch.time_length, self.gammas[key])))
       .collect();
     self.clock_state.reseed_transitional(self.graph);
     let mut clock_inputs = ClockInputs::new(self.graph);
-    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(self.constraints)?, &edge_inputs);
+    let times = likely_times(self.graph, self.constraints, Some(&self.inference))?;
+    clock_inputs.reseed_from_times(self.graph, &times, &edge_inputs);
     let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       self.graph,
       &mut clock_inputs,
@@ -258,6 +271,13 @@ impl Refinement<'_> {
     *self.clock_model = clock_reroot.into_clock_model()?;
     Ok(())
   }
+}
+
+pub(crate) struct RefinementResult {
+  pub inference: TimeInference,
+  pub gammas: BTreeMap<GraphEdgeKey, f64>,
+  pub partitions: Vec<PartitionTimetree>,
+  pub outcome: RefinementOutcome,
 }
 
 pub(crate) struct RefinementOptions {

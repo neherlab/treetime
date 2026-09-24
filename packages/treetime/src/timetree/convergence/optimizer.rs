@@ -6,7 +6,7 @@ use crate::timetree::convergence::likelihood::{
 };
 use crate::timetree::convergence::metrics::{ConvergenceMetrics, IterationClock, IterationRecord};
 use crate::timetree::convergence::node_times::NodeTimeChange;
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::TimeInference;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
@@ -56,15 +56,21 @@ impl<'a> TimetreeOptimizer<'a> {
     time_change: NodeTimeChange,
     graph: &Graph,
     partitions: &[PartitionTimetree],
-    state: &TimetreeState,
+    inference: &TimeInference,
     coalescent_tc: Option<&Distribution>,
     clock: IterationClock,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     progress: &dyn ProgressSink,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, partitions);
-    let log_lh_pos = compute_positional_log_lh(graph, state);
-    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc, &state.coalescent_node_times()?, names, progress);
+    let log_lh_pos = compute_positional_log_lh(graph, inference);
+    let log_lh_coal = compute_coalescent_log_lh(
+      graph,
+      coalescent_tc,
+      &inference.coalescent_node_times()?,
+      names,
+      progress,
+    );
     let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
       .into_iter()
       .flatten()

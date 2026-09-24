@@ -2,12 +2,11 @@ pub mod coalescent;
 pub(crate) mod coalescent_timescale;
 pub mod confidence;
 pub mod convergence;
-pub(crate) mod inference;
+pub mod inference;
 pub mod optimization;
 pub mod params;
 pub mod pipeline;
 pub(crate) mod refinement;
-pub mod timetree_state;
 pub(crate) mod utils;
 
 #[cfg(test)]

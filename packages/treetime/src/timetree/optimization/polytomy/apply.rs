@@ -1,5 +1,4 @@
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
-use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -14,57 +13,31 @@ pub(crate) fn apply_plan(
   children: &[ChildRef],
   plan: &SubtreePlan,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &mut TimetreeState,
-) -> Result<usize, Report> {
-  let times = validate_plan(parent_time, children, plan)?;
+) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+  validate_plan(parent_time, children, plan)?;
 
   let mut merger_nodes: Vec<GraphNodeKey> = Vec::with_capacity(plan.mergers.len());
+  let mut merger_times = BTreeMap::new();
 
   for merger in &plan.mergers {
     let new_node_key = graph.add_node();
-    state.nodes.insert(
-      new_node_key,
-      DateNodeState {
-        time: Some(merger.time),
-        ..DateNodeState::default()
-      },
-    );
+    merger_times.insert(new_node_key, merger.time);
 
     for lineage in [merger.left, merger.right] {
-      attach(
-        graph,
-        children,
-        &merger_nodes,
-        &times,
-        lineage,
-        new_node_key,
-        merger.time,
-        branch_lengths,
-        state,
-      )?;
+      attach(graph, children, &merger_nodes, lineage, new_node_key, branch_lengths)?;
     }
 
     merger_nodes.push(new_node_key);
   }
 
   for &lineage in &plan.roots {
-    attach(
-      graph,
-      children,
-      &merger_nodes,
-      &times,
-      lineage,
-      parent_key,
-      parent_time,
-      branch_lengths,
-      state,
-    )?;
+    attach(graph, children, &merger_nodes, lineage, parent_key, branch_lengths)?;
   }
 
-  Ok(plan.mergers.len())
+  Ok(merger_times)
 }
 
-fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) -> Result<Vec<f64>, Report> {
+fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) -> Result<(), Report> {
   if !parent_time.is_finite() {
     return make_internal_error!("Polytomy plan parent time must be finite, got {parent_time}");
   }
@@ -131,28 +104,19 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
     return make_internal_error!("Polytomy plan omitted lineage {lineage}");
   }
 
-  Ok(times)
+  Ok(())
 }
 
 fn attach(
   graph: &mut Graph,
   children: &[ChildRef],
   merger_nodes: &[GraphNodeKey],
-  times: &[f64],
   lineage: usize,
   new_parent_key: GraphNodeKey,
-  new_parent_time: f64,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  let Some(&lineage_time) = times.get(lineage) else {
-    return make_internal_error!("Polytomy plan referenced unknown lineage {lineage}");
-  };
-  let time_length = lineage_time - new_parent_time;
-
   if let Some(child) = children.get(lineage) {
     graph.reparent_edge(child.edge_key, new_parent_key)?;
-    state.edges.entry(child.edge_key).or_default().time_length = Some(time_length);
   } else {
     let Some(&node_key) = merger_nodes.get(lineage - children.len()) else {
       return make_internal_error!(
@@ -161,7 +125,6 @@ fn attach(
     };
     let new_edge_key = graph.add_edge(new_parent_key, node_key)?;
     branch_lengths.insert(new_edge_key, Some(0.0));
-    state.edges.entry(new_edge_key).or_default().time_length = Some(time_length);
   }
 
   Ok(())

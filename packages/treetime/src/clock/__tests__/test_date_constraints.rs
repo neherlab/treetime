@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
   use crate::progress::NoopProgress;
+  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -33,22 +34,17 @@ mod tests {
     graph: &TestGraph,
     constraints: &DateConstraints,
   ) -> Vec<TestNode> {
+    let bad_branches = derive_bad_branches(graph, constraints, &undated_leaves(graph, constraints)).unwrap();
     graph
       .get_nodes()
       .map(|node| {
         let key = node.key();
         let name = names.get(&node.key()).cloned().flatten();
-        let date_constraint = constraints.date_constraints[&key].clone();
-        let time_distribution = constraints.time_distributions[&key].clone();
-        assert_eq!(
-          date_constraint, time_distribution,
-          "the loaded date constraint must be kept as the fixed input alongside the time distribution"
-        );
         TestNode {
           name,
           date_constraint: None,
-          time_distribution,
-          bad_branch: constraints.bad_branches[&key],
+          time_distribution: constraints.date_constraints[&key].clone(),
+          bad_branch: bad_branches[&key],
         }
       })
       .sorted_by_key(|n| n.name.clone().unwrap_or_default())

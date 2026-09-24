@@ -2,16 +2,13 @@
 mod tests {
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::test_utils::find_node_key_by_name;
-  use crate::timetree::optimization::polytomy::resolve::{prepare_tree_after_topology_change, resolve_polytomies};
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::optimization::polytomy::resolve::{require_internal_node_times, resolve_polytomies};
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rand::RngCore;
   use std::collections::{BTreeMap, BTreeSet};
-  use std::sync::Arc;
-  use treetime_distribution::Distribution;
   use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -19,7 +16,7 @@ mod tests {
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::sync::random::get_random_number_generator;
-  use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
+  use treetime_utils::{assert_error, make_report};
 
   const TEST_MUTATION_RATE: f64 = 0.1;
 
@@ -28,20 +25,26 @@ mod tests {
   fn set_time(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    state: &mut TimetreeState,
+    times: &mut NodeTimes,
     name: &str,
     time: f64,
   ) -> Result<GraphNodeKey, Report> {
     let key = find_node_key_by_name(graph, names, name).ok_or_else(|| make_report!("{name} not found"))?;
-    state.node_mut(key).time = Some(time);
+    times.insert(key, Some(time));
     Ok(key)
+  }
+
+  type NodeTimes = BTreeMap<GraphNodeKey, Option<f64>>;
+
+  fn undated(graph: &Graph) -> NodeTimes {
+    graph.get_nodes().map(|node| (node.key(), None)).collect()
   }
 
   fn polytomy_tree() -> Result<
     (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
-      TimetreeState,
+      NodeTimes,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -51,7 +54,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let mut state = TimetreeState::new(&graph);
+    let mut state = undated(&graph);
     for (name, time) in [
       ("A", 2020.0),
       ("B", 2015.0),
@@ -71,7 +74,7 @@ mod tests {
     (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
-      TimetreeState,
+      NodeTimes,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -81,7 +84,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let mut state = TimetreeState::new(&graph);
+    let mut state = undated(&graph);
     for (name, time) in [
       ("A", 2020.0),
       ("B", 2019.0),
@@ -104,7 +107,7 @@ mod tests {
     (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
-      TimetreeState,
+      NodeTimes,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -114,7 +117,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let mut state = TimetreeState::new(&graph);
+    let mut state = undated(&graph);
     for (name, time) in [
       ("A", 2020.0),
       ("B", 2015.0),
@@ -135,7 +138,7 @@ mod tests {
 
   fn resolve(
     graph: &mut Graph,
-    state: &mut TimetreeState,
+    times: &mut NodeTimes,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
     rng: &mut dyn RngCore,
   ) -> Result<usize, Report> {
@@ -148,8 +151,13 @@ mod tests {
       &merger_rate,
       rng,
       branch_lengths,
-      state,
+      times,
     )
+    .map(|merger_times| {
+      let created = merger_times.len();
+      times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
+      created
+    })
   }
 
   fn leaf_names_under(
@@ -283,7 +291,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let mut state = TimetreeState::new(&graph);
+    let mut state = undated(&graph);
     for (name, time) in [
       ("A", 2010.0),
       ("B", 2010.0),
@@ -318,7 +326,7 @@ mod tests {
       if node.is_leaf() || names.get(&node.key()).and_then(|x| x.as_ref()).is_some() {
         continue;
       }
-      let time = state.node(node.key()).time.expect("new nodes must be dated");
+      let time = state[&node.key()].expect("new nodes must be dated");
       assert!(
         time > parent_time,
         "new node at {time} must be more recent than the polytomy at {parent_time}"
@@ -328,18 +336,12 @@ mod tests {
     let mut stack = vec![parent_key];
     while let Some(key) = stack.pop() {
       let node = graph.get_node(key).expect("Node must exist");
-      let time = state.node(key).time.expect("node must be dated");
+      let time = state[&key].expect("node must be dated");
       for &edge_key in node.outbound() {
         let edge = graph.get_edge(edge_key).expect("Edge must exist");
         let target = edge.target();
-        let time_length = state.edge(edge_key).time_length;
-        let child_time = state.node(target).time.expect("node must be dated");
+        let child_time = state[&target].expect("node must be dated");
         assert!(child_time > time, "edge must run forward in time");
-        pretty_assert_abs_diff_eq!(
-          time_length.expect("time_length must be set"),
-          child_time - time,
-          epsilon = 1e-9
-        );
         stack.push(target);
       }
     }
@@ -365,76 +367,30 @@ mod tests {
   }
 
   #[test]
-  fn test_prepare_tree_after_topology_change_resets_derived_state_preserves_inputs() -> Result<(), Report> {
-    let (graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
+  fn test_require_internal_node_times_accepts_a_fully_dated_tree() -> Result<(), Report> {
+    let (graph, _names, state, _branch_lengths) = polytomy_tree()?;
+    require_internal_node_times(&graph, &state)
+  }
 
-    for edge in graph.get_edges() {
-      let key = edge.key();
-      branch_lengths.insert(key, Some(0.25));
-      state.edge_mut(key).time_length = Some(3.0);
-    }
-
-    let date_dist = Arc::new(Distribution::point(2020.0, 1.0));
-    for name in ["A", "B", "C"] {
-      let key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| make_report!("{name} not found"))?;
-      state.node_mut(key).time_distribution = Some(Arc::clone(&date_dist));
-    }
-
-    let leaf_b_key = find_node_key_by_name(&graph, &names, "B").ok_or_else(|| make_report!("B not found"))?;
-    state.node_mut(leaf_b_key).bad_branch = true;
-
+  #[test]
+  fn test_require_internal_node_times_rejects_an_undated_internal_node() -> Result<(), Report> {
+    let (graph, names, mut state, _branch_lengths) = polytomy_tree()?;
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    state.node_mut(abc_key).time_distribution = Some(Arc::new(Distribution::point(2010.0, 1.0)));
-    state.node_mut(abc_key).bad_branch = true;
+    state.insert(abc_key, None);
 
-    prepare_tree_after_topology_change(&graph, &mut state)?;
-
-    for name in ["A", "B", "C"] {
-      let key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| make_report!("{name} not found"))?;
-      assert!(
-        state.node(key).time_distribution.is_some(),
-        "leaf time_distribution must survive topology change"
-      );
-    }
-
-    assert!(
-      state.node(leaf_b_key).bad_branch,
-      "leaf bad_branch flag must survive topology change"
+    assert_error!(
+      require_internal_node_times(&graph, &state),
+      format!("Topology rebuild requires an inferred time for every internal node, but node {abc_key:?} has none")
     );
-
-    pretty_assert_abs_diff_eq!(
-      state
-        .node(abc_key)
-        .time_distribution
-        .as_ref()
-        .and_then(|distribution| distribution.likely_time().unwrap())
-        .expect("internal node time distribution must be rebuilt"),
-      1990.0,
-      epsilon = 1e-10
-    );
-    assert!(
-      state.node(abc_key).bad_branch,
-      "internal node bad_branch must be preserved"
-    );
-
-    for edge in graph.get_edges() {
-      let key = edge.key();
-      pretty_assert_abs_diff_eq!(
-        branch_lengths
-          .get(&key)
-          .copied()
-          .flatten()
-          .expect("branch length must be preserved"),
-        0.25,
-        epsilon = 1e-10
-      );
-      pretty_assert_abs_diff_eq!(
-        state.edge(key).time_length.expect("time length must be preserved"),
-        3.0,
-        epsilon = 1e-10
-      );
-    }
-
     Ok(())
+  }
+
+  #[test]
+  fn test_require_internal_node_times_ignores_undated_leaves() -> Result<(), Report> {
+    let (graph, names, mut state, _branch_lengths) = polytomy_tree()?;
+    let leaf_key = find_node_key_by_name(&graph, &names, "B").ok_or_else(|| make_report!("B not found"))?;
+    state.insert(leaf_key, None);
+
+    require_internal_node_times(&graph, &state)
   }
 }

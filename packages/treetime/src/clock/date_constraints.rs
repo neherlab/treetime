@@ -27,8 +27,6 @@ pub fn load_date_constraints(
   let mut used_names = BTreeSet::new();
 
   let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
-  let mut time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
-  let mut bad_branches: BTreeMap<GraphNodeKey, bool> = BTreeMap::new();
 
   graph.iter_depth_first_postorder_forward(|node| {
     let key = node.key;
@@ -46,9 +44,7 @@ pub fn load_date_constraints(
 
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
-      date_constraints.insert(key, Some(Arc::clone(&dist)));
-      time_distributions.insert(key, Some(dist));
-      bad_branches.insert(key, false);
+      date_constraints.insert(key, Some(dist));
       used_names.insert(name);
 
       if node.is_leaf {
@@ -56,16 +52,11 @@ pub fn load_date_constraints(
       } else {
         internal_constraint_count += 1;
       }
-    } else if node.is_leaf {
-      date_constraints.insert(key, None);
-      time_distributions.insert(key, None);
-      bad_branches.insert(key, true);
-      bad_leaf_count += 1;
     } else {
-      let all_children_bad = node.child_keys.iter().all(|(child_key, _)| bad_branches[child_key]);
       date_constraints.insert(key, None);
-      time_distributions.insert(key, None);
-      bad_branches.insert(key, all_children_bad);
+      if node.is_leaf {
+        bad_leaf_count += 1;
+      }
     }
     Ok(())
   })?;
@@ -90,18 +81,19 @@ pub fn load_date_constraints(
     progress,
   );
 
-  Ok(DateConstraints {
-    date_constraints,
-    time_distributions,
-    bad_branches,
-  })
+  Ok(DateConstraints { date_constraints })
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
   pub(crate) date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub(crate) time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub(crate) bad_branches: BTreeMap<GraphNodeKey, bool>,
+}
+
+impl DateConstraints {
+  #[must_use]
+  pub(crate) fn date_constraint(&self, key: GraphNodeKey) -> Option<Arc<Distribution<NegLog>>> {
+    self.date_constraints.get(&key).cloned().flatten()
+  }
 }
 
 fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {

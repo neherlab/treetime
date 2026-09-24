@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::progress::NoopProgress;
+  use crate::test_utils::constraint_coalescent_node_times;
   use crate::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
   };
@@ -10,7 +11,6 @@ mod tests {
     CoalescentMode, CoalescentReportBand, CoalescentTcReport, CoalescentTimescale, build_coalescent_output,
     coalescent_mode, estimate_coalescent_tc,
   };
-  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
@@ -68,7 +68,7 @@ mod tests {
       n_std: N_STD,
       ..SkylineParams::default()
     };
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
+    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
     let timescale = estimate_coalescent_tc(
       CoalescentMode::Fixed(2.5),
       &graph,
@@ -210,7 +210,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
+    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
     let solve = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
     let timescale = estimate_coalescent_tc(
       CoalescentMode::Skyline,

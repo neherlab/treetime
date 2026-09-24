@@ -16,8 +16,9 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
+  use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::utils::initialize_node_divergences;
 
   use crate::partition::timetree::partition::PartitionTimetree;
@@ -62,7 +63,7 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
+    let times = likely_times(&graph, &constraints, None)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -80,22 +81,23 @@ mod tests {
     )?;
     let clock_model = clock_reroot.into_clock_model()?;
 
-    let mut state = TimetreeState::new(&graph);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    state = run_timetree(
+    let inference = run_timetree(
       &graph,
       &constraints,
+      &undated_leaves(&graph, &constraints),
+      &unit_gammas(&graph),
       &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,
       false,
-      state,
-      &mut clock_state, &NoopProgress,
+      &mut clock_state,
+      &NoopProgress,
     )?;
 
-    let actual = extract_node_times(&graph, &names, &state);
+    let actual = extract_node_times(&graph, &names, &inference.posterior);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())

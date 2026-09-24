@@ -4,4 +4,4 @@ mod test_confidence_extract;
 mod test_confidence_rate;
 mod test_params;
 mod test_refinement;
-mod test_timetree_state;
+mod test_time_inference;

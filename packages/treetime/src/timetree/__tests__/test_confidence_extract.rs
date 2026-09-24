@@ -204,7 +204,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::timetree::timetree_state::TimetreeState;
+    use crate::timetree::inference::time_inference::NodePosterior;
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
@@ -213,14 +213,20 @@ mod tests {
 
     pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
 
-    pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimetreeState {
-      let mut state = TimetreeState::new(graph);
-      for (key, time, dist) in entries {
-        let node = state.node_mut(*key);
-        node.time = *time;
-        node.time_distribution = dist.clone();
+    pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> BTreeMap<GraphNodeKey, NodePosterior> {
+      let mut posterior: BTreeMap<GraphNodeKey, NodePosterior> = graph
+        .get_nodes()
+        .map(|node| (node.key(), NodePosterior::default()))
+        .collect();
+      for (key, time, distribution) in entries {
+        let node = NodePosterior {
+          distribution: distribution.clone(),
+          time: *time,
+          contradicted: false,
+        };
+        posterior.insert(*key, node);
       }
-      state
+      posterior
     }
 
     pub(super) fn add_named(

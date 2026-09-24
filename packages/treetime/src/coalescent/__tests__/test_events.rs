@@ -142,8 +142,8 @@ mod tests {
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
     let (mut graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
-    let new_key = graph.add_node();
     let mut node_times = coalescent_node_times(&graph, &constraints);
+    let new_key = graph.add_node();
     node_times.insert(
       new_key,
       CoalescentNodeTime {

@@ -20,8 +20,10 @@ mod tests {
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::constraint_coalescent_node_times;
+  use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::utils::initialize_node_divergences;
   use eyre::Report;
   use treetime_graph::graph::Graph;
@@ -46,25 +48,26 @@ mod tests {
     let case = &OUTPUTS[dataset];
 
 let (graph, names, partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
-    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
+    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
-    let mut state = TimetreeState::new(&graph);
     let mut clock_state = ClockState::new(&graph);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    state = run_timetree(
+    let inference = run_timetree(
       &graph,
       &constraints,
+      &undated_leaves(&graph, &constraints),
+      &unit_gammas(&graph),
       &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       Some(&coalescent),
       false,
-      state,
-      &mut clock_state, &NoopProgress,
+      &mut clock_state,
+      &NoopProgress,
     )?;
 
-    let times = extract_node_times(&graph, &names, &state);
+    let times = extract_node_times(&graph, &names, &inference.posterior);
     let expected_count = graph.num_nodes();
     assert_eq!(
       expected_count,
@@ -123,7 +126,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
+    let times = likely_times(&graph, &constraints, None)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);

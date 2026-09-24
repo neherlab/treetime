@@ -2,13 +2,10 @@ use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
-use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::debug;
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -24,15 +21,15 @@ pub(crate) fn resolve_polytomies(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &mut TimetreeState,
-) -> Result<usize, Report> {
+  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
   let polytomy_keys = find_polytomy_nodes(graph);
   if polytomy_keys.is_empty() {
     debug!("No polytomies to resolve");
-    return Ok(0);
+    return Ok(BTreeMap::new());
   }
 
-  let mut total_created = 0;
+  let mut merger_times = BTreeMap::new();
   let mut topology_validated = false;
 
   for node_key in polytomy_keys {
@@ -46,9 +43,9 @@ pub(crate) fn resolve_polytomies(
       rng,
       &mut topology_validated,
       branch_lengths,
-      state,
+      node_times,
     )?;
-    total_created += created;
+    merger_times.extend(created);
   }
 
   let obsolete_count = remove_single_child_nodes(graph, branch_lengths)?;
@@ -58,13 +55,13 @@ pub(crate) fn resolve_polytomies(
 
   graph.build()?;
 
-  if total_created > 0 {
-    debug!("Polytomy resolution introduced {total_created} new nodes");
-  } else {
+  if merger_times.is_empty() {
     debug!("Polytomies found but the sampled histories resolved none of them");
+  } else {
+    debug!("Polytomy resolution introduced {} new nodes", merger_times.len());
   }
 
-  Ok(total_created)
+  Ok(merger_times)
 }
 
 #[allow(
@@ -81,13 +78,13 @@ fn resolve_single_polytomy(
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &mut TimetreeState,
-) -> Result<usize, Report> {
-  let parent_time = inferred_time(state, node_key)?;
+  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+  let parent_time = inferred_time(node_times, node_key)?;
 
-  let children = collect_children(graph, partitions, node_key, total_length, branch_lengths, state)?;
+  let children = collect_children(graph, partitions, node_key, total_length, branch_lengths, node_times)?;
   if children.len() < 3 {
-    return Ok(0);
+    return Ok(BTreeMap::new());
   }
 
   let lineages: Vec<Lineage> = children
@@ -104,11 +101,11 @@ fn resolve_single_polytomy(
       "Polytomy at node {node_key}: {} children, sampled history merged none",
       children.len()
     );
-    return Ok(0);
+    return Ok(BTreeMap::new());
   }
 
   if !*topology_validated {
-    validate_tree_before_topology_change(graph, state)?;
+    require_internal_node_times(graph, node_times)?;
     *topology_validated = true;
   }
 
@@ -120,12 +117,13 @@ fn resolve_single_polytomy(
     })
     .collect();
 
-  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, branch_lengths, state)?;
+  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, branch_lengths)?;
 
   debug!(
-    "Polytomy at node {node_key}: {} children -> {} children, created {created} nodes",
+    "Polytomy at node {node_key}: {} children -> {} children, created {} nodes",
     children.len(),
-    plan.roots.len()
+    plan.roots.len(),
+    created.len()
   );
 
   Ok(created)
@@ -141,7 +139,7 @@ fn collect_children(
   node_key: GraphNodeKey,
   total_length: usize,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &TimetreeState,
+  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
     let node = graph.get_node(node_key).expect("Node must exist");
@@ -154,7 +152,7 @@ fn collect_children(
       let edge = graph.get_edge(edge_key).expect("Edge must exist");
       let child_key = edge.target();
 
-      let time = inferred_time(state, child_key)?;
+      let time = inferred_time(node_times, child_key)?;
       let mutation_length = branch_lengths.get(&edge_key).copied().flatten();
 
       Ok(ChildInfo {
@@ -201,8 +199,8 @@ fn edge_mutation_count(
   Ok(u32::try_from(count).unwrap_or(u32::MAX))
 }
 
-fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, Report> {
-  let Some(time) = state.node(node_key).time else {
+fn inferred_time(node_times: &BTreeMap<GraphNodeKey, Option<f64>>, node_key: GraphNodeKey) -> Result<f64, Report> {
+  let Some(time) = node_times[&node_key] else {
     return make_error!("Polytomy resolution requires an inferred time for node {node_key}, but it has none");
   };
   if !time.is_finite() {
@@ -237,32 +235,15 @@ fn remove_single_child_nodes(
   Ok(removed_count)
 }
 
-pub(crate) fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
-  validate_tree_before_topology_change(graph, state)?;
-
+pub(crate) fn require_internal_node_times(
+  graph: &Graph,
+  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+) -> Result<(), Report> {
   for node in graph.get_nodes() {
     if node.is_leaf() {
       continue;
     }
-    let key = node.key();
-    let Some(time) = state.node(key).time else {
-      return make_error!(
-        "Topology rebuild requires an inferred time for every internal node, but node {key:?} has none"
-      );
-    };
-    let distribution = Arc::new(Distribution::point(time, 0.0));
-    state.node_mut(key).time_distribution = Some(distribution);
-  }
-
-  Ok(())
-}
-
-fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
-  for node in graph.get_nodes() {
-    if node.is_leaf() {
-      continue;
-    }
-    let Some(time) = state.node(node.key()).time else {
+    let Some(time) = node_times[&node.key()] else {
       return make_error!(
         "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
         node.key()

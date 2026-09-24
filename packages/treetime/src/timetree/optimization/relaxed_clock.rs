@@ -1,4 +1,4 @@
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::BranchLikelihood;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -11,8 +11,8 @@ pub(crate) fn apply_relaxed_clock(
   params: &[f64],
   one_mutation: f64,
   clock_rate: f64,
-  state: &mut TimetreeState,
-) -> Result<(), Report> {
+  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
   let slack = params.first().copied().unwrap_or(1.0);
   let coupling = params.get(1).copied().unwrap_or(1.0);
 
@@ -27,8 +27,7 @@ pub(crate) fn apply_relaxed_clock(
       (one_mutation, one_mutation)
     } else if let Some(&edge_key) = node.parent_edge_keys.first() {
       let opt_len = branch_lengths[&edge_key].unwrap_or(0.0);
-      let act_len = state
-        .edge(edge_key)
+      let act_len = branches[&edge_key]
         .time_length
         .map_or(opt_len, |time_length| time_length * clock_rate);
       (opt_len, act_len)
@@ -88,16 +87,11 @@ pub(crate) fn apply_relaxed_clock(
     Ok(())
   })?;
 
-  for (node_key, gamma) in &gammas {
-    if let Some(node) = graph.get_node(*node_key) {
-      for (_, edge) in graph.parents_of(node) {
-        let edge_key = edge.key();
-        state.edge_mut(edge_key).gamma = *gamma;
-      }
-    }
-  }
-
-  Ok(())
+  let edge_gammas = graph
+    .get_edges()
+    .map(|edge| (edge.key(), gammas[&edge.target()]))
+    .collect();
+  Ok(edge_gammas)
 }
 
 #[derive(Clone, Default)]

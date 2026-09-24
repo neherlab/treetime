@@ -21,10 +21,11 @@ pub(crate) fn write_confidence_intervals(
 #[cfg(test)]
 mod tests {
   use super::write_confidence_intervals;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime::timetree::confidence::extract_confidence_intervals;
-  use treetime::timetree::timetree_state::TimetreeState;
+  use treetime::timetree::inference::time_inference::NodePosterior;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
@@ -34,8 +35,13 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("named"));
     graph.build().unwrap();
-    let state = state(&graph, &[(key, Some(2020.0))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let posterior = btreemap! {
+      key => NodePosterior {
+        time: Some(2020.0),
+        ..NodePosterior::default()
+      },
+    };
+    let intervals = extract_confidence_intervals(&graph, &posterior, &BTreeMap::new(), &names);
 
     let mut buf = Vec::new();
     write_confidence_intervals(&intervals, &mut buf).unwrap();
@@ -43,14 +49,6 @@ mod tests {
 
     let header = output.lines().next().unwrap();
     assert_eq!(header, "name\tdate\tlower\tupper");
-  }
-
-  fn state(graph: &Graph, entries: &[(GraphNodeKey, Option<f64>)]) -> TimetreeState {
-    let mut state = TimetreeState::new(graph);
-    for (key, time) in entries {
-      state.node_mut(*key).time = *time;
-    }
-    state
   }
 
   fn add_named(

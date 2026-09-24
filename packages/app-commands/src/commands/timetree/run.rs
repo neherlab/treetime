@@ -25,8 +25,8 @@ use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
+use treetime::timetree::inference::time_inference::TimeInference;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
-use treetime::timetree::timetree_state::TimetreeState;
 use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
@@ -193,7 +193,8 @@ pub fn run_timetree_estimation(
     rate_susceptibility_dates,
     clock_branch_lengths,
     clock_state,
-    timetree_state,
+    time_inference,
+    gammas,
     ..
   } = output;
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
@@ -209,7 +210,8 @@ pub fn run_timetree_estimation(
   let (nodes, edges) = gather_timetree_outputs(
     &graph,
     &clock_state,
-    &timetree_state,
+    &time_inference,
+    &gammas,
     &rate_susceptibility_dates,
     &clock_branch_lengths,
     &names,
@@ -408,7 +410,8 @@ impl SeqSink for ReconstructedNucSink {
 fn gather_timetree_outputs(
   graph: &Graph,
   clock_state: &ClockState,
-  timetree_state: &TimetreeState,
+  time_inference: &TimeInference,
+  gammas: &BTreeMap<GraphEdgeKey, f64>,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -428,10 +431,10 @@ fn gather_timetree_outputs(
         name: names[&key].clone(),
         desc: descs[&key].clone(),
         confidence: confidences.get(&key).copied().flatten(),
-        time: timetree_state.node(key).time,
+        time: time_inference.posterior[&key].time,
         div: clock.div,
         is_outlier: clock.is_outlier,
-        bad_branch: timetree_state.node(key).bad_branch,
+        bad_branch: time_inference.bad_branches[&key],
         rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
       };
       (key, out)
@@ -442,12 +445,11 @@ fn gather_timetree_outputs(
     .get_edges()
     .map(|edge| {
       let key = edge.key();
-      let edge_state = timetree_state.edge(key);
       let out = TimetreeEdgeOut {
         branch_length: branch_lengths[&key],
-        time_length: edge_state.time_length,
+        time_length: time_inference.branches[&key].time_length,
         clock_branch_length: clock_branch_lengths.get(&key).copied(),
-        gamma: edge_state.gamma,
+        gamma: gammas[&key],
       };
       (key, out)
     })

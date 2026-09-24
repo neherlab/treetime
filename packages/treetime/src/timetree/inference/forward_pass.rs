@@ -2,7 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
+use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward};
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
@@ -12,23 +12,30 @@ use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::pass::{GraphMapOutputs, GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_grid::Side;
+use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_forward(
   graph: &Graph,
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  state: &mut TimetreeState,
+  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  backward: &TimeBackward,
   progress: &dyn ProgressSink,
-) -> Result<(), Report> {
-  state.map_forward(graph, |context| {
-    propagate_distributions_forward_node(constraints, names, &context, progress)
-  })?;
+) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
+  let pass = GraphPass::new(graph)?;
+  let GraphMapOutputs { nodes: posterior, .. } = pass.map_forward(
+    &backward.subtree,
+    branches,
+    |key| Err(make_internal_report!("Backward pass output is missing node {key}")),
+    |context| propagate_distributions_forward_node(constraints, names, &backward.messages, &context, progress),
+  )?;
 
-  let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
+  let contradicted = posterior.values().filter(|node| node.contradicted).count();
   if contradicted > 0 {
     progress_warn!(
       progress,
@@ -40,40 +47,63 @@ pub(crate) fn propagate_distributions_forward(
     );
   }
 
-  Ok(())
+  Ok(posterior)
 }
+
+type Subtree = Option<Arc<Distribution<NegLog>>>;
 
 fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  context: &GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
+  messages: &BTreeMap<GraphEdgeKey, Option<Arc<Distribution<NegLog>>>>,
+  context: &GraphPassForwardContext<'_, Subtree, BranchLikelihood, NodePosterior>,
   progress: &dyn ProgressSink,
-) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
-  let mut node = context.input.clone();
-  let date_constraint = constraints.date_constraints.get(&context.key).cloned().flatten();
-  let edge = context.parent_edge.map(|(_, edge)| edge);
-  if refine_distribution_from_parent(
+) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
+  let date_constraint = constraints.date_constraint(context.key);
+  let subtree = context.input;
+  let parent_edge = context.parent_edge.map(|(edge_key, branch)| ParentEdge {
+    branch,
+    msg_to_parent: messages[&edge_key].as_deref(),
+  });
+
+  let refinement = refine_distribution_from_parent(
     names,
     context.key,
     date_constraint.as_ref(),
     context.parent,
-    edge,
-    &mut node,
-  )? == Refinement::ContradictedGivenDate
-  {
-    node.contradicted = true;
-  }
-  commit_node_time(
+    parent_edge,
+    subtree.as_deref(),
+  )?;
+  let (distribution, contradicted) = match refinement {
+    Refinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
+    Refinement::Unrefined => (subtree.clone(), false),
+    Refinement::ContradictedGivenDate => (subtree.clone(), true),
+  };
+
+  let time = commit_node_time(
     names,
     context.key,
     date_constraint.as_ref(),
     context.parent,
     context.is_leaf,
-    &mut node,
+    distribution.as_deref(),
     progress,
   )?;
-  let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
-  Ok(GraphPassNodeOutput { node, parent_message })
+
+  Ok(GraphPassNodeOutput {
+    node: NodePosterior {
+      distribution,
+      time,
+      contradicted,
+    },
+    parent_message: None,
+  })
+}
+
+#[derive(Clone, Copy)]
+struct ParentEdge<'a> {
+  branch: &'a BranchLikelihood,
+  msg_to_parent: Option<&'a Distribution<NegLog>>,
 }
 
 #[allow(
@@ -84,32 +114,30 @@ fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  parent: Option<&DateNodeState>,
-  edge: Option<&DateEdgeState>,
-  node: &mut DateNodeState,
+  parent: Option<&NodePosterior>,
+  edge: Option<ParentEdge<'_>>,
+  subtree: Option<&Distribution<NegLog>>,
 ) -> Result<Refinement, Report> {
   let Some(parent) = parent else {
-    return Ok(Refinement::Done);
+    return Ok(Refinement::Unrefined);
   };
   if has_exact_date(date_constraint) {
-    return Ok(Refinement::Done);
+    return Ok(Refinement::Unrefined);
   }
 
   let edge = edge.expect("Non-root indexed node must own its parent edge");
 
-  let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution)
-  else {
-    return Ok(Refinement::Done);
+  let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
+    return Ok(Refinement::Unrefined);
   };
 
-  let Some(subtree_dist) = &node.time_distribution else {
+  let Some(subtree_dist) = subtree else {
     let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
     log_refinement(names, key, parent_time_dist, &dist_from_parent);
-    node.time_distribution = Some(Arc::new(dist_from_parent));
-    return Ok(Refinement::Done);
+    return Ok(Refinement::Refined(dist_from_parent));
   };
 
-  let parent_except_subtree = match edge.msg_to_parent.as_deref() {
+  let parent_except_subtree = match edge.msg_to_parent {
     Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent)?,
     None => parent_time_dist.as_ref().clone(),
   };
@@ -124,13 +152,13 @@ fn refine_distribution_from_parent(
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
     return Ok(Refinement::ContradictedGivenDate);
   }
-  node.time_distribution = Some(Arc::new(combined));
-  Ok(Refinement::Done)
+  Ok(Refinement::Refined(combined))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 enum Refinement {
-  Done,
+  Unrefined,
+  Refined(Distribution<NegLog>),
   ContradictedGivenDate,
 }
 
@@ -138,17 +166,20 @@ fn commit_node_time(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  parent: Option<&DateNodeState>,
+  parent: Option<&NodePosterior>,
   is_leaf: bool,
-  node: &mut DateNodeState,
+  distribution: Option<&Distribution<NegLog>>,
   progress: &dyn ProgressSink,
-) -> Result<(), Report> {
-  let parent_time = (!has_exact_date(date_constraint))
-    .then(|| parent_time(parent))
-    .flatten();
+) -> Result<Option<f64>, Report> {
+  let parent_time = if has_exact_date(date_constraint) {
+    None
+  } else {
+    parent.and_then(|parent| parent.time)
+  };
 
+  let time = committed_time(distribution, parent_time)?;
   let is_dateable = !is_leaf || date_constraint.is_some();
-  if set_likely_time(node, parent_time)?.is_none() && is_dateable {
+  if time.is_none() && is_dateable {
     let name = node_name(names, key);
     let name = name.as_deref().unwrap_or("<unnamed>");
     progress_warn!(
@@ -158,28 +189,24 @@ fn commit_node_time(
        and the times the rest of the tree implies have disjoint support."
     );
   }
-  Ok(())
+  Ok(time)
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
   date_constraint.is_some_and(|dist| dist.is_point())
 }
 
-fn parent_time(parent: Option<&DateNodeState>) -> Option<f64> {
-  parent?.time
-}
-
-pub(super) fn set_likely_time(node: &mut DateNodeState, parent_time: Option<f64>) -> Result<Option<f64>, Report> {
-  let Some(time_dist) = &node.time_distribution else {
+pub(super) fn committed_time(
+  distribution: Option<&Distribution<NegLog>>,
+  parent_time: Option<f64>,
+) -> Result<Option<f64>, Report> {
+  let Some(distribution) = distribution else {
     return Ok(None);
   };
-  let Some(time) = time_dist.likely_time()? else {
+  let Some(time) = distribution.likely_time()? else {
     return Ok(None);
   };
-
-  let time = parent_time.map_or(time, |parent_time| time.max(parent_time));
-  node.time = Some(time);
-  Ok(Some(time))
+  Ok(Some(parent_time.map_or(time, |parent_time| time.max(parent_time))))
 }
 
 fn log_refinement(

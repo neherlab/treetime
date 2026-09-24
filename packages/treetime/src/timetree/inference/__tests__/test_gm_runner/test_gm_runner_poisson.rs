@@ -5,11 +5,14 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::progress::NoopProgress;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
+  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::GRID_POINTS;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::BranchLikelihood;
   use eyre::Report;
   use rstest::rstest;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -40,14 +43,21 @@ mod tests {
       case.sequence_length(),
       GRID_POINTS,
     )?;
-    let mut state = TimetreeState::seed_from_values(&graph, &constraints);
-    for (edge_key, dist) in branch_distributions {
-      state.edge_mut(edge_key).branch_length_distribution = Some(dist);
-    }
-    propagate_distributions_backward(&graph, &constraints, None, &mut state)?;
-    propagate_distributions_forward(&graph, &constraints, &names, &mut state, &NoopProgress)?;
+    let branches: BTreeMap<GraphEdgeKey, BranchLikelihood> = graph
+      .get_edges()
+      .map(|edge| {
+        let branch = BranchLikelihood {
+          distribution: branch_distributions.get(&edge.key()).cloned(),
+          time_length: None,
+        };
+        (edge.key(), branch)
+      })
+      .collect();
+    let bad_branches = derive_bad_branches(&graph, &constraints, &undated_leaves(&graph, &constraints))?;
+    let backward = propagate_distributions_backward(&graph, &constraints, None, &bad_branches, &branches)?;
+    let posterior = propagate_distributions_forward(&graph, &constraints, &names, &branches, &backward, &NoopProgress)?;
 
-    let actual = extract_node_times(&graph, &names, &state);
+    let actual = extract_node_times(&graph, &names, &posterior);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())

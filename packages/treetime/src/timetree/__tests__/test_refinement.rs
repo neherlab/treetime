@@ -21,11 +21,12 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
   use crate::timetree::refinement::{
-    Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
+    Refinement, RefinementOptions, RefinementOutcome, RefinementResult, TopologyOutcome, TopologyRefinement,
   };
-  use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::initialize_node_divergences;
   use eyre::Report;
   use indoc::indoc;
@@ -72,7 +73,7 @@ mod tests {
     assert!(
       graph
         .get_nodes()
-        .all(|node| { state.node(node.key()).time_distribution.is_some() })
+        .all(|node| { state.posterior[&node.key()].distribution.is_some() })
     );
 
     let edge_lh = compute_coalescent_total_lh(
@@ -86,9 +87,8 @@ mod tests {
     let node_lh = -graph
       .get_nodes()
       .map(|node| {
-        let time = state
-          .node(node.key())
-          .time_distribution
+        let time = state.posterior[&node.key()]
+          .distribution
           .as_ref()
           .and_then(|distribution| distribution.likely_time().unwrap())
           .expect("refined node must have a likely time");
@@ -124,7 +124,11 @@ mod tests {
     let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.key();
-    state.node_mut(root_key).time = None;
+    state
+      .posterior
+      .get_mut(&root_key)
+      .expect("root must have a posterior")
+      .time = None;
     let expected_error = format!(
       "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {root_key}, but it has none"
     );
@@ -155,7 +159,11 @@ mod tests {
     let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.key();
-    state.node_mut(root_key).time = Some(f64::NAN);
+    state
+      .posterior
+      .get_mut(&root_key)
+      .expect("root must have a posterior")
+      .time = Some(f64::NAN);
     let before = serialize_state(&graph, &clock_model)?;
 
     assert_error!(
@@ -178,8 +186,7 @@ mod tests {
     assert_eq!(before, after);
     assert_eq!(
       f64::NAN.to_bits(),
-      state
-        .node(root_key)
+      state.posterior[&root_key]
         .time
         .expect("Root time must remain present")
         .to_bits()
@@ -205,7 +212,11 @@ mod tests {
       &mut branch_lengths,
     )?;
     let root_key = graph.get_exactly_one_root()?.key();
-    state.node_mut(root_key).time = None;
+    state
+      .posterior
+      .get_mut(&root_key)
+      .expect("root must have a posterior")
+      .time = None;
 
     let (partitions, outcome) = refine(
       &mut graph,
@@ -219,7 +230,7 @@ mod tests {
     )?;
 
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
-    assert!(state.node(root_key).time.is_some_and(f64::is_finite));
+    assert!(state.posterior[&root_key].time.is_some_and(f64::is_finite));
 
     Ok(())
   }
@@ -229,7 +240,7 @@ mod tests {
     BTreeMap<GraphNodeKey, Option<String>>,
     Vec<PartitionTimetree>,
     ClockModel,
-    TimetreeState,
+    TimeInference,
     BTreeMap<GraphEdgeKey, Option<f64>>,
     DateConstraints,
   );
@@ -277,7 +288,7 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints)?;
+    let times = likely_times(&graph, &constraints, None)?;
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -296,19 +307,19 @@ mod tests {
       &NoopProgress,
     )?;
     let clock_model = clock_reroot.into_clock_model()?;
-    let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    state = run_timetree(
+    let state = run_timetree(
       &graph,
       &constraints,
+      &undated_leaves(&graph, &constraints),
+      &unit_gammas(&graph),
       &partitions,
       &run_branch_lengths,
       &run_names,
       &clock_model,
       None,
       false,
-      state,
       &mut clock_state,
       &NoopProgress,
     )?;
@@ -341,7 +352,7 @@ mod tests {
     partitions: Vec<PartitionTimetree>,
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
-    state: &mut TimetreeState,
+    state: &mut TimeInference,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(Vec<PartitionTimetree>, RefinementOutcome), Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
@@ -355,8 +366,15 @@ mod tests {
     let mut clock_state = ClockState::new(graph);
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
     let mut names = names.clone();
+    let leaf_bad_branches = undated_leaves(graph, constraints);
+    let gammas = unit_gammas(graph);
 
-    let (new_state, partitions, outcome) = Refinement {
+    let RefinementResult {
+      inference: new_state,
+      partitions,
+      outcome,
+      ..
+    } = Refinement {
       graph,
       partitions,
       clock_model,
@@ -367,7 +385,9 @@ mod tests {
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
       constraints,
-      state: state.clone(),
+      leaf_bad_branches: &leaf_bad_branches,
+      inference: state.clone(),
+      gammas,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths,

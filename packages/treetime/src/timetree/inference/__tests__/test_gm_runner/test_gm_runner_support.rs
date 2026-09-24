@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(super) mod support {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::NodePosterior;
   use eyre::Report;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
@@ -106,14 +106,14 @@ pub(super) mod support {
   pub(crate) fn extract_node_times(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    state: &TimetreeState,
+    posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
   ) -> BTreeMap<String, f64> {
     graph
       .get_nodes()
       .filter_map(|node_ref| {
         let key = node_ref.key();
         let name = names[&key].clone()?;
-        let time = state.nodes.get(&key).and_then(|node| node.time)?;
+        let time = posterior[&key].time?;
         Some((name, time))
       })
       .collect()

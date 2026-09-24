@@ -9,7 +9,7 @@ use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::progress_info;
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::likely_times;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -25,7 +25,6 @@ pub(crate) fn reroot_tree(
   graph: &mut Graph,
   constraints: &DateConstraints,
   clock_state: &mut ClockState,
-  timetree_state: &TimetreeState,
   mut partitions: Vec<PartitionTimetree>,
   clock_params: &ClockVarianceParams,
   clock_rate: Option<f64>,
@@ -50,7 +49,7 @@ pub(crate) fn reroot_tree(
   );
 
   clock_state.reseed_transitional(graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times(constraints)?);
+  let mut clock_inputs = ClockInputs::seed_from_times(graph, &likely_times(graph, constraints, None)?);
   let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(
     graph,
     &mut clock_inputs,

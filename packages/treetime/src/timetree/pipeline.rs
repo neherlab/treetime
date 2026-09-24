@@ -36,17 +36,19 @@ use crate::timetree::coalescent::CoalescentOutput;
 use crate::timetree::coalescent_timescale::{
   CoalescentMode, build_coalescent_output, coalescent_mode, coalescent_timescale,
 };
+use crate::timetree::confidence::RateSusceptibility;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
+use crate::timetree::inference::bad_branches::undated_leaves;
 use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree, timetree_branch_lengths};
-use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
+use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
+use crate::timetree::optimization::clock_filter::{mark_outlier_leaves, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
-use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinement};
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::refinement::{Refinement, RefinementOptions, RefinementResult, TopologyRefinement};
 use crate::timetree::utils::initialize_node_divergences;
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
@@ -109,7 +111,7 @@ pub fn run(
     DateConstraints::default()
   };
 
-  let mut timetree_state = TimetreeState::seed_from_values(&input.graph, &date_constraints);
+  let mut leaf_bad_branches = undated_leaves(&input.graph, &date_constraints);
 
   let mut clock_state = ClockState::new(&input.graph);
 
@@ -127,7 +129,8 @@ pub fn run(
     ..RerootParams::default()
   };
   clock_state.reseed_transitional(&input.graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times(&date_constraints)?);
+  let mut clock_inputs =
+    ClockInputs::seed_from_times(&input.graph, &likely_times(&input.graph, &date_constraints, None)?);
   let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
     &mut clock_inputs,
@@ -194,7 +197,6 @@ pub fn run(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
-      &timetree_state,
       partitions,
       &ClockVarianceParams::default(),
       params.clock_rate,
@@ -209,9 +211,7 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    timetree_state.reseed_from_values(&input.graph);
-
-    let given_dates = timetree_state.likely_times(&date_constraints)?;
+    let given_dates = likely_times(&input.graph, &date_constraints, None)?;
     clock_state.reseed_transitional(&input.graph);
     let clock_inputs = ClockInputs::seed_from_times(&input.graph, &given_dates);
     let result = clock_filter_inplace(
@@ -232,7 +232,7 @@ pub fn run(
       names,
       progress,
     );
-    apply_outlier_bad_branches(&input.graph, &clock_state, &mut timetree_state)?;
+    leaf_bad_branches = mark_outlier_leaves(&input.graph, &clock_state, &leaf_bad_branches);
   }
 
   if let Some(aln) = input.sequences.as_deref() {
@@ -262,7 +262,6 @@ pub fn run(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
-      &timetree_state,
       partitions,
       reroot_clock_params,
       params.clock_rate,
@@ -287,16 +286,19 @@ pub fn run(
     })
     .collect();
 
-  timetree_state = run_timetree(
+  let mut gammas = unit_gammas(&input.graph);
+
+  let mut time_inference = run_timetree(
     &input.graph,
     &date_constraints,
+    &leaf_bad_branches,
+    &gammas,
     &partitions,
     &branch_lengths,
     &names,
     &clock_model,
     None,
     params.no_indels,
-    timetree_state,
     &mut clock_state,
     progress,
   )?;
@@ -315,7 +317,7 @@ pub fn run(
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
-  let coalescent_node_times = timetree_state.coalescent_node_times()?;
+  let coalescent_node_times = time_inference.coalescent_node_times()?;
 
   let lineage_counts = compute_lineage_counts(&input.graph, &coalescent_node_times)
     .wrap_err("Failed to compute coalescent lineage counts")?;
@@ -333,16 +335,17 @@ pub fn run(
 
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
-    timetree_state = run_timetree(
+    time_inference = run_timetree(
       &input.graph,
       &date_constraints,
+      &leaf_bad_branches,
+      &gammas,
       &partitions,
       &branch_lengths,
       &names,
       &clock_model,
       Some(&prior),
       params.no_indels,
-      timetree_state,
       &mut clock_state,
       progress,
     )?;
@@ -352,7 +355,8 @@ pub fn run(
     clock_model.clock_rate(),
     1.0,
     &mut clock_branch_lengths,
-    &timetree_state,
+    &time_inference.node_times(),
+    &gammas,
     progress,
   );
 
@@ -398,7 +402,7 @@ pub fn run(
         coalescent,
         &input.graph,
         &skyline_params,
-        &timetree_state.coalescent_node_times()?,
+        &time_inference.coalescent_node_times()?,
         &names,
         progress,
       )?;
@@ -407,7 +411,12 @@ pub fn run(
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
     let iteration_clock = IterationClock::of(&clock_model);
-    let (new_timetree_state, new_partitions, outcome) = Refinement {
+    let RefinementResult {
+      inference: new_time_inference,
+      gammas: new_gammas,
+      partitions: new_partitions,
+      outcome,
+    } = Refinement {
       graph: &mut input.graph,
       partitions,
       clock_model: &mut clock_model,
@@ -418,7 +427,9 @@ pub fn run(
       rng: &mut rng,
       options: &refinement_options,
       constraints: &date_constraints,
-      state: timetree_state,
+      leaf_bad_branches: &leaf_bad_branches,
+      inference: time_inference,
+      gammas,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths: &mut branch_lengths,
@@ -427,7 +438,8 @@ pub fn run(
     }
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
-    timetree_state = new_timetree_state;
+    time_inference = new_time_inference;
+    gammas = new_gammas;
     partitions = new_partitions;
 
     optimizer
@@ -437,7 +449,7 @@ pub fn run(
         outcome.time_change,
         &input.graph,
         &partitions,
-        &timetree_state,
+        &time_inference,
         prior_wanted.then_some(&coalescent_tc.distribution),
         iteration_clock,
         &names,
@@ -479,21 +491,24 @@ pub fn run(
 
   let rate_susceptibility_dates = if let Some(rate_std) = rate_std {
     progress_info!(progress, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-    compute_rate_susceptibility(
+    let RateSusceptibility { dates, central } = compute_rate_susceptibility(
       &input.graph,
       &date_constraints,
+      &leaf_bad_branches,
+      &gammas,
       &partitions,
       &clock_model,
       final_prior,
       rate_std,
       params.no_indels,
       &branch_lengths,
-      &mut timetree_state,
       &mut clock_state,
       &names,
       progress,
     )
-    .wrap_err("Rate susceptibility analysis failed")?
+    .wrap_err("Rate susceptibility analysis failed")?;
+    time_inference = central;
+    dates
   } else {
     BTreeMap::new()
   };
@@ -503,16 +518,17 @@ pub fn run(
       progress,
       "### Final round: marginal reconstruction for confidence intervals"
     );
-    timetree_state = run_timetree(
+    time_inference = run_timetree(
       &input.graph,
       &date_constraints,
+      &leaf_bad_branches,
+      &gammas,
       &partitions,
       &branch_lengths,
       &names,
       &clock_model,
       final_prior,
       params.no_indels,
-      timetree_state,
       &mut clock_state,
       progress,
     )
@@ -523,7 +539,8 @@ pub fn run(
       clock_model.clock_rate(),
       1.0,
       &mut clock_branch_lengths,
-      &timetree_state,
+      &time_inference.node_times(),
+      &gammas,
       progress,
     );
 
@@ -538,7 +555,14 @@ pub fn run(
 
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &names));
+  .then(|| {
+    extract_confidence_intervals(
+      &input.graph,
+      &time_inference.posterior,
+      &rate_susceptibility_dates,
+      &names,
+    )
+  });
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
@@ -598,7 +622,8 @@ pub fn run(
     clock_branch_lengths,
     branch_lengths,
     clock_state,
-    timetree_state,
+    time_inference,
+    gammas,
     names,
   })
 }
@@ -638,7 +663,9 @@ pub struct TimetreeOutput {
   #[serde(skip)]
   pub clock_state: ClockState,
   #[serde(skip)]
-  pub timetree_state: TimetreeState,
+  pub time_inference: TimeInference,
+  #[serde(skip)]
+  pub gammas: BTreeMap<GraphEdgeKey, f64>,
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }

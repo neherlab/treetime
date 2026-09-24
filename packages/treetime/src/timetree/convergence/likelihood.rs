@@ -4,7 +4,7 @@ use crate::partition::timetree::marginal::graph_log_lh;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::TimeInference;
 use log::debug;
 use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
@@ -25,7 +25,7 @@ pub(crate) fn compute_sequence_log_lh(graph: &Graph, partitions: &[PartitionTime
   }
 }
 
-pub(crate) fn compute_positional_log_lh(graph: &Graph, state: &TimetreeState) -> Option<LogLh> {
+pub(crate) fn compute_positional_log_lh(graph: &Graph, inference: &TimeInference) -> Option<LogLh> {
   let mut total = 0.0;
   let mut count = 0_usize;
 
@@ -34,13 +34,12 @@ pub(crate) fn compute_positional_log_lh(graph: &Graph, state: &TimetreeState) ->
     let parent_key = edge.source();
     let child_key = edge.target();
 
-    let edge_state = state.edge(edge.key());
-    let Some(dist) = edge_state.branch_length_distribution.as_ref() else {
+    let Some(dist) = inference.branches[&edge.key()].distribution.as_ref() else {
       continue;
     };
 
-    let parent_time = state.node(parent_key).time;
-    let child_time = state.node(child_key).time;
+    let parent_time = inference.posterior[&parent_key].time;
+    let child_time = inference.posterior[&child_key].time;
 
     let time_diff = match (parent_time, child_time) {
       (Some(pt), Some(ct)) => ct - pt,

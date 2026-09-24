@@ -2,8 +2,6 @@ use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
-use crate::timetree::timetree_state::TimetreeState;
-use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
@@ -88,33 +86,16 @@ pub struct OutlierRecord {
   residual: f64,
 }
 
-pub(crate) fn apply_outlier_bad_branches(
+pub(crate) fn mark_outlier_leaves(
   graph: &Graph,
   clock_state: &ClockState,
-  state: &mut TimetreeState,
-) -> Result<(), Report> {
-  for leaf in graph.get_leaves() {
-    let node = leaf;
-    if clock_state.node(node.key()).is_outlier {
-      state.node_mut(node.key()).bad_branch = true;
-    }
-  }
-
-  propagate_bad_branches(graph, state)
-}
-
-pub(crate) fn propagate_bad_branches(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
-  graph.iter_depth_first_postorder_forward(|node| {
-    if node.is_leaf {
-      return Ok(());
-    }
-
-    let all_children_bad = node
-      .child_keys
-      .iter()
-      .all(|(child_key, _)| state.node(*child_key).bad_branch);
-
-    state.node_mut(node.key).bad_branch = all_children_bad;
-    Ok(())
-  })
+  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
+) -> BTreeMap<GraphNodeKey, bool> {
+  graph
+    .get_leaves()
+    .map(|leaf| {
+      let key = leaf.key();
+      (key, leaf_bad_branches[&key] || clock_state.node(key).is_outlier)
+    })
+    .collect()
 }

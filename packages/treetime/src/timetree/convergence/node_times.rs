@@ -1,14 +1,14 @@
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::TimeInference;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
+pub(crate) fn capture_node_times(graph: &Graph, inference: &TimeInference) -> NodeTimeSnapshot {
   graph
     .get_nodes()
     .filter_map(|node| {
       let key = node.key();
-      let time = state.node(key).time?;
+      let time = inference.posterior[&key].time?;
       time.is_finite().then_some((key, time))
     })
     .collect()

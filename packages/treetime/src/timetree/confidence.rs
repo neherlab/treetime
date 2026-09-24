@@ -6,7 +6,7 @@ use crate::make_error;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::timetree::inference::runner::run_timetree;
-use crate::timetree::timetree_state::TimetreeState;
+use crate::timetree::inference::time_inference::{NodePosterior, TimeInference};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -31,111 +31,87 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 pub(crate) fn compute_rate_susceptibility(
   graph: &Graph,
   constraints: &DateConstraints,
+  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
+  gammas: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &[PartitionTimetree],
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   no_indels: bool,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  state: &mut TimetreeState,
   clock_state: &mut ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
-) -> Result<BTreeMap<GraphNodeKey, [f64; 3]>, Report> {
+) -> Result<RateSusceptibility, Report> {
   let current_rate = clock_model.clock_rate();
 
   let upper_rate = current_rate + rate_std;
   let lower_rate = (0.1 * current_rate).max(current_rate - rate_std);
 
-  let original_gammas = save_gammas(state);
+  let mut run_scaled = |scale: f64| {
+    let scaled_gammas = gammas
+      .iter()
+      .map(|(key, gamma)| (*key, gamma * scale))
+      .collect::<BTreeMap<_, _>>();
+    run_timetree(
+      graph,
+      constraints,
+      leaf_bad_branches,
+      &scaled_gammas,
+      partitions,
+      branch_lengths,
+      names,
+      clock_model,
+      coalescent,
+      no_indels,
+      clock_state,
+      progress,
+    )
+  };
 
-  let run_branch_lengths = branch_lengths;
-  let run_names = names;
-
-  scale_gammas(state, &original_gammas, upper_rate / current_rate);
   progress_info!(
     progress,
     "Rate susceptibility: running with upper rate {upper_rate:.6e}"
   );
-  *state = run_timetree(
-    graph,
-    constraints,
-    partitions,
-    run_branch_lengths,
-    run_names,
-    clock_model,
-    coalescent,
-    no_indels,
-    std::mem::take(state),
-    clock_state,
-    progress,
-  )
-  .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
-  let upper_dates = collect_node_times(state);
+  let upper = run_scaled(upper_rate / current_rate).wrap_err("Rate susceptibility: timetree at upper rate failed")?;
 
-  scale_gammas(state, &original_gammas, lower_rate / current_rate);
   progress_info!(
     progress,
     "Rate susceptibility: running with lower rate {lower_rate:.6e}"
   );
-  *state = run_timetree(
-    graph,
-    constraints,
-    partitions,
-    run_branch_lengths,
-    run_names,
-    clock_model,
-    coalescent,
-    no_indels,
-    std::mem::take(state),
-    clock_state,
-    progress,
-  )
-  .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
-  let lower_dates = collect_node_times(state);
+  let lower = run_scaled(lower_rate / current_rate).wrap_err("Rate susceptibility: timetree at lower rate failed")?;
 
-  scale_gammas(state, &original_gammas, 1.0);
   progress_info!(
     progress,
     "Rate susceptibility: running with central rate {current_rate:.6e}"
   );
-  *state = run_timetree(
-    graph,
-    constraints,
-    partitions,
-    run_branch_lengths,
-    run_names,
-    clock_model,
-    coalescent,
-    no_indels,
-    std::mem::take(state),
-    clock_state,
-    progress,
-  )
-  .wrap_err("Rate susceptibility: timetree at central rate failed")?;
+  let central = run_scaled(1.0).wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
-  let mut rate_susceptibility_dates = BTreeMap::new();
-  for node_ref in graph.get_nodes() {
-    let key = node_ref.key();
-
-    let central_date = state.node(key).time;
-    let upper_date = upper_dates.get(&key).copied();
-    let lower_date = lower_dates.get(&key).copied();
-
-    if let (Some(c), Some(u), Some(l)) = (central_date, upper_date, lower_date) {
-      let mut dates = [l, c, u];
-      dates.sort_by_key(|x| OrderedFloat(*x));
-      rate_susceptibility_dates.insert(key, dates);
-    }
-  }
+  let dates = graph
+    .get_nodes()
+    .filter_map(|node_ref| {
+      let key = node_ref.key();
+      let central_date = central.posterior[&key].time?;
+      let upper_date = upper.posterior[&key].time?;
+      let lower_date = lower.posterior[&key].time?;
+      let mut dates = [lower_date, central_date, upper_date];
+      dates.sort_by_key(|date| OrderedFloat(*date));
+      Some((key, dates))
+    })
+    .collect();
 
   progress_info!(progress, "Rate susceptibility analysis completed");
-  Ok(rate_susceptibility_dates)
+  Ok(RateSusceptibility { dates, central })
+}
+
+pub(crate) struct RateSusceptibility {
+  pub dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+  pub central: TimeInference,
 }
 
 pub fn extract_confidence_intervals(
   graph: &Graph,
-  state: &TimetreeState,
+  posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Vec<NodeConfidenceInterval> {
@@ -144,9 +120,9 @@ pub fn extract_confidence_intervals(
     .filter_map(|node_ref| {
       let node = node_ref;
       let key = node.key();
-      let node_state = state.node(key);
+      let node_posterior = &posterior[&key];
       let name = names[&key].clone().unwrap_or_default();
-      let date = node_state.time?;
+      let date = node_posterior.time?;
 
       let mutation_contribution: Option<(f64, f64)> = None;
 
@@ -157,8 +133,8 @@ pub fn extract_confidence_intervals(
       let (lower, upper) = if rate_contribution.is_none() && mutation_contribution.is_none() {
         (date, date)
       } else {
-        let limits = node_state
-          .time_distribution
+        let limits = node_posterior
+          .distribution
           .as_ref()
           .and_then(|dist| dist.time_bounds())
           .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
@@ -256,24 +232,4 @@ pub(crate) fn quantile_to_zscore(p: f64) -> f64 {
     return 0.0;
   }
   SQRT_2 * erf_inv(2.0 * p - 1.0)
-}
-
-fn save_gammas(state: &TimetreeState) -> Vec<(GraphEdgeKey, f64)> {
-  state.edges.iter().map(|(key, edge)| (*key, edge.gamma)).collect_vec()
-}
-
-fn scale_gammas(state: &mut TimetreeState, original_gammas: &[(GraphEdgeKey, f64)], scale_factor: f64) {
-  for &(key, orig_gamma) in original_gammas {
-    if let Some(edge) = state.edges.get_mut(&key) {
-      edge.gamma = orig_gamma * scale_factor;
-    }
-  }
-}
-
-fn collect_node_times(state: &TimetreeState) -> BTreeMap<GraphNodeKey, f64> {
-  state
-    .nodes
-    .iter()
-    .filter_map(|(key, node)| node.time.map(|time| (*key, time)))
-    .collect()
 }

@@ -7,8 +7,8 @@
 mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::inference::time_inference::BranchLikelihood;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
-  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use rstest::rstest;
   use serde::Deserialize;
@@ -19,7 +19,10 @@ mod tests {
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
-  use helpers::{GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, seed_state_scaled};
+  use helpers::{
+    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, empty_branches, seed_state_scaled,
+    time_branch,
+  };
 
   #[rustfmt::skip]
   #[rstest]
@@ -43,7 +46,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    let mut state = TimetreeState::new(&graph);
+    let mut branches = empty_branches(&graph);
     for (name, branch) in &input.branches {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
@@ -51,17 +54,16 @@ mod tests {
         .parents_of(node)
         .next()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-      state.edge_mut(edge.key()).time_length = Some(branch.clock_length / input.clock_rate);
+      branches.insert(edge.key(), time_branch(Some(branch.clock_length / input.clock_rate)));
     }
 
-    apply_relaxed_clock(
+    let gammas = apply_relaxed_clock(
       &graph,
       &branch_lengths,
       &[input.slack, input.coupling],
       input.one_mutation,
       input.clock_rate,
-      &mut state,
-    )?;
+      &branches)?;
 
     let actual = input
       .branches
@@ -73,7 +75,7 @@ mod tests {
           .parents_of(node)
           .next()
           .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-        let gamma = state.edge(edge.key()).gamma;
+        let gamma = gammas[&edge.key()];
         Ok((name.to_owned(), gamma))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -88,11 +90,11 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
 
       assert!(gamma >= 0.1, "gamma={gamma} should be >= 0.1 (minimum bound)");
       assert!(gamma < 10.0, "gamma={gamma} should be reasonable (< 10.0)");
@@ -107,11 +109,11 @@ mod tests {
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
       assert!(gamma >= 0.1, "gamma={gamma} must be >= 0.1 (algorithm minimum bound)");
     }
 
@@ -128,13 +130,13 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = TimetreeState::new(&graph);
+    let mut branches = empty_branches(&graph);
     for edge in graph.get_edges() {
-      state.edge_mut(edge.key()).time_length = Some(10.0);
+      branches.insert(edge.key(), time_branch(Some(10.0)));
     }
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
-    let gammas: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
     let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
     for gamma in &gammas {
@@ -149,11 +151,11 @@ mod tests {
     let (graph, branch_lengths) = build_simple_tree()?;
     let one_mutation = 0.01;
 
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
       assert!(gamma >= 0.1, "gamma should be >= minimum bound");
     }
 
@@ -161,23 +163,18 @@ mod tests {
   }
 
   #[test]
-  fn test_relaxed_clock_gamma_stored_in_edges() -> Result<(), Report> {
+  fn test_relaxed_clock_returns_gamma_per_edge() -> Result<(), Report> {
     let (graph, branch_lengths) = build_simple_tree()?;
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
 
-    for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
-      pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
-    }
-
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     let mut any_changed = false;
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
       if (gamma - 1.0).abs() > 1e-6 {
         any_changed = true;
       }
@@ -194,16 +191,16 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 1.0];
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
 
-    let gammas_low: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let deviation_low: f64 = gammas_low.iter().map(|g| (g - 1.0).abs()).sum();
 
     let params_high = [100.0, 1.0];
-    apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &mut state)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &branches)?;
 
-    let gammas_high: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_high: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let deviation_high: f64 = gammas_high.iter().map(|g| (g - 1.0).abs()).sum();
 
     assert!(
@@ -220,16 +217,16 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 0.1];
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
 
-    let gammas_low: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let variance_low = compute_variance(&gammas_low);
 
     let params_high = [1.0, 10.0];
-    apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &mut state)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &branches)?;
 
-    let gammas_high: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_high: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let variance_high = compute_variance(&gammas_high);
 
     assert!(
@@ -251,15 +248,15 @@ mod tests {
     let params = [1.0, 1.0];
 
     let one_mutation_single = 0.001;
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 0.8);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 0.8);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &branches)?;
 
-    let gammas_single: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_single: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
     let one_mutation_multi = 0.0001;
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_multi, 1.0, &mut state)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_multi, 1.0, &branches)?;
 
-    let gammas_multi: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
+    let gammas_multi: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
     let any_differ = gammas_single
       .iter()
@@ -280,11 +277,11 @@ mod tests {
     let params = [1.0, 1.0];
 
     let tiny_one_mutation = 1e-15;
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
       assert!(gamma.is_finite(), "gamma must be finite, got {gamma}");
       assert!(gamma >= 0.1, "gamma must respect minimum bound, got {gamma}");
     }
@@ -302,14 +299,10 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
-    let root_edge_gamma = graph
-      .get_edges()
-      .collect::<Vec<_>>()
-      .first()
-      .map(|e| state.edge(e.key()).gamma);
+    let root_edge_gamma = graph.get_edges().collect::<Vec<_>>().first().map(|e| gammas[&e.key()]);
 
     if let Some(gamma) = root_edge_gamma {
       assert!(gamma >= 0.1, "Root gamma should respect minimum bound: {gamma}");
@@ -331,11 +324,11 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let params = [slack, 1.0];
-    let mut state = TimetreeState::new(&graph);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let branches = empty_branches(&graph);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.key()).gamma;
+      let gamma = gammas[&edge.key()];
       pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
@@ -352,14 +345,14 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = seed_state_scaled(&graph, &branch_lengths, 1.0);
-    apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
+    let branches = seed_state_scaled(&graph, &branch_lengths, 1.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     let gamma = graph
       .get_edges()
       .collect::<Vec<_>>()
       .first()
-      .map_or(1.0, |e| state.edge(e.key()).gamma);
+      .map_or(1.0, |e| gammas[&e.key()]);
 
     pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 
@@ -409,12 +402,22 @@ mod tests {
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       factor: f64,
-    ) -> TimetreeState {
-      let mut state = TimetreeState::new(graph);
-      for (&edge_key, &branch_length) in branch_lengths {
-        state.edge_mut(edge_key).time_length = Some(branch_length.unwrap_or(0.0) * factor);
+    ) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
+      branch_lengths
+        .iter()
+        .map(|(&edge_key, &branch_length)| (edge_key, time_branch(Some(branch_length.unwrap_or(0.0) * factor))))
+        .collect()
+    }
+
+    pub(super) fn empty_branches(graph: &Graph) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
+      graph.get_edges().map(|edge| (edge.key(), time_branch(None))).collect()
+    }
+
+    pub(super) fn time_branch(time_length: Option<f64>) -> BranchLikelihood {
+      BranchLikelihood {
+        distribution: None,
+        time_length,
       }
-      state
     }
 
     pub(super) fn compute_variance(values: &[f64]) -> f64 {

@@ -7,12 +7,13 @@
 mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::{BranchLikelihood, unit_gammas};
   use approx::assert_abs_diff_eq;
   use bio::io::newick;
   use eyre::Report;
   use maplit::btreemap;
   use petgraph::visit::EdgeRef;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::io::Cursor;
   use treetime_graph::edge::GraphEdgeKey;
@@ -26,14 +27,13 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
-    let mut state = TimetreeState::new(&graph);
-    create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
+    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), clock_rate);
 
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref;
       let key = edge_read.key();
       let branch_length = branch_lengths.get(&key).copied().flatten();
-      let time_length = state.edge(key).time_length;
+      let time_length = branches[&key].time_length;
 
       if let Some(bl) = branch_length {
         let expected_time = bl / clock_rate;
@@ -53,14 +53,13 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
-    let mut state = TimetreeState::new(&graph);
-    create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
+    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), clock_rate);
 
     let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
       .get_edges()
       .map(|edge| {
         let key = edge.key();
-        (key, state.edge(key).time_length)
+        (key, branches[&key].time_length)
       })
       .collect();
     let newick_output = nwk_write_str(&graph, &names, &time_lengths, &NwkWriteOptions::default())?;
@@ -100,7 +99,16 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
-    let mut state = TimetreeState::new(&graph);
+    let gammas = graph
+      .get_edges()
+      .map(|edge| {
+        let target_name = names[&edge.target()].as_deref();
+        let gamma = if target_name == Some("A") { 2.0 } else { 1.0 };
+        (edge.key(), gamma)
+      })
+      .collect();
+
+    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &gammas, clock_rate);
 
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref;
@@ -109,21 +117,7 @@ mod tests {
       let target_name = graph
         .get_node(target)
         .and_then(|n| names.get(&n.key()).cloned().flatten());
-      if target_name.as_deref() == Some("A") {
-        state.edge_mut(key).gamma = 2.0;
-      }
-    }
-
-    create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
-
-    for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref;
-      let key = edge_read.key();
-      let target = edge_read.target();
-      let target_name = graph
-        .get_node(target)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
-      let time_length = state.edge(key).time_length;
+      let time_length = branches[&key].time_length;
 
       match target_name.as_deref() {
         Some("A") => {
@@ -151,15 +145,14 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
 
-    let mut state = TimetreeState::new(&graph);
-    create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
+    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), clock_rate);
 
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref;
       let key = edge_read.key();
       if let Some(bl) = branch_lengths.get(&key).copied().flatten() {
         let expected = bl / clock_rate;
-        let actual = state.edge(key).time_length.expect("time_length should be set");
+        let actual = branches[&key].time_length.expect("time_length should be set");
         pretty_assert_ulps_eq!(actual, expected, max_ulps = 4);
       }
     }
@@ -168,32 +161,25 @@ mod tests {
   }
 
   #[test]
-  fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
+  fn test_input_mode_edge_without_branch_length_has_no_branch_likelihood() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A)root;")?;
-    let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let edge = graph
+    let edge_key = graph
       .get_edges()
       .collect::<Vec<_>>()
       .pop()
-      .expect("tree must contain one edge");
-    let edge_key = edge.key();
+      .expect("tree must contain one edge")
+      .key();
     branch_lengths.insert(edge_key, None);
 
-    let mut state = TimetreeState::new(&graph);
-    state.edge_mut(edge_key).time_length = Some(7.5);
-    create_branch_distributions_input_mode(&graph, &branch_lengths, 0.001, &mut state)?;
+    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), 0.001);
 
-    assert_eq!(Some(7.5), state.edge(edge_key).time_length);
-    assert_eq!(
-      Some(7.5),
-      state
-        .edge(edge_key)
-        .branch_length_distribution
-        .as_ref()
-        .and_then(|distribution| distribution.likely_time().unwrap())
-    );
+    let expected = BranchLikelihood {
+      distribution: None,
+      time_length: None,
+    };
+    assert_eq!(expected, branches[&edge_key]);
     Ok(())
   }
 }

@@ -11,12 +11,13 @@ mod tests {
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{constraint_coalescent_node_times, empty_time_inference};
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
   };
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
-  use crate::timetree::timetree_state::TimetreeState;
+  use crate::timetree::inference::time_inference::{BranchLikelihood, TimeInference};
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
@@ -78,7 +79,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
 
-    let state = TimetreeState::new(&graph);
+    let state = empty_time_inference(&graph);
     let actual = compute_positional_log_lh(&graph, &state);
 
     assert_eq!(None, actual);
@@ -188,14 +189,26 @@ mod tests {
       Ok((graph, names))
     }
 
-    pub(super) fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
+    pub(super) fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimeInference {
       let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
       let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
-      let mut state = TimetreeState::new(graph);
-      state.node_mut(root_key).time = Some(2000.0);
-      state.node_mut(child_key).time = Some(2005.0);
+      let mut state = empty_time_inference(graph);
+      state
+        .posterior
+        .get_mut(&root_key)
+        .expect("root must have a posterior")
+        .time = Some(2000.0);
+      state
+        .posterior
+        .get_mut(&child_key)
+        .expect("child must have a posterior")
+        .time = Some(2005.0);
       let edge_key = graph.get_edges().next().expect("one edge must exist").key();
-      state.edge_mut(edge_key).branch_length_distribution = Some(Arc::new(Distribution::range((0.0, 10.0), 0.25)));
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::range((0.0, 10.0), 0.25))),
+        time_length: None,
+      };
+      state.branches.insert(edge_key, branch);
       state
     }
 
@@ -216,9 +229,7 @@ mod tests {
     }
 
     pub(super) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-      TimetreeState::seed_from_values(graph, constraints)
-        .coalescent_node_times()
-        .unwrap()
+      constraint_coalescent_node_times(graph, constraints).unwrap()
     }
   }
 }

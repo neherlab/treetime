@@ -22,8 +22,8 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::inference::time_inference::likely_times;
   use crate::timetree::optimization::reroot::reroot_tree;
-  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -53,18 +53,15 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let mut time_distributions = BTreeMap::new();
+    let mut date_constraints = BTreeMap::new();
     for n in graph.get_leaves() {
       let name = names.get(&n.key()).cloned().flatten();
       if let Some(name) = name {
         let date = dates[&name];
-        time_distributions.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
+        date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
       }
     }
-    DateConstraints {
-      time_distributions,
-      ..DateConstraints::default()
-    }
+    DateConstraints { date_constraints }
   }
 
   fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
@@ -110,8 +107,7 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
-    let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints)?);
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &likely_times(&graph, &constraints, None)?);
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(
       &graph,
@@ -140,7 +136,6 @@ mod tests {
       &mut graph,
       &constraints,
       &mut clock_state,
-      &timetree_state,
       partitions,
       &clock_params,
       None,
@@ -478,8 +473,7 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
-    let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints)?);
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &likely_times(&graph, &constraints, None)?);
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(
       &graph,
@@ -509,7 +503,6 @@ mod tests {
       &mut graph,
       &constraints,
       &mut clock_state,
-      &timetree_state_1,
       partitions,
       &clock_params,
       None,
@@ -530,13 +523,11 @@ mod tests {
 
     let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
 
-    let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
     let names_tt_1 = names;
     let (clock_model_2, partitions) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
-      &timetree_state_2,
       partitions,
       &clock_params,
       Some(clock_model_1.clock_rate()),
