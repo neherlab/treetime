@@ -5,7 +5,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use serde_json::json;
+  use serde_json::{Map, json};
   use treetime_utils::assert_error;
 
   #[test]
@@ -28,7 +28,7 @@ mod tests {
         config["tree"].clone(),
         config["max_iter"].clone(),
         config["clock_filter"].clone(),
-        config.get("$schema")
+        config.get("$schema").cloned()
       )
     );
   }
@@ -153,7 +153,7 @@ mod tests {
 
   #[test]
   fn test_check_config_response_serializes_with_status_tag() {
-    let response = CheckConfigResponse::Valid { config: json!({}) };
+    let response = CheckConfigResponse::Valid { config: Map::new() };
     assert_eq!(
       json!({ "status": "valid", "config": {} }),
       serde_json::to_value(response).unwrap()

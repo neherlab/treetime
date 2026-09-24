@@ -20,12 +20,13 @@ use itertools::{Itertools, chain};
 use schemars::{JsonSchema, Schema};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::path::PathBuf;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::make_error;
 
 /// Analysis command that every client can run.
 #[derive(
@@ -69,17 +70,6 @@ impl AppCommand {
     }
   }
 
-  pub fn default_config(self) -> Result<Value, Report> {
-    Ok(match self {
-      Self::Timetree => serde_json::to_value(TreetimeTimetreeArgsRaw::default())?,
-      Self::Optimize => serde_json::to_value(TreetimeOptimizeArgsRaw::default())?,
-      Self::Prune => serde_json::to_value(TreetimePruneArgsRaw::default())?,
-      Self::Ancestral => serde_json::to_value(TreetimeAncestralArgsRaw::default())?,
-      Self::Clock => serde_json::to_value(TreetimeClockArgsRaw::default())?,
-      Self::Mugration => serde_json::to_value(TreetimeMugrationArgsRaw::default())?,
-    })
-  }
-
   pub fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report> {
     let source = ConfigSource::new(source_name, text);
     match self {
@@ -99,7 +89,7 @@ impl AppCommand {
 }
 
 pub struct PreparedCommand {
-  pub config: Value,
+  pub config: Map<String, Value>,
   pub args: CommandArgs,
 }
 
@@ -172,7 +162,7 @@ pub struct CommandOutcome {
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum CheckConfigResponse {
   /// The configuration is accepted; `config` holds it with every default filled in.
-  Valid { config: Value },
+  Valid { config: Map<String, Value> },
   /// The configuration is rejected.
   Invalid {
     /// The error, as the CLI prints it.
@@ -242,7 +232,9 @@ fn prepare<R: RawConfig>(source: &ConfigSource, text: &str) -> Result<PreparedCo
   let merged = load_config_document::<R>(source, text)?;
   check_command_config(source, &merged, &command_schema::<R>())?;
   let raw: R = serde_json::from_value(merged)?;
-  let config = serde_json::to_value(&raw)?;
+  let Value::Object(config) = serde_json::to_value(&raw)? else {
+    return make_error!("a command configuration must serialize to a mapping of settings");
+  };
   let args = R::Args::try_from(raw)?;
   Ok(PreparedCommand {
     config,

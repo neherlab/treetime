@@ -73,7 +73,7 @@ async fn main() -> eyre::Result<()> {
     .wrap_err_with(|| format!("When binding the server to {addr}"))?;
   writeln!(io::stderr().lock(), "TreeTime server listening on http://{addr}")
     .wrap_err("When writing the startup line to standard error")?;
-  axum::serve(listener, create_router(config, static_dir))
+  axum::serve(listener, create_router(config, static_dir)?)
     .with_graceful_shutdown(shutdown_signal())
     .await
     .wrap_err("When serving HTTP requests")?;

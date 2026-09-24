@@ -161,6 +161,7 @@ textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 tokio = { version = "=1.53.1", features = ["full"] }
 tokio-stream = "=0.1.19"
+tower = { version = "=0.5.3", default-features = false, features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 utoipa = { version = "=5.5.0", features = ["axum_extras", "yaml"] }
 utoipa-axum = "=0.2.0"

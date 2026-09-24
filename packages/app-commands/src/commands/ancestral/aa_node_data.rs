@@ -63,6 +63,19 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
 
 const CDS_PLACEHOLDERS: &[&str] = &["{cds}", "%GENE"];
 
+pub fn translation_input_paths(
+  template: &str,
+  cdses: &[String],
+  annotation: Option<&Path>,
+) -> Result<Vec<PathBuf>, Report> {
+  let cdses: Vec<String> = if cdses.is_empty() {
+    read_gff3_annotations(annotation, cdses)?.into_keys().collect()
+  } else {
+    cdses.to_vec()
+  };
+  Ok(cdses.iter().map(|cds| translation_path(template, cds)).collect())
+}
+
 pub(crate) fn template_has_cds_placeholder(template: &str) -> bool {
   CDS_PLACEHOLDERS
     .iter()

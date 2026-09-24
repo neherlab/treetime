@@ -1,163 +1,94 @@
 use crate::error::AppError;
+use crate::state::AppState;
+use app_commands::command::AppCommand;
+use app_commands::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
-use eyre::Report;
 use log::{error, info};
-use serde::Serialize;
 use serde_json::Value;
 use std::convert::Infallible;
-use std::path::Path;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use treetime::cancel::{Cancel, CancelledError};
-use treetime::progress::{LogEvent, LogLevel, ProgressSink};
-use treetime_schema::ProgressEvent;
-
-pub(crate) fn handle_command<S, T>(
-  mut body: Value,
-  out_dir: &Path,
-  command: fn(&S, &dyn Cancel, &dyn ProgressSink) -> Result<T, Report>,
-) -> Response
-where
-  S: serde::de::DeserializeOwned + Send + 'static,
-  T: Serialize + Send + 'static,
-{
-  if let Some(obj) = body.as_object_mut() {
-    let client_outdir = obj.get("outdir").and_then(Value::as_str).unwrap_or_default().to_owned();
-    let resolved = out_dir.join(client_outdir);
-    obj.insert(
-      "outdir".to_owned(),
-      Value::String(resolved.to_string_lossy().into_owned()),
-    );
-  }
-  let args: S = match serde_json::from_value(body) {
-    Ok(args) => args,
-    Err(err) => return AppError::from(err).into_response(),
-  };
-  sse_response(move |cancel, progress| {
-    let result = command(&args, cancel, progress)?;
-    serde_json::to_value(result).map_err(Report::from)
-  })
-}
+use treetime::cancel::Cancel;
 
 #[allow(
   clippy::disallowed_methods,
-  clippy::expect_used,
-  reason = "the synchronous ProgressSink cannot await bounded sends, so SSE buffering does not apply backpressure; event serialization is infallible"
+  reason = "the synchronous ProgressSink cannot await bounded sends, so SSE buffering does not apply backpressure"
 )]
 #[expect(
   tail_expr_drop_order,
   reason = "no value in the tail expression depends on drop order"
 )]
-fn sse_response<F>(run_fn: F) -> Response
-where
-  F: FnOnce(&dyn Cancel, &dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
-{
-  let (tx, rx) = mpsc::unbounded_channel::<SinkEvent>();
+pub(crate) fn run_command_sse(state: &Arc<AppState>, command: AppCommand, config: Value) -> Response {
+  let job_id = JobId::random();
+  let handle = match state.jobs.register(job_id.clone()) {
+    Ok(handle) => handle,
+    Err(err) => return AppError::from(err).into_response(),
+  };
+  let output_dir = state.config.out_dir.join(job_id.as_str());
+  let (tx, rx) = mpsc::unbounded_channel::<JobEvent>();
+  drop(tx.send(JobEvent::Started(JobStarted {
+    job_id: job_id.clone(),
+    command,
+  })));
 
+  let job_state = Arc::clone(state);
   let computation = tokio::task::spawn_blocking(move || {
-    let progress = ChannelProgress::new(tx);
-    run_fn(&progress, &progress)
+    let cancel = StreamCancel {
+      token: handle.token(),
+      tx: tx.clone(),
+    };
+    let progress = JobProgress::new(move |event| drop(tx.send(event)));
+    let confine = |config: &mut Value| job_state.paths.confine(command, config, &output_dir);
+    run_job(handle.job_id(), command, &config, &confine, &cancel, &progress)
   });
 
   let stream = async_stream::stream! {
-    let mut rx_stream = UnboundedReceiverStream::new(rx);
-    while let Some(event) = rx_stream.next().await {
-      match event {
-        SinkEvent::Progress(p) => {
-          yield Ok::<_, Infallible>(
-            Event::default()
-              .event("progress")
-              .json_data(p)
-              .expect("ProgressEvent serialization"),
-          );
-        },
-        SinkEvent::Log(l) => {
-          yield Ok::<_, Infallible>(
-            Event::default()
-              .event("log")
-              .json_data(l)
-              .expect("LogEvent serialization"),
-          );
-        },
-      }
+    let mut events = UnboundedReceiverStream::new(rx);
+    while let Some(event) = events.next().await {
+      yield Ok::<_, Infallible>(sse_event(&event));
     }
-
-    match computation.await {
-      Ok(Ok(value)) => {
-        yield Ok::<_, Infallible>(
-          Event::default()
-            .event("result")
-            .json_data(value)
-            .expect("result serialization"),
-        );
+    let terminal = match computation.await {
+      Ok(terminal) => terminal,
+      Err(err) => TerminalEvent::Error {
+        job_id: job_id.clone(),
+        message: format!("internal error: the computation task failed: {err}"),
+        causes: vec![],
       },
-      Ok(Err(err)) if err.downcast_ref::<CancelledError>().is_some() => {
-        info!("Computation cancelled by client");
-      },
-      Ok(Err(err)) => {
-        error!("Computation failed: {err:?}");
-        yield Ok::<_, Infallible>(
-          Event::default()
-            .event("result")
-            .json_data(serde_json::json!({ "error": format!("{err:#}") }))
-            .expect("result serialization"),
-        );
-      },
-      Err(err) => {
-        error!("Computation panicked: {err}");
-        yield Ok::<_, Infallible>(
-          Event::default()
-            .event("result")
-            .json_data(serde_json::json!({ "error": format!("{err}") }))
-            .expect("result serialization"),
-        );
-      },
+    };
+    match &terminal {
+      TerminalEvent::Ok { .. } => info!("Job {} finished", job_id.as_str()),
+      TerminalEvent::Cancelled { .. } => info!("Job {} cancelled", job_id.as_str()),
+      TerminalEvent::Error { message, .. } => error!("Job {} failed: {message}", job_id.as_str()),
     }
+    yield Ok::<_, Infallible>(sse_event(&JobEvent::Terminal(terminal)));
   };
 
   Sse::new(stream).into_response()
 }
 
-struct ChannelProgress {
-  tx: mpsc::UnboundedSender<SinkEvent>,
-}
-
-impl ChannelProgress {
-  fn new(tx: mpsc::UnboundedSender<SinkEvent>) -> Self {
-    Self { tx }
+fn sse_event(event: &JobEvent) -> Event {
+  let (name, event) = match event {
+    JobEvent::Started(data) => ("started", Event::default().json_data(data)),
+    JobEvent::Progress(data) => ("progress", Event::default().json_data(data)),
+    JobEvent::Log(data) => ("log", Event::default().json_data(data)),
+    JobEvent::Terminal(data) => ("terminal", Event::default().json_data(data)),
+  };
+  match event {
+    Ok(event) => event.event(name),
+    Err(err) => Event::default().comment(format!("When serializing a {name} event: {err}")),
   }
 }
 
-impl ProgressSink for ChannelProgress {
-  fn report(&self, stage: &str, fraction: f64, message: &str) {
-    drop(self.tx.send(SinkEvent::Progress(ProgressEvent {
-      stage: stage.to_owned(),
-      fraction,
-      message: message.to_owned(),
-    })));
-  }
-
-  fn log(&self, level: LogLevel, message: &str) {
-    drop(self.tx.send(SinkEvent::Log(LogEvent {
-      level,
-      message: message.to_owned(),
-    })));
-  }
-
-  fn log_enabled(&self, _level: LogLevel) -> bool {
-    true
-  }
+struct StreamCancel<'a> {
+  token: &'a CancelToken,
+  tx: mpsc::UnboundedSender<JobEvent>,
 }
 
-impl Cancel for ChannelProgress {
+impl Cancel for StreamCancel<'_> {
   fn is_cancelled(&self) -> bool {
-    self.tx.is_closed()
+    self.token.is_cancelled() || self.tx.is_closed()
   }
-}
-
-enum SinkEvent {
-  Progress(ProgressEvent),
-  Log(LogEvent),
 }

@@ -4,7 +4,7 @@ use eyre::WrapErr;
 use std::fs;
 use std::path::PathBuf;
 use treetime_utils::init::global::global_init;
-use treetime_utils::make_report;
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[ctor(unsafe)]
 fn init() {
@@ -14,10 +14,9 @@ fn init() {
 fn main() -> eyre::Result<()> {
   let out = std::env::args()
     .nth(1)
-    .map_or_else(|| PathBuf::from("packages/app-contracts/openapi.yaml"), PathBuf::from);
-  let yaml = api_doc()
-    .to_yaml()
-    .map_err(|err| make_report!("When serializing the OpenAPI document: {err}"))?;
-  fs::write(&out, yaml).wrap_err_with(|| format!("When writing the OpenAPI document to '{}'", out.display()))?;
+    .map_or_else(|| PathBuf::from("packages/app-contracts/openapi.json"), PathBuf::from);
+  let doc = json_write_str(&api_doc()?, JsonPretty(true))?;
+  fs::write(&out, format!("{doc}\n"))
+    .wrap_err_with(|| format!("When writing the OpenAPI document to '{}'", out.display()))?;
   Ok(())
 }

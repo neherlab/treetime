@@ -1,26 +1,32 @@
-mod commands;
+#[cfg(test)]
+mod __tests__;
+
+mod confine;
 pub mod contract;
 mod error;
+mod openapi;
 pub mod routes;
 mod sse;
 pub mod state;
 
-use crate::state::ServerConfig;
+use crate::state::{AppState, ServerConfig};
 use axum::Router;
+use eyre::Report;
+use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
-pub fn create_router(config: ServerConfig, static_dir: Option<String>) -> Router {
-  let api = routes::api_routes(config);
+pub fn create_router(config: ServerConfig, static_dir: Option<String>) -> Result<Router, Report> {
+  let api = routes::api_routes(Arc::new(AppState::new(config)?));
 
-  match static_dir {
+  let router = match static_dir {
     Some(static_dir) => {
       let index = format!("{static_dir}/index.html");
       api.fallback_service(ServeDir::new(&static_dir).fallback(ServeFile::new(index)))
     },
     None => api,
-  }
-  .layer(CorsLayer::permissive())
+  };
+  Ok(router.layer(CorsLayer::permissive()))
 }
 
 #[cfg(test)]

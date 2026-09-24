@@ -15,12 +15,9 @@ version.workspace = true
 doctest = false
 
 [dependencies]
+app-commands = { workspace = true, features = ["clap"] }
 app-datasets = { workspace = true }
-app-output = { workspace = true }
 treetime = { workspace = true }
-treetime-graph = { workspace = true }
-treetime-io = { workspace = true }
-treetime-primitives = { workspace = true }
 treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 
@@ -31,11 +28,11 @@ ctor = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
-maplit = { workspace = true }
 rayon = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-smart-default = { workspace = true }
+strum = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tower-http = { workspace = true }
@@ -45,6 +42,7 @@ utoipa-axum = { workspace = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
+tower = { workspace = true }
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 tikv-jemallocator = { workspace = true }
