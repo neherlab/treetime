@@ -44,36 +44,6 @@ impl<W: Write + Send> CsvStructWriter<W> {
   }
 }
 
-pub struct CsvVecFileWriter {
-  writer: CsvVecWriter<Box<dyn Write + Send>>,
-}
-
-impl CsvVecFileWriter {}
-
-impl VecWriter for CsvVecFileWriter {
-  fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
-    self.writer.write(values)?;
-    Ok(())
-  }
-}
-
-pub trait VecWriter {
-  fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report>;
-}
-
-pub struct CsvVecWriter<W: Write + Send> {
-  writer: Writer<W>,
-}
-
-impl<W: Write + Send> CsvVecWriter<W> {}
-
-impl<W: Write + Send> VecWriter for CsvVecWriter<W> {
-  fn write<I: IntoIterator<Item = T>, T: AsRef<[u8]>>(&mut self, values: I) -> Result<(), Report> {
-    self.writer.write_record(values)?;
-    Ok(())
-  }
-}
-
 pub fn default_name_candidates() -> Vec<String> {
   vec!["strain".to_owned(), "name".to_owned(), "accession".to_owned()]
 }
