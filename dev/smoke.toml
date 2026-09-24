@@ -1,0 +1,493 @@
+# Cases of dev/smoke: every command, dataset and flag variant the smoke test runs.
+#
+# A case is one treetime invocation on one dataset. Its id is `<command>/<dataset>/<variant>`, for example
+# `timetree/flu/h3n2/20/coalescent`. `./dev/smoke --list` prints the ids this file produces.
+#
+# Datasets are the directories holding `data/**/tree.nwk`. Their last path component is the number of sequences,
+# which gives the size class, the default tier and the default timeout.
+#
+# Placeholders in arguments:
+#   {data}       the data directory, `data`
+#   {dataset}    the dataset directory, for example `{data}/flu/h3n2/20`
+#   {tree}       the tree of the case: `{dataset}/tree.nwk`, or `{dataset}/<tree>` when the row sets `tree`
+#   {metadata}   the metadata file of the dataset (`metadata.tsv` or `metadata.tsv.xz`)
+#   {attribute}  the mugration attribute of the dataset family
+#   {out}        the output directory of the case
+#
+# A command template that uses {metadata} or {attribute} runs only on datasets that have them. A row whose
+# `datasets` names such a dataset explicitly is an error when the dataset lacks them.
+
+
+# Size classes by sequence count. A dataset belongs to the first class whose `max_sequences` it does not exceed.
+# `tier`: quick cases run in `just smoke`, full cases only in `just smoke-full`. `timeout` is in seconds.
+[sizes]
+small = { max_sequences = 100, tier = "quick", timeout = 120 }
+medium = { max_sequences = 500, tier = "full", timeout = 600 }
+large = { tier = "full", timeout = 1800 }
+
+
+# Dataset families, keyed by the dataset path without its size component. Every dataset needs a family.
+#   metadata_args        added to every case whose command reads metadata, usually the taxon id column
+#   mugration_attribute  metadata column that mugration reconstructs; mugration skips families without one
+#   command_args         extra arguments per command
+#   timeout_factor       multiplies the size timeout, for long genomes
+[families.dengue]
+metadata_args = "--name-column=genbank_accession"
+mugration_attribute = "country"
+
+[families.ebola]
+
+[families."flu/h3n2"]
+mugration_attribute = "location"
+command_args = { clock = "--sequence-length=1400" }
+
+[families."lassa/L"]
+metadata_args = "--name-column=accession"
+mugration_attribute = "country"
+
+[families."mpox/clade-ii"]
+metadata_args = "--name-column=accession"
+mugration_attribute = "country"
+timeout_factor = 5.0
+
+[families."rsv/a"]
+metadata_args = "--name-column=accession"
+mugration_attribute = "country"
+
+[families.sc2]
+metadata_args = "--name-column=strain"
+mugration_attribute = "country"
+
+[families.tb]
+metadata_args = "--name-column=strain"
+mugration_attribute = "cluster"
+
+[families.zika]
+mugration_attribute = "country"
+
+
+# Command templates. Every row of a command starts with `treetime <command> <args>`, then adds the family
+# arguments, the row arguments and `--output-selection=<selection>` when the row or the command sets one.
+# `outputs`: files that must exist and be non-empty after a run.
+[commands.ancestral]
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+outputs = ["ancestral.nwk"]
+
+[commands.clock]
+args = "--tree={tree} --dates={metadata} --output-all={out}"
+outputs = ["clock.nwk"]
+
+[commands.homoplasy]
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+
+[commands.mugration]
+args = "--tree={tree} --states={metadata} --attribute={attribute} --output-all={out}"
+outputs = ["mugration.nwk"]
+
+[commands.optimize]
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+outputs = ["optimize.nwk"]
+
+[commands.prune]
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+outputs = ["prune.nwk"]
+
+[commands.timetree]
+args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out}"
+outputs = ["timetree.nwk"]
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr"
+
+
+# Rows, one `[[<command>]]` table per variant.
+#   variant     last component of the case id (required)
+#   datasets    "all" (default), a size class ("small", "medium", "large"), or a list of dataset names
+#   args        arguments after the command template
+#   selection   `--output-selection` value; replaces the command default
+#   tree        tree file in the dataset directory, default `tree.nwk`
+#   standalone  true: `args` replaces the command template instead of following it
+#   outputs     replaces the command's required outputs
+#   tier        "quick" or "full"; replaces the tier of the size class
+#   timeout     seconds; replaces the timeout of the size class
+#   fail        the case is expected to exit with an error: a reason for every dataset of the row, or a table of
+#               reasons keyed by dataset. A reason names the kb entry that explains the failure
+#   hang        the case is expected to exceed its timeout, in the same form as `fail`
+
+[[ancestral]]
+variant = "parsimony"
+args = "--method-anc=parsimony"
+selection = "nwk,nexus,augur-node-data,reconstructed-nuc-fasta"
+
+[[ancestral]]
+variant = "marginal-sparse"
+args = "--method-anc=marginal --dense=false"
+
+[[ancestral]]
+variant = "marginal-dense"
+args = "--method-anc=marginal --dense=true --model=jc69"
+
+
+[[clock]]
+variant = "default"
+
+
+[[homoplasy]]
+variant = "default"
+fail = "kb/issues/H-homoplasy-command-unimplemented.md"
+
+
+[[mugration]]
+variant = "{attribute}"
+args = "--pc=1.0"
+
+[[mugration]]
+variant = "country-weights"
+datasets = ["zika/20"]
+args = "--pc=1.0 --weights={data}/zika/country_weights.csv"
+
+[[mugration]]
+variant = "country-confidence"
+datasets = ["zika/20"]
+args = "--pc=1.0 --output-confidence-csv={out}/confidence.csv"
+
+
+[[optimize]]
+variant = "sparse"
+args = "--dense=false"
+
+[[optimize]]
+variant = "dense"
+args = "--dense=true"
+
+[[optimize]]
+variant = "brent"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --opt-method=brent"
+
+[[optimize]]
+variant = "brent-log"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --opt-method=brent-log"
+
+[[optimize]]
+variant = "newton"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --opt-method=newton"
+
+[[optimize]]
+variant = "newton-sqrt"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --opt-method=newton-sqrt"
+
+[[optimize]]
+variant = "newton-log"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --opt-method=newton-log"
+
+[[optimize]]
+variant = "reroot-min-dev"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --reroot=min-dev"
+
+# Per-file output flags in place of --output-all
+[[optimize]]
+variant = "individual-outputs"
+datasets = "small"
+standalone = true
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+outputs = ["bl.json", "opti.auspice.json"]
+
+# An already rerooted input tree
+[[optimize]]
+variant = "rerooted-input"
+datasets = ["mpox/clade-ii/1000"]
+tree = "tree_opt.nwk"
+standalone = true
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+outputs = ["bl.json", "opti.auspice.json"]
+
+
+[[prune]]
+variant = "default"
+args = "--prune-short=1e-6 --prune-empty --merge-shared-mutations"
+
+
+[[timetree]]
+variant = "basic"
+fail.'dengue/100' = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
+fail.'dengue/500' = "kb/issues/H-timetree-empty-distribution-division.md"
+fail.'dengue/1000' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
+fail.'lassa/L/20' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
+fail.'lassa/L/200' = "kb/issues/H-timetree-empty-distribution-division.md"
+
+[[timetree]]
+variant = "fixed-clock"
+datasets = ["flu/h3n2/200", "ebola/20"]
+args = "--clock-rate=0.003"
+
+[[timetree]]
+variant = "branch-input"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--branch-length-mode=input"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model"
+fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
+
+[[timetree]]
+variant = "input-keeproot"
+datasets = ["ebola/362"]
+args = "--branch-length-mode=input --keep-root"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model"
+fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
+
+[[timetree]]
+variant = "reconstruct-tips"
+datasets = ["flu/h3n2/20"]
+args = "--reconstruct-tip-states"
+
+[[timetree]]
+variant = "reconstruct-tips"
+datasets = ["ebola/20"]
+args = "--include-leaves --impute-missing-data"
+
+[[timetree]]
+variant = "marginal-always"
+datasets = ["flu/h3n2/20", "flu/h3n2/200", "ebola/20", "zika/20"]
+args = "--time-marginal=always"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "marginal-final"
+datasets = ["flu/h3n2/20"]
+args = "--time-marginal=only-final"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "confidence"
+datasets = ["flu/h3n2/20"]
+args = "--confidence"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "keep-polytomies"
+datasets = ["flu/h3n2/20"]
+args = "--keep-polytomies"
+
+[[timetree]]
+variant = "resolve-polytomies"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--resolve-polytomies --max-iter=3"
+
+[[timetree]]
+variant = "coalescent"
+datasets = ["flu/h3n2/20", "ebola/20", "zika/20"]
+args = "--coalescent=10.0"
+
+[[timetree]]
+variant = "coalescent"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent=10.0 --max-iter=3"
+
+[[timetree]]
+variant = "coal-opt"
+datasets = ["flu/h3n2/20", "ebola/20", "zika/20"]
+args = "--coalescent-opt"
+
+[[timetree]]
+variant = "coal-opt"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent-opt --max-iter=3"
+
+[[timetree]]
+variant = "skyline"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--coalescent-skyline --skyline-n-points=5"
+
+[[timetree]]
+variant = "skyline"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent-skyline --skyline-n-points=5 --max-iter=3"
+
+[[timetree]]
+variant = "skyline"
+datasets = ["ebola/362"]
+args = "--coalescent-skyline"
+tier = "quick"
+
+[[timetree]]
+variant = "reroot-mindev"
+datasets = ["flu/h3n2/20", "ebola/362"]
+args = "--reroot=min-dev"
+
+[[timetree]]
+variant = "reroot-oldest"
+datasets = ["flu/h3n2/20", "ebola/362"]
+args = "--reroot=oldest"
+
+[[timetree]]
+variant = "keep-root"
+datasets = ["ebola/362", "ebola/20", "zika/20"]
+args = "--keep-root"
+
+[[timetree]]
+variant = "no-filter"
+datasets = ["flu/h3n2/200"]
+args = "--clock-filter=0"
+
+[[timetree]]
+variant = "strict-filter"
+datasets = ["flu/h3n2/200"]
+args = "--clock-filter=5.0"
+
+[[timetree]]
+variant = "clock-filter-10"
+datasets = ["ebola/362", "rsv/a/100"]
+args = "--clock-filter=10"
+tier = "quick"
+
+[[timetree]]
+variant = "clock-filter-10"
+datasets = ["sc2/4500"]
+args = "--clock-filter=10"
+
+[[timetree]]
+variant = "covariation"
+datasets = ["flu/h3n2/20", "flu/h3n2/200"]
+args = "--covariation"
+
+[[timetree]]
+variant = "parsimony"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=parsimony --max-iter=1"
+
+[[timetree]]
+variant = "jc69"
+datasets = ["flu/h3n2/20"]
+args = "--gtr=jc69"
+
+[[timetree]]
+variant = "dense"
+datasets = ["flu/h3n2/20"]
+args = "--dense=true --gtr=jc69"
+
+[[timetree]]
+variant = "iter0"
+datasets = ["flu/h3n2/20"]
+args = "--max-iter=0"
+
+[[timetree]]
+variant = "iter4"
+datasets = ["flu/h3n2/20", "flu/h3n2/200", "ebola/20"]
+args = "--max-iter=4"
+
+[[timetree]]
+variant = "tip-slack"
+datasets = ["flu/h3n2/20"]
+args = "--tip-slack=0.1"
+
+[[timetree]]
+variant = "coal-polytomy"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent=10.0 --resolve-polytomies --max-iter=3"
+
+[[timetree]]
+variant = "coal-opt-marginal"
+datasets = ["flu/h3n2/20"]
+args = "--coalescent-opt --time-marginal=always"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "coal-opt-marginal"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent-opt --time-marginal=always --max-iter=3"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "skyline-marginal"
+datasets = ["flu/h3n2/20"]
+args = "--coalescent-skyline --time-marginal=always"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "reroot-covar"
+datasets = ["flu/h3n2/200"]
+args = "--reroot=least-squares --covariation"
+
+[[timetree]]
+variant = "conf-marginal-final"
+datasets = ["flu/h3n2/20"]
+args = "--confidence --time-marginal=only-final"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "no-filter-keeproot"
+datasets = ["ebola/362"]
+args = "--clock-filter=0 --keep-root"
+
+[[timetree]]
+variant = "skyline-conf"
+datasets = ["flu/h3n2/200"]
+args = "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "fast"
+datasets = ["flu/h3n2/200"]
+args = "--method-anc=parsimony --max-iter=1 --keep-polytomies"
+
+[[timetree]]
+variant = "relaxed-corr"
+datasets = ["flu/h3n2/200"]
+args = "--relax 1.0 0.5 --max-iter=3"
+
+[[timetree]]
+variant = "relaxed-uncorr"
+datasets = ["flu/h3n2/200"]
+args = "--relax 1.0 0.0 --max-iter=3"
+
+[[timetree]]
+variant = "conf-stddev"
+datasets = ["flu/h3n2/20"]
+args = "--confidence --clock-std-dev=0.001 --max-iter=3"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+[[timetree]]
+variant = "conf-covariation"
+datasets = ["flu/h3n2/20"]
+args = "--confidence --covariation --max-iter=3"
+selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
+
+# Fixed clock on mpox, with the rerooted tree and with the input tree
+[[timetree]]
+variant = "fixed-clock-tree-opt"
+datasets = ["mpox/clade-ii/1000"]
+tree = "tree_opt.nwk"
+args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+
+[[timetree]]
+variant = "fixed-clock"
+datasets = ["mpox/clade-ii/1000"]
+args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+
+
+# `treetime --help` and `treetime <subcommand> --help`; the printed text is compared with the baseline
+[help]
+subcommands = [
+  "ancestral",
+  "arg",
+  "clock",
+  "completions",
+  "help-markdown",
+  "homoplasy",
+  "mugration",
+  "optimize",
+  "pipeline",
+  "prune",
+  "schema",
+  "timetree",
+]
+
+
+# Every `data/**/<pattern>` file runs as `treetime <command> --config=<file>` in a sandbox directory, so that the
+# relative output paths of the file resolve inside the case. The command is `pipeline` for `pipeline.yaml`,
+# otherwise the file name up to the first `-` (`ancestral-parsimony.yaml` runs `ancestral`).
+[config]
+pattern = "*.yaml"

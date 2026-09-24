@@ -118,7 +118,7 @@ The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI refer
 
 ## Testing against the reference
 
-`dev/smoke` (host, needs Docker) runs the CLI over a matrix of commands, datasets and flag variants, stores the outputs in a snapshot under `snapshots/<id>/` named after the git state that built the binary, and compares them byte for byte with a baseline snapshot, by default the one of the `rust` branch. It reports crashes, timeouts, missing outputs and changed outputs, and writes `report.md` and `report.tsv` into `snapshots/<id>/compare/<baseline-id>/`. `./dev/smoke --help` describes the options, the snapshot layout and the exit codes.
+`dev/smoke` (host, needs Docker) runs the CLI over a matrix of commands, datasets and flag variants, stores the outputs in a snapshot under `snapshots/<id>/` named after the git state that built the binary, and compares them byte for byte with a baseline snapshot, by default the one of the `rust` branch. It reports crashes, timeouts, missing outputs and changed outputs, and writes `report.md` and `report.tsv` into `snapshots/<id>/compare/<baseline-id>/`. The cases are defined in `dev/smoke.toml`, one row per command variant with its flags, datasets and expected failures; `./dev/smoke --overview` prints the cases per command and variant. `./dev/smoke --help` describes the options, the snapshot layout and the exit codes.
 
 - `just smoke` compares the quick tier (datasets of at most 100 sequences) with `rust`
 - `just smoke-full` compares every case with `rust`

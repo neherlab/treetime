@@ -9,6 +9,10 @@ snapshot is then compared with a baseline snapshot, by default the one of the `r
 script reports crashes, timeouts, missing outputs and changed outputs, with the command, stderr and
 the changed values of each case.
 
+The cases are defined in dev/smoke.toml: one row per command variant, with its flags, the datasets it
+runs on and its expected failures. The header of that file documents every field. `--overview` prints
+what the file produces.
+
 Run it on the host. It needs git and Docker: the binaries are built with `./dev/docker/run just br
 treetime`, and the cases run inside the container.
 
@@ -30,6 +34,7 @@ Options:
     --rerun-failed          select the cases that did not pass in the last run of the current snapshot,
                             or, when it has no run yet, in the most recent run of any snapshot
     --list                  print the selected case ids and exit
+    --overview              print the selected cases per command and variant, with their datasets, and exit
     --against REF_OR_ID     baseline: an existing snapshot id, or a git ref (default: rust)
     --no-compare            run the current snapshot only and report statuses
     --jobs N                number of cases that run at the same time (default: CPU count)
@@ -122,6 +127,7 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
 from collections import Counter, defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -136,6 +142,7 @@ DATA_DIR = "data"
 SNAPSHOTS_DIR = PROJECT_ROOT / "snapshots"
 WORKTREES_DIR = PROJECT_ROOT / "tmp" / "smoke" / "worktrees"
 DEFAULT_AGAINST = "rust"
+CASES_FILE = Path("dev/smoke.toml")
 WRAPPER = shlex.split(os.environ.get("SMOKE_WRAPPER", "./dev/docker/run"))
 
 
@@ -148,10 +155,9 @@ VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
-SUBCOMMANDS = ("ancestral", "arg", "clock", "completions", "help-markdown", "homoplasy", "mugration", "optimize",
-               "pipeline", "prune", "schema", "timetree")
-
-TREE_COMMANDS = frozenset({"ancestral", "clock", "mugration", "optimize", "prune", "timetree"})
+ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "tree", "standalone", "outputs", "tier", "timeout",
+                      "fail", "hang"})
+RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
 MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
 ERROR_LINE_RE = re.compile(r"error|panic|memory allocation", re.IGNORECASE)
@@ -204,139 +210,10 @@ class Category(Enum):
 
 PASSING_STATUSES = frozenset({Status.OK, Status.XFAIL})
 PASSING_CATEGORIES = frozenset({Category.IDENTICAL, Category.FIXED, Category.EXPECTED_FAILURE})
-SIZE_TIMEOUT_S = {Size.SMALL: 120.0, Size.MEDIUM: 600.0, Size.LARGE: 1800.0}
+SIZE_NAMES = frozenset(size.value for size in Size)
 MEMORY_ESTIMATE_GIB = {Size.SMALL: 2.0, Size.MEDIUM: 8.0}
 MEMORY_MARGIN = 1.25
 MEMORY_BUDGET_FRACTION = 0.75
-
-
-@dataclass(frozen=True)
-class Profile:
-  """Flags a dataset family needs to run at all, and a timeout factor for its genome length."""
-
-  id_column: str | None = None
-  attribute: str | None = None
-  clock_flags: tuple[str, ...] = ()
-  timeout_factor: float = 1.0
-
-
-PROFILES: dict[str, Profile] = {
-  "dengue": Profile(id_column="genbank_accession", attribute="country"),
-  "ebola": Profile(),
-  "flu/h3n2": Profile(attribute="location", clock_flags=("--sequence-length=1400",)),
-  "lassa/L": Profile(id_column="accession", attribute="country"),
-  "mpox/clade-ii": Profile(id_column="accession", attribute="country", timeout_factor=5.0),
-  "rsv/a": Profile(id_column="accession", attribute="country"),
-  "sc2": Profile(id_column="strain", attribute="country"),
-  "tb": Profile(id_column="strain", attribute="cluster"),
-  "zika": Profile(attribute="country"),
-}
-
-
-# Variant rows: (dataset, id suffix, extra flags). A row whose id equals a base run's id is dropped.
-# fmt: off
-OPTIMIZE_VARIANTS = [
-  ("flu/h3n2/20", "brent",          "--opt-method=brent"),
-  ("flu/h3n2/20", "brent-log",      "--opt-method=brent-log"),
-  ("flu/h3n2/20", "newton",         "--opt-method=newton"),
-  ("flu/h3n2/20", "newton-sqrt",    "--opt-method=newton-sqrt"),
-  ("flu/h3n2/20", "newton-log",     "--opt-method=newton-log"),
-  ("flu/h3n2/20", "reroot-min-dev", "--reroot=min-dev"),
-]
-
-
-MUGRATION_VARIANTS = [
-  ("zika/20", "country-weights",    "--weights={data}/zika/country_weights.csv"),
-  ("zika/20", "country-confidence", "--output-confidence-csv={out}/confidence.csv"),
-]
-
-
-TIMETREE_VARIANTS = [
-  ("flu/h3n2/200", "fixed-clock",          "--clock-rate=0.003"),
-  ("ebola/20",     "fixed-clock",          "--clock-rate=0.003"),
-  ("flu/h3n2/20",  "branch-input",         "--branch-length-mode=input"),
-  ("ebola/20",     "branch-input",         "--branch-length-mode=input"),
-  ("flu/h3n2/20",  "reconstruct-tips",     "--reconstruct-tip-states"),
-  ("ebola/20",     "reconstruct-tips",     "--include-leaves --impute-missing-data"),
-  ("flu/h3n2/20",  "marginal-always",      "--time-marginal=always"),
-  ("flu/h3n2/200", "marginal-always",      "--time-marginal=always"),
-  ("ebola/20",     "marginal-always",      "--time-marginal=always"),
-  ("zika/20",      "marginal-always",      "--time-marginal=always"),
-  ("flu/h3n2/20",  "marginal-final",       "--time-marginal=only-final"),
-  ("flu/h3n2/20",  "confidence",           "--confidence"),
-  ("flu/h3n2/20",  "keep-polytomies",      "--keep-polytomies"),
-  ("flu/h3n2/20",  "resolve-polytomies",   "--resolve-polytomies --max-iter=3"),
-  ("ebola/20",     "resolve-polytomies",   "--resolve-polytomies --max-iter=3"),
-  ("flu/h3n2/20",  "coalescent",           "--coalescent=10.0"),
-  ("flu/h3n2/200", "coalescent",           "--coalescent=10.0 --max-iter=3"),
-  ("ebola/20",     "coalescent",           "--coalescent=10.0"),
-  ("zika/20",      "coalescent",           "--coalescent=10.0"),
-  ("flu/h3n2/20",  "coal-opt",             "--coalescent-opt"),
-  ("flu/h3n2/200", "coal-opt",             "--coalescent-opt --max-iter=3"),
-  ("ebola/20",     "coal-opt",             "--coalescent-opt"),
-  ("zika/20",      "coal-opt",             "--coalescent-opt"),
-  ("flu/h3n2/20",  "skyline",              "--coalescent-skyline --skyline-n-points=5"),
-  ("flu/h3n2/200", "skyline",              "--coalescent-skyline --skyline-n-points=5 --max-iter=3"),
-  ("ebola/20",     "skyline",              "--coalescent-skyline --skyline-n-points=5"),
-  ("flu/h3n2/20",  "reroot-mindev",        "--reroot=min-dev"),
-  ("flu/h3n2/20",  "reroot-oldest",        "--reroot=oldest"),
-  ("ebola/362",    "reroot-mindev",        "--reroot=min-dev"),
-  ("ebola/362",    "reroot-oldest",        "--reroot=oldest"),
-  ("ebola/362",    "keep-root",            "--keep-root"),
-  ("ebola/20",     "keep-root",            "--keep-root"),
-  ("zika/20",      "keep-root",            "--keep-root"),
-  ("flu/h3n2/200", "no-filter",            "--clock-filter=0"),
-  ("flu/h3n2/200", "strict-filter",        "--clock-filter=5.0"),
-  ("flu/h3n2/20",  "covariation",          "--covariation"),
-  ("flu/h3n2/200", "covariation",          "--covariation"),
-  ("flu/h3n2/20",  "parsimony",            "--method-anc=parsimony --max-iter=1"),
-  ("flu/h3n2/20",  "jc69",                 "--gtr=jc69"),
-  ("flu/h3n2/20",  "iter0",                "--max-iter=0"),
-  ("flu/h3n2/20",  "iter4",                "--max-iter=4"),
-  ("flu/h3n2/200", "iter4",                "--max-iter=4"),
-  ("ebola/20",     "iter4",                "--max-iter=4"),
-  ("flu/h3n2/20",  "tip-slack",            "--tip-slack=0.1"),
-  ("flu/h3n2/200", "coal-polytomy",        "--coalescent=10.0 --resolve-polytomies --max-iter=3"),
-  ("flu/h3n2/20",  "coal-opt-marginal",    "--coalescent-opt --time-marginal=always"),
-  ("flu/h3n2/200", "coal-opt-marginal",    "--coalescent-opt --time-marginal=always --max-iter=3"),
-  ("flu/h3n2/20",  "skyline-marginal",     "--coalescent-skyline --time-marginal=always"),
-  ("flu/h3n2/200", "reroot-covar",         "--reroot=least-squares --covariation"),
-  ("ebola/362",    "input-keeproot",       "--branch-length-mode=input --keep-root"),
-  ("flu/h3n2/20",  "conf-marginal-final",  "--confidence --time-marginal=only-final"),
-  ("ebola/362",    "no-filter-keeproot",   "--clock-filter=0 --keep-root"),
-  ("flu/h3n2/200", "skyline-conf",         "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"),
-  ("flu/h3n2/200", "fast",                 "--method-anc=parsimony --max-iter=1 --keep-polytomies"),
-  ("flu/h3n2/200", "relaxed-corr",         "--relax 1.0 0.5 --max-iter=3"),
-  ("flu/h3n2/200", "relaxed-uncorr",       "--relax 1.0 0.0 --max-iter=3"),
-  ("flu/h3n2/20",  "conf-stddev",          "--confidence --clock-std-dev=0.001 --max-iter=3"),
-  ("flu/h3n2/20",  "conf-covariation",     "--confidence --covariation --max-iter=3"),
-  ("flu/h3n2/20",  "dense",                "--dense=true --gtr=jc69"),
-]
-# fmt: on
-
-
-NEGATIVE_CLOCK_RATE = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
-POINT_DIVISION = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
-EMPTY_DIVISION = "kb/issues/H-timetree-empty-distribution-division.md"
-NAN_DISTRIBUTION = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
-
-
-# Cases that fail for a known reason. A case that starts to pass is reported as xpass until its entry is removed.
-KNOWN_FAILURES: dict[str, tuple[Expect, str]] = {
-  "timetree/dengue/100/basic": (Expect.FAIL, NEGATIVE_CLOCK_RATE),
-  "timetree/lassa/L/20/basic": (Expect.FAIL, NAN_DISTRIBUTION),
-  "timetree/dengue/1000/basic": (Expect.FAIL, NAN_DISTRIBUTION),
-  "timetree/dengue/500/basic": (Expect.FAIL, EMPTY_DIVISION),
-  "timetree/lassa/L/200/basic": (Expect.FAIL, EMPTY_DIVISION),
-  "timetree/flu/h3n2/20/branch-input": (Expect.FAIL, POINT_DIVISION),
-  "timetree/ebola/20/branch-input": (Expect.FAIL, POINT_DIVISION),
-  "timetree/ebola/362/input-keeproot": (Expect.FAIL, POINT_DIVISION),
-}
-
-
-HOMOPLASY_UNIMPLEMENTED = (Expect.FAIL, "kb/issues/H-homoplasy-command-unimplemented.md")
-ANCESTRAL_PARSIMONY_SELECTION = "--output-selection=nwk,nexus,augur-node-data,reconstructed-nuc-fasta"
-MPOX_FIXED_CLOCK = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
 
 
 def main() -> int:
@@ -362,6 +239,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--only", metavar="REGEX")
   parser.add_argument("--rerun-failed", action="store_true")
   parser.add_argument("--list", action="store_true")
+  parser.add_argument("--overview", action="store_true")
   parser.add_argument("--against", metavar="REF_OR_ID", default=DEFAULT_AGAINST)
   parser.add_argument("--no-compare", action="store_true")
   parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
@@ -400,6 +278,9 @@ def host_mode(args: argparse.Namespace) -> int:
   if args.list:
     print("\n".join(case.id for case in selected))
     return 0
+  if args.overview:
+    print(format_overview(selected))
+    return 0
   if not selected:
     raise SmokeError("No case matches the selection")
 
@@ -423,40 +304,80 @@ def host_mode(args: argparse.Namespace) -> int:
 
 
 def build_matrix(root: Path) -> list[Case]:
-  datasets = discover_datasets(root)
-  by_name = {dataset.name: dataset for dataset in datasets}
-  cases: list[Case] = []
-  for dataset in datasets:
-    cases += base_cases(dataset)
-  cases += variant_cases(by_name, {case.id for case in cases})
-  cases += extra_cases(by_name)
-  cases += config_cases(root, by_name)
-  cases += help_cases()
+  spec = load_case_spec(root / CASES_FILE)
+  datasets = discover_datasets(root, spec)
+  cases = [case for command, rows in spec.rows.items() for row in rows
+           for case in row_cases(command, row, spec, datasets)]
+  cases += config_cases(root, spec, datasets)
+  cases += help_cases(spec)
   validate_matrix(cases)
-  return apply_known_failures(cases)
+  return cases
 
 
-def discover_datasets(root: Path) -> list[Dataset]:
-  datasets = []
+def load_case_spec(path: Path) -> CaseSpec:
+  """Parse and check the case file, so that a typo fails with its location instead of silently dropping cases."""
+  try:
+    raw = tomllib.loads(path.read_text())
+  except (OSError, tomllib.TOMLDecodeError) as error:
+    raise SmokeError(f"Cannot read the case file {path.relative_to(PROJECT_ROOT)}: {error}") from error
+  commands = {name: parse_command(name, table) for name, table in raw.pop("commands", {}).items()}
+  sizes = {Size(name): parse_size(name, table) for name, table in check_keys(raw.pop("sizes", {}), SIZE_NAMES,
+                                                                             "[sizes]").items()}
+  if missing := [size.value for size in Size if size not in sizes]:
+    raise SmokeError(f"[sizes] lacks the size classes {', '.join(missing)}")
+  families = {name: parse_family(name, table) for name, table in raw.pop("families", {}).items()}
+  help_table = check_keys(raw.pop("help", {}), {"subcommands"}, "[help]")
+  config_table = check_keys(raw.pop("config", {}), {"pattern"}, "[config]")
+  if unknown := sorted(raw.keys() - commands.keys()):
+    raise SmokeError(f"The case file has rows for commands without a [commands.<name>] template: {', '.join(unknown)}")
+  rows = {command: [check_keys(row, ROW_KEYS, f"[[{command}]]") for row in raw[command]] for command in raw}
+  for command, command_rows in rows.items():
+    if missing := [index for index, row in enumerate(command_rows) if "variant" not in row]:
+      raise SmokeError(f"[[{command}]] row {missing[0] + 1} has no `variant`")
+  return CaseSpec(sizes, families, commands, rows, tuple(help_table.get("subcommands", ())),
+                  config_table.get("pattern"))
+
+
+def check_keys(table: dict, allowed: set[str] | frozenset[str], where: str) -> dict:
+  if unknown := sorted(table.keys() - allowed):
+    raise SmokeError(f"{where} has unknown keys {', '.join(unknown)}; allowed: {', '.join(sorted(allowed))}")
+  return table
+
+
+def parse_command(name: str, table: dict) -> CommandTemplate:
+  check_keys(table, {"args", "outputs", "selection"}, f"[commands.{name}]")
+  return CommandTemplate(table.get("args", ""), tuple(table.get("outputs", ())), table.get("selection"))
+
+
+def parse_size(name: str, table: dict) -> SizeClass:
+  check_keys(table, {"max_sequences", "tier", "timeout"}, f"[sizes.{name}]")
+  return SizeClass(table.get("max_sequences"), Tier(table["tier"]), float(table["timeout"]))
+
+
+def parse_family(name: str, table: dict) -> Family:
+  check_keys(table, {"metadata_args", "mugration_attribute", "command_args", "timeout_factor"}, f"[families.{name}]")
+  command_args = {command: tuple(shlex.split(args)) for command, args in table.get("command_args", {}).items()}
+  return Family(tuple(shlex.split(table.get("metadata_args", ""))), table.get("mugration_attribute"), command_args,
+                float(table.get("timeout_factor", 1.0)))
+
+
+def discover_datasets(root: Path, spec: CaseSpec) -> dict[str, Dataset]:
+  datasets = {}
   for tree in sorted((root / DATA_DIR).glob("**/tree.nwk")):
     directory = tree.parent
     name = directory.relative_to(root / DATA_DIR).as_posix()
     family = directory.parent.relative_to(root / DATA_DIR).as_posix()
-    if family not in PROFILES:
-      raise SmokeError(f"Dataset {name} has no profile: add the family {family!r} to PROFILES in {SELF}")
+    if family not in spec.families:
+      raise SmokeError(f"Dataset {name} has no family: add [families.\"{family}\"] to {CASES_FILE}")
     metadata = next((m.name for m in (directory / "metadata.tsv", directory / "metadata.tsv.xz") if m.exists()), None)
     columns = read_tsv_header(directory / metadata) if metadata else frozenset()
-    datasets.append(Dataset(name, size_class(directory.name), PROFILES[family], metadata, columns))
+    datasets[name] = Dataset(name, size_class(spec, int(directory.name)), spec.families[family], metadata, columns)
   return datasets
 
 
-def size_class(sequences: str) -> Size:
-  count = int(sequences)
-  if count <= 100:
-    return Size.SMALL
-  if count <= 500:
-    return Size.MEDIUM
-  return Size.LARGE
+def size_class(spec: CaseSpec, sequences: int) -> Size:
+  return next(size for size in Size
+              if spec.sizes[size].max_sequences is None or sequences <= spec.sizes[size].max_sequences)
 
 
 def read_tsv_header(path: Path) -> frozenset[str]:
@@ -465,149 +386,119 @@ def read_tsv_header(path: Path) -> frozenset[str]:
   return frozenset(column.strip().strip('"') for column in header.rstrip("\n").split("\t"))
 
 
-def base_cases(dataset: Dataset) -> list[Case]:
-  d = dataset
-  out = "--output-all={out}"
-  cases = [
-    make_case("ancestral", d, "parsimony", ["{bin}", "ancestral", "--method-anc=parsimony", *tree_aln(d), out,
-                                            ANCESTRAL_PARSIMONY_SELECTION]),
-    make_case("ancestral", d, "marginal-sparse", ["{bin}", "ancestral", "--method-anc=marginal", "--dense=false",
-                                                  *tree_aln(d), out]),
-    make_case("ancestral", d, "marginal-dense", ["{bin}", "ancestral", "--method-anc=marginal", "--dense=true",
-                                                 "--model=jc69", *tree_aln(d), out]),
-    make_case("optimize", d, "sparse", ["{bin}", "optimize", "--dense=false", *tree_aln(d), out]),
-    make_case("optimize", d, "dense", ["{bin}", "optimize", "--dense=true", *tree_aln(d), out]),
-    make_case("prune", d, "default", ["{bin}", "prune", *tree_aln(d), out, "--prune-short=1e-6", "--prune-empty",
-                                      "--merge-shared-mutations"]),
-    make_case("homoplasy", d, "default", ["{bin}", "homoplasy", *tree_aln(d), out]),
-  ]
-  if d.metadata:
-    dates = f"--dates={d.path}/{d.metadata}"
-    cases += [
-      make_case("clock", d, "default", ["{bin}", "clock", f"--tree={d.path}/tree.nwk", dates, out, *d.id_flags,
-                                        *d.profile.clock_flags]),
-      timetree_case(d, "basic", ""),
-    ]
-  attribute = d.mugration_attribute
-  if attribute:
-    cases.append(mugration_case(d, attribute, ""))
+def row_cases(command: str, row: dict, spec: CaseSpec, datasets: dict[str, Dataset]) -> list[Case]:
+  args, _, where = row_arguments(command, row, spec)
+  selected = select_datasets(row.get("datasets", "all"), args, datasets, where)
+  expectations = {expect: expected_reasons(row.get(key), selected, f"{where} `{key}`")
+                  for key, expect in (("fail", Expect.FAIL), ("hang", Expect.TIMEOUT))}
+  if both := expectations[Expect.FAIL].keys() & expectations[Expect.TIMEOUT].keys():
+    raise SmokeError(f"{where} declares both `fail` and `hang` for {', '.join(sorted(both))}")
+  cases = []
+  for dataset in selected:
+    expect, reason = next(((expect, reasons[dataset.name]) for expect, reasons in expectations.items()
+                           if dataset.name in reasons), (Expect.PASS, None))
+    cases.append(make_case(command, row, dataset, spec, (expect, reason)))
   return cases
 
 
-def make_case(command: str, dataset: Dataset | None, variant: str, argv: list[str], *, size: Size | None = None,
-              tier: Tier | None = None, timeout_s: float | None = None, expect: Expect = Expect.PASS,
-              reason: str | None = None, required_outputs: tuple[str, ...] = (), compare_stdout: bool = False,
-              cwd_mode: CwdMode = CwdMode.ROOT, case_id: str | None = None) -> Case:
-  size = size or (dataset.size if dataset else Size.SMALL)
-  if not required_outputs and command in TREE_COMMANDS and "--output-all={out}" in argv:
-    required_outputs = (f"{command}.nwk",)
-  if tier is None:
-    tier = Tier.QUICK if size is Size.SMALL else Tier.FULL
-  path = f"{command}/{dataset.name}/{variant}" if dataset else f"{command}/{variant}"
-  timeout_s = timeout_s or SIZE_TIMEOUT_S[size] * (dataset.profile.timeout_factor if dataset else 1.0)
+def row_arguments(command: str, row: dict, spec: CaseSpec) -> tuple[str, bool, str]:
+  """Arguments of a row before placeholders are resolved, whether it replaces the template, and its location text."""
+  standalone = row.get("standalone", False)
+  args = row.get("args", "") if standalone else f"{spec.commands[command].args} {row.get('args', '')}"
+  return args, standalone, f"[[{command}]] variant {row['variant']!r}"
+
+
+def select_datasets(selector: str | list[str], args: str, datasets: dict[str, Dataset], where: str) -> list[Dataset]:
+  """Datasets of a row: all of them or a size class, among those that provide the metadata the arguments use."""
+  if isinstance(selector, list):
+    if unknown := [name for name in selector if name not in datasets]:
+      raise SmokeError(f"{where}: unknown datasets {', '.join(unknown)}")
+    if lacking := [name for name in selector if not datasets[name].provides(args)]:
+      raise SmokeError(f"{where}: datasets {', '.join(lacking)} lack the metadata or attribute the arguments use")
+    return [datasets[name] for name in selector]
+  if selector != "all" and selector not in SIZE_NAMES:
+    raise SmokeError(f"{where}: `datasets` must be \"all\", a size class ({', '.join(sorted(SIZE_NAMES))}), or a list")
+  return [dataset for dataset in datasets.values()
+          if dataset.provides(args) and selector in ("all", dataset.size.value)]
+
+
+def expected_reasons(value: str | dict | None, selected: list[Dataset], where: str) -> dict[str, str]:
+  """Expected-failure reasons per dataset name, from one reason for the whole row or a table keyed by dataset."""
+  if value is None:
+    return {}
+  if isinstance(value, str):
+    return {dataset.name: value for dataset in selected}
+  names = {dataset.name for dataset in selected}
+  if unknown := sorted(value.keys() - names):
+    raise SmokeError(f"{where} names datasets outside the row: {', '.join(unknown)}")
+  return dict(value)
+
+
+def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
+              expectation: tuple[Expect, str | None]) -> Case:
+  template, (args, standalone, where) = spec.commands[command], row_arguments(command, row, spec)
+  family = dataset.family
+  tokens = shlex.split(args)
+  tokens += [] if standalone or "{metadata}" not in template.args else list(family.metadata_args)
+  tokens += list(family.command_args.get(command, ()))
+  selection = row.get("selection", template.selection)
+  tokens += [f"--output-selection={selection}"] if selection else []
+  replacements = {
+    "{dataset}": dataset.path, "{tree}": f"{dataset.path}/{row.get('tree', 'tree.nwk')}",
+    "{metadata}": f"{dataset.path}/{dataset.metadata}", "{attribute}": dataset.attribute or "",
+  }
+  argv = [substitute(token, replacements) for token in tokens]
+  placeholders = {match for token in argv for match in re.findall(r"\{[a-z_]+\}", token)}
+  if unresolved := sorted(placeholders - RUNTIME_PLACEHOLDERS):
+    raise SmokeError(f"{where}: unknown placeholders {', '.join(unresolved)}")
+  variant = substitute(row["variant"], replacements)
+  size = spec.sizes[dataset.size]
   return Case(
-    id=case_id or path, command=command, dataset=dataset.name if dataset else None, size=size, tier=tier,
-    timeout_s=timeout_s, argv=tuple(argv), expect=expect, reason=reason,
-    required_outputs=required_outputs, compare_stdout=compare_stdout, cwd_mode=cwd_mode,
+    id=f"{command}/{dataset.name}/{variant}", command=command, dataset=dataset.name, size=dataset.size,
+    tier=Tier(row["tier"]) if "tier" in row else size.tier,
+    timeout_s=float(row.get("timeout", size.timeout_s * family.timeout_factor)), argv=("{bin}", command, *argv),
+    expect=expectation[0], reason=expectation[1],
+    required_outputs=tuple(row.get("outputs", () if standalone else template.outputs)),
   )
 
 
-def tree_aln(dataset: Dataset) -> list[str]:
-  return [f"--tree={dataset.path}/tree.nwk", f"--aln={dataset.path}/aln.fasta.xz"]
+def substitute(text: str, replacements: dict[str, str]) -> str:
+  for placeholder, value in replacements.items():
+    text = text.replace(placeholder, value)
+  return text
 
 
-def mugration_case(dataset: Dataset, variant: str, extra: str, attribute: str | None = None) -> Case:
-  attribute = attribute or dataset.mugration_attribute
-  argv = ["{bin}", "mugration", f"--tree={dataset.path}/tree.nwk", f"--states={dataset.path}/{dataset.metadata}",
-          f"--attribute={attribute}", "--output-all={out}", *dataset.id_flags, "--pc=1.0", *shlex.split(extra)]
-  return make_case("mugration", dataset, variant or attribute, argv)
-
-
-def timetree_case(dataset: Dataset, variant: str, extra: str, **kwargs) -> Case:
-  return make_case("timetree", dataset, variant, timetree_argv(dataset, extra, kwargs.pop("tree", "tree.nwk")),
-                   **kwargs)
-
-
-def timetree_argv(dataset: Dataset, extra: str, tree: str = "tree.nwk") -> list[str]:
-  outputs = ["nwk", "nexus", "auspice", "augur-node-data", "clock-model"]
-  if "--branch-length-mode=input" not in extra:
-    outputs.append("gtr")
-  if "--time-marginal" in extra or "--confidence" in extra:
-    outputs.append("confidence-tsv")
-  return ["{bin}", "timetree", f"--tree={dataset.path}/{tree}", f"--dates={dataset.path}/{dataset.metadata}",
-          f"--aln={dataset.path}/aln.fasta.xz", "--output-all={out}", f"--output-selection={','.join(outputs)}",
-          *dataset.id_flags, *shlex.split(extra)]
-
-
-def variant_cases(datasets: dict[str, Dataset], base_ids: set[str]) -> list[Case]:
+def config_cases(root: Path, spec: CaseSpec, datasets: dict[str, Dataset]) -> list[Case]:
+  if spec.config_pattern is None:
+    return []
   cases = []
-  for name, variant, extra in OPTIMIZE_VARIANTS:
-    d = datasets[name]
-    cases.append(make_case("optimize", d, variant, ["{bin}", "optimize", "--dense=false", *tree_aln(d),
-                                                    "--output-all={out}", *shlex.split(extra)]))
-  cases += [mugration_case(datasets[name], variant, extra) for name, variant, extra in MUGRATION_VARIANTS]
-  cases += [timetree_case(datasets[name], variant, extra) for name, variant, extra in TIMETREE_VARIANTS]
-  return [case for case in cases if case.id not in base_ids]
-
-
-def extra_cases(datasets: dict[str, Dataset]) -> list[Case]:
-  ebola, rsv, sc2, mpox = (datasets[name] for name in ("ebola/362", "rsv/a/100", "sc2/4500", "mpox/clade-ii/1000"))
-  cases = [
-    timetree_case(ebola, "skyline", "--coalescent-skyline", tier=Tier.QUICK),
-    timetree_case(ebola, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
-    timetree_case(rsv, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
-    timetree_case(sc2, "clock-filter-10", "--clock-filter=10"),
-    timetree_case(mpox, "fixed-clock-tree-opt", MPOX_FIXED_CLOCK, tree="tree_opt.nwk"),
-    timetree_case(mpox, "fixed-clock", MPOX_FIXED_CLOCK),
-  ]
-  individual = ["--dense=false", "--output-augur-node-data={out}/bl.json",
-                "--output-tree-auspice={out}/opti.auspice.json"]
-  required = ("bl.json", "opti.auspice.json")
-  cases += [make_case("optimize", d, "individual-outputs", ["{bin}", "optimize", *tree_aln(d), *individual],
-                      required_outputs=required)
-            for d in datasets.values() if d.size is Size.SMALL]
-  cases.append(make_case("optimize", mpox, "rerooted-input",
-                         ["{bin}", "optimize", f"--tree={mpox.path}/tree_opt.nwk", f"--aln={mpox.path}/aln.fasta.xz",
-                          *individual], required_outputs=required))
-  return cases
-
-
-def config_cases(root: Path, datasets: dict[str, Dataset]) -> list[Case]:
-  cases = []
-  for config in sorted((root / DATA_DIR).glob("**/*.yaml")):
+  for config in sorted((root / DATA_DIR).glob(f"**/{spec.config_pattern}")):
     dataset = datasets[config.parent.relative_to(root / DATA_DIR).as_posix()]
     command = "pipeline" if config.stem == "pipeline" else config.stem.split("-")[0]
-    argv = ["{bin}", command, f"--config={dataset.path}/{config.name}"]
-    cases.append(make_case("config", dataset, config.stem, argv, cwd_mode=CwdMode.SANDBOX))
+    size = spec.sizes[dataset.size]
+    cases.append(Case(
+      id=f"config/{dataset.name}/{config.stem}", command="config", dataset=dataset.name, size=dataset.size,
+      tier=size.tier, timeout_s=size.timeout_s * dataset.family.timeout_factor,
+      argv=("{bin}", command, f"--config={dataset.path}/{config.name}"), cwd_mode=CwdMode.SANDBOX,
+    ))
   return cases
 
 
-def help_cases() -> list[Case]:
-  cases = [make_case("help", None, "global", ["{bin}", "--help"], compare_stdout=True)]
-  cases += [make_case("help", None, sub, ["{bin}", sub, "--help"], compare_stdout=True) for sub in SUBCOMMANDS]
-  return cases
+def help_cases(spec: CaseSpec) -> list[Case]:
+  size = spec.sizes[Size.SMALL]
+  return [Case(id=f"help/{name}", command="help", dataset=None, size=Size.SMALL, tier=size.tier,
+               timeout_s=size.timeout_s, argv=("{bin}", *argv), compare_stdout=True)
+          for name, argv in [("global", ("--help",)), *((sub, (sub, "--help")) for sub in spec.help_subcommands)]]
 
 
 def validate_matrix(cases: list[Case]) -> None:
   duplicates = [case_id for case_id, count in Counter(case.id for case in cases).items() if count > 1]
   if duplicates:
-    raise SmokeError(f"Duplicate case ids: {', '.join(sorted(duplicates))}")
+    raise SmokeError(f"{len(duplicates)} duplicate case ids, first: {', '.join(sorted(duplicates)[:5])}")
   ids = sorted(case.id for case in cases)
   nested = [(a, b) for a, b in itertools.pairwise(ids) if b.startswith(a + "/")]
   if nested:
     raise SmokeError(f"Case id is a directory prefix of another case id: {nested[0][0]} and {nested[0][1]}")
-
-
-def apply_known_failures(cases: list[Case]) -> list[Case]:
-  unknown = sorted(KNOWN_FAILURES.keys() - {case.id for case in cases})
-  if unknown:
-    raise SmokeError(f"KNOWN_FAILURES names cases that are not in the matrix: {', '.join(unknown)}")
-
-  def expectation(case: Case) -> tuple[Expect, str] | None:
-    return HOMOPLASY_UNIMPLEMENTED if case.command == "homoplasy" else KNOWN_FAILURES.get(case.id)
-
-  return [dataclasses.replace(case, expect=known[0], reason=known[1]) if (known := expectation(case)) else case
-          for case in cases]
 
 
 def select_cases(cases: list[Case], tier: Tier, only: str | None, ids: set[str] | None) -> list[Case]:
@@ -622,6 +513,23 @@ def select_cases(cases: list[Case], tier: Tier, only: str | None, ids: set[str] 
       raise SmokeError(f"Invalid --only regex {only!r}: {error}") from error
     selected = [case for case in selected if pattern.search(case.id)]
   return selected
+
+
+def format_overview(cases: list[Case]) -> str:
+  """Cases per command and variant, with the datasets each variant runs on, for reading the matrix at a glance."""
+  groups: dict[str, dict[str, list[Case]]] = defaultdict(lambda: defaultdict(list))
+  for case in cases:
+    groups[case.command][case.id.rsplit("/", 1)[-1]].append(case)
+  lines = []
+  for command, variants in sorted(groups.items()):
+    lines.append(f"{command} ({sum(map(len, variants.values()))} cases)")
+    for variant, items in sorted(variants.items()):
+      names = [case.dataset or "-" for case in items]
+      datasets = ", ".join(names) if len(names) <= 4 else f"{len(names)} datasets"
+      expected = sum(1 for case in items if case.expect is not Expect.PASS)
+      note = f"  [{expected} expected to fail]" if expected else ""
+      lines.append(f"  {variant:<24} {datasets}{note}")
+  return "\n".join(lines)
 
 
 def last_failed_ids(current: Snapshot) -> set[str]:
@@ -1392,10 +1300,44 @@ class Case:
 
 
 @dataclass(frozen=True)
+class CaseSpec:
+  """The parsed case file: size classes, dataset families, command templates, rows, help and config cases."""
+
+  sizes: dict[Size, SizeClass]
+  families: dict[str, Family]
+  commands: dict[str, CommandTemplate]
+  rows: dict[str, list[dict]]
+  help_subcommands: tuple[str, ...]
+  config_pattern: str | None
+
+
+@dataclass(frozen=True)
+class SizeClass:
+  max_sequences: int | None
+  tier: Tier
+  timeout_s: float
+
+
+@dataclass(frozen=True)
+class Family:
+  metadata_args: tuple[str, ...]
+  mugration_attribute: str | None
+  command_args: dict[str, tuple[str, ...]]
+  timeout_factor: float
+
+
+@dataclass(frozen=True)
+class CommandTemplate:
+  args: str
+  outputs: tuple[str, ...]
+  selection: str | None
+
+
+@dataclass(frozen=True)
 class Dataset:
   name: str
   size: Size
-  profile: Profile
+  family: Family
   metadata: str | None
   metadata_columns: frozenset[str]
 
@@ -1404,13 +1346,14 @@ class Dataset:
     return f"{{data}}/{self.name}"
 
   @property
-  def id_flags(self) -> tuple[str, ...]:
-    return (f"--name-column={self.profile.id_column}",) if self.profile.id_column else ()
-
-  @property
-  def mugration_attribute(self) -> str | None:
-    attribute = self.profile.attribute
+  def attribute(self) -> str | None:
+    attribute = self.family.mugration_attribute
     return attribute if attribute is not None and attribute in self.metadata_columns else None
+
+  def provides(self, template: str) -> bool:
+    """Whether the dataset has the metadata and attribute that a template uses."""
+    return ("{metadata}" not in template or self.metadata is not None) and (
+      "{attribute}" not in template or self.attribute is not None)
 
 
 @dataclass(frozen=True)
