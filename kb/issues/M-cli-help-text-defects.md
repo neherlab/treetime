@@ -56,6 +56,10 @@ Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) 
 
 Related: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md).
 
+### D10: `--config` has no description
+
+Commands: all. `--config <CONFIG>` renders with no help text, because `struct ConfigArgs` and its `config` field carry no doc comment [`packages/app-cli/src/commands/shared/config.rs#L11-L14`](../../packages/app-cli/src/commands/shared/config.rs#L11-L14). Users cannot learn from `--help` that the file holds the command's full configuration object, that it is parsed as YAML (so JSON also works), that explicit flags override the file and the file overrides defaults, or that a boolean enabled in the file cannot be turned off from the command line.
+
 ## Inconsistencies
 
 ### I1: `--metadata` short flag and alias differ across commands
