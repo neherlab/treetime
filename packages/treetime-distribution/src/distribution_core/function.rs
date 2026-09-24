@@ -52,48 +52,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub fn from_n_points<F>((x_min, x_max): (T, T), n_points: usize, y_fn: F) -> Result<Self, Report>
-  where
-    T: Float,
-    F: Fn(T) -> T,
-  {
-    let grid_fn = GridFn::from_n_points((x_min, x_max), n_points, y_fn)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
-  pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
-  where
-    T: Float,
-    F: Fn(T) -> T,
-  {
-    let grid_fn = GridFn::from_grid((x_min, x_max), dx, y_fn)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
-  pub fn constant((x_min, x_max): (T, T), n_points: usize, value: T) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let grid_fn = GridFn::constant((x_min, x_max), n_points, value)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
-  pub fn zeros((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let grid_fn = GridFn::zeros((x_min, x_max), n_points)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
-  pub fn ones((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let grid_fn = GridFn::ones((x_min, x_max), n_points)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
   pub fn from_grid_fn(grid_fn: GridFn<T>) -> Self {
     Self {
       grid_fn,
@@ -230,14 +188,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     ))
   }
 
-  pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
-    self.resample(&grid)
-  }
-
   pub(crate) fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -278,7 +228,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 
   pub(crate) fn is_empty(&self) -> bool {
-    self.grid_fn.len() == 0
+    self.grid_fn.is_empty()
   }
 
   pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>

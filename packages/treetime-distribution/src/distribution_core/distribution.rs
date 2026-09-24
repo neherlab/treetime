@@ -2,7 +2,7 @@ use crate::DistributionFunction;
 use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
-use crate::distribution_ops::negate::{distribution_negation, distribution_negation_inplace};
+use crate::distribution_ops::negate::distribution_negation;
 use crate::policy::{NegLog, Plain, YAxisPolicy};
 use approx::ulps_eq;
 use eyre::Report;
@@ -122,10 +122,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     distribution_negation(self)
   }
 
-  pub fn negate_inplace(&mut self) -> Result<(), Report> {
-    distribution_negation_inplace(self)
-  }
-
   pub fn time_bounds(&self) -> Option<(f64, f64)> {
     match self {
       Self::Empty => None,
@@ -158,28 +154,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    match self {
-      Self::Function(f) => f.interp_many(t),
-      Self::Formula(f) => f.eval_many(t),
-      Self::Point(p) => Ok(t.mapv(|ti| {
-        if ulps_eq!(ti, p.t(), max_ulps = 10) {
-          p.amplitude()
-        } else {
-          Y::probability_zero()
-        }
-      })),
-      Self::Range(r) => Ok(t.mapv(|ti| {
-        if ti >= r.start() && ti <= r.end() {
-          r.amplitude()
-        } else {
-          Y::probability_zero()
-        }
-      })),
-      Self::Empty => Ok(Array1::from_elem(t.len(), Y::probability_zero())),
-    }
-  }
-
   pub(crate) fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
@@ -202,153 +176,9 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   }
 }
 
-impl Distribution<Plain> {
-  #[expect(
-    clippy::many_single_char_names,
-    reason = "single-letter names follow the notation of the formulas"
-  )]
-  pub(crate) fn quantile(&self, p: f64) -> Option<f64> {
-    if !(0.0..=1.0).contains(&p) {
-      return None;
-    }
-
-    match self {
-      Distribution::Empty => None,
-      Distribution::Point(point) => Some(point.t()),
-      Distribution::Range(range) => {
-        let start = range.start();
-        let end = range.end();
-        Some(start + p * (end - start))
-      },
-      Distribution::Function(f) => {
-        let t = f.t();
-        let y = f.y();
-        let n = t.len();
-        if n == 0 {
-          return None;
-        }
-        if n == 1 {
-          return Some(t[0]);
-        }
-
-        let Some(cdf) = compute_normalized_cdf(y, f.dx()) else {
-          return self.likely_time();
-        };
-
-        if p <= 0.0 {
-          return Some(t[0]);
-        }
-        if p >= 1.0 {
-          return Some(t[n - 1]);
-        }
-
-        for i in 1..n {
-          if cdf[i] >= p {
-            let t0 = t[i - 1];
-            let t1 = t[i];
-            let c0 = cdf[i - 1];
-            let c1 = cdf[i];
-            if ulps_eq!(c0, c1, max_ulps = 10) {
-              return Some(t0);
-            }
-            let frac = (p - c0) / (c1 - c0);
-            return Some(t0 + frac * (t1 - t0));
-          }
-        }
-
-        Some(t[n - 1])
-      },
-      Distribution::Formula(_) => self.likely_time(),
-    }
-  }
-
-  pub(crate) fn confidence_interval(&self, p_lower: f64, p_upper: f64) -> Option<(f64, f64)> {
-    let lower = self.quantile(p_lower)?;
-    let upper = self.quantile(p_upper)?;
-    Some((lower, upper))
-  }
-
-  pub fn hpd_region(&self, fraction: f64) -> Option<(f64, f64)> {
-    if !(0.0..=1.0).contains(&fraction) {
-      return None;
-    }
-
-    match self {
-      Distribution::Empty => None,
-      Distribution::Point(p) => Some((p.t(), p.t())),
-      Distribution::Range(r) => {
-        let width = r.end() - r.start();
-        let margin = (1.0 - fraction) * 0.5 * width;
-        Some((r.start() + margin, r.end() - margin))
-      },
-      Distribution::Function(f) => hpd_region_function(f, fraction),
-      Distribution::Formula(_) => {
-        let p_lo = (1.0 - fraction) * 0.5;
-        self.confidence_interval(p_lo, 1.0 - p_lo)
-      },
-    }
-  }
-
-  #[allow(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
-  pub fn to_neglog(&self) -> Distribution<NegLog> {
-    match self {
-      Self::Empty => Distribution::Empty,
-      Self::Point(p) => Distribution::point(p.t(), NegLog::from_plain(p.amplitude())),
-      Self::Range(r) => Distribution::range((r.start(), r.end()), NegLog::from_plain(r.amplitude())),
-      Self::Function(f) => {
-        let y_neglog = f.y().mapv(NegLog::from_plain);
-        Distribution::Function(DistributionFunction::from_grid_fn(
-          treetime_grid::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_neglog)
-            .expect("Grid construction should not fail for valid input"),
-        ))
-      },
-      Self::Formula(f) => match discretize_formula(f) {
-        Ok(df) => {
-          let y_neglog = df.y().mapv(NegLog::from_plain);
-          Distribution::Function(DistributionFunction::from_grid_fn(
-            treetime_grid::GridFn::from_start_dx_values(df.x_min(), df.dx(), y_neglog)
-              .expect("Grid construction should not fail for valid input"),
-          ))
-        },
-        Err(_) => Distribution::Empty,
-      },
-    }
-  }
-}
+impl Distribution<Plain> {}
 
 impl Distribution<NegLog> {
-  #[allow(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
-  pub fn to_plain(&self) -> Distribution<Plain> {
-    match self {
-      Self::Empty => Distribution::Empty,
-      Self::Point(p) => Distribution::point(p.t(), NegLog::to_plain(p.amplitude())),
-      Self::Range(r) => Distribution::range((r.start(), r.end()), NegLog::to_plain(r.amplitude())),
-      Self::Function(f) => {
-        let y_plain = f.y().mapv(NegLog::to_plain);
-        Distribution::Function(DistributionFunction::from_grid_fn(
-          treetime_grid::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_plain)
-            .expect("Grid construction should not fail for valid input"),
-        ))
-      },
-      Self::Formula(f) => {
-        let t_min = f.t_min();
-        let t_max = f.t_max();
-        let f = f.clone();
-        let eval_fn = move |t: f64| -> Result<f64, Report> {
-          let y = f.eval_single(t)?;
-          Ok(NegLog::to_plain(y))
-        };
-        Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max))
-      },
-    }
-  }
-
   pub fn normalize(&self) -> Self {
     match self {
       Distribution::Empty => Distribution::Empty,
@@ -392,138 +222,4 @@ fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<Dist
   });
   let values = f.eval_many(&t)?;
   DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
-}
-
-fn hpd_region_function(f: &DistributionFunction<f64, Plain>, fraction: f64) -> Option<(f64, f64)> {
-  let t = f.t();
-  let y = f.y();
-  let n = t.len();
-  let dx = f.dx();
-  let x_min = f.x_min();
-
-  if n == 0 {
-    return None;
-  }
-  if n == 1 {
-    return Some((t[0], t[0]));
-  }
-
-  let cdf = compute_normalized_cdf(y, dx)?;
-
-  let pidx = y.argmax().ok()?;
-
-  if n < 3 || pidx == 0 {
-    let upper = interp_cdf_inverse(&t, &cdf, fraction);
-    return Some((t[0], upper));
-  }
-  if pidx == n - 1 {
-    let lower = interp_cdf_inverse(&t, &cdf, 1.0 - fraction);
-    return Some((lower, t[n - 1]));
-  }
-
-  let peak_val = y[pidx];
-  let mut lo = 0.0_f64;
-  let mut hi = peak_val;
-
-  for _ in 0..64 {
-    let mid = 0.5 * (lo + hi);
-    let left_pos = interp_crossing_left(&t, y, pidx, mid);
-    let right_pos = interp_crossing_right(&t, y, pidx, mid);
-    let mass = interp_cdf_at_uniform(&cdf, x_min, dx, right_pos) - interp_cdf_at_uniform(&cdf, x_min, dx, left_pos);
-
-    if mass > fraction {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-
-    if (hi - lo) < 1e-14 * peak_val.max(1e-30) {
-      break;
-    }
-  }
-
-  let p_thresh = 0.5 * (lo + hi);
-  let left_pos = interp_crossing_left(&t, y, pidx, p_thresh);
-  let right_pos = interp_crossing_right(&t, y, pidx, p_thresh);
-  Some((left_pos, right_pos))
-}
-
-fn compute_normalized_cdf(y: &Array1<f64>, dx: f64) -> Option<Array1<f64>> {
-  let n = y.len();
-  debug_assert!(n >= 2, "CDF requires at least 2 points, got {n}");
-  let mut cdf = Array1::<f64>::zeros(n);
-  for i in 1..n {
-    cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
-  }
-  let total = cdf[n - 1];
-  if total <= 0.0 || !total.is_finite() {
-    return None;
-  }
-  cdf.mapv_inplace(|v| v / total);
-  Some(cdf)
-}
-
-fn interp_crossing_left(t: &Array1<f64>, y: &Array1<f64>, pidx: usize, threshold: f64) -> f64 {
-  for i in (1..=pidx).rev() {
-    if y[i - 1] <= threshold && y[i] > threshold {
-      let frac = (threshold - y[i - 1]) / (y[i] - y[i - 1]);
-      return t[i - 1] + frac * (t[i] - t[i - 1]);
-    }
-  }
-  t[0]
-}
-
-fn interp_crossing_right(t: &Array1<f64>, y: &Array1<f64>, pidx: usize, threshold: f64) -> f64 {
-  let n = t.len();
-  for i in pidx..n - 1 {
-    if y[i] > threshold && y[i + 1] <= threshold {
-      let frac = (threshold - y[i]) / (y[i + 1] - y[i]);
-      return t[i] + frac * (t[i + 1] - t[i]);
-    }
-  }
-  t[n - 1]
-}
-
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
-fn interp_cdf_at_uniform(cdf: &Array1<f64>, x_min: f64, dx: f64, pos: f64) -> f64 {
-  let n = cdf.len();
-  if n == 0 {
-    return 0.0;
-  }
-  let idx_f = (pos - x_min) / dx;
-  if idx_f <= 0.0 {
-    return cdf[0];
-  }
-  let last = (n - 1) as f64;
-  if idx_f >= last {
-    return cdf[n - 1];
-  }
-  let idx = (idx_f.floor() as usize).min(n - 2);
-  let frac = idx_f - idx as f64;
-  cdf[idx] + frac * (cdf[idx + 1] - cdf[idx])
-}
-fn interp_cdf_inverse(t: &Array1<f64>, cdf: &Array1<f64>, p: f64) -> f64 {
-  let n = t.len();
-  if p <= 0.0 {
-    return t[0];
-  }
-  if p >= 1.0 {
-    return t[n - 1];
-  }
-
-  for i in 1..n {
-    if cdf[i] >= p {
-      let c0 = cdf[i - 1];
-      let c1 = cdf[i];
-      if (c1 - c0).abs() < 1e-30 {
-        return t[i - 1];
-      }
-      let frac = (p - c0) / (c1 - c0);
-      return t[i - 1] + frac * (t[i] - t[i - 1]);
-    }
-  }
-  t[n - 1]
 }

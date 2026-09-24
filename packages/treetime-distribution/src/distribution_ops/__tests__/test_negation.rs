@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionPlain;
-  use crate::distribution_ops::negate::{distribution_negation, distribution_negation_inplace};
+  use crate::distribution_ops::negate::distribution_negation;
   use eyre::Report;
   use ndarray::array;
 
@@ -57,39 +57,6 @@ mod tests {
     let dist: DistributionPlain = DistributionPlain::function(t, y)?;
 
     let actual: DistributionPlain = distribution_negation(&dist)?;
-
-    let expected_t = array![-2.0, -1.0, 0.0];
-    let expected_y = array![3.0, 2.0, 1.0];
-    let expected: DistributionPlain = DistributionPlain::function(expected_t, expected_y)?;
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_negate_inplace_point() -> Result<(), Report> {
-    let mut actual: DistributionPlain = DistributionPlain::point(2.0, 3.0);
-    distribution_negation_inplace(&mut actual)?;
-    let expected: DistributionPlain = DistributionPlain::point(-2.0, 3.0);
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_negate_inplace_range() -> Result<(), Report> {
-    let mut actual: DistributionPlain = DistributionPlain::range((1.0, 4.0), 2.0);
-    distribution_negation_inplace(&mut actual)?;
-    let expected: DistributionPlain = DistributionPlain::range((-4.0, -1.0), 2.0);
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_negate_inplace_function() -> Result<(), Report> {
-    let t = array![0.0, 1.0, 2.0];
-    let y = array![1.0, 2.0, 3.0];
-    let mut actual: DistributionPlain = DistributionPlain::function(t, y)?;
-
-    distribution_negation_inplace(&mut actual)?;
 
     let expected_t = array![-2.0, -1.0, 0.0];
     let expected_y = array![3.0, 2.0, 1.0];
