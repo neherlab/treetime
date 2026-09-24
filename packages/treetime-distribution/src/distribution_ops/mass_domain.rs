@@ -20,7 +20,7 @@ pub fn rewindow_to_mass(
   resample_to_mass_window(&normalized, lo, hi, grid_points)
 }
 
-pub fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> Result<(f64, f64), Report> {
+pub(crate) fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> Result<(f64, f64), Report> {
   let profile = mass_profile(f)?;
   if !(profile.z.is_finite() && profile.z > 0.0) {
     return make_error!(
@@ -50,7 +50,7 @@ pub(crate) fn peak_normalized_if_mass_sizable(
     .then_some(normalized)
 }
 
-pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {
+pub(crate) fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {
   Ok(mass_profile(f)?.z)
 }
 

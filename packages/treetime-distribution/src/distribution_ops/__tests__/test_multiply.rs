@@ -5,8 +5,8 @@
 
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::aliases::DistributionPlain;
   use crate::DistributionFunction;
-  use crate::DistributionPlain;
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{distribution_multiplication, guarded_empty_result, hard_domains_disjoint};
   use crate::policy::Plain;

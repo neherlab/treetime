@@ -122,7 +122,7 @@ impl YAxisPolicy for NegLog {
   }
 }
 
-pub trait SupportsConvolution: YAxisPolicy {}
+pub(crate) trait SupportsConvolution: YAxisPolicy {}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyMarker<Y: YAxisPolicy>(#[serde(skip)] PhantomData<Y>);

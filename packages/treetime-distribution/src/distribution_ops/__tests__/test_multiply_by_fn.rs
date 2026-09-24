@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::aliases::DistributionNegLog;
   use crate::DistributionFunction;
-  use crate::DistributionNegLog;
   use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, array};

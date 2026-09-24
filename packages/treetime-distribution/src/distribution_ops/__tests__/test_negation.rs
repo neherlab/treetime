@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::DistributionPlain;
+  use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_ops::negate::distribution_negation;
   use eyre::Report;
   use ndarray::array;

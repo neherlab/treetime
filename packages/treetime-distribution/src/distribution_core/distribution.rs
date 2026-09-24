@@ -13,12 +13,8 @@ use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
 
-pub const TIME_LIMIT: f64 = 1e10;
+pub(crate) const TIME_LIMIT: f64 = 1e10;
 const FORMULA_GRID_SIZE: usize = 200;
-
-pub type DistributionPlain = Distribution<Plain>;
-
-pub type DistributionNegLog = Distribution<NegLog>;
 
 #[must_use]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display)]

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::DistributionPlain;
+  use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
   use ndarray::array;

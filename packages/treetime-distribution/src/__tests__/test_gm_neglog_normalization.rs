@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::{DistributionNegLog, distribution_multiplication};
+  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::distribution_multiplication;
   use eyre::Report;
   use helpers::neglog_to_plain_normalized;
   use ndarray::Array1;
@@ -57,8 +58,9 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::aliases::{DistributionNegLog, DistributionPlain};
+    use crate::Distribution;
     use crate::distribution_core::function::DistributionFunction;
-    use crate::{Distribution, DistributionNegLog, DistributionPlain};
     use ndarray_stats::QuantileExt;
 
     pub(super) fn neglog_to_plain_normalized(distribution: &DistributionNegLog) -> DistributionPlain {
@@ -77,7 +79,7 @@ mod tests {
 
     mod tests {
       use super::neglog_to_plain_normalized;
-      use crate::{DistributionNegLog, DistributionPlain};
+      use crate::__tests__::aliases::{DistributionNegLog, DistributionPlain};
       use ndarray::array;
       use treetime_utils::pretty_assert_ulps_eq;
 

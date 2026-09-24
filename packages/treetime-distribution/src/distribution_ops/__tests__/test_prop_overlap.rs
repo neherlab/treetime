@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::{DistributionPlain, distribution_division, distribution_multiplication};
+  use crate::__tests__::aliases::DistributionPlain;
+  use crate::{distribution_division, distribution_multiplication};
   use ndarray::{Array1, array};
   use proptest::prelude::*;
   use treetime_utils::{prop_assert_array_ulps_eq, prop_assert_ulps_eq};

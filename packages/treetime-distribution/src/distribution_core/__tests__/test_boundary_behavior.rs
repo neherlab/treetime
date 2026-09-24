@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::aliases::DistributionPlain;
+  use crate::Distribution;
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::{NegLog, Plain};
-  use crate::{Distribution, DistributionPlain};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;

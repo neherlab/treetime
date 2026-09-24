@@ -49,7 +49,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::DistributionNegLog;
+    use crate::__tests__::aliases::DistributionNegLog;
     use eyre::Report;
     use ndarray::Array1;
     use serde::Deserialize;

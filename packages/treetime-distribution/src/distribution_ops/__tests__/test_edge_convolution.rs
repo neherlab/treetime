@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
-  use crate::{Distribution, DistributionNegLog, convolve_across_edge};
+  use crate::{Distribution, convolve_across_edge};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;

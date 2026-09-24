@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::DistributionNegLog;
-  use crate::DistributionPlain;
+  use crate::__tests__::aliases::DistributionNegLog;
+  use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution};
   use approx::assert_abs_diff_eq;
@@ -376,7 +376,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::DistributionPlain;
+    use crate::__tests__::aliases::DistributionPlain;
     use crate::distribution_core::formula::DistributionFormula;
     use ndarray::array;
 
