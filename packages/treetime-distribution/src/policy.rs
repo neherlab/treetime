@@ -5,7 +5,6 @@ use std::marker::PhantomData;
 pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync + 'static {
   fn from_plain(p: f64) -> f64;
   fn to_plain(y: f64) -> f64;
-  fn multiplicative_identity() -> f64;
   fn multiply(a: f64, b: f64) -> f64;
   fn divide(a: f64, b: f64) -> f64;
   fn is_defined(val: f64) -> bool;
@@ -32,10 +31,6 @@ impl YAxisPolicy for Plain {
 
   fn to_plain(y: f64) -> f64 {
     y
-  }
-
-  fn multiplicative_identity() -> f64 {
-    1.0
   }
 
   fn multiply(a: f64, b: f64) -> f64 {
@@ -83,10 +78,6 @@ impl YAxisPolicy for NegLog {
 
   fn to_plain(y: f64) -> f64 {
     (-y).exp()
-  }
-
-  fn multiplicative_identity() -> f64 {
-    0.0
   }
 
   fn multiply(a: f64, b: f64) -> f64 {
