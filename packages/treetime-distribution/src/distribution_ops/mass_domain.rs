@@ -155,7 +155,7 @@ fn trim_into_grid(profile: &MassProfile, grid_target: f64, side: Side) -> f64 {
       Side::Right => n_points - 2 - step,
     };
     let dp = plain[j + 1] - plain[j];
-    let cell_mass = 0.5 * (plain[j] + plain[j + 1]) * dx;
+    let cell_mass = f64::midpoint(plain[j], plain[j + 1]) * dx;
     if acc + cell_mass >= grid_target {
       let remaining = (grid_target - acc) / dx;
       let q = match side {
@@ -196,7 +196,7 @@ fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Re
   let dx = f.dx();
   let x_min = f.x_min();
   let x_max = f.x_max();
-  let grid_mass = dx * (plain.sum() - 0.5 * (plain[0] + plain[n_points - 1]));
+  let grid_mass = dx * (plain.sum() - f64::midpoint(plain[0], plain[n_points - 1]));
 
   let left = f.left_extrap();
   let right = f.right_extrap();

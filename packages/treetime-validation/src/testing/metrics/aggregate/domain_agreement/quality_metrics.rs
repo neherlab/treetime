@@ -57,7 +57,7 @@ pub(crate) fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected
     let mut integral = 0.0;
     for i in 0..values.len() - 1 {
       let dx = x[i + 1] - x[i];
-      integral += 0.5 * (values[i] + values[i + 1]) * dx;
+      integral += f64::midpoint(values[i], values[i + 1]) * dx;
     }
     integral
   };

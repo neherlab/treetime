@@ -213,7 +213,7 @@ mod tests {
       let (normalized, log_norm) = softmax_with_log_norm(input.view());
       helpers::assert_valid_distribution(&normalized);
       assert_eq!(normalized, array![0.0, 1.0, 0.0, 0.0]);
-      assert!(log_norm == f64::INFINITY);
+      assert!(log_norm.is_infinite() && log_norm.is_sign_positive());
     }
   }
 

@@ -9,7 +9,7 @@ pub struct PiecewiseConstantFn {
 
 impl PiecewiseConstantFn {
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
-    debug_assert!(breakpoints.len() + 1 == values.len());
+    debug_assert_eq!(breakpoints.len() + 1, values.len());
     Self {
       base: PiecewiseFnBase::new(breakpoints, values),
     }

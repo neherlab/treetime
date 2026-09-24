@@ -31,7 +31,7 @@ mod tests {
   }
 
   fn sub_at(pos: usize) -> Sub {
-    let nucs = [b'A', b'C', b'G', b'T'];
+    let nucs = *b"ACGT";
     Sub::new(c(nucs[pos % 4]), pos, c(nucs[(pos + 1) % 4])).unwrap()
   }
 

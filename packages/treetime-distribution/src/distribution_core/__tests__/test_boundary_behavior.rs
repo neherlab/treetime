@@ -143,7 +143,7 @@ mod tests {
 
     let product = distribution_multiplication(&Distribution::Function(fa), &Distribution::Function(fb))?;
 
-    let expected = 5.0 + (slope_a + slope_b) * 0.5;
+    let expected = 5.0 + f64::midpoint(slope_a, slope_b);
     assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
     Ok(())
   }

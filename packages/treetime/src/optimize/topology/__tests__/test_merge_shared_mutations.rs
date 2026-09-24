@@ -912,7 +912,7 @@ mod tests {
       n_unique_a: usize,
       n_unique_b: usize,
     ) -> Vec<(&'a str, &'a str, Vec<Sub>)> {
-      let nucs = [b'A', b'C', b'G', b'T'];
+      let nucs = *b"ACGT";
       let shared: Vec<Sub> = (0..n_shared).map(|i| sub(nucs[i % 4], i, nucs[(i + 1) % 4])).collect();
 
       let mut subs_a = shared.clone();

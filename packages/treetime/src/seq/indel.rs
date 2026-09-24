@@ -376,9 +376,9 @@ impl InDel {
 impl fmt::Display for InDel {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let delta_str = if self.is_deletion() {
-      format!("{} -> {}", &self.seq.as_str(), "-".repeat(self.seq.len()))
+      format!("{} -> {}", self.seq.as_str(), "-".repeat(self.seq.len()))
     } else {
-      format!("{} -> {}", "-".repeat(self.seq.len()), &self.seq.as_str())
+      format!("{} -> {}", "-".repeat(self.seq.len()), self.seq.as_str())
     };
     write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
   }

@@ -85,7 +85,7 @@ fn trim_trailing_zeros(input: &str) -> String {
       format!(
         "{}{}",
         &mantissa[..pos],
-        &mantissa[pos..].trim_end_matches('0').trim_end_matches('.')
+        mantissa[pos..].trim_end_matches('0').trim_end_matches('.')
       )
     },
     None => mantissa.to_owned(),

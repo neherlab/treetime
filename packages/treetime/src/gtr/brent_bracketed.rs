@@ -72,7 +72,7 @@ where
     problem: &mut Problem<O>,
     state: IterState<f64, (), (), (), (), f64>,
   ) -> Result<(IterState<f64, (), (), (), (), f64>, Option<KV>), Error> {
-    let m = 0.5 * (self.a + self.b);
+    let m = f64::midpoint(self.a, self.b);
     let tol1 = self.tol * self.x.abs() + self.zeps;
     let tol2 = 2.0 * tol1;
 

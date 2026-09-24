@@ -39,7 +39,7 @@ mod tests {
   fn test_grid_search_branch_lengths_is_log_spaced() {
     let grid = grid_search_branch_lengths(0.0, 0.001).unwrap();
 
-    assert!(grid.len() == 100);
+    assert_eq!(100, grid.len());
 
     for i in 1..grid.len() {
       assert!(
