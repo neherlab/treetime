@@ -62,7 +62,7 @@ probe() {
 # readiness signal is the socket; the timeout bounds a cold compile.
 wait_ready() {
   local url="${1}" timeout="${2}" pid="${3}" elapsed=0
-  until probe "${url}"; do
+  until probe "${url}" 2>/dev/null; do
     ((elapsed < timeout)) || return 1
     kill -0 "${pid}" 2>/dev/null || return 1
     sleep 1
@@ -96,7 +96,7 @@ up() {
   local web_url="http://127.0.0.1:${TREETIME_WEB_PORT}/"
   local url
   for url in "${api_url}" "${web_url}"; do
-    if probe "${url}"; then
+    if probe "${url}" 2>/dev/null; then
       printf 'A server already answers at %s; stop it before starting another (just status)\n' "${url}" >&2
       return 1
     fi
