@@ -25,7 +25,7 @@ These are the `timetree/dengue/500/basic` and `timetree/lassa/L/200/basic` cases
 ## Impact and scope
 
 - The command produces no output for these datasets.
-- Both cases are declared expected failures in `dev/smoke`, so a fix shows up as an unexpected pass until the declaration is removed.
+- Both cases are declared expected failures in `dev/smoke.toml`, so a fix shows up as an unexpected pass until the declaration is removed.
 
 ## Mechanism
 
