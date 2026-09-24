@@ -157,13 +157,15 @@ run-release bin *args:
 example name *args:
     cargo run --locked --release --example {{ quote(name) }} -- "${@:2}"
 
-# Rust and TypeScript tests
+# Rust and TypeScript tests, keep-going
 [group("test")]
-test: test-rs test-ts
+test: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial test-rs test-ts
 
-# Rust and TypeScript tests, and the tests of the custom dylint libraries
+# Rust and TypeScript tests, and the tests of the custom dylint libraries, keep-going
 [group("test")]
-test-all: test test-dylint
+test-all: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial test-rs test-ts test-dylint
 
 # Rust tests (nextest); arguments are nextest filters and options
 [group("test")]
@@ -185,17 +187,23 @@ test-integration-rs *args:
 test-list-rs *args:
     cargo nextest list --locked --workspace "$@"
 
-# TypeScript tests (vitest) and the custom oxlint rule tests
+# TypeScript tests (vitest) and the custom oxlint rule tests, keep-going
 [group("test")]
+[script]
 test-ts: _js
-    bun run --silent test
-    node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts"
+    status=0
+    bun run --silent test || status=1
+    node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts" || status=1
+    exit "${status}"
 
-# Tests of the custom dylint libraries and the pub-unused-report tool
+# Tests of the custom dylint libraries and the pub-unused-report tool, keep-going
 [group("test")]
+[script]
 test-dylint:
-    cd dev/lints/dylint-custom && {{ uncached_env }} cargo test --quiet --release --locked --lib --bins --target-dir {{ quote(dylint_target_dir / "report") }}
-    cd dev/lints/dylint-trailofbits && {{ uncached_env }} cargo test --quiet --locked --workspace --lib --target-dir {{ quote(dylint_target_dir / "trailofbits-test") }}
+    status=0
+    (cd dev/lints/dylint-custom && {{ uncached_env }} cargo test --quiet --release --locked --no-fail-fast --lib --bins --target-dir {{ quote(dylint_target_dir / "report") }}) || status=1
+    (cd dev/lints/dylint-trailofbits && {{ uncached_env }} cargo test --quiet --locked --no-fail-fast --workspace --lib --target-dir {{ quote(dylint_target_dir / "trailofbits-test") }}) || status=1
+    exit "${status}"
 
 # Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]
 [group("test")]
@@ -253,46 +261,54 @@ duplication *args:
 review-suppressions:
     dev/review-suppressions
 
-# Fast lints: clippy and oxlint
+# Fast lints: clippy and oxlint, keep-going
 [group("lint")]
-lint: lint-rs lint-ts
+lint: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial lint-rs lint-ts
 
-# Every lint: the fast lints, the custom lint libraries, unused code and dependencies, and the shell, Dockerfile, and workflow lints
+# Every lint: the fast lints, the custom lint libraries, unused code and dependencies, and the shell, Dockerfile, and workflow lints, keep-going
 [group("lint")]
-lint-all: lint dylint hawk deny shear knip lint-shell lint-docker lint-workflows
+lint-all: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial lint-rs lint-ts dylint hawk deny shear knip lint-shell lint-docker lint-workflows
 
 # Apply the fast automatic lint fixes: clippy, then oxlint; stage your changes first
 [group("lint")]
 lint-fix: lint-fix-rs lint-fix-ts
 
-# Clippy over all targets, denying warnings
+# Clippy over all targets; reports the warnings of every crate, then fails if there were any
 [group("lint")]
 lint-rs *args:
-    {{ lint_env }} cargo clippy --locked --workspace --all-targets "$@" -- --deny warnings
+    {{ lint_env }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked --workspace --all-targets --keep-going "$@"
 
 # Apply clippy's machine-applicable fixes; stage your changes first
 [group("lint")]
 lint-fix-rs:
     {{ lint_env }} cargo clippy --locked --workspace --all-targets --fix --allow-staged
 
-# TypeScript lints (oxlint) and the React 18 pin
+# TypeScript lints (oxlint) and the React 18 pin, keep-going
 [group("lint")]
+[script]
 lint-ts: _js
-    bun run --silent lint
-    jq -e '.workspaces.catalog.react | startswith("18.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 18.x: Auspice runs in-process and requires React 18\n' >&2; exit 1; }
+    status=0
+    bun run --silent lint || status=1
+    jq -e '.workspaces.catalog.react | startswith("18.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 18.x: Auspice runs in-process and requires React 18\n' >&2; status=1; }
+    exit "${status}"
 
 # Apply oxlint's automatic fixes
 [group("lint")]
 lint-fix-ts: _js
     bun run --silent lint:fix
 
-# Custom lint libraries (dylint), denying warnings and gated against mordant-baseline.toml, then the unused public items they recorded
+# Custom lint libraries (dylint) gated against mordant-baseline.toml, then the unused public items they recorded; reports every finding, then fails if there were any
 [group("lint")]
+[script]
 dylint *args:
+    status=0
     rm -f {{ quote(dylint_over_baseline) }}
-    DYLINT_RUSTFLAGS="-A unknown_lints --deny warnings" {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going "$@"
-    if [[ -s {{ quote(dylint_over_baseline) }} ]]; then printf 'mordant: findings over the committed baseline:\n' >&2; cat {{ quote(dylint_over_baseline) }} >&2; exit 1; fi
-    cd dev/lints/dylint-custom && {{ uncached_env }} {{ pub_unused_env }} cargo run --quiet --release --locked --target-dir {{ quote(dylint_target_dir / "report") }} --bin pub-unused-report -- {{ quote(justfile_directory() / "Cargo.toml") }} {{ prepend("--exclude-crate ", public_api_crates) }}
+    DYLINT_RUSTFLAGS="-A unknown_lints" CARGO_BUILD_WARNINGS=deny {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going "$@" || status=1
+    if [[ -s {{ quote(dylint_over_baseline) }} ]]; then printf 'mordant: findings over the committed baseline:\n' >&2; cat {{ quote(dylint_over_baseline) }} >&2; status=1; fi
+    (cd dev/lints/dylint-custom && {{ uncached_env }} {{ pub_unused_env }} cargo run --quiet --release --locked --target-dir {{ quote(dylint_target_dir / "report") }} --bin pub-unused-report -- {{ quote(justfile_directory() / "Cargo.toml") }} {{ prepend("--exclude-crate ", public_api_crates) }}) || status=1
+    exit "${status}"
 
 # Apply the automatic fixes of the custom lint libraries (dylint); stage your changes first
 [group("lint")]
@@ -321,16 +337,24 @@ deny:
 shear:
     cargo shear
 
-# TypeScript type checks of the packages, the tool configs, and the vendored lint rules
+# TypeScript type checks of the packages, the tool configs, and the vendored lint rules, keep-going
 [group("lint")]
+[script]
 typecheck: _js
-    bun run --silent typecheck
+    status=0
+    bun run --silent typecheck:packages || status=1
+    bun run --silent typecheck:tools || status=1
+    bun run --silent typecheck:vendor || status=1
+    exit "${status}"
 
-# Unused TypeScript files, exports, and dependencies (knip)
+# Unused TypeScript files, exports, and dependencies (knip), keep-going
 [group("lint")]
+[script]
 knip: _js
-    bun run --silent knip
-    bun run --silent knip:production
+    status=0
+    bun run --silent knip || status=1
+    bun run --silent knip:production || status=1
+    exit "${status}"
 
 # Shell scripts in dev/ (shellcheck)
 [group("lint")]
@@ -351,9 +375,10 @@ lint-workflows:
 [group("format")]
 fmt: fmt-rs fmt-ts fmt-other
 
-# Check formatting of Rust, TypeScript, shell, TOML, and the justfile
+# Check formatting of Rust, TypeScript, shell, TOML, and the justfile, keep-going
 [group("format")]
-fmt-check: fmt-check-rs fmt-check-ts fmt-check-other
+fmt-check: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial fmt-check-rs fmt-check-ts fmt-check-other
 
 # Format Rust (rustfmt)
 [group("format")]
@@ -382,12 +407,15 @@ fmt-other:
     RUST_LOG=warn taplo fmt
     just --fmt
 
-# Check formatting of shell scripts (shfmt), TOML (taplo), and the justfile
+# Check formatting of shell scripts (shfmt), TOML (taplo), and the justfile, keep-going
 [group("format")]
+[script]
 fmt-check-other:
-    shfmt --diff $(dev/shell-files)
-    RUST_LOG=warn taplo fmt --check --diff
-    just --fmt --check
+    status=0
+    shfmt --diff $(dev/shell-files) || status=1
+    RUST_LOG=warn taplo fmt --check --diff || status=1
+    just --fmt --check || status=1
+    exit "${status}"
 
 # Regenerate the committed generated files: just gen [schemas|openapi|ts-client|napi-types|cli-docs]...
 [group("generated")]
@@ -474,9 +502,10 @@ deps-upgrade-ts +packages: _main-checkout
 deps-age:
     dev/crate-age Cargo.lock dev/lints/*/Cargo.lock
 
-# Security advisories of both dependency graphs and the crate publish age (network)
+# Security advisories of both dependency graphs and the crate publish age (network), keep-going
 [group("deps")]
-audit: audit-rs audit-ts deps-age
+audit: _js
+    TREETIME_JS_READY=1 dev/run-checks --serial audit-rs audit-ts deps-age
 
 # Security advisories of the Rust dependencies (cargo-deny, network)
 [group("deps")]

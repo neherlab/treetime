@@ -1,6 +1,8 @@
 # cargo-nextest configuration. See https://nexte.st/docs/configuration/
 
 [profile.default]
+# Run every test, so one run reports all failures.
+fail-fast = false
 # Warn when a test runs longer than one period, and hard-terminate it after
 # five periods (5 minutes), so a hung test cannot stall the run indefinitely.
 slow-timeout = { period = "60s", terminate-after = 5 }

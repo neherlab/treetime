@@ -38,7 +38,9 @@
     "lint": "bun --bun oxlint",
     "lint:fix": "bun --bun oxlint --fix",
     "test": "vitest run",
-    "typecheck": "turbo run typecheck --continue=always && tsc -p tsconfig.tools.json && tsc -p tsconfig.vendor.json"
+    "typecheck:packages": "turbo run typecheck --continue=always",
+    "typecheck:tools": "tsc -p tsconfig.tools.json",
+    "typecheck:vendor": "tsc -p tsconfig.vendor.json"
   },
   "devDependencies": {
     "@fast-check/vitest": "0.5.0",
