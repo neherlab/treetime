@@ -35,6 +35,10 @@ pub(crate) use treetime::timetree::params::TimeMarginalMode;
 pub(crate) struct TreetimeTimetreeArgs {
   pub alignment: AlignmentArgs,
   pub tree: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
+  )]
   pub vcf_reference: Option<PathBuf>,
   pub metadata: Option<PathBuf>,
   pub metadata_id: MetadataIdArgs,
@@ -58,9 +62,21 @@ pub(crate) struct TreetimeTimetreeArgs {
   pub n_branches_posterior: Option<usize>,
   pub plot_tree: Option<PathBuf>,
   pub plot_rtt: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub tip_labels: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub no_tip_labels: bool,
   pub clock_filter: f64,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub n_iqd: Option<f64>,
   pub reroot: RerootArgs,
   pub keep_root: bool,
@@ -68,6 +84,7 @@ pub(crate) struct TreetimeTimetreeArgs {
   pub tip_slack: Option<f64>,
   pub covariation: bool,
   pub model_args: ModelArgs,
+  #[expect(dead_code, reason = "see kb/issues/M-timetree-method-anc-ignored.md")]
   pub method_anc: MethodAncestral,
   pub alphabet_args: AlphabetArgs,
   pub dense: Option<bool>,
@@ -92,11 +109,31 @@ pub(crate) struct TreetimeTimetreeArgs {
   pub output_selection: Vec<TimetreeOutputSelection>,
   pub topology_order: TopologyOrderArgs,
   pub seed: Option<u64>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub aa: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub custom_gtr: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub clock_filter_method: Option<String>,
   pub gen_per_year: f64,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub greedy_resolve: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub stochastic_resolve: bool,
 }
 

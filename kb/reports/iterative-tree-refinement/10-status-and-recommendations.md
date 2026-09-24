@@ -30,7 +30,7 @@
 | prune_short / --prune-short | True (default)       | False after resolution | Inside loop        | Yes (threshold) | Not implemented                                 |
 | --merge-shared-mutations    | N/A                  | N/A                    | Inside loop        | Yes             | N/A                                             |
 | --resolve-polytomies        | N/A                  | True (default)         | N/A                | N/A             | Yes                                             |
-| --keep-polytomies           | N/A                  | Available              | N/A                | N/A             | Parsed, not wired (`N-timetree-unused-cli-flags`) |
+| --keep-polytomies           | N/A                  | Available              | N/A                | N/A             | Parsed, not wired (`M-cli-flags-parsed-but-ignored`) |
 | --stochastic-resolve        | N/A                  | Available              | N/A                | N/A             | Not implemented                                 |
 | --damping                   | N/A (hardcoded 0.75) | N/A                    | Yes (default 0.75) | N/A             | N/A                                             |
 

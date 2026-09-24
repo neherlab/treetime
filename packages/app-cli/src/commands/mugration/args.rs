@@ -30,6 +30,10 @@ pub(crate) struct TreetimeMugrationArgs {
   pub output_augur_node_data: Option<PathBuf>,
   pub output_gtr: Option<PathBuf>,
   pub output_traits_csv: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub seed: Option<u64>,
   pub output: OutputCoreArgs,
   pub output_selection: Vec<MugrationOutputSelection>,

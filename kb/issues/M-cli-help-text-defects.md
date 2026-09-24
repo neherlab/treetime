@@ -26,7 +26,7 @@ Related: [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-
 
 `clock` command: `--prune-short` renders with no description at all (no doc comment on `commands/clock/args.rs:76`). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
 
-Related: [M-clock-unused-cli-arguments.md](M-clock-unused-cli-arguments.md) tracks that `--prune-short` in `clock` is parsed but never wired.
+Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) tracks that `--prune-short` in `clock` is parsed but never wired.
 
 ### D4: `clock` command description has `--keep_root` typo
 
@@ -48,7 +48,7 @@ Description: "The output consists of a file 'ancestral.fasta' with ancestral seq
 
 Defined at `commands/timetree/args.rs:184` but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
 
-Related: [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md) lists `--n-iqd`.
+Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists `--n-iqd`.
 
 ### D9: `homoplasy` and `arg` show full help for unimplemented commands
 
@@ -226,8 +226,7 @@ No aggregate ticket is ready. Each behavioral item must first select its parse/r
 
 ## Related issues
 
-- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md): unused flags in timetree (overlaps D8)
-- [M-clock-unused-cli-arguments.md](M-clock-unused-cli-arguments.md): unused flags in clock (overlaps D3)
+- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D3 and D8)
 - [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D2)
 - [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D9)
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)

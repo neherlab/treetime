@@ -238,7 +238,7 @@ be reproduced.
 `TimetreeParams`
 ([packages/treetime/src/timetree/pipeline.rs#L61](../../packages/treetime/src/timetree/pipeline.rs#L61))
 and is then unused, as tracked in
-[kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md).
+[kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md).
 
 ### Strategy selection
 
@@ -294,7 +294,7 @@ characterise the change in resolved topology.
 - [kb/v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md](../v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md)
 - [kb/v0-errata/timetree-stochastic-resolve-event-past-parent.md](../v0-errata/timetree-stochastic-resolve-event-past-parent.md)
 - [kb/v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md](../v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md)
-- [kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md) --
+- [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md) --
   `--keep-polytomies`
 - [kb/features/timetree.md](../features/timetree.md) -- polytomy resolution checklist
 - [kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md) --

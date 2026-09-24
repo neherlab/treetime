@@ -36,7 +36,6 @@ No implementation ticket is ready. The parser, compression, internal representat
 ## Related
 
 - [kb/features/io.md](../features/io.md) - VCF input, compressed VCF input, and VCF output inventory
-- [M-clock-unused-cli-arguments.md](M-clock-unused-cli-arguments.md) - `--vcf-reference` is parsed but unused by `clock`
-- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md) - `--vcf-reference` is parsed but unused by `timetree`
+- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) - other flags that are parsed but ignored; `--vcf-reference` in `ancestral`, `clock`, and `timetree` is tracked here
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md) - dense alignment materialization increases peak memory
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md) - partition semantics for segmented genomes

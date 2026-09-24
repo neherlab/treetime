@@ -38,6 +38,10 @@ pub(crate) fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams 
 #[derive(Debug, Clone)]
 pub(crate) struct TreetimeAncestralArgs {
   pub alignment: AlignmentArgs,
+  #[expect(
+    dead_code,
+    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
+  )]
   pub vcf_reference: Option<PathBuf>,
   pub tree: PathBuf,
   pub alphabet_args: AlphabetArgs,
@@ -45,10 +49,18 @@ pub(crate) struct TreetimeAncestralArgs {
   pub method_anc: MethodAncestral,
   pub dense: Option<bool>,
   pub gap_fill_args: GapFillArgs,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub zero_based: bool,
   pub include_leaves: bool,
   pub impute_missing_data: bool,
   pub reconstruct_tip_states: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub report_ambiguous: bool,
   pub ignore_missing_alns: bool,
   pub output_augur_node_data: Option<PathBuf>,
@@ -66,8 +78,20 @@ pub(crate) struct TreetimeAncestralArgs {
   pub gtr_iterations: usize,
   pub site_specific_gtr: bool,
   pub seed: Option<u64>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub aa: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub marginal: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub custom_gtr: Option<PathBuf>,
   pub sample_from_profile: SampleMode,
 }

@@ -9,6 +9,10 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
+#[expect(
+  dead_code,
+  reason = "the homoplasy command is not implemented, see kb/issues/H-homoplasy-command-unimplemented.md"
+)]
 pub(crate) struct TreetimeHomoplasyArgs {
   pub ancestral_args: TreetimeAncestralArgs,
   pub constant_sites: Option<usize>,

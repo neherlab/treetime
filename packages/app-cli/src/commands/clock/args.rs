@@ -23,19 +23,43 @@ use treetime::optimize::params::BranchLengthMode;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TreetimeClockArgs {
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub alignment: AlignmentArgs,
   pub tree: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
+  )]
   pub vcf_reference: Option<PathBuf>,
   pub metadata: PathBuf,
   pub metadata_id: MetadataIdArgs,
   pub date_column: DateColumnArgs,
   pub sequence_length: Option<usize>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub model_args: ModelArgs,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub branch_length_mode: BranchLengthMode,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub method_anc: MethodAncestral,
   pub clock_filter: f64,
   pub reroot: RerootArgs,
   pub keep_root: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub prune_short: bool,
   pub tip_slack: Option<f64>,
   pub covariation: bool,
@@ -45,9 +69,25 @@ pub(crate) struct TreetimeClockArgs {
   pub output_clock_csv: Option<PathBuf>,
   pub output_selection: Vec<ClockOutputSelection>,
   pub topology_order: TopologyOrderArgs,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub seed: Option<u64>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub clock_filter_method: Option<String>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub plot_rtt: Option<PathBuf>,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub prune_outliers: bool,
   pub branch_split: BranchSplitArgs,
   pub clock_regression: ClockRegressionArgs,

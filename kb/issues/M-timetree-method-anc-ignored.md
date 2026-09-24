@@ -12,7 +12,7 @@ A related Python report found that a marginal-sequence option was translated cor
 
 ## Related issues
 
-- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md) lists other unused flags in
+- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists other unused flags in
   the same pipeline
 
 ## Related tickets
