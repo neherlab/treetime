@@ -1086,10 +1086,11 @@ def text_diff(name: str, old: str, new: str) -> FileDiff:
       pairs += [(float(x), float(y)) for x, y in zip(NUMBER_RE.findall(a), NUMBER_RE.findall(b), strict=True) if x != y]
     if not structural and pairs:
       return FileDiff(name, "numeric", numeric_summary(pairs), numeric_examples(old_lines, new_lines))
-  diff = [line for line in difflib.unified_diff(old_lines, new_lines, "baseline", "current", n=0, lineterm="")
-          if line[:1] in "+-" and not line.startswith(("+++", "---"))]
-  changed = sum(1 for a, b in zip(old_lines, new_lines, strict=False) if a != b) + abs(len(old_lines) - len(new_lines))
-  return FileDiff(name, "structural", f"structural: {changed} lines differ",
+  diff = [line for line in list(difflib.unified_diff(old_lines, new_lines, n=0, lineterm=""))[2:]
+          if not line.startswith("@@")]
+  removed = sum(1 for line in diff if line.startswith("-"))
+  summary = f"structural: {removed} lines removed, {len(diff) - removed} added"
+  return FileDiff(name, "structural", summary,
                   [clip(line) for line in diff[:MAX_DIFF_ITEMS]])
 
 
