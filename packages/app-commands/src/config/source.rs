@@ -68,7 +68,7 @@ pub struct InvalidConfig {
 }
 
 /// One problem found in a configuration.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigProblem {
   /// Stable diagnostic code, for example `config::unknown-field`.
   pub code: String,
@@ -81,7 +81,7 @@ pub struct ConfigProblem {
 }
 
 /// Location of a problem in the configuration text.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigSpan {
   /// Byte offset of the first character.
   pub offset: usize,
