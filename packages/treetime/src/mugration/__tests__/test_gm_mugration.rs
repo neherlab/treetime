@@ -131,18 +131,18 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationParameters {
-      pub missing_data: String,
-      pub pc: Option<f64>,
-      pub sampling_bias_correction: Option<f64>,
-      pub weights_path: Option<String>,
-      pub iterations: usize,
+      missing_data: String,
+      pc: Option<f64>,
+      sampling_bias_correction: Option<f64>,
+      weights_path: Option<String>,
+      iterations: usize,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationOutput {
-      pub states: Vec<String>,
-      pub trait_assignments: BTreeMap<String, String>,
-      pub confidence: BTreeMap<String, Vec<f64>>,
+      pub(crate) states: Vec<String>,
+      pub(crate) trait_assignments: BTreeMap<String, String>,
+      pub(crate) confidence: BTreeMap<String, Vec<f64>>,
     }
 
     pub(super) fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {

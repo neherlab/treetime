@@ -432,10 +432,10 @@ mod tests {
     }
 
     pub(super) struct Hoisted {
-      pub v: GraphNodeKey,
-      pub un: GraphEdgeKey,
-      pub nv: GraphEdgeKey,
-      pub nc: GraphEdgeKey,
+      pub(crate) v: GraphNodeKey,
+      pub(crate) un: GraphEdgeKey,
+      pub(crate) nv: GraphEdgeKey,
+      pub(crate) nc: GraphEdgeKey,
     }
 
     impl Hoisted {

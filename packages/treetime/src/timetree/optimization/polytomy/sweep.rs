@@ -102,8 +102,8 @@ pub(crate) fn simulate_subtree(
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SubtreePlan {
-  pub mergers: Vec<Merger>,
-  pub roots: Vec<usize>,
+  pub(crate) mergers: Vec<Merger>,
+  pub(crate) roots: Vec<usize>,
 }
 
 impl SubtreePlan {
@@ -164,8 +164,8 @@ fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Res
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Lineage {
-  pub time: f64,
-  pub mutations: u32,
+  pub(crate) time: f64,
+  pub(crate) mutations: u32,
 }
 
 #[allow(
@@ -255,9 +255,9 @@ fn coalesce_pair(
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Merger {
-  pub time: f64,
-  pub left: usize,
-  pub right: usize,
+  pub(crate) time: f64,
+  pub(crate) left: usize,
+  pub(crate) right: usize,
 }
 
 #[derive(Clone, Copy, Debug)]

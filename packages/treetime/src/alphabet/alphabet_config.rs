@@ -13,10 +13,10 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {
-  pub canonical: Vec<u8>,
-  pub ambiguous: IndexMap<u8, Vec<u8>>,
-  pub unknown: u8,
-  pub gap: u8,
+  pub(crate) canonical: Vec<u8>,
+  pub(crate) ambiguous: IndexMap<u8, Vec<u8>>,
+  pub(crate) unknown: u8,
+  pub(crate) gap: u8,
 }
 
 impl AlphabetConfig {

@@ -10,7 +10,7 @@ use log::info;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 
-pub struct TimetreeOptimizer {
+pub(crate) struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,
   trace_sink: Option<Box<dyn TraceSink>>,
   max_iterations: usize,
@@ -95,11 +95,11 @@ impl TimetreeOptimizer {
     Ok(())
   }
 
-  pub fn iteration_count(&self) -> usize {
+  pub(crate) fn iteration_count(&self) -> usize {
     self.i
   }
 
-  pub fn trace(&self) -> &[ConvergenceMetrics] {
+  pub(crate) fn trace(&self) -> &[ConvergenceMetrics] {
     &self.trace
   }
 

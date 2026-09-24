@@ -30,11 +30,11 @@ pub trait TestCase: Clone + Send + Sync + Serialize {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCaseBase {
-  pub name: String,
-  pub description: String,
-  pub stress_type: String,
-  pub analytical_caution: String,
-  pub slowness: f64,
+  pub(crate) name: String,
+  pub(crate) description: String,
+  pub(crate) stress_type: String,
+  pub(crate) analytical_caution: String,
+  pub(crate) slowness: f64,
 }
 
 impl TestCaseBase {

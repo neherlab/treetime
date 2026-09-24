@@ -15,13 +15,13 @@ use approx::assert_ulps_eq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationMetrics {
-  pub aggregate: AggregateMetrics,
+  pub(crate) aggregate: AggregateMetrics,
 
-  pub pointwise: PointwiseMetrics,
+  pub(crate) pointwise: PointwiseMetrics,
 
-  pub spatial: SpatialMetrics,
+  pub(crate) spatial: SpatialMetrics,
 
-  pub distribution: DistributionMetrics,
+  pub(crate) distribution: DistributionMetrics,
 }
 
 impl ValidationMetrics {

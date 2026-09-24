@@ -40,6 +40,6 @@ pub(crate) type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct NodeTimeChange {
-  pub max: Option<f64>,
-  pub rms: Option<f64>,
+  pub(crate) max: Option<f64>,
+  pub(crate) rms: Option<f64>,
 }

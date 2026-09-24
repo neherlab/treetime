@@ -6,7 +6,7 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_error;
 
-pub fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {
+pub(crate) fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<Distribution<Y>, Report> {
   match dist {
     Distribution::Empty => Ok(Distribution::empty()),
     Distribution::Point(p) => Ok(negate_point(p)),
@@ -16,7 +16,7 @@ pub fn distribution_negation<Y: YAxisPolicy>(dist: &Distribution<Y>) -> Result<D
   }
 }
 
-pub fn distribution_negation_inplace<Y: YAxisPolicy>(dist: &mut Distribution<Y>) -> Result<(), Report> {
+pub(crate) fn distribution_negation_inplace<Y: YAxisPolicy>(dist: &mut Distribution<Y>) -> Result<(), Report> {
   match dist {
     Distribution::Empty => Ok(()),
     Distribution::Point(p) => {

@@ -9,16 +9,12 @@ use rand_distr::Gamma;
 use treetime_utils::array::ndarray::clamp_min;
 
 #[derive(Clone, Debug)]
-#[expect(
-  clippy::partial_pub_fields,
-  reason = "private fields hold derived state that only the constructor keeps consistent"
-)]
 pub struct GTRSiteSpecific {
-  pub seq_len: usize,
-  pub mu: Array1<f64>,
-  pub W: Array2<f64>,
-  pub pi: Array2<f64>,
-  pub eigvals: Array2<f64>,
+  pub(crate) seq_len: usize,
+  pub(crate) mu: Array1<f64>,
+  pub(crate) W: Array2<f64>,
+  pub(crate) pi: Array2<f64>,
+  pub(crate) eigvals: Array2<f64>,
   v: Array3<f64>,
   v_inv: Array3<f64>,
   interpolator: Option<ExpQtInterpolator>,
@@ -223,7 +219,7 @@ impl GTRSiteSpecific {
     rates
   }
 
-  pub fn expQt(&self, t: f64) -> Result<Array3<f64>, Report> {
+  pub(crate) fn expQt(&self, t: f64) -> Result<Array3<f64>, Report> {
     if t < 0.0 {
       return make_error!("Branch length t must be non-negative, got {t}");
     }
@@ -251,7 +247,12 @@ impl GTRSiteSpecific {
     result
   }
 
-  pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Result<Array2<f64>, Report> {
+  pub(crate) fn propagate_profile(
+    &self,
+    profile: &Array2<f64>,
+    t: f64,
+    return_log: bool,
+  ) -> Result<Array2<f64>, Report> {
     let qt = self.expQt(t)?;
     let mut result = Array2::zeros(profile.dim());
 
@@ -266,7 +267,7 @@ impl GTRSiteSpecific {
     Ok(result)
   }
 
-  pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Result<Array2<f64>, Report> {
+  pub(crate) fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Result<Array2<f64>, Report> {
     let qt = self.expQt(t)?;
     let mut result = Array2::zeros(profile.dim());
 
@@ -336,15 +337,15 @@ impl GTRSiteSpecific {
 
 #[derive(Clone, Debug)]
 pub struct ExpQtInterpolator {
-  pub t_grid: Array1<f64>,
-  pub data: Array4<f64>,
-  pub rate_scale: f64,
+  t_grid: Array1<f64>,
+  data: Array4<f64>,
+  rate_scale: f64,
 }
 
 impl ExpQtInterpolator {
-  pub const MAX_INTERP_RANGE: f64 = 10.0;
+  const MAX_INTERP_RANGE: f64 = 10.0;
 
-  pub fn interpolate(&self, t: f64) -> Array3<f64> {
+  fn interpolate(&self, t: f64) -> Array3<f64> {
     let n = self.t_grid.len();
     debug_assert!(n >= 2);
 

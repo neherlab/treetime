@@ -669,7 +669,7 @@ pub(super) mod tests {
     Ok(())
   }
 
-  pub(crate) mod generators {
+  mod generators {
     use proptest::prelude::*;
     pub(crate) fn gen_s() -> impl Strategy<Value = f64> {
       1e-6_f64..1e3_f64

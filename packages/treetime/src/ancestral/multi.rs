@@ -129,11 +129,11 @@ pub struct MarginalPartitionParams {
   pub ignore_missing_alns: bool,
 }
 
-pub struct ReconstructedPartition {
-  pub name: String,
-  pub partition: AncestralPartition,
-  pub alphabet: Alphabet,
-  pub model_name: GtrModelName,
-  pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
-  pub reference_override: Option<Seq>,
+pub(crate) struct ReconstructedPartition {
+  pub(crate) name: String,
+  pub(crate) partition: AncestralPartition,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) model_name: GtrModelName,
+  pub(crate) annotation: Option<AugurNodeDataJsonAnnotationEntry>,
+  pub(crate) reference_override: Option<Seq>,
 }

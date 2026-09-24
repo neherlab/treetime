@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionMetrics {
-  pub histograms: HistogramMetrics,
-  pub statistics: StatisticalMetrics,
-  pub properties: DistributionProperties,
+  pub(crate) histograms: HistogramMetrics,
+  pub(crate) statistics: StatisticalMetrics,
+  pub(crate) properties: DistributionProperties,
 }
 
 impl DistributionMetrics {

@@ -5,7 +5,7 @@ use smart_default::SmartDefault;
 #[serde(default)]
 pub struct BrentParams {
   #[default = 50]
-  pub brent_max_iters: usize,
+  pub(crate) brent_max_iters: usize,
   #[default = 1e-6]
-  pub brent_tolerance: f64,
+  pub(crate) brent_tolerance: f64,
 }

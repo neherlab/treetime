@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggregateMetrics {
-  pub domain_agreement: DomainAgreementMetrics,
-  pub performance: PerformanceMetrics,
-  pub execution_time_ms: f64,
+  pub(crate) domain_agreement: DomainAgreementMetrics,
+  pub(crate) performance: PerformanceMetrics,
+  pub(crate) execution_time_ms: f64,
 }
 
 impl AggregateMetrics {

@@ -7,7 +7,7 @@ use treetime_primitives::LogLh;
 
 #[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl OptimizationContribution {
-  pub fn evaluate(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
+  pub(crate) fn evaluate(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
     match self {
       OptimizationContribution::Dense(contribution) => evaluate_dense_contribution(contribution, branch_length),
       OptimizationContribution::Sparse(contribution) => evaluate_sparse_contribution(contribution, branch_length),
@@ -69,9 +69,9 @@ fn evaluate_mixed_impl(
 
 #[derive(Clone, Debug, Default)]
 pub struct OptimizationMetrics {
-  pub log_lh: LogLh,
-  pub derivative: f64,
-  pub second_derivative: f64,
+  pub(crate) log_lh: LogLh,
+  pub(crate) derivative: f64,
+  pub(crate) second_derivative: f64,
 }
 
 impl OptimizationMetrics {

@@ -29,10 +29,10 @@ use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDense {
-  pub inputs: DenseInputs,
-  pub index: usize,
-  pub alphabet: Alphabet,
-  pub length: usize,
+  pub(crate) inputs: DenseInputs,
+  pub(crate) index: usize,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) length: usize,
 }
 
 impl PartitionMarginalDense {

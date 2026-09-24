@@ -51,11 +51,11 @@ where
 
 #[derive(Debug, Clone)]
 pub struct FindRootResult<S> {
-  pub edge: Option<GraphEdgeKey>,
+  pub(crate) edge: Option<GraphEdgeKey>,
 
-  pub split: f64,
+  pub(crate) split: f64,
 
-  pub stats: S,
+  pub(crate) stats: S,
 
-  pub score: f64,
+  pub(crate) score: f64,
 }

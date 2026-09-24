@@ -453,7 +453,7 @@ pub(crate) fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64,
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 
-pub(crate) fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
+fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
   (
     (f.t_min(), f.t_max()),
     (BoundaryBehavior::Error, BoundaryBehavior::Error),

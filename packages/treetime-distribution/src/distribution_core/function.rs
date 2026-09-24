@@ -146,7 +146,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.y()
   }
 
-  pub fn grid(&self) -> &Grid<T> {
+  pub(crate) fn grid(&self) -> &Grid<T> {
     self.grid_fn.grid()
   }
 
@@ -220,7 +220,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(self)
   }
 
-  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+  pub(crate) fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     self.with_left_extrap(behavior)?.with_right_extrap(behavior)
   }
 
@@ -289,7 +289,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.len() == 0
   }
 
-  pub fn negate_arg(&self) -> Result<Self, Report>
+  pub(crate) fn negate_arg(&self) -> Result<Self, Report>
   where
     T: Float,
   {
@@ -329,7 +329,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn scale_y(&self, factor: T) -> Result<Self, Report>
+  pub(crate) fn scale_y(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,
   {
@@ -360,7 +360,7 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
   }
 }
 
-pub(crate) fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
+fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {

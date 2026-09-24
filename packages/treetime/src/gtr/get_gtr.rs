@@ -29,19 +29,19 @@ pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GtrOutput {
-  pub model_type: GtrModelType,
-  pub model_name: GtrModelName,
-  pub mu: f64,
+  pub(crate) model_type: GtrModelType,
+  pub(crate) model_name: GtrModelName,
+  pub(crate) mu: f64,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub pi: Array1<f64>,
+  pub(crate) pi: Array1<f64>,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   #[serde(rename = "W")]
-  pub w: Array2<f64>,
-  pub n_states: usize,
+  pub(crate) w: Array2<f64>,
+  pub(crate) n_states: usize,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub attribute: Option<String>,
+  pub(crate) attribute: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub states: Option<Vec<String>>,
+  pub(crate) states: Option<Vec<String>>,
 }
 
 #[bon]
@@ -124,10 +124,10 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct JC69Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }
 
 #[allow(
@@ -145,13 +145,13 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct K80Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default = 0.1]
-  pub kappa: f64,
+  pub(crate) kappa: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }
 
 #[allow(
@@ -171,13 +171,13 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
 #[derive(Clone, Debug, SmartDefault)]
 pub struct F81Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default(None)]
-  pub pi: Option<Array1<f64>>,
+  pub(crate) pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }
 
 #[allow(
@@ -202,16 +202,16 @@ pub(crate) fn hky85(
 #[derive(Clone, Debug, SmartDefault)]
 pub struct HKY85Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default = 0.1]
-  pub kappa: f64,
+  pub(crate) kappa: f64,
 
   #[default(None)]
-  pub pi: Option<Array1<f64>>,
+  pub(crate) pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }
 
 pub(crate) fn t92(
@@ -236,16 +236,16 @@ pub(crate) fn t92(
 #[derive(Copy, Clone, Debug, SmartDefault)]
 pub struct T92Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default = 0.1]
-  pub kappa: f64,
+  pub(crate) kappa: f64,
 
   #[default = 0.5]
-  pub pi_GC: f64,
+  pub(crate) pi_GC: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }
 
 pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
@@ -350,17 +350,17 @@ pub(crate) fn tn93(
 #[derive(Clone, Debug, SmartDefault)]
 pub struct TN93Params {
   #[default = 1.0]
-  pub mu: f64,
+  pub(crate) mu: f64,
 
   #[default = 1.0]
-  pub kappa1: f64,
+  pub(crate) kappa1: f64,
 
   #[default = 1.0]
-  pub kappa2: f64,
+  pub(crate) kappa2: f64,
 
   #[default(None)]
-  pub pi: Option<Array1<f64>>,
+  pub(crate) pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub alphabet: AlphabetName,
+  pub(crate) alphabet: AlphabetName,
 }

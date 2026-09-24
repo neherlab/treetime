@@ -60,10 +60,10 @@ where
 )]
 pub struct Args {
   #[arg(long, value_delimiter = ',', default_values_t = TestSuiteName::all(), help_heading = "Test Selection")]
-  pub test_suites: Vec<TestSuiteName>,
+  pub(crate) test_suites: Vec<TestSuiteName>,
 
   #[arg(long, default_value = "all", help_heading = "Test Selection")]
-  pub test_cases: String,
+  pub(crate) test_cases: String,
 
   #[arg(
     long,
@@ -71,30 +71,30 @@ pub struct Args {
     help_heading = "Test Selection",
     help = "Run test cases with slowness <= this threshold (0.0-1.0)"
   )]
-  pub slowness: f64,
+  pub(crate) slowness: f64,
 
   #[arg(long, value_delimiter = ',', default_values_t = ConvolutionAlgorithm::all(), help_heading = "Algorithms")]
-  pub conv_algorithms: Vec<ConvolutionAlgorithm>,
+  pub(crate) conv_algorithms: Vec<ConvolutionAlgorithm>,
 
   #[arg(long, value_delimiter = ',', default_values_t = MultiplicationAlgorithm::all(), help_heading = "Algorithms")]
-  pub mult_algorithms: Vec<MultiplicationAlgorithm>,
+  pub(crate) mult_algorithms: Vec<MultiplicationAlgorithm>,
 
   #[arg(long, default_value = "tmp/testing", help_heading = "Output")]
-  pub output_dir: String,
+  pub(crate) output_dir: String,
 
   #[arg(
     long,
     help_heading = "Output",
     help = "Show detailed output including per-test metrics"
   )]
-  pub verbose: bool,
+  pub(crate) verbose: bool,
 
   #[arg(
     long,
     help_heading = "Output",
     help = "List available test cases without running tests"
   )]
-  pub list_cases: bool,
+  pub(crate) list_cases: bool,
 }
 
 #[cfg_attr(

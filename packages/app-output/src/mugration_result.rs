@@ -131,8 +131,8 @@ pub struct ConfidenceRow {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct MugrationTraitsOutput {
-  pub attribute: String,
-  pub assignments: IndexMap<String, String>,
+  pub(crate) attribute: String,
+  pub(crate) assignments: IndexMap<String, String>,
 }
 
 impl MugrationTraitsOutput {
@@ -159,8 +159,8 @@ impl MugrationTraitsOutput {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MugrationNodeOut {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
+  pub(crate) name: Option<String>,
+  pub(crate) confidence: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

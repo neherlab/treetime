@@ -3,7 +3,7 @@ pub mod ancestral;
 pub mod cancel;
 pub mod clock;
 pub mod coalescent;
-pub mod constants;
+pub(crate) mod constants;
 pub mod error;
 pub mod gtr;
 pub(crate) mod hacks;
@@ -19,7 +19,7 @@ pub mod seq;
 pub mod timetree;
 
 #[cfg(test)]
-pub mod test_utils;
+pub(crate) mod test_utils;
 
 #[cfg(test)]
 mod graph;

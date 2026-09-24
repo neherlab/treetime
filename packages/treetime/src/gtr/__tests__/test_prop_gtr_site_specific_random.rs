@@ -77,10 +77,10 @@ mod tests {
 
     #[derive(Clone, Copy, Debug)]
     pub(super) struct RandomParams {
-      pub avg_mu: f64,
-      pub pi_dirichlet_alpha: f64,
-      pub W_dirichlet_alpha: f64,
-      pub mu_gamma_alpha: f64,
+      pub(crate) avg_mu: f64,
+      pub(crate) pi_dirichlet_alpha: f64,
+      pub(crate) W_dirichlet_alpha: f64,
+      pub(crate) mu_gamma_alpha: f64,
     }
 
     pub(super) fn random_gtr(n_states: usize, seq_len: usize, seed: u64, params: RandomParams) -> GTRSiteSpecific {

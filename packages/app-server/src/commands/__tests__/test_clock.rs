@@ -27,6 +27,9 @@ mod tests {
       .iter()
       .map(|(key, value)| (key.as_str(), value.is_object(), value.is_array()))
       .collect::<Vec<_>>();
-    assert_eq!(vec![("clock_model", true, false), ("regression_results", false, true)], shape);
+    assert_eq!(
+      vec![("clock_model", true, false), ("regression_results", false, true)],
+      shape
+    );
   }
 }

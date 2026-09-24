@@ -17,9 +17,9 @@ pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) ->
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalMetrics {
-  pub abs_error_stats: ErrorStatistics,
-  pub rel_error_stats: ErrorStatistics,
-  pub signed_error_stats: ErrorStatistics,
+  pub(crate) abs_error_stats: ErrorStatistics,
+  pub(crate) rel_error_stats: ErrorStatistics,
+  pub(crate) signed_error_stats: ErrorStatistics,
 }
 
 #[allow(
@@ -71,15 +71,15 @@ fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistic
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorStatistics {
-  pub mean: f64,
-  pub std: f64,
-  pub median: f64,
-  pub q25: f64,
-  pub q75: f64,
-  pub q95: f64,
-  pub q99: f64,
-  pub skewness: f64,
-  pub kurtosis: f64,
+  pub(crate) mean: f64,
+  pub(crate) std: f64,
+  pub(crate) median: f64,
+  pub(crate) q25: f64,
+  pub(crate) q75: f64,
+  pub(crate) q95: f64,
+  pub(crate) q99: f64,
+  pub(crate) skewness: f64,
+  pub(crate) kurtosis: f64,
 }
 
 pub(super) fn compute_std(data: &Array1<f64>) -> f64 {

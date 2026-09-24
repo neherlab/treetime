@@ -13,40 +13,40 @@ pub enum TestRunOutcome<T: TestCase> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult<T: TestCase> {
-  pub algorithm: String,
-  pub test_case: T,
-  pub execution_time_ms: f64,
+  pub(crate) algorithm: String,
+  pub(crate) test_case: T,
+  pub(crate) execution_time_ms: f64,
 
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub f_x_values: Array1<f64>,
+  pub(crate) f_x_values: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub f_y_values: Array1<f64>,
+  pub(crate) f_y_values: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub g_x_values: Array1<f64>,
+  pub(crate) g_x_values: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub g_y_values: Array1<f64>,
+  pub(crate) g_y_values: Array1<f64>,
 
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub evaluation_grid: Array1<f64>,
+  pub(crate) evaluation_grid: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub actual_values: Array1<f64>,
+  pub(crate) actual_values: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub expected_values: Array1<f64>,
+  pub(crate) expected_values: Array1<f64>,
 
-  pub metrics: ValidationMetrics,
+  pub(crate) metrics: ValidationMetrics,
 
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub log_scale_actual: Option<f64>,
+  pub(crate) log_scale_actual: Option<f64>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub log_scale_expected: Option<f64>,
+  pub(crate) log_scale_expected: Option<f64>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub log_scale_error: Option<f64>,
+  pub(crate) log_scale_error: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestFailure<T: TestCase> {
-  pub algorithm: String,
-  pub test_case: T,
-  pub error: String,
-  pub execution_time_ms: f64,
+  pub(crate) algorithm: String,
+  pub(crate) test_case: T,
+  pub(crate) error: String,
+  pub(crate) execution_time_ms: f64,
 }

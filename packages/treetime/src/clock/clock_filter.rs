@@ -110,8 +110,8 @@ pub(crate) fn clock_filter_inplace(
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
-  pub new_outliers: i32,
-  pub iqd: f64,
+  pub(crate) new_outliers: i32,
+  pub(crate) iqd: f64,
 }
 
 fn edge_branch_length(edge_key: GraphEdgeKey, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {

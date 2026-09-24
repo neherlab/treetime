@@ -173,7 +173,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use treetime_graph::graph::Graph;
 
-    pub(super) struct CountingSink(pub Arc<AtomicUsize>);
+    pub(super) struct CountingSink(pub(crate) Arc<AtomicUsize>);
 
     impl TraceSink for CountingSink {
       fn emit(&mut self, _metric: &ConvergenceMetrics) -> Result<(), Report> {

@@ -21,20 +21,20 @@ pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
 #[derive(Clone, Debug, Deserialize)]
 #[serde(try_from = "AlphabetConfig")]
 pub struct Alphabet {
-  pub all: StateSet,
-  pub canonical: StateSet,
-  pub ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
-  pub ambiguous_keys: StateSet,
-  pub determined: StateSet,
-  pub undetermined: StateSet,
-  pub unknown: AsciiChar,
-  pub gap: AsciiChar,
-  pub profile_map: ProfileMap,
-  pub char_to_set: IndexMap<AsciiChar, StateSet>,
-  pub set_to_char: IndexMap<StateSet, AsciiChar>,
-  pub char_to_index: Vec<Option<usize>>,
-  pub index_to_char: Vec<AsciiChar>,
-  pub config: AlphabetConfig,
+  all: StateSet,
+  canonical: StateSet,
+  ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
+  ambiguous_keys: StateSet,
+  determined: StateSet,
+  undetermined: StateSet,
+  unknown: AsciiChar,
+  gap: AsciiChar,
+  profile_map: ProfileMap,
+  char_to_set: IndexMap<AsciiChar, StateSet>,
+  set_to_char: IndexMap<StateSet, AsciiChar>,
+  char_to_index: Vec<Option<usize>>,
+  index_to_char: Vec<AsciiChar>,
+  config: AlphabetConfig,
 }
 impl Serialize for Alphabet {
   fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -199,7 +199,7 @@ impl Alphabet {
     Ok(profile)
   }
 
-  pub fn get_code(&self, profile: &Array1<f64>) -> Result<AsciiChar, Report> {
+  pub(crate) fn get_code(&self, profile: &Array1<f64>) -> Result<AsciiChar, Report> {
     self
       .profile_map
       .iter()
@@ -245,7 +245,7 @@ impl Alphabet {
     })
   }
 
-  pub fn n_chars(&self) -> usize {
+  pub(crate) fn n_chars(&self) -> usize {
     self.all.len()
   }
 
@@ -265,7 +265,7 @@ impl Alphabet {
     self.canonical.len()
   }
 
-  pub fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+  pub(crate) fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.ambiguous_keys.iter()
   }
 
@@ -273,7 +273,7 @@ impl Alphabet {
     self.ambiguous_keys.contains(c)
   }
 
-  pub fn n_ambiguous(&self) -> usize {
+  pub(crate) fn n_ambiguous(&self) -> usize {
     self.ambiguous.len()
   }
 
@@ -285,19 +285,19 @@ impl Alphabet {
     self.determined.contains(c)
   }
 
-  pub fn n_determined(&self) -> usize {
+  pub(crate) fn n_determined(&self) -> usize {
     self.determined.len()
   }
 
-  pub fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+  pub(crate) fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.undetermined.iter()
   }
 
-  pub fn is_undetermined(&self, c: AsciiChar) -> bool {
+  pub(crate) fn is_undetermined(&self, c: AsciiChar) -> bool {
     self.undetermined.contains(c)
   }
 
-  pub fn n_undetermined(&self) -> usize {
+  pub(crate) fn n_undetermined(&self) -> usize {
     self.undetermined.len()
   }
 

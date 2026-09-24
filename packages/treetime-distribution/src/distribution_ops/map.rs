@@ -4,7 +4,7 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_error;
 
-pub fn distribution_map<Y: YAxisPolicy, F>(dist: &Distribution<Y>, f: F) -> Result<Distribution<Y>, Report>
+pub(crate) fn distribution_map<Y: YAxisPolicy, F>(dist: &Distribution<Y>, f: F) -> Result<Distribution<Y>, Report>
 where
   F: Fn(f64) -> f64,
 {

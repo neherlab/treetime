@@ -13,7 +13,7 @@ pub struct DivStats {
 }
 
 impl DivStats {
-  pub fn new(count: f64, d_sum: f64, dsq_sum: f64) -> Self {
+  pub(crate) fn new(count: f64, d_sum: f64, dsq_sum: f64) -> Self {
     Self { count, d_sum, dsq_sum }
   }
 }

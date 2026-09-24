@@ -492,7 +492,7 @@ pub(super) mod tests {
   pub(crate) mod helpers {
     use super::*;
 
-    pub(crate) fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
+    fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
       names[&key].clone().expect("node has name")
     }
 

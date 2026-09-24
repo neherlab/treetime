@@ -9,7 +9,7 @@ use itertools::Itertools;
 use ndarray::Array1;
 use treetime_ops::multiply_many_lazy_normalize;
 
-pub fn scaled_distribution_multiplication(
+pub(crate) fn scaled_distribution_multiplication(
   a: &ScaledDistribution,
   b: &ScaledDistribution,
 ) -> Result<ScaledDistribution, Report> {
@@ -30,7 +30,9 @@ pub fn scaled_distribution_multiplication(
   Ok(ScaledDistribution::from_parts(combined_log_scale, normalized_product))
 }
 
-pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) -> Result<ScaledDistribution, Report> {
+pub(crate) fn scaled_distribution_multiply_many(
+  distributions: &[&ScaledDistribution],
+) -> Result<ScaledDistribution, Report> {
   match distributions {
     [] => Ok(ScaledDistribution::default()),
     [single] => Ok((*single).clone()),
@@ -77,7 +79,7 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
   }
 }
 
-pub(crate) fn try_extract_aligned_function_arrays<'a>(
+fn try_extract_aligned_function_arrays<'a>(
   distributions: &'a [&'a ScaledDistribution],
 ) -> Option<AlignedFunctionArrays<'a>> {
   let first = distributions.first()?;
@@ -106,7 +108,7 @@ pub(crate) fn try_extract_aligned_function_arrays<'a>(
   Some(AlignedFunctionArrays { arrays, x_min, dx })
 }
 
-pub(crate) struct AlignedFunctionArrays<'a> {
+struct AlignedFunctionArrays<'a> {
   arrays: Vec<&'a Array1<f64>>,
   x_min: f64,
   dx: f64,

@@ -440,10 +440,10 @@ impl SparseReconstruction {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseReconstruction {
-  pub partition: PartitionMarginalDense,
-  pub gtr: GTR,
-  pub node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  pub edges: DenseMarginalEdges,
+  pub(crate) partition: PartitionMarginalDense,
+  pub(crate) gtr: GTR,
+  pub(crate) node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
+  pub(crate) edges: DenseMarginalEdges,
 }
 
 impl DenseReconstruction {

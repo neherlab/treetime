@@ -267,7 +267,7 @@ pub(crate) enum TopologyOutcome {
 }
 
 impl TopologyOutcome {
-  pub(crate) fn changed(self) -> bool {
+  fn changed(self) -> bool {
     matches!(self, Self::Changed { .. })
   }
 

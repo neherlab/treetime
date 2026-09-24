@@ -11,9 +11,9 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
+const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 
-pub fn initialize_node_divergences(
+pub(crate) fn initialize_node_divergences(
   graph: &Graph,
   clock_state: &mut ClockState,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -32,7 +32,7 @@ pub fn initialize_node_divergences(
   Ok(())
 }
 
-pub fn extract_node_times(
+pub(crate) fn extract_node_times(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &TimetreeState,
@@ -52,7 +52,7 @@ pub fn extract_node_times(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn create_poisson_branch_distributions(
+pub(crate) fn create_poisson_branch_distributions(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mu: f64,

@@ -4,16 +4,16 @@ use ordered_float::OrderedFloat;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QualityMetrics {
-  pub rmse: f64,
-  pub r_squared: f64,
-  pub correlation: f64,
-  pub mass_error: f64,
-  pub rel_l2_error: f64,
-  pub rel_l1_error: f64,
-  pub rel_linf_error: f64,
-  pub max_log_error: f64,
-  pub symmetry_error: f64,
-  pub quantile_95_error: f64,
+  pub(crate) rmse: f64,
+  pub(crate) r_squared: f64,
+  pub(crate) correlation: f64,
+  pub(crate) mass_error: f64,
+  pub(crate) rel_l2_error: f64,
+  pub(crate) rel_l1_error: f64,
+  pub(crate) rel_linf_error: f64,
+  pub(crate) max_log_error: f64,
+  pub(crate) symmetry_error: f64,
+  pub(crate) quantile_95_error: f64,
 }
 
 #[allow(

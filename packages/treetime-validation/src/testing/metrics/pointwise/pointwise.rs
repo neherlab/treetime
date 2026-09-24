@@ -8,15 +8,15 @@ use treetime_utils::make_error;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointwiseMetrics {
-  pub total_points: usize,
-  pub dx: f64,
-  pub errors: PointwiseErrors,
-  pub structural: StructuralErrors,
-  pub tolerance: ToleranceMetrics,
+  pub(crate) total_points: usize,
+  pub(crate) dx: f64,
+  pub(crate) errors: PointwiseErrors,
+  pub(crate) structural: StructuralErrors,
+  pub(crate) tolerance: ToleranceMetrics,
 }
 
 impl PointwiseMetrics {
-  pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
+  fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
     Self::new_with_config(x, actual, expected, &PointwiseConfig::default())
   }
 

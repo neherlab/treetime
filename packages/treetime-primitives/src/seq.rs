@@ -73,7 +73,7 @@ impl Seq {
     }
   }
 
-  pub fn try_from_vec(vec: Vec<u8>) -> Result<Self, Report> {
+  pub(crate) fn try_from_vec(vec: Vec<u8>) -> Result<Self, Report> {
     let data = vec.into_iter().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()?;
     Ok(Self { data })
   }

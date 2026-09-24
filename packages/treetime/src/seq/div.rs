@@ -44,7 +44,7 @@ pub(crate) fn compute_divs(
 }
 
 #[derive(Debug, Default, Copy, Clone)]
-pub struct OnlyLeaves(pub bool);
+pub struct OnlyLeaves(pub(crate) bool);
 
 pub fn compute_edge_mutation_counts(
   graph: &Graph,

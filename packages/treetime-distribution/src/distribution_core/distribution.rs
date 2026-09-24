@@ -180,7 +180,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn left_extrap(&self) -> Option<BoundaryBehavior> {
+  pub(crate) fn left_extrap(&self) -> Option<BoundaryBehavior> {
     match self {
       Self::Function(function) => Some(function.left_extrap()),
       Self::Formula(_) => None,
@@ -188,7 +188,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn right_extrap(&self) -> Option<BoundaryBehavior> {
+  pub(crate) fn right_extrap(&self) -> Option<BoundaryBehavior> {
     match self {
       Self::Function(function) => Some(function.right_extrap()),
       Self::Formula(_) => None,
@@ -223,7 +223,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 }
 
 impl Distribution<Plain> {
-  pub fn max_value(&self) -> f64 {
+  pub(crate) fn max_value(&self) -> f64 {
     match self {
       Distribution::Empty => 0.0,
       Distribution::Point(p) => p.amplitude(),
@@ -233,7 +233,7 @@ impl Distribution<Plain> {
     }
   }
 
-  pub fn scale_by(&self, factor: f64) -> Self {
+  pub(crate) fn scale_by(&self, factor: f64) -> Self {
     match self {
       Distribution::Empty => Distribution::Empty,
       Distribution::Point(p) => Distribution::point(p.t(), p.amplitude() * factor),
@@ -245,7 +245,7 @@ impl Distribution<Plain> {
     }
   }
 
-  pub fn normalize(&self) -> Self {
+  pub(crate) fn normalize(&self) -> Self {
     let max_val = self.max_value();
     if max_val <= 0.0 || !max_val.is_finite() {
       return Distribution::Empty;
@@ -370,7 +370,7 @@ impl Distribution<Plain> {
 }
 
 impl Distribution<NegLog> {
-  pub fn to_plain_normalized(&self) -> Distribution<Plain> {
+  pub(crate) fn to_plain_normalized(&self) -> Distribution<Plain> {
     match self {
       Self::Empty => Distribution::Empty,
       Self::Point(point) => {
@@ -423,7 +423,7 @@ impl Distribution<NegLog> {
     }
   }
 
-  pub fn min_value(&self) -> f64 {
+  pub(crate) fn min_value(&self) -> f64 {
     match self {
       Distribution::Empty => f64::INFINITY,
       Distribution::Point(p) => p.amplitude(),
@@ -460,7 +460,7 @@ impl Distribution<NegLog> {
   }
 }
 
-pub(crate) fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
+fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
   let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
     return Distribution::Empty;
   };

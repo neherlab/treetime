@@ -122,8 +122,8 @@ where
 #[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
 pub struct RerootTopologyParams {
   #[default = true]
-  pub split_edge: bool,
+  pub(crate) split_edge: bool,
 
   #[default = true]
-  pub remove_trivial_root: bool,
+  pub(crate) remove_trivial_root: bool,
 }

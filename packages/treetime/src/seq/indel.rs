@@ -163,7 +163,7 @@ pub(crate) fn sort_indels(indels: &mut [InDel]) {
   indels.sort_by_key(|i| i.range);
 }
 
-pub fn compute_node_ranges(
+pub(crate) fn compute_node_ranges(
   child_non_chars: &[&Vec<(usize, usize)>],
   child_gaps: &[&Vec<(usize, usize)>],
 ) -> NodeRanges {
@@ -174,12 +174,12 @@ pub fn compute_node_ranges(
   NodeRanges { non_char, unknown }
 }
 
-pub struct NodeRanges {
-  pub non_char: Vec<(usize, usize)>,
-  pub unknown: Vec<(usize, usize)>,
+pub(crate) struct NodeRanges {
+  pub(crate) non_char: Vec<(usize, usize)>,
+  pub(crate) unknown: Vec<(usize, usize)>,
 }
 
-pub fn resolve_indels_backward(
+pub(crate) fn resolve_indels_backward(
   child_gaps: &[&Vec<(usize, usize)>],
   child_unknown: &[&Vec<(usize, usize)>],
   child_variable_indels: &[&BTreeSet<(usize, usize)>],
@@ -244,12 +244,12 @@ pub fn resolve_indels_backward(
   }
 }
 
-pub struct IndelsBackward {
-  pub variable_indel: BTreeSet<(usize, usize)>,
-  pub resolved_gaps: Vec<(usize, usize)>,
+pub(crate) struct IndelsBackward {
+  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
+  pub(crate) resolved_gaps: Vec<(usize, usize)>,
 }
 
-pub fn resolve_indels_forward(
+pub(crate) fn resolve_indels_forward(
   variable_indel: &BTreeSet<(usize, usize)>,
   node_gaps: &[(usize, usize)],
   node_non_char: &[(usize, usize)],
@@ -317,9 +317,9 @@ pub fn resolve_indels_forward(
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
-  pub range: (usize, usize),
-  pub seq: Seq,
-  pub kind: InDelKind,
+  pub(crate) range: (usize, usize),
+  pub(crate) seq: Seq,
+  pub(crate) kind: InDelKind,
 }
 
 impl InDel {
@@ -327,7 +327,7 @@ impl InDel {
     Self::new(range, seq, InDelKind::Deletion)
   }
 
-  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
+  pub(crate) fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
     Self::new(range, seq, InDelKind::Insertion)
   }
 

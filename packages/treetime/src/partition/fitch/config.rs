@@ -5,8 +5,8 @@ use treetime_primitives::AlignmentRecord;
 
 #[derive(Clone, Debug)]
 pub struct PartitionFitchConfig {
-  pub alphabet: Alphabet,
-  pub length: usize,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) length: usize,
 }
 
 impl PartitionFitchConfig {
@@ -26,9 +26,9 @@ impl From<PartitionFitchConfigWithAln> for PartitionFitchConfig {
 
 #[derive(Clone, Debug)]
 pub struct PartitionFitchConfigWithAln {
-  pub alphabet: Alphabet,
-  pub aln: Vec<AlignmentRecord>,
-  pub length: usize,
+  alphabet: Alphabet,
+  aln: Vec<AlignmentRecord>,
+  length: usize,
 }
 
 impl PartitionFitchConfigWithAln {

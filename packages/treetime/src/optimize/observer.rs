@@ -3,8 +3,8 @@ use argmin::core::{Error, KV, State};
 use log::debug;
 
 pub struct OptimizationObserver {
-  pub label: &'static str,
-  pub early_threshold: u64,
+  pub(crate) label: &'static str,
+  pub(crate) early_threshold: u64,
 }
 
 impl<I> Observe<I> for OptimizationObserver

@@ -5,7 +5,7 @@ pub mod gtr_site_specific;
 pub mod infer_gtr;
 pub(crate) mod jc_distance;
 pub mod refinement;
-pub mod site_rate_variation;
+pub(crate) mod site_rate_variation;
 
 #[cfg(test)]
 mod __tests__;

@@ -11,8 +11,8 @@ use treetime_graph::pass::{
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockInputs {
-  pub nodes: BTreeMap<GraphNodeKey, ClockNodeInput>,
-  pub edges: BTreeMap<GraphEdgeKey, ClockEdgeInput>,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockNodeInput>,
+  pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeInput>,
 }
 
 impl ClockInputs {
@@ -109,15 +109,15 @@ pub struct ClockNodeInput {
 
 #[derive(Debug, Clone, SmartDefault, PartialEq)]
 pub struct ClockEdgeInput {
-  pub time_length: Option<f64>,
+  pub(crate) time_length: Option<f64>,
   #[default = 1.0]
-  pub gamma: f64,
+  pub(crate) gamma: f64,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct ClockState {
-  pub nodes: BTreeMap<GraphNodeKey, ClockNodeState>,
-  pub edges: BTreeMap<GraphEdgeKey, ClockEdgeState>,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockNodeState>,
+  pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeState>,
 }
 
 impl ClockState {
@@ -229,7 +229,7 @@ pub struct ClockNodeState {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockEdgeState {
-  pub clock_to_parent: ClockSet,
-  pub clock_to_child: ClockSet,
-  pub clock_from_child: ClockSet,
+  pub(crate) clock_to_parent: ClockSet,
+  pub(crate) clock_to_child: ClockSet,
+  pub(crate) clock_from_child: ClockSet,
 }

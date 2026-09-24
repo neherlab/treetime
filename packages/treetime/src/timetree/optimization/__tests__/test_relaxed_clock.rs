@@ -371,24 +371,24 @@ mod tests {
 
     #[derive(Deserialize)]
     pub(super) struct GmInput {
-      pub name: String,
-      pub newick: String,
-      pub clock_rate: f64,
-      pub one_mutation: f64,
-      pub slack: f64,
-      pub coupling: f64,
-      pub branches: BTreeMap<String, GmBranchInput>,
+      pub(crate) name: String,
+      pub(crate) newick: String,
+      pub(crate) clock_rate: f64,
+      pub(crate) one_mutation: f64,
+      pub(crate) slack: f64,
+      pub(crate) coupling: f64,
+      pub(crate) branches: BTreeMap<String, GmBranchInput>,
     }
 
     #[derive(Deserialize)]
     pub(super) struct GmBranchInput {
-      pub clock_length: f64,
+      pub(crate) clock_length: f64,
     }
 
     #[derive(Deserialize)]
     pub(super) struct GmOutput {
-      pub name: String,
-      pub gammas: BTreeMap<String, f64>,
+      pub(crate) name: String,
+      pub(crate) gammas: BTreeMap<String, f64>,
     }
 
     pub(super) fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {

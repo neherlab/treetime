@@ -271,10 +271,10 @@ pub enum ClockModelStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegressionStats {
-  pub chisq: f64,
-  pub r_val: f64,
+  pub(crate) chisq: f64,
+  pub(crate) r_val: f64,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub hessian: Array2<f64>,
+  pub(crate) hessian: Array2<f64>,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub cov: Array2<f64>,
+  pub(crate) cov: Array2<f64>,
 }

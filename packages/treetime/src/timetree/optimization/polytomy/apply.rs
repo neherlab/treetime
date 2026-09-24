@@ -169,7 +169,7 @@ fn attach(
 
 #[derive(Clone, Copy, Debug)]
 pub struct ChildRef {
-  pub node_key: GraphNodeKey,
-  pub edge_key: GraphEdgeKey,
-  pub time: f64,
+  pub(crate) node_key: GraphNodeKey,
+  pub(crate) edge_key: GraphEdgeKey,
+  pub(crate) time: f64,
 }

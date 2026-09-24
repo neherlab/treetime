@@ -16,7 +16,7 @@ const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 
-pub fn distribution_convolution_fine<Y: SupportsConvolution>(
+pub(crate) fn distribution_convolution_fine<Y: SupportsConvolution>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
@@ -26,7 +26,7 @@ pub fn distribution_convolution_fine<Y: SupportsConvolution>(
   }
 }
 
-pub fn distribution_convolution<Y: SupportsConvolution>(
+pub(crate) fn distribution_convolution<Y: SupportsConvolution>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {

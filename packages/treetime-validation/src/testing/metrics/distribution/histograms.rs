@@ -65,10 +65,10 @@ pub(super) fn compute_histogram_metrics(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistogramMetrics {
-  pub abs_error_histogram: ErrorHistogram,
-  pub rel_error_histogram: ErrorHistogram,
-  pub signed_error_histogram: ErrorHistogram,
-  pub summary: HistogramSummary,
+  pub(crate) abs_error_histogram: ErrorHistogram,
+  pub(crate) rel_error_histogram: ErrorHistogram,
+  pub(crate) signed_error_histogram: ErrorHistogram,
+  pub(crate) summary: HistogramSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,9 +155,9 @@ pub enum HistogramMode {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorHistogram {
-  pub bin_edges: Vec<f64>,
-  pub bin_counts: Vec<usize>,
-  pub bin_centers: Vec<f64>,
+  pub(crate) bin_edges: Vec<f64>,
+  pub(crate) bin_counts: Vec<usize>,
+  pub(crate) bin_centers: Vec<f64>,
 }
 
 #[cfg(test)]

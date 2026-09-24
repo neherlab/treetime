@@ -40,7 +40,7 @@ pub fn nex_write_file_with(
   writeln!(f).wrap_err_with(context)
 }
 
-pub fn nex_write_str(
+pub(crate) fn nex_write_str(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,

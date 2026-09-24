@@ -23,10 +23,10 @@ pub(crate) fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: 
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AbsoluteErrorStats {
-  pub mean: f64,
-  pub max: f64,
-  pub std: f64,
-  pub bias: f64,
+  pub(crate) mean: f64,
+  pub(crate) max: f64,
+  pub(crate) std: f64,
+  pub(crate) bias: f64,
 }
 
 #[allow(
@@ -82,8 +82,8 @@ pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: 
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RelativeErrorStats {
-  pub mean: f64,
-  pub max: f64,
-  pub mape: f64,
-  pub median: f64,
+  pub(crate) mean: f64,
+  pub(crate) max: f64,
+  pub(crate) mape: f64,
+  pub(crate) median: f64,
 }

@@ -107,11 +107,11 @@ pub(crate) fn optimize_skyline(
 
 #[derive(Debug, Clone)]
 pub struct SkylineParams {
-  pub n_points: usize,
-  pub stiffness: f64,
-  pub tolerance: f64,
-  pub max_iter: u64,
-  pub n_std: f64,
+  pub(crate) n_points: usize,
+  pub(crate) stiffness: f64,
+  pub(crate) tolerance: f64,
+  pub(crate) max_iter: u64,
+  pub(crate) n_std: f64,
 }
 
 impl Default for SkylineParams {
@@ -128,14 +128,14 @@ impl Default for SkylineParams {
 
 #[derive(Debug, Clone)]
 pub struct SkylineResult {
-  pub tc_distribution: Distribution,
-  pub tc_schedule: PiecewiseConstantFn,
-  pub segment_boundaries: Array1<f64>,
-  pub tc_values: Array1<f64>,
-  pub log_tc_variances: Array1<f64>,
-  pub tc_lower_bounds: Array1<f64>,
-  pub tc_upper_bounds: Array1<f64>,
-  pub log_likelihood: LogLh,
+  pub(crate) tc_distribution: Distribution,
+  pub(crate) tc_schedule: PiecewiseConstantFn,
+  pub(crate) segment_boundaries: Array1<f64>,
+  pub(crate) tc_values: Array1<f64>,
+  pub(crate) log_tc_variances: Array1<f64>,
+  pub(crate) tc_lower_bounds: Array1<f64>,
+  pub(crate) tc_upper_bounds: Array1<f64>,
+  pub(crate) log_likelihood: LogLh,
 }
 
 #[allow(

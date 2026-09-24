@@ -25,9 +25,9 @@ use util_newick::{
 
 #[derive(Debug)]
 pub struct NwkFastaInput {
-  pub graph: Graph,
-  pub nodes: BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
-  pub edges: BTreeMap<GraphEdgeKey, NwkFastaEdgeInput>,
+  graph: Graph,
+  nodes: BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
+  edges: BTreeMap<GraphEdgeKey, NwkFastaEdgeInput>,
 }
 
 impl NwkFastaInput {
@@ -279,7 +279,7 @@ pub fn nwk_write(
   nwk_write_with(writer, graph, names, weights, options, &providers)
 }
 
-pub(crate) fn nwk_write_with(
+fn nwk_write_with(
   writer: &mut impl Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

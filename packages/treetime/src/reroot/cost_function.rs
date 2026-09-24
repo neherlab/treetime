@@ -14,13 +14,13 @@ impl<S: RootStats> CostFunction for &EdgeCostFn<S> {
 }
 
 pub struct EdgeCostFn<S: RootStats> {
-  pub to_parent: S,
-  pub to_child: S,
-  pub branch_length: f64,
-  pub branch_variance: f64,
-  pub is_leaf: bool,
-  pub leaf_time: Option<f64>,
-  pub variance_offset_leaf: f64,
+  pub(crate) to_parent: S,
+  pub(crate) to_child: S,
+  pub(crate) branch_length: f64,
+  pub(crate) branch_variance: f64,
+  pub(crate) is_leaf: bool,
+  pub(crate) leaf_time: Option<f64>,
+  pub(crate) variance_offset_leaf: f64,
 }
 
 impl<S: RootStats> EdgeCostFn<S> {

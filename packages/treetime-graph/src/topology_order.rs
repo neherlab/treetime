@@ -30,14 +30,14 @@ impl Default for TopologyOrderSpec {
 }
 
 impl TopologyOrderSpec {
-  pub fn keep() -> Self {
+  fn keep() -> Self {
     Self {
       preset: TopologyOrderPreset::Keep,
       ..Self::default()
     }
   }
 
-  pub fn descendant_count(reverse: bool) -> Self {
+  fn descendant_count(reverse: bool) -> Self {
     Self {
       preset: if reverse {
         TopologyOrderPreset::DescendantCountReverse

@@ -58,8 +58,8 @@ pub(crate) fn count_transitions_dense(
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseInputs {
-  pub min_branch_length: f64,
-  pub filter_uninformative_root: bool,
+  pub(crate) min_branch_length: f64,
+  pub(crate) filter_uninformative_root: bool,
 }
 
 impl DenseInputs {

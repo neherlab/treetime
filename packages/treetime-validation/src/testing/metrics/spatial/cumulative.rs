@@ -27,12 +27,12 @@ pub(super) fn compute_cumulative_metrics(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CumulativeMetrics {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub cumulative_error: Array1<f64>,
-  pub summary: CumulativeSummary,
+  pub(crate) cumulative_error: Array1<f64>,
+  pub(crate) summary: CumulativeSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CumulativeSummary {
-  pub final_value: f64,
-  pub max_abs: f64,
+  pub(crate) final_value: f64,
+  pub(crate) max_abs: f64,
 }

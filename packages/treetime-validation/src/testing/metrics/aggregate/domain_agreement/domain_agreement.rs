@@ -22,15 +22,15 @@ use treetime_utils::make_error;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainAgreementMetrics {
-  pub total_points: usize,
-  pub abs_error_stats: AbsoluteErrorStats,
-  pub rel_error_stats: RelativeErrorStats,
-  pub quality_metrics: QualityMetrics,
-  pub peak_metrics: PeakMetrics,
-  pub max_error_location: MaxErrorLocation,
-  pub abs_tolerance_fractions: [f64; 3],
-  pub rel_tolerance_fractions: [f64; 3],
-  pub overall_assessment: AgreementAssessment,
+  pub(crate) total_points: usize,
+  pub(crate) abs_error_stats: AbsoluteErrorStats,
+  pub(crate) rel_error_stats: RelativeErrorStats,
+  pub(crate) quality_metrics: QualityMetrics,
+  pub(crate) peak_metrics: PeakMetrics,
+  pub(crate) max_error_location: MaxErrorLocation,
+  pub(crate) abs_tolerance_fractions: [f64; 3],
+  pub(crate) rel_tolerance_fractions: [f64; 3],
+  pub(crate) overall_assessment: AgreementAssessment,
 }
 
 #[bon]

@@ -60,24 +60,24 @@ pub(super) fn compute_structural_errors(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuralErrors {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub first_derivative: Array1<f64>,
+  pub(crate) first_derivative: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub second_derivative: Array1<f64>,
+  pub(crate) second_derivative: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub symmetry_residual: Array1<f64>,
+  pub(crate) symmetry_residual: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub monotonicity_violations: Array1<f64>,
-  pub summary: StructuralErrorSummary,
+  pub(crate) monotonicity_violations: Array1<f64>,
+  pub(crate) summary: StructuralErrorSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuralErrorSummary {
-  pub d1_max: f64,
-  pub d1_mean: f64,
-  pub d2_max: f64,
-  pub d2_mean: f64,
-  pub symmetry_max: f64,
-  pub monotonicity_violation_count: usize,
+  pub(crate) d1_max: f64,
+  pub(crate) d1_mean: f64,
+  pub(crate) d2_max: f64,
+  pub(crate) d2_mean: f64,
+  pub(crate) symmetry_max: f64,
+  pub(crate) monotonicity_violation_count: usize,
 }
 
 fn compute_first_derivative(y: &Array1<f64>, dx: f64) -> Array1<f64> {

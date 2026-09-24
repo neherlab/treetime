@@ -84,11 +84,11 @@ pub(crate) fn get_coefficients(
 }
 
 pub struct PartitionContribution {
-  pub site_contributions: Vec<SiteContribution>,
-  pub gtr: GTR,
+  pub(crate) site_contributions: Vec<SiteContribution>,
+  pub(crate) gtr: GTR,
 }
 
 pub struct SiteContribution {
-  pub multiplicity: f64,
-  pub coefficients: ndarray::Array1<f64>,
+  pub(crate) multiplicity: f64,
+  pub(crate) coefficients: ndarray::Array1<f64>,
 }

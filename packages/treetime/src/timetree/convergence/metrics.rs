@@ -5,14 +5,14 @@ pub(crate) const NODE_TIME_TOLERANCE_YEARS: f64 = 1e-2;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConvergenceMetrics {
-  pub n_diff: usize,
-  pub n_resolved: usize,
-  pub max_time_change: Option<f64>,
-  pub rms_time_change: Option<f64>,
-  pub log_lh_seq: Option<LogLh>,
-  pub log_lh_pos: Option<LogLh>,
-  pub log_lh_coal: Option<LogLh>,
-  pub log_lh_total: Option<LogLh>,
+  pub(crate) n_diff: usize,
+  pub(crate) n_resolved: usize,
+  pub(crate) max_time_change: Option<f64>,
+  pub(crate) rms_time_change: Option<f64>,
+  pub(crate) log_lh_seq: Option<LogLh>,
+  pub(crate) log_lh_pos: Option<LogLh>,
+  pub(crate) log_lh_coal: Option<LogLh>,
+  pub(crate) log_lh_total: Option<LogLh>,
 }
 
 impl ConvergenceMetrics {

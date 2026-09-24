@@ -7,15 +7,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpatialMetrics {
-  pub total_points: usize,
-  pub dx: f64,
-  pub regional: RegionalMetrics,
-  pub windowed: WindowedMetrics,
-  pub cumulative: CumulativeMetrics,
+  pub(crate) total_points: usize,
+  pub(crate) dx: f64,
+  pub(crate) regional: RegionalMetrics,
+  pub(crate) windowed: WindowedMetrics,
+  pub(crate) cumulative: CumulativeMetrics,
 }
 
 impl SpatialMetrics {
-  pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>, dx: f64) -> eyre::Result<Self> {
+  fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>, dx: f64) -> eyre::Result<Self> {
     Self::new_with_config(x, actual, expected, dx, &SpatialConfig::default())
   }
 

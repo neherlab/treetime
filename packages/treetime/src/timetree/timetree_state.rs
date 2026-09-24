@@ -14,8 +14,8 @@ use treetime_graph::pass::{
 
 #[derive(Debug, Clone, Default)]
 pub struct TimetreeState {
-  pub nodes: BTreeMap<GraphNodeKey, DateNodeState>,
-  pub edges: BTreeMap<GraphEdgeKey, DateEdgeState>,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, DateNodeState>,
+  pub(crate) edges: BTreeMap<GraphEdgeKey, DateEdgeState>,
 }
 
 impl TimetreeState {

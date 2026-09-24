@@ -173,64 +173,64 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub(super) struct JC69Input {
-      pub mu: f64,
+      pub(crate) mu: f64,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct K80Input {
-      pub mu: f64,
-      pub kappa: f64,
+      pub(crate) mu: f64,
+      pub(crate) kappa: f64,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct F81Input {
-      pub mu: f64,
+      pub(crate) mu: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
-      pub pi: Option<Array1<f64>>,
+      pub(crate) pi: Option<Array1<f64>>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct HKY85Input {
-      pub mu: f64,
-      pub kappa: f64,
+      pub(crate) mu: f64,
+      pub(crate) kappa: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
-      pub pi: Option<Array1<f64>>,
+      pub(crate) pi: Option<Array1<f64>>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct T92Input {
-      pub mu: f64,
-      pub kappa: f64,
-      pub pi_gc: f64,
+      pub(crate) mu: f64,
+      pub(crate) kappa: f64,
+      pub(crate) pi_gc: f64,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct TN93Input {
-      pub mu: f64,
-      pub kappa1: f64,
-      pub kappa2: f64,
+      pub(crate) mu: f64,
+      pub(crate) kappa1: f64,
+      pub(crate) kappa2: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
-      pub pi: Option<Array1<f64>>,
+      pub(crate) pi: Option<Array1<f64>>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct CustomInput {
-      pub mu: f64,
+      pub(crate) mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
-      pub pi: Array1<f64>,
+      pub(crate) pi: Array1<f64>,
       #[serde(rename = "W", deserialize_with = "array2_from_vec")]
-      pub w: Array2<f64>,
+      pub(crate) w: Array2<f64>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct AllInputs {
-      pub jc69: IndexMap<String, JC69Input>,
-      pub k80: IndexMap<String, K80Input>,
-      pub f81: IndexMap<String, F81Input>,
-      pub hky85: IndexMap<String, HKY85Input>,
-      pub t92: IndexMap<String, T92Input>,
-      pub tn93: IndexMap<String, TN93Input>,
-      pub custom: IndexMap<String, CustomInput>,
+      pub(crate) jc69: IndexMap<String, JC69Input>,
+      pub(crate) k80: IndexMap<String, K80Input>,
+      pub(crate) f81: IndexMap<String, F81Input>,
+      pub(crate) hky85: IndexMap<String, HKY85Input>,
+      pub(crate) t92: IndexMap<String, T92Input>,
+      pub(crate) tn93: IndexMap<String, TN93Input>,
+      pub(crate) custom: IndexMap<String, CustomInput>,
     }
 
     #[derive(Debug, Deserialize)]
@@ -257,13 +257,13 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub(super) struct AllOutputs {
-      pub jc69: IndexMap<String, GtrOutput>,
-      pub k80: IndexMap<String, GtrOutput>,
-      pub f81: IndexMap<String, GtrOutput>,
-      pub hky85: IndexMap<String, GtrOutput>,
-      pub t92: IndexMap<String, GtrOutput>,
-      pub tn93: IndexMap<String, GtrOutput>,
-      pub custom: IndexMap<String, GtrOutput>,
+      pub(crate) jc69: IndexMap<String, GtrOutput>,
+      pub(crate) k80: IndexMap<String, GtrOutput>,
+      pub(crate) f81: IndexMap<String, GtrOutput>,
+      pub(crate) hky85: IndexMap<String, GtrOutput>,
+      pub(crate) t92: IndexMap<String, GtrOutput>,
+      pub(crate) tn93: IndexMap<String, GtrOutput>,
+      pub(crate) custom: IndexMap<String, GtrOutput>,
     }
 
     pub(super) fn load_gm_gtr_inputs() -> AllInputs {

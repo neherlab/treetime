@@ -20,7 +20,7 @@ impl Composition {
     Self { counts, gap }
   }
 
-  pub fn from_counts<I: IntoIterator<Item = (AsciiChar, usize)>>(counts: I, gap: AsciiChar) -> Self {
+  pub(crate) fn from_counts<I: IntoIterator<Item = (AsciiChar, usize)>>(counts: I, gap: AsciiChar) -> Self {
     Self {
       counts: counts.into_iter().collect(),
       gap,
@@ -45,7 +45,7 @@ impl Composition {
     this
   }
 
-  pub fn with_seq_str(
+  pub(crate) fn with_seq_str(
     sequence: &str,
     alphabet_chars: impl IntoIterator<Item = AsciiChar>,
     gap: AsciiChar,
@@ -69,12 +69,12 @@ impl Composition {
     }
   }
 
-  pub fn add_seq_str(&mut self, sequence: &str) -> Result<(), Report> {
+  pub(crate) fn add_seq_str(&mut self, sequence: &str) -> Result<(), Report> {
     self.add_seq(Self::str_to_chars(sequence)?);
     Ok(())
   }
 
-  pub fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
+  fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
     s.bytes().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()
   }
 

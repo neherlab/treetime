@@ -8,7 +8,7 @@ pub mod params;
 pub mod pipeline;
 pub(crate) mod refinement;
 pub mod timetree_state;
-pub mod utils;
+pub(crate) mod utils;
 
 #[cfg(test)]
 mod __tests__;

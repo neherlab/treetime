@@ -33,11 +33,11 @@ pub(crate) fn find_best_split(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FindRootResult {
-  pub edge: Option<GraphEdgeKey>,
+  pub(crate) edge: Option<GraphEdgeKey>,
 
-  pub split: f64,
+  pub(crate) split: f64,
 
-  pub clock_set: ClockSet,
+  pub(crate) clock_set: ClockSet,
 
-  pub chisq: f64,
+  pub(crate) chisq: f64,
 }

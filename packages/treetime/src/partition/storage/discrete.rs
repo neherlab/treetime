@@ -31,7 +31,7 @@ impl DiscreteStates {
     self.states.len()
   }
 
-  pub fn is_empty(&self) -> bool {
+  fn is_empty(&self) -> bool {
     self.states.is_empty()
   }
 
@@ -54,7 +54,7 @@ impl DiscreteStates {
     self.states.iter().map(String::as_str)
   }
 
-  pub fn missing_marker(&self) -> &str {
+  fn missing_marker(&self) -> &str {
     &self.missing
   }
 }

@@ -53,34 +53,34 @@ impl MarginalNodeState for DenseNodeState {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {
-  pub gaps: Vec<(usize, usize)>,
-  pub unknown: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>,
-  pub variable_indel: BTreeSet<(usize, usize)>,
-  pub sequence: Seq,
+  pub(crate) gaps: Vec<(usize, usize)>,
+  pub(crate) unknown: Vec<(usize, usize)>,
+  pub(crate) non_char: Vec<(usize, usize)>,
+  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
+  pub(crate) sequence: Seq,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeBackward {
-  pub msg_to_parent: DenseSeqDistribution,
-  pub msg_from_child: DenseSeqDistribution,
+  pub(crate) msg_to_parent: DenseSeqDistribution,
+  pub(crate) msg_from_child: DenseSeqDistribution,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeForward {
-  pub msg_to_child: DenseSeqDistribution,
+  pub(crate) msg_to_child: DenseSeqDistribution,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgeEstimate {
-  pub indels: Vec<InDel>,
+  pub(crate) indels: Vec<InDel>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqDistribution {
-  pub dis: Array2<f64>,
+  pub(crate) dis: Array2<f64>,
 
-  pub log_lh: LogLh,
+  pub(crate) log_lh: LogLh,
 }
 
 impl DenseSeqDistribution {

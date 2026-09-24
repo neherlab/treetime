@@ -5,7 +5,7 @@ use eyre::Report;
 use treetime_grid::BoundaryBehavior;
 use treetime_utils::make_error;
 
-pub fn distribution_subtraction<Y: SupportsSubtraction>(
+pub(crate) fn distribution_subtraction<Y: SupportsSubtraction>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
@@ -28,7 +28,7 @@ pub fn distribution_subtraction<Y: SupportsSubtraction>(
   }
 }
 
-pub(crate) fn subtraction_result_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
+fn subtraction_result_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   let zero_beyond = |tail| matches!(tail, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_));
   if zero_beyond(a) && zero_beyond(b) {
     BoundaryBehavior::Hard

@@ -15,11 +15,11 @@ use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeObs {
-  pub unknown: Vec<(usize, usize)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>,
-  pub composition: Composition,
-  pub fitch: FitchSeqDistribution,
+  pub(crate) unknown: Vec<(usize, usize)>,
+  pub(crate) gaps: Vec<(usize, usize)>,
+  pub(crate) non_char: Vec<(usize, usize)>,
+  pub(crate) composition: Composition,
+  pub(crate) fitch: FitchSeqDistribution,
 }
 
 impl SparseNodeObs {
@@ -67,11 +67,11 @@ impl SparseNodeObs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeState {
-  pub sequence: Seq,
-  pub profile: SparseSeqDistribution,
+  pub(crate) sequence: Seq,
+  pub(crate) profile: SparseSeqDistribution,
 
   #[serde(default)]
-  pub emitted: Option<Seq>,
+  pub(crate) emitted: Option<Seq>,
 }
 
 impl SparseNodeState {
@@ -110,7 +110,7 @@ impl MarginalNodeState for SparseNodeState {
 pub struct SparseEdgeObs {
   subs_fitch: Vec<Sub>,
   pub indels: Vec<InDel>,
-  pub transmission: Option<Vec<(usize, usize)>>,
+  pub(crate) transmission: Option<Vec<(usize, usize)>>,
 }
 
 impl SparseEdgeObs {
@@ -121,7 +121,7 @@ impl SparseEdgeObs {
     }
   }
 
-  pub fn with_fitch_subs_and_indels(subs: Vec<Sub>, indels: Vec<InDel>) -> Self {
+  pub(crate) fn with_fitch_subs_and_indels(subs: Vec<Sub>, indels: Vec<InDel>) -> Self {
     Self {
       subs_fitch: subs,
       indels,
@@ -162,29 +162,29 @@ impl SparseEdgeObs {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeBackward {
-  pub msg_to_parent: SparseSeqDistribution,
-  pub msg_from_child: SparseSeqDistribution,
+  pub(crate) msg_to_parent: SparseSeqDistribution,
+  pub(crate) msg_from_child: SparseSeqDistribution,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeForward {
-  pub msg_to_child: SparseSeqDistribution,
+  pub(crate) msg_to_child: SparseSeqDistribution,
 
   #[serde(default)]
-  pub msg_from_parent: SparseSeqDistribution,
+  pub(crate) msg_from_parent: SparseSeqDistribution,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDistribution {
-  pub variable: BTreeMap<usize, VarPos>,
+  pub(crate) variable: BTreeMap<usize, VarPos>,
 
-  pub variable_indel: BTreeSet<(usize, usize)>,
+  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
 
-  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
+  pub(crate) fixed: BTreeMap<AsciiChar, Array1<f64>>,
 
-  pub fixed_counts: Composition,
+  pub(crate) fixed_counts: Composition,
 
-  pub log_lh: LogLh,
+  pub(crate) log_lh: LogLh,
 }
 
 impl Default for SparseSeqDistribution {
@@ -201,7 +201,7 @@ impl Default for SparseSeqDistribution {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchNodeData {
-  pub seq: FitchSeqInfo,
+  pub(crate) seq: FitchSeqInfo,
 }
 
 impl FitchNodeData {
@@ -255,27 +255,27 @@ impl FitchNodeData {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchSeqInfo {
-  pub unknown: Vec<(usize, usize)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>,
-  pub composition: Composition,
-  pub sequence: Seq,
-  pub fitch: FitchSeqDistribution,
+  pub(crate) unknown: Vec<(usize, usize)>,
+  pub(crate) gaps: Vec<(usize, usize)>,
+  pub(crate) non_char: Vec<(usize, usize)>,
+  pub(crate) composition: Composition,
+  pub(crate) sequence: Seq,
+  pub(crate) fitch: FitchSeqDistribution,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchSeqDistribution {
-  pub variable: BTreeMap<usize, StateSet>,
+  pub(crate) variable: BTreeMap<usize, StateSet>,
 
-  pub variable_indel: BTreeSet<(usize, usize)>,
+  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
 
-  pub chosen_state: BTreeMap<usize, AsciiChar>,
+  pub(crate) chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
-  pub dis: Array1<f64>,
-  pub state: AsciiChar,
+  pub(crate) dis: Array1<f64>,
+  pub(crate) state: AsciiChar,
 }
 
 impl VarPos {

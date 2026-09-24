@@ -12,8 +12,8 @@ use treetime_utils::make_error;
 use treetime_utils::make_report;
 
 pub struct CsvStructFileWriter {
-  pub filepath: PathBuf,
-  pub writer: CsvStructWriter<Box<dyn Write + Send>>,
+  filepath: PathBuf,
+  writer: CsvStructWriter<Box<dyn Write + Send>>,
 }
 
 impl CsvStructFileWriter {

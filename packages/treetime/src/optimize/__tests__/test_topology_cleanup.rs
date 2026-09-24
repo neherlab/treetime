@@ -646,7 +646,7 @@ pub(super) mod tests {
   pub(crate) mod helpers {
     use super::*;
 
-    pub(crate) fn c(b: u8) -> AsciiChar {
+    fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
     }
 

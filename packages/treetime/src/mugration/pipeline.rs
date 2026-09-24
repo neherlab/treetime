@@ -212,8 +212,8 @@ pub(crate) fn validate_weight_coverage(
 
 #[derive(Debug)]
 pub struct WeightCoverageResult {
-  pub missing_values: IndexSet<String>,
-  pub missing_ratio: f64,
+  pub(crate) missing_values: IndexSet<String>,
+  pub(crate) missing_ratio: f64,
 }
 
 pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {

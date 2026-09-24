@@ -103,14 +103,14 @@ pub struct ToleranceMetrics {
     serialize_with = "serialize_array_of_array1",
     deserialize_with = "deserialize_array_of_array1"
   )]
-  pub pass_masks: [Array1<f64>; 3],
+  pub(crate) pass_masks: [Array1<f64>; 3],
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub support_coverage_mask: Array1<f64>,
-  pub summary: ToleranceSummary,
+  pub(crate) support_coverage_mask: Array1<f64>,
+  pub(crate) summary: ToleranceSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToleranceSummary {
-  pub pass_fractions: [f64; 3],
-  pub support_mismatch_count: usize,
+  pub(crate) pass_fractions: [f64; 3],
+  pub(crate) support_mismatch_count: usize,
 }

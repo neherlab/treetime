@@ -207,18 +207,18 @@ fn select_root(
 
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
 pub struct RerootParams {
-  pub spec: RerootSpec,
+  pub(crate) spec: RerootSpec,
 
-  pub objective: RootObjective,
-
-  #[default = true]
-  pub split_edge: bool,
+  pub(crate) objective: RootObjective,
 
   #[default = true]
-  pub remove_trivial_root: bool,
+  pub(crate) split_edge: bool,
 
   #[default = true]
-  pub force_positive_rate: bool,
+  pub(crate) remove_trivial_root: bool,
+
+  #[default = true]
+  pub(crate) force_positive_rate: bool,
 }
 
 impl RerootParams {

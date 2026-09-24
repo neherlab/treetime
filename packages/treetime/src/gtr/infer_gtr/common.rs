@@ -73,36 +73,36 @@ pub(crate) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MutationCounts {
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub nij: Array2<f64>,
+  pub(crate) nij: Array2<f64>,
 
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub Ti: Array1<f64>,
+  pub(crate) Ti: Array1<f64>,
 
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub root_state: Array1<f64>,
+  pub(crate) root_state: Array1<f64>,
 }
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct InferGtrOptions {
-  pub fixed_pi: Option<Array1<f64>>,
+  pub(crate) fixed_pi: Option<Array1<f64>>,
 
   #[default = 1.0]
-  pub pc: f64,
+  pub(crate) pc: f64,
 
   #[default = 1e-5]
-  pub dp: f64,
+  pub(crate) dp: f64,
 
   #[default = 40]
-  pub max_iter: usize,
+  pub(crate) max_iter: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InferGtrResult {
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
-  pub W: Array2<f64>,
+  pub(crate) W: Array2<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub pi: Array1<f64>,
-  pub mu: f64,
+  pub(crate) pi: Array1<f64>,
+  pub(crate) mu: f64,
 }
 
 pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {

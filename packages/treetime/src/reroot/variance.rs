@@ -4,13 +4,13 @@ use smart_default::SmartDefault;
 #[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
 pub struct VarianceModel {
   #[default = 0.0]
-  pub variance_factor: f64,
+  pub(crate) variance_factor: f64,
 
   #[default = 0.0]
-  pub variance_offset: f64,
+  pub(crate) variance_offset: f64,
 
   #[default = 1.0]
-  pub variance_offset_leaf: f64,
+  pub(crate) variance_offset_leaf: f64,
 }
 
 impl VarianceModel {

@@ -2,20 +2,20 @@ use crate::Distribution;
 use crate::policy::Plain;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const NORMALIZATION_DRIFT_THRESHOLD: f64 = 1e-10;
+const NORMALIZATION_DRIFT_THRESHOLD: f64 = 1e-10;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ScaledDistribution {
+pub(crate) struct ScaledDistribution {
   log_scale: f64,
   inner: Distribution<Plain>,
 }
 
 impl ScaledDistribution {
-  pub fn from_parts(log_scale: f64, inner: Distribution<Plain>) -> Self {
+  pub(crate) fn from_parts(log_scale: f64, inner: Distribution<Plain>) -> Self {
     Self { log_scale, inner }
   }
 
-  pub fn from_plain(dist: &Distribution<Plain>) -> Self {
+  pub(crate) fn from_plain(dist: &Distribution<Plain>) -> Self {
     let max_val = dist.max_value();
     if max_val <= 0.0 || !max_val.is_finite() {
       return Self {
@@ -29,7 +29,7 @@ impl ScaledDistribution {
     }
   }
 
-  pub fn to_plain(&self) -> Distribution<Plain> {
+  pub(crate) fn to_plain(&self) -> Distribution<Plain> {
     if self.log_scale.is_finite() {
       self.inner.scale_by(self.log_scale.exp())
     } else {
@@ -37,23 +37,23 @@ impl ScaledDistribution {
     }
   }
 
-  pub fn log_scale(&self) -> f64 {
+  pub(crate) fn log_scale(&self) -> f64 {
     self.log_scale
   }
 
-  pub fn inner(&self) -> &Distribution<Plain> {
+  pub(crate) fn inner(&self) -> &Distribution<Plain> {
     &self.inner
   }
 
-  pub fn peak_value(&self) -> f64 {
+  pub(crate) fn peak_value(&self) -> f64 {
     self.log_scale.exp()
   }
 
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     matches!(self.inner, Distribution::Empty)
   }
 
-  pub fn renormalize(&mut self) {
+  pub(crate) fn renormalize(&mut self) {
     let max_val = self.inner.max_value();
     if max_val <= 0.0 || !max_val.is_finite() {
       self.log_scale = f64::NEG_INFINITY;

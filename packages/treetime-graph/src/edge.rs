@@ -61,7 +61,7 @@ impl GraphEdgeKey {
     self.0
   }
 
-  pub fn invalid() -> Self {
+  pub(crate) fn invalid() -> Self {
     Self(usize::MAX)
   }
 }

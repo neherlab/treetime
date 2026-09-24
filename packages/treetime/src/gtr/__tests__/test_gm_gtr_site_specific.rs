@@ -200,50 +200,50 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     pub(super) struct ExpQtEntry {
-      pub time: f64,
+      pub(crate) time: f64,
       #[serde(rename = "expQt")]
-      pub exp_qt: serde_json::Value,
+      pub(crate) exp_qt: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct ProfileOutput {
-      pub propagate_profile: serde_json::Value,
-      pub evolve: serde_json::Value,
+      pub(crate) propagate_profile: serde_json::Value,
+      pub(crate) evolve: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct GtrSiteSpecificOutput {
-      pub eigenvals: serde_json::Value,
+      pub(crate) eigenvals: serde_json::Value,
       #[serde(rename = "expQts")]
-      pub exp_qts: Vec<ExpQtEntry>,
-      pub profiles: IndexMap<String, ProfileOutput>,
+      pub(crate) exp_qts: Vec<ExpQtEntry>,
+      pub(crate) profiles: IndexMap<String, ProfileOutput>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct InferOutput {
       #[serde(rename = "W")]
-      pub W: serde_json::Value,
-      pub pi: serde_json::Value,
+      pub(crate) W: serde_json::Value,
+      pub(crate) pi: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct ApproxOutput {
       #[serde(rename = "expQts")]
-      pub exp_qts: Vec<ExpQtEntry>,
+      pub(crate) exp_qts: Vec<ExpQtEntry>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct AllOutputs {
-      pub site_specific: IndexMap<String, GtrSiteSpecificOutput>,
-      pub approximate: IndexMap<String, ApproxOutput>,
-      pub infer: IndexMap<String, InferOutput>,
+      pub(crate) site_specific: IndexMap<String, GtrSiteSpecificOutput>,
+      pub(crate) approximate: IndexMap<String, ApproxOutput>,
+      pub(crate) infer: IndexMap<String, InferOutput>,
     }
 
     #[derive(Debug, Deserialize)]
     pub(super) struct AllInputs {
-      pub site_specific: IndexMap<String, serde_json::Value>,
-      pub profiles: IndexMap<String, serde_json::Value>,
-      pub infer: IndexMap<String, serde_json::Value>,
+      pub(crate) site_specific: IndexMap<String, serde_json::Value>,
+      pub(crate) profiles: IndexMap<String, serde_json::Value>,
+      pub(crate) infer: IndexMap<String, serde_json::Value>,
     }
 
     pub(super) fn load_gm_inputs() -> AllInputs {

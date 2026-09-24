@@ -8,7 +8,7 @@ const MAX_GRID_POINTS: usize = 1_000_000;
 
 const GRID_COUNT_TOL: f64 = 1e-9;
 
-pub fn distribution_time_bounds_union<Y: YAxisPolicy>(
+pub(crate) fn distribution_time_bounds_union<Y: YAxisPolicy>(
   dist_a: &Distribution<Y>,
   dist_b: &Distribution<Y>,
 ) -> Option<(f64, f64)> {
@@ -21,7 +21,10 @@ pub fn distribution_time_bounds_union<Y: YAxisPolicy>(
   }
 }
 
-pub fn distribution_time_bounds_contains<Y: YAxisPolicy>(outer: &Distribution<Y>, inner: &Distribution<Y>) -> bool {
+pub(crate) fn distribution_time_bounds_contains<Y: YAxisPolicy>(
+  outer: &Distribution<Y>,
+  inner: &Distribution<Y>,
+) -> bool {
   let Some((t_min_inner, t_max_inner)) = inner.time_bounds() else {
     return true;
   };
@@ -31,11 +34,14 @@ pub fn distribution_time_bounds_contains<Y: YAxisPolicy>(outer: &Distribution<Y>
   t_min_outer <= t_min_inner && t_max_inner <= t_max_outer
 }
 
-pub fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(dist_a: &Distribution<Y>, dist_b: &Distribution<Y>) -> bool {
+pub(crate) fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(
+  dist_a: &Distribution<Y>,
+  dist_b: &Distribution<Y>,
+) -> bool {
   distribution_time_bounds_intersection(dist_a, dist_b).is_some()
 }
 
-pub fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
+pub(crate) fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
   dist_a: &Distribution<Y>,
   dist_b: &Distribution<Y>,
 ) -> Option<(f64, f64)> {
@@ -47,7 +53,7 @@ pub fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
 }
 
 #[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
-pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
+fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
   let start = a.0.max(b.0);
   let end = a.1.min(b.1);
 

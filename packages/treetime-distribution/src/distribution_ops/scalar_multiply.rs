@@ -4,7 +4,7 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_error;
 
-pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
+pub(crate) fn distribution_scalar_multiplication<Y: YAxisPolicy>(
   dist: &Distribution<Y>,
   scalar: f64,
 ) -> Result<Distribution<Y>, Report> {

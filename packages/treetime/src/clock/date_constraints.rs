@@ -96,9 +96,9 @@ pub fn load_date_constraints(
 
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
-  pub date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
+  pub(crate) date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub(crate) time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub(crate) bad_branches: BTreeMap<GraphNodeKey, bool>,
 }
 
 fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {

@@ -12,7 +12,7 @@ use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
-pub fn read_dates_from_str(
+pub(crate) fn read_dates_from_str(
   content: &str,
   delimiter: u8,
   name_candidates: &[String],

@@ -12,8 +12,8 @@ pub(crate) fn get_coefficients(
 }
 
 pub struct PartitionContribution {
-  pub coefficients: Array2<f64>,
-  pub gtr: GTR,
+  pub(crate) coefficients: Array2<f64>,
+  pub(crate) gtr: GTR,
 }
 
 impl PartitionContribution {

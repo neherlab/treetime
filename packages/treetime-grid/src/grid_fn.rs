@@ -276,7 +276,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(self.interpolate_at(xi, idx))
   }
 
-  pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
+  pub(crate) fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float + UlpsEq,
   {
@@ -371,7 +371,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   #[must_use]
-  pub fn mapv<F>(&self, f: F) -> Self
+  pub(crate) fn mapv<F>(&self, f: F) -> Self
   where
     F: Fn(T) -> T,
   {
@@ -481,7 +481,7 @@ impl<T: InterpElem> GridFn<T> {
     self.resample(&grid)
   }
 
-  pub fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  pub(crate) fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {

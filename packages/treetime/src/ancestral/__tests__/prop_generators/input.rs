@@ -50,11 +50,11 @@ fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct MarginalTestInput {
-  pub newick: String,
-  pub alignment: Vec<AlignmentRecord>,
-  pub gtr: GTR,
-  pub n_taxa: usize,
-  pub seq_len: usize,
+  pub(crate) newick: String,
+  pub(crate) alignment: Vec<AlignmentRecord>,
+  pub(crate) gtr: GTR,
+  pub(crate) n_taxa: usize,
+  pub(crate) seq_len: usize,
 }
 
 fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Strategy<Value = MarginalTestInput> {

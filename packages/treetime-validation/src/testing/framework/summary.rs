@@ -9,30 +9,30 @@ const R2_PASS_THRESHOLD: f64 = 0.95;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
-  pub test_suite_name: String,
-  pub total_tests: usize,
-  pub total_successes: usize,
-  pub total_failures: usize,
-  pub total_algorithms: usize,
-  pub execution_time_total_ms: f64,
-  pub algorithm_summaries: Vec<AlgorithmSummary>,
+  pub(crate) test_suite_name: String,
+  pub(crate) total_tests: usize,
+  pub(crate) total_successes: usize,
+  pub(crate) total_failures: usize,
+  pub(crate) total_algorithms: usize,
+  pub(crate) execution_time_total_ms: f64,
+  pub(crate) algorithm_summaries: Vec<AlgorithmSummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmSummary {
-  pub algorithm_name: String,
-  pub test_cases_count: usize,
-  pub execution_time_total_ms: f64,
-  pub execution_time_avg_ms: f64,
-  pub r2_min: f64,
-  pub r2_max: f64,
-  pub r2_mean: f64,
-  pub max_abs_error_overall: f64,
-  pub max_rel_error_overall: f64,
-  pub passed_tests: usize,
-  pub failed_tests: usize,
-  pub error_failures: usize,
-  pub success_rate: f64,
+  pub(crate) algorithm_name: String,
+  pub(crate) test_cases_count: usize,
+  pub(crate) execution_time_total_ms: f64,
+  pub(crate) execution_time_avg_ms: f64,
+  pub(crate) r2_min: f64,
+  pub(crate) r2_max: f64,
+  pub(crate) r2_mean: f64,
+  pub(crate) max_abs_error_overall: f64,
+  pub(crate) max_rel_error_overall: f64,
+  pub(crate) passed_tests: usize,
+  pub(crate) failed_tests: usize,
+  pub(crate) error_failures: usize,
+  pub(crate) success_rate: f64,
 }
 
 #[bon]

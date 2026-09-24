@@ -7,9 +7,9 @@ use treetime_primitives::AlignmentRecord;
 
 #[derive(Clone, Debug)]
 pub struct PartitionLikelihood {
-  pub gtr: GTR,
-  pub alphabet: Alphabet,
-  pub length: usize,
+  gtr: GTR,
+  alphabet: Alphabet,
+  length: usize,
 }
 
 impl PartitionLikelihood {
@@ -34,10 +34,10 @@ impl From<PartitionLikelihoodWithAln> for PartitionLikelihood {
 
 #[derive(Clone, Debug)]
 pub struct PartitionLikelihoodWithAln {
-  pub gtr: GTR,
-  pub alphabet: Alphabet,
-  pub aln: Vec<AlignmentRecord>,
-  pub length: usize,
+  gtr: GTR,
+  alphabet: Alphabet,
+  aln: Vec<AlignmentRecord>,
+  length: usize,
 }
 
 impl PartitionLikelihoodWithAln {

@@ -162,24 +162,24 @@ mod tests {
 
     #[derive(Clone, Deserialize)]
     pub(super) struct GmOptimizeCase {
-      pub tree: String,
-      pub aln: String,
-      pub damping: f64,
-      pub max_iter: usize,
+      pub(crate) tree: String,
+      pub(crate) aln: String,
+      pub(crate) damping: f64,
+      pub(crate) max_iter: usize,
     }
 
     #[derive(Deserialize)]
     pub(super) struct GmOptimizeExpected {
-      pub final_total_branch_length: f64,
-      pub final_branch_lengths: BTreeMap<String, f64>,
+      pub(crate) final_total_branch_length: f64,
+      pub(crate) final_branch_lengths: BTreeMap<String, f64>,
     }
 
     pub(super) struct OptimizeResult {
-      pub graph: Graph,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
-      pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-      pub lh_history: Vec<f64>,
-      pub stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
+      pub(crate) graph: Graph,
+      pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(crate) lh_history: Vec<f64>,
+      pub(crate) stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }
 
     pub(super) fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {

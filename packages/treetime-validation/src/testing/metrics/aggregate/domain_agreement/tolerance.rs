@@ -35,8 +35,8 @@ pub(crate) fn compute_tolerance_counts(
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ToleranceCounts {
-  pub within_abs_tolerances: [usize; 3],
-  pub within_rel_tolerances: [usize; 3],
+  pub(crate) within_abs_tolerances: [usize; 3],
+  pub(crate) within_rel_tolerances: [usize; 3],
 }
 
 pub(crate) fn find_max_error_location(
@@ -59,6 +59,6 @@ pub(crate) fn find_max_error_location(
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MaxErrorLocation {
-  pub idx: usize,
-  pub x_value: f64,
+  pub(crate) idx: usize,
+  pub(crate) x_value: f64,
 }

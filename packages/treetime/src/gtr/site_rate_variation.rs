@@ -10,7 +10,7 @@ use treetime_utils::{make_error, make_report};
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub fn discrete_gamma_rates(alpha: f64, n_categories: usize) -> Result<Array1<f64>, Report> {
+fn discrete_gamma_rates(alpha: f64, n_categories: usize) -> Result<Array1<f64>, Report> {
   if alpha < 0.15 {
     return make_error!(
       "Gamma shape parameter alpha must be >= 0.15 (statrs Gamma CDF is numerically \

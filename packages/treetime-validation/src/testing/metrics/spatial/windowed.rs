@@ -32,16 +32,16 @@ pub(super) fn compute_windowed_metrics(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowedMetrics {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub sliding_rms: Array1<f64>,
+  pub(crate) sliding_rms: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub sliding_max: Array1<f64>,
-  pub summary: WindowedSummary,
+  pub(crate) sliding_max: Array1<f64>,
+  pub(crate) summary: WindowedSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowedSummary {
-  pub sliding_rms_max: f64,
-  pub sliding_max_max: f64,
+  pub(crate) sliding_rms_max: f64,
+  pub(crate) sliding_max_max: f64,
 }
 
 #[allow(

@@ -26,7 +26,7 @@ pub fn graphviz_write_file(
   writeln!(f, "{text}").wrap_err_with(|| format!("When writing Graphviz file '{}'", filepath.display()))
 }
 
-pub fn graphviz_write_str(
+fn graphviz_write_str(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,

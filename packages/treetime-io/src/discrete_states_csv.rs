@@ -7,7 +7,7 @@ use std::path::Path;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report};
 
-pub fn read_discrete_attrs_from_str<T>(
+pub(crate) fn read_discrete_attrs_from_str<T>(
   content: &str,
   delimiter: u8,
   name_candidates: &[String],

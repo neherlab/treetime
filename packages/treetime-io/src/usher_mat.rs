@@ -15,7 +15,7 @@ pub fn usher_mat_pb_write_file(filepath: impl AsRef<Path>, tree: &UsherTree) -> 
     .wrap_err_with(|| format!("When writing Usher MAT protobuf file '{}'", filepath.display()))
 }
 
-pub fn usher_mat_pb_write_bytes(tree: &UsherTree) -> Result<Vec<u8>, Report> {
+pub(crate) fn usher_mat_pb_write_bytes(tree: &UsherTree) -> Result<Vec<u8>, Report> {
   let mut buf = BytesMut::new();
   util_usher_mat::usher_mat_pb_write_bytes(&mut buf, tree).wrap_err("When writing Usher MAT protobuf bytes")?;
   Ok(buf.to_vec())

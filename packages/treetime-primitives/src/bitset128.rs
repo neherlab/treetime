@@ -44,7 +44,7 @@ impl BitSet128 {
     self.bits.count_ones() as usize
   }
 
-  pub fn clear(&mut self) {
+  pub(crate) fn clear(&mut self) {
     self.bits = 0;
   }
 
@@ -60,7 +60,7 @@ impl BitSet128 {
     self.bits |= 1 << c;
   }
 
-  pub fn remove<T: Into<u32>>(&mut self, c: T) {
+  pub(crate) fn remove<T: Into<u32>>(&mut self, c: T) {
     let c = c.into();
     debug_assert!(c < 128, "BitSet128::remove requires c < 128, got {c}");
     self.bits &= !(1 << c);
@@ -126,15 +126,15 @@ impl BitSet128 {
     best
   }
 
-  pub fn is_disjoint(&self, other: &Self) -> bool {
+  pub(crate) fn is_disjoint(&self, other: &Self) -> bool {
     (self.bits & other.bits) == 0
   }
 
-  pub fn is_subset(&self, other: &Self) -> bool {
+  pub(crate) fn is_subset(&self, other: &Self) -> bool {
     (self.bits & other.bits) == self.bits
   }
 
-  pub fn is_superset(&self, other: &Self) -> bool {
+  pub(crate) fn is_superset(&self, other: &Self) -> bool {
     other.is_subset(self)
   }
 
