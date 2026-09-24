@@ -77,7 +77,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 ### Foundation
 
 - `fn AlphabetConfig::validate()`: no direct test for `unknown` inside ambiguous value set
-- `cli::rtt_chart` functions: no tests
+- `cli::rtt_chart` SVG and PNG chart writers: no tests
 - `timetree_validation.rs` functions: no tests for overlapping, disjoint, empty-overlap maps
 - `seq::indel::InDel`: no dedicated constructor-boundary, inversion, formatting coverage
 

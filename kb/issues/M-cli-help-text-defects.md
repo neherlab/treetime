@@ -28,10 +28,6 @@ Related: [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) tracks that `--prune-short` in `clock` is parsed but never wired.
 
-### D4: `clock` command description has `--keep_root` typo
-
-Top-level `clock` description: "unless run with --keep_root" (underscore). The actual flag is `--keep-root` (hyphen). Copy-pasting from the description will fail at parse time.
-
 ### D5: `--model-params` references Python source files
 
 Commands: `timetree`, `optimize`, `ancestral`, `clock`, `homoplasy`.
@@ -39,10 +35,6 @@ Commands: `timetree`, `optimize`, `ancestral`, `clock`, `homoplasy`.
 Description: "See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py". These are v0 Python paths that do not exist in the Rust codebase. Users of the Rust binary cannot find these files.
 
 Fix: reference the v1 Rust module paths or link to documentation.
-
-### D7: `ancestral` command description hardcodes output filenames
-
-Description: "The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus'". Actual output is controlled by `--output-all` and per-file flags. These specific filenames are not guaranteed. (Partially fixed: old `annotated_tree.nexus` reference updated to `ancestral.nexus` to match S4 stem change.)
 
 ### D8: `--n-iqd` in `timetree` is unused
 
