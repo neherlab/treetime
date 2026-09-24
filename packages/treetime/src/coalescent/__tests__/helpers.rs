@@ -1,5 +1,6 @@
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::coalescent::node_time::CoalescentNodeTimes;
+use crate::coalescent::skyline::{SkylineParams, SkylineResult, optimize_skyline};
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use maplit::btreemap;
@@ -30,4 +31,19 @@ pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<Stri
 
 pub(crate) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
   TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
+}
+
+pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<SkylineResult, Report> {
+  optimize_skyline(
+    graph,
+    &SkylineParams {
+      n_points: 1,
+      ..SkylineParams::default()
+    },
+    node_times,
+  )
+}
+
+pub(crate) fn tc(result: &SkylineResult) -> f64 {
+  result.tc_schedule.values()[0]
 }

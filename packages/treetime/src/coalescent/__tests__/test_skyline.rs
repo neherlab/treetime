@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::__tests__::helpers::coalescent_node_times;
+  use crate::coalescent::__tests__::helpers::{coalescent_node_times, constant_skyline};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
@@ -41,13 +41,12 @@ mod tests {
     let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
 
     assert_eq!(6, result.segment_boundaries.len());
-    assert_eq!(5, result.tc_values.len());
+    assert_eq!(5, result.tc_schedule.values().len());
     pretty_assert_ulps_eq!(
       result.tc_schedule.breakpoints().view(),
       result.segment_boundaries.slice(ndarray::s![1..5]),
       max_ulps = 4
     );
-    pretty_assert_ulps_eq!(result.tc_schedule.values(), &result.tc_values, max_ulps = 4);
     assert!(result.log_likelihood.value().is_finite());
 
     Ok(())
@@ -83,7 +82,7 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
 
-    for &tc in &result.tc_values {
+    for &tc in result.tc_schedule.values() {
       assert!(
         tc > 0.0 && tc.is_finite(),
         "Tc segment value must be positive and finite, got {tc}"
@@ -143,7 +142,7 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
 
-    assert_eq!(10, result.tc_values.len());
+    assert_eq!(10, result.tc_schedule.values().len());
     assert!(result.log_likelihood.value().is_finite());
 
     Ok(())
@@ -202,12 +201,12 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params, &node_times)?;
 
-    let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph, &node_times)?;
+    let constant_tc = constant_skyline(&graph, &node_times)?;
     assert!(
-      result.log_likelihood.value() >= constant_tc.likelihood.value() - 1e-10,
+      result.log_likelihood.value() >= constant_tc.log_likelihood.value() - 1e-10,
       "skyline LL {} should be >= constant-Tc LL {}",
       result.log_likelihood.value(),
-      constant_tc.likelihood.value()
+      constant_tc.log_likelihood.value()
     );
 
     Ok(())
@@ -230,13 +229,13 @@ mod tests {
     let rs = optimize_skyline(&gs, &params, &coalescent_node_times(&gs, &cs))?;
 
     for i in 0..params.n_points {
-      let expected = s * r1.tc_values[i];
-      let rel = ((rs.tc_values[i] - expected) / expected).abs();
+      let expected = s * r1.tc_schedule.values()[i];
+      let rel = ((rs.tc_schedule.values()[i] - expected) / expected).abs();
       assert!(
         rel < 1e-10,
         "segment {i}: scaled Tc {} should be s×{} = {expected} (rel err {rel:.2e})",
-        rs.tc_values[i],
-        r1.tc_values[i]
+        rs.tc_schedule.values()[i],
+        r1.tc_schedule.values()[i]
       );
     }
 

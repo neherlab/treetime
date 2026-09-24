@@ -210,7 +210,7 @@ mod tests {
       .expect("an inferred skyline carries a per-segment report");
 
     pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
-    pretty_assert_array_eq!(solve.tc_values, timescale.schedule.values().clone());
+    pretty_assert_array_eq!(solve.tc_schedule.values().clone(), timescale.schedule.values().clone());
     assert_eq!(Some(solve.log_likelihood.value()), report.log_likelihood);
     let band = report.band.expect("an inferred skyline carries a confidence band");
     pretty_assert_array_eq!(solve.tc_lower_bounds, band.lower);

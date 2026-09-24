@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use super::super::helpers::{coalescent_node_times, setup_graph};
+  use crate::coalescent::__tests__::helpers::{constant_skyline, tc};
   use crate::coalescent::edge_data::collect_coalescent_edges;
-  use crate::coalescent::optimize_tc::optimize_tc;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
@@ -68,9 +68,9 @@ mod tests {
   fn test_total_lh_monotonic_near_optimum() -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
-    let opt = optimize_tc(&graph, &node_times)?;
+    let opt = constant_skyline(&graph, &node_times)?;
 
-    let tc_opt = opt.tc;
+    let tc_opt = tc(&opt);
     let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt), &node_times)?.value();
     let lh_low = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 0.01), &node_times)?.value();
     let lh_high = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 100.0), &node_times)?.value();
@@ -88,14 +88,14 @@ mod tests {
   }
 
   #[test]
-  fn test_total_lh_matches_optimize_tc_likelihood() -> Result<(), Report> {
+  fn test_total_lh_matches_constant_skyline_likelihood() -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
-    let opt = optimize_tc(&graph, &node_times)?;
+    let opt = constant_skyline(&graph, &node_times)?;
 
-    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc), &node_times)?.value();
+    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(tc(&opt)), &node_times)?.value();
 
-    pretty_assert_ulps_eq!(opt.likelihood.value(), lh, max_ulps = 10);
+    pretty_assert_ulps_eq!(opt.log_likelihood.value(), lh, max_ulps = 10);
 
     Ok(())
   }

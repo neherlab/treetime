@@ -97,8 +97,6 @@ pub(crate) fn optimize_skyline(
     tc_distribution,
     tc_schedule,
     segment_boundaries: Array1::from(boundaries),
-    tc_values,
-    log_tc_variances: confidence.log_tc_variances,
     tc_lower_bounds: confidence.tc_lower_bounds,
     tc_upper_bounds: confidence.tc_upper_bounds,
     log_likelihood,
@@ -131,8 +129,6 @@ pub struct SkylineResult {
   pub(crate) tc_distribution: Distribution,
   pub(crate) tc_schedule: PiecewiseConstantFn,
   pub(crate) segment_boundaries: Array1<f64>,
-  pub(crate) tc_values: Array1<f64>,
-  pub(crate) log_tc_variances: Array1<f64>,
   pub(crate) tc_lower_bounds: Array1<f64>,
   pub(crate) tc_upper_bounds: Array1<f64>,
   pub(crate) log_likelihood: LogLh,
@@ -315,7 +311,6 @@ fn skyline_confidence_band(
   let log_tc_variances = marginal_log_tc_variances(hessian)?;
   let band_factors = exp(&(log_tc_variances.mapv(f64::sqrt) * n_std));
   Ok(SkylineConfidenceBand {
-    log_tc_variances,
     tc_lower_bounds: tc_values / &band_factors,
     tc_upper_bounds: tc_values * &band_factors,
   })
@@ -342,7 +337,6 @@ pub(crate) fn marginal_log_tc_variances(hessian: &Tridiagonal<f64>) -> Result<Ar
 }
 
 struct SkylineConfidenceBand {
-  log_tc_variances: Array1<f64>,
   tc_lower_bounds: Array1<f64>,
   tc_upper_bounds: Array1<f64>,
 }

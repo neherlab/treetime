@@ -5,7 +5,6 @@ mod integration;
 pub(crate) mod lineage_counts;
 mod lineage_dynamics;
 pub mod node_time;
-pub(crate) mod optimize_tc;
 pub(crate) mod population_size;
 pub mod skyline;
 pub(crate) mod time_coordinate;

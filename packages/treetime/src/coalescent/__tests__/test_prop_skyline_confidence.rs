@@ -3,7 +3,7 @@ mod tests {
   use crate::coalescent::__tests__::helpers::{coalescent_node_times, setup_graph};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use proptest::prelude::*;
-  use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg, prop_assert_array_positive};
+  use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg};
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
@@ -25,12 +25,10 @@ mod tests {
 
       let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints)).unwrap();
 
-      prop_assert_array_finite!(result.log_tc_variances);
-      prop_assert_array_positive!(result.log_tc_variances);
       prop_assert_array_finite!(result.tc_lower_bounds);
       prop_assert_array_finite!(result.tc_upper_bounds);
-      prop_assert_array_nonneg!(&result.tc_values - &result.tc_lower_bounds, epsilon = 1e-14);
-      prop_assert_array_nonneg!(&result.tc_upper_bounds - &result.tc_values, epsilon = 1e-14);
+      prop_assert_array_nonneg!(result.tc_schedule.values() - &result.tc_lower_bounds, epsilon = 1e-14);
+      prop_assert_array_nonneg!(&result.tc_upper_bounds - result.tc_schedule.values(), epsilon = 1e-14);
     }
   }
 }
