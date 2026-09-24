@@ -13,7 +13,7 @@ use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, commit_clock_branch_lengths, run_timetree, timetree_branch_lengths,
 };
 use crate::timetree::optimization::clock_filter::propagate_bad_branches;
-use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
+use crate::timetree::optimization::polytomy::resolve::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};

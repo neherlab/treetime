@@ -2,7 +2,7 @@
 mod tests {
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::test_utils::find_node_key_by_name;
-  use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
+  use crate::timetree::optimization::polytomy::resolve::{prepare_tree_after_topology_change, resolve_polytomies};
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use ndarray::array;
