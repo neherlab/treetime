@@ -10,6 +10,7 @@
 /.vscode
 /coverage
 /data_dev
+/snapshots
 /tmp*
 node_modules
 target

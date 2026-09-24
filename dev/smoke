@@ -1,0 +1,1438 @@
+#!/usr/bin/env python3
+
+"""
+Smoke-test the treetime CLI and compare its outputs with a baseline snapshot.
+
+dev/smoke runs the treetime CLI over a matrix of commands, datasets and flag variants. The outputs of
+each run go into a snapshot directory named after the git state that built the binary. The current
+snapshot is then compared with a baseline snapshot, by default the one of the `rust` branch. The
+script reports crashes, timeouts, missing outputs and changed outputs, with the command, stderr and
+the changed values of each case.
+
+Run it on the host. It needs git and Docker: the binaries are built with `./dev/docker/run just br
+treetime`, and the cases run inside the container.
+
+Usage:
+
+    ./dev/smoke                           quick tier, compared with `rust`
+    ./dev/smoke --tier full               every case
+    ./dev/smoke --against <ref-or-id>     compare with another commit, branch or snapshot
+    ./dev/smoke --no-compare              statuses only, no baseline build
+    ./dev/smoke --only <regex>            cases whose id matches the regex
+    ./dev/smoke --rerun-failed            cases that did not pass in the last run
+    ./dev/smoke --list                    print the selected case ids
+
+Options:
+
+    --tier quick|full       quick (default): datasets of at most 100 sequences, help cases and a few
+                            larger timetree cases. full: every case
+    --only REGEX            select the cases whose id matches REGEX (re.search)
+    --rerun-failed          select the cases that did not pass in the last run of the current snapshot,
+                            or, when it has no run yet, in the most recent run of any snapshot
+    --list                  print the selected case ids and exit
+    --against REF_OR_ID     baseline: an existing snapshot id, or a git ref (default: rust)
+    --no-compare            run the current snapshot only and report statuses
+    --jobs N                number of cases that run at the same time (default: CPU count)
+    --timeout-scale X       multiply every case timeout by X
+    --rerun                 run the selected cases again even when stored results are reusable
+    --no-build              use the existing .out/treetime for the current snapshot
+    --check-determinism     run each selected case a second time with `treetime --jobs=1` and mark
+                            the case nondeterministic when the outputs differ
+    --prune                 delete the dirty snapshots other than the current one, then exit
+
+Snapshots (git-ignored, at the repository root):
+
+    snapshots/<id>/                 <id> = short commit, or <short-commit>+dirty-<hash> for a
+                                    working tree with uncommitted or untracked changes
+      snapshot.json                 commit, dirty hash, ref, binary SHA-256, creation time
+      bin/treetime                  the binary that produced the snapshot
+      last-run.json                 statuses of the last run (for --rerun-failed)
+      cases/<case-id>/
+        out/                        raw outputs, never modified
+        stdout.txt, stderr.txt
+        cmd.sh                      the exact command, runnable from the repository root in the container
+        result.json                 status, exit code, wall and CPU time, case key
+        rerun/                      second run of --check-determinism
+      compare/<baseline-id>/        report.tsv and report.md of a comparison
+      report.tsv, report.md         report of a --no-compare run
+
+A stored case is reused when its case key (argv, expectation, declared outputs, working directory and
+the SHA-256 of every input file) is unchanged and its result is consistent with the requested timeout.
+A snapshot whose binary changed loses its stored cases. Clean-commit snapshots stay until deleted by
+hand; the git ref baseline is built in a temporary worktree under tmp/smoke/worktrees/.
+
+Case statuses:
+
+    ok                  exit code 0 and every declared output is present and non-empty
+    failed              non-zero exit code, or an expected failure that failed differently
+    missing-output      exit code 0, but a declared output is missing or empty
+    timeout             the case exceeded its timeout
+    xfail               the case failed or timed out as declared in the matrix
+    xpass               a case declared to fail passed: remove the expectation
+    nondeterministic    the --check-determinism rerun produced different outputs
+
+Comparison categories (current against baseline):
+
+    identical           both passed and the outputs are equal            (pass)
+    fixed               current passed, baseline did not; not compared   (pass)
+    expected-failure    current is xfail                                 (pass)
+    changed             both passed and the outputs differ               (fail)
+    regressed           baseline passed, current did not                 (fail)
+    still-failing       both did not pass, without an expectation       (fail)
+    unexpected-pass     current is xpass                                 (fail)
+
+Outputs are compared byte for byte, after removing `meta.updated` from `*.auspice.json` and
+`generated_by.version` from `*.augur-node-data.json`. Numeric differences are summarized in the report,
+never tolerated.
+
+Exit codes:
+
+    0   every selected case passed
+    1   a case failed or changed
+    2   the script could not complete (build failure, git error, invalid arguments, container failure)
+
+Environment:
+
+    SMOKE_WRAPPER       container wrapper command (default: ./dev/docker/run); empty runs in place
+"""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import dataclasses
+import difflib
+import hashlib
+import itertools
+import json
+import logging
+import lzma
+import os
+import re
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import threading
+import time
+from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SELF = "dev/smoke"
+DATA_DIR = "data"
+SNAPSHOTS_DIR = PROJECT_ROOT / "snapshots"
+WORKTREES_DIR = PROJECT_ROOT / "tmp" / "smoke" / "worktrees"
+DEFAULT_AGAINST = "rust"
+WRAPPER = shlex.split(os.environ.get("SMOKE_WRAPPER", "./dev/docker/run"))
+
+
+# Output fields that change for reasons unrelated to behavior, keyed by file-name suffix:
+#   auspice `meta.updated`           wall-clock date, packages/app-output/src/tree_output.rs
+#   augur-node-data version          CARGO_PKG_VERSION, packages/app-output/src/augur_node_data.rs
+VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
+  ".auspice.json": ("meta", "updated"),
+  ".augur-node-data.json": ("generated_by", "version"),
+}
+
+
+SUBCOMMANDS = ("ancestral", "arg", "clock", "completions", "help-markdown", "homoplasy", "mugration", "optimize",
+               "pipeline", "prune", "schema", "timetree")
+
+TREE_COMMANDS = frozenset({"ancestral", "clock", "mugration", "optimize", "prune", "timetree"})
+MAX_DIFF_ITEMS = 20
+NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
+ERROR_LINE_RE = re.compile(r"error|panic", re.IGNORECASE)
+CLEAR_LINE = "\r\033[K"
+log = logging.getLogger("smoke")
+
+
+class Tier(Enum):
+  QUICK = "quick"
+  FULL = "full"
+
+
+class Size(Enum):
+  SMALL = "small"
+  MEDIUM = "medium"
+  LARGE = "large"
+
+
+class Expect(Enum):
+  PASS = "pass"
+  FAIL = "fail"
+  TIMEOUT = "timeout"
+
+
+class CwdMode(Enum):
+  ROOT = "root"
+  SANDBOX = "sandbox"
+
+
+class Status(Enum):
+  OK = "ok"
+  FAILED = "failed"
+  MISSING_OUTPUT = "missing-output"
+  TIMEOUT = "timeout"
+  XFAIL = "xfail"
+  XPASS = "xpass"
+  NONDETERMINISTIC = "nondeterministic"
+
+
+class Category(Enum):
+  IDENTICAL = "identical"
+  FIXED = "fixed"
+  EXPECTED_FAILURE = "expected-failure"
+  CHANGED = "changed"
+  REGRESSED = "regressed"
+  STILL_FAILING = "still-failing"
+  UNEXPECTED_PASS = "unexpected-pass"
+
+
+PASSING_STATUSES = frozenset({Status.OK, Status.XFAIL})
+PASSING_CATEGORIES = frozenset({Category.IDENTICAL, Category.FIXED, Category.EXPECTED_FAILURE})
+SIZE_TIMEOUT_S = {Size.SMALL: 120.0, Size.MEDIUM: 600.0, Size.LARGE: 1800.0}
+
+
+@dataclass(frozen=True)
+class Profile:
+  """Flags a dataset family needs to run at all."""
+
+  id_column: str | None = None
+  attribute: str | None = None
+  clock_flags: tuple[str, ...] = ()
+
+
+PROFILES: dict[str, Profile] = {
+  "dengue": Profile(id_column="genbank_accession", attribute="country"),
+  "ebola": Profile(),
+  "flu/h3n2": Profile(attribute="location", clock_flags=("--sequence-length=1400",)),
+  "lassa/L": Profile(id_column="accession", attribute="country"),
+  "mpox/clade-ii": Profile(id_column="accession", attribute="country"),
+  "rsv/a": Profile(id_column="accession", attribute="country"),
+  "sc2": Profile(id_column="strain", attribute="country"),
+  "tb": Profile(id_column="strain", attribute="cluster"),
+  "zika": Profile(attribute="country"),
+}
+
+
+# Variant rows: (dataset, id suffix, extra flags). A row whose id equals a base run's id is dropped.
+# fmt: off
+OPTIMIZE_VARIANTS = [
+  ("flu/h3n2/20", "brent",          "--opt-method=brent"),
+  ("flu/h3n2/20", "brent-log",      "--opt-method=brent-log"),
+  ("flu/h3n2/20", "newton",         "--opt-method=newton"),
+  ("flu/h3n2/20", "newton-sqrt",    "--opt-method=newton-sqrt"),
+  ("flu/h3n2/20", "newton-log",     "--opt-method=newton-log"),
+  ("flu/h3n2/20", "reroot-min-dev", "--reroot=min-dev"),
+]
+
+
+MUGRATION_VARIANTS = [
+  ("zika/20", "country-weights",    "--weights={data}/zika/country_weights.csv"),
+  ("zika/20", "country-confidence", "--output-confidence-csv={out}/confidence.csv"),
+]
+
+
+TIMETREE_VARIANTS = [
+  ("flu/h3n2/200", "fixed-clock",          "--clock-rate=0.003"),
+  ("ebola/20",     "fixed-clock",          "--clock-rate=0.003"),
+  ("flu/h3n2/20",  "branch-input",         "--branch-length-mode=input"),
+  ("ebola/20",     "branch-input",         "--branch-length-mode=input"),
+  ("flu/h3n2/20",  "reconstruct-tips",     "--reconstruct-tip-states"),
+  ("ebola/20",     "reconstruct-tips",     "--include-leaves --impute-missing-data"),
+  ("flu/h3n2/20",  "marginal-always",      "--time-marginal=always"),
+  ("flu/h3n2/200", "marginal-always",      "--time-marginal=always"),
+  ("ebola/20",     "marginal-always",      "--time-marginal=always"),
+  ("zika/20",      "marginal-always",      "--time-marginal=always"),
+  ("flu/h3n2/20",  "marginal-final",       "--time-marginal=only-final"),
+  ("flu/h3n2/20",  "confidence",           "--confidence"),
+  ("flu/h3n2/20",  "keep-polytomies",      "--keep-polytomies"),
+  ("flu/h3n2/20",  "resolve-polytomies",   "--resolve-polytomies --max-iter=3"),
+  ("ebola/20",     "resolve-polytomies",   "--resolve-polytomies --max-iter=3"),
+  ("flu/h3n2/20",  "coalescent",           "--coalescent=10.0"),
+  ("flu/h3n2/200", "coalescent",           "--coalescent=10.0 --max-iter=3"),
+  ("ebola/20",     "coalescent",           "--coalescent=10.0"),
+  ("zika/20",      "coalescent",           "--coalescent=10.0"),
+  ("flu/h3n2/20",  "coal-opt",             "--coalescent-opt"),
+  ("flu/h3n2/200", "coal-opt",             "--coalescent-opt --max-iter=3"),
+  ("ebola/20",     "coal-opt",             "--coalescent-opt"),
+  ("zika/20",      "coal-opt",             "--coalescent-opt"),
+  ("flu/h3n2/20",  "skyline",              "--coalescent-skyline --skyline-n-points=5"),
+  ("flu/h3n2/200", "skyline",              "--coalescent-skyline --skyline-n-points=5 --max-iter=3"),
+  ("ebola/20",     "skyline",              "--coalescent-skyline --skyline-n-points=5"),
+  ("flu/h3n2/20",  "reroot-mindev",        "--reroot=min-dev"),
+  ("flu/h3n2/20",  "reroot-oldest",        "--reroot=oldest"),
+  ("ebola/362",    "reroot-mindev",        "--reroot=min-dev"),
+  ("ebola/362",    "reroot-oldest",        "--reroot=oldest"),
+  ("ebola/362",    "keep-root",            "--keep-root"),
+  ("ebola/20",     "keep-root",            "--keep-root"),
+  ("zika/20",      "keep-root",            "--keep-root"),
+  ("flu/h3n2/200", "no-filter",            "--clock-filter=0"),
+  ("flu/h3n2/200", "strict-filter",        "--clock-filter=5.0"),
+  ("flu/h3n2/20",  "covariation",          "--covariation"),
+  ("flu/h3n2/200", "covariation",          "--covariation"),
+  ("flu/h3n2/20",  "parsimony",            "--method-anc=parsimony --max-iter=1"),
+  ("flu/h3n2/20",  "jc69",                 "--gtr=jc69"),
+  ("flu/h3n2/20",  "iter0",                "--max-iter=0"),
+  ("flu/h3n2/20",  "iter4",                "--max-iter=4"),
+  ("flu/h3n2/200", "iter4",                "--max-iter=4"),
+  ("ebola/20",     "iter4",                "--max-iter=4"),
+  ("flu/h3n2/20",  "tip-slack",            "--tip-slack=0.1"),
+  ("flu/h3n2/200", "coal-polytomy",        "--coalescent=10.0 --resolve-polytomies --max-iter=3"),
+  ("flu/h3n2/20",  "coal-opt-marginal",    "--coalescent-opt --time-marginal=always"),
+  ("flu/h3n2/200", "coal-opt-marginal",    "--coalescent-opt --time-marginal=always --max-iter=3"),
+  ("flu/h3n2/20",  "skyline-marginal",     "--coalescent-skyline --time-marginal=always"),
+  ("flu/h3n2/200", "reroot-covar",         "--reroot=least-squares --covariation"),
+  ("ebola/362",    "input-keeproot",       "--branch-length-mode=input --keep-root"),
+  ("flu/h3n2/20",  "conf-marginal-final",  "--confidence --time-marginal=only-final"),
+  ("ebola/362",    "no-filter-keeproot",   "--clock-filter=0 --keep-root"),
+  ("flu/h3n2/200", "skyline-conf",         "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"),
+  ("flu/h3n2/200", "fast",                 "--method-anc=parsimony --max-iter=1 --keep-polytomies"),
+  ("flu/h3n2/200", "relaxed-corr",         "--relax 1.0 0.5 --max-iter=3"),
+  ("flu/h3n2/200", "relaxed-uncorr",       "--relax 1.0 0.0 --max-iter=3"),
+  ("flu/h3n2/20",  "conf-stddev",          "--confidence --clock-std-dev=0.001 --max-iter=3"),
+  ("flu/h3n2/20",  "conf-covariation",     "--confidence --covariation --max-iter=3"),
+  ("flu/h3n2/20",  "dense",                "--dense=true --gtr=jc69"),
+]
+# fmt: on
+
+
+NEGATIVE_CLOCK_RATE = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
+POINT_DIVISION = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
+
+
+# Cases that fail for a known reason. A case that starts to pass is reported as xpass until its entry is removed.
+KNOWN_FAILURES: dict[str, tuple[Expect, str]] = {
+  "timetree/dengue/100/basic": (Expect.FAIL, NEGATIVE_CLOCK_RATE),
+  "timetree/lassa/L/20/basic": (Expect.FAIL, "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"),
+  "timetree/flu/h3n2/20/branch-input": (Expect.FAIL, POINT_DIVISION),
+  "timetree/ebola/20/branch-input": (Expect.FAIL, POINT_DIVISION),
+  "timetree/ebola/362/input-keeproot": (Expect.FAIL, POINT_DIVISION),
+}
+
+
+HOMOPLASY_UNIMPLEMENTED = (Expect.FAIL, "kb/issues/H-homoplasy-command-unimplemented.md")
+ANCESTRAL_PARSIMONY_SELECTION = "--output-selection=nwk,nexus,augur-node-data,reconstructed-nuc-fasta"
+MPOX_FIXED_CLOCK = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+
+
+def main() -> int:
+  logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+  args = parse_args()
+  os.chdir(PROJECT_ROOT)
+  try:
+    if args.run_cases:
+      return run_cases_mode(args)
+    return host_mode(args)
+  except SmokeError as error:
+    log.error("%s", error)
+    return 2
+  except KeyboardInterrupt:
+    log.error("interrupted")
+    return 2
+
+
+def parse_args() -> argparse.Namespace:
+  parser = argparse.ArgumentParser(prog=SELF, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+                                   usage=argparse.SUPPRESS)
+  parser.add_argument("--tier", choices=[t.value for t in Tier], default=Tier.QUICK.value)
+  parser.add_argument("--only", metavar="REGEX")
+  parser.add_argument("--rerun-failed", action="store_true")
+  parser.add_argument("--list", action="store_true")
+  parser.add_argument("--against", metavar="REF_OR_ID", default=DEFAULT_AGAINST)
+  parser.add_argument("--no-compare", action="store_true")
+  parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+  parser.add_argument("--timeout-scale", type=float, default=1.0)
+  parser.add_argument("--rerun", action="store_true")
+  parser.add_argument("--no-build", action="store_true")
+  parser.add_argument("--check-determinism", action="store_true")
+  parser.add_argument("--prune", action="store_true")
+  parser.add_argument("--run-cases", action="store_true", help=argparse.SUPPRESS)
+  parser.add_argument("--bin", help=argparse.SUPPRESS)
+  parser.add_argument("--snapshot", help=argparse.SUPPRESS)
+  parser.add_argument("--cases", help=argparse.SUPPRESS)
+  args = parser.parse_args()
+  if args.jobs < 1:
+    parser.error("--jobs must be at least 1")
+  if args.timeout_scale <= 0:
+    parser.error("--timeout-scale must be positive")
+  return args
+
+
+def host_mode(args: argparse.Namespace) -> int:
+  start = time.perf_counter()
+  current = working_tree_snapshot()
+  if args.prune:
+    prune_snapshots(current)
+    return 0
+  cases = build_matrix(PROJECT_ROOT)
+  ids = last_failed_ids(current) if args.rerun_failed else None
+  selected = select_cases(cases, Tier(args.tier), args.only, ids)
+  if args.list:
+    print("\n".join(case.id for case in selected))
+    return 0
+  if not selected:
+    raise SmokeError("No case matches the selection")
+
+  hasher = InputHasher()
+  ensure_current_binary(current, args.no_build)
+  current_results = run_snapshot(current, selected, args, hasher, args.check_determinism)
+  baseline = baseline_results = None
+  if not args.no_compare:
+    baseline = resolve_against(args.against)
+    ensure_baseline_binary(baseline)
+    baseline_results = run_snapshot(baseline, selected, args, hasher, check_determinism=False)
+
+  reports = build_reports(selected, current, current_results, baseline, baseline_results)
+  report_dir = current.dir / "compare" / baseline.id if baseline else current.dir
+  write_reports(reports, current, baseline, report_dir)
+  write_last_run(current, reports, baseline)
+  print_summary(reports, current, baseline, report_dir, time.perf_counter() - start)
+  if len(reports) != len(selected):
+    raise SmokeError(f"{len(selected)} cases selected, but {len(reports)} have results")
+  return 0 if all(report.passed for report in reports) else 1
+
+
+def build_matrix(root: Path) -> list[Case]:
+  datasets = discover_datasets(root)
+  by_name = {dataset.name: dataset for dataset in datasets}
+  cases: list[Case] = []
+  for dataset in datasets:
+    cases += base_cases(dataset)
+  cases += variant_cases(by_name, {case.id for case in cases})
+  cases += extra_cases(by_name)
+  cases += config_cases(root, by_name)
+  cases += help_cases()
+  validate_matrix(cases)
+  return apply_known_failures(cases)
+
+
+def discover_datasets(root: Path) -> list[Dataset]:
+  datasets = []
+  for tree in sorted((root / DATA_DIR).glob("**/tree.nwk")):
+    directory = tree.parent
+    name = directory.relative_to(root / DATA_DIR).as_posix()
+    family = directory.parent.relative_to(root / DATA_DIR).as_posix()
+    if family not in PROFILES:
+      raise SmokeError(f"Dataset {name} has no profile: add the family {family!r} to PROFILES in {SELF}")
+    metadata = next((m.name for m in (directory / "metadata.tsv", directory / "metadata.tsv.xz") if m.exists()), None)
+    columns = read_tsv_header(directory / metadata) if metadata else frozenset()
+    datasets.append(Dataset(name, size_class(directory.name), PROFILES[family], metadata, columns))
+  return datasets
+
+
+def size_class(sequences: str) -> Size:
+  count = int(sequences)
+  if count <= 100:
+    return Size.SMALL
+  if count <= 500:
+    return Size.MEDIUM
+  return Size.LARGE
+
+
+def read_tsv_header(path: Path) -> frozenset[str]:
+  with lzma.open(path, "rt") if path.suffix == ".xz" else path.open() as handle:
+    header = handle.readline()
+  return frozenset(column.strip().strip('"') for column in header.rstrip("\n").split("\t"))
+
+
+def base_cases(dataset: Dataset) -> list[Case]:
+  d = dataset
+  out = "--output-all={out}"
+  cases = [
+    make_case("ancestral", d, "parsimony", ["{bin}", "ancestral", "--method-anc=parsimony", *tree_aln(d), out,
+                                            ANCESTRAL_PARSIMONY_SELECTION]),
+    make_case("ancestral", d, "marginal-sparse", ["{bin}", "ancestral", "--method-anc=marginal", "--dense=false",
+                                                  *tree_aln(d), out]),
+    make_case("ancestral", d, "marginal-dense", ["{bin}", "ancestral", "--method-anc=marginal", "--dense=true",
+                                                 "--model=jc69", *tree_aln(d), out]),
+    make_case("optimize", d, "sparse", ["{bin}", "optimize", "--dense=false", *tree_aln(d), out]),
+    make_case("optimize", d, "dense", ["{bin}", "optimize", "--dense=true", *tree_aln(d), out]),
+    make_case("prune", d, "default", ["{bin}", "prune", *tree_aln(d), out, "--prune-short=1e-6", "--prune-empty",
+                                      "--merge-shared-mutations"]),
+    make_case("homoplasy", d, "default", ["{bin}", "homoplasy", *tree_aln(d), out]),
+  ]
+  if d.metadata:
+    dates = f"--dates={d.path}/{d.metadata}"
+    cases += [
+      make_case("clock", d, "default", ["{bin}", "clock", f"--tree={d.path}/tree.nwk", dates, out, *d.id_flags,
+                                        *d.profile.clock_flags]),
+      timetree_case(d, "basic", ""),
+    ]
+  attribute = d.mugration_attribute
+  if attribute:
+    cases.append(mugration_case(d, attribute, ""))
+  return cases
+
+
+def make_case(command: str, dataset: Dataset | None, variant: str, argv: list[str], *, size: Size | None = None,
+              tier: Tier | None = None, timeout_s: float | None = None, expect: Expect = Expect.PASS,
+              reason: str | None = None, required_outputs: tuple[str, ...] = (), compare_stdout: bool = False,
+              cwd_mode: CwdMode = CwdMode.ROOT, case_id: str | None = None) -> Case:
+  size = size or (dataset.size if dataset else Size.SMALL)
+  if not required_outputs and command in TREE_COMMANDS and "--output-all={out}" in argv:
+    required_outputs = (f"{command}.nwk",)
+  if tier is None:
+    tier = Tier.QUICK if size is Size.SMALL else Tier.FULL
+  path = f"{command}/{dataset.name}/{variant}" if dataset else f"{command}/{variant}"
+  return Case(
+    id=case_id or path, command=command, dataset=dataset.name if dataset else None, size=size, tier=tier,
+    timeout_s=timeout_s or SIZE_TIMEOUT_S[size], argv=tuple(argv), expect=expect, reason=reason,
+    required_outputs=required_outputs, compare_stdout=compare_stdout, cwd_mode=cwd_mode,
+  )
+
+
+def tree_aln(dataset: Dataset) -> list[str]:
+  return [f"--tree={dataset.path}/tree.nwk", f"--aln={dataset.path}/aln.fasta.xz"]
+
+
+def mugration_case(dataset: Dataset, variant: str, extra: str, attribute: str | None = None) -> Case:
+  attribute = attribute or dataset.mugration_attribute
+  argv = ["{bin}", "mugration", f"--tree={dataset.path}/tree.nwk", f"--states={dataset.path}/{dataset.metadata}",
+          f"--attribute={attribute}", "--output-all={out}", *dataset.id_flags, "--pc=1.0", *shlex.split(extra)]
+  return make_case("mugration", dataset, variant or attribute, argv)
+
+
+def timetree_case(dataset: Dataset, variant: str, extra: str, **kwargs) -> Case:
+  return make_case("timetree", dataset, variant, timetree_argv(dataset, extra, kwargs.pop("tree", "tree.nwk")),
+                   **kwargs)
+
+
+def timetree_argv(dataset: Dataset, extra: str, tree: str = "tree.nwk") -> list[str]:
+  outputs = ["nwk", "nexus", "auspice", "augur-node-data", "clock-model"]
+  if "--branch-length-mode=input" not in extra:
+    outputs.append("gtr")
+  if "--time-marginal" in extra or "--confidence" in extra:
+    outputs.append("confidence-tsv")
+  return ["{bin}", "timetree", f"--tree={dataset.path}/{tree}", f"--dates={dataset.path}/{dataset.metadata}",
+          f"--aln={dataset.path}/aln.fasta.xz", "--output-all={out}", f"--output-selection={','.join(outputs)}",
+          *dataset.id_flags, *shlex.split(extra)]
+
+
+def variant_cases(datasets: dict[str, Dataset], base_ids: set[str]) -> list[Case]:
+  cases = []
+  for name, variant, extra in OPTIMIZE_VARIANTS:
+    d = datasets[name]
+    cases.append(make_case("optimize", d, variant, ["{bin}", "optimize", "--dense=false", *tree_aln(d),
+                                                    "--output-all={out}", *shlex.split(extra)]))
+  cases += [mugration_case(datasets[name], variant, extra) for name, variant, extra in MUGRATION_VARIANTS]
+  cases += [timetree_case(datasets[name], variant, extra) for name, variant, extra in TIMETREE_VARIANTS]
+  return [case for case in cases if case.id not in base_ids]
+
+
+def extra_cases(datasets: dict[str, Dataset]) -> list[Case]:
+  ebola, rsv, sc2, mpox = (datasets[name] for name in ("ebola/362", "rsv/a/100", "sc2/4500", "mpox/clade-ii/1000"))
+  cases = [
+    timetree_case(ebola, "skyline", "--coalescent-skyline", tier=Tier.QUICK),
+    timetree_case(ebola, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
+    timetree_case(rsv, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
+    timetree_case(sc2, "clock-filter-10", "--clock-filter=10", expect=Expect.FAIL, reason="fails on sc2/4500"),
+    timetree_case(mpox, "fixed-clock-tree-opt", MPOX_FIXED_CLOCK, tree="tree_opt.nwk", expect=Expect.FAIL,
+                  reason="lineage count problem"),
+    timetree_case(mpox, "fixed-clock", MPOX_FIXED_CLOCK, expect=Expect.FAIL, reason="lineage count problem"),
+  ]
+  individual = ["--dense=false", "--output-augur-node-data={out}/bl.json",
+                "--output-tree-auspice={out}/opti.auspice.json"]
+  required = ("bl.json", "opti.auspice.json")
+  cases += [make_case("optimize", d, "individual-outputs", ["{bin}", "optimize", *tree_aln(d), *individual],
+                      required_outputs=required)
+            for d in datasets.values() if d.size is Size.SMALL]
+  cases.append(make_case("optimize", mpox, "rerooted-input",
+                         ["{bin}", "optimize", f"--tree={mpox.path}/tree_opt.nwk", f"--aln={mpox.path}/aln.fasta.xz",
+                          *individual], required_outputs=required))
+  return cases
+
+
+def config_cases(root: Path, datasets: dict[str, Dataset]) -> list[Case]:
+  cases = []
+  for config in sorted((root / DATA_DIR).glob("**/*.yaml")):
+    dataset = datasets[config.parent.relative_to(root / DATA_DIR).as_posix()]
+    command = "pipeline" if config.stem == "pipeline" else config.stem.split("-")[0]
+    argv = ["{bin}", command, f"--config={dataset.path}/{config.name}"]
+    cases.append(make_case("config", dataset, config.stem, argv, cwd_mode=CwdMode.SANDBOX))
+  return cases
+
+
+def help_cases() -> list[Case]:
+  cases = [make_case("help", None, "global", ["{bin}", "--help"], compare_stdout=True)]
+  cases += [make_case("help", None, sub, ["{bin}", sub, "--help"], compare_stdout=True) for sub in SUBCOMMANDS]
+  return cases
+
+
+def validate_matrix(cases: list[Case]) -> None:
+  duplicates = [case_id for case_id, count in Counter(case.id for case in cases).items() if count > 1]
+  if duplicates:
+    raise SmokeError(f"Duplicate case ids: {', '.join(sorted(duplicates))}")
+  ids = sorted(case.id for case in cases)
+  nested = [(a, b) for a, b in itertools.pairwise(ids) if b.startswith(a + "/")]
+  if nested:
+    raise SmokeError(f"Case id is a directory prefix of another case id: {nested[0][0]} and {nested[0][1]}")
+
+
+def apply_known_failures(cases: list[Case]) -> list[Case]:
+  unknown = sorted(KNOWN_FAILURES.keys() - {case.id for case in cases})
+  if unknown:
+    raise SmokeError(f"KNOWN_FAILURES names cases that are not in the matrix: {', '.join(unknown)}")
+
+  def expectation(case: Case) -> tuple[Expect, str] | None:
+    return HOMOPLASY_UNIMPLEMENTED if case.command == "homoplasy" else KNOWN_FAILURES.get(case.id)
+
+  return [dataclasses.replace(case, expect=known[0], reason=known[1]) if (known := expectation(case)) else case
+          for case in cases]
+
+
+def select_cases(cases: list[Case], tier: Tier, only: str | None, ids: set[str] | None) -> list[Case]:
+  if ids is not None:
+    selected = [case for case in cases if case.id in ids]
+  else:
+    selected = [case for case in cases if tier is Tier.FULL or case.tier is Tier.QUICK]
+  if only:
+    try:
+      pattern = re.compile(only)
+    except re.error as error:
+      raise SmokeError(f"Invalid --only regex {only!r}: {error}") from error
+    selected = [case for case in selected if pattern.search(case.id)]
+  return selected
+
+
+def last_failed_ids(current: Snapshot) -> set[str]:
+  path = current.dir / "last-run.json"
+  if not path.exists():
+    runs = [json.loads(p.read_text()) for p in SNAPSHOTS_DIR.glob("*/last-run.json")]
+    if not runs:
+      raise SmokeError("--rerun-failed: no snapshot has a recorded run yet")
+    return set(max(runs, key=lambda run: run["finished_at"])["failed"])
+  return set(json.loads(path.read_text())["failed"])
+
+
+def working_tree_snapshot() -> Snapshot:
+  commit = git("rev-parse", "HEAD").decode().strip()
+  short = short_commit(commit)
+  if not git("status", "--porcelain").strip():
+    return Snapshot(short, commit, None, None)
+  digest = hashlib.sha256(git("diff", "HEAD", "--binary"))
+  untracked = git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+  for path in sorted(p for p in untracked if p):
+    file = PROJECT_ROOT / os.fsdecode(path)
+    content = os.fsencode(os.readlink(file)) if file.is_symlink() else file.read_bytes() if file.is_file() else b""
+    digest.update(path + b"\0" + content)
+  dirty = digest.hexdigest()[:10]
+  return Snapshot(f"{short}+dirty-{dirty}", commit, dirty, None)
+
+
+def resolve_against(against: str) -> Snapshot:
+  if (SNAPSHOTS_DIR / against).is_dir():
+    meta = json.loads((SNAPSHOTS_DIR / against / "snapshot.json").read_text())
+    return Snapshot(against, meta["commit"], meta.get("dirty_hash"), meta.get("ref"))
+  commit = git("rev-parse", "--verify", f"{against}^{{commit}}").decode().strip()
+  return Snapshot(short_commit(commit), commit, None, against)
+
+
+def prune_snapshots(current: Snapshot) -> None:
+  if not SNAPSHOTS_DIR.is_dir():
+    return
+  for directory in sorted(SNAPSHOTS_DIR.iterdir()):
+    if directory.is_dir() and "+dirty-" in directory.name and directory.name != current.id:
+      shutil.rmtree(directory)
+      print(directory.relative_to(PROJECT_ROOT))
+
+
+def ensure_current_binary(snapshot: Snapshot, no_build: bool) -> None:
+  if not no_build:
+    log.info("Building the current binary for snapshot %s", snapshot.id)
+    build_in_checkout(PROJECT_ROOT)
+  binary = PROJECT_ROOT / ".out" / "treetime"
+  if not binary.is_file():
+    raise SmokeError(f"{binary.relative_to(PROJECT_ROOT)} does not exist: run without --no-build")
+  prepare_snapshot(snapshot, binary)
+
+
+def ensure_baseline_binary(snapshot: Snapshot) -> None:
+  if snapshot.binary.is_file():
+    return
+  if snapshot.dirty_hash is not None:
+    raise SmokeError(f"Snapshot {snapshot.id} has no binary and cannot be rebuilt: it is a dirty working tree")
+  log.info("Building the baseline binary for %s (%s)", snapshot.ref or snapshot.commit, snapshot.id)
+  SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+  staged = build_baseline_binary(snapshot)
+  try:
+    prepare_snapshot(snapshot, staged)
+  finally:
+    staged.unlink(missing_ok=True)
+
+
+def build_baseline_binary(snapshot: Snapshot) -> Path:
+  """Build the snapshot's commit in a detached worktree, so the current checkout is never disturbed."""
+  checkout = WORKTREES_DIR / snapshot.id
+  if checkout.exists():
+    git("worktree", "remove", "--force", str(checkout))
+  checkout.parent.mkdir(parents=True, exist_ok=True)
+  git("worktree", "add", "--detach", "--force", str(checkout), snapshot.commit)
+  try:
+    staged = SNAPSHOTS_DIR / f".{snapshot.id}.treetime"
+    shutil.copy2(build_in_checkout(checkout), staged)
+    return staged
+  finally:
+    git("worktree", "remove", "--force", str(checkout))
+
+
+def build_in_checkout(checkout: Path) -> Path:
+  run_checked([*WRAPPER, *release_build_cmd(checkout)], cwd=checkout)
+  binary = checkout / ".out" / "treetime"
+  if not binary.is_file():
+    raise SmokeError(f"The build did not produce {binary}")
+  return binary
+
+
+def release_build_cmd(checkout: Path) -> list[str]:
+  """Pick the task runner of the checkout: the justfile, or the older dev/dev script."""
+  if (checkout / "justfile").exists():
+    return ["just", "br", "treetime"]
+  return ["./dev/dev", "br", "treetime"]
+
+
+def prepare_snapshot(snapshot: Snapshot, binary: Path) -> None:
+  """Install the binary into the snapshot and drop stored cases produced by a different binary."""
+  binary_sha = sha256_file(binary)
+  meta = snapshot.read_meta()
+  if meta is not None and meta.get("binary_sha256") != binary_sha:
+    log.info("Binary of snapshot %s changed: deleting its stored cases", snapshot.id)
+    shutil.rmtree(snapshot.dir / "cases", ignore_errors=True)
+  snapshot.binary.parent.mkdir(parents=True, exist_ok=True)
+  if binary.resolve() != snapshot.binary.resolve():
+    shutil.copy2(binary, snapshot.binary)
+  write_json(snapshot.dir / "snapshot.json", {
+    "commit": snapshot.commit, "dirty_hash": snapshot.dirty_hash, "ref": snapshot.ref, "binary_sha256": binary_sha,
+    "created_at": (meta or {}).get("created_at") or now_iso(),
+  })
+
+
+def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace, hasher: InputHasher,
+                 check_determinism: bool) -> dict[str, dict]:
+  """Run every selected case of a snapshot whose stored result is not reusable, and return all results."""
+  pending = []
+  for case in cases:
+    key = case_key(case, hasher)
+    scaled = dataclasses.replace(case, timeout_s=case.timeout_s * args.timeout_scale)
+    stored = read_result(snapshot, case.id)
+    run_main = args.rerun or not is_reusable(stored, key, scaled.timeout_s)
+    if run_main or (check_determinism and stored["determinism"] is None):
+      pending.append({"case": scaled.to_json(), "case_key": key, "run_main": run_main})
+  log.info("Snapshot %s: %d cases selected, %d to run", snapshot.id, len(cases), len(pending))
+  if pending:
+    cases_file = snapshot.dir / "pending-cases.json"
+    write_json(cases_file, pending)
+    command = [*WRAPPER, "python3", SELF, "--run-cases", "--bin", str(snapshot.binary), "--snapshot", str(snapshot.dir),
+               "--cases", str(cases_file), "--jobs", str(args.jobs)]
+    if check_determinism:
+      command.append("--check-determinism")
+    try:
+      run_checked(command)
+    finally:
+      cases_file.unlink(missing_ok=True)
+  results = {case.id: read_result(snapshot, case.id) for case in cases}
+  missing = sorted(case_id for case_id, result in results.items() if result is None)
+  if missing:
+    raise SmokeError(f"Snapshot {snapshot.id}: {len(missing)} cases have no result, first: {missing[0]}")
+  return results
+
+
+def case_key(case: Case, hasher: InputHasher) -> str:
+  payload = {
+    "argv": list(case.argv), "expect": case.expect.value, "required_outputs": list(case.required_outputs),
+    "cwd_mode": case.cwd_mode.value, "inputs": hasher.inputs(case),
+  }
+  return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def read_result(snapshot: Snapshot, case_id: str) -> dict | None:
+  path = snapshot.case_dir(case_id) / "result.json"
+  return json.loads(path.read_text()) if path.exists() else None
+
+
+def is_reusable(result: dict | None, key: str, timeout_s: float) -> bool:
+  """A stored result is reusable when its inputs are unchanged and it would not differ under the new timeout."""
+  if result is None or result["case_key"] != key:
+    return False
+  if result["timed_out"]:
+    return result["timeout_s"] >= timeout_s
+  return result["wall_s"] <= timeout_s
+
+
+def effective_status(result: dict) -> Status:
+  status = Status(result["status"])
+  if status is Status.OK and result.get("determinism") == "differs":
+    return Status.NONDETERMINISTIC
+  return status
+
+
+def run_cases_mode(args: argparse.Namespace) -> int:
+  tasks = json.loads(Path(args.cases).read_text())
+  binary = Path(args.bin).resolve()
+  snapshot_dir = Path(args.snapshot).resolve()
+  jobs = max(1, args.jobs)
+  large_slots = threading.Semaphore(max(1, jobs // 4))
+  tty = sys.stderr.isatty()
+  done = 0
+  with ThreadPoolExecutor(max_workers=jobs) as pool:
+    futures = {pool.submit(run_case_task, task, binary, snapshot_dir, args.check_determinism, large_slots): task
+               for task in tasks}
+    for future in as_completed(futures):
+      result = future.result()
+      done += 1
+      status = effective_status(result)
+      if tty:
+        sys.stderr.write(CLEAR_LINE)
+      if status not in PASSING_STATUSES:
+        log.warning("%-17s %7.1fs  %s  %s", status.value, result["wall_s"], result["id"], result["detail"])
+      if tty:
+        sys.stderr.write(f"[{done}/{len(tasks)}] {result['id']}")
+        sys.stderr.flush()
+  if tty:
+    sys.stderr.write(CLEAR_LINE)
+  return 0
+
+
+def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinism: bool,
+                  large_slots: threading.Semaphore) -> dict:
+  case = Case.from_json(task["case"])
+  case_dir = snapshot_dir / "cases" / case.id
+  extra = [] if case.is_help else ["--no-progress"]
+  with large_slots if case.size is Size.LARGE else contextlib.nullcontext():
+    if not task["run_main"]:
+      result = json.loads((case_dir / "result.json").read_text())
+    else:
+      outcome, missing = run_one(case, binary, case_dir, extra)
+      status, detail = classify(case, outcome, missing)
+      result = {
+        "id": case.id, "status": status.value, "detail": detail, "exit_code": outcome.exit_code,
+        "timed_out": outcome.timed_out, "timeout_s": case.timeout_s, "wall_s": round(outcome.wall_s, 3),
+        "cpu_s": round(outcome.cpu_s, 3), "max_rss_kb": outcome.max_rss_kb, "case_key": task["case_key"],
+        "expect": case.expect.value, "determinism": None,
+      }
+    if check_determinism:
+      rerun_extra = extra + ([] if case.is_help else ["--jobs=1"])
+      rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra)
+      rerun_status, _ = classify(case, rerun_outcome, rerun_missing)
+      same = rerun_status.value == result["status"] and not diff_run_dirs(case, case_dir, case_dir / "rerun")
+      result["determinism"] = "same" if same else "differs"
+  write_json(case_dir / "result.json", result)
+  return result
+
+
+def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str]) -> tuple[RunOutcome, list[str]]:
+  """Run a case into run_dir (out/, stdout.txt, stderr.txt, cmd.sh) and return the outcome and missing outputs."""
+  shutil.rmtree(run_dir, ignore_errors=True)
+  out = run_dir / "out"
+  out.mkdir(parents=True)
+  argv = resolve_argv(case, binary, out) + extra_args
+  data = PROJECT_ROOT / DATA_DIR
+  if case.cwd_mode is CwdMode.SANDBOX:
+    cwd = run_dir / "sandbox"
+    cwd.mkdir()
+    (cwd / DATA_DIR).symlink_to(data)
+    script = (f'sandbox="$(mktemp -d)"\nln -s {shlex.quote(str(data))} "$sandbox/{DATA_DIR}"\ncd "$sandbox"\n'
+              f"RUST_BACKTRACE=1 NO_COLOR=1 exec {shlex.join(argv)}\n")
+  else:
+    cwd = PROJECT_ROOT
+    script = f"RUST_BACKTRACE=1 NO_COLOR=1 exec {shlex.join(argv)}\n"
+  (run_dir / "cmd.sh").write_text(f"#!/usr/bin/env bash\nset -euo pipefail\n{script}")
+  (run_dir / "cmd.sh").chmod(0o755)
+  outcome = execute(argv, cwd, run_dir / "stdout.txt", run_dir / "stderr.txt", case.timeout_s)
+  if case.cwd_mode is CwdMode.SANDBOX:
+    (cwd / DATA_DIR).unlink()
+    for entry in cwd.iterdir():
+      shutil.move(str(entry), out / entry.name)
+    cwd.rmdir()
+  return outcome, missing_outputs(case, run_dir)
+
+
+def resolve_argv(case: Case, binary: Path, out: Path) -> list[str]:
+  replacements = {"{bin}": str(binary), "{data}": DATA_DIR, "{out}": str(out)}
+  argv = []
+  for arg in case.argv:
+    for placeholder, value in replacements.items():
+      arg = arg.replace(placeholder, value)
+    argv.append(arg)
+  return argv
+
+
+def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: float) -> RunOutcome:
+  """Run one process with a timeout and measure its own wall time, CPU time and peak memory."""
+  env = {**os.environ, "RUST_BACKTRACE": "1", "NO_COLOR": "1"}
+  lock = threading.Lock()
+  state = {"exited": False, "timed_out": False}
+  with stdout.open("wb") as out, stderr.open("wb") as err:
+    start = time.perf_counter()
+    process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, env=env)
+
+  def stop_on_timeout() -> None:
+    with lock:
+      if not state["exited"]:
+        state["timed_out"] = True
+        os.kill(process.pid, signal.SIGKILL)
+
+  timer = threading.Timer(timeout_s, stop_on_timeout)
+  timer.start()
+  # Wait without reaping first, so the timer can never signal a reused pid.
+  os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+  with lock:
+    state["exited"] = True
+  timer.cancel()
+  _, wait_status, usage = os.wait4(process.pid, 0)
+  wall = time.perf_counter() - start
+  process.returncode = os.waitstatus_to_exitcode(wait_status)
+  return RunOutcome(
+    exit_code=None if state["timed_out"] else process.returncode, timed_out=state["timed_out"], wall_s=wall,
+    cpu_s=usage.ru_utime + usage.ru_stime, max_rss_kb=usage.ru_maxrss,
+  )
+
+
+def missing_outputs(case: Case, run_dir: Path) -> list[str]:
+  out = run_dir / "out"
+  missing = [name for name in case.required_outputs if not non_empty(out / name)]
+  if case.writes_output_dir and not any(non_empty(p) for p in out.rglob("*")):
+    missing.append("out/ has no non-empty file")
+  if case.compare_stdout and not non_empty(run_dir / "stdout.txt"):
+    missing.append("stdout.txt")
+  return missing
+
+
+def non_empty(path: Path) -> bool:
+  return path.is_file() and path.stat().st_size > 0
+
+
+def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Status, str]:
+  """Derive the status of a run from its exit code, timeout and declared outputs, given the case expectation."""
+  missing_detail = f"missing or empty: {', '.join(missing)}"
+  if case.expect is Expect.PASS:
+    if outcome.timed_out:
+      return Status.TIMEOUT, f"exceeded {outcome.wall_s:.0f}s timeout"
+    if outcome.exit_code != 0:
+      return Status.FAILED, f"exit code {outcome.exit_code}"
+    if missing:
+      return Status.MISSING_OUTPUT, missing_detail
+    return Status.OK, ""
+  expected = f"expected {case.expect.value} ({case.reason})"
+  if case.expect is Expect.FAIL and outcome.exit_code not in (0, None):
+    return Status.XFAIL, f"exit code {outcome.exit_code}, {expected}"
+  if case.expect is Expect.TIMEOUT and outcome.timed_out:
+    return Status.XFAIL, f"timed out, {expected}"
+  if outcome.timed_out:
+    return Status.FAILED, f"timed out, but {expected}"
+  if outcome.exit_code != 0:
+    return Status.FAILED, f"exit code {outcome.exit_code}, but {expected}"
+  if missing:
+    return Status.MISSING_OUTPUT, f"{missing_detail}, {expected}"
+  return Status.XPASS, f"passed, but {expected}: remove the expectation"
+
+
+def build_reports(cases: list[Case], current: Snapshot, current_results: dict[str, dict], baseline: Snapshot | None,
+                  baseline_results: dict[str, dict] | None) -> list[CaseReport]:
+  reports = []
+  for case in cases:
+    result = current_results[case.id]
+    status = effective_status(result)
+    report = CaseReport(case, None, status, None, result["wall_s"], None, result["detail"],
+                        stderr_line=first_error_line(current.case_dir(case.id)))
+    if status is Status.NONDETERMINISTIC:
+      report.diffs = diff_run_dirs(case, current.case_dir(case.id), current.case_dir(case.id) / "rerun")
+      report.detail = "the --jobs=1 rerun produced different outputs"
+    if baseline is not None and baseline_results is not None:
+      base = baseline_results[case.id]
+      report.baseline_status = effective_status(base)
+      report.baseline_wall_s = base["wall_s"]
+      report.category = categorize(status, report.baseline_status)
+      if report.category is Category.IDENTICAL:
+        report.diffs = diff_run_dirs(case, baseline.case_dir(case.id), current.case_dir(case.id))
+        if report.diffs:
+          report.category = Category.CHANGED
+          report.detail = f"{len(report.diffs)} files differ, first: {report.diffs[0].path} ({report.diffs[0].summary})"
+      elif report.category is Category.FIXED:
+        report.detail = f"baseline {report.baseline_status.value}; outputs not compared"
+      elif report.category is Category.REGRESSED:
+        report.detail = f"{status.value}: {result['detail']}"
+      elif report.category is Category.STILL_FAILING:
+        report.detail = f"current {status.value}, baseline {report.baseline_status.value}: {result['detail']}"
+    reports.append(report)
+  return reports
+
+
+def categorize(status: Status, baseline: Status) -> Category:
+  if status is Status.XFAIL:
+    return Category.EXPECTED_FAILURE
+  if status is Status.XPASS:
+    return Category.UNEXPECTED_PASS
+  base_passed = baseline in (Status.OK, Status.XPASS)
+  if status is Status.OK and base_passed:
+    return Category.IDENTICAL
+  if base_passed:
+    return Category.REGRESSED
+  if status is Status.OK:
+    return Category.FIXED
+  return Category.STILL_FAILING
+
+
+def diff_run_dirs(case: Case, base_dir: Path, current_dir: Path) -> list[FileDiff]:
+  base_files = compared_files(case, base_dir)
+  current_files = compared_files(case, current_dir)
+  diffs = []
+  for name in sorted(base_files.keys() | current_files.keys()):
+    if name not in current_files:
+      diffs.append(FileDiff(name, "only-baseline", "only in the baseline"))
+    elif name not in base_files:
+      diffs.append(FileDiff(name, "only-current", "only in the current run"))
+    else:
+      old, new = normalized_bytes(base_files[name]), normalized_bytes(current_files[name])
+      if old != new:
+        diffs.append(content_diff(name, old, new))
+  return diffs
+
+
+def compared_files(case: Case, run_dir: Path) -> dict[str, Path]:
+  out = run_dir / "out"
+  files = {p.relative_to(out).as_posix(): p for p in out.rglob("*") if p.is_file()} if out.is_dir() else {}
+  if case.compare_stdout:
+    files["<stdout>"] = run_dir / "stdout.txt"
+  return files
+
+
+def normalized_bytes(path: Path) -> bytes:
+  """File content with the volatile fields removed; JSON files of those types are parsed and re-serialized."""
+  data = path.read_bytes()
+  key_path = next((keys for suffix, keys in VOLATILE_FIELDS.items() if path.name.endswith(suffix)), None)
+  if key_path is None:
+    return data
+  try:
+    doc = json.loads(data)
+  except ValueError:
+    return data
+  node = doc
+  for key in key_path[:-1]:
+    node = node.get(key) if isinstance(node, dict) else None
+  if isinstance(node, dict):
+    node.pop(key_path[-1], None)
+  return json.dumps(doc, indent=2, ensure_ascii=False).encode()
+
+
+def content_diff(name: str, old: bytes, new: bytes) -> FileDiff:
+  if name.endswith(".json"):
+    try:
+      return json_diff(name, json.loads(old), json.loads(new))
+    except ValueError:
+      pass
+  try:
+    return text_diff(name, old.decode(), new.decode())
+  except UnicodeDecodeError:
+    summary = (f"binary: {len(old)} B sha256 {hashlib.sha256(old).hexdigest()[:12]} -> "
+               f"{len(new)} B sha256 {hashlib.sha256(new).hexdigest()[:12]}")
+    return FileDiff(name, "binary", summary)
+
+
+def json_diff(name: str, old, new) -> FileDiff:
+  leaves = json_leaf_diffs(old, new)
+  if not leaves:
+    return FileDiff(name, "json", "key order or formatting only")
+  lines = [f"{path}: {json.dumps(a)[:120]} -> {json.dumps(b)[:120]}" for path, a, b in leaves[:MAX_DIFF_ITEMS]]
+  if all(is_number(a) and is_number(b) for _, a, b in leaves):
+    summary = numeric_summary([(float(a), float(b)) for _, a, b in leaves])
+    kind = "numeric"
+  else:
+    summary = f"structural: {len(leaves)} JSON values differ"
+    kind = "structural"
+  return FileDiff(name, kind, summary, lines, first_path=leaves[0][0])
+
+
+def json_leaf_diffs(old, new, path: str = "") -> list[tuple[str, object, object]]:
+  if isinstance(old, dict) and isinstance(new, dict):
+    diffs = []
+    for key in [*old, *(k for k in new if k not in old)]:
+      sub = f"{path}.{key}" if path else str(key)
+      diffs += json_leaf_diffs(old.get(key, "<absent>"), new.get(key, "<absent>"), sub)
+    return diffs
+  if isinstance(old, list) and isinstance(new, list):
+    diffs = []
+    for index in range(max(len(old), len(new))):
+      diffs += json_leaf_diffs(old[index] if index < len(old) else "<absent>",
+                               new[index] if index < len(new) else "<absent>", f"{path}[{index}]")
+    return diffs
+  if old == new and type(old) is type(new):
+    return []
+  return [(path or "<root>", old, new)]
+
+
+def is_number(value) -> bool:
+  return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def text_diff(name: str, old: str, new: str) -> FileDiff:
+  old_lines, new_lines = old.splitlines(), new.splitlines()
+  if len(old_lines) == len(new_lines):
+    pairs = []
+    structural = False
+    for a, b in zip(old_lines, new_lines, strict=True):
+      if a == b:
+        continue
+      if NUMBER_RE.split(a) != NUMBER_RE.split(b):
+        structural = True
+        break
+      pairs += [(float(x), float(y)) for x, y in zip(NUMBER_RE.findall(a), NUMBER_RE.findall(b), strict=True) if x != y]
+    if not structural and pairs:
+      return FileDiff(name, "numeric", numeric_summary(pairs), numeric_examples(old_lines, new_lines))
+  diff = [line for line in difflib.unified_diff(old_lines, new_lines, "baseline", "current", n=0, lineterm="")
+          if line[:1] in "+-" and not line.startswith(("+++", "---"))]
+  changed = sum(1 for a, b in zip(old_lines, new_lines, strict=False) if a != b) + abs(len(old_lines) - len(new_lines))
+  return FileDiff(name, "structural", f"structural: {changed} lines differ",
+                  [clip(line) for line in diff[:MAX_DIFF_ITEMS]])
+
+
+def numeric_summary(pairs: list[tuple[float, float]]) -> str:
+  abs_diffs = [abs(a - b) for a, b in pairs]
+  rel_diffs = [abs(a - b) / max(abs(a), abs(b)) for a, b in pairs if max(abs(a), abs(b)) > 0]
+  return (f"numeric only: {len(pairs)} values changed, max abs diff {max(abs_diffs):.3g}, "
+          f"max rel diff {max(rel_diffs, default=0.0):.3g}")
+
+
+def numeric_examples(old_lines: list[str], new_lines: list[str]) -> list[str]:
+  examples = []
+  for number, (a, b) in enumerate(zip(old_lines, new_lines, strict=True), start=1):
+    for x, y in zip(NUMBER_RE.findall(a), NUMBER_RE.findall(b), strict=False):
+      if x != y:
+        examples.append(f"line {number}: {x} -> {y}")
+        if len(examples) >= MAX_DIFF_ITEMS:
+          return examples
+  return examples
+
+
+def clip(line: str, width: int = 200) -> str:
+  return line if len(line) <= width else f"{line[:width]}... ({len(line)} chars)"
+
+
+def first_error_line(run_dir: Path) -> str | None:
+  """First stderr line that names an error or panic; for a bare `Error:` header, the message line after it."""
+  path = run_dir / "stderr.txt"
+  if not path.is_file():
+    return None
+  lines = [line.strip() for line in path.read_text(errors="replace").splitlines() if line.strip()]
+  for index, line in enumerate(lines):
+    if ERROR_LINE_RE.search(line):
+      message = lines[index + 1] if line.rstrip(":") == "Error" and index + 1 < len(lines) else line
+      return clip(message, 160)
+  return None
+
+
+def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapshot | None, report_dir: Path) -> None:
+  report_dir.mkdir(parents=True, exist_ok=True)
+  rows = ["id\tcategory\tcommand\tdataset\twall_s\tbaseline_wall_s\tdetail"]
+  for r in reports:
+    base_wall = "" if r.baseline_wall_s is None else f"{r.baseline_wall_s:.2f}"
+    detail = r.detail.replace("\t", " ").replace("\n", " ")
+    fields = [r.case.id, r.label, r.case.command, r.case.dataset or "", f"{r.wall_s:.2f}", base_wall, detail]
+    rows.append("\t".join(fields))
+  (report_dir / "report.tsv").write_text("\n".join(rows) + "\n")
+
+  counts = Counter(r.label for r in reports)
+  md = [f"# Smoke run of `{current.id}`" + (f" against `{baseline.id}`" if baseline else ""), ""]
+  if baseline:
+    md += [f"Baseline: `{baseline.id}`" + (f" (`{baseline.ref}`)" if baseline.ref else ""), ""]
+  md += ["| Result | Cases |", "| --- | ---: |"]
+  md += [f"| {label} | {count} |" for label, count in sorted(counts.items())]
+  md += [""]
+  groups = cause_groups(reports)
+  if groups:
+    md += ["## Cause groups", ""]
+    for sig, items in groups:
+      md.append(f"- **{len(items)}** `{format_signature(sig)}`: " + ", ".join(f"`{r.case.id}`" for r in items[:5]))
+    md += [""]
+  failing = [r for r in reports if not r.passed]
+  if failing:
+    md += ["## Cases", ""]
+  for r in failing:
+    case_dir = current.case_dir(r.case.id).relative_to(PROJECT_ROOT)
+    md += [f"### `{r.case.id}`: {r.label}", "", f"- Detail: {r.detail}", f"- Command: `{case_dir}/cmd.sh`"]
+    if r.stderr_line:
+      md.append(f"- stderr: `{r.stderr_line}`")
+    for diff in r.diffs:
+      md.append(f"- `{diff.path}`: {diff.summary}")
+      if diff.lines:
+        md += ["", "  ```", *[f"  {line}" for line in diff.lines], "  ```", ""]
+    md.append("")
+  (report_dir / "report.md").write_text("\n".join(md))
+
+
+def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapshot | None, report_dir: Path,
+                  elapsed_s: float) -> None:
+  labels = [c.value for c in Category] if baseline else [s.value for s in Status]
+  counts = Counter(report.label for report in reports)
+  title = f"Comparison of {current.id} with {baseline.id}" if baseline else f"Statuses of {current.id}"
+  print(f"\n{title}: {len(reports)} cases in {elapsed_s:.0f}s")
+  for label in labels:
+    if counts[label]:
+      print(f"  {label:<18} {counts[label]}")
+  by_command: dict[str, list[CaseReport]] = defaultdict(list)
+  for report in reports:
+    by_command[report.case.command].append(report)
+  print("\nPer command:")
+  for command, items in sorted(by_command.items()):
+    failing = sum(1 for r in items if not r.passed)
+    print(f"  {command:<12} {len(items):4} cases  {len(items) - failing:4} pass  {failing:4} fail")
+  groups = cause_groups(reports)
+  if groups:
+    print("\nCause groups:")
+    for sig, items in groups[:15]:
+      examples = ", ".join(r.case.id for r in items[:3])
+      print(f"  {len(items):4}  {format_signature(sig)}\n        e.g. {examples}")
+    if len(groups) > 15:
+      print(f"  ... {len(groups) - 15} more groups in the report")
+  print("\nSlowest cases (information only):")
+  for report in sorted(reports, key=lambda r: r.wall_s, reverse=True)[:10]:
+    change = ""
+    if report.baseline_wall_s:
+      change = f" ({(report.wall_s - report.baseline_wall_s) / report.baseline_wall_s * 100:+.0f}% vs baseline)"
+    print(f"  {report.wall_s:7.1f}s{change}  {report.case.id}")
+  print(f"\nCurrent snapshot:  {current.dir.relative_to(PROJECT_ROOT)}")
+  if baseline:
+    print(f"Baseline snapshot: {baseline.dir.relative_to(PROJECT_ROOT)}")
+  print(f"Report:            {(report_dir / 'report.md').relative_to(PROJECT_ROOT)}")
+
+
+def cause_groups(reports: list[CaseReport]) -> list[tuple[tuple[str, ...], list[CaseReport]]]:
+  groups: dict[tuple[str, ...], list[CaseReport]] = defaultdict(list)
+  for report in reports:
+    if not report.passed:
+      groups[signature(report)].append(report)
+  return sorted(groups.items(), key=lambda item: (-len(item[1]), item[0]))
+
+
+def signature(report: CaseReport) -> tuple[str, ...]:
+  """Cause of a failing case: many failures with the same signature most likely share one cause."""
+  if report.diffs:
+    first = report.diffs[0]
+    detail = mask_numbers(first.first_path) if first.first_path else first.kind
+    return report.label, report.case.command, first.path, detail
+  return report.label, report.case.command, "", mask_numbers(report.stderr_line or report.status.value)
+
+
+def mask_numbers(text: str) -> str:
+  return NUMBER_RE.sub("N", text)
+
+
+def format_signature(sig: tuple[str, ...]) -> str:
+  return "  ".join(part for part in sig if part)
+
+
+def write_last_run(snapshot: Snapshot, reports: list[CaseReport], baseline: Snapshot | None) -> None:
+  write_json(snapshot.dir / "last-run.json", {
+    "finished_at": now_iso(), "against": baseline.id if baseline else None,
+    "failed": sorted(r.case.id for r in reports if not r.passed),
+  })
+
+
+def git(*args: str, cwd: Path = PROJECT_ROOT) -> bytes:
+  result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, check=False)
+  if result.returncode != 0:
+    raise SmokeError(f"git {shlex.join(args)} failed: {result.stderr.decode(errors='replace').strip()}")
+  return result.stdout
+
+
+def short_commit(rev: str) -> str:
+  return git("rev-parse", "--short=10", rev).decode().strip()
+
+
+def run_checked(command: list[str], cwd: Path = PROJECT_ROOT) -> None:
+  log.info("+ %s", shlex.join(command))
+  result = subprocess.run(command, cwd=cwd, check=False)
+  if result.returncode != 0:
+    raise SmokeError(f"Command failed with exit code {result.returncode}: {shlex.join(command)} (in {cwd})")
+
+
+def sha256_file(path: Path) -> str:
+  digest = hashlib.sha256()
+  with path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1 << 20), b""):
+      digest.update(chunk)
+  return digest.hexdigest()
+
+
+def write_json(path: Path, data) -> None:
+  path.parent.mkdir(parents=True, exist_ok=True)
+  temporary = path.with_name(f".{path.name}.tmp")
+  temporary.write_text(json.dumps(data, indent=2) + "\n")
+  os.replace(temporary, path)
+
+
+def now_iso() -> str:
+  return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def enum_value(value):
+  if isinstance(value, Enum):
+    return value.value
+  if isinstance(value, tuple):
+    return list(value)
+  return value
+
+
+class SmokeError(Exception):
+  """A failure that prevents the script from completing (exit code 2)."""
+
+
+@dataclass(frozen=True)
+class Case:
+  id: str
+  command: str
+  dataset: str | None
+  size: Size
+  tier: Tier
+  timeout_s: float
+  argv: tuple[str, ...]
+  expect: Expect = Expect.PASS
+  reason: str | None = None
+  required_outputs: tuple[str, ...] = ()
+  compare_stdout: bool = False
+  cwd_mode: CwdMode = CwdMode.ROOT
+
+  def __post_init__(self) -> None:
+    if (self.expect is Expect.PASS) != (self.reason is None):
+      raise ValueError(f"{self.id}: `reason` is required exactly when `expect` is not PASS")
+
+  @property
+  def is_help(self) -> bool:
+    return self.command == "help"
+
+  @property
+  def writes_output_dir(self) -> bool:
+    return self.cwd_mode is CwdMode.SANDBOX or "--output-all={out}" in self.argv
+
+  def to_json(self) -> dict:
+    return {f.name: enum_value(getattr(self, f.name)) for f in dataclasses.fields(self)}
+
+  @staticmethod
+  def from_json(data: dict) -> Case:
+    return Case(
+      id=data["id"], command=data["command"], dataset=data["dataset"], size=Size(data["size"]),
+      tier=Tier(data["tier"]), timeout_s=data["timeout_s"], argv=tuple(data["argv"]),
+      expect=Expect(data["expect"]), reason=data["reason"], required_outputs=tuple(data["required_outputs"]),
+      compare_stdout=data["compare_stdout"], cwd_mode=CwdMode(data["cwd_mode"]),
+    )
+
+
+@dataclass(frozen=True)
+class Dataset:
+  name: str
+  size: Size
+  profile: Profile
+  metadata: str | None
+  metadata_columns: frozenset[str]
+
+  @property
+  def path(self) -> str:
+    return f"{{data}}/{self.name}"
+
+  @property
+  def id_flags(self) -> tuple[str, ...]:
+    return (f"--name-column={self.profile.id_column}",) if self.profile.id_column else ()
+
+  @property
+  def mugration_attribute(self) -> str | None:
+    attribute = self.profile.attribute
+    return attribute if attribute is not None and attribute in self.metadata_columns else None
+
+
+@dataclass(frozen=True)
+class Snapshot:
+  id: str
+  commit: str
+  dirty_hash: str | None
+  ref: str | None
+
+  @property
+  def dir(self) -> Path:
+    return SNAPSHOTS_DIR / self.id
+
+  @property
+  def binary(self) -> Path:
+    return self.dir / "bin" / "treetime"
+
+  def case_dir(self, case_id: str) -> Path:
+    return self.dir / "cases" / case_id
+
+  def read_meta(self) -> dict | None:
+    path = self.dir / "snapshot.json"
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+class InputHasher:
+  """SHA-256 of input files, computed once per file."""
+
+  def __init__(self) -> None:
+    self.cache: dict[Path, str] = {}
+
+  def file(self, path: Path) -> str:
+    if path not in self.cache:
+      self.cache[path] = sha256_file(path)
+    return self.cache[path]
+
+  def inputs(self, case: Case) -> dict[str, str]:
+    paths: set[Path] = set()
+    if case.dataset:
+      paths.update(p for p in (PROJECT_ROOT / DATA_DIR / case.dataset).rglob("*") if p.is_file())
+    for arg in case.argv:
+      for match in re.finditer(r"\{data\}/([^\s,=]+)", arg):
+        path = PROJECT_ROOT / DATA_DIR / match.group(1)
+        if not path.is_file():
+          raise SmokeError(f"{case.id}: input file {path.relative_to(PROJECT_ROOT)} does not exist")
+        paths.add(path)
+    return {p.relative_to(PROJECT_ROOT).as_posix(): self.file(p) for p in sorted(paths)}
+
+
+@dataclass
+class RunOutcome:
+  exit_code: int | None
+  timed_out: bool
+  wall_s: float
+  cpu_s: float
+  max_rss_kb: int
+
+
+@dataclass
+class CaseReport:
+  case: Case
+  category: Category | None
+  status: Status
+  baseline_status: Status | None
+  wall_s: float
+  baseline_wall_s: float | None
+  detail: str
+  diffs: list[FileDiff] = field(default_factory=list)
+  stderr_line: str | None = None
+
+  @property
+  def passed(self) -> bool:
+    if self.category is None:
+      return self.status in PASSING_STATUSES
+    return self.category in PASSING_CATEGORIES
+
+  @property
+  def label(self) -> str:
+    return self.category.value if self.category else self.status.value
+
+
+@dataclass
+class FileDiff:
+  path: str
+  kind: str
+  summary: str
+  lines: list[str] = field(default_factory=list)
+  first_path: str | None = None
+
+
+if __name__ == "__main__":
+  sys.exit(main())
