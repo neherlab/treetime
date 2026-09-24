@@ -18,5 +18,4 @@ Make declared workspace checks cover the renderer, add the required Vite/CSS amb
 
 ## Related issues
 
-- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)
 - [H-app-ui-displays-synthetic-results-and-ignores-inputs.md](H-app-ui-displays-synthetic-results-and-ignores-inputs.md)

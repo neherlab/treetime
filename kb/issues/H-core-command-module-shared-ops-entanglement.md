@@ -17,8 +17,6 @@ No ticket should move `commands/` until this boundary is decided. Scientific sta
 
 ## Related issues
 
-- [H-core-multi-client-architecture-library-purity.md](H-core-multi-client-architecture-library-purity.md)
-- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)
 - [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md)
 - [M-command-output-ownership-is-scattered.md](M-command-output-ownership-is-scattered.md)
 - [M-mugration-analysis-interface-exposes-policy-wiring.md](M-mugration-analysis-interface-exposes-policy-wiring.md)

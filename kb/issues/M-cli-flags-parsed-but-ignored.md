@@ -4,7 +4,7 @@ Several command-line flags are accepted by the parser, validated, and then never
 
 Two mechanisms hide the flags:
 
-- **Resolved argument field never read**: the command's resolved argument struct (`Treetime<Command>Args` in `packages/app-cli/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired
+- **Resolved argument field never read**: the command's resolved argument struct (`Treetime<Command>Args` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired
 - **Core configuration field never read**: the command copies the value into a public core configuration struct, and the core never reads that field. The compiler cannot detect these because the core field is public
 
 ## Resolved argument fields never read
@@ -18,7 +18,7 @@ Flags marked *hidden* are accepted but not listed in `--help`.
 | `mugration` | `--seed`                                                                                                                                                                                                           |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden)                            |
 
-`optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-cli/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
+`optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
 Tracked elsewhere, with their own `expect` reasons:
 

@@ -23,5 +23,4 @@ Store typed command state centrally, replace dataset selections atomically, pres
 
 ## Related issues
 
-- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)
 - [M-app-browser-file-ownership-undecided.md](M-app-browser-file-ownership-undecided.md)

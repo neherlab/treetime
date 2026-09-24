@@ -31,4 +31,3 @@ Parse CLI and transport DTOs into that type before entering the pipeline. Keep t
 ## Related issues
 
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md)
-- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)

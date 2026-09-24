@@ -24,4 +24,3 @@ Correct the module inventory for paths and responsibilities that are already fac
 ## Related issues
 
 - [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
-- [H-core-multi-client-architecture-library-purity.md](H-core-multi-client-architecture-library-purity.md)
