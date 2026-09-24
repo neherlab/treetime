@@ -392,6 +392,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
   /// regression'. Default=3.0, set to 0 to switch off.
   #[cfg_attr(feature = "clap", clap(long, default_value = "3.0"))]
+  #[default = 3.0]
   pub clock_filter: f64,
 
   /// Number of IQD (interquartile distance) for clock filter outlier detection

@@ -222,7 +222,7 @@
       "description": "ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from\nregression'. Default=3.0, set to 0 to switch off.",
       "type": "number",
       "format": "double",
-      "default": 0.0
+      "default": 3.0
     },
     "n_iqd": {
       "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
