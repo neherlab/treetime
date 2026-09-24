@@ -63,7 +63,6 @@ pub fn run(
   let regression_results =
     gather_clock_regression_results(&input.graph, &inputs, &mut state, &clock_model, &names, &branch_lengths)?;
 
-  progress.report("Done", 1.0, "");
   Ok(ClockOutput {
     graph: input.graph,
     inputs,

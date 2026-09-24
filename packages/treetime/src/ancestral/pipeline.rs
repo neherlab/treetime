@@ -87,7 +87,6 @@ pub fn run(
         .into_iter()
         .next()
         .expect("partition vec not empty");
-      progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
         output: AncestralOutput {
           gtr: None,
@@ -154,7 +153,6 @@ pub fn run(
             )
           })?;
 
-          progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
               gtr: Some(gtr.clone()),
@@ -214,7 +212,6 @@ pub fn run(
             )
           })?;
 
-          progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
               gtr: Some(gtr.clone()),

@@ -543,7 +543,6 @@ pub fn run(
     }
   }
 
-  progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {
     graph: input.graph,
     clock_model,
