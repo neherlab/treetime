@@ -107,18 +107,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
    If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
@@ -332,20 +322,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -378,7 +354,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -416,18 +392,8 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
    If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
@@ -497,20 +463,6 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -559,7 +511,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -586,11 +538,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--dp <DP>` — Likelihood convergence threshold. The loop stops when successive likelihoods differ by less than this value, or when a 2-cycle with amplitude below this value is detected
 
   Default value: `0.1`
-* `--damping <DAMPING>` — Damping factor for outer-loop branch length updates.
-
-   Controls how aggressively new branch lengths replace old ones during iterative optimization. At each iteration i, the update is: bl = bl_new * (1 - d) + bl_old * d where d = max(damping^(i+1), 0.01). The 1% floor prevents fully undamped late iterations on non-monotone objectives.
-
-   Higher values are more conservative (slower convergence, less oscillation). Set to 0.0 to disable damping (full update each iteration, no floor). Must be in [0.0, 1.0).
+* `--damping <DAMPING>` — Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$, where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation; zero disables damping. Must be in $[0,1)$
 
   Default value: `0.75`
 * `--branch-length-initial-guess <BRANCH_LENGTH_INITIAL_GUESS>` — Initial branch length estimate before Newton optimization.
@@ -607,9 +555,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   - `never`:
     Use input branch lengths as-is. Fails if any edge has a missing or invalid branch length
 
-* `--opt-method <OPT_METHOD>` — Per-edge branch length optimization method.
-
-   Algorithm x parameterization: - brent: Brent's method in t space (derivative-free) - brent-sqrt: Brent's method in sqrt(t) space (default, matches v0) - brent-log: Brent's method in ln(t) space - newton: Newton-Raphson in t space - newton-sqrt: Newton-Raphson in sqrt(t) space - newton-log: Newton-Raphson in ln(t) space
+* `--opt-method <OPT_METHOD>` — Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt` (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$
 
   Default value: `brent-sqrt`
 
@@ -668,18 +614,8 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -713,20 +649,6 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
    Parent directories are created if missing.
 * `--output-tree-auspice <OUTPUT_TREE_AUSPICE>` — Path to output Auspice v2 JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 
@@ -768,7 +690,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `gtr`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `gtr`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -836,18 +758,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
@@ -980,20 +892,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -1026,7 +924,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -1074,18 +972,8 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
    If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
@@ -1187,20 +1075,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -1239,7 +1113,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -1308,18 +1182,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
-
-   Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
-
-   If no input files provided, the plain fasta input is read from standard input (stdin).
-
-   See: https://en.wikipedia.org/wiki/FASTA_format
+* `--config <CONFIG>`
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
@@ -1452,20 +1316,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -1498,7 +1348,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -1553,11 +1403,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
-
-   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
-
-   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
+* `--config <CONFIG>`
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
    If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
@@ -1638,20 +1484,6 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
-* `--output-tree-phyloxml <OUTPUT_TREE_PHYLOXML>` — Path to output PhyloXML tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
-* `--output-tree-phyloxml-json <OUTPUT_TREE_PHYLOXML_JSON>` — Path to output PhyloXML-JSON tree file.
-
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-
-   Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
-
-   Parent directories are created if missing.
 * `--output-tree-mat-pb <OUTPUT_TREE_MAT_PB>` — Path to output UShER MAT protobuf tree file.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -1684,7 +1516,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `confidence-csv`, `traits-csv`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `confidence-csv`, `traits-csv`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
