@@ -914,7 +914,7 @@ def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Statu
   missing_detail = f"missing or empty: {', '.join(missing)}"
   if case.expect is Expect.PASS:
     if outcome.timed_out:
-      return Status.TIMEOUT, f"exceeded {outcome.wall_s:.0f}s timeout"
+      return Status.TIMEOUT, f"exceeded the {case.timeout_s:g}s timeout"
     if outcome.exit_code != 0:
       return Status.FAILED, f"exit code {outcome.exit_code}"
     if missing:
