@@ -284,7 +284,7 @@ The mathematical core for site-specific GTR has four golden-master test function
 
 - [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md) - multi-partition design
 - [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md) - user-specified partition config
-- [kb/issues/N-gtr-site-specific-partition-integration.md](../issues/N-gtr-site-specific-partition-integration.md) - site-specific GTR integration
+- [kb/issues/N-gtr-site-specific-model-not-implemented.md](../issues/N-gtr-site-specific-model-not-implemented.md) - site-specific GTR integration
 - [kb/features/gtr.md](../features/gtr.md) - site-specific models listed as not implemented
 
 ---

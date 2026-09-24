@@ -6,15 +6,14 @@ Convention violations across the codebase: fully qualified paths, inconsistent d
 
 ## Instances
 
-### ndarray over manual loops (7 instances)
+### ndarray over manual loops (6 instances)
 
 1. Triple-nested loop replaceable by `sum_axis()` [packages/treetime/src/gtr/infer_gtr/common.rs#L100-L129](../../packages/treetime/src/gtr/infer_gtr/common.rs#L100-L129)
 2. Manual outer product [packages/treetime/src/gtr/infer_gtr/common.rs#L59-L79](../../packages/treetime/src/gtr/infer_gtr/common.rs#L59-L79)
 3. Manual W computation [packages/treetime/src/gtr/get_gtr.rs#L398-L409](../../packages/treetime/src/gtr/get_gtr.rs#L398-L409)
-4. Manual einsum [packages/treetime/src/gtr/infer_gtr/site_specific.rs#L209-L223](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs#L209-L223)
-5. Zeros plus loop instead of `from_shape_fn` [packages/treetime-grid/src/interp_nonuniform.rs#L38-L53](../../packages/treetime-grid/src/interp_nonuniform.rs#L38-L53)
-6. Manual swap loop instead of `reverse_inplace()` [packages/treetime-grid/src/grid_fn.rs#L397-L401](../../packages/treetime-grid/src/grid_fn.rs#L397-L401)
-7. ndarray-to-`Vec` conversion [packages/treetime-validation/src/testing/metrics/aggregate/domain_agreement/error_stats.rs#L43-L44](../../packages/treetime-validation/src/testing/metrics/aggregate/domain_agreement/error_stats.rs#L43-L44)
+4. Zeros plus loop instead of `from_shape_fn` [packages/treetime-grid/src/interp_nonuniform.rs#L38-L53](../../packages/treetime-grid/src/interp_nonuniform.rs#L38-L53)
+5. Manual swap loop instead of `reverse_inplace()` [packages/treetime-grid/src/grid_fn.rs#L286-L289](../../packages/treetime-grid/src/grid_fn.rs#L286-L289)
+6. ndarray-to-`Vec` conversion [packages/treetime-validation/src/testing/metrics/aggregate/domain_agreement/error_stats.rs#L43-L44](../../packages/treetime-validation/src/testing/metrics/aggregate/domain_agreement/error_stats.rs#L43-L44)
 
 ### NodeTimetree.nwk_comments() truncates date to 2 decimals
 

@@ -23,7 +23,7 @@ $$
 
 For normalized Gaussian probability densities, this reduces to a normalized Gaussian whose mean and variance are the sums of the input means and variances.
 
-v1: `gaussian_convolution()` (`#gaussian_convolution`) in [`packages/treetime-analytical/src/gaussian.rs#L124-L131`](../../packages/treetime-analytical/src/gaussian.rs#L124-L131).
+v1: `gaussian_convolution_pdf_grid()` (`#gaussian_convolution_pdf_grid`) in [`packages/treetime-analytical/src/gaussian.rs#L61-L63`](../../packages/treetime-analytical/src/gaussian.rs#L61-L63).
 
 ---
 
@@ -57,15 +57,7 @@ $$\log A_* = \sum_i\log A_i - \frac12\sum_i\frac{(\mu_i-\mu_*)^2}{\sigma_i^2}.$$
 
 This operation appears in belief propagation when combining independent messages at a node.
 
-v1: `gaussian_product_params()` (`#gaussian_product_params`), `gaussian_product()` (`#gaussian_product`) in [`packages/treetime-analytical/src/gaussian.rs#L30-L63`](../../packages/treetime-analytical/src/gaussian.rs#L30-L63).
-
----
-
-## ScaledDistribution
-
-`ScaledDistribution` is a max-scaled representation $P(x)=e^s p(x)$. Normalizing constructors choose $s$ so that the sampled maximum of $p$ is one, which delays underflow when multiplying small values. `from_parts()` trusts the caller and does not enforce this invariant. This is max scaling, rather than a log-sum-exp calculation (<a id="cite-6"></a>[Bishop 2006](https://doi.org/10.1007/978-0-387-45528-0) [[6](#ref-6)], Section 2.2).
-
-v1: `ScaledDistribution` (`#ScaledDistribution`) in [`packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13`](../../packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13).
+v1: `gaussian_product_params()` (`#gaussian_product_params`), `gaussian_product()` (`#gaussian_product`) in [`packages/treetime-analytical/src/gaussian.rs#L6-L50`](../../packages/treetime-analytical/src/gaussian.rs#L6-L50).
 
 ---
 
@@ -79,7 +71,7 @@ v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`pack
 
 ## Distribution Convolution
 
-Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and calls the direct `ndarray-conv` wrapper `treetime_ops::convolve()`. The standalone FFT and Riemann implementations are not selected automatically. Point distributions short-circuit to a shift. Formula convolution currently panics rather than returning a typed error.
+Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and calls the FFT wrapper `treetime_ops::convolve_fft()`. The direct and Riemann implementations in `treetime-ops` are not used by distribution code. Point distributions short-circuit to a shift. Formula convolution returns an error.
 
 v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43).
 
@@ -93,23 +85,12 @@ v1: `distribution_multiplication()` (`#distribution_multiplication`) in [`packag
 
 ---
 
-## Scaled Distribution Operations
-
-Log-scale-aware wrappers for multiplication and convolution on `ScaledDistribution`. Multi-way multiplication fast-paths through `multiply_many_lazy_normalize()` when all inputs are grid-aligned Function distributions, avoiding repeated normalization overhead.
-
-v1: `scaled_distribution_multiplication()` (`#scaled_distribution_multiplication`), `scaled_distribution_multiply_many()` (`#scaled_distribution_multiply_many`) in [`packages/treetime-distribution/src/distribution_scaled/multiply.rs#L51-L122`](../../packages/treetime-distribution/src/distribution_scaled/multiply.rs#L51-L122). `scaled_distribution_convolution()` (`#scaled_distribution_convolution`) in [`packages/treetime-distribution/src/distribution_scaled/convolve.rs#L9-L28`](../../packages/treetime-distribution/src/distribution_scaled/convolve.rs#L9-L28).
-
----
-
 ## Additional Algorithms
 
 - Riemann Sum Convolution: `convolve_riemann()` (`#convolve_riemann`) in [`packages/treetime-ops/src/convolution.rs#L9-L19`](../../packages/treetime-ops/src/convolution.rs#L9-L19) - Explicit $O(nm)$ summation used as an independent validation oracle and available operation.
 - Direct Library Convolution: `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L24-L28`](../../packages/treetime-ops/src/convolution.rs#L24-L28) - Delegates to ndarray-conv crate.
 - Distribution Division: `distribution_division()` (`#distribution_division`) in [`packages/treetime-distribution/src/distribution_ops/divide.rs#L16`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L16) - Cavity computation via pointwise division (subtraction in neg-log). Division reuses multiplication's support rule (`fn multiplication_support_intersection()`): per side the innermost hard bound when any operand is hard there, else the outermost soft bound. A soft divisor tail therefore extends the quotient -- sampled as bulk -- instead of truncating it, because the cavity dividend is a product containing the divisor as a factor so the quotient decays rather than spiking. Soft result sides are refit from the combined grid; a hard dividend edge bounds the quotient to zero (`Hard`), a divisor hard or `Error` edge yields `Error` beyond it. Exact endpoint contact is a Point distribution. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines the tails. Plain division floors small denominators at $10^{-10}$, changing the quotient; Formula division is unsupported (returns an error). The scientific small-divisor policy is unresolved.
-- Scaled Distribution Division: `scaled_distribution_division()` (`#scaled_distribution_division`) in [`packages/treetime-distribution/src/distribution_scaled/divide.rs#L10-L33`](../../packages/treetime-distribution/src/distribution_scaled/divide.rs#L10-L33) - Log-scale-aware wrapper.
 - Distribution Negation: `distribution_negation()` (`#distribution_negation`) in [`packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18`](../../packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18) - Time reversal via `f(x) -> f(-x)`.
-- Quantile/Inverse CDF: `quantile()` (`#quantile`) in [`packages/treetime-distribution/src/distribution_core/distribution.rs#L236-L293`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L236-L293) - Trapezoidal CDF integration with linear interpolation. Formula inputs and zero or non-finite integrated mass fall back to `likely_time()` instead of computing a quantile.
-- Confidence Interval: `confidence_interval()` (`#confidence_interval`) in [`packages/treetime-distribution/src/distribution_core/distribution.rs#L295-L302`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L295-L302) - Returns quantiles at the two caller-supplied probabilities; the interval is symmetric only when those probabilities are symmetric.
 
 ---
 
@@ -131,17 +112,15 @@ See [unimplemented](unimplemented.md) for full details:
 - <a id="ref-3"></a>Ross, Sheldon M. 2014. _Introduction to Probability Models._ 11th ed. Academic Press. ISBN 978-0-12-407948-9. [↩](#cite-3)
 - <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
 - <a id="ref-5"></a>Petersen, Kaare Brandt, and Michael Syskind Pedersen. 2012. _The Matrix Cookbook._ Technical report. https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf [↩](#cite-5)
-- <a id="ref-6"></a>Bishop, Christopher M. 2006. _Pattern Recognition and Machine Learning._ Springer. ISBN 978-0-387-31073-2. [↩](#cite-6)
 
 ---
 
 ## File Index
 
-| File                                                                                                                       | Algorithms                                          |
-| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                               | Riemann, direct, FFT convolution                    |
-| [`packages/treetime-ops/src/multiplication.rs`](../../packages/treetime-ops/src/multiplication.rs)                         | Naive, aggressive, lazy multiplication              |
-| [`packages/treetime-analytical/src/`](../../packages/treetime-analytical/src/)                                             | Gaussian, exponential analytical ops                |
-| [`packages/treetime-distribution/src/distribution_core/`](../../packages/treetime-distribution/src/distribution_core/)     | Distribution type, quantile, confidence interval    |
-| [`packages/treetime-distribution/src/distribution_ops/`](../../packages/treetime-distribution/src/distribution_ops/)       | Convolution, multiplication, division, negation     |
-| [`packages/treetime-distribution/src/distribution_scaled/`](../../packages/treetime-distribution/src/distribution_scaled/) | ScaledDistribution, scaled multiply/convolve/divide |
+| File                                                                                                                   | Algorithms                                      |
+| ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                           | Riemann, direct, FFT convolution                |
+| [`packages/treetime-ops/src/multiplication.rs`](../../packages/treetime-ops/src/multiplication.rs)                     | Naive, aggressive, lazy multiplication          |
+| [`packages/treetime-analytical/src/`](../../packages/treetime-analytical/src/)                                         | Gaussian, exponential analytical ops            |
+| [`packages/treetime-distribution/src/distribution_core/`](../../packages/treetime-distribution/src/distribution_core/) | Distribution type                               |
+| [`packages/treetime-distribution/src/distribution_ops/`](../../packages/treetime-distribution/src/distribution_ops/)   | Convolution, multiplication, division, negation |

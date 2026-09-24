@@ -36,4 +36,4 @@ The 2-decimal format is a deliberate v0 design choice for Newick readability. Ne
 
 ## Impact
 
-Newick/Nexus date annotations lose sub-week temporal resolution. Full-precision dates are available in the Auspice JSON output (`num_date` attribute). The TSV dates file (`write_node_dates`) is not yet implemented (see `kb/tickets/timetree-output-implement-node-dates.md`).
+Newick/Nexus date annotations lose sub-week temporal resolution. Full-precision dates are available in the Auspice JSON output (`num_date` attribute). The TSV dates output is not yet implemented (see `kb/tickets/timetree-output-implement-node-dates.md`).

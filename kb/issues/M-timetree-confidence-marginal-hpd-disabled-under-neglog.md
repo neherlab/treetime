@@ -1,6 +1,6 @@
 # Timetree confidence intervals drop the marginal-posterior HPD contribution under NegLog
 
-Node confidence intervals combine two sources: the highest-posterior-density (HPD) region of the marginal time distribution (mutation stochasticity) and the rate-susceptibility interval (clock-rate uncertainty). The marginal-posterior source is disabled: `extract_confidence_intervals` in `packages/treetime/src/timetree/confidence.rs` hardcodes `mutation_contribution = None` and comments out the `hpd_region` call, because `hpd_region` reads plain-probability ordinates and the time distribution now stores negative-log ordinates (`Distribution<NegLog>`).
+Node confidence intervals combine two sources: the highest-posterior-density (HPD) region of the marginal time distribution (mutation stochasticity) and the rate-susceptibility interval (clock-rate uncertainty). The marginal-posterior source is missing: `extract_confidence_intervals` sets `mutation_contribution` to `None` [`packages/treetime/src/timetree/confidence.rs#L137`](../../packages/treetime/src/timetree/confidence.rs#L137), because v1 has no HPD region for the negative-log ordinates the time distribution stores (`Distribution<NegLog>`).
 
 ## Impact and scope
 
@@ -10,11 +10,11 @@ Node confidence intervals combine two sources: the highest-posterior-density (HP
 
 ## Root cause
 
-`hpd_region` integrates a probability density and is defined for `Distribution<Plain>` only. Under `NegLog` the stored ordinate is `-ln p`, so the plain-space integration does not apply. A NegLog-aware HPD (integrate after converting through the peak-normalized `to_plain_normalized`, or integrate directly in neg-log space) has not been implemented.
+An HPD region integrates a probability density. Under `NegLog` the stored ordinate is `-ln p`, so a region must either convert to peak-normalized plain probabilities before integrating or integrate directly in neg-log space. Neither is implemented.
 
 ## Tests
 
-Three tests in `packages/treetime/src/commands/timetree/output/__tests__/test_confidence_extract.rs` exercise the marginal-posterior HPD and are marked `#[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]`:
+Three tests in `packages/treetime/src/timetree/__tests__/test_confidence_extract.rs` exercise the marginal-posterior HPD and are marked `#[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]`:
 
 - `test_extract_confidence_intervals_with_distribution`
 - `test_extract_confidence_intervals_combined_wider_than_either`
@@ -24,4 +24,4 @@ The ignored tests already store their distributions on the neg-log axis, so they
 
 ## Fix approach
 
-Implement a NegLog-aware HPD region and restore the `mutation_contribution` branch in `extract_confidence_intervals`, then remove the `#[ignore]` from the three tests. Tracked under the log-space distribution work in [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md) (HPD is Part B/D there).
+Implement a NegLog-aware HPD region and pass its interval as `mutation_contribution` in `extract_confidence_intervals`, then remove the `#[ignore]` from the three tests. Tracked under the log-space distribution work in [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md) (HPD is Part B/D there).

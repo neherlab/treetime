@@ -13,8 +13,6 @@ Refinement writes `mu` directly through `gtr_mut()` [`packages/treetime/src/gtr/
 
 Public mutation allows a caller to change one member without updating the others. `expQt()` can then combine eigenvectors and eigenvalues derived from an older matrix. A site-rate length mismatch reaches ndarray broadcasting during `evolve()` instead of being rejected at construction.
 
-`GTRSiteSpecific::new()` already validates rate length and rejects negative rates, so equivalent scientific validity currently depends on which model type is used.
-
 ## Required invariant
 
 Callers must not be able to change normalized inputs or derived eigendecomposition state independently. Rate and site-rate updates need operations that validate their domain and either recompute dependent state or document why the derived state remains valid.
@@ -38,4 +36,4 @@ Callers must not be able to change normalized inputs or derived eigendecompositi
 
 - [M-core-units-of-measurement-not-tracked.md](M-core-units-of-measurement-not-tracked.md)
 - [M-gtr-per-site-rate-variation.md](M-gtr-per-site-rate-variation.md)
-- [N-gtr-site-specific-partition-integration.md](N-gtr-site-specific-partition-integration.md)
+- [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md)

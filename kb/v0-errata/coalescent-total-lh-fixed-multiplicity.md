@@ -29,4 +29,4 @@
 
 ## v1 status
 
-[packages/treetime/src/coalescent/edge_data.rs#L84-L96](../../packages/treetime/src/coalescent/edge_data.rs#L84-L96) collects actual child count per edge, and [packages/treetime/src/coalescent/edge_data.rs#L141](../../packages/treetime/src/coalescent/edge_data.rs#L141) uses `(edge.multiplicity - 1.0) / edge.multiplicity` in the cost computation. Both `optimize_tc.rs` and `total_lh.rs` delegate to `sum_coalescent_cost()` in `edge_data.rs`.
+[packages/treetime/src/coalescent/edge_data.rs#L55-L62](../../packages/treetime/src/coalescent/edge_data.rs#L55-L62) records the parent's actual child count as `n_siblings` for each edge. The total likelihood weights the merger term by `(n_siblings - 1.0) / n_siblings` in [packages/treetime/src/coalescent/coalescent.rs#L49-L50](../../packages/treetime/src/coalescent/coalescent.rs#L49-L50), and the constant and skyline $T_c$ solve accumulates the same weight in [packages/treetime/src/coalescent/skyline.rs#L193-L194](../../packages/treetime/src/coalescent/skyline.rs#L193-L194).

@@ -49,11 +49,11 @@ The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.10
 
 V1 expresses every quantity in decimal calendar years and stores the cumulative hazard $H(t)=\int_t^P\kappa(s)\,ds$, where $P$ is the most recent event. For a branch from parent $p$ to child $c$, the negative-log survival term is $H(t_p)-H(t_c)$. Grouping all branch terms by node gives:
 
-| Piece                           | Neg-log value           | Purpose                                                                        |
-| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
-| Internal node (all, incl. root) | $H(t)-\ln\lambda(t)$     | Merger density and parent-side branch survival                                |
-| Leaf                            | $-H(t_\mathrm{leaf})$     | Child-side survival credit                                                     |
-| Root correction                 | $+H(t_\mathrm{root})$     | Root has no parent to supply a child-side subtraction                          |
+| Piece                           | Neg-log value         | Purpose                                               |
+| ------------------------------- | --------------------- | ----------------------------------------------------- |
+| Internal node (all, incl. root) | $H(t)-\ln\lambda(t)$  | Merger density and parent-side branch survival        |
+| Leaf                            | $-H(t_\mathrm{leaf})$ | Child-side survival credit                            |
+| Root correction                 | $+H(t_\mathrm{root})$ | Root has no parent to supply a child-side subtraction |
 
 These pieces sum to the edge-derived Kingman objective. An internal node with $m$ children receives multiplicity $m-1$, matching v0. Edge scoring distributes that merger-density term over the parent's $m$ outgoing edges, preserving the actual parent multiplicity correction.
 
@@ -81,7 +81,7 @@ Detailed ownership and objective identities are documented in [kb/algo/coalescen
 
 Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
-`optimize_tc()` (`#optimize_tc`) [packages/treetime/src/coalescent/optimize_tc.rs](../../packages/treetime/src/coalescent/optimize_tc.rs) precomputes lineage state and inferred edge endpoints, then binds each constant candidate $T_c$ to `CoalescentModel` and minimizes the shared edge-derived objective. Nodes without inferred dates are skipped with a warning; reversed finite endpoints are errors.
+`estimate_coalescent_tc()` (`#estimate_coalescent_tc`) [packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57](../../packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57) estimates a constant $T_c$ as the one-segment skyline: it calls `optimize_skyline()` with `n_points = 1`, whose optimum is the closed form $T_c^{*}=I/M$. Nodes without inferred dates are skipped; a child older than its parent is an error.
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
 
@@ -165,7 +165,7 @@ where $\mu$ is the whole-alignment mutation rate and $\kappa(t)$ is the per-bran
 
 - `simulate_subtree()` in [packages/treetime/src/timetree/optimization/polytomy/sweep.rs](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs) performs pure seeded simulation and returns a validated merger plan. It rejects non-finite times and rates, rejects rate overflow, and leaves residual polytomies when the parent bound stops the sweep.
 - `apply_plan()` in [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs) validates the complete plan before graph mutation, then creates internal nodes and reparents children.
-- `resolve_polytomies()` in [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs) collects exact reconstructed substitution counts when available, applies the plan, removes obsolete single-child nodes, and rebuilds the graph.
+- `resolve_polytomies()` in [packages/treetime/src/timetree/optimization/polytomy/resolve.rs](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs) collects exact reconstructed substitution counts when available, applies the plan, removes obsolete single-child nodes, and rebuilds the graph.
 - `validate_tree_before_topology_change()` and `prepare_tree_after_topology_change()` preserve the refinement loop's complete-state boundary around topology mutation.
 
 After resolution, partition data is reconciled with the new topology before inference resumes. The same seed and input state produce the same sampled plan. See [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md) and the three `timetree-stochastic-resolve-*` entries in [kb/v0-errata/](../v0-errata/README.md).
@@ -235,21 +235,16 @@ Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `
 
 `extract_confidence_intervals()` (`#extract_confidence_intervals`) computes per-node CI:
 
-1. Mutation contribution from `Distribution::hpd_region(0.9)` on the marginal posterior
+1. Mutation contribution: none. v1 has no HPD region for `Distribution<NegLog>`, so the marginal posterior contributes nothing ([kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md))
 2. Rate contribution from `date_uncertainty_due_to_rate(dates, (0.05, 0.95))` on rate susceptibility triples
 3. Combination via `combine_confidence()` quadrature sum, clipped to distribution domain
 4. Delta distributions and nodes without data yield identity interval `[date, date]`
 
 ### Mutation contribution: HPD region
 
-`Distribution::hpd_region(fraction)` in [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs) finds the narrowest interval containing `fraction` of the probability mass:
+v0: `get_max_posterior_region(node, fraction=0.9)` (`clock_tree.py:1146-1230`) finds the narrowest interval containing `fraction` of the probability mass, using `scipy.optimize.minimize_scalar` (Brent) for the threshold search.
 
-- Interior peak: bisection on probability threshold. For each candidate threshold, the interval between left and right crossings of the PDF captures a certain probability mass. Bisection finds the threshold where the mass equals `fraction`. Assumes unimodality (returns a single contiguous interval).
-- Boundary peak: one-sided quantile fallback. Left boundary: `[t_min, quantile(fraction)]`. Right boundary: `[quantile(1-fraction), t_max]`.
-- Uniform/Range: centered interval of width `fraction * range`.
-- Formula: equal-tailed fallback `confidence_interval(p_lo, 1-p_lo)`.
-
-v0: `get_max_posterior_region(node, fraction=0.9)` (`clock_tree.py:1146-1230`) uses `scipy.optimize.minimize_scalar` (Brent) for the threshold search. v1 uses bisection, which is simpler and sufficient since the target function (CDF mass vs threshold) is monotonic.
+v1 has no HPD region implementation. Time distributions store negative-log ordinates, and an HPD region needs integration of the probability density ([kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md)).
 
 ### Rate contribution: susceptibility analysis
 
@@ -337,12 +332,12 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 
 ## File Index
 
-| File                                                                                                                   | Algorithms                                                            |
-| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`packages/treetime/src/timetree/inference/`](../../packages/treetime/src/timetree/inference/)       | Belief propagation, branch distributions, timetree runner             |
-| [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)     | Kingman coalescent, skyline, Tc optimization                          |
-| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
-| [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
-| [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/)             | Confidence intervals, date output, plots                              |
-| [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs)             | EM-like iterative refinement                                          |
-| [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)               | End-to-end estimation pipeline                                        |
+| File                                                                                                       | Algorithms                                                            |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`packages/treetime/src/timetree/inference/`](../../packages/treetime/src/timetree/inference/)             | Belief propagation, branch distributions, timetree runner             |
+| [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)                             | Kingman coalescent, skyline, Tc optimization                          |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)       | Polytomy, relaxed clock, reroot, clock filter                         |
+| [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)         | Convergence monitoring, likelihood tracking, sequence change counting |
+| [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/) | Confidence intervals, date output, plots                              |
+| [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs)       | EM-like iterative refinement                                          |
+| [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)   | End-to-end estimation pipeline                                        |

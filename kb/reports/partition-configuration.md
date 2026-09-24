@@ -121,7 +121,7 @@ The mathematical core is implemented and tested (4 golden master tests at 1e-10,
 
 Design constraints: site-specific GTR is dense-only. Reject `--sparse` + `--site-specific-gtr`.
 
-**Sources:** `kb/issues/N-gtr-site-specific-partition-integration.md`, `kb/reports/auto-partitioning.md` S7.3, R1, R2
+**Sources:** `kb/issues/N-gtr-site-specific-model-not-implemented.md`, `kb/reports/auto-partitioning.md` S7.3, R1, R2
 
 ### 4.3 Two-stage estimation (serialize and reload models)
 
@@ -190,7 +190,7 @@ The fix is not "extract shared init helper" but "implement partition configurati
 - [N-optimize-multi-alignment-input](../issues/N-optimize-multi-alignment-input.md)
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub](../issues/N-representation-infer-dense-stub.md)
-- [N-gtr-site-specific-partition-integration](../issues/N-gtr-site-specific-partition-integration.md)
+- [kb/issues/N-gtr-site-specific-model-not-implemented.md](../issues/N-gtr-site-specific-model-not-implemented.md)
 - [M-core-partition-init-orchestration-duplication](../issues/M-core-partition-init-orchestration-duplication.md)
 
 ### Proposals

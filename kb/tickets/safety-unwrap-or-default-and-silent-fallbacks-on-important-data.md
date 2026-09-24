@@ -29,16 +29,9 @@ Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallba
 
 Uses `saturating_add_signed` which silently clamps to 0 on underflow. A negative composition count indicates a data integrity problem that should be reported, not masked.
 
-### extract_node_times silently drops unnamed/timeless nodes
-
-`packages/treetime/src/timetree/utils.rs:63:`
-
-Iterates all graph nodes and collects (name, time) pairs via `filter_map`. Nodes without a name or without a time are silently excluded from the convergence tracking map, making them invisible to the convergence diff count.
-
 ## Impact
 
 - Branch length 0.0 defaults cause division-by-zero or exclusion from optimization
-- Convergence tracking undercounts changes at unnamed or timeless nodes
 
 ## Related issues
 

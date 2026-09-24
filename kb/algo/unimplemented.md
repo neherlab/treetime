@@ -97,7 +97,7 @@ The design document specifies a fixed rate vector $\mu^a$, where $a$ indexes ali
 
 v0 represents per-site rates and equilibrium frequencies in `GTR_site_specific`. Its implementation recomputes transition-matrix decompositions by site even when parameters happen to permit reuse. [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py) Exact parity therefore concerns transition probabilities and inferred outputs; v1 may share a decomposition only if it produces the same numerical result under the approved contract.
 
-v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, validation, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L184-L193`](../../packages/treetime/src/gtr/gtr.rs#L184-L193)
+v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. No production path sets the vector, so those branches run only in tests. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, validation, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L28`](../../packages/treetime/src/gtr/gtr.rs#L28)
 
 Known issue: [kb/issues/M-gtr-per-site-rate-variation.md](../issues/M-gtr-per-site-rate-variation.md).
 
@@ -114,7 +114,7 @@ Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[
 Extension of GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. Standard GTR uses `Pi[n_states]`; full site-specific GTR extends to `Pi[n_states, seq_len]`. More expensive than per-site rate variation because the eigenvectors change per site.
 
 v0: `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495).
-v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation.
+v1: not implemented. `ancestral --site-specific-gtr` returns an error.
 
 ### Key methods
 

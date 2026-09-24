@@ -139,7 +139,7 @@ else:
     Gaussian approximation with saturation correction
 ```
 
-v1 Poisson already implemented: [`utils.rs#L77-L118`](../../packages/treetime/src/timetree/utils.rs#L77) `create_poisson_branch_distributions()` - reuse or inline.
+v1 has no production Poisson branch-length distribution. A golden-master test helper builds one: `create_poisson_branch_distributions()` in [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs).
 
 v0 reference implementations:
 

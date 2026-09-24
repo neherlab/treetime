@@ -26,9 +26,10 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 
 ## Optimal constant $T_c$
 
-[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs)
-is a thin facade: a constant $T_c$ is exactly the one-segment skyline, so
-`optimize_tc` calls `optimize_skyline` with `n_points = 1` and returns its single
+A constant $T_c$ is exactly the one-segment skyline, so
+`estimate_coalescent_tc()` in
+[`packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57`](../../packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57)
+calls `optimize_skyline` with `n_points = 1` for the constant mode and reports its single
 segment's $T_c$ and likelihood. The derivation below explains why that one-segment
 solve is the closed form $T_c^{*}=I/M$; the I/M accumulation, likelihood reporting,
 and degenerate-tree error are the shared skyline machinery (see

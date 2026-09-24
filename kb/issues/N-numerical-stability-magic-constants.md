@@ -6,12 +6,6 @@ Several numeric thresholds remain hardcoded without named constants, documentati
 
 ## Instances
 
-### create_poisson_branch_distributions hardcoded threshold
-
-`packages/treetime/src/timetree/utils.rs:100:`
-
-Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishandles `branch_length==0` (produces degenerate grid).
-
 ### 1e-10 magic denominator in relaxed_clock.rs
 
 `packages/treetime/src/timetree/optimization/relaxed_clock.rs:70,91,106:`

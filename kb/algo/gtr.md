@@ -119,23 +119,6 @@ Key functions:
 
 ---
 
-## Site-Specific GTR
-
-Extension of the standard GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. The shared exchangeability matrix W captures relative rates between states. Per-site pi values produce per-site rate matrices Q_a = f(W, pi_a), each with its own eigendecomposition.
-
-`GTRSiteSpecific` (`#GTRSiteSpecific`) at [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs).
-
-Core operations:
-
-- Per-site eigendecomposition via `eig_single_site()` called per position
-- `expQt(t)` returns Array3 [n_states, n_states, seq_len] with optional linear interpolation
-- `propagate_profile()` and `evolve()` for backward/forward message passing
-- `infer_gtr_site_specific_impl()` at [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs) for iterative W/pi/mu inference
-
-Not yet integrated into the partition system. See [unimplemented](unimplemented.md) for remaining work.
-
----
-
 ## Unimplemented
 
 See [unimplemented](unimplemented.md) for full details:
@@ -165,9 +148,7 @@ See [unimplemented](unimplemented.md) for full details:
 | File                                                                                                                 | Algorithms                                                            |
 | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                                         | GTR core, eigendecomposition, `expQt()` (`#expQt`)                    |
-| [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)             | Site-specific GTR, per-site eigendecomposition, interpolation         |
 | [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                 | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON              |
 | [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)               | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`               |
 | [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)                 | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
 | [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)                 | Dense GTR inference from branch joint distributions                   |
-| [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs) | Site-specific GTR inference from per-site mutation counts             |

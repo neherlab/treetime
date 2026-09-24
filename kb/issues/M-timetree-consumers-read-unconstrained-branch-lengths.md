@@ -20,7 +20,7 @@ one, which is the contrast $\gamma$ is meant to capture. The v1 equivalent is
 ## Polytomy mutation counts fall back to the free length
 
 `edge_mutation_count` in
-[`packages/treetime/src/timetree/optimization/polytomy/mod.rs`](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs)
+[`packages/treetime/src/timetree/optimization/polytomy/resolve.rs`](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs)
 estimates a branch's substitution count as `round(branch_length * total_length)` when the
 reconstructed substitution list cannot be read. The estimate should use the clock-constrained
 length for consistency with the sweep it feeds, which places those substitutions in time against a

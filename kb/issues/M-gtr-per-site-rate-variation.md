@@ -12,7 +12,9 @@ The design document's fixed rate-vector contract is distinct from discrete-gamma
 
 ## v1 current state
 
-`struct GTR` stores scalar `mu` together with optional `site_rates`. [`packages/treetime/src/gtr/gtr.rs#L184-L193`](../../packages/treetime/src/gtr/gtr.rs#L184-L193) Its transition-matrix paths apply the site-rate vector, and dense marginal propagation passes position-specific matrices. [`packages/treetime/src/gtr/gtr.rs#L303-L420`](../../packages/treetime/src/gtr/gtr.rs#L303-L420) [`packages/treetime/src/partition/marginal_passes.rs#L149-L158`](../../packages/treetime/src/partition/marginal_passes.rs#L149-L158)
+`struct GTR` stores scalar `mu` together with optional `site_rates` [`packages/treetime/src/gtr/gtr.rs#L28`](../../packages/treetime/src/gtr/gtr.rs#L28). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L103-L135`](../../packages/treetime/src/gtr/gtr.rs#L103-L135), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L135`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L135).
+
+No production path sets `site_rates`: `GTR::new` initializes it to `None`, `GTR` has no deserializer, and no other code assigns the field. The per-site branches therefore run only in tests, which assign the public field directly.
 
 The remaining gaps are rate-vector construction or loading, command wiring, compressed fixed-position behavior, optimizer coverage, validation, serialization, and end-to-end comparison with v0. Sparse explicit positions already index `site_rates[pos]`; this does not define how compressed fixed positions contribute to likelihood or optimization.
 
@@ -37,7 +39,7 @@ Per-site $\mu$ (rate only): shared eigendecomposition, scaled eigenvalues. Compu
 
 Per-site $\pi$ (equilibrium frequencies): per-site eigendecomposition. Computational cost: $O(n \cdot L \cdot s^2)$ or $O(n \cdot L \cdot s^3)$ depending on caching. The symmetrization trick ($\tilde{Q} = D^{-1} Q D$ where $D = \text{diag}(\sqrt{\pi})$) must be applied per site.
 
-v1 has partial infrastructure for this: `gtr_site_specific.rs` implements per-site eigendecomposition but is not integrated into the partition system (tracked in [L-gtr-site-specific-partition-integration](N-gtr-site-specific-partition-integration.md)).
+v1 has no implementation of per-site pi1000 4 6 24 27 30 46 100 105 125 127 986 1000tracked in [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md)).
 
 Context-dependent substitution models where both rates and equilibrium frequencies vary by position are described by <a id="cite-2"></a>[Siepel and Haussler 2004](https://doi.org/10.1093/molbev/msh039) [[2](#ref-2)].
 
@@ -48,7 +50,7 @@ These are two independent decisions:
 
 ## Related
 
-- [L-gtr-site-specific-partition-integration](N-gtr-site-specific-partition-integration.md) - full site-specific GTR (per-site $\pi$) not yet integrated into partition system
+- [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md) - full site-specific GTR (per-site $\pi$) is not implemented
 - [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying per-site rate variation (lines 81-89)
 
 ## Glossary
