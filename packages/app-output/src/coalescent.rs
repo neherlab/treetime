@@ -5,10 +5,18 @@ use treetime_io::csv::{CsvStructFileWriter, CsvStructWriter};
 use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::make_report;
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+)]
 pub fn coalescent_json_str(output: &CoalescentOutput) -> Result<String, Report> {
   json_write_str(output, JsonPretty(true))
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+)]
 pub fn coalescent_delimited_str(output: &CoalescentOutput, delimiter: u8) -> Result<String, Report> {
   let mut writer = CsvStructWriter::new(Vec::<u8>::new(), delimiter)?;
   for row in output.rows() {

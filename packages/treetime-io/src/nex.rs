@@ -26,6 +26,10 @@ pub fn nex_write_file_with(
   writeln!(f).wrap_err_with(context)
 }
 
+#[cfg_attr(
+  dylint_lib = "treetime_lints",
+  allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+)]
 pub fn nex_write_str_with(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

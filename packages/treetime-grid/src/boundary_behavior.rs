@@ -19,6 +19,10 @@ impl BoundaryBehavior {
     matches!(self, BoundaryBehavior::Linear(_))
   }
 
+  #[cfg_attr(
+    dylint_lib = "treetime_lints",
+    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+  )]
   pub fn soft_law(self) -> Option<SoftTailLaw> {
     match self {
       BoundaryBehavior::Linear(law) => Some(law),
