@@ -7,8 +7,8 @@
 - [x] Multiple FASTA files (concatenated)
 - [x] Stdin input
 - [x] Newick tree
-- [x] Nexus tree
-- [x] Phylip tree
+- [ ] Nexus tree ([kb/issues/M-io-nexus-and-phylip-input-unsupported.md](../issues/M-io-nexus-and-phylip-input-unsupported.md))
+- [ ] PHYLIP alignment ([kb/issues/M-io-nexus-and-phylip-input-unsupported.md](../issues/M-io-nexus-and-phylip-input-unsupported.md))
 - [x] CSV/TSV dates
 - [x] CSV/TSV discrete states (mugration)
 - [ ] VCF input (variant call format)
