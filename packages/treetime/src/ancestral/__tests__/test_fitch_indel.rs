@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
+  use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeSet;
   use treetime_primitives::Seq;

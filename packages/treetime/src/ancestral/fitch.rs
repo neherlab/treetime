@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
+use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
   resolve_root_forward, resolve_variable_positions_backward,

@@ -1,7 +1,6 @@
 pub mod aa;
 pub mod attach;
 pub mod fitch;
-pub mod fitch_indel;
 pub(crate) mod fitch_sub;
 pub(crate) mod gtr_inference;
 pub mod marginal;
