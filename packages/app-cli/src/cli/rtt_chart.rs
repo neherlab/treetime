@@ -22,6 +22,8 @@ use treetime_utils::io::file::create_file_or_stdout;
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
 const FALLBACK_TERMINAL_SIZE: (u16, u16) = (120, 40);
+const TEXT_CHART_MIN_SIZE: (u16, u16) = (32, 3);
+const TEXT_CHART_MAX_SIZE: (u16, u16) = (1024, 1024);
 
 pub(crate) fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],
@@ -83,7 +85,10 @@ pub(crate) fn print_clock_regression_chart(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
-  let terminal_size = terminal::size().unwrap_or(FALLBACK_TERMINAL_SIZE);
+  let terminal_size = terminal::size()
+    .ok()
+    .filter(|&(width, height)| width > 0 && height > 0)
+    .unwrap_or(FALLBACK_TERMINAL_SIZE);
   write_clock_regression_chart_text(&mut io::stderr().lock(), results, clock_model, terminal_size)
 }
 
@@ -117,8 +122,8 @@ pub(crate) fn write_clock_regression_chart_text(
   }
   writeln!(writer, "{table}").wrap_err("When writing the clock model table")?;
 
-  let width = clamp(width, 0, 1024) as u32;
-  let height = clamp(height, 0, 1024) as u32;
+  let width = u32::from(clamp(width, TEXT_CHART_MIN_SIZE.0, TEXT_CHART_MAX_SIZE.0));
+  let height = u32::from(clamp(height, TEXT_CHART_MIN_SIZE.1, TEXT_CHART_MAX_SIZE.1));
 
   let PointsResult {
     norm_points,

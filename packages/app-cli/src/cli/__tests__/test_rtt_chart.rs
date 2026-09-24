@@ -3,6 +3,7 @@ mod tests {
   use crate::cli::rtt_chart::write_clock_regression_chart_text;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime::clock::clock_model::{ClockModel, ClockRegression};
   use treetime::clock::rtt::ClockRegressionResult;
   use treetime_utils::io::json::json_read_str;
@@ -44,6 +45,28 @@ mod tests {
       table
     );
     assert_eq!("2001.0                  2005.0", x_axis_labels);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero(       (0,    0))]
+  #[case::below_min(  (31,   2))]
+  #[case::at_min(     (32,   3))]
+  #[case::above_max(  (4096, 4096))]
+  #[trace]
+  fn test_rtt_chart_text_renders_at_boundary_terminal_sizes(#[case] terminal_size: (u16, u16)) {
+    let clock_model = helpers::clock_model();
+    let results = vec![
+      helpers::result("A", 2001.0, 0.002, false),
+      helpers::result("B", 2005.0, 0.010, false),
+    ];
+
+    let mut buf = Vec::new();
+    write_clock_regression_chart_text(&mut buf, &results, &clock_model, terminal_size).unwrap();
+    let text = String::from_utf8(buf).unwrap();
+
+    let (_, chart) = text.split_once("╯\n").unwrap();
+    assert!(!chart.trim().is_empty());
   }
 
   mod helpers {
