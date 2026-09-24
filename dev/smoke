@@ -317,12 +317,17 @@ TIMETREE_VARIANTS = [
 
 NEGATIVE_CLOCK_RATE = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
 POINT_DIVISION = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
+EMPTY_DIVISION = "kb/issues/H-timetree-empty-distribution-division.md"
+NAN_DISTRIBUTION = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
 
 
 # Cases that fail for a known reason. A case that starts to pass is reported as xpass until its entry is removed.
 KNOWN_FAILURES: dict[str, tuple[Expect, str]] = {
   "timetree/dengue/100/basic": (Expect.FAIL, NEGATIVE_CLOCK_RATE),
-  "timetree/lassa/L/20/basic": (Expect.FAIL, "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"),
+  "timetree/lassa/L/20/basic": (Expect.FAIL, NAN_DISTRIBUTION),
+  "timetree/dengue/1000/basic": (Expect.FAIL, NAN_DISTRIBUTION),
+  "timetree/dengue/500/basic": (Expect.FAIL, EMPTY_DIVISION),
+  "timetree/lassa/L/200/basic": (Expect.FAIL, EMPTY_DIVISION),
   "timetree/flu/h3n2/20/branch-input": (Expect.FAIL, POINT_DIVISION),
   "timetree/ebola/20/branch-input": (Expect.FAIL, POINT_DIVISION),
   "timetree/ebola/362/input-keeproot": (Expect.FAIL, POINT_DIVISION),
@@ -548,10 +553,9 @@ def extra_cases(datasets: dict[str, Dataset]) -> list[Case]:
     timetree_case(ebola, "skyline", "--coalescent-skyline", tier=Tier.QUICK),
     timetree_case(ebola, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
     timetree_case(rsv, "clock-filter-10", "--clock-filter=10", tier=Tier.QUICK),
-    timetree_case(sc2, "clock-filter-10", "--clock-filter=10", expect=Expect.FAIL, reason="fails on sc2/4500"),
-    timetree_case(mpox, "fixed-clock-tree-opt", MPOX_FIXED_CLOCK, tree="tree_opt.nwk", expect=Expect.FAIL,
-                  reason="lineage count problem"),
-    timetree_case(mpox, "fixed-clock", MPOX_FIXED_CLOCK, expect=Expect.FAIL, reason="lineage count problem"),
+    timetree_case(sc2, "clock-filter-10", "--clock-filter=10"),
+    timetree_case(mpox, "fixed-clock-tree-opt", MPOX_FIXED_CLOCK, tree="tree_opt.nwk"),
+    timetree_case(mpox, "fixed-clock", MPOX_FIXED_CLOCK),
   ]
   individual = ["--dense=false", "--output-augur-node-data={out}/bl.json",
                 "--output-tree-auspice={out}/opti.auspice.json"]
