@@ -2,8 +2,10 @@
 //! records the `pub_unused_in_workspace` lint leaves while `cargo dylint`
 //! compiles the workspace. Runs after cargo exits, when every record is final.
 //!
-//! Usage: `pub-unused-report <workspace-manifest-path>`, with the records
-//! directory in `TREETIME_LINTS_PUB_UNUSED_DIR` as for the lint.
+//! Usage: `pub-unused-report <workspace-manifest-path> [--exclude-crate <crate>]...`,
+//! with the records directory in `TREETIME_LINTS_PUB_UNUSED_DIR` as for the lint.
+//! An excluded crate publishes its API for users outside the workspace: its
+//! items are not reported, and its uses of other crates' items still count.
 //!
 //! Findings are warnings and leave the exit status at 0. A workspace target
 //! whose record is missing or unreadable makes the report incomplete: it is
@@ -13,6 +15,7 @@
 mod record;
 
 use std::collections::{BTreeSet, HashSet};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -21,12 +24,14 @@ use cargo_metadata::{Metadata, MetadataCommand, TargetKind};
 use record::{CrateRecord, Def, RECORD_EXTENSION, RECORDS_DIR_ENV};
 
 fn main() -> ExitCode {
-    let args = std::env::args_os().skip(1).map(PathBuf::from).collect::<Vec<_>>();
-    let ([manifest_path], Some(records_dir)) = (args.as_slice(), std::env::var_os(RECORDS_DIR_ENV)) else {
-        eprintln!("usage: {RECORDS_DIR_ENV}=<records-dir> pub-unused-report <workspace-manifest-path>");
+    let (Some(args), Some(records_dir)) = (parse_args(std::env::args_os().skip(1)), std::env::var_os(RECORDS_DIR_ENV))
+    else {
+        eprintln!(
+            "usage: {RECORDS_DIR_ENV}=<records-dir> pub-unused-report <workspace-manifest-path> [--exclude-crate <crate>]..."
+        );
         return ExitCode::from(2);
     };
-    match run(Path::new(&records_dir), manifest_path) {
+    match run(Path::new(&records_dir), &args.manifest_path, &args.excluded_crates) {
         Ok(Completeness::Complete) => ExitCode::SUCCESS,
         Ok(Completeness::Incomplete) => ExitCode::FAILURE,
         Err(err) => {
@@ -36,7 +41,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(records_dir: &Path, manifest_path: &Path) -> Result<Completeness, String> {
+fn run(records_dir: &Path, manifest_path: &Path, excluded_crates: &BTreeSet<String>) -> Result<Completeness, String> {
     let metadata = MetadataCommand::new()
         .manifest_path(manifest_path)
         .no_deps()
@@ -67,7 +72,7 @@ fn run(records_dir: &Path, manifest_path: &Path) -> Result<Completeness, String>
         return Ok(Completeness::Incomplete);
     }
     let root = metadata.workspace_root.as_std_path();
-    let unused = unused_defs(&records);
+    let unused = unused_defs(&records, excluded_crates);
     for def in &unused {
         eprint!("{}", render(def, root));
     }
@@ -78,6 +83,28 @@ fn run(records_dir: &Path, manifest_path: &Path) -> Result<Completeness, String>
         );
     }
     Ok(Completeness::Complete)
+}
+
+#[derive(Debug, PartialEq)]
+struct Args {
+    manifest_path: PathBuf,
+    excluded_crates: BTreeSet<String>,
+}
+
+/// The manifest path, then any number of `--exclude-crate <crate>` pairs.
+fn parse_args(mut args: impl Iterator<Item = OsString>) -> Option<Args> {
+    let manifest_path = PathBuf::from(args.next()?);
+    let mut excluded_crates = BTreeSet::new();
+    while let Some(flag) = args.next() {
+        if flag != "--exclude-crate" {
+            return None;
+        }
+        excluded_crates.insert(args.next()?.into_string().ok()?);
+    }
+    Some(Args {
+        manifest_path,
+        excluded_crates,
+    })
 }
 
 #[derive(Debug, PartialEq)]
@@ -192,14 +219,16 @@ fn missing_targets<'a>(targets: &'a [WorkspaceTarget], records: &[CrateRecord]) 
 /// Items no record uses, in file order. A library item counts as used when
 /// its own crate or any other crate uses it; an executable's item only when
 /// its own crate does, since nothing can depend on an executable. An item
-/// whose trait or type is reported itself is left out.
-fn unused_defs(records: &[CrateRecord]) -> Vec<&Def> {
+/// whose trait or type is reported itself is left out, and so is every item of
+/// an excluded crate.
+fn unused_defs<'a>(records: &'a [CrateRecord], excluded_crates: &BTreeSet<String>) -> Vec<&'a Def> {
     let foreign = records
         .iter()
         .flat_map(|record| record.foreign_refs.iter().map(String::as_str))
         .collect::<HashSet<_>>();
     let mut unused = records
         .iter()
+        .filter(|record| !excluded_crates.contains(&record.crate_name))
         .flat_map(|record| {
             let foreign = &foreign;
             record.defs.iter().filter(move |def| {
@@ -247,7 +276,7 @@ mod tests {
             record("/ws/b/src/main.rs", "b", true, &[], &[], &["a::f"]),
         ];
         let expected: Vec<&str> = vec![];
-        assert_eq!(expected, keys(&unused_defs(&records)));
+        assert_eq!(expected, keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -261,7 +290,7 @@ mod tests {
             &[],
         )];
         let expected: Vec<&str> = vec![];
-        assert_eq!(expected, keys(&unused_defs(&records)));
+        assert_eq!(expected, keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -270,7 +299,7 @@ mod tests {
             record("/ws/a/src/lib.rs", "a", false, &[def("a::f", "/ws/a/src/lib.rs", 10, None)], &[], &[]),
             record("/ws/b/src/main.rs", "b", true, &[], &[], &["a::g"]),
         ];
-        assert_eq!(vec!["a::f"], keys(&unused_defs(&records)));
+        assert_eq!(vec!["a::f"], keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -279,7 +308,7 @@ mod tests {
             record("/ws/cli/src/main.rs", "tool", true, &[def("tool::run", "/ws/cli/src/main.rs", 5, None)], &[], &[]),
             record("/ws/x/src/main.rs", "x", true, &[], &[], &["tool::run"]),
         ];
-        assert_eq!(vec!["tool::run"], keys(&unused_defs(&records)));
+        assert_eq!(vec!["tool::run"], keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -295,7 +324,7 @@ mod tests {
             &[],
             &[],
         )];
-        assert_eq!(vec!["a::S"], keys(&unused_defs(&records)));
+        assert_eq!(vec!["a::S"], keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -314,7 +343,7 @@ mod tests {
             ),
             record("/ws/b/src/main.rs", "b", true, &[], &[], &["a::S"]),
         ];
-        assert_eq!(vec!["a::{impl#0}::m"], keys(&unused_defs(&records)));
+        assert_eq!(vec!["a::{impl#0}::m"], keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -330,7 +359,7 @@ mod tests {
                 &[],
             ),
         ];
-        assert_eq!(vec!["a::x", "a::y", "b::g"], keys(&unused_defs(&records)));
+        assert_eq!(vec!["a::x", "a::y", "b::g"], keys(&unused_defs(&records, &BTreeSet::new())));
     }
 
     #[test]
@@ -341,7 +370,7 @@ mod tests {
             record("/ws/gone/src/main.rs", "gone", true, &[], &[], &["a::f"]),
         ];
         let selected = select_records(&targets, records);
-        assert_eq!(vec!["a::f"], keys(&unused_defs(&selected)));
+        assert_eq!(vec!["a::f"], keys(&unused_defs(&selected, &BTreeSet::new())));
     }
 
     #[test]
@@ -354,6 +383,63 @@ mod tests {
         let records = vec![record("/ws/a/src/lib.rs", "a", false, &[], &[], &[])];
         let expected = vec![&targets[1]];
         assert_eq!(expected, missing_targets(&targets, &records));
+    }
+
+    #[test]
+    fn pub_unused_report_excluded_crate_item_is_not_reported() {
+        let records = vec![
+            record("/ws/a/src/lib.rs", "a", false, &[def("a::f", "/ws/a/src/lib.rs", 10, None)], &[], &[]),
+            record("/ws/b/src/lib.rs", "b", false, &[def("b::g", "/ws/b/src/lib.rs", 10, None)], &[], &[]),
+        ];
+        let excluded = BTreeSet::from(["a".to_owned()]);
+        assert_eq!(vec!["b::g"], keys(&unused_defs(&records, &excluded)));
+    }
+
+    #[test]
+    fn pub_unused_report_excluded_crate_use_keeps_item_used() {
+        let records = vec![
+            record("/ws/a/src/lib.rs", "a", false, &[], &[], &["b::g"]),
+            record("/ws/b/src/lib.rs", "b", false, &[def("b::g", "/ws/b/src/lib.rs", 10, None)], &[], &[]),
+        ];
+        let excluded = BTreeSet::from(["a".to_owned()]);
+        let expected: Vec<&str> = vec![];
+        assert_eq!(expected, keys(&unused_defs(&records, &excluded)));
+    }
+
+    #[test]
+    fn pub_unused_report_parse_args_reads_manifest_and_exclusions() {
+        let expected = Some(Args {
+            manifest_path: PathBuf::from("/ws/Cargo.toml"),
+            excluded_crates: BTreeSet::from(["a".to_owned(), "b".to_owned()]),
+        });
+        assert_eq!(
+            expected,
+            parse_args(os_args(&["/ws/Cargo.toml", "--exclude-crate", "a", "--exclude-crate", "b"]))
+        );
+    }
+
+    #[test]
+    fn pub_unused_report_parse_args_reads_manifest_alone() {
+        let expected = Some(Args {
+            manifest_path: PathBuf::from("/ws/Cargo.toml"),
+            excluded_crates: BTreeSet::new(),
+        });
+        assert_eq!(expected, parse_args(os_args(&["/ws/Cargo.toml"])));
+    }
+
+    #[test]
+    fn pub_unused_report_parse_args_rejects_missing_manifest() {
+        assert_eq!(None, parse_args(os_args(&[])));
+    }
+
+    #[test]
+    fn pub_unused_report_parse_args_rejects_exclusion_without_crate() {
+        assert_eq!(None, parse_args(os_args(&["/ws/Cargo.toml", "--exclude-crate"])));
+    }
+
+    #[test]
+    fn pub_unused_report_parse_args_rejects_unknown_flag() {
+        assert_eq!(None, parse_args(os_args(&["/ws/Cargo.toml", "--exclude", "a"])));
     }
 
     #[test]
@@ -410,5 +496,9 @@ mod tests {
 
     fn keys<'a>(defs: &[&'a Def]) -> Vec<&'a str> {
         defs.iter().map(|def| def.key.as_str()).collect()
+    }
+
+    fn os_args(args: &[&str]) -> impl Iterator<Item = OsString> {
+        args.iter().map(OsString::from).collect::<Vec<_>>().into_iter()
     }
 }

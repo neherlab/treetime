@@ -22,6 +22,13 @@ dylint_dir := build_dir / "dylint"
 # Records the pub_unused_in_workspace lint writes per crate for pub-unused-report.
 pub_unused_dir := dylint_dir / "treetime_lints/pub_unused"
 
+# Library crates whose public API is an external boundary, skipped by both
+# unused-public-code checks (hawk and pub-unused-report): the shared utility and
+# file-format libraries publish a complete API for reuse, including operations no
+# current caller needs, and the Node addon's `#[napi]` surface is consumed by
+# JavaScript, not by a Rust target.
+public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi"
+
 # Show the grouped task list (default).
 default:
     @just --list --list-heading $'TreeTime tasks (run via ./dev/docker/run just <task>):\n'
@@ -541,8 +548,12 @@ _pub-unused-report:
     set -euo pipefail
     unset RUSTFLAGS RUSTC_WRAPPER CARGO_TARGET_DIR
     export TREETIME_LINTS_PUB_UNUSED_DIR='{{pub_unused_dir}}'
+    exclude_args=()
+    for crate in {{public_api_crates}}; do
+      exclude_args+=(--exclude-crate "${crate}")
+    done
     pushd '{{project_dir}}/dev/lints/dylint-custom' >/dev/null
-    cargo run --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bin pub-unused-report -- '{{project_dir}}/Cargo.toml'
+    cargo run --quiet --release --locked --target-dir '{{dylint_dir}}/pub-unused-report' --bin pub-unused-report -- '{{project_dir}}/Cargo.toml' "${exclude_args[@]}"
     popd >/dev/null
 
 # Report unnecessary public surface across the workspace (cargo-hawk)
@@ -556,21 +567,9 @@ hawk *args:
     # that toolchain (installed by dev/docker/files/install-hawk, version shared
     # via dev/docker/files/hawk-toolchain).
     toolchain="$(cat '{{project_dir}}/dev/docker/files/hawk-toolchain')"
-    # Library crates whose public API is an external boundary: the shared utility
-    # and file-format libraries publish a complete API for reuse, including
-    # operations no current caller needs, and the Node addon's `#[napi]` surface
-    # is consumed by JavaScript, not by a Rust target. hawk.toml selects only
-    # modules and files, so whole crates are excluded here.
-    excluded_crates=(
-      treetime_utils
-      util_newick
-      util_phyloxml
-      util_augur_node_data_json
-      util_usher_mat
-      app_napi
-    )
+    # hawk.toml selects only modules and files, so whole crates are excluded here.
     exclude_flags=()
-    for crate in "${excluded_crates[@]}"; do
+    for crate in {{public_api_crates}}; do
       exclude_flags+=(--exclude-crate="${crate}")
     done
     nicely cargo "+${toolchain}" hawk check --target-dir '{{build_dir}}/hawk' "${exclude_flags[@]}" "$@"
