@@ -114,13 +114,6 @@ impl<T: InterpElem> Grid<T> {
     self.x_min + self.dx * T::from(self.n_points - 1).unwrap()
   }
 
-  pub fn x_range(&self) -> (T, T)
-  where
-    T: Float,
-  {
-    (self.x_min(), self.x_max())
-  }
-
   pub(crate) fn dx(&self) -> T {
     self.dx
   }
@@ -131,10 +124,6 @@ impl<T: InterpElem> Grid<T> {
 
   pub(crate) fn len(&self) -> usize {
     self.n_points
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.len() == 0
   }
 
   #[allow(

@@ -8,7 +8,6 @@ use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
 use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
-use itertools::{Itertools, izip};
 use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
@@ -184,13 +183,6 @@ impl<T: InterpElem> GridFn<T> {
     self.grid.x_max()
   }
 
-  pub fn x_range(&self) -> (T, T)
-  where
-    T: Float,
-  {
-    self.grid.x_range()
-  }
-
   pub(crate) fn n_points(&self) -> usize {
     self.grid.n_points()
   }
@@ -200,7 +192,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   pub fn is_empty(&self) -> bool {
-    self.grid.is_empty()
+    self.len() == 0
   }
 
   pub fn dx(&self) -> T {
@@ -214,28 +206,6 @@ impl<T: InterpElem> GridFn<T> {
       .copied()
       .skip(1)
       .fold(self.y[0], |a, b| if a < b { a } else { b })
-  }
-
-  pub fn y_max(&self) -> T {
-    self
-      .y
-      .iter()
-      .copied()
-      .skip(1)
-      .fold(self.y[0], |a, b| if a > b { a } else { b })
-  }
-
-  pub fn y_range(&self) -> (T, T) {
-    (self.y_min(), self.y_max())
-  }
-
-  pub fn to_pairs(&self) -> Vec<(T, T)>
-  where
-    T: Float,
-  {
-    izip!(self.grid.iter(), self.y.iter())
-      .map(|(x, &y)| (x, y))
-      .collect_vec()
   }
 
   pub fn interp(&self, xi: T) -> Result<T, Report>
@@ -274,22 +244,6 @@ impl<T: InterpElem> GridFn<T> {
 
     let idx = self.grid.find_interval_index(xi);
     Ok(self.interpolate_at(xi, idx))
-  }
-
-  pub fn interp_many_with_extrap(
-    &self,
-    queries: &Array1<T>,
-    left_extrap: BoundaryBehavior,
-    right_extrap: BoundaryBehavior,
-  ) -> Result<Array1<T>, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let values = queries
-      .iter()
-      .map(|&q| self.interp_with_extrap(q, left_extrap, right_extrap))
-      .collect::<Result<Vec<T>, Report>>()?;
-    Ok(Array1::from_vec(values))
   }
 
   #[allow(
@@ -359,21 +313,6 @@ impl<T: InterpElem> GridFn<T> {
     y0 + t * (y1 - y0)
   }
 
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  #[must_use]
-  pub fn scale_y(&self, factor: f64) -> Self
-  where
-    T: Float,
-  {
-    Self {
-      grid: self.grid,
-      y: self.y.mapv(|v| v * T::from(factor).unwrap()),
-    }
-  }
-
   #[must_use]
   pub fn shift_y(&self, delta: T) -> Self
   where
@@ -383,22 +322,6 @@ impl<T: InterpElem> GridFn<T> {
       grid: self.grid,
       y: self.y.mapv(|v| v + delta),
     }
-  }
-
-  pub fn mapv_inplace<F>(&mut self, f: F)
-  where
-    F: Fn(T) -> T,
-  {
-    self.y.mapv_inplace(f);
-  }
-
-  pub fn negate_arg(&self) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let mut result = self.clone();
-    result.negate_arg_inplace()?;
-    Ok(result)
   }
 
   #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
@@ -440,14 +363,6 @@ impl<T: InterpElem> GridFn<T> {
       .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_array(*grid, Array1::from_vec(y_new))
-  }
-
-  pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
-    self.resample(&grid)
   }
 
   pub fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>

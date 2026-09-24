@@ -23,7 +23,6 @@ pub use grid_edge::GridEdge;
 pub use grid_fn::GridFn;
 pub use hard_approach_law::{HardApproachLaw, Side};
 pub use soft_tail_law::SoftTailLaw;
-pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
 mod __tests__;

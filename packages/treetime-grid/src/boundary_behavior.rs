@@ -19,20 +19,6 @@ impl BoundaryBehavior {
     matches!(self, BoundaryBehavior::Linear(_))
   }
 
-  pub fn is_hard(self) -> bool {
-    matches!(
-      self,
-      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error
-    )
-  }
-
-  pub fn approach_law(self) -> Option<HardApproachLaw> {
-    match self {
-      BoundaryBehavior::HardApproach(law) => Some(law),
-      _ => None,
-    }
-  }
-
   pub fn soft_law(self) -> Option<SoftTailLaw> {
     match self {
       BoundaryBehavior::Linear(law) => Some(law),
