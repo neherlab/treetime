@@ -125,9 +125,268 @@ args = "--method-anc=marginal --dense=false"
 variant = "marginal-dense"
 args = "--method-anc=marginal --dense=true --model=jc69"
 
+[[ancestral]]
+variant = "model-jc69"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=jc69"
+
+[[ancestral]]
+variant = "model-k80"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=k80"
+
+[[ancestral]]
+variant = "model-f81"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=f81"
+
+[[ancestral]]
+variant = "model-hky85"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=hky85"
+
+[[ancestral]]
+variant = "model-t92"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=t92"
+
+[[ancestral]]
+variant = "model-tn93"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=false --model=tn93"
+
+[[ancestral]]
+variant = "model-k80-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --model=k80"
+
+[[ancestral]]
+variant = "model-f81-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --model=f81"
+
+[[ancestral]]
+variant = "model-hky85-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --model=hky85"
+
+[[ancestral]]
+variant = "model-t92-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --model=t92"
+
+[[ancestral]]
+variant = "model-tn93-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --model=tn93"
+
+[[ancestral]]
+variant = "model-infer-dense"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true"
+
+[[ancestral]]
+variant = "gap-fill-all"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --gap-fill=all"
+
+[[ancestral]]
+variant = "gap-fill-none"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --gap-fill=none"
+
+[[ancestral]]
+variant = "reconstruct-tip-states"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --reconstruct-tip-states"
+
+[[ancestral]]
+variant = "include-leaves-impute"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --include-leaves --impute-missing-data"
+
+[[ancestral]]
+variant = "gtr-iterations-3"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --gtr-iterations=3"
+
+[[ancestral]]
+variant = "site-specific-gtr"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --dense=true --site-specific-gtr"
+fail = "kb/issues/N-gtr-site-specific-model-not-implemented.md"
+
+[[ancestral]]
+variant = "sample-root"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --sample-from-profile=root --seed=42"
+
+[[ancestral]]
+variant = "sample-all"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --sample-from-profile=all --seed=42"
+
+[[ancestral]]
+variant = "method-joint"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=joint"
+fail = "joint reconstruction is removed in v1: kb/decisions/ancestral-joint-reconstruction-removed.md"
+
+# A tree with tips that the alignment lacks
+[[ancestral]]
+variant = "ignore-missing-alns"
+datasets = ["zika/20"]
+standalone = true
+args = "--tree={data}/zika/86/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --ignore-missing-alns"
+outputs = ["ancestral.nwk"]
+
+# Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
+[[ancestral]]
+variant = "input-nexus-tree"
+datasets = ["flu/h3n2/20"]
+tree = "tree.nex"
+args = "--method-anc=marginal"
+fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
+
+[[ancestral]]
+variant = "input-phylip-alignment"
+datasets = ["flu/h3n2/20"]
+standalone = true
+args = "--tree={tree} --aln={dataset}/aln.phylip --output-all={out} --method-anc=marginal"
+outputs = ["ancestral.nwk"]
+fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
+
+# Tree ordering and output options, shared by every command that writes a tree
+[[ancestral]]
+variant = "ladderize-ascending"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --ladderize=ascending"
+
+[[ancestral]]
+variant = "ladderize-descending"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --ladderize=descending"
+
+[[ancestral]]
+variant = "order-height"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --topology-order=height"
+
+[[ancestral]]
+variant = "order-label"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --topology-order=label"
+
+[[ancestral]]
+variant = "order-divergence-reverse"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --topology-order=divergence-reverse"
+
+[[ancestral]]
+variant = "all-outputs"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal"
+selection = "all"
+
 
 [[clock]]
 variant = "default"
+
+[[clock]]
+variant = "no-filter"
+datasets = ["flu/h3n2/20"]
+args = "--clock-filter=0"
+
+[[clock]]
+variant = "strict-filter"
+datasets = ["flu/h3n2/20"]
+args = "--clock-filter=5"
+
+[[clock]]
+variant = "reroot-least-squares"
+datasets = ["flu/h3n2/20"]
+args = "--reroot=least-squares"
+
+[[clock]]
+variant = "reroot-min-dev"
+datasets = ["flu/h3n2/20"]
+args = "--reroot=min-dev"
+
+[[clock]]
+variant = "reroot-oldest"
+datasets = ["flu/h3n2/20"]
+args = "--reroot=oldest"
+
+[[clock]]
+variant = "reroot-clock-filter"
+datasets = ["flu/h3n2/20"]
+args = "--reroot=clock-filter"
+
+[[clock]]
+variant = "reroot-tips"
+datasets = ["ebola/20"]
+args = "--reroot-tips=EM_079497"
+
+[[clock]]
+variant = "keep-root"
+datasets = ["flu/h3n2/20"]
+args = "--keep-root"
+
+[[clock]]
+variant = "tip-slack"
+datasets = ["flu/h3n2/20"]
+args = "--tip-slack=0.1"
+
+[[clock]]
+variant = "covariation"
+datasets = ["flu/h3n2/20"]
+args = "--covariation"
+fail = "kb/issues/N-clock-regression-all-negative-rate.md"
+
+[[clock]]
+variant = "covariation"
+datasets = ["ebola/20"]
+args = "--covariation --sequence-length=19006"
+
+[[clock]]
+variant = "allow-negative-rate"
+datasets = ["dengue/100"]
+args = "--allow-negative-rate"
+
+[[clock]]
+variant = "branch-split-brent"
+datasets = ["flu/h3n2/20"]
+args = "--branch-split-method=brent"
+
+[[clock]]
+variant = "branch-split-golden-section"
+datasets = ["flu/h3n2/20"]
+args = "--branch-split-method=golden-section"
+
+[[clock]]
+variant = "branch-split-grid-21"
+datasets = ["flu/h3n2/20"]
+args = "--branch-split-grid-n-points=21"
+
+[[clock]]
+variant = "variance-factor"
+datasets = ["flu/h3n2/20"]
+args = "--variance-factor=1"
+
+[[clock]]
+variant = "variance-offset"
+datasets = ["flu/h3n2/20"]
+args = "--variance-offset=0.1"
+
+[[clock]]
+variant = "date-column"
+datasets = ["dengue/20"]
+args = "--date-column=date"
+
+[[clock]]
+variant = "all-outputs"
+datasets = ["flu/h3n2/20"]
+selection = "all"
 
 
 [[homoplasy]]
@@ -148,6 +407,56 @@ args = "--pc=1.0 --weights={data}/zika/country_weights.csv"
 variant = "country-confidence"
 datasets = ["zika/20"]
 args = "--pc=1.0 --output-confidence-csv={out}/confidence.csv"
+
+[[mugration]]
+variant = "pc-default"
+datasets = ["zika/20"]
+
+[[mugration]]
+variant = "pc-0.1"
+datasets = ["zika/20"]
+args = "--pc=0.1"
+
+[[mugration]]
+variant = "iterations-1"
+datasets = ["zika/20"]
+args = "--pc=1.0 --iterations=1"
+
+[[mugration]]
+variant = "iterations-20"
+datasets = ["zika/20"]
+args = "--pc=1.0 --iterations=20"
+
+[[mugration]]
+variant = "sampling-bias-correction"
+datasets = ["zika/20"]
+args = "--pc=1.0 --sampling-bias-correction=2"
+
+[[mugration]]
+variant = "smooth-initial-pi"
+datasets = ["zika/20"]
+args = "--pc=1.0 --smooth-initial-pi"
+
+[[mugration]]
+variant = "filter-uninformative-root"
+datasets = ["zika/20"]
+args = "--pc=1.0 --filter-uninformative-root"
+
+[[mugration]]
+variant = "missing-data"
+datasets = ["zika/20"]
+args = "--pc=1.0 --missing-data=unknown"
+
+[[mugration]]
+variant = "missing-weights-threshold"
+datasets = ["zika/20"]
+args = "--pc=1.0 --weights={data}/zika/country_weights.csv --missing-weights-threshold=0.9"
+
+[[mugration]]
+variant = "all-outputs"
+datasets = ["zika/20"]
+args = "--pc=1.0"
+selection = "all"
 
 
 [[optimize]]
@@ -205,10 +514,159 @@ standalone = true
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
+[[optimize]]
+variant = "model-jc69"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --model=jc69"
+
+[[optimize]]
+variant = "model-hky85"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --model=hky85"
+
+[[optimize]]
+variant = "model-hky85-dense"
+datasets = ["flu/h3n2/20"]
+args = "--dense=true --model=hky85"
+
+[[optimize]]
+variant = "dp-0.01"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --dp=0.01"
+
+[[optimize]]
+variant = "damping-0.5"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --damping=0.5"
+
+[[optimize]]
+variant = "iter1"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --max-iter=1"
+
+[[optimize]]
+variant = "iter30"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --max-iter=30"
+
+[[optimize]]
+variant = "guess-always"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --branch-length-initial-guess=always"
+
+[[optimize]]
+variant = "guess-always-dense"
+datasets = ["flu/h3n2/20"]
+args = "--dense=true --branch-length-initial-guess=always"
+
+[[optimize]]
+variant = "guess-never"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --branch-length-initial-guess=never"
+
+[[optimize]]
+variant = "no-indels"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --no-indels"
+
+[[optimize]]
+variant = "units-mutations"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --divergence-units=mutations"
+
+[[optimize]]
+variant = "reroot-tips"
+datasets = ["ebola/20"]
+args = "--dense=false --reroot-tips=EM_079497"
+
+[[optimize]]
+variant = "keep-root"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --keep-root"
+
+[[optimize]]
+variant = "no-collapse-short-branches"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --no-collapse-short-branches"
+
+[[optimize]]
+variant = "no-merge-siblings"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --no-merge-siblings"
+
+[[optimize]]
+variant = "no-flip-parent-child"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --no-flip-parent-child"
+
+[[optimize]]
+variant = "no-topology-ops"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+
+[[optimize]]
+variant = "no-topology-ops-dense"
+datasets = ["flu/h3n2/20"]
+args = "--dense=true --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+
+[[optimize]]
+variant = "gap-fill-all"
+datasets = ["flu/h3n2/20"]
+args = "--dense=true --gap-fill=all"
+
+[[optimize]]
+variant = "all-outputs"
+datasets = ["flu/h3n2/20"]
+args = "--dense=false"
+selection = "all"
+
 
 [[prune]]
 variant = "default"
 args = "--prune-short=1e-6 --prune-empty --merge-shared-mutations"
+
+[[prune]]
+variant = "short"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--prune-short=1e-6"
+
+[[prune]]
+variant = "empty"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--prune-empty"
+
+[[prune]]
+variant = "merge-shared"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--merge-shared-mutations"
+
+[[prune]]
+variant = "nodes-list"
+datasets = ["ebola/20"]
+args = "--prune-nodes-list=EM_079497,G3770"
+
+[[prune]]
+variant = "nodes-list-delimiter"
+datasets = ["ebola/20"]
+args = "--prune-nodes-list=EM_079497;G3770 --prune-nodes-list-delimiter=;"
+
+[[prune]]
+variant = "nodes-list-file"
+datasets = ["ebola/20"]
+args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
+
+[[prune]]
+variant = "other-outputs"
+datasets = ["flu/h3n2/20"]
+args = "--prune-empty"
+selection = "nwk,nexus,graph-json,dot,gtr"
+
+[[prune]]
+variant = "auspice-mat-outputs"
+datasets = ["flu/h3n2/20"]
+args = "--prune-empty"
+selection = "auspice,mat-pb,mat-json"
+fail = "kb/issues/M-prune-auspice-and-mat-outputs-internal-error.md"
 
 
 [[timetree]]
@@ -468,6 +926,27 @@ datasets = ["mpox/clade-ii/1000"]
 args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
 
 
+# A Nexus input tree
+[[timetree]]
+variant = "input-nexus-tree"
+datasets = ["flu/h3n2/20"]
+tree = "tree.nex"
+fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
+
+# Tree output styles and all output formats
+[[timetree]]
+variant = "nwk-style-beast-nhx"
+datasets = ["flu/h3n2/20"]
+args = "--output-nwk-style=beast --output-nwk-style=nhx"
+outputs = ["timetree.annotated.nwk", "timetree.nhx.nwk"]
+
+[[timetree]]
+variant = "all-outputs"
+datasets = ["flu/h3n2/20"]
+args = "--time-marginal=always"
+selection = "all"
+
+
 # `treetime --help` and `treetime <subcommand> --help`; the printed text is compared with the baseline
 [help]
 subcommands = [
@@ -491,3 +970,35 @@ subcommands = [
 # otherwise the file name up to the first `-` (`ancestral-parsimony.yaml` runs `ancestral`).
 [config]
 pattern = "*.yaml"
+
+
+# Commands without a dataset, one row per invocation. `args` follows the binary. The printed text is compared with the
+# baseline; a `sandbox = true` row runs in a sandbox directory and its written files are compared instead.
+[[cli]]
+variant = "schema-timetree"
+args = "schema --for=timetree --output=-"
+
+[[cli]]
+variant = "schema-pipeline"
+args = "schema --for=pipeline --output=-"
+
+[[cli]]
+variant = "completions-bash"
+args = "completions bash"
+
+[[cli]]
+variant = "completions-zsh"
+args = "completions zsh"
+
+[[cli]]
+variant = "help-markdown"
+args = "help-markdown"
+
+[[cli]]
+variant = "pipeline-check"
+args = "pipeline --config={data}/zika/20/pipeline.yaml --check"
+
+[[cli]]
+variant = "pipeline-steps-timetree"
+args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree"
+sandbox = true
