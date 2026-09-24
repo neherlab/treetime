@@ -1,6 +1,5 @@
 pub(crate) mod distribution_core;
 pub(crate) mod distribution_ops;
-pub(crate) mod distribution_scaled;
 pub(crate) mod policy;
 
 pub use distribution_core::distribution::{
@@ -10,26 +9,13 @@ pub use distribution_core::formula::DistributionFormula;
 pub use distribution_core::function::DistributionFunction;
 pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
-pub(crate) use distribution_ops::convolve::{distribution_convolution, distribution_convolution_fine};
 pub use distribution_ops::divide::distribution_division;
 pub use distribution_ops::edge_convolution::convolve_across_edge;
-pub(crate) use distribution_ops::map::distribution_map;
 pub use distribution_ops::mass_domain::{mass_bounded_domain, rewindow_to_mass, total_mass};
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
-pub(crate) use distribution_ops::negate::{distribution_negation, distribution_negation_inplace};
 pub use distribution_ops::product::distribution_product;
-pub(crate) use distribution_ops::scalar_multiply::distribution_scalar_multiplication;
-pub(crate) use distribution_ops::subtract::distribution_subtraction;
-pub(crate) use distribution_ops::time_bounds::{
-  distribution_time_bounds_contains, distribution_time_bounds_intersection, distribution_time_bounds_overlaps,
-  distribution_time_bounds_union,
-};
-pub(crate) use distribution_scaled::convolve::scaled_distribution_convolution;
-pub(crate) use distribution_scaled::divide::scaled_distribution_division;
-pub(crate) use distribution_scaled::multiply::{scaled_distribution_multiplication, scaled_distribution_multiply_many};
-pub(crate) use distribution_scaled::scaled::ScaledDistribution;
-pub use policy::{NegLog, Plain, PolicyMarker, SupportsConvolution, SupportsSubtraction, YAxisPolicy};
+pub use policy::{NegLog, Plain, PolicyMarker, SupportsConvolution, YAxisPolicy};
 pub use treetime_grid::BoundaryBehavior;
 
 #[cfg(test)]

@@ -180,22 +180,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub(crate) fn left_extrap(&self) -> Option<BoundaryBehavior> {
-    match self {
-      Self::Function(function) => Some(function.left_extrap()),
-      Self::Formula(_) => None,
-      Self::Empty | Self::Point(_) | Self::Range(_) => Some(BoundaryBehavior::Hard),
-    }
-  }
-
-  pub(crate) fn right_extrap(&self) -> Option<BoundaryBehavior> {
-    match self {
-      Self::Function(function) => Some(function.right_extrap()),
-      Self::Formula(_) => None,
-      Self::Empty | Self::Point(_) | Self::Range(_) => Some(BoundaryBehavior::Hard),
-    }
-  }
-
   pub(crate) fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
@@ -210,10 +194,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    self.with_left_extrap(behavior)?.with_right_extrap(behavior)
-  }
-
   pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     match self {
       Self::Function(function) => Ok(Self::Function(function.fit_soft_tail(side, n_fit)?)),
@@ -223,36 +203,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 }
 
 impl Distribution<Plain> {
-  pub(crate) fn max_value(&self) -> f64 {
-    match self {
-      Distribution::Empty => 0.0,
-      Distribution::Point(p) => p.amplitude(),
-      Distribution::Range(r) => r.amplitude(),
-      Distribution::Function(f) => f.y().max().ok().copied().unwrap_or(0.0),
-      Distribution::Formula(f) => discretize_formula(f).map_or(0.0, |df| df.y().max().ok().copied().unwrap_or(0.0)),
-    }
-  }
-
-  pub(crate) fn scale_by(&self, factor: f64) -> Self {
-    match self {
-      Distribution::Empty => Distribution::Empty,
-      Distribution::Point(p) => Distribution::point(p.t(), p.amplitude() * factor),
-      Distribution::Range(r) => Distribution::range((r.start(), r.end()), r.amplitude() * factor),
-      Distribution::Function(f) => f.scale_y(factor).map_or(Distribution::Empty, Distribution::Function),
-      Distribution::Formula(f) => discretize_formula(f)
-        .and_then(|df| df.scale_y(factor))
-        .map_or(Distribution::Empty, Distribution::Function),
-    }
-  }
-
-  pub(crate) fn normalize(&self) -> Self {
-    let max_val = self.max_value();
-    if max_val <= 0.0 || !max_val.is_finite() {
-      return Distribution::Empty;
-    }
-    self.scale_by(1.0 / max_val)
-  }
-
   #[expect(
     clippy::many_single_char_names,
     reason = "single-letter names follow the notation of the formulas"
@@ -370,30 +320,6 @@ impl Distribution<Plain> {
 }
 
 impl Distribution<NegLog> {
-  pub(crate) fn to_plain_normalized(&self) -> Distribution<Plain> {
-    match self {
-      Self::Empty => Distribution::Empty,
-      Self::Point(point) => {
-        if point.amplitude().is_finite() {
-          Distribution::point(point.t(), 1.0)
-        } else {
-          Distribution::Empty
-        }
-      },
-      Self::Range(range) => {
-        if range.amplitude().is_finite() {
-          Distribution::range((range.start(), range.end()), 1.0)
-        } else {
-          Distribution::Empty
-        }
-      },
-      Self::Function(function) => neglog_function_to_plain_normalized(function),
-      Self::Formula(formula) => discretize_formula(formula).map_or(Distribution::Empty, |function| {
-        neglog_function_to_plain_normalized(&function)
-      }),
-    }
-  }
-
   #[allow(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
@@ -423,18 +349,6 @@ impl Distribution<NegLog> {
     }
   }
 
-  pub(crate) fn min_value(&self) -> f64 {
-    match self {
-      Distribution::Empty => f64::INFINITY,
-      Distribution::Point(p) => p.amplitude(),
-      Distribution::Range(r) => r.amplitude(),
-      Distribution::Function(f) => f.y().min().ok().copied().unwrap_or(f64::INFINITY),
-      Distribution::Formula(f) => {
-        discretize_formula(f).map_or(f64::INFINITY, |df| df.y().min().ok().copied().unwrap_or(f64::INFINITY))
-      },
-    }
-  }
-
   pub fn normalize(&self) -> Self {
     match self {
       Distribution::Empty => Distribution::Empty,
@@ -458,15 +372,6 @@ impl Distribution<NegLog> {
       },
     }
   }
-}
-
-fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
-  let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
-    return Distribution::Empty;
-  };
-  let values = function.y().mapv(|value| (minimum - value).exp());
-  DistributionFunction::from_start_dx_values(function.x_min(), function.dx(), values)
-    .map_or(Distribution::Empty, Distribution::Function)
 }
 
 fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Distribution<NegLog> {

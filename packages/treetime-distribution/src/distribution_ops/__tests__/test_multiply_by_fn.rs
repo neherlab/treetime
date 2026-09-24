@@ -87,7 +87,9 @@ mod tests {
     let y = t.mapv(|ti| -2.0 * ti);
     let input = DistributionFunction::from_arrays(&t, y)
       .unwrap()
-      .with_extrap(BoundaryBehavior::Hard)
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
     let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();

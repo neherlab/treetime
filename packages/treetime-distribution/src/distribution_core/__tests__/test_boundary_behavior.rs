@@ -40,7 +40,9 @@ mod tests {
   #[test]
   fn test_boundary_plain_hard_allowed() -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    let f = f.with_extrap(BoundaryBehavior::Hard)?;
+    let f = f
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Hard)?;
     assert_ulps_eq!(0.0, f.interp(-1.0)?, max_ulps = 4);
     assert_ulps_eq!(0.0, f.interp(3.0)?, max_ulps = 4);
     Ok(())
@@ -64,20 +66,7 @@ mod tests {
       .clone()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?;
     assert_eq!(point, unchanged);
-    assert_eq!(Some(BoundaryBehavior::Hard), unchanged.left_extrap());
-    assert_eq!(Some(BoundaryBehavior::Hard), unchanged.right_extrap());
     Ok(())
-  }
-
-  #[test]
-  fn test_boundary_empty_and_range_are_hard() {
-    let empty: DistributionPlain = Distribution::empty();
-    let range: DistributionPlain = Distribution::range((0.0, 2.0), 1.0);
-
-    assert_eq!(Some(BoundaryBehavior::Hard), empty.left_extrap());
-    assert_eq!(Some(BoundaryBehavior::Hard), empty.right_extrap());
-    assert_eq!(Some(BoundaryBehavior::Hard), range.left_extrap());
-    assert_eq!(Some(BoundaryBehavior::Hard), range.right_extrap());
   }
 
   #[test]
@@ -93,15 +82,12 @@ mod tests {
   }
 
   #[test]
-  fn test_boundary_formula_has_no_stored_boundary_policy() -> Result<(), Report> {
+  fn test_boundary_formula_ignores_soft_tail_fitting() -> Result<(), Report> {
     let formula: Distribution<NegLog> = Distribution::Formula(DistributionFormula::new(Ok, 0.0, 2.0));
-    assert_eq!(None, formula.left_extrap());
-    assert_eq!(None, formula.right_extrap());
+    let fitted = formula.fit_soft_tail(Side::Right, 10)?;
 
-    let formula = formula.fit_soft_tail(Side::Right, 10)?;
-
-    assert_eq!(None, formula.right_extrap());
-    assert_ulps_eq!(2.5, formula.eval(2.5)?, max_ulps = 8);
+    assert!(matches!(fitted, Distribution::Formula(_)));
+    assert_ulps_eq!(2.5, fitted.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 
@@ -110,9 +96,12 @@ mod tests {
     let function: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     let distribution = Distribution::Function(function).fit_soft_tail(Side::Right, 3)?;
 
+    let Distribution::Function(fitted) = &distribution else {
+      panic!("expected a function distribution, got {distribution:?}");
+    };
     assert_eq!(
       BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
-      distribution.right_extrap().expect("function boundary policy")
+      fitted.right_extrap()
     );
     assert_ulps_eq!(2.5, distribution.eval(2.5)?, max_ulps = 8);
     Ok(())

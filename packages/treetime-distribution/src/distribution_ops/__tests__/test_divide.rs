@@ -112,7 +112,9 @@ mod tests {
     let expected = DistributionPlain::Function(
       DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5])
         .unwrap()
-        .with_extrap(BoundaryBehavior::Hard)
+        .with_left_extrap(BoundaryBehavior::Hard)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     assert_eq!(expected, actual);

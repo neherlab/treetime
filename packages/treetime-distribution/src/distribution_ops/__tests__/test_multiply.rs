@@ -10,7 +10,6 @@ mod tests {
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{distribution_multiplication, guarded_empty_result, hard_domains_disjoint};
   use crate::policy::Plain;
-  use approx::assert_abs_diff_eq;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
@@ -190,24 +189,6 @@ mod tests {
     assert!((likely - 1.0).abs() < 0.2, "Product peak at {likely}, expected ~1.0");
   }
 
-  #[test]
-  fn test_multiply_chain_with_normalize_no_underflow() {
-    let mut accum = make_gaussian(0.0, 1.0, 201);
-
-    for i in 0..50 {
-      let msg = make_gaussian(0.0 + i as f64 * 0.01, 1.0, 201);
-      accum = distribution_multiplication(&accum, &msg).unwrap().normalize();
-
-      assert!(
-        !matches!(accum, DistributionPlain::Empty),
-        "Chain multiplication underflowed at step {i}"
-      );
-    }
-
-    let likely = accum.likely_time().expect("Final distribution must have likely_time");
-    assert!(likely.abs() < 1.0, "Peak at {likely}, expected near 0");
-  }
-
   fn make_function(x_min: f64, x_max: f64, n: usize, peak_at: f64, sigma: f64) -> DistributionFunction<f64, Plain> {
     let dx = (x_max - x_min) / (n - 1) as f64;
     let y = Array1::from_shape_fn(n, |i| {
@@ -369,7 +350,7 @@ mod tests {
   }
 
   #[test]
-  fn test_multiply_tail_chained_normalize_preserves_tails_survives_disjoint() {
+  fn test_multiply_tail_chained_survives_disjoint() {
     let msg1 = DistributionPlain::Function(
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
         .with_left_extrap(SOFT)
@@ -401,7 +382,7 @@ mod tests {
 
     let mut accum = msg1;
     for msg in [&msg2, &msg3, &msg4] {
-      accum = distribution_multiplication(&accum, msg).unwrap().normalize();
+      accum = distribution_multiplication(&accum, msg).unwrap();
     }
 
     let DistributionPlain::Function(f) = &accum else {
@@ -413,62 +394,6 @@ mod tests {
       accum.likely_time().is_some(),
       "Accumulated result must have a likely_time"
     );
-  }
-
-  #[test]
-  fn test_multiply_tail_chained_normalize_no_reapply_survives() {
-    let msg_recent_1 = DistributionPlain::Function(
-      make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-    let msg_recent_2 = DistributionPlain::Function(
-      make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-    let msg_old = DistributionPlain::Function(
-      make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
-        .with_left_extrap(SOFT)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard)
-        .unwrap(),
-    );
-
-    let product = distribution_multiplication(&msg_recent_1, &msg_recent_2).unwrap();
-    assert!(!matches!(product, DistributionPlain::Empty));
-
-    let normalized = product.normalize();
-    let DistributionPlain::Function(f) = &normalized else {
-      panic!("Expected Function, got {normalized:?}")
-    };
-    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
-
-    let final_result = distribution_multiplication(&normalized, &msg_old).unwrap();
-    assert!(
-      !matches!(final_result, DistributionPlain::Empty),
-      "soft left tail must survive normalize() so the accumulator overlaps the old message"
-    );
-  }
-
-  #[test]
-  fn test_multiply_normalize_preserves_tails() {
-    let f = make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
-      .with_left_extrap(SOFT)
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
-    let normalized = DistributionPlain::Function(f).normalize();
-    let DistributionPlain::Function(f) = &normalized else {
-      panic!("Expected Function, got {normalized:?}")
-    };
-    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
-    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
-    assert_ulps_eq!(1.0, f.y().iter().copied().fold(f64::MIN, f64::max), max_ulps = 4);
   }
 
   #[rustfmt::skip]
@@ -567,25 +492,6 @@ mod tests {
       panic!("Expected Function")
     };
     assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
-  }
-
-  #[test]
-  fn test_multiply_normalize_preserves_approach_law() {
-    let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
-      .unwrap()
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }))
-      .unwrap();
-
-    let normalized = DistributionPlain::Function(f).normalize();
-    let DistributionPlain::Function(f) = &normalized else {
-      panic!("Expected Function")
-    };
-    let preserved = f
-      .left_extrap()
-      .approach_law()
-      .expect("approach law should survive normalization");
-    assert_abs_diff_eq!(0.0, preserved.t_hard, epsilon = 1e-14);
-    assert_abs_diff_eq!(0.01, preserved.b, epsilon = 1e-14);
   }
 
   #[rustfmt::skip]

@@ -80,7 +80,7 @@ mod tests {
   fn fold_children(children: &[&DistributionPlain]) -> DistributionPlain {
     let mut accum = children[0].clone();
     for child in &children[1..] {
-      accum = distribution_multiplication(&accum, child).unwrap().normalize();
+      accum = distribution_multiplication(&accum, child).unwrap();
     }
     accum
   }

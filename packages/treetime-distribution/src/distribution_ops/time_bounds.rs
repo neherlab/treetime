@@ -1,5 +1,3 @@
-use crate::Distribution;
-use crate::policy::YAxisPolicy;
 use eyre::Report;
 use num::ToPrimitive;
 use treetime_utils::make_error;
@@ -7,64 +5,6 @@ use treetime_utils::make_error;
 const MAX_GRID_POINTS: usize = 1_000_000;
 
 const GRID_COUNT_TOL: f64 = 1e-9;
-
-pub(crate) fn distribution_time_bounds_union<Y: YAxisPolicy>(
-  dist_a: &Distribution<Y>,
-  dist_b: &Distribution<Y>,
-) -> Option<(f64, f64)> {
-  match (dist_a.time_bounds(), dist_b.time_bounds()) {
-    (Some((t_min_a, t_max_a)), Some((t_min_b, t_max_b))) => {
-      Some((f64::min(t_min_a, t_min_b), f64::max(t_max_a, t_max_b)))
-    },
-    (Some(bounds), None) | (None, Some(bounds)) => Some(bounds),
-    (None, None) => None,
-  }
-}
-
-pub(crate) fn distribution_time_bounds_contains<Y: YAxisPolicy>(
-  outer: &Distribution<Y>,
-  inner: &Distribution<Y>,
-) -> bool {
-  let Some((t_min_inner, t_max_inner)) = inner.time_bounds() else {
-    return true;
-  };
-  let Some((t_min_outer, t_max_outer)) = outer.time_bounds() else {
-    return false;
-  };
-  t_min_outer <= t_min_inner && t_max_inner <= t_max_outer
-}
-
-pub(crate) fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(
-  dist_a: &Distribution<Y>,
-  dist_b: &Distribution<Y>,
-) -> bool {
-  distribution_time_bounds_intersection(dist_a, dist_b).is_some()
-}
-
-pub(crate) fn distribution_time_bounds_intersection<Y: YAxisPolicy>(
-  dist_a: &Distribution<Y>,
-  dist_b: &Distribution<Y>,
-) -> Option<(f64, f64)> {
-  match distribution_support_intersection(dist_a.time_bounds()?, dist_b.time_bounds()?) {
-    SupportIntersection::Disjoint => None,
-    SupportIntersection::Point(t) => Some((t, t)),
-    SupportIntersection::Interval(bounds) => Some(bounds),
-  }
-}
-
-#[expect(clippy::float_cmp, reason = "equal bounds define a point support exactly")]
-fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
-  let start = a.0.max(b.0);
-  let end = a.1.min(b.1);
-
-  if start < end {
-    SupportIntersection::Interval((start, end))
-  } else if start == end {
-    SupportIntersection::Point(start)
-  } else {
-    SupportIntersection::Disjoint
-  }
-}
 
 #[allow(
   clippy::as_conversions,

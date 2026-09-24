@@ -25,8 +25,6 @@ pub struct Plain;
 
 impl SupportsConvolution for Plain {}
 
-impl SupportsSubtraction for Plain {}
-
 impl YAxisPolicy for Plain {
   fn from_plain(p: f64) -> f64 {
     p
@@ -125,8 +123,6 @@ impl YAxisPolicy for NegLog {
 }
 
 pub trait SupportsConvolution: YAxisPolicy {}
-
-pub trait SupportsSubtraction: YAxisPolicy {}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolicyMarker<Y: YAxisPolicy>(#[serde(skip)] PhantomData<Y>);

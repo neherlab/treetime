@@ -146,10 +146,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.y()
   }
 
-  pub(crate) fn grid(&self) -> &Grid<T> {
-    self.grid_fn.grid()
-  }
-
   #[allow(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
@@ -220,10 +216,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(self)
   }
 
-  pub(crate) fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    self.with_left_extrap(behavior)?.with_right_extrap(behavior)
-  }
-
   fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -289,18 +281,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.len() == 0
   }
 
-  pub(crate) fn negate_arg(&self) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let grid_fn = self.grid_fn.negate_arg()?;
-    Ok(Self::from_grid_fn_with_extrap(
-      grid_fn,
-      negate_tail_law(self.right_extrap),
-      negate_tail_law(self.left_extrap),
-    ))
-  }
-
   pub(crate) fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
@@ -329,18 +309,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub(crate) fn scale_y(&self, factor: T) -> Result<Self, Report>
-  where
-    T: Float,
-  {
-    let factor = factor.to_f64().unwrap();
-    Ok(Self::from_grid_fn_with_extrap(
-      self.grid_fn.scale_y(factor),
-      scale_tail_law(self.left_extrap, factor),
-      scale_tail_law(self.right_extrap, factor),
-    ))
-  }
-
   #[must_use]
   pub(crate) fn shift_y(&self, delta: T) -> Self
   where
@@ -357,16 +325,6 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
       Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
     }
-  }
-}
-
-fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
-    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {
-      slope: law.slope * factor,
-    }),
-    other => other,
   }
 }
 

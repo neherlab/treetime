@@ -66,35 +66,15 @@ mod tests {
   }
 
   #[test]
-  fn test_function_scale_y_transforms_boundary_laws() -> Result<(), Report> {
-    let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.5 });
-    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
-    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
-      .with_left_extrap(left)?
-      .with_right_extrap(right)?;
-
-    let actual = function.scale_y(3.0)?;
-
-    assert_eq!(
-      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 4.5 }),
-      actual.left_extrap()
-    );
-    assert_eq!(
-      BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 * 3.0 }),
-      actual.right_extrap()
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_function_negate_arg_swaps_and_reflects_boundary_laws() -> Result<(), Report> {
+  fn test_function_negate_arg_inplace_swaps_and_reflects_boundary_laws() -> Result<(), Report> {
     let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
     let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
 
-    let actual = function.negate_arg()?;
+    let mut actual = function;
+    actual.negate_arg_inplace()?;
 
     assert_eq!(
       BoundaryBehavior::Linear(SoftTailLaw { slope: -0.7 }),
