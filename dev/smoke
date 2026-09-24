@@ -393,6 +393,9 @@ def host_mode(args: argparse.Namespace) -> int:
     return 0
   cases = build_matrix(PROJECT_ROOT)
   ids = last_failed_ids(current) if args.rerun_failed else None
+  if ids is not None and not ids:
+    print("The last run has no failed cases")
+    return 0
   selected = select_cases(cases, Tier(args.tier), args.only, ids)
   if args.list:
     print("\n".join(case.id for case in selected))
