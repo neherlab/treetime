@@ -157,6 +157,7 @@ VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
 
 ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "tree", "standalone", "outputs", "tier", "timeout",
                       "fail", "hang"})
+CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
 MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
@@ -310,6 +311,7 @@ def build_matrix(root: Path) -> list[Case]:
            for case in row_cases(command, row, spec, datasets)]
   cases += config_cases(root, spec, datasets)
   cases += help_cases(spec)
+  cases += cli_cases(spec)
   validate_matrix(cases)
   return cases
 
@@ -328,13 +330,14 @@ def load_case_spec(path: Path) -> CaseSpec:
   families = {name: parse_family(name, table) for name, table in raw.pop("families", {}).items()}
   help_table = check_keys(raw.pop("help", {}), {"subcommands"}, "[help]")
   config_table = check_keys(raw.pop("config", {}), {"pattern"}, "[config]")
+  cli_rows = [check_keys(row, CLI_ROW_KEYS, "[[cli]]") for row in raw.pop("cli", [])]
   if unknown := sorted(raw.keys() - commands.keys()):
     raise SmokeError(f"The case file has rows for commands without a [commands.<name>] template: {', '.join(unknown)}")
   rows = {command: [check_keys(row, ROW_KEYS, f"[[{command}]]") for row in raw[command]] for command in raw}
   for command, command_rows in rows.items():
     if missing := [index for index, row in enumerate(command_rows) if "variant" not in row]:
       raise SmokeError(f"[[{command}]] row {missing[0] + 1} has no `variant`")
-  return CaseSpec(sizes, families, commands, rows, tuple(help_table.get("subcommands", ())),
+  return CaseSpec(sizes, families, commands, rows, tuple(help_table.get("subcommands", ())), cli_rows,
                   config_table.get("pattern"))
 
 
@@ -489,6 +492,17 @@ def help_cases(spec: CaseSpec) -> list[Case]:
   return [Case(id=f"help/{name}", command="help", dataset=None, size=Size.SMALL, tier=size.tier,
                timeout_s=size.timeout_s, argv=("{bin}", *argv), compare_stdout=True)
           for name, argv in [("global", ("--help",)), *((sub, (sub, "--help")) for sub in spec.help_subcommands)]]
+
+
+def cli_cases(spec: CaseSpec) -> list[Case]:
+  """Commands without a dataset: their printed text is compared, or for a sandbox case the files it writes."""
+  size = spec.sizes[Size.SMALL]
+  return [Case(id=f"cli/{row['variant']}", command="cli", dataset=None, size=Size.SMALL, tier=size.tier,
+               timeout_s=size.timeout_s, argv=("{bin}", *shlex.split(row["args"])),
+               expect=Expect.FAIL if "fail" in row else Expect.PASS, reason=row.get("fail"),
+               compare_stdout=not row.get("sandbox", False),
+               cwd_mode=CwdMode.SANDBOX if row.get("sandbox") else CwdMode.ROOT)
+          for row in spec.cli_rows]
 
 
 def validate_matrix(cases: list[Case]) -> None:
@@ -1308,6 +1322,7 @@ class CaseSpec:
   commands: dict[str, CommandTemplate]
   rows: dict[str, list[dict]]
   help_subcommands: tuple[str, ...]
+  cli_rows: list[dict]
   config_pattern: str | None
 
 
