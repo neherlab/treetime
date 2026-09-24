@@ -51,7 +51,10 @@ impl Seq {
 
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn try_from_str(s: &str) -> Result<Self, Report> {
     if !s.is_ascii() {
@@ -74,7 +77,10 @@ impl Seq {
 
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn try_from_slice(slice: &[u8]) -> Result<Self, Report> {
     let data = slice

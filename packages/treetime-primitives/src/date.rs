@@ -12,7 +12,10 @@ pub struct DateConstraint {
 impl DateConstraint {
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn exact(value: f64) -> Self {
     Self {
@@ -67,7 +70,10 @@ pub struct DateRange {
 impl DateRange {
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn width(&self) -> f64 {
     self.end - self.start
@@ -75,7 +81,10 @@ impl DateRange {
 
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn contains(&self, value: f64) -> bool {
     value >= self.start && value <= self.end

@@ -20,7 +20,10 @@ pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
 
 #[cfg_attr(
   dylint_lib = "treetime_lints",
-  allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+  allow(
+    pub_unused_in_workspace,
+    reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+  )
 )]
 pub fn read_many_fasta_str<A: AlphabetLike>(
   contents: impl AsRef<str>,
@@ -189,7 +192,10 @@ impl From<FastaRecord> for AlignmentRecord {
 impl FastaRecord {
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn new() -> Self {
     Self::default()

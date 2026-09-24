@@ -28,7 +28,10 @@ pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
 
 #[cfg_attr(
   dylint_lib = "treetime_lints",
-  allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+  allow(
+    pub_unused_in_workspace,
+    reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+  )
 )]
 pub fn nwk_read_str(nwk_string: impl AsRef<str>) -> Result<NwkParse, Report> {
   let nwk_graph = newick_from_string(nwk_string.as_ref()).wrap_err("When parsing Newick string")?;

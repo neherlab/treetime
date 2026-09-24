@@ -45,7 +45,10 @@ pub struct TimetreeEdgeOut {
 impl TimetreeEdgeOut {
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn profile_branch_length(&self) -> Option<f64> {
     self.clock_branch_length.or(self.branch_length)

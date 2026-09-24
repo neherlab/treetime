@@ -265,7 +265,10 @@ impl Alphabet {
 
   #[cfg_attr(
     dylint_lib = "treetime_lints",
-    allow(pub_unused_in_workspace, reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach")
+    allow(
+      pub_unused_in_workspace,
+      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
+    )
   )]
   pub fn is_unknown(&self, c: impl Into<AsciiChar>) -> bool {
     c.into() == self.unknown()
