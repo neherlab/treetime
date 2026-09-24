@@ -5,11 +5,11 @@ mod tests {
   use crate::node::GraphNodeKey;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use treetime_utils::assert_error;
 
-  type TestGraph = Graph;
 
-  fn fixture() -> Result<(TestGraph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
-    let mut graph = TestGraph::new();
+  fn fixture() -> Result<(Graph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
+    let mut graph = Graph::new();
     let root = graph.add_node();
     let a = graph.add_node();
     let b = graph.add_node();
@@ -21,11 +21,11 @@ mod tests {
     Ok((graph, [root, a, b, c], a_to_c))
   }
 
-  fn outbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+  fn outbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
     graph.get_node(node_key).expect("node exists").outbound().to_vec()
   }
 
-  fn inbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+  fn inbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
     graph.get_node(node_key).expect("node exists").inbound().to_vec()
   }
 
@@ -65,28 +65,40 @@ mod tests {
   #[test]
   fn test_reparent_edge_rejects_making_the_target_its_own_source() -> Result<(), Report> {
     let (mut graph, [_, _, _, c], a_to_c) = fixture()?;
-    assert!(graph.reparent_edge(a_to_c, c).is_err());
+    assert_error!(
+      graph.reparent_edge(a_to_c, c),
+      format!("When reparenting edge {a_to_c} to {c}: Attempted to connect node {c} to itself.")
+    );
     Ok(())
   }
 
   #[test]
   fn test_reparent_edge_rejects_a_duplicate_connection() -> Result<(), Report> {
-    let (mut graph, [root, _, _, c], a_to_c) = fixture()?;
+    let (mut graph, [root, a, _, c], a_to_c) = fixture()?;
     graph.add_edge(root, c)?;
 
-    assert!(graph.reparent_edge(a_to_c, root).is_err());
+    assert_error!(
+      graph.reparent_edge(a_to_c, root),
+      format!("When reparenting edge {a_to_c} to {root}: Nodes {root} and {c} are already connected.")
+    );
 
     let edge = graph
       .get_edge(a_to_c)
       .expect("a rejected reparent must leave the edge in place");
-    assert_eq!(edge.source(), fixture()?.1[1], "the edge must not have moved");
+    assert_eq!(edge.source(), a, "the edge must not have moved");
     Ok(())
   }
 
   #[test]
   fn test_reparent_edge_rejects_an_unknown_edge() -> Result<(), Report> {
     let (mut graph, [root, _, _, _], _) = fixture()?;
-    assert!(graph.reparent_edge(GraphEdgeKey(usize::MAX), root).is_err());
+    let unknown = GraphEdgeKey(usize::MAX);
+    assert_error!(
+      graph.reparent_edge(unknown, root),
+      format!(
+        "When reparenting edge {unknown}: edge not found. This is an internal error. Please report it to developers."
+      )
+    );
     Ok(())
   }
 }

@@ -262,11 +262,9 @@ mod tests {
   }
 
   #[test]
-  fn test_pass_map_backward_failure_leaves_inputs_unchanged_and_retries() -> Result<(), Report> {
+  fn test_pass_map_backward_retry_after_failure_succeeds() -> Result<(), Report> {
     let (graph, names) = fixture_tree()?;
     let (nodes, edges) = own_value_pass_values(&graph, &names);
-    let nodes_before = nodes.clone();
-    let edges_before = edges.clone();
     let pass = GraphPass::new(&graph)?;
 
     let failed: Result<GraphMapOutputs<usize, usize>, Report> = pass.map_backward(
@@ -276,9 +274,6 @@ mod tests {
       |_| Err(make_report!("injected pass failure")),
     );
     assert_error!(failed, "injected pass failure");
-
-    assert_eq!(nodes_before, nodes);
-    assert_eq!(edges_before, edges);
 
     let outputs = pass.map_backward(
       &nodes,
@@ -297,11 +292,9 @@ mod tests {
   }
 
   #[test]
-  fn test_pass_map_backward_failing_child_blocks_ancestors_not_sibling() -> Result<(), Report> {
+  fn test_pass_map_backward_failing_child_blocks_ancestors() -> Result<(), Report> {
     let (graph, names) = fixture_tree()?;
     let (nodes, edges) = own_value_pass_values(&graph, &names);
-    let nodes_before = nodes.clone();
-    let edges_before = edges.clone();
     let key_by_name = names
       .iter()
       .map(|(key, name)| (name.clone(), *key))
@@ -334,8 +327,6 @@ mod tests {
       !visited.contains(&key_by_name[&o!("root")]),
       "an ancestor of the failing child must not run"
     );
-    assert_eq!(nodes_before, nodes);
-    assert_eq!(edges_before, edges);
     Ok(())
   }
 

@@ -14,11 +14,9 @@ mod tests {
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
     let original = child_names(&graph, &names, "root")?;
-    let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["A", "BC", "DEF"], actual);
     assert_eq!(vec!["DEF", "A", "BC"], original);
@@ -29,15 +27,13 @@ mod tests {
   #[test]
   fn topology_order_descendant_count_reverse_sorts_children_descending() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
-    let __bl = edge_branch_lengths(&graph);
+    let branch_lengths = edge_branch_lengths(&graph);
     TopologyOrderSpec {
       preset: TopologyOrderPreset::DescendantCountReverse,
       ..TopologyOrderSpec::default()
     }
-    .apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    .apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["DEF", "BC", "A"], actual);
 
@@ -47,15 +43,13 @@ mod tests {
   #[test]
   fn topology_order_keep_preserves_outbound_order() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
-    let __bl = edge_branch_lengths(&graph);
+    let branch_lengths = edge_branch_lengths(&graph);
     TopologyOrderSpec {
       preset: TopologyOrderPreset::Keep,
       ..TopologyOrderSpec::default()
     }
-    .apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    .apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["DEF", "A", "BC"], actual);
 
@@ -85,11 +79,9 @@ mod tests {
       (shared, "shared"),
       (right_only, "right_only"),
     ]);
-    let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["left", "right"], actual);
 
@@ -101,19 +93,17 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["D", "E", "F", "B", "C", "A"]
+      target_order: vec!["A", "D", "E", "F", "B", "C"]
         .into_iter()
         .map(str::to_owned)
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["DEF", "BC", "A"], actual);
+    assert_eq!(vec!["A", "DEF", "BC"], actual);
 
     Ok(())
   }
@@ -131,9 +121,9 @@ mod tests {
     graph.build()?;
 
     let names = make_names(vec![(a, "A"), (b, "B"), (c, "C")]);
-    let __bl = edge_branch_lengths(&graph);
+    let branch_lengths = edge_branch_lengths(&graph);
     let err = TopologyOrderSpec::default()
-      .apply(&mut graph, &names, &__bl)
+      .apply(&mut graph, &names, &branch_lengths)
       .unwrap_err();
 
     assert!(err.to_string().contains("directed cycle"));
@@ -143,52 +133,46 @@ mod tests {
 
   #[test]
   fn topology_order_height_sorts_by_subtree_depth() -> Result<(), Report> {
-    let (mut graph, names) = fixture_deep_tree()?;
+    let (mut graph, names) = fixture_shape_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::Height,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["A", "shallow", "deep"], actual);
+    assert_eq!(vec!["L", "wide", "deep"], actual);
 
     Ok(())
   }
 
   #[test]
   fn topology_order_height_reverse_sorts_deepest_first() -> Result<(), Report> {
-    let (mut graph, names) = fixture_deep_tree()?;
+    let (mut graph, names) = fixture_shape_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::HeightReverse,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["deep", "shallow", "A"], actual);
+    assert_eq!(vec!["deep", "wide", "L"], actual);
 
     Ok(())
   }
 
   #[test]
-  fn topology_order_divergence_sorts_by_total_branch_length() -> Result<(), Report> {
-    let (mut graph, names, __bl) = fixture_branch_length_tree()?;
+  fn topology_order_divergence_sorts_by_deepest_path_below_child() -> Result<(), Report> {
+    let (mut graph, names, branch_lengths) = fixture_branch_length_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::Divergence,
       ..TopologyOrderSpec::default()
     };
 
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["D", "short", "long"], actual);
 
@@ -197,16 +181,14 @@ mod tests {
 
   #[test]
   fn topology_order_divergence_reverse_sorts_longest_first() -> Result<(), Report> {
-    let (mut graph, names, __bl) = fixture_branch_length_tree()?;
+    let (mut graph, names, branch_lengths) = fixture_branch_length_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::DivergenceReverse,
       ..TopologyOrderSpec::default()
     };
 
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
     assert_eq!(vec!["long", "short", "D"], actual);
 
@@ -214,74 +196,60 @@ mod tests {
   }
 
   #[test]
-  fn topology_order_label_sorts_alphabetically() -> Result<(), Report> {
-    let (mut graph, names) = fixture_tree()?;
+  fn topology_order_label_sorts_by_smallest_leaf_label() -> Result<(), Report> {
+    let (mut graph, names) = fixture_shape_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::Label,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["A", "BC", "DEF"], actual);
+    assert_eq!(vec!["wide", "L", "deep"], actual);
 
     Ok(())
   }
 
   #[test]
   fn topology_order_label_reverse_sorts_descending() -> Result<(), Report> {
-    let (mut graph, names) = fixture_tree()?;
+    let (mut graph, names) = fixture_shape_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::LabelReverse,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["DEF", "BC", "A"], actual);
+    assert_eq!(vec!["deep", "L", "wide"], actual);
 
     Ok(())
   }
 
   #[test]
+  fn topology_order_target_order_mean_uses_mean_position() -> Result<(), Report> {
+    let actual = apply_skewed_target_order(TopologyOrderTargetAggregate::Mean)?;
+    assert_eq!(vec!["BC", "DEF", "A"], actual);
+    Ok(())
+  }
+
+  #[test]
   fn topology_order_target_order_median_uses_median_position() -> Result<(), Report> {
-    let (mut graph, names) = fixture_tree()?;
-    let spec = TopologyOrderSpec {
-      preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["D", "E", "F", "B", "C", "A"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
-      target_aggregate: TopologyOrderTargetAggregate::Median,
-    };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let actual = child_names(ordered, &names, "root")?;
-
+    let actual = apply_skewed_target_order(TopologyOrderTargetAggregate::Median)?;
     assert_eq!(vec!["DEF", "BC", "A"], actual);
-
     Ok(())
   }
 
   #[test]
   fn topology_order_propagates_through_nested_levels() -> Result<(), Report> {
     let (mut graph, names) = fixture_deep_tree()?;
-    let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
-
-    let deep_children = child_names(ordered, &names, "deep")?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
+    let deep_children = child_names(&graph, &names, "deep")?;
     assert_eq!(vec!["D", "mid"], deep_children);
 
-    let mid_children = child_names(ordered, &names, "mid")?;
+    let mid_children = child_names(&graph, &names, "mid")?;
     assert_eq!(vec!["E", "F"], mid_children);
 
     Ok(())
@@ -292,19 +260,17 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrderReverse,
-      target_order: vec!["D", "E", "F", "B", "C", "A"]
+      target_order: vec!["A", "D", "E", "F", "B", "C"]
         .into_iter()
         .map(str::to_owned)
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
-    let ordered = &graph;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    let actual = child_names(&graph, &names, "root")?;
 
-    let actual = child_names(ordered, &names, "root")?;
-
-    assert_eq!(vec!["A", "BC", "DEF"], actual);
+    assert_eq!(vec!["BC", "DEF", "A"], actual);
 
     Ok(())
   }
@@ -317,8 +283,8 @@ mod tests {
       target_order: vec![],
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let __bl = edge_branch_lengths(&graph);
-    let err = spec.apply(&mut graph, &names, &__bl).unwrap_err();
+    let branch_lengths = edge_branch_lengths(&graph);
+    let err = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
     assert!(err.to_string().contains("non-empty target order"));
   }
 
@@ -333,8 +299,8 @@ mod tests {
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let __bl = edge_branch_lengths(&graph);
-    let error = spec.apply(&mut graph, &names, &__bl).unwrap_err();
+    let branch_lengths = edge_branch_lengths(&graph);
+    let error = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
 
     assert!(error.to_string().contains("duplicate leaf label 'B'"));
   }
@@ -350,8 +316,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
 
-    let __bl = edge_branch_lengths(&graph);
-    let error = spec.apply(&mut graph, &names, &__bl).unwrap_err();
+    let branch_lengths = edge_branch_lengths(&graph);
+    let error = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
 
     assert!(error.to_string().contains("final leaf label 'B' is duplicated"));
     Ok(())
@@ -362,16 +328,16 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["removed", "D", "E", "F", "B", "C", "A"]
+      target_order: vec!["removed", "A", "D", "E", "F", "B", "C"]
         .into_iter()
         .map(str::to_owned)
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let __bl = edge_branch_lengths(&graph);
-    spec.apply(&mut graph, &names, &__bl)?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
 
-    assert_eq!(vec!["DEF", "BC", "A"], child_names(&graph, &names, "root")?);
+    assert_eq!(vec!["A", "DEF", "BC"], child_names(&graph, &names, "root")?);
     Ok(())
   }
 
@@ -379,15 +345,30 @@ mod tests {
   fn topology_order_is_idempotent() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
 
-    let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
     let first = child_names(&graph, &names, "root")?;
-    let __bl = edge_branch_lengths(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
+    let branch_lengths = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
     let second = child_names(&graph, &names, "root")?;
 
     assert_eq!(first, second);
     Ok(())
+  }
+
+  fn apply_skewed_target_order(target_aggregate: TopologyOrderTargetAggregate) -> Result<Vec<String>, Report> {
+    let (mut graph, names) = fixture_tree()?;
+    let spec = TopologyOrderSpec {
+      preset: TopologyOrderPreset::TargetOrder,
+      target_order: vec!["D", "E", "B", "C", "pad1", "pad2", "pad3", "pad4", "F", "A"]
+        .into_iter()
+        .map(str::to_owned)
+        .collect(),
+      target_aggregate,
+    };
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+    child_names(&graph, &names, "root")
   }
 
   fn fixture_deep_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
@@ -425,6 +406,45 @@ mod tests {
       (tip_f, "F"),
       (tip_b, "B"),
       (tip_c, "C"),
+    ]);
+    Ok((graph, names))
+  }
+
+  fn fixture_shape_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let wide = graph.add_node();
+    let deep = graph.add_node();
+    let tip_l = graph.add_node();
+    let tip_b1 = graph.add_node();
+    let tip_b2 = graph.add_node();
+    let tip_b3 = graph.add_node();
+    let mid = graph.add_node();
+    let tip_x = graph.add_node();
+    let tip_y = graph.add_node();
+
+    graph.add_edge(root, wide)?;
+    graph.add_edge(root, deep)?;
+    graph.add_edge(root, tip_l)?;
+    graph.add_edge(wide, tip_b1)?;
+    graph.add_edge(wide, tip_b2)?;
+    graph.add_edge(wide, tip_b3)?;
+    graph.add_edge(deep, mid)?;
+    graph.add_edge(mid, tip_x)?;
+    graph.add_edge(mid, tip_y)?;
+    graph.build()?;
+
+    let names = make_names(vec![
+      (root, "root"),
+      (wide, "wide"),
+      (deep, "deep"),
+      (tip_l, "L"),
+      (tip_b1, "B1"),
+      (tip_b2, "B2"),
+      (tip_b3, "B3"),
+      (mid, "mid"),
+      (tip_x, "X"),
+      (tip_y, "Y"),
     ]);
     Ok((graph, names))
   }
