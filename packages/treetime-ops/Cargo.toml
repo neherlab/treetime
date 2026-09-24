@@ -20,9 +20,9 @@ treetime-utils = { workspace = true }
 
 # [external]
 eyre = { workspace = true }
-serde = { workspace = true }
 ndarray = { workspace = true }
 ndarray-conv = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }

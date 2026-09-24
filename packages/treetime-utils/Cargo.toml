@@ -16,6 +16,8 @@ doctest = false
 
 [dependencies]
 approx = { workspace = true }
+blas-src = { workspace = true }
+bzip2 = { workspace = true }
 chrono = { workspace = true }
 chronoutil = { workspace = true }
 clap = { workspace = true }
@@ -30,8 +32,12 @@ intervallum = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
+ndarray = { workspace = true }
+ndarray-rand = { workspace = true }
+ndarray-stats = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
+openblas-src = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 pretty_dtoa = { workspace = true }
@@ -42,12 +48,6 @@ serde_json = { workspace = true }
 serde_stacker = { workspace = true }
 smart-default = { workspace = true }
 strum_macros = { workspace = true }
-blas-src = { workspace = true }
-bzip2 = { workspace = true }
-ndarray = { workspace = true }
-ndarray-rand = { workspace = true }
-ndarray-stats = { workspace = true }
-openblas-src = { workspace = true }
 xz2 = { workspace = true }
 zstd = { workspace = true }
 

@@ -40,8 +40,12 @@ hyperfine = "1.20.0"
 # dylint and IQ-TREE releases publish no macOS builds.
 mold = { version = "2.42.1", os = ["linux"] }
 "github:kunobi-ninja/kache" = "0.13.0"
-"github:trailofbits/dylint" = { version = "6.0.4", asset_pattern = "cargo-dylint-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", os = ["linux"] }
-"http:dylint-link" = { version = "6.0.4", url = "https://github.com/trailofbits/dylint/releases/download/v{{version}}/dylint-link-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d", os = ["linux"] }
+"github:trailofbits/dylint" = { version = "6.0.4", asset_pattern = "cargo-dylint-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", os = [
+  "linux",
+] }
+"http:dylint-link" = { version = "6.0.4", url = "https://github.com/trailofbits/dylint/releases/download/v{{version}}/dylint-link-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d", os = [
+  "linux",
+] }
 "github:iqtree/iqtree3" = { version = "3.1.4", asset_pattern = "iqtree-{{version}}-Linux-intel.tar.gz", os = ["linux"] }
 
 # No upstream binaries: built from the crates.io release.

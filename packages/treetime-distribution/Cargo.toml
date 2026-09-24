@@ -25,12 +25,12 @@ approx = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 itertools = { workspace = true }
+ndarray = { workspace = true }
+ndarray-stats = { workspace = true }
 num = { workspace = true }
 ordered-float = { workspace = true }
 serde = { workspace = true }
 strum_macros = { workspace = true }
-ndarray = { workspace = true }
-ndarray-stats = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

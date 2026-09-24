@@ -16,8 +16,8 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 BINARY="${BINARY:-.out/treetime}"
 DATASET="${1:-data/mpox/clade-ii/2000}"
-CORE_COUNTS="${CORE_COUNTS:-1 2 4 8}"   # space-separated list
-RUNS="${RUNS:-3}"                        # repetitions per configuration (median is reported)
+CORE_COUNTS="${CORE_COUNTS:-1 2 4 8}" # space-separated list
+RUNS="${RUNS:-3}"                     # repetitions per configuration (median is reported)
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -61,8 +61,8 @@ measure_one() {
 
   # Discard stdout/stderr from the binary; capture /usr/bin/time -v output
   /usr/bin/time -v "${cmd[@]}" \
-    >"$TMP_DIR/out.txt" 2>"$timefile" \
-    || true   # don't abort on non-zero exit from the benchmarked command
+    >"$TMP_DIR/out.txt" 2>"$timefile" ||
+    true # don't abort on non-zero exit from the benchmarked command
 
   local wall_raw rss_kb cpu_pct wall_s
   wall_raw=$(grep "Elapsed (wall clock)" "$timefile" | awk '{print $NF}')
@@ -85,12 +85,14 @@ measure_one() {
 # Helper: run RUNS repetitions and report median wall, max rss, median cpu
 # ---------------------------------------------------------------------------
 benchmark() {
-  local label="$1"; shift
-  local cores="$1"; shift
+  local label="$1"
+  shift
+  local cores="$1"
+  shift
   local cmd=("$@")
 
   local wall_vals=() rss_vals=() cpu_vals=()
-  for (( i=1; i<=RUNS; i++ )); do
+  for ((i = 1; i <= RUNS; i++)); do
     read -r w r c < <(measure_one "${cmd[@]}")
     wall_vals+=("$w")
     rss_vals+=("$r")
@@ -103,7 +105,7 @@ benchmark() {
   mapfile -t sorted_rss < <(printf '%s\n' "${rss_vals[@]}" | sort -n)
   mapfile -t sorted_cpu < <(printf '%s\n' "${cpu_vals[@]}" | sort -n)
 
-  local mid=$(( (RUNS - 1) / 2 ))
+  local mid=$(((RUNS - 1) / 2))
   local med_wall="${sorted_wall[$mid]}"
   local med_rss="${sorted_rss[$mid]}"
   local med_cpu="${sorted_cpu[$mid]}"
@@ -122,10 +124,10 @@ for j in $CORE_COUNTS; do
   OUT_NWK="$TMP_DIR/annotated_tree_j${j}.nwk"
   benchmark "optimize" "$j" \
     "$BINARY" optimize \
-      --tree "$TREE" \
-      --aln "$ALN" \
-      -j "$j" \
-      --output-tree-nwk-annotated "$OUT_NWK"
+    --tree "$TREE" \
+    --aln "$ALN" \
+    -j "$j" \
+    --output-tree-nwk-annotated "$OUT_NWK"
 done
 
 echo
@@ -134,8 +136,8 @@ for j in $CORE_COUNTS; do
   OUT_NWK="$TMP_DIR/annotated_tree_j${j}.nwk"
   benchmark "ancestral" "$j" \
     "$BINARY" ancestral \
-      --tree "$TREE" \
-      --aln "$ALN" \
-      -j "$j" \
-      --output-tree-nwk-annotated "$OUT_NWK"
+    --tree "$TREE" \
+    --aln "$ALN" \
+    -j "$j" \
+    --output-tree-nwk-annotated "$OUT_NWK"
 done

@@ -19,8 +19,8 @@ doctest = false
 treetime-ops = { workspace = true }
 
 # [external]
-serde = { workspace = true }
 ndarray = { workspace = true }
+serde = { workspace = true }
 statrs = { workspace = true }
 
 [dev-dependencies]

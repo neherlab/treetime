@@ -26,8 +26,8 @@ treetime-utils = { workspace = true }
 # [external]
 approx = { workspace = true }
 bon = { workspace = true }
-csv = { workspace = true }
 clap = { workspace = true }
+csv = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
 itertools = { workspace = true }
