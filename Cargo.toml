@@ -160,7 +160,6 @@ tikv-jemallocator = "=0.6.0"
 tokio = { version = "=1.52.3", features = ["full"] }
 tokio-stream = "=0.1.18"
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
-traversal = "=0.1.2"
 utoipa = { version = "=5.5.0", features = ["axum_extras", "yaml"] }
 utoipa-axum = "=0.2.0"
 
@@ -178,14 +177,10 @@ treetime-schema = { path = "packages/treetime-schema" }
 treetime-utils = { path = "packages/treetime-utils" }
 util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
 util-newick = { path = "packages/util-newick" }
-util-phyloxml = { path = "packages/util-phyloxml" }
 util-usher-mat = { path = "packages/util-usher-mat" }
 
 [workspace.metadata.cargo-shear]
-# bon is available workspace-wide for incremental adoption of the builder pattern
-# (guided by the suggest_builder / needless_builder dylint lints); no member
-# consumes it yet.
-ignored = ["blas-src", "openblas-src", "argmin-math", "bon"]
+ignored = ["blas-src", "openblas-src", "argmin-math"]
 
 [workspace.lints.rust]
 # Lint groups

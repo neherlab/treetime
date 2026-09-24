@@ -4522,12 +4522,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "traversal"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0ec9745d7517c8b8e8c0a65cba2d84e42f95fd348a01693c5e4da1bc6d00c99"
-
-[[package]]
 name = "treetime"
 version = "1.0.0"
 dependencies = [
@@ -4614,7 +4608,6 @@ dependencies = [
  "rstest",
  "serde",
  "strum_macros 0.27.2",
- "treetime-analytical",
  "treetime-grid",
  "treetime-ops",
  "treetime-utils",
@@ -4679,12 +4672,10 @@ dependencies = [
  "serde_json",
  "smart-default",
  "tempfile",
- "traversal",
  "treetime-graph",
  "treetime-primitives",
  "treetime-utils",
  "util-newick",
- "util-phyloxml",
  "util-usher-mat",
 ]
 

@@ -34,10 +34,6 @@ ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
 
 [dev-dependencies]
-# [internal]
-treetime-analytical = { workspace = true }
-
-# [external]
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }

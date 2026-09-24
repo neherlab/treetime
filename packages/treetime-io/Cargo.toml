@@ -22,7 +22,6 @@ treetime-graph = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
 util-newick = { workspace = true }
-util-phyloxml = { workspace = true }
 util-usher-mat = { workspace = true }
 
 # [external]
@@ -35,7 +34,6 @@ percent-encoding = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smart-default = { workspace = true }
-traversal = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
