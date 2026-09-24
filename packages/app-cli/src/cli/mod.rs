@@ -10,3 +10,6 @@ mod rtt_chart_render;
 pub(crate) mod schema;
 pub(crate) mod treetime_cli;
 pub(crate) mod verbosity;
+
+#[cfg(test)]
+mod __tests__;

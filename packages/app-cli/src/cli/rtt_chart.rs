@@ -72,10 +72,6 @@ fn write_clock_regression_chart_bitmap(
   Ok(DynamicImage::ImageRgb8(img))
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 #[cfg_attr(
   dylint_lib = "treetime_lints",
   expect(
@@ -86,6 +82,20 @@ fn write_clock_regression_chart_bitmap(
 pub(crate) fn print_clock_regression_chart(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
+) -> Result<(), Report> {
+  let terminal_size = terminal::size().unwrap_or(FALLBACK_TERMINAL_SIZE);
+  write_clock_regression_chart_text(&mut io::stderr().lock(), results, clock_model, terminal_size)
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
+pub(crate) fn write_clock_regression_chart_text(
+  writer: &mut impl Write,
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+  (width, height): (u16, u16),
 ) -> Result<(), Report> {
   let mut table = Table::new();
   table
@@ -105,9 +115,8 @@ pub(crate) fn print_clock_regression_chart(
   if let Some(chisq) = clock_model.chisq() {
     table.add_row([o!("χ²"), format!("{chisq:.3e}")]);
   }
-  writeln!(io::stdout().lock(), "{table}").wrap_err("When writing the clock model table to standard output")?;
+  writeln!(writer, "{table}").wrap_err("When writing the clock model table")?;
 
-  let (width, height) = terminal::size().unwrap_or(FALLBACK_TERMINAL_SIZE);
   let width = clamp(width, 0, 1024) as u32;
   let height = clamp(height, 0, 1024) as u32;
 
@@ -133,7 +142,10 @@ pub(crate) fn print_clock_regression_chart(
   let line = Shape::Continuous(line);
   let chart = chart.linecolorplot(&line, RGB8 { r: 8, g: 140, b: 232 });
 
-  chart.nice();
+  chart.borders();
+  chart.axis();
+  chart.figures();
+  writeln!(writer, "{chart}").wrap_err("When writing the clock regression chart")?;
 
   Ok(())
 }
