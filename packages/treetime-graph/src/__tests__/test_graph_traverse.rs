@@ -139,7 +139,9 @@ mod tests {
     ) -> Result<(), Report> {
       let graph = &tree.graph;
       match traversal {
-        Traversal::DepthFirstPreorderForward => graph.iter_depth_first_preorder_forward(|node| visit(tree.name(node.key))),
+        Traversal::DepthFirstPreorderForward => {
+          graph.iter_depth_first_preorder_forward(|node| visit(tree.name(node.key)))
+        },
         Traversal::DepthFirstPostorderForward => {
           graph.iter_depth_first_postorder_forward(|node| visit(tree.name(node.key)))
         },

@@ -63,10 +63,7 @@ mod tests {
 
   #[test]
   fn test_graph_ops_collapse_edge_redirects_other_inbound_edges_to_source() -> Result<(), Report> {
-    let mut dag = NamedGraph::new(
-      &["s1", "s2", "t", "leaf"],
-      &[("s1", "t"), ("s2", "t"), ("t", "leaf")],
-    )?;
+    let mut dag = NamedGraph::new(&["s1", "s2", "t", "leaf"], &[("s1", "t"), ("s2", "t"), ("t", "leaf")])?;
     let collapsed_key = dag.edge("s1", "t")?;
     let other_inbound = dag.edge("s2", "t")?;
     let outbound = dag.edge("t", "leaf")?;
@@ -89,7 +86,10 @@ mod tests {
         s1.inbound().to_vec(),
         s1.outbound().to_vec(),
         s2.outbound().to_vec(),
-        (dag.name(other_inbound_edge.source()), dag.name(other_inbound_edge.target())),
+        (
+          dag.name(other_inbound_edge.source()),
+          dag.name(other_inbound_edge.target())
+        ),
         (dag.name(outbound_edge.source()), dag.name(outbound_edge.target())),
       )
     );

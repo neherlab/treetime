@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::reachability::exists_forward_path_between;
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use crate::reachability::exists_forward_path_between;
 
   use self::helpers::graph_with_edges;
 
@@ -24,9 +24,9 @@ mod tests {
   }
 
   mod helpers {
-    use eyre::Report;
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
+    use eyre::Report;
 
     pub(super) fn graph_with_edges(
       node_count: usize,

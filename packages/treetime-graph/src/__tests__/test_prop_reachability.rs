@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::reachability::exists_forward_path_between;
   use proptest::prelude::*;
   use proptest::proptest;
-  use crate::reachability::exists_forward_path_between;
 
   use self::helpers::graph_chain;
 
@@ -26,10 +26,10 @@ mod tests {
   }
 
   mod helpers {
-    use eyre::Report;
-    use itertools::Itertools;
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
+    use eyre::Report;
+    use itertools::Itertools;
 
     pub(super) fn graph_chain(node_count: usize) -> Result<(Graph, Vec<GraphNodeKey>), Report> {
       let mut graph = Graph::new();
