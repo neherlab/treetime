@@ -1,6 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
+  "cacheDir": ".turbo/cache",
   "globalDependencies": ["bun.lock", "tsconfig.base.json"],
   "globalEnv": ["NODE_ENV", "VITE_*"],
   "globalPassThroughEnv": [
