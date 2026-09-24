@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::__tests__::generators::tests::generators::{arb_gtr_nuc, arb_pi_nuc, arb_w_nuc};
   use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_detailed_balance};
+  use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::gtr::GTR;
   use proptest::prelude::*;
   use treetime_utils::{
@@ -15,25 +16,25 @@ mod tests {
 
     #[test]
     fn test_prop_gtr_q_columns_sum_to_zero(gtr in arb_gtr_nuc()) {
-      let q = gtr.Q();
+      let q = rate_matrix(&gtr);
       prop_assert_columns_sum_to(&q, 0.0, 1e-10)?;
     }
 
     #[test]
     fn test_prop_gtr_q_offdiag_nonnegative(gtr in arb_gtr_nuc()) {
-      let q = gtr.Q();
+      let q = rate_matrix(&gtr);
       prop_assert_array_offdiag_nonneg!(q);
     }
 
     #[test]
     fn test_prop_gtr_q_diag_nonpositive(gtr in arb_gtr_nuc()) {
-      let q = gtr.Q();
+      let q = rate_matrix(&gtr);
       prop_assert_array_diag_nonpositive!(q);
     }
 
     #[test]
     fn test_prop_gtr_q_detailed_balance(gtr in arb_gtr_nuc()) {
-      let q = gtr.Q();
+      let q = rate_matrix(&gtr);
       prop_assert_detailed_balance(&q, &gtr.pi, 1e-10)?;
     }
 

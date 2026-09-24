@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::AlphabetName;
+  use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, JC69Params, K80Params, hky85, jc69, k80};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -13,7 +14,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q = jc.Q();
+    let q = rate_matrix(&jc);
     assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
 
     Ok(())
@@ -27,7 +28,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q = k.Q();
+    let q = rate_matrix(&k);
     assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
 
     Ok(())
@@ -49,8 +50,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q1 = h1.Q();
-    let q2 = h2.Q();
+    let q1 = rate_matrix(&h1);
+    let q2 = rate_matrix(&h2);
     assert_abs_diff_eq!(q1, q2, epsilon = 1e-14);
 
     assert!((h1.mu - h2.mu).abs() > 0.1);

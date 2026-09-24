@@ -1,15 +1,11 @@
 mod generators;
 mod prop_support;
-pub(super) mod site_specific_support;
+mod rate_matrix;
 mod test_gm_gtr;
-mod test_gm_gtr_site_specific;
 mod test_gtr_hierarchy;
 mod test_gtr_numerical_edge;
-mod test_gtr_site_specific_random;
 mod test_prop_gtr_eigen;
 mod test_prop_gtr_expqt;
 mod test_prop_gtr_numerical;
 mod test_prop_gtr_q;
-mod test_prop_gtr_site_specific;
-mod test_prop_gtr_site_specific_random;
 mod test_write_gtr_json;

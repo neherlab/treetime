@@ -2,6 +2,7 @@
 mod tests {
   use super::super::test_gtr_numerical_edge_support::assert_stochastic_matrix;
   use crate::alphabet::alphabet::AlphabetName;
+  use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, K80Params, hky85, k80};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -62,7 +63,7 @@ mod tests {
       "HKY85 skewed pi: matrix entry exceeds 1"
     );
 
-    let q = gtr.Q();
+    let q = rate_matrix(&gtr);
     let flux = &q * &gtr.pi.view().insert_axis(Axis(0));
     pretty_assert_abs_diff_eq!(flux, flux.t().to_owned(), epsilon = 1e-10);
 
@@ -118,7 +119,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    assert_abs_diff_eq!(h.Q(), k.Q(), epsilon = 1e-14);
+    assert_abs_diff_eq!(rate_matrix(&h), rate_matrix(&k), epsilon = 1e-14);
     assert_abs_diff_eq!(h.expQt(1.0), k.expQt(1.0), epsilon = 1e-14);
 
     Ok(())

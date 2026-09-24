@@ -162,6 +162,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::gtr::__tests__::rate_matrix::rate_matrix;
     use crate::gtr::gtr::GTR;
     use approx::assert_abs_diff_eq;
     use indexmap::IndexMap;
@@ -288,7 +289,7 @@ mod tests {
       assert_abs_diff_eq!(gtr.mu, expected.mu, epsilon = 1e-14);
       assert_abs_diff_eq!(gtr.pi, expected.pi, epsilon = 1e-14);
       assert_abs_diff_eq!(gtr.W, expected.w, epsilon = 1e-14);
-      assert_abs_diff_eq!(gtr.Q(), expected.q, epsilon = 1e-14);
+      assert_abs_diff_eq!(rate_matrix(gtr), expected.q, epsilon = 1e-14);
 
       assert_abs_diff_eq!(sorted(&gtr.eigvals), sorted(&expected.eigenvals), epsilon = 1e-14);
 

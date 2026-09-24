@@ -17,7 +17,7 @@ mod tests {
     let g = AsciiChar::from_byte_unchecked(b'G');
 
     let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.set_site_rates(Array1::from_vec(vec![
+    gtr.site_rates = Some(Array1::from_vec(vec![
       0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
     ]));
 
@@ -69,7 +69,7 @@ mod tests {
     let g = AsciiChar::from_byte_unchecked(b'G');
 
     let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.set_site_rates(Array1::from_vec(vec![
+    gtr.site_rates = Some(Array1::from_vec(vec![
       0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
     ]));
 

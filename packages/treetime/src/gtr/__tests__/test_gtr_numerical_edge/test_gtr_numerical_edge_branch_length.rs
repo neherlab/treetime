@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::AlphabetName;
+  use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, hky85};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -57,7 +58,7 @@ mod tests {
 
     let t = 1e-6;
     let p = gtr.expQt(t);
-    let q = gtr.Q();
+    let q = rate_matrix(&gtr);
 
     let taylor_approx = Array2::eye(4) + gtr.mu * t * &q;
 

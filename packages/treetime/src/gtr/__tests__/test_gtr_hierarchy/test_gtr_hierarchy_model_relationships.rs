@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{F81Params, HKY85Params, JC69Params, K80Params, TN93Params, f81, hky85, jc69, k80, tn93};
   use crate::gtr::gtr::GTR;
   use approx::assert_abs_diff_eq;
@@ -20,8 +21,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q_jc = jc.Q();
-    let q_k = k.Q();
+    let q_jc = rate_matrix(&jc);
+    let q_k = rate_matrix(&k);
     assert_abs_diff_eq!(q_jc, q_k, epsilon = 1e-14);
 
     assert_abs_diff_eq!(jc.pi, k.pi, epsilon = 1e-14);
@@ -42,8 +43,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q_jc = jc.Q();
-    let q_f = f.Q();
+    let q_jc = rate_matrix(&jc);
+    let q_f = rate_matrix(&f);
     assert_abs_diff_eq!(q_jc, q_f, epsilon = 1e-14);
 
     assert_abs_diff_eq!(jc.pi, f.pi, epsilon = 1e-14);
@@ -68,8 +69,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q_k = k.Q();
-    let q_h = h.Q();
+    let q_k = rate_matrix(&k);
+    let q_h = rate_matrix(&h);
     assert_abs_diff_eq!(q_k, q_h, epsilon = 1e-14);
 
     assert_abs_diff_eq!(k.pi, h.pi, epsilon = 1e-14);
@@ -94,8 +95,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q_f = f.Q();
-    let q_h = h.Q();
+    let q_f = rate_matrix(&f);
+    let q_h = rate_matrix(&h);
     assert_abs_diff_eq!(q_f, q_h, epsilon = 1e-14);
 
     assert_abs_diff_eq!(f.pi, h.pi, epsilon = 1e-14);
@@ -122,8 +123,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    let q_h = h.Q();
-    let q_t = t.Q();
+    let q_h = rate_matrix(&h);
+    let q_t = rate_matrix(&t);
     assert_abs_diff_eq!(q_h, q_t, epsilon = 1e-14);
 
     assert_abs_diff_eq!(h.pi, t.pi, epsilon = 1e-14);
@@ -158,8 +159,8 @@ mod tests {
 
     let g = GTR::builder().n_states(n_states).mu(1.0).W(w).pi(pi).build()?;
 
-    let q_t = t.Q();
-    let q_g = g.Q();
+    let q_t = rate_matrix(&t);
+    let q_g = rate_matrix(&g);
     assert_abs_diff_eq!(q_t, q_g, epsilon = 1e-14);
 
     assert_abs_diff_eq!(t.pi, g.pi, epsilon = 1e-14);

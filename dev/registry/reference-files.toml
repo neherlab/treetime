@@ -61,19 +61,6 @@ files = [
 ]
 
 [[reference]]
-name = "gm_gtr_site_specific"
-kind = "golden-master"
-test = "packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs"
-origin = "TreeTime v0 (Python) site-specific GTR model"
-revision = "vendored in-repo reference at packages/legacy/treetime"
-capture = "./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_capture"
-normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = [
-  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_inputs.json",
-  "packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_outputs.json",
-]
-
-[[reference]]
 name = "gm_infer_gtr_dense"
 kind = "golden-master"
 test = "packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs"

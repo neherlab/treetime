@@ -462,7 +462,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    gtr_uniform.set_site_rates(Array1::ones(seq_len));
+    gtr_uniform.site_rates = Some(Array1::ones(seq_len));
     let (log_lh_uniform, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
@@ -490,7 +490,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    gtr_uniform.set_site_rates(Array1::ones(seq_len));
+    gtr_uniform.site_rates = Some(Array1::ones(seq_len));
     let (log_lh_uniform, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);

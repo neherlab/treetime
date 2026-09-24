@@ -97,10 +97,6 @@ impl GTR {
     self.site_rates.is_some()
   }
 
-  pub(crate) fn set_site_rates(&mut self, rates: Array1<f64>) {
-    self.site_rates = Some(rates);
-  }
-
   pub fn clear_site_rates(&mut self) {
     self.site_rates = None;
   }
@@ -164,13 +160,6 @@ impl GTR {
 
   pub fn exp_eigvals_branch_length(&self, branch_length: f64) -> Array1<f64> {
     (&self.eigvals * branch_length).mapv(f64::exp)
-  }
-
-  pub(crate) fn Q(&self) -> Array2<f64> {
-    let mut Q = (&self.W * &self.pi).t().to_owned();
-    let diag = -Q.sum_axis(Axis(0));
-    Q.diag_mut().assign(&diag);
-    Q
   }
 }
 

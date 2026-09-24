@@ -50,8 +50,7 @@ pub fn run(
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   if params.site_specific_gtr {
     return Err(OperationError::InvalidParams(make_report!(
-      "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
-       The mathematical core (GTRSiteSpecific) is implemented but partition system wiring is pending."
+      "--site-specific-gtr is not implemented"
     )));
   }
 
