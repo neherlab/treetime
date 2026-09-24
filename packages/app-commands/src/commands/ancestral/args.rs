@@ -157,11 +157,13 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
   /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
   #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -169,6 +171,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -237,18 +240,21 @@ pub struct TreetimeAncestralArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
   /// Path to output GTR model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_gtr: Option<PathBuf>,
 
   /// Path to output reconstructed nucleotide FASTA.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_reconstructed_nuc_fasta: Option<PathBuf>,
 
   /// Path template for per-CDS amino-acid FASTA alignments.
@@ -258,6 +264,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// `--output-translations`) and `%GENE` (augur) placeholders are accepted.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input-template"))]
   pub translations: Option<String>,
 
   /// Comma-separated CDS names to reconstruct from `--translations`.
@@ -274,11 +281,13 @@ pub struct TreetimeAncestralArgsRaw {
   /// Also supplies the CDS set when `--cdses` is omitted.
   #[cfg_attr(feature = "clap", clap(long, alias = "annotation-gff"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub annotation: Option<PathBuf>,
 
   /// FASTA file with one amino-acid root/reference sequence per CDS.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub aa_root_sequence: Option<PathBuf>,
 
   /// Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
@@ -292,6 +301,7 @@ pub struct TreetimeAncestralArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_reconstructed_aa_fasta: Option<String>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -344,6 +354,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// Load a custom GTR model from file (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub custom_gtr: Option<PathBuf>,
 
   /// How to pick ancestral states from the marginal posterior profile.

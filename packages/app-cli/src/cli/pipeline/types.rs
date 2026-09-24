@@ -1,3 +1,4 @@
+use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
@@ -14,9 +15,10 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::Path;
+use strum::VariantNames;
 use treetime_utils::make_error;
 
-pub(crate) const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
+pub(crate) const COMMAND_TAGS: &[&str] = AppCommand::VARIANTS;
 
 /// The whole pipeline in typed form, used for schema generation and for dumping an example config.
 ///
@@ -123,7 +125,7 @@ impl PipelineStepCommand {
       "ancestral" => Ok(Self::Ancestral(serde_json::from_value(payload)?)),
       "clock" => Ok(Self::Clock(serde_json::from_value(payload)?)),
       "mugration" => Ok(Self::Mugration(serde_json::from_value(payload)?)),
-      other => make_error!("unknown command `{other}`; {}", suggestion_suffix(other, &COMMAND_TAGS)),
+      other => make_error!("unknown command `{other}`; {}", suggestion_suffix(other, COMMAND_TAGS)),
     }
   }
 }

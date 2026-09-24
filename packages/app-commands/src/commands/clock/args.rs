@@ -149,6 +149,7 @@ pub struct TreetimeClockArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -156,16 +157,19 @@ pub struct TreetimeClockArgsRaw {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
   #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
   /// CSV/TSV file with metadata including sampling dates
   #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -230,12 +234,14 @@ pub struct TreetimeClockArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_clock_model: Option<PathBuf>,
 
   /// Path to output clock regression CSV.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_clock_csv: Option<PathBuf>,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -264,6 +270,7 @@ pub struct TreetimeClockArgsRaw {
   /// Filename to save root-to-tip regression plot (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "output"))]
   pub plot_rtt: Option<PathBuf>,
 
   /// Prune clock outlier tips from the tree (not yet implemented)

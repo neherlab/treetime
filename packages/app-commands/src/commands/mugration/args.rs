@@ -104,6 +104,7 @@ pub struct TreetimeMugrationArgsRaw {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   /// Attribute to reconstruct, e.g. country
@@ -113,11 +114,13 @@ pub struct TreetimeMugrationArgsRaw {
   /// CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
   #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "states", short = 's'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,
 
   /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
   #[cfg_attr(feature = "clap", clap(long, short = 'w'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub weights: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -128,6 +131,7 @@ pub struct TreetimeMugrationArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "confidence", value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_confidence_csv: Option<PathBuf>,
 
   /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
@@ -180,18 +184,21 @@ pub struct TreetimeMugrationArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
   /// Path to output GTR model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_gtr: Option<PathBuf>,
 
   /// Path to output traits CSV.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_traits_csv: Option<PathBuf>,
 
   /// Random seed

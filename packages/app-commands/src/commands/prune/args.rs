@@ -73,11 +73,13 @@ pub struct TreetimePruneArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -92,6 +94,7 @@ pub struct TreetimePruneArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_gtr: Option<PathBuf>,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -157,6 +160,7 @@ pub struct TreetimePruneArgsRaw {
   ///
   /// Use --prune-nodes-list-file-delimiter to specify a different delimiter.
   #[cfg_attr(feature = "clap", clap(long, short = 'N', value_hint = ValueHint::FilePath, value_name = "FILEPATH"))]
+  #[schemars(extend("x-path" = "input"))]
   pub prune_nodes_list_file: Option<PathBuf>,
 
   /// Separator for node names in the list file

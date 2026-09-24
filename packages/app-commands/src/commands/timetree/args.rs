@@ -221,6 +221,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -228,16 +229,19 @@ pub struct TreetimeTimetreeArgsRaw {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
   #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
   /// CSV/TSV file with metadata including sampling dates
   #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -373,12 +377,14 @@ pub struct TreetimeTimetreeArgsRaw {
   /// default=pdf)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "output"))]
   pub plot_tree: Option<PathBuf>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "output"))]
   pub plot_rtt: Option<PathBuf>,
 
   /// add tip labels (default for small trees with <30 leaves)
@@ -489,12 +495,14 @@ pub struct TreetimeTimetreeArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
   /// Path to output GTR model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_gtr: Option<PathBuf>,
 
   /// Path to output reconstructed ancestral-sequence nucleotide FASTA.
@@ -505,24 +513,28 @@ pub struct TreetimeTimetreeArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_reconstructed_nuc_fasta: Option<PathBuf>,
 
   /// Path to output clock model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_clock_model: Option<PathBuf>,
 
   /// Path to output date-confidence-interval TSV.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_confidence_tsv: Option<PathBuf>,
 
   /// Path to output iteration-statistics tracelog CSV (monitors convergence).
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "tracelog", value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tracelog: Option<PathBuf>,
 
   /// Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
@@ -531,6 +543,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
   /// span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_coalescent_tsv: Option<PathBuf>,
 
   /// Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
@@ -538,6 +551,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Written when a coalescent model is set. Takes precedence over paths configured with
   /// `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_coalescent_csv: Option<PathBuf>,
 
   /// Path to output the coalescent time scale as a rich JSON document (inputs + segments).
@@ -545,6 +559,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Written when a coalescent model is set. Takes precedence over paths configured with
   /// `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_coalescent_json: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -577,6 +592,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Load a custom GTR model from file (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub custom_gtr: Option<PathBuf>,
 
   /// Method for clock filter outlier detection (not yet implemented)

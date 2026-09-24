@@ -59,6 +59,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   /// TSV file containing DRM info. Columns headers: GENOMIC_POSITION, ALT_BASE, DRUG, GENE, SUBSTITUTION
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub drms: Option<PathBuf>,
 
   /// number of mutations/nodes that are printed to screen

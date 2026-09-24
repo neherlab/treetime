@@ -36,6 +36,7 @@ pub struct TopologyOrderArgs {
 
   /// File used by list or reference-topology target-order sources.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Tree ordering"))]
+  #[schemars(extend("x-path" = "input"))]
   pub topology_order_target_file: Option<PathBuf>,
 
   /// Aggregate used to map a subtree to a target-order position.

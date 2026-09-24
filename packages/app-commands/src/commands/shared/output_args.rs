@@ -86,6 +86,7 @@ pub struct OutputCoreArgs {
   /// Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
   /// supplement the files produced by `--output-all`.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,
 
   /// NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
@@ -105,6 +106,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_nwk: Option<PathBuf>,
 
   /// Path to output Nexus tree file.
@@ -117,6 +119,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_nexus: Option<PathBuf>,
 
   /// Path to output Auspice v2 JSON tree file.
@@ -128,6 +131,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_auspice: Option<PathBuf>,
 
   /// Path to output UShER MAT protobuf tree file.
@@ -139,6 +143,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_mat_pb: Option<PathBuf>,
 
   /// Path to output UShER MAT JSON tree file.
@@ -150,6 +155,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_mat_json: Option<PathBuf>,
 
   /// Path to output internal graph JSON tree file.
@@ -161,6 +167,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_graph_json: Option<PathBuf>,
 
   /// Path to output Graphviz DOT tree file.
@@ -172,6 +179,7 @@ pub struct OutputCoreArgs {
   ///
   /// Parent directories are created if missing.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_tree_dot: Option<PathBuf>,
 }
 

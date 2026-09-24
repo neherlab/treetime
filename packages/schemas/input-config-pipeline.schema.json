@@ -138,7 +138,8 @@
               }
             ]
           },
-          "default": []
+          "default": [],
+          "x-path": "input"
         },
         "tree": {
           "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -146,7 +147,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "vcf_reference": {
           "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
@@ -154,7 +156,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "metadata": {
           "description": "CSV/TSV file with metadata including sampling dates",
@@ -162,7 +165,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "metadata_id_columns": {
           "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
@@ -430,7 +434,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "plot_rtt": {
           "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
@@ -438,7 +443,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "tip_labels": {
           "anyOf": [
@@ -718,7 +724,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_gtr": {
           "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -726,7 +733,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_reconstructed_nuc_fasta": {
           "description": "Path to output reconstructed ancestral-sequence nucleotide FASTA.\n\nThe v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences\nreconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`\n(or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -734,7 +742,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_clock_model": {
           "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -742,7 +751,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_confidence_tsv": {
           "description": "Path to output date-confidence-interval TSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -750,7 +760,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tracelog": {
           "description": "Path to output iteration-statistics tracelog CSV (monitors convergence).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -758,7 +769,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_coalescent_tsv": {
           "description": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).\n\nWritten when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or\n`--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree\nspan. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -766,7 +778,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_coalescent_csv": {
           "description": "Path to output the coalescent time scale as a flat CSV (one row per skyline segment).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
@@ -774,7 +787,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_coalescent_json": {
           "description": "Path to output the coalescent time scale as a rich JSON document (inputs + segments).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
@@ -782,7 +796,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_all": {
           "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -790,7 +805,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -806,7 +822,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -814,7 +831,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -822,7 +840,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -830,7 +849,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -838,7 +858,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -846,7 +867,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -854,7 +876,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -906,7 +929,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
@@ -942,7 +966,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "clock_filter_method": {
           "description": "Method for clock filter outlier detection (not yet implemented)",
@@ -1279,7 +1304,8 @@
               }
             ]
           },
-          "default": []
+          "default": [],
+          "x-path": "input"
         },
         "tree": {
           "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -1287,7 +1313,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "alphabet": {
           "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -1336,7 +1363,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -1352,7 +1380,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1360,7 +1389,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1368,7 +1398,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1376,7 +1407,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1384,7 +1416,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1392,7 +1425,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1400,7 +1434,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "divergence_units": {
           "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions.",
@@ -1413,7 +1448,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_gtr": {
           "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -1421,7 +1457,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -1473,7 +1510,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
@@ -1830,7 +1868,8 @@
               }
             ]
           },
-          "default": []
+          "default": [],
+          "x-path": "input"
         },
         "tree": {
           "description": "Name of file containing the tree in newick, nexus, or phylip format.",
@@ -1838,7 +1877,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "alphabet": {
           "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -1858,7 +1898,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -1874,7 +1915,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1882,7 +1924,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1890,7 +1933,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1898,7 +1942,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1906,7 +1951,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1914,7 +1960,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -1922,7 +1969,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_gtr": {
           "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -1930,7 +1978,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -1982,7 +2031,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
@@ -2053,7 +2103,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "prune_nodes_list_file_delimiter": {
           "anyOf": [
@@ -2113,7 +2164,8 @@
               }
             ]
           },
-          "default": []
+          "default": [],
+          "x-path": "input"
         },
         "vcf_reference": {
           "description": "FASTA file of the sequence the VCF was mapped to (only for vcf input)",
@@ -2121,7 +2173,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "tree": {
           "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -2129,7 +2182,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "alphabet": {
           "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -2279,7 +2333,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_gtr": {
           "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -2287,7 +2342,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_reconstructed_nuc_fasta": {
           "description": "Path to output reconstructed nucleotide FASTA.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -2295,7 +2351,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "translations": {
           "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cdses` (or each\nCDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
@@ -2303,7 +2360,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input-template"
         },
         "cdses": {
           "description": "Comma-separated CDS names to reconstruct from `--translations`.\n\nWhen omitted, the CDS set is derived from `--annotation`.",
@@ -2327,7 +2385,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "aa_root_sequence": {
           "description": "FASTA file with one amino-acid root/reference sequence per CDS.",
@@ -2335,7 +2394,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "aa_model": {
           "description": "Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.",
@@ -2348,7 +2408,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_all": {
           "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -2356,7 +2417,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -2372,7 +2434,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2380,7 +2443,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2388,7 +2452,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2396,7 +2461,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2404,7 +2470,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2412,7 +2479,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2420,7 +2488,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -2472,7 +2541,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
@@ -2549,7 +2619,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "sample_from_profile": {
           "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (matches augur's\n`sample_from_profile='root'`). Use `--seed` for reproducible draws.\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`).",
@@ -2649,7 +2720,8 @@
               }
             ]
           },
-          "default": []
+          "default": [],
+          "x-path": "input"
         },
         "tree": {
           "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -2657,7 +2729,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "vcf_reference": {
           "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
@@ -2665,7 +2738,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "metadata": {
           "description": "CSV/TSV file with metadata including sampling dates",
@@ -2673,7 +2747,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "metadata_id_columns": {
           "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
@@ -2887,7 +2962,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -2903,7 +2979,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2911,7 +2988,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2919,7 +2997,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2927,7 +3006,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2935,7 +3015,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2943,7 +3024,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -2951,7 +3033,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_clock_model": {
           "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -2959,7 +3042,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_clock_csv": {
           "description": "Path to output clock regression CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -2967,7 +3051,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -3019,7 +3104,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
@@ -3050,7 +3136,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "prune_outliers": {
           "anyOf": [
@@ -3300,7 +3387,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "attribute": {
           "description": "Attribute to reconstruct, e.g. country",
@@ -3316,7 +3404,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "weights": {
           "description": "CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...",
@@ -3324,7 +3413,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "metadata_id_columns": {
           "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
@@ -3374,7 +3464,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "pc": {
           "description": "Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.",
@@ -3468,7 +3559,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_gtr": {
           "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -3476,7 +3568,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_traits_csv": {
           "description": "Path to output traits CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -3484,7 +3577,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "seed": {
           "description": "Random seed",
@@ -3502,7 +3596,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_nwk_style": {
           "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -3518,7 +3613,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_nexus": {
           "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3526,7 +3622,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_auspice": {
           "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3534,7 +3631,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_pb": {
           "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3542,7 +3640,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_mat_json": {
           "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3550,7 +3649,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_graph_json": {
           "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3558,7 +3658,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_tree_dot": {
           "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -3566,7 +3667,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "output"
         },
         "output_selection": {
           "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -3618,7 +3720,8 @@
             "string",
             "null"
           ],
-          "default": null
+          "default": null,
+          "x-path": "input"
         },
         "topology_order_target_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",

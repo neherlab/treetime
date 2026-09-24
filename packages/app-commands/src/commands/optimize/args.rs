@@ -113,6 +113,7 @@ pub struct TreetimeOptimizeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -120,6 +121,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -158,12 +160,14 @@ pub struct TreetimeOptimizeArgsRaw {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
   /// Path to output GTR model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
   pub output_gtr: Option<PathBuf>,
 
   /// Comma-separated list of outputs to produce with `--output-all`.

@@ -29,5 +29,6 @@ pub struct AlignmentArgs {
       display_order = 1,
     )
   )]
+  #[schemars(extend("x-path" = "input"))]
   pub alignment: Vec<PathBuf>,
 }

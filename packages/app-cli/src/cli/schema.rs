@@ -1,16 +1,19 @@
 use crate::cli::pipeline::types::Pipeline;
+use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
 use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use app_commands::commands::prune::args::TreetimePruneArgsRaw;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::config::cli_flags::annotate_cli_flags;
 use app_commands::config::schema::{command_schema, draft2020_generator};
+use clap::CommandFactory;
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use log::info;
-use schemars::Schema;
 use schemars::transform::{Transform, transform_subschemas};
+use schemars::{JsonSchema, Schema};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -59,18 +62,24 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
 
   let schema = match target {
     SchemaTarget::Pipeline => pipeline_schema(),
-    SchemaTarget::Timetree => command_schema::<TreetimeTimetreeArgsRaw>(),
-    SchemaTarget::Optimize => command_schema::<TreetimeOptimizeArgsRaw>(),
-    SchemaTarget::Prune => command_schema::<TreetimePruneArgsRaw>(),
-    SchemaTarget::Ancestral => command_schema::<TreetimeAncestralArgsRaw>(),
-    SchemaTarget::Clock => command_schema::<TreetimeClockArgsRaw>(),
-    SchemaTarget::Mugration => command_schema::<TreetimeMugrationArgsRaw>(),
+    SchemaTarget::Timetree => cli_command_schema::<TreetimeTimetreeArgsRaw>()?,
+    SchemaTarget::Optimize => cli_command_schema::<TreetimeOptimizeArgsRaw>()?,
+    SchemaTarget::Prune => cli_command_schema::<TreetimePruneArgsRaw>()?,
+    SchemaTarget::Ancestral => cli_command_schema::<TreetimeAncestralArgsRaw>()?,
+    SchemaTarget::Clock => cli_command_schema::<TreetimeClockArgsRaw>()?,
+    SchemaTarget::Mugration => cli_command_schema::<TreetimeMugrationArgsRaw>()?,
     SchemaTarget::All | SchemaTarget::VersionInfo | SchemaTarget::ProgressEvent | SchemaTarget::ErrorResponse => {
       unreachable!("aggregate and data-type targets are handled earlier")
     },
   };
 
   write_schema(&schema, output)
+}
+
+fn cli_command_schema<T: JsonSchema + CommandFactory>() -> Result<Schema, Report> {
+  let mut schema = command_schema::<T>();
+  annotate_cli_flags(&mut schema, &T::command())?;
+  Ok(schema)
 }
 
 #[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
@@ -124,15 +133,7 @@ fn pipeline_schema() -> Schema {
 }
 
 pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
-  Some(match tag {
-    "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
-    "optimize" => command_schema::<TreetimeOptimizeArgsRaw>(),
-    "prune" => command_schema::<TreetimePruneArgsRaw>(),
-    "ancestral" => command_schema::<TreetimeAncestralArgsRaw>(),
-    "clock" => command_schema::<TreetimeClockArgsRaw>(),
-    "mugration" => command_schema::<TreetimeMugrationArgsRaw>(),
-    _ => return None,
-  })
+  tag.parse::<AppCommand>().ok().map(AppCommand::config_schema)
 }
 
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {

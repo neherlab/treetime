@@ -169,7 +169,7 @@ fn structural_step_diagnostics(
           RawDiagnostic::builder("config::unknown-command", format!("unknown command `{tag}`"))
             .at(format!("{base}/{tag}"))
             .key_span(true)
-            .help(suggestion_suffix(tag, &COMMAND_TAGS))
+            .help(suggestion_suffix(tag, COMMAND_TAGS))
             .build(),
         );
       }
