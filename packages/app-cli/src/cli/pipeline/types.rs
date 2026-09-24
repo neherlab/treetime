@@ -1,11 +1,12 @@
-use crate::cli::pipeline::suggest::suggestion_suffix;
-use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use crate::commands::clock::args::TreetimeClockArgsRaw;
-use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use crate::commands::prune::args::TreetimePruneArgsRaw;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use app_commands::commands::clock::args::TreetimeClockArgsRaw;
+use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
+use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+use app_commands::commands::shared::resolve_outputs::ResolveOutputs;
+use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::config::schema::SCHEMA_KEY;
+use app_commands::config::suggest::suggestion_suffix;
 use app_output::output_plan::ResolvedOutputs;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -14,8 +15,6 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::Path;
 use treetime_utils::make_error;
-
-pub(crate) const SCHEMA_KEY: &str = "$schema";
 
 pub(crate) const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
 

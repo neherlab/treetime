@@ -16,6 +16,7 @@ doctest = false
 
 [dependencies]
 # [internal]
+app-commands = { workspace = true, features = ["clap"] }
 app-output = { workspace = true }
 treetime = { workspace = true }
 treetime-graph = { workspace = true }
@@ -37,7 +38,6 @@ crossterm = { workspace = true }
 ctor = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
-image = { workspace = true, optional = true }
 indicatif = { workspace = true }
 indoc = { workspace = true }
 itertools = { workspace = true }
@@ -66,11 +66,7 @@ textplots = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [features]
-default = ["clap"]
-# `clap` is a hard dependency of the CLI; this marker activates the `#[cfg(feature = "clap")]`
-# argument derives in the command layer.
-clap = []
-"png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
+"png" = ["app-commands/png"]
 
 [dev-dependencies]
 approx = { workspace = true }

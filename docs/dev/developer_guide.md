@@ -91,6 +91,7 @@ just run treetime timetree --tree=data/$v/tree.nwk --metadata=data/$v/metadata.t
 ```
 packages/
   app-cli/           CLI binary (treetime)
+  app-commands/      Command configs and runners shared by the CLI, the server, and the addon
   app-contracts/     TypeScript types and schemas of the bridge between the apps and the Rust code
   app-datasets/      Bundled example datasets
   app-desktop/       Electron shell of the desktop app

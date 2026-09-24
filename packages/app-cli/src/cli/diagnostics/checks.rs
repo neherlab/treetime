@@ -1,12 +1,12 @@
-use crate::cli::diagnostics::source::{RawDiagnostic, escape_pointer};
 use crate::cli::pipeline::interpolate::{Interpolator, NAMESPACES};
 use crate::cli::pipeline::resolve::{TOP_LEVEL_KEYS, step_ref};
-use crate::cli::pipeline::suggest::suggestion_suffix;
-use crate::cli::pipeline::types::{COMMAND_TAGS, SCHEMA_KEY, commands_list};
+use crate::cli::pipeline::types::{COMMAND_TAGS, commands_list};
 use crate::cli::schema::command_schema_for;
+use app_commands::config::schema::SCHEMA_KEY;
+use app_commands::config::schema_check::schema_diagnostics_prefixed;
+use app_commands::config::source::{RawDiagnostic, escape_pointer};
+use app_commands::config::suggest::suggestion_suffix;
 use itertools::Itertools;
-use jsonschema::error::ValidationErrorKind;
-use schemars::Schema;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -31,82 +31,6 @@ pub(crate) fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
     };
     let base = format!("/steps/{position}/{tag}");
     diags.extend(schema_diagnostics_prefixed(&map[*tag], &schema, true, &base));
-  }
-  diags
-}
-
-pub(crate) fn schema_diagnostics(value: &Value, schema: &Schema, skip_templates: bool) -> Vec<RawDiagnostic> {
-  schema_diagnostics_prefixed(value, schema, skip_templates, "")
-}
-
-fn schema_diagnostics_prefixed(value: &Value, schema: &Schema, skip_templates: bool, base: &str) -> Vec<RawDiagnostic> {
-  let schema_value = match serde_json::to_value(schema) {
-    Ok(schema_value) => schema_value,
-    Err(err) => {
-      return vec![RawDiagnostic::builder("config::internal", format!("could not build schema: {err}")).build()];
-    },
-  };
-  let validator = match jsonschema::validator_for(&schema_value) {
-    Ok(validator) => validator,
-    Err(err) => return vec![RawDiagnostic::builder("config::internal", format!("invalid schema: {err}")).build()],
-  };
-
-  let mut diags = Vec::new();
-  for error in validator.iter_errors(value) {
-    if skip_templates {
-      if let Value::String(text) = error.instance().as_ref() {
-        if text.contains("{{") {
-          continue;
-        }
-      }
-    }
-
-    let pointer = format!("{base}{}", error.instance_path().as_str());
-    match error.kind() {
-      ValidationErrorKind::Enum { options } => {
-        let candidates = string_options(options);
-        let candidate_refs: Vec<&str> = candidates.iter().map(String::as_str).collect();
-        let bad = instance_string(error.instance().as_ref());
-        diags.push(
-          RawDiagnostic::builder("config::enum", format!("`{bad}` is not a valid value"))
-            .at(pointer)
-            .help(suggestion_suffix(&bad, &candidate_refs))
-            .build(),
-        );
-      },
-      ValidationErrorKind::Type { .. } => {
-        diags.push(
-          RawDiagnostic::builder("config::type", error.to_string())
-            .at(pointer)
-            .build(),
-        );
-      },
-      ValidationErrorKind::Required { property } => {
-        let property = property.as_str().unwrap_or_default();
-        diags.push(
-          RawDiagnostic::builder("config::required", format!("missing required field `{property}`"))
-            .at(pointer)
-            .build(),
-        );
-      },
-      ValidationErrorKind::AdditionalProperties { unexpected } => {
-        for key in unexpected {
-          diags.push(
-            RawDiagnostic::builder("config::unknown-field", format!("unknown field `{key}`"))
-              .at(format!("{pointer}/{key}"))
-              .key_span(true)
-              .build(),
-          );
-        }
-      },
-      _ => {
-        diags.push(
-          RawDiagnostic::builder("config::schema", error.to_string())
-            .at(pointer)
-            .build(),
-        );
-      },
-    }
   }
   diags
 }
@@ -451,25 +375,6 @@ fn walk_leaves(value: &Value, pointer: &str, visit: &mut impl FnMut(&str, &str))
       }
     },
     _ => {},
-  }
-}
-
-fn string_options(options: &Value) -> Vec<String> {
-  options
-    .as_array()
-    .map(|values| {
-      values
-        .iter()
-        .filter_map(|value| value.as_str().map(str::to_owned))
-        .collect()
-    })
-    .unwrap_or_default()
-}
-
-fn instance_string(value: &Value) -> String {
-  match value {
-    Value::String(text) => text.clone(),
-    other => other.to_string(),
   }
 }
 

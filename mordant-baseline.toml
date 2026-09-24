@@ -1,8 +1,10 @@
 [app_cli]
-"parallel_vecs:packages/app-cli/src/commands/timetree/run.rs" = 1
 "reimplemented_helper:packages/app-cli/src/cli/pipeline/safety.rs" = 1
-"stringified_error:packages/app-cli/src/commands/timetree/args.rs" = 1
 "wildcard_over_own_enum:packages/app-cli/src/cli/pipeline/resolve.rs" = 1
+
+[app_commands]
+"parallel_vecs:packages/app-commands/src/commands/timetree/run.rs" = 1
+"stringified_error:packages/app-commands/src/commands/timetree/args.rs" = 1
 
 [app_napi]
 "parallel_vecs:packages/app-napi/src/commands/timetree.rs" = 1

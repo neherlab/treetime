@@ -1,0 +1,68 @@
+[package]
+name = "app-commands"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+app-output = { workspace = true }
+treetime = { workspace = true }
+treetime-graph = { workspace = true }
+treetime-io = { workspace = true }
+treetime-primitives = { workspace = true }
+treetime-schema = { workspace = true }
+treetime-utils = { workspace = true }
+util-augur-node-data-json = { workspace = true }
+
+bon = { workspace = true }
+clap = { workspace = true, optional = true }
+color-eyre = { workspace = true }
+derive_more = { workspace = true }
+eyre = { workspace = true }
+image = { workspace = true, optional = true }
+itertools = { workspace = true }
+jsonschema = { workspace = true }
+log = { workspace = true }
+maplit = { workspace = true }
+miette = { workspace = true }
+parking_lot = { workspace = true }
+plotters = { workspace = true }
+rand = { workspace = true }
+saphyr = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde-saphyr = { workspace = true }
+serde_json = { workspace = true }
+smart-default = { workspace = true }
+strsim = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+
+[features]
+default = ["clap"]
+# The `clap` derives on the command configs give the CLI its arguments, and give every client the
+# CLI flag names in validation messages.
+clap = ["dep:clap", "treetime-schema/clap"]
+png = ["image", "plotters/bitmap_backend", "plotters/ttf"]
+
+[dev-dependencies]
+approx = { workspace = true }
+ctor = { workspace = true }
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

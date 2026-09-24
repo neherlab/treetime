@@ -3,6 +3,7 @@ resolver = '3'
 
 members = [
   "packages/app-cli",
+  "packages/app-commands",
   "packages/app-datasets",
   "packages/app-napi",
   "packages/app-output",
@@ -164,6 +165,7 @@ tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 utoipa = { version = "=5.5.0", features = ["axum_extras", "yaml"] }
 utoipa-axum = "=0.2.0"
 
+app-commands = { path = "packages/app-commands", default-features = false }
 app-datasets = { path = "packages/app-datasets" }
 app-output = { path = "packages/app-output" }
 treetime = { path = "packages/treetime" }

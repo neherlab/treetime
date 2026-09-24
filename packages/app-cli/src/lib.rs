@@ -1,5 +1,4 @@
 mod cli;
-mod commands;
 pub mod run;
 
 #[cfg(test)]

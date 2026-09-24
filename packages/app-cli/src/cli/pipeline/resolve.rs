@@ -1,6 +1,6 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
-use crate::cli::pipeline::suggest::{suggestion_suffix, valid_values};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
+use app_commands::config::suggest::{suggestion_suffix, valid_values};
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use itertools::Itertools;

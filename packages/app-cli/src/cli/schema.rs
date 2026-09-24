@@ -1,16 +1,16 @@
-use crate::cli::pipeline::types::{Pipeline, SCHEMA_KEY};
-use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use crate::commands::clock::args::TreetimeClockArgsRaw;
-use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use crate::commands::prune::args::TreetimePruneArgsRaw;
-use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use crate::cli::pipeline::types::Pipeline;
+use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use app_commands::commands::clock::args::TreetimeClockArgsRaw;
+use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
+use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::config::schema::{command_schema, draft2020_generator};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use log::info;
-use schemars::generate::SchemaSettings;
+use schemars::Schema;
 use schemars::transform::{Transform, transform_subschemas};
-use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -133,30 +133,6 @@ pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
     "mugration" => command_schema::<TreetimeMugrationArgsRaw>(),
     _ => return None,
   })
-}
-
-pub(crate) fn command_schema<T: JsonSchema>() -> Schema {
-  let mut schema = draft2020_generator().into_root_schema_for::<T>();
-  allow_schema_ref(&mut schema);
-  schema
-}
-
-fn allow_schema_ref(schema: &mut Schema) {
-  let object = schema.ensure_object();
-  let properties = object.entry("properties").or_insert_with(|| json!({}));
-  if let Some(properties) = properties.as_object_mut() {
-    properties.insert(
-      SCHEMA_KEY.to_owned(),
-      json!({
-        "type": "string",
-        "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader."
-      }),
-    );
-  }
-}
-
-fn draft2020_generator() -> SchemaGenerator {
-  SchemaSettings::draft2020_12().into_generator()
 }
 
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {

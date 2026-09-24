@@ -6,7 +6,6 @@ pub(crate) mod print_debug_info;
 pub(crate) mod print_help_markdown;
 pub(crate) mod progress;
 pub(crate) mod rtt_chart;
-mod rtt_chart_render;
 pub(crate) mod schema;
 pub(crate) mod treetime_cli;
 pub(crate) mod verbosity;

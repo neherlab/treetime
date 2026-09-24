@@ -1,7 +1,6 @@
-use crate::cli::diagnostics::entry::check_command_config;
-use crate::cli::diagnostics::source::{ConfigSource, parse_config_document};
-use crate::cli::pipeline::types::SCHEMA_KEY;
-use crate::cli::schema::command_schema;
+use app_commands::config::load::{check_command_config, load_config_document};
+use app_commands::config::schema::command_schema;
+use app_commands::config::source::ConfigSource;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
 use eyre::Report;
@@ -29,14 +28,7 @@ where
 
   let text = read_file_to_string(config_path)?;
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
-  let mut file_value = parse_config_document(&source, &text)?;
-
-  if let Value::Object(map) = &mut file_value {
-    map.remove(SCHEMA_KEY);
-  }
-
-  let mut merged = serde_json::to_value(T::default())?;
-  merge_value(&mut merged, &file_value);
+  let mut merged = load_config_document::<T>(&source, &text)?;
   let cli = serde_json::to_value(&*args)?;
   apply_cli_overrides(&mut merged, &cli, &explicit);
 
@@ -44,17 +36,6 @@ where
 
   *args = serde_json::from_value(merged)?;
   Ok(())
-}
-
-fn merge_value(base: &mut Value, overlay: &Value) {
-  match (base, overlay) {
-    (Value::Object(base), Value::Object(overlay)) => {
-      for (key, value) in overlay {
-        merge_value(base.entry(key.clone()).or_insert(Value::Null), value);
-      }
-    },
-    (base, overlay) => *base = overlay.clone(),
-  }
 }
 
 fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
@@ -116,13 +97,13 @@ mod tests {
   mod end_to_end {
     use crate::cli::config::overlay_config;
     use crate::cli::treetime_cli::TreetimeArgs;
-    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use crate::commands::clock::args::TreetimeClockArgsRaw;
-    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use crate::commands::prune::args::TreetimePruneArgsRaw;
-    use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_commands::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use app_commands::commands::clock::args::TreetimeClockArgsRaw;
+    use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+    use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use clap::{CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
@@ -390,13 +371,13 @@ mod tests {
   }
 
   mod required_args {
-    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
-    use crate::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
-    use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
-    use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
-    use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
-    use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+    use app_commands::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use app_commands::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+    use app_commands::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
+    use app_commands::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+    use app_commands::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+    use app_commands::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
+    use app_commands::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use pretty_assertions::assert_eq;
     use treetime_utils::assert_error;
 
@@ -489,13 +470,13 @@ mod tests {
   }
 
   mod round_trip {
-    use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
-    use crate::commands::clock::args::TreetimeClockArgsRaw;
-    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-    use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use crate::commands::prune::args::TreetimePruneArgsRaw;
-    use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
+    use app_commands::commands::clock::args::TreetimeClockArgsRaw;
+    use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+    use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use pretty_assertions::assert_eq;
     use serde_json::{Value, to_value};
 
