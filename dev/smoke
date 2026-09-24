@@ -34,6 +34,11 @@ Options:
     --no-compare            run the current snapshot only and report statuses
     --jobs N                number of cases that run at the same time (default: CPU count)
     --timeout-scale X       multiply every case timeout by X
+    --memory-budget GIB     memory the running cases may use together (default: 75% of the memory available at
+                            start). Each case reserves the largest peak of its earlier completed runs plus 25%, or
+                            2 GiB (at most 100 sequences) and 8 GiB (at most 500) when never measured; a larger
+                            case without a completed run runs alone. Every treetime process is limited to the
+                            budget, so a case that needs more fails with an allocation error
     --rerun                 run the selected cases again even when stored results are reusable
     --no-build              use the existing .out/treetime for the current snapshot
     --check-determinism     run each selected case a second time with `treetime --jobs=1` and mark
@@ -109,6 +114,7 @@ import logging
 import lzma
 import os
 import re
+import resource
 import shlex
 import shutil
 import signal
@@ -116,7 +122,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -148,7 +154,7 @@ SUBCOMMANDS = ("ancestral", "arg", "clock", "completions", "help-markdown", "hom
 TREE_COMMANDS = frozenset({"ancestral", "clock", "mugration", "optimize", "prune", "timetree"})
 MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
-ERROR_LINE_RE = re.compile(r"error|panic", re.IGNORECASE)
+ERROR_LINE_RE = re.compile(r"error|panic|memory allocation", re.IGNORECASE)
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 CLEAR_LINE = "\r\033[K"
 log = logging.getLogger("smoke")
@@ -199,15 +205,19 @@ class Category(Enum):
 PASSING_STATUSES = frozenset({Status.OK, Status.XFAIL})
 PASSING_CATEGORIES = frozenset({Category.IDENTICAL, Category.FIXED, Category.EXPECTED_FAILURE})
 SIZE_TIMEOUT_S = {Size.SMALL: 120.0, Size.MEDIUM: 600.0, Size.LARGE: 1800.0}
+MEMORY_ESTIMATE_GIB = {Size.SMALL: 2.0, Size.MEDIUM: 8.0}
+MEMORY_MARGIN = 1.25
+MEMORY_BUDGET_FRACTION = 0.75
 
 
 @dataclass(frozen=True)
 class Profile:
-  """Flags a dataset family needs to run at all."""
+  """Flags a dataset family needs to run at all, and a timeout factor for its genome length."""
 
   id_column: str | None = None
   attribute: str | None = None
   clock_flags: tuple[str, ...] = ()
+  timeout_factor: float = 1.0
 
 
 PROFILES: dict[str, Profile] = {
@@ -215,7 +225,7 @@ PROFILES: dict[str, Profile] = {
   "ebola": Profile(),
   "flu/h3n2": Profile(attribute="location", clock_flags=("--sequence-length=1400",)),
   "lassa/L": Profile(id_column="accession", attribute="country"),
-  "mpox/clade-ii": Profile(id_column="accession", attribute="country"),
+  "mpox/clade-ii": Profile(id_column="accession", attribute="country", timeout_factor=5.0),
   "rsv/a": Profile(id_column="accession", attribute="country"),
   "sc2": Profile(id_column="strain", attribute="country"),
   "tb": Profile(id_column="strain", attribute="cluster"),
@@ -351,6 +361,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--no-compare", action="store_true")
   parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
   parser.add_argument("--timeout-scale", type=float, default=1.0)
+  parser.add_argument("--memory-budget", metavar="GIB", type=float)
   parser.add_argument("--rerun", action="store_true")
   parser.add_argument("--no-build", action="store_true")
   parser.add_argument("--check-determinism", action="store_true")
@@ -362,6 +373,8 @@ def parse_args() -> argparse.Namespace:
   args = parser.parse_args()
   if args.jobs < 1:
     parser.error("--jobs must be at least 1")
+  if args.memory_budget is not None and args.memory_budget <= 0:
+    parser.error("--memory-budget must be positive")
   if args.timeout_scale <= 0:
     parser.error("--timeout-scale must be positive")
   return args
@@ -483,9 +496,10 @@ def make_case(command: str, dataset: Dataset | None, variant: str, argv: list[st
   if tier is None:
     tier = Tier.QUICK if size is Size.SMALL else Tier.FULL
   path = f"{command}/{dataset.name}/{variant}" if dataset else f"{command}/{variant}"
+  timeout_s = timeout_s or SIZE_TIMEOUT_S[size] * (dataset.profile.timeout_factor if dataset else 1.0)
   return Case(
     id=case_id or path, command=command, dataset=dataset.name if dataset else None, size=size, tier=tier,
-    timeout_s=timeout_s or SIZE_TIMEOUT_S[size], argv=tuple(argv), expect=expect, reason=reason,
+    timeout_s=timeout_s, argv=tuple(argv), expect=expect, reason=reason,
     required_outputs=required_outputs, compare_stdout=compare_stdout, cwd_mode=cwd_mode,
   )
 
@@ -725,13 +739,17 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
     stored = read_result(snapshot, case.id)
     run_main = args.rerun or not is_reusable(stored, key, scaled.timeout_s)
     if run_main or (check_determinism and stored["determinism"] is None):
-      pending.append({"case": scaled.to_json(), "case_key": key, "run_main": run_main})
+      pending.append({"case": scaled.to_json(), "case_key": key, "run_main": run_main,
+                      "memory_kib": memory_estimate_kib(case)})
+  pending.sort(key=lambda task: -(task["memory_kib"] if task["memory_kib"] is not None else float("inf")))
   log.info("Snapshot %s: %d cases selected, %d to run", snapshot.id, len(cases), len(pending))
   if pending:
     cases_file = snapshot.dir / "pending-cases.json"
     write_json(cases_file, pending)
     command = [*WRAPPER, "python3", SELF, "--run-cases", "--bin", str(snapshot.binary), "--snapshot", str(snapshot.dir),
                "--cases", str(cases_file), "--jobs", str(args.jobs)]
+    if args.memory_budget is not None:
+      command += ["--memory-budget", str(args.memory_budget)]
     if check_determinism:
       command.append("--check-determinism")
     try:
@@ -743,6 +761,20 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
   if missing:
     raise SmokeError(f"Snapshot {snapshot.id}: {len(missing)} cases have no result, first: {missing[0]}")
   return results
+
+
+def memory_estimate_kib(case: Case) -> int | None:
+  """Memory to reserve for a case: the largest peak of its completed runs in any snapshot, with a margin.
+
+  None means the case runs alone. A case without a completed run has an unknown peak when it runs on a large dataset,
+  or when an earlier run timed out or was stopped by a signal, for example by the out-of-memory killer.
+  """
+  results = [json.loads(path.read_text()) for path in SNAPSHOTS_DIR.glob(f"*/cases/{case.id}/result.json")]
+  completed = [result["max_rss_kb"] for result in results if not result["timed_out"] and result["exit_code"] >= 0]
+  if completed:
+    return round(max(completed) * MEMORY_MARGIN)
+  estimate_gib = MEMORY_ESTIMATE_GIB.get(case.size)
+  return None if results or estimate_gib is None else round(estimate_gib * 1024 * 1024)
 
 
 def case_key(case: Case, hasher: InputHasher) -> str:
@@ -779,11 +811,13 @@ def run_cases_mode(args: argparse.Namespace) -> int:
   binary = Path(args.bin).resolve()
   snapshot_dir = Path(args.snapshot).resolve()
   jobs = max(1, args.jobs)
-  large_slots = threading.Semaphore(max(1, jobs // 4))
+  budget_kib = round(args.memory_budget * 1024 * 1024) if args.memory_budget else default_memory_budget_kib()
+  memory = MemoryBudget(budget_kib)
+  log.info("Running %d cases with %d jobs and a memory budget of %.1f GiB", len(tasks), jobs, budget_kib / 1024**2)
   tty = sys.stderr.isatty()
   done = 0
   with ThreadPoolExecutor(max_workers=jobs) as pool:
-    futures = {pool.submit(run_case_task, task, binary, snapshot_dir, args.check_determinism, large_slots): task
+    futures = {pool.submit(run_case_task, task, binary, snapshot_dir, args.check_determinism, memory): task
                for task in tasks}
     for future in as_completed(futures):
       result = future.result()
@@ -801,16 +835,23 @@ def run_cases_mode(args: argparse.Namespace) -> int:
   return 0
 
 
+def default_memory_budget_kib() -> int:
+  """A fraction of the memory available at start, leaving room for the host and the other processes on it."""
+  meminfo = Path("/proc/meminfo").read_text()
+  available_kib = int(re.search(r"^MemAvailable:\s+(\d+) kB", meminfo, re.MULTILINE).group(1))
+  return round(available_kib * MEMORY_BUDGET_FRACTION)
+
+
 def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinism: bool,
-                  large_slots: threading.Semaphore) -> dict:
+                  memory: MemoryBudget) -> dict:
   case = Case.from_json(task["case"])
   case_dir = snapshot_dir / "cases" / case.id
   extra = [] if case.is_help else ["--no-progress"]
-  with large_slots if case.size is Size.LARGE else contextlib.nullcontext():
+  with memory.reserve(task["memory_kib"]):
     if not task["run_main"]:
       result = json.loads((case_dir / "result.json").read_text())
     else:
-      outcome, missing = run_one(case, binary, case_dir, extra)
+      outcome, missing = run_one(case, binary, case_dir, extra, memory.total_kib)
       status, detail = classify(case, outcome, missing)
       result = {
         "id": case.id, "status": status.value, "detail": detail, "exit_code": outcome.exit_code,
@@ -820,7 +861,7 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
       }
     if check_determinism:
       rerun_extra = extra + ([] if case.is_help else ["--jobs=1"])
-      rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra)
+      rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra, memory.total_kib)
       rerun_status, _ = classify(case, rerun_outcome, rerun_missing)
       same = rerun_status.value == result["status"] and not diff_run_dirs(case, case_dir, case_dir / "rerun")
       result["determinism"] = "same" if same else "differs"
@@ -828,7 +869,8 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
   return result
 
 
-def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str]) -> tuple[RunOutcome, list[str]]:
+def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str],
+            memory_limit_kib: int) -> tuple[RunOutcome, list[str]]:
   """Run a case into run_dir (out/, stdout.txt, stderr.txt, cmd.sh) and return the outcome and missing outputs."""
   shutil.rmtree(run_dir, ignore_errors=True)
   out = run_dir / "out"
@@ -844,9 +886,10 @@ def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str]) -> t
   else:
     cwd = PROJECT_ROOT
     script = f"RUST_BACKTRACE=1 NO_COLOR=1 exec {shlex.join(argv)}\n"
-  (run_dir / "cmd.sh").write_text(f"#!/usr/bin/env bash\nset -euo pipefail\n{script}")
+  (run_dir / "cmd.sh").write_text(f"#!/usr/bin/env bash\nset -euo pipefail\nulimit -d {memory_limit_kib}\n{script}")
   (run_dir / "cmd.sh").chmod(0o755)
-  outcome = execute(argv, cwd, run_dir / "stdout.txt", run_dir / "stderr.txt", case.timeout_s)
+  outcome = execute(argv, cwd, run_dir / "stdout.txt", run_dir / "stderr.txt", case.timeout_s,
+                    memory_limit_kib=memory_limit_kib)
   if case.cwd_mode is CwdMode.SANDBOX:
     (cwd / DATA_DIR).unlink()
     for entry in cwd.iterdir():
@@ -865,14 +908,22 @@ def resolve_argv(case: Case, binary: Path, out: Path) -> list[str]:
   return argv
 
 
-def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: float) -> RunOutcome:
-  """Run one process with a timeout and measure its own wall time, CPU time and peak memory."""
+def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: float,
+            *, memory_limit_kib: int) -> RunOutcome:
+  """Run one process with a timeout and a data-segment limit, and measure its wall time, CPU time and peak memory.
+
+  The limit turns an allocation beyond the memory budget into an allocation failure of that process, so a case that
+  needs more memory than the machine can give fails on its own instead of exhausting the host.
+  """
   env = {**os.environ, "RUST_BACKTRACE": "1", "NO_COLOR": "1"}
   lock = threading.Lock()
   state = {"exited": False, "timed_out": False}
   with stdout.open("wb") as out, stderr.open("wb") as err:
     start = time.perf_counter()
     process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, env=env)
+  limit_bytes = memory_limit_kib * 1024
+  with contextlib.suppress(ProcessLookupError):
+    resource.prlimit(process.pid, resource.RLIMIT_DATA, (limit_bytes, limit_bytes))
 
   def stop_on_timeout() -> None:
     with lock:
@@ -917,22 +968,28 @@ def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Statu
     if outcome.timed_out:
       return Status.TIMEOUT, f"exceeded the {case.timeout_s:g}s timeout"
     if outcome.exit_code != 0:
-      return Status.FAILED, f"exit code {outcome.exit_code}"
+      return Status.FAILED, exit_detail(outcome.exit_code)
     if missing:
       return Status.MISSING_OUTPUT, missing_detail
     return Status.OK, ""
   expected = f"expected {case.expect.value} ({case.reason})"
   if case.expect is Expect.FAIL and outcome.exit_code not in (0, None):
-    return Status.XFAIL, f"exit code {outcome.exit_code}, {expected}"
+    return Status.XFAIL, f"{exit_detail(outcome.exit_code)}, {expected}"
   if case.expect is Expect.TIMEOUT and outcome.timed_out:
     return Status.XFAIL, f"timed out, {expected}"
   if outcome.timed_out:
     return Status.FAILED, f"timed out, but {expected}"
   if outcome.exit_code != 0:
-    return Status.FAILED, f"exit code {outcome.exit_code}, but {expected}"
+    return Status.FAILED, f"{exit_detail(outcome.exit_code)}, but {expected}"
   if missing:
     return Status.MISSING_OUTPUT, f"{missing_detail}, {expected}"
   return Status.XPASS, f"passed, but {expected}: remove the expectation"
+
+
+def exit_detail(exit_code: int | None) -> str:
+  if exit_code is not None and exit_code < 0:
+    return f"stopped by signal {signal.Signals(-exit_code).name}"
+  return f"exit code {exit_code}"
 
 
 def build_reports(cases: list[Case], current: Snapshot, current_results: dict[str, dict], baseline: Snapshot | None,
@@ -1394,6 +1451,42 @@ class InputHasher:
           raise SmokeError(f"{case.id}: input file {path.relative_to(PROJECT_ROOT)} does not exist")
         paths.add(path)
     return {p.relative_to(PROJECT_ROOT).as_posix(): self.file(p) for p in sorted(paths)}
+
+
+class MemoryBudget:
+  """Memory reservations of the running cases, granted in request order.
+
+  A reservation waits until it fits into the free budget. A reservation of None, or one larger than the budget, waits
+  until no other case runs. Granting in request order keeps a large reservation from waiting behind a stream of
+  small ones.
+  """
+
+  def __init__(self, total_kib: int) -> None:
+    self.total_kib = total_kib
+    self.used_kib = 0
+    self.running = 0
+    self.queue: deque[object] = deque()
+    self.condition = threading.Condition()
+
+  @contextlib.contextmanager
+  def reserve(self, kib: int | None):
+    amount = self.total_kib if kib is None else min(kib, self.total_kib)
+    ticket = object()
+    with self.condition:
+      self.queue.append(ticket)
+      self.condition.wait_for(lambda: self.queue[0] is ticket and (self.running == 0 or
+                                                                   self.used_kib + amount <= self.total_kib))
+      self.queue.popleft()
+      self.used_kib += amount
+      self.running += 1
+      self.condition.notify_all()
+    try:
+      yield
+    finally:
+      with self.condition:
+        self.used_kib -= amount
+        self.running -= 1
+        self.condition.notify_all()
 
 
 @dataclass
