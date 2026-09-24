@@ -9,7 +9,7 @@ The JavaScript side is enforced: Bun reads `minimumReleaseAge` in `bunfig.toml` 
 ## Evidence
 
 - Cargo added the setting as the unstable `-Zmin-publish-age` flag in [rust-lang/cargo#17012](https://github.com/rust-lang/cargo/pull/17012), merged 2026-06-18, and stabilized it for Rust 1.100 in [rust-lang/cargo#17335](https://github.com/rust-lang/cargo/pull/17335). Rust 1.95 contains neither.
-- The Dylint toolchain (`nightly-2026-05-28`) is also older than the unstable flag, so Dylint runs cannot enforce the age either.
+- The Dylint toolchain (`nightly-2026-05-28`) is also older than the unstable flag, so Dylint runs cannot enforce the age either. Nightly Cargo reads the `[unstable]` table and does not know the key, so every Dylint build prints `warning: unused config key 'unstable.min-publish-age'`. The Dylint nightly is pinned to the toolchain of the `clippy_utils` revision that Dylint 6.0.4 is built against, so moving it past the flag means upgrading Dylint and every lint workspace together.
 - Lockfile refreshes in this repository locked versions younger than seven days, for example `libredox 0.1.25` in the vendored Dylint workspace. Each one had to be held back by hand with `cargo update --precise`.
 
 ## Impact

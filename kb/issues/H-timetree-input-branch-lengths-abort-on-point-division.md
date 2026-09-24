@@ -33,6 +33,5 @@ Deciding the intended behavior is part of the fix: either the input-length path 
 
 ## Related issues
 
-- [M-distribution-normalization-erases-errors.md](M-distribution-normalization-erases-errors.md)
 - [M-timetree-internal-dates-missing-input-bl.md](M-timetree-internal-dates-missing-input-bl.md)
 - [N-timetree-gtr-json-missing-input-bl.md](N-timetree-gtr-json-missing-input-bl.md)

@@ -46,4 +46,3 @@ Deciding the intended behavior is part of the fix: either an empty posterior mus
 
 - [H-timetree-mass-sizing-node-times-break-downstream-invariants.md](H-timetree-mass-sizing-node-times-break-downstream-invariants.md)
 - [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md)
-- [M-distribution-normalization-erases-errors.md](M-distribution-normalization-erases-errors.md)

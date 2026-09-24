@@ -17,4 +17,3 @@ Define the biological and partition-boundary meaning of `transmission` before se
 ## Related issues
 
 - [M-ancestral-fitch-polytomy-recurrence-not-minimum.md](M-ancestral-fitch-polytomy-recurrence-not-minimum.md)
-- [N-ancestral-sparse-remove-insert-pattern.md](N-ancestral-sparse-remove-insert-pattern.md)

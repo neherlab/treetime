@@ -240,7 +240,6 @@ Preserving behavior is an acceptance requirement, not a consequence of calling t
 - [kb/algo/graph.md](../algo/graph.md): traversal algorithms, path finding, edge contraction
 - [kb/issues/H-core-command-module-shared-ops-entanglement.md](../issues/H-core-command-module-shared-ops-entanglement.md): cross-command coupling that cleaner data flow would reduce
 - [kb/issues/N-representation-dense-sparse-partition-asymmetry.md](../issues/N-representation-dense-sparse-partition-asymmetry.md): partition type asymmetries a unified transform pipeline could resolve
-- [kb/issues/N-ancestral-sparse-remove-insert-pattern.md](../issues/N-ancestral-sparse-remove-insert-pattern.md): in-place mutation in sparse passes that a transform model would replace
 - [kb/proposals/optimize-convergence-and-robustness.md](optimize-convergence-and-robustness.md): the refinement loop where graph and partition data flow bidirectionally
 - [kb/proposals/parallelize-multi-partition-marginal-reconstruction.md](parallelize-multi-partition-marginal-reconstruction.md): multi-partition parallelism, relevant to the nested-parallelism concern
 

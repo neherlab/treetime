@@ -26,7 +26,7 @@
 ## Marginal Reconstruction (Sparse)
 
 - [x] Backward pass (variable positions only)
-- [/] Forward pass (variable positions only; reconstruction can remove state before a fallible lookup: [kb/issues/N-ancestral-sparse-remove-insert-pattern.md](../issues/N-ancestral-sparse-remove-insert-pattern.md))
+- [x] Forward pass (variable positions only)
 - [x] Fixed-position per-character profiles
 - [x] Mutation composition from edge substitutions
 - [x] Message combine with variability threshold (EPS=1e-4)
