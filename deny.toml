@@ -52,9 +52,12 @@ deny = [
   { crate = "xml", reason = "XML is serialized and parsed with quick-xml" },
 ]
 skip = [
-  { crate = "bit-set:<0.8", reason = "intervallum 1.4.4 requires bit-set 0.8 and gcollections 1.5, which requires bit-set 0.5" },
-  { crate = "bit-vec:<0.8", reason = "bit-set 0.5, required through gcollections 1.5 by intervallum 1.4.4" },
+  { crate = "bit-set:<0.9", reason = "intervallum 1.4.4, proptest, and fancy-regex require bit-set 0.8; every gcollections release that intervallum accepts requires another version (1.5: 0.5, 1.6: 0.9)" },
+  { crate = "bit-vec:<0.9", reason = "bit-set 0.8, required by intervallum 1.4.4, proptest, and fancy-regex" },
+  { crate = "bitflags:<2", reason = "plotters 0.3.7 requires font-kit 0.14.3, whose macOS backend requires core-graphics 0.23, which requires bitflags 1" },
   { crate = "convert_case:<0.11", reason = "derive_more 2 requires convert_case 0.7 or 0.10; napi-derive 3.5.2 and later require 0.11 or newer" },
+  { crate = "dirs:<6", reason = "the pinned openblas-src fork requires dirs 3 in its build script; font-kit 0.14.3, required by plotters 0.3.7, requires dirs 6" },
+  { crate = "dirs-sys:<0.5", reason = "dirs 3, required by the pinned openblas-src fork" },
   { crate = "getrandom:<0.3", reason = "rand 0.8 requires getrandom 0.2; every jsonschema release requires getrandom 0.3 through ahash" },
   { crate = "libloading:<0.9", reason = "bindgen 0.70, pinned by the lapack-sys fork, requires libloading 0.8 through clang-sys; napi-sys requires 0.9" },
   { crate = "rustc-hash:<2", reason = "bindgen 0.70, pinned by the lapack-sys fork, requires rustc-hash 1; napi requires rustc-hash 2" },

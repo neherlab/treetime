@@ -76,7 +76,7 @@ ndarray-stats = "=0.6.0"
 openblas-src = { version = "=0.10.12", features = ["system"] }
 
 bzip2 = { version = "=0.6.1", features = ["static"] }
-flate2 = "=1.1.10"
+flate2 = "=1.1.9"
 xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
@@ -87,7 +87,7 @@ async-stream = "=0.3.6"
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", features = ["json"] }
 bio = { version = "=2.3.0", features = ["phylogeny"] }
-bon = "=3.10.1"
+bon = "=3.9.3"
 bytes = { version = "=1.12.1", features = ["serde"] }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
