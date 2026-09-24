@@ -1,17 +1,17 @@
+name: "CI"
+
 on:
   push:
     branches:
       - rust
-
   pull_request:
-
-  repository_dispatch:
-    types: build
-
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: cli-${{ github.workflow }}-${{ github.ref_type }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -19,366 +19,127 @@ defaults:
     shell: bash -euo pipefail {0}
 
 env:
-  TREETIME_BUILD_MODE: dev
-  TREETIME_VERSION_SUFFIX: ""
-  VERBOSE: 1
-
-
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  FORCE_COLOR: "1"
 
 jobs:
+  # The checks of `just check-all` except hawk, split into parallel jobs. Each job
+  # runs its recipes in the build container through dev/run-checks.
+  check:
+    name: "Check (${{ matrix.name }})"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "format and config lints"
+            recipes: "fmt-check deny shear lint-shell lint-docker lint-toml lint-workflows fixtures-check"
+          - name: "clippy"
+            recipes: "lint"
+          - name: "custom lints"
+            recipes: "dylint"
+          - name: "tests"
+            recipes: "test"
+          - name: "generated files"
+            recipes: "generated-check"
+          - name: "typescript"
+            recipes: "typecheck lint-js knip test-js"
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          cache: ${{ matrix.name }}
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name == 'push' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Run ${{ matrix.recipes }}"
+        run: dev/docker/run bash -c "just _js && TREETIME_JS_READY=1 dev/run-checks --serial ${{ matrix.recipes }}"
 
   build-cli:
     name: "Build CLI"
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/cli-build.yml
     with:
       source_ref: ${{ github.sha }}
       build_mode: dev
     secrets: inherit
 
-
-
-  run-unit-tests:
-    name: "Run unit tests"
+  compat-linux:
+    name: "Compat test (${{ matrix.target }})"
+    needs: [build-cli]
     runs-on: ubuntu-24.04
-
-    env:
-      RUSTC_WRAPPER: kache
-      KACHE_BASE_DIR: /workdir
-      KACHE_CACHE_DIR: ${{ github.workspace }}/.cache/docker-native/kache
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/cargo/registry/index/
-            .cache/cargo/registry/cache/
-            .cache/cargo/git/db/
-          key: neherlab-treetime-cargo-v3-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-cargo-v3-${{ runner.os }}-
-
-      - name: "Setup kache compiler cache"
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/docker-native/kache/
-          key: neherlab-treetime-kache-unit-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-kache-unit-v2-${{ runner.os }}-native-
-
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-
-      - name: "Build docker image"
-        run: |
-          ./dev/docker/run echo "Success"
-
-      - name: "Run unit tests"
-        run: |
-          ./dev/docker/run ./dev/dev test-all
-
-
-
-  run-lints:
-    name: "Run lints"
-    runs-on: ubuntu-24.04
-
-    env:
-      RUSTC_WRAPPER: kache
-      KACHE_BASE_DIR: /workdir
-      KACHE_CACHE_DIR: ${{ github.workspace }}/.cache/docker-native/kache
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/cargo/registry/index/
-            .cache/cargo/registry/cache/
-            .cache/cargo/git/db/
-          key: neherlab-treetime-cargo-v3-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-cargo-v3-${{ runner.os }}-
-
-      - name: "Setup kache compiler cache"
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/docker-native/kache/lint-ci/
-          key: neherlab-treetime-kache-lint-ci-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-kache-lint-ci-v2-${{ runner.os }}-native-
-
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-
-      - name: "Build docker image"
-        run: |
-          ./dev/docker/run echo "Success"
-
-      - name: "Run lints"
-        run: |
-          ./dev/docker/run ./dev/dev lint-ci
-
-  run-typescript:
-    name: "Run TypeScript checks"
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-
-      - name: "Build docker image"
-        run: |
-          ./dev/docker/run echo "Success"
-
-      - name: "Install JS dependencies (frozen lockfile)"
-        run: |
-          ./dev/docker/run just js-install
-
-      - name: "Check formatting"
-        run: |
-          ./dev/docker/run just js-format-check
-
-      - name: "Type-check"
-        run: |
-          ./dev/docker/run just js-check
-
-      - name: "Lint"
-        run: |
-          ./dev/docker/run just js-lint
-
-      - name: "Run custom rule tests"
-        run: |
-          ./dev/docker/run just oxlint-test
-
-      - name: "Run application tests"
-        run: |
-          ./dev/docker/run just js-test
-
-      - name: "Check generated files"
-        run: |
-          ./dev/docker/run just generated-check
-
-  run-compat-tests-x86_64-unknown-linux-gnu:
-    name: "Compat test (x86_64-unknown-linux-gnu)"
-    needs: [ build-cli ]
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          pattern: treetime-*
-          merge-multiple: true
-          path: ".out"
-
-      - name: "Test Linux distros compatibility"
-        run: |
-          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
-          ./dev/test-linux-distros-gnu ./.out/treetime-x86_64-unknown-linux-gnu --help
-
-  run-compat-tests-x86_64-unknown-linux-musl:
-    name: "Compat test (x86_64-unknown-linux-musl)"
-    needs: [ build-cli ]
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          pattern: treetime-*
-          merge-multiple: true
-          path: ".out"
-
-      - name: "Test Linux distros compatibility"
-        run: |
-          chmod +x ./.out/treetime-x86_64-unknown-linux-musl
-          ./dev/test-linux-distros-musl ./.out/treetime-x86_64-unknown-linux-musl --help
-
-  run-compat-tests-macos:
-    name: "Compat test (macOS, ${{ matrix.name }})"
-    needs: [ build-cli ]
-    runs-on: ${{ matrix.runner }}
-
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: "x86_64 native"
+          - target: x86_64-unknown-linux-gnu
+            script: dev/test-linux-distros-gnu
+          - target: x86_64-unknown-linux-musl
+            script: dev/test-linux-distros-musl
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: treetime-${{ matrix.target }}
+          path: .out
+
+      - name: "Run on Linux distributions"
+        run: |
+          chmod +x ".out/treetime-${{ matrix.target }}"
+          ${{ matrix.script }} ".out/treetime-${{ matrix.target }}" --help
+
+  compat-macos:
+    name: "Compat test (macOS, ${{ matrix.name }})"
+    needs: [build-cli]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "x86_64"
             runner: macos-15-intel
-            binary: treetime-x86_64-apple-darwin
-            expected_arch: x86_64
-
-          - name: "aarch64 native, macos-14"
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - name: "aarch64, macos-14"
             runner: macos-14
-            binary: treetime-aarch64-apple-darwin
-            expected_arch: arm64
-
-          - name: "aarch64 native, macos-latest"
+            target: aarch64-apple-darwin
+            arch: arm64
+          - name: "aarch64, macos-latest"
             runner: macos-latest
-            binary: treetime-aarch64-apple-darwin
-            expected_arch: arm64
-
+            target: aarch64-apple-darwin
+            arch: arm64
     steps:
-      - name: "Show system info"
-        run: |
-          set -x
-          uname -a || true
-          sw_vers || true
-          system_profiler SPSoftwareDataType SPHardwareDataType || true
-
-      - name: "Check CPU architecture"
-        run: |
-          arch="$(uname -m)"
-          expected="${{ matrix.expected_arch }}"
-          if [[ "$arch" != "$expected" ]]; then
-            echo "Expected $expected architecture, but got $arch"
-            exit 1
-          fi
-
       - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: treetime-*
-          merge-multiple: true
-          path: ".out"
+          name: treetime-${{ matrix.target }}
+          path: .out
 
-      - name: "Run compat test"
+      - name: "Run the binary"
         run: |
-          chmod +x ./.out/*
-          ./.out/${{ matrix.binary }} --help
+          test "$(uname -m)" = "${{ matrix.arch }}"
+          chmod +x ".out/treetime-${{ matrix.target }}"
+          ".out/treetime-${{ matrix.target }}" --help
 
-
-  run-compat-tests-x86_64-pc-windows-gnu:
-    name: "Compat test (x86_64-pc-windows-gnu)"
-    needs: [ build-cli ]
+  compat-windows:
+    name: "Compat test (Windows)"
+    needs: [build-cli]
     runs-on: windows-2022
-
     steps:
-      - name: "Show system info"
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Set-PSDebug -Trace 1
-          Write-Output "Architecture: $env:PROCESSOR_ARCHITECTURE"
-          Write-Output "Windows Version:"
-          systeminfo | Select-String "OS Name", "OS Version"
-          Get-WmiObject Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-Table -AutoSize
-
       - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: treetime-*
-          merge-multiple: true
-          path: ".out"
+          name: treetime-x86_64-pc-windows-gnu
+          path: .out
 
-      - name: "Run compat test (x86_64-pc-windows-gnu)"
-        shell: powershell
-        run: |
-          .\.out\treetime-x86_64-pc-windows-gnu --help
-
-
-  check-cli-docs:
-    name: "Check that autogenerated CLI documentation is up-to-date"
-    needs: [ build-cli ]
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          pattern: treetime-*
-          merge-multiple: true
-          path: ".out"
-
-      - name: "Re-generate CLI docs"
-        run: |
-          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
-          ./docs/generate-reference-docs ./.out/treetime-x86_64-unknown-linux-gnu docs/docs/reference.md
-
-      - name: "Check that the git diff is clean"
-        run: |
-          git -c color.ui=always diff --exit-code "docs/docs/reference.md" || (printf "CLI reference documentation is not up-to-date. Run './dev/docker/run ./dev/dev D', then verify and commit docs/docs/reference.md.\n" >&2; exit 1)
+      - name: "Run the binary"
+        shell: pwsh
+        run: .\.out\treetime-x86_64-pc-windows-gnu.exe --help

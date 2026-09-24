@@ -1,3 +1,5 @@
+name: "Build CLI"
+
 on:
   workflow_call:
     inputs:
@@ -15,6 +17,9 @@ on:
         type: string
         default: ""
 
+permissions:
+  contents: read
+
 defaults:
   run:
     shell: bash -euo pipefail {0}
@@ -22,18 +27,18 @@ defaults:
 env:
   TREETIME_BUILD_MODE: ${{ inputs.build_mode }}
   TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
-  VERBOSE: 1
 
 jobs:
   build-cli:
-    name: "build-cli (${{ matrix.arch }})"
+    name: "Build CLI (${{ matrix.target }})"
     runs-on: ubuntu-24.04
-    continue-on-error: ${{ inputs.build_mode == 'nightly' && matrix.arch != 'x86_64-unknown-linux-gnu' }}
-
+    timeout-minutes: 90
+    # A nightly publishes every target that builds; the Linux x86_64 binary is required.
+    continue-on-error: ${{ inputs.build_mode == 'nightly' && matrix.target != 'x86_64-unknown-linux-gnu' }}
     strategy:
       fail-fast: false
       matrix:
-        arch:
+        target:
           - aarch64-apple-darwin
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
@@ -43,51 +48,29 @@ jobs:
           - x86_64-unknown-linux-musl
 
     steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v7
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.source_ref }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
 
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v4
-
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v6
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
         with:
-          path: |
-            .cache/cargo/registry/index/
-            .cache/cargo/registry/cache/
-            .cache/cargo/git/db/
-          key: neherlab-treetime-cargo-v3-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-cargo-v3-${{ runner.os }}-
+          image: ${{ matrix.target }}
+          cache: release
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name != 'pull_request' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v4
+      - name: "Build"
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: |
+          dev/docker/run dev/cross/build treetime
+          dev/docker/run dev/cross/check treetime
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          registry: docker.io
-          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-
-      - name: "Build docker image (${{ matrix.arch }})"
-        run: |
-          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run echo "Success"
-
-      - name: "Build CLI (${{ matrix.arch }})"
-        run: |
-          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run ./dev/cross/build treetime
-
-      - name: "Upload CLI"
-        uses: actions/upload-artifact@v7
-        with:
-          name: treetime-${{ matrix.arch }}
-          path: ./.out/*
+          name: treetime-${{ matrix.target }}
+          path: .out/treetime-${{ matrix.target }}*
           if-no-files-found: error
-          include-hidden-files: true
