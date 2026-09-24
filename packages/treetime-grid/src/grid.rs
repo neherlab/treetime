@@ -29,7 +29,7 @@ pub struct Grid<T: InterpElem> {
 }
 
 impl<T: InterpElem> Grid<T> {
-  pub fn from_start_dx(x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
+  pub(crate) fn from_start_dx(x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
   where
     T: Float,
   {
@@ -99,7 +99,7 @@ impl<T: InterpElem> Grid<T> {
     })
   }
 
-  pub fn x_min(&self) -> T {
+  pub(crate) fn x_min(&self) -> T {
     self.x_min
   }
 
@@ -107,7 +107,7 @@ impl<T: InterpElem> Grid<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn x_max(&self) -> T
+  pub(crate) fn x_max(&self) -> T
   where
     T: Float,
   {
@@ -160,7 +160,7 @@ impl<T: InterpElem> Grid<T> {
     self.iter().collect()
   }
 
-  pub(crate) fn iter(&self) -> GridIter<T>
+  fn iter(&self) -> GridIter<T>
   where
     T: Float,
   {

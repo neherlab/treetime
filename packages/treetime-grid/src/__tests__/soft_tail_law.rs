@@ -144,19 +144,4 @@ mod tests {
     );
     Ok(())
   }
-
-  #[test]
-  fn test_gridfn_soft_tail_is_edge_relative_after_rewindowing() -> Result<(), Report> {
-    let grid = make_neglog_linear_grid(-1.0, 0.0, 5.0, 51);
-    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
-
-    let rewindowed = grid.resample_range_n_points((0.0, 4.0), 41)?;
-    let edge_value = rewindowed.interp(4.0)?;
-    assert_abs_diff_eq!(
-      edge_value + 0.5,
-      rewindowed.interp_with_extrap(4.5, BoundaryBehavior::Error, right)?,
-      epsilon = 1e-12
-    );
-    Ok(())
-  }
 }

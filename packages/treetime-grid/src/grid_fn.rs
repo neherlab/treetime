@@ -36,16 +36,6 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Self { grid, y })
   }
 
-  fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
-  where
-    T: Float,
-    F: Fn(T) -> T,
-  {
-    let n_points = grid.n_points();
-    let y = Array1::from_shape_fn(n_points, |i| y_fn(grid.x_at(i)));
-    Self::from_grid_array(grid, y)
-  }
-
   pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -100,15 +90,6 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y_uniform)
   }
 
-  pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
-  where
-    T: Float,
-    F: Fn(T) -> T,
-  {
-    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
-    Self::from_grid_fn(grid, y_fn)
-  }
-
   pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
@@ -136,7 +117,7 @@ impl<T: InterpElem> GridFn<T> {
     &self.y
   }
 
-  pub fn grid(&self) -> &Grid<T> {
+  pub(crate) fn grid(&self) -> &Grid<T> {
     &self.grid
   }
 
@@ -310,13 +291,6 @@ impl<T: InterpElem> GridFn<T> {
     Ok(())
   }
 
-  fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    self.resample_with_extrap(grid, BoundaryBehavior::Error, BoundaryBehavior::Error)
-  }
-
   pub fn resample_with_extrap(
     &self,
     grid: &Grid<T>,
@@ -331,15 +305,6 @@ impl<T: InterpElem> GridFn<T> {
       .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_array(*grid, Array1::from_vec(y_new))
-  }
-
-  pub fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let (x_min, x_max) = x_range;
-    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
-    self.resample(&grid)
   }
 
   pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>

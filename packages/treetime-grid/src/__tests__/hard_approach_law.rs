@@ -145,25 +145,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::double( (0.0, 1.5), 2.0, (0.0, 3.0))]
-  #[case::triple( (5.0, 1.0), 3.0, (5.0, 3.0))]
-  #[case::flat(   (0.0, 0.0), 4.0, (0.0, 0.0))]
-  #[trace]
-  fn test_hard_approach_law_scale(
-    #[case] (t_hard, b): (f64, f64),
-    #[case] factor: f64,
-    #[case] (expected_t_hard, expected_b): (f64, f64),
-  ) {
-    let law = HardApproachLaw { t_hard, b };
-    let expected = HardApproachLaw {
-      t_hard: expected_t_hard,
-      b: expected_b,
-    };
-    assert_eq!(expected, law.scale(factor));
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
   #[case::divergent((5.0, 1.0),  (-5.0, 1.0))]
   #[case::flat(     (5.0, 0.0),  (-5.0, 0.0))]
   #[case::at_zero(  (0.0, 2.0),  (0.0, 2.0))]

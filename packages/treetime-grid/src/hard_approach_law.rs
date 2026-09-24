@@ -58,14 +58,6 @@ impl HardApproachLaw {
   }
 
   #[must_use]
-  pub fn scale(&self, factor: f64) -> HardApproachLaw {
-    HardApproachLaw {
-      t_hard: self.t_hard,
-      b: self.b * factor,
-    }
-  }
-
-  #[must_use]
   pub fn negate_arg(&self) -> Self {
     HardApproachLaw {
       t_hard: -self.t_hard,

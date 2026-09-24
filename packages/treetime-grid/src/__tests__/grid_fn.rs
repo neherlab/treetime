@@ -94,18 +94,6 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_from_grid() -> Result<(), Report> {
-    let grid_fn = GridFn::from_grid((0.0, 1.0), 0.25, |x| x * x)?;
-    assert_eq!(grid_fn.x().len(), 5);
-    assert_ulps_eq!(grid_fn.x()[0], 0.0, max_ulps = 4);
-    assert_ulps_eq!(grid_fn.x()[4], 1.0, max_ulps = 4);
-    assert_ulps_eq!(grid_fn.y()[0], 0.0, max_ulps = 4);
-    assert_ulps_eq!(grid_fn.y()[2], 0.25, max_ulps = 4);
-    assert_ulps_eq!(grid_fn.y()[4], 1.0, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
   fn test_gridfn_accessors() -> Result<(), Report> {
     let x_range = (0.0, 2.0);
     let y = array![10.0, 20.0, 30.0];
@@ -124,18 +112,6 @@ mod tests {
     grid_fn.negate_arg_inplace()?;
     let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
     assert_eq!(expected, grid_fn);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_resample_to_grid_finer() -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_range_n_points((0.0, 2.0), 5)?;
-    assert_ulps_eq!(resampled.x_min(), 0.0);
-    assert_ulps_eq!(resampled.x_max(), 2.0);
-    assert_ulps_eq!(resampled.dx(), 0.5);
-    assert_eq!(resampled.n_points(), 5);
-    assert_ulps_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], max_ulps = 4);
     Ok(())
   }
 
