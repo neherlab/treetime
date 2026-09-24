@@ -1194,7 +1194,7 @@ def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
   print("\nSlowest cases (information only):")
   for report in sorted(reports, key=lambda r: r.wall_s, reverse=True)[:10]:
     change = ""
-    if report.baseline_wall_s:
+    if report.baseline_wall_s is not None and report.baseline_wall_s >= 1.0:
       change = f" ({(report.wall_s - report.baseline_wall_s) / report.baseline_wall_s * 100:+.0f}% vs baseline)"
     print(f"  {report.wall_s:7.1f}s{change}  {report.case.id}")
   print(f"\nCurrent snapshot:  {current.dir.relative_to(PROJECT_ROOT)}")
