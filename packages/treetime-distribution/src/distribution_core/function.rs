@@ -305,10 +305,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     extremum.ok().map(|idx| self.t()[idx])
   }
 
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   #[must_use]
   pub(crate) fn shift_y(&self, delta: T) -> Self
   where
