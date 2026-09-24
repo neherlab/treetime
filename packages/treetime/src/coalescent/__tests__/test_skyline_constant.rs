@@ -91,21 +91,13 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
+    use crate::clock::date_constraints::DateConstraints;
+    use crate::coalescent::__tests__::helpers::graph_with_dates;
     use eyre::Report;
     use maplit::btreemap;
     use treetime_graph::graph::Graph;
-    use treetime_io::dates_csv::{DateConstraint, DatesMap};
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::dates_csv::DateConstraint;
     use treetime_utils::o;
-
-    fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
-      let nwk_parsed = nwk_read_str(nwk)?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let constraints = load_date_constraints(dates, &graph, &names)?;
-      Ok((graph, constraints))
-    }
 
     pub(super) fn tree3(t_root: f64, t_x: f64, t_tip: f64) -> Result<(Graph, DateConstraints), Report> {
       let dates = btreemap! {

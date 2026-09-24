@@ -1,16 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::__tests__::helpers::{coalescent_node_times, constant_skyline};
+  use crate::coalescent::__tests__::helpers::{coalescent_node_times, constant_skyline, graph_with_dates};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
-  use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
@@ -32,7 +29,7 @@ mod tests {
 
   #[test]
   fn test_optimize_skyline_returns_result() -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
       ..SkylineParams::default()
@@ -62,7 +59,7 @@ mod tests {
     #[case] n_std: f64,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_std,
       ..SkylineParams::default()
@@ -74,7 +71,7 @@ mod tests {
 
   #[test]
   fn test_optimize_skyline_tc_values_positive() -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
       ..SkylineParams::default()
@@ -94,7 +91,7 @@ mod tests {
 
   #[test]
   fn test_optimize_skyline_tc_distribution_evaluates() -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
       ..SkylineParams::default()
@@ -134,7 +131,7 @@ mod tests {
       "h".to_owned() => Some(DateConstraint::exact(2013.0)),
     };
 
-    let (graph, constraints) = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, constraints) = graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 10,
       ..SkylineParams::default()
@@ -150,7 +147,7 @@ mod tests {
 
   #[test]
   fn test_skyline_reported_likelihood_matches_model_evaluation() -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let params = SkylineParams {
       n_points: 4,
@@ -174,7 +171,7 @@ mod tests {
       "c".to_owned() => Some(DateConstraint::exact(2010.0)),
       "d".to_owned() => Some(DateConstraint::exact(2010.0)),
     };
-    let (graph, constraints) = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, constraints) = graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let params = SkylineParams {
       n_points: 2,
@@ -190,7 +187,7 @@ mod tests {
 
   #[test]
   fn test_skyline_beats_or_matches_constant_tc() -> Result<(), Report> {
-    let (graph, constraints) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let params = SkylineParams {
       n_points: 4,
@@ -223,8 +220,8 @@ mod tests {
     };
     let s = 3.0;
 
-    let (g1, c1) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
-    let (gs, cs) = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
+    let (g1, c1) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
+    let (gs, cs) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
     let r1 = optimize_skyline(&g1, &params, &coalescent_node_times(&g1, &c1))?;
     let rs = optimize_skyline(&gs, &params, &coalescent_node_times(&gs, &cs))?;
 
@@ -240,20 +237,5 @@ mod tests {
     }
 
     Ok(())
-  }
-
-  mod helpers {
-    use super::*;
-
-    pub(super) fn create_graph_with_dates(
-      tree_nwk: &str,
-      dates: &DatesMap,
-    ) -> Result<(Graph, DateConstraints), Report> {
-      let nwk_parsed = nwk_read_str(tree_nwk)?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let constraints = load_date_constraints(dates, &graph, &names)?;
-      Ok((graph, constraints))
-    }
   }
 }

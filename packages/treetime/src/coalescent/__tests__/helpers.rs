@@ -7,7 +7,7 @@ use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::DateConstraint;
+use treetime_io::dates_csv::{DateConstraint, DatesMap};
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::o;
 
@@ -46,4 +46,12 @@ pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) 
 
 pub(crate) fn tc(result: &SkylineResult) -> f64 {
   result.tc_schedule.values()[0]
+}
+
+pub(crate) fn graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
+  let nwk_parsed = nwk_read_str(tree_nwk)?;
+  let names = nwk_parsed.names();
+  let graph = nwk_parsed.graph;
+  let constraints = load_date_constraints(dates, &graph, &names)?;
+  Ok((graph, constraints))
 }
