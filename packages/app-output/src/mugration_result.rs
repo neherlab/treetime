@@ -63,10 +63,6 @@ impl MugrationResult {
       confidence,
     }
   }
-
-  pub fn trait_assignments(&self) -> &IndexMap<String, String> {
-    &self.traits.assignments
-  }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -94,17 +90,6 @@ impl MugrationConfidenceOutput {
       .collect();
 
     Self { states, rows }
-  }
-
-  pub fn to_map(&self) -> BTreeMap<String, Vec<String>> {
-    self
-      .rows
-      .iter()
-      .map(|row| {
-        let formatted: Vec<String> = row.profile.iter().map(|p| format!("{p:.6}")).collect();
-        (row.node.clone(), formatted)
-      })
-      .collect()
   }
 
   #[allow(

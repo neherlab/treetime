@@ -15,16 +15,6 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonGeneratedBy,
 };
 
-pub fn write_augur_node_data_json(
-  graph: &Graph,
-  maps: &AugurOutputMaps,
-  mask: &[bool],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  path: &Path,
-) -> Result<(), Report> {
-  write_augur_node_data_json_with_aa(graph, maps, mask, names, None, &BTreeMap::new(), path)
-}
-
 pub fn write_augur_node_data_json_with_aa(
   graph: &Graph,
   maps: &AugurOutputMaps,
