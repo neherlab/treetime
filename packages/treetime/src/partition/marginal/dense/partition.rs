@@ -53,10 +53,6 @@ impl PartitionMarginalDense {
     }
   }
 
-  pub fn get_sequence_length(&self) -> usize {
-    self.length
-  }
-
   pub(crate) fn attach_sequences(
     &self,
     graph: &Graph,
@@ -124,10 +120,6 @@ impl PartitionMarginalDense {
     graph: &Graph,
   ) -> Result<Seq, Report> {
     Ok(assign_sequence(&node_states[&graph.root_key()?], &self.alphabet))
-  }
-
-  pub fn node_sequence(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> Seq {
-    assign_sequence(&node_states[&node_key], &self.alphabet)
   }
 
   pub(crate) fn edge_effective_length(

@@ -16,8 +16,6 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(try_from = "AlphabetConfig")]
 pub struct Alphabet {

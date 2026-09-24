@@ -110,15 +110,6 @@ impl AlignedMutation {
     }
     Ok(Self { range, sequence })
   }
-
-  pub fn one_based_inclusive_range(&self) -> Result<(usize, usize), Report> {
-    let start = self
-      .range
-      .0
-      .checked_add(1)
-      .ok_or_else(|| eyre::eyre!("Mutation start coordinate overflow at {}", self.range.0))?;
-    Ok((start, self.range.1))
-  }
 }
 
 fn mutation_position(start: usize, offset: usize) -> Result<usize, Report> {

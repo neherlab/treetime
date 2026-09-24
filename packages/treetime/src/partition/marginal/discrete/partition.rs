@@ -39,10 +39,6 @@ impl PartitionMarginalDiscrete {
     self.states.len()
   }
 
-  pub fn get_sequence_length(&self) -> usize {
-    1
-  }
-
   pub(crate) fn attach_traits(
     &self,
     graph: &Graph,

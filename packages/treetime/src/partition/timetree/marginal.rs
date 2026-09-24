@@ -183,13 +183,6 @@ impl PartitionTimetree {
     }
   }
 
-  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    match self {
-      Self::Dense(family) => family.node_sequence(node_key),
-      Self::Sparse(family) => family.node_sequence(node_key),
-    }
-  }
-
   pub fn edge_mutations(
     &self,
     graph: &Graph,

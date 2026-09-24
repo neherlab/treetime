@@ -287,14 +287,6 @@ impl AncestralPartition {
     }
   }
 
-  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    match self {
-      Self::Fitch(partition) => partition.node_sequence(node_key),
-      Self::Sparse(partition) => partition.node_sequence(node_key),
-      Self::Dense(partition) => partition.node_sequence(node_key),
-    }
-  }
-
   pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Fitch(partition) => partition.node_sequence(node_key),
@@ -479,10 +471,6 @@ impl DenseReconstruction {
 
   pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(&self.edges.estimates, edge_key)
-  }
-
-  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.partition.node_sequence(&self.node_states, node_key)
   }
 
   pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {

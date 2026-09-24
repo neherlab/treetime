@@ -114,13 +114,6 @@ impl ClockModel {
     self.get_regression_stat(|s| s.r_val)
   }
 
-  pub fn hessian(&self) -> Option<&Array2<f64>> {
-    match &self.stats {
-      ClockModelStats::Estimated(stats) => Some(&stats.hessian),
-      ClockModelStats::Fixed => None,
-    }
-  }
-
   pub fn cov(&self) -> Option<&Array2<f64>> {
     match &self.stats {
       ClockModelStats::Estimated(stats) => Some(&stats.cov),
@@ -255,10 +248,6 @@ impl ClockRegression {
 
   pub(crate) fn hessian(&self) -> &Array2<f64> {
     &self.hessian
-  }
-
-  pub fn cov(&self) -> &Array2<f64> {
-    &self.cov
   }
 }
 

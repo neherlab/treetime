@@ -57,11 +57,6 @@ impl CoalescentModel {
     Ok(compute_merger_rate_total_scalar(k, tc))
   }
 
-  pub fn branch_merger_rate(&self, time: f64) -> Result<f64, Report> {
-    let (k, tc) = self.lineage_count_and_tc(time)?;
-    Ok(compute_merger_rate_per_lineage_scalar(k, tc))
-  }
-
   pub(crate) fn branch_merger_rate_schedule(
     &self,
     tc_schedule: &PiecewiseConstantFn,

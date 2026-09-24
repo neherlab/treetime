@@ -35,10 +35,6 @@ pub struct PartitionMarginalSparse {
 }
 
 impl PartitionMarginalSparse {
-  pub fn get_sequence_length(&self) -> usize {
-    self.length
-  }
-
   pub(crate) fn edge_subs(
     &self,
     estimates: &BTreeMap<GraphEdgeKey, Vec<Sub>>,

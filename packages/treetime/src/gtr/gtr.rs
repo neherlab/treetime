@@ -89,16 +89,8 @@ impl GTR {
     })
   }
 
-  pub const fn average_rate(&self) -> f64 {
-    self.average_rate
-  }
-
   pub(crate) fn has_site_rates(&self) -> bool {
     self.site_rates.is_some()
-  }
-
-  pub fn clear_site_rates(&mut self) {
-    self.site_rates = None;
   }
 
   pub(crate) fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
@@ -156,10 +148,6 @@ impl GTR {
 
   fn exp_lt_scaled(&self, t: f64, rate: f64) -> Array1<f64> {
     (self.mu * rate * t * &self.eigvals).mapv(f64::exp)
-  }
-
-  pub fn exp_eigvals_branch_length(&self, branch_length: f64) -> Array1<f64> {
-    (&self.eigvals * branch_length).mapv(f64::exp)
   }
 }
 

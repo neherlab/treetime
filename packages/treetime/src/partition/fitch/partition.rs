@@ -90,19 +90,6 @@ impl PartitionFitch {
     self.nodes[&node_key].seq.sequence.clone()
   }
 
-  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
-    Ok(
-      self.nodes[&parent_key]
-        .seq
-        .sequence
-        .iter()
-        .zip(&self.nodes[&child_key].seq.sequence)
-        .filter(|(parent, child)| self.alphabet.is_canonical(**parent) && self.alphabet.is_canonical(**child))
-        .count(),
-    )
-  }
-
   pub(crate) fn ambiguous_char(&self) -> AsciiChar {
     self.alphabet.unknown()
   }

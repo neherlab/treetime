@@ -270,8 +270,4 @@ pub struct VarPos {
   pub(crate) state: AsciiChar,
 }
 
-impl VarPos {
-  pub fn new(dis: Array1<f64>, state: AsciiChar) -> Self {
-    Self { dis, state }
-  }
-}
+impl VarPos {}
