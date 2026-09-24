@@ -43,6 +43,7 @@ describe("bridge_web streaming command path", () => {
 
     const received: string[] = [];
     const bridge = createWebBridge({ fetchFn });
+
     const result = await bridge.ancestral(
       { tree: "t", outdir: "o" },
       {

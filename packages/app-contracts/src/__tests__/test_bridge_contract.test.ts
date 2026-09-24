@@ -59,6 +59,7 @@ describe("bridge streaming and cancellation", () => {
 
     const received: ProgressEvent[] = [];
     const bridge = createBridge(stubTransport({ command }));
+
     const result = await bridge.ancestral(
       { tree: "t", outdir: "o" },
       {
