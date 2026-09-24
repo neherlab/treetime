@@ -168,7 +168,9 @@ utoipa-axum = "=0.2.0"
 
 app-commands = { path = "packages/app-commands", default-features = false }
 app-datasets = { path = "packages/app-datasets" }
+app-napi = { path = "packages/app-napi" }
 app-output = { path = "packages/app-output" }
+app-server = { path = "packages/app-server" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-distribution = { path = "packages/treetime-distribution" }

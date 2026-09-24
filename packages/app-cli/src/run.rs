@@ -24,13 +24,16 @@ use app_commands::commands::timetree::args::TreetimeTimetreeArgs;
 use app_commands::commands::timetree::run::run_timetree_estimation;
 use eyre::Report;
 use log::info;
+use std::env;
 use treetime::cancel::NoopCancel;
 use treetime::progress::{NoopProgress, ProgressSink};
+use treetime_utils::init::global::setup_logger;
 use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 pub fn run_cli() -> Result<(), Report> {
-  let args = treetime_parse_cli_args()?;
+  let args = treetime_parse_cli_args(env::args_os())?;
+  setup_logger(args.verbosity.get_filter_level());
 
   info!("# Command line arguments");
   info!("{}", json_write_str(&args, JsonPretty(true))?);
@@ -47,44 +50,47 @@ pub fn run_cli() -> Result<(), Report> {
   }
 
   let progress = make_progress(&args.verbosity)?;
+  run_command(args.command, &*progress)
+}
 
-  match args.command {
+pub(crate) fn run_command(command: TreetimeCommands, progress: &dyn ProgressSink) -> Result<(), Report> {
+  match command {
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
     },
     TreetimeCommands::Timetree(timetree_args) => {
       let timetree_args = TreetimeTimetreeArgs::try_from(*timetree_args)?;
-      run_timetree_estimation(&timetree_args, &NoopCancel, &*progress)?;
+      run_timetree_estimation(&timetree_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
       let optimize_args = TreetimeOptimizeArgs::try_from(optimize_args)?;
-      run_optimize(&optimize_args, &NoopCancel, &*progress)?;
+      run_optimize(&optimize_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Prune(prune_args) => {
       let prune_args = TreetimePruneArgs::try_from(prune_args)?;
-      run_prune(&prune_args, &NoopCancel, &*progress)?;
+      run_prune(&prune_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
       let ancestral_args = TreetimeAncestralArgs::try_from(ancestral_args)?;
-      run_ancestral_reconstruction(&ancestral_args, &NoopCancel, &*progress)?;
+      run_ancestral_reconstruction(&ancestral_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Clock(clock_args) => {
       let clock_args = TreetimeClockArgs::try_from(clock_args)?;
-      let result = run_clock(&clock_args, &NoopCancel, &*progress)?;
+      let result = run_clock(&clock_args, &NoopCancel, progress)?;
       if is_tty() {
         print_clock_regression_chart(&result.regression_results, &result.clock_model)?;
       }
     },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
       let homoplasy_args = TreetimeHomoplasyArgs::try_from(homoplasy_args)?;
-      run_homoplasy(&homoplasy_args, &NoopCancel, &*progress)?;
+      run_homoplasy(&homoplasy_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Mugration(mugration_args) => {
       let mugration_args = TreetimeMugrationArgs::try_from(mugration_args)?;
-      run_mugration(&mugration_args, &NoopCancel, &*progress)?;
+      run_mugration(&mugration_args, &NoopCancel, progress)?;
     },
     TreetimeCommands::Pipeline(pipeline_args) => {
-      run_pipeline_command(&pipeline_args, &*progress)?;
+      run_pipeline_command(&pipeline_args, progress)?;
     },
     TreetimeCommands::Arg(_) => {},
     TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {

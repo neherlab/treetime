@@ -133,8 +133,11 @@ name = "app-cli"
 version = "1.0.0"
 dependencies = [
  "app-commands",
+ "app-napi",
  "app-output",
+ "app-server",
  "approx",
+ "axum",
  "bon",
  "clap",
  "clap-markdown",
@@ -174,6 +177,8 @@ dependencies = [
  "tempfile",
  "textplots",
  "tikv-jemallocator",
+ "tokio",
+ "tower",
  "treetime",
  "treetime-graph",
  "treetime-io",

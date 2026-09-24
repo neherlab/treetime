@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 mod cli;
 pub mod run;
 

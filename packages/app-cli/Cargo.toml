@@ -70,10 +70,15 @@ tikv-jemallocator = { workspace = true }
 "png" = ["app-commands/png"]
 
 [dev-dependencies]
+app-napi = { workspace = true }
+app-server = { workspace = true }
 approx = { workspace = true }
+axum = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
 
 [lints]
 workspace = true

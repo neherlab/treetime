@@ -16,12 +16,12 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::ffi::OsString;
 use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use treetime_utils::init::clap_styles::styles;
-use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;
 
 static SHELLS: LazyLock<Vec<&'static str>> =
@@ -45,15 +45,20 @@ pub(crate) fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   Ok(())
 }
 
-pub(crate) fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
-  let matches = TreetimeArgs::command().get_matches();
-  let mut args = TreetimeArgs::from_arg_matches(&matches)?;
-  setup_logger(args.verbosity.get_filter_level());
+pub(crate) fn treetime_parse_cli_args<I, T>(argv: I) -> Result<TreetimeArgs, Report>
+where
+  I: IntoIterator<Item = T>,
+  T: Into<OsString> + Clone,
+{
+  let matches = TreetimeArgs::command().get_matches_from(argv);
+  let args = TreetimeArgs::from_arg_matches(&matches)?;
+  resolve_args(args, &matches)
+}
 
+fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<TreetimeArgs, Report> {
   if let Some((_, sub_matches)) = matches.subcommand() {
     resolve_command_config(&mut args.command, sub_matches)?;
   }
-
   Ok(args)
 }
 
