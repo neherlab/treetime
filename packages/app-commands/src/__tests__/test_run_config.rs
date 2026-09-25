@@ -13,7 +13,11 @@ mod tests {
       json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"], "output_all": "/elsewhere" }),
     );
     assert_eq!(
-      (json!("valid"), json!(["Nwk", "Auspice", "Tracelog"]), json!("out")),
+      (
+        json!("valid"),
+        json!(["Nwk", "Auspice", "Tracelog", "ClockCsv"]),
+        json!("out")
+      ),
       (
         response["status"].clone(),
         response["config"]["output_selection"].clone(),
@@ -89,7 +93,7 @@ mod tests {
     );
     assert_eq!(
       json!(
-        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog' \\\n  --output-all out"
+        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog,clock-csv' \\\n  --output-all out"
       ),
       response["code"]["command_line_text"]
     );

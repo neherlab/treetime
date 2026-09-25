@@ -2,6 +2,10 @@ use crate::runs::{create_run, parse_id, start_run};
 use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::AppCommand;
+use app_commands::job::JobId;
+use app_commands::results::clades::{CladeRequest, clade_in_runs};
+use app_commands::results::compare::compare_runs;
+use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::manager::{RunManager, StartedRun};
@@ -206,6 +210,61 @@ impl RunService {
   pub fn archive(&self, id: String) -> napi::Result<Buffer> {
     let id = parse_id(&id).map_err(|err| to_napi(&err))?;
     Ok(Buffer::from(self.runs.zip(&id).map_err(|err| to_napi(&err))?))
+  }
+
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn results(&self, id: String) -> napi::Result<AsyncTask<ResultsTask>> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    Ok(self.results_task(ResultsQuery::Results(id)))
+  }
+
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn compare(&self, id: String, other: String) -> napi::Result<AsyncTask<ResultsTask>> {
+    let first = parse_id(&id).map_err(|err| to_napi(&err))?;
+    let second = parse_id(&other).map_err(|err| to_napi(&err))?;
+    Ok(self.results_task(ResultsQuery::Compare(first, second)))
+  }
+
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn clade_in_runs(&self, request_json: String) -> napi::Result<AsyncTask<ResultsTask>> {
+    let request: CladeRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
+    Ok(self.results_task(ResultsQuery::Clade(request)))
+  }
+
+  fn results_task(&self, query: ResultsQuery) -> AsyncTask<ResultsTask> {
+    AsyncTask::new(ResultsTask {
+      runs: Arc::clone(&self.runs),
+      query,
+    })
+  }
+}
+
+pub struct ResultsTask {
+  runs: Arc<RunManager>,
+  query: ResultsQuery,
+}
+
+enum ResultsQuery {
+  Results(JobId),
+  Compare(JobId, JobId),
+  Clade(CladeRequest),
+}
+
+impl Task for ResultsTask {
+  type Output = String;
+  type JsValue = String;
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    let runs = &self.runs;
+    match &self.query {
+      ResultsQuery::Results(id) => to_json(&run_results(runs, id).map_err(|err| to_napi(&err))?),
+      ResultsQuery::Compare(first, second) => to_json(&compare_runs(runs, first, second).map_err(|err| to_napi(&err))?),
+      ResultsQuery::Clade(request) => to_json(&clade_in_runs(runs, request).map_err(|err| to_napi(&err))?),
+    }
+  }
+
+  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
+    Ok(output)
   }
 }
 

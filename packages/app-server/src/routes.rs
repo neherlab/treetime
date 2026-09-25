@@ -7,6 +7,9 @@ use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::AppCommand;
 use app_commands::job::JobId;
+use app_commands::results::clades::{CladeRequest, clade_in_runs};
+use app_commands::results::compare::compare_runs;
+use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::invalid;
 use app_commands::runs::record::{CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
@@ -111,6 +114,9 @@ fn api_router() -> OpenApiRouter<Arc<AppState>> {
     .routes(routes!(handle_run_files))
     .routes(routes!(handle_run_file))
     .routes(routes!(handle_run_archive))
+    .routes(routes!(handle_run_results))
+    .routes(routes!(handle_compare_runs))
+    .routes(routes!(handle_clade_in_runs))
     .merge(uploads)
 }
 
@@ -266,6 +272,27 @@ fn operations() -> Vec<Operation> {
       bridge_type: "file",
       request: None,
       response: Some(("application/zip", json!({ "type": "string", "format": "binary" }))),
+    },
+    Operation {
+      path: "/api/runs/{id}/results",
+      method: "get",
+      bridge_type: "query",
+      request: None,
+      response: json_body("RunResults"),
+    },
+    Operation {
+      path: "/api/runs/{id}/compare/{other}",
+      method: "get",
+      bridge_type: "query",
+      request: None,
+      response: json_body("RunComparison"),
+    },
+    Operation {
+      path: "/api/clade-in-runs",
+      method: "post",
+      bridge_type: "request",
+      request: json_body("CladeRequest"),
+      response: json_body("CladeInRuns"),
     },
   ]
 }
@@ -662,6 +689,63 @@ fn start_run(state: &Arc<AppState>, id: &JobId, config: Option<Value>) -> Result
     }
   }));
   Ok(record)
+}
+
+#[utoipa::path(
+  get,
+  path = "/api/runs/{id}/results",
+  operation_id = "runsResults",
+  params(("id" = String, Path, description = "Id of a finished run")),
+  responses(
+    (status = 200, description = "Results of the run, read from its output files"),
+    (status = 409, description = "The run has not finished successfully", body = ErrorResponse),
+  )
+)]
+async fn handle_run_results(
+  State(state): State<Arc<AppState>>,
+  Path(id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+  let id = run_id(&id)?;
+  let runs = Arc::clone(&state.runs);
+  let results = tokio::task::spawn_blocking(move || run_results(&runs, &id)).await??;
+  Ok(Json(serde_json::to_value(results)?))
+}
+
+#[utoipa::path(
+  get,
+  path = "/api/runs/{id}/compare/{other}",
+  operation_id = "runsCompare",
+  params(
+    ("id" = String, Path, description = "Id of the first run"),
+    ("other" = String, Path, description = "Id of the second run"),
+  ),
+  responses((status = 200, description = "Differences of the second run's results from the first run's"))
+)]
+async fn handle_compare_runs(
+  State(state): State<Arc<AppState>>,
+  Path((id, other)): Path<(String, String)>,
+) -> Result<Json<Value>, AppError> {
+  let first = run_id(&id)?;
+  let second = run_id(&other)?;
+  let runs = Arc::clone(&state.runs);
+  let comparison = tokio::task::spawn_blocking(move || compare_runs(&runs, &first, &second)).await??;
+  Ok(Json(serde_json::to_value(comparison)?))
+}
+
+#[utoipa::path(
+  post,
+  path = "/api/clade-in-runs",
+  operation_id = "cladeInRuns",
+  responses((status = 200, description = "Nodes of the other finished time-tree runs with the same set of samples below them"))
+)]
+async fn handle_clade_in_runs(
+  State(state): State<Arc<AppState>>,
+  Json(body): Json<Value>,
+) -> Result<Json<Value>, AppError> {
+  let request: CladeRequest = serde_json::from_value(body)?;
+  let runs = Arc::clone(&state.runs);
+  let found = tokio::task::spawn_blocking(move || clade_in_runs(&runs, &request)).await??;
+  Ok(Json(serde_json::to_value(found)?))
 }
 
 fn run_id(id: &str) -> Result<JobId, Report> {

@@ -13,6 +13,9 @@ export declare class RunService {
   files(id: string): string
   readFile(id: string, path: string): Buffer
   archive(id: string): Buffer
+  results(id: string): Promise<string>
+  compare(id: string, other: string): Promise<string>
+  cladeInRuns(requestJson: string): Promise<string>
 }
 
 export declare function checkConfigJson(requestJson: string): string

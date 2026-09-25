@@ -69,6 +69,34 @@
         "x-bridge-type": "request"
       }
     },
+    "/api/clade-in-runs": {
+      "post": {
+        "operationId": "cladeInRuns",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CladeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nodes of the other finished time-tree runs with the same set of samples below them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CladeInRuns"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "request"
+      }
+    },
     "/api/datasets": {
       "get": {
         "operationId": "datasets",
@@ -304,6 +332,44 @@
         "x-bridge-type": "request"
       }
     },
+    "/api/runs/{id}/compare/{other}": {
+      "get": {
+        "operationId": "runsCompare",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the first run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "other",
+            "in": "path",
+            "description": "Id of the second run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Differences of the second run's results from the first run's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunComparison"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
+      }
+    },
     "/api/runs/{id}/events": {
       "get": {
         "operationId": "runsEvents",
@@ -522,6 +588,45 @@
           }
         },
         "x-bridge-type": "request"
+      }
+    },
+    "/api/runs/{id}/results": {
+      "get": {
+        "operationId": "runsResults",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of a finished run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Results of the run, read from its output files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResults"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run has not finished successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
       }
     },
     "/api/runs/{id}/start": {
@@ -5754,6 +5859,1476 @@
           }
         ],
         "description": "A setting whose value differs between two runs."
+      },
+      "ResultTree": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultNode"
+            },
+            "description": "Nodes in preorder; the root comes first and every parent precedes its children."
+          },
+          "colorings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultColoring"
+            },
+            "description": "Colorings the Auspice file offers."
+          },
+          "default_color_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Coloring the Auspice file selects by default."
+          }
+        },
+        "required": [
+          "nodes",
+          "colorings"
+        ],
+        "description": "A tree a run wrote, read from its Auspice file."
+      },
+      "ResultNode": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the node."
+          },
+          "parent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "description": "Index of the parent node; absent for the root."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "description": "Indices of the child nodes."
+          },
+          "tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples below the node, 1 for a sample."
+          },
+          "div": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Divergence from the root."
+          },
+          "date": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Date of the node, as a decimal year."
+          },
+          "date_interval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateInterval"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Confidence interval of the date; absent when the run computed none or the interval is empty."
+          },
+          "excluded": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether the clock model left the sample out, because it had no usable date or was a clock outlier."
+          },
+          "mutations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Nucleotide mutations on the branch above the node."
+          }
+        },
+        "required": [
+          "name",
+          "children",
+          "tips",
+          "mutations"
+        ],
+        "description": "One node of a result tree."
+      },
+      "DateInterval": {
+        "type": "object",
+        "properties": {
+          "lower": {
+            "type": "number",
+            "format": "double",
+            "description": "Earliest date."
+          },
+          "upper": {
+            "type": "number",
+            "format": "double",
+            "description": "Latest date."
+          },
+          "days": {
+            "type": "number",
+            "format": "double",
+            "description": "Width of the interval in days."
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "days"
+        ],
+        "description": "Interval of dates, as decimal years."
+      },
+      "ResultColoring": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Node attribute the coloring reads."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the coloring."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Kind of scale, for example `categorical` or `continuous`."
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Distinct states of a categorical coloring, sorted; empty for other kinds."
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "kind",
+          "states"
+        ],
+        "description": "A coloring of the Auspice tree."
+      },
+      "CommandResults": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "timetree"
+              },
+              "data": {
+                "$ref": "#/components/schemas/TimetreeResults"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "clock"
+              },
+              "data": {
+                "$ref": "#/components/schemas/ClockResults"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "ancestral"
+              },
+              "data": {
+                "$ref": "#/components/schemas/AncestralResults"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "mugration"
+              },
+              "data": {
+                "$ref": "#/components/schemas/MugrationResults"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "optimize"
+              },
+              "data": {
+                "$ref": "#/components/schemas/TreeSummary"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "prune"
+              },
+              "data": {
+                "$ref": "#/components/schemas/TreeSummary"
+              }
+            },
+            "required": [
+              "command",
+              "data"
+            ]
+          }
+        ],
+        "description": "Results specific to the command of a run."
+      },
+      "TimetreeResults": {
+        "type": "object",
+        "properties": {
+          "estimates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TimetreeEstimates"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estimates of the time tree; absent when the run wrote no Auspice tree."
+          },
+          "root_to_tip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootToTip"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Samples and line of the final clock model; absent when the run wrote no clock regression table."
+          },
+          "iterations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IterationRow"
+            },
+            "description": "Convergence values of every iteration, from the tracelog."
+          },
+          "skyline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkylineSegment"
+            },
+            "description": "Segments of the coalescent time scale, from the coalescent table."
+          }
+        },
+        "required": [
+          "iterations",
+          "skyline"
+        ],
+        "description": "Results of a `timetree` run."
+      },
+      "TimetreeEstimates": {
+        "type": "object",
+        "properties": {
+          "root_date": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Date of the root, as a decimal year."
+          },
+          "root_interval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateInterval"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Confidence interval of the root date."
+          },
+          "root_near_interval_edge": {
+            "type": "boolean",
+            "description": "Whether the root date lies within 5% of the interval width from a bound of its interval."
+          },
+          "clock_rate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Clock rate in substitutions per site per year."
+          },
+          "clock_rate_std": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate."
+          },
+          "clock_rate_fixed": {
+            "type": "boolean",
+            "description": "Whether the clock rate was fixed by the user instead of estimated."
+          },
+          "r": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Correlation coefficient of the final clock model; absent for a fixed rate."
+          },
+          "r_squared": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Coefficient of determination of the final clock model."
+          },
+          "samples": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples in the tree."
+          },
+          "excluded_samples": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples the clock model left out: without a usable date or clock outliers."
+          },
+          "coalescent_prior": {
+            "$ref": "#/components/schemas/CoalescentPrior",
+            "description": "Coalescent prior the run used."
+          },
+          "relaxed_clock": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelaxedClock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relaxed clock the run used."
+          },
+          "log_likelihood": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total log likelihood of the last iteration."
+          },
+          "iterations": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of iterations the tracelog records."
+          }
+        },
+        "required": [
+          "root_near_interval_edge",
+          "clock_rate_fixed",
+          "samples",
+          "excluded_samples",
+          "coalescent_prior",
+          "iterations"
+        ],
+        "description": "Estimates of a `timetree` run."
+      },
+      "CoalescentPrior": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "description": "No coalescent prior."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tc": {
+                "type": "number",
+                "format": "double",
+                "description": "Coalescent time scale in years."
+              },
+              "kind": {
+                "type": "string",
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "kind",
+              "tc"
+            ],
+            "description": "Constant population size with a fixed time scale."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "optimized"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "description": "Constant population size with an optimized time scale."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "points": {
+                "type": "integer",
+                "format": "uint",
+                "minimum": 0,
+                "description": "Number of grid points."
+              },
+              "stiffness": {
+                "type": "number",
+                "format": "double",
+                "description": "Stiffness of the skyline."
+              },
+              "kind": {
+                "type": "string",
+                "const": "skyline"
+              }
+            },
+            "required": [
+              "kind",
+              "points",
+              "stiffness"
+            ],
+            "description": "Piecewise-constant population size."
+          }
+        ],
+        "description": "Coalescent prior of a `timetree` run."
+      },
+      "RelaxedClock": {
+        "type": "object",
+        "properties": {
+          "slack": {
+            "type": "number",
+            "format": "double",
+            "description": "Slack: how far the rate of a branch may vary."
+          },
+          "coupling": {
+            "type": "number",
+            "format": "double",
+            "description": "Coupling: how strongly the rates of parent and child branches are tied."
+          }
+        },
+        "required": [
+          "slack",
+          "coupling"
+        ],
+        "description": "Parameters of a relaxed clock."
+      },
+      "RootToTip": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RootToTipPoint"
+            },
+            "description": "Samples as the regression saw them."
+          },
+          "line": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClockLine"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Line of the clock model; absent when the run wrote no clock model."
+          }
+        },
+        "required": [
+          "points"
+        ],
+        "description": "The points and line of a root-to-tip regression, as TreeTime fitted it."
+      },
+      "RootToTipPoint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the sample."
+          },
+          "date": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Date the regression used, as a decimal year."
+          },
+          "date_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClockDateSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the date came from; absent when the table does not say."
+          },
+          "div": {
+            "type": "number",
+            "format": "double",
+            "description": "Root-to-tip divergence the regression used."
+          },
+          "predicted_date": {
+            "type": "number",
+            "format": "double",
+            "description": "Date the clock model predicts from the divergence."
+          },
+          "residual_days": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Sampling date minus the predicted date, in days."
+          },
+          "outlier": {
+            "type": "boolean",
+            "description": "Whether the clock filter flagged the sample as an outlier."
+          }
+        },
+        "required": [
+          "name",
+          "div",
+          "predicted_date",
+          "outlier"
+        ],
+        "description": "One sample of a root-to-tip regression."
+      },
+      "ClockDateSource": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "input",
+            "description": "The sampling date given in the input."
+          },
+          {
+            "type": "string",
+            "const": "inferred",
+            "description": "The date the time tree inferred for a sample without an input date."
+          },
+          {
+            "type": "string",
+            "const": "missing",
+            "description": "No date; the sample did not enter the regression."
+          }
+        ],
+        "description": "Where the date a clock regression used for a sample came from."
+      },
+      "ClockLine": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number",
+            "format": "double",
+            "description": "Clock rate in substitutions per site per year."
+          },
+          "intercept": {
+            "type": "number",
+            "format": "double",
+            "description": "Divergence at year 0."
+          }
+        },
+        "required": [
+          "rate",
+          "intercept"
+        ],
+        "description": "Line of a clock model: divergence = rate * date + intercept."
+      },
+      "IterationRow": {
+        "type": "object",
+        "properties": {
+          "iteration": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Iteration number, from 0."
+          },
+          "max_time_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Largest change of a node time, in years."
+          },
+          "rms_time_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Root-mean-square change of the node times, in years."
+          },
+          "log_lh_seq": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the sequences."
+          },
+          "log_lh_pos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the node positions."
+          },
+          "log_lh_coal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the coalescent prior."
+          },
+          "log_lh_total": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total log likelihood."
+          }
+        },
+        "required": [
+          "iteration"
+        ],
+        "description": "Convergence values of one iteration."
+      },
+      "SkylineSegment": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "format": "double",
+            "description": "Start of the segment, as a decimal year."
+          },
+          "end": {
+            "type": "number",
+            "format": "double",
+            "description": "End of the segment, as a decimal year."
+          },
+          "tc": {
+            "$ref": "#/components/schemas/Band",
+            "description": "Coalescent time scale in years."
+          },
+          "ne": {
+            "$ref": "#/components/schemas/Band",
+            "description": "Effective population size."
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "tc",
+          "ne"
+        ],
+        "description": "One segment of the coalescent time scale."
+      },
+      "Band": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "format": "double",
+            "description": "Point estimate."
+          },
+          "lower": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Lower bound of the band."
+          },
+          "upper": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Upper bound of the band."
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "description": "An estimate with an optional confidence band."
+      },
+      "ClockResults": {
+        "type": "object",
+        "properties": {
+          "estimates": {
+            "$ref": "#/components/schemas/ClockEstimates",
+            "description": "Estimates of the clock model."
+          },
+          "root_to_tip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootToTip"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table."
+          }
+        },
+        "required": [
+          "estimates"
+        ],
+        "description": "Results of a `clock` run."
+      },
+      "ClockEstimates": {
+        "type": "object",
+        "properties": {
+          "clock_rate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Clock rate in substitutions per site per year; absent when the run wrote no clock model."
+          },
+          "clock_rate_fixed": {
+            "type": "boolean",
+            "description": "Whether the clock rate was fixed by the user instead of estimated."
+          },
+          "r": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Correlation coefficient of the root-to-tip regression; absent for a fixed rate."
+          },
+          "r_squared": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Coefficient of determination of the root-to-tip regression."
+          },
+          "dated_samples": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples with a date."
+          },
+          "outliers": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of dated samples the clock filter flagged as outliers."
+          }
+        },
+        "required": [
+          "clock_rate_fixed",
+          "dated_samples",
+          "outliers"
+        ],
+        "description": "Estimates of a `clock` run."
+      },
+      "AncestralResults": {
+        "type": "object",
+        "properties": {
+          "mutations": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of nucleotide mutations on all branches."
+          },
+          "branches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BranchMutations"
+            },
+            "description": "Branches with at least one mutation, most mutations first."
+          },
+          "recurrent_sites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurrentSite"
+            },
+            "description": "Sequence positions that mutate on more than one branch, most branches first."
+          }
+        },
+        "required": [
+          "mutations",
+          "branches",
+          "recurrent_sites"
+        ],
+        "description": "Results of an `ancestral` run."
+      },
+      "BranchMutations": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the node below the branch."
+          },
+          "tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples below the branch."
+          },
+          "mutations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Mutations on the branch."
+          }
+        },
+        "required": [
+          "name",
+          "tips",
+          "mutations"
+        ],
+        "description": "Mutations on the branch above one node."
+      },
+      "RecurrentSite": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Position in the sequence, from 1."
+          },
+          "branches": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of branches with a mutation at the position."
+          }
+        },
+        "required": [
+          "position",
+          "branches"
+        ],
+        "description": "A sequence position that mutates on several branches."
+      },
+      "MugrationResults": {
+        "type": "object",
+        "properties": {
+          "attribute": {
+            "type": "string",
+            "description": "The reconstructed attribute."
+          },
+          "states": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of distinct states among the samples."
+          },
+          "state_changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateChange"
+            },
+            "description": "Changes of state from parent to child, counted over branches, most frequent first."
+          },
+          "changed_branches": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of branches whose state differs from the parent's."
+          },
+          "uncertain_below": {
+            "type": "number",
+            "format": "double",
+            "description": "Probability below which an ancestor's most probable state counts as uncertain."
+          },
+          "uncertain_ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AncestorState"
+            },
+            "description": "Ancestors whose most probable state is uncertain, least certain first."
+          },
+          "root": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AncestorState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Most probable state of the root."
+          }
+        },
+        "required": [
+          "attribute",
+          "states",
+          "state_changes",
+          "changed_branches",
+          "uncertain_below",
+          "uncertain_ancestors"
+        ],
+        "description": "Results of a `mugration` run."
+      },
+      "StateChange": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "State of the parent."
+          },
+          "to": {
+            "type": "string",
+            "description": "State of the child."
+          },
+          "branches": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of branches with this change."
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "branches"
+        ],
+        "description": "A change of state along branches."
+      },
+      "AncestorState": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the ancestor."
+          },
+          "tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples below the ancestor."
+          },
+          "state": {
+            "type": "string",
+            "description": "Most probable state."
+          },
+          "probability": {
+            "type": "number",
+            "format": "double",
+            "description": "Probability of the state."
+          }
+        },
+        "required": [
+          "name",
+          "tips",
+          "state",
+          "probability"
+        ],
+        "description": "Most probable state of an ancestor."
+      },
+      "TreeSummary": {
+        "type": "object",
+        "properties": {
+          "samples": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples."
+          },
+          "internal_nodes": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of internal nodes."
+          },
+          "mutations": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of nucleotide mutations on all branches."
+          },
+          "total_branch_length": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Sum of the branch lengths in the node data file."
+          },
+          "substitution_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubstitutionModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Substitution model the run fitted."
+          }
+        },
+        "required": [
+          "samples",
+          "internal_nodes",
+          "mutations"
+        ],
+        "description": "Summary of a tree an `optimize` or `prune` run wrote."
+      },
+      "SubstitutionModel": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the model."
+          },
+          "mu": {
+            "type": "number",
+            "format": "double",
+            "description": "Overall substitution rate."
+          }
+        },
+        "required": [
+          "name",
+          "mu"
+        ],
+        "description": "A fitted substitution model."
+      },
+      "Citation": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Reference in text form."
+          },
+          "doi": {
+            "type": "string",
+            "description": "Link to the publication."
+          }
+        },
+        "required": [
+          "text",
+          "doi"
+        ],
+        "description": "The publication to cite for TreeTime."
+      },
+      "OutputProblem": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path of the file relative to the run's `out/` folder."
+          },
+          "message": {
+            "type": "string",
+            "description": "Why the file could not be read."
+          }
+        },
+        "required": [
+          "path",
+          "message"
+        ],
+        "description": "An output file of a run that could not be read."
+      },
+      "RunResults": {
+        "type": "object",
+        "properties": {
+          "tree": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultTree"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tree of the run's Auspice file; absent when the run wrote none."
+          },
+          "results": {
+            "$ref": "#/components/schemas/CommandResults",
+            "description": "Results specific to the command of the run."
+          },
+          "methods": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Paragraph describing the analysis, for a methods section."
+          },
+          "citation": {
+            "$ref": "#/components/schemas/Citation",
+            "description": "The publication to cite."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputProblem"
+            },
+            "description": "Output files that could not be read."
+          }
+        },
+        "required": [
+          "results",
+          "citation",
+          "problems"
+        ],
+        "description": "Results of a finished run, read from its output files."
+      },
+      "EstimateComparison": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "$ref": "#/components/schemas/TimetreeEstimates",
+            "description": "Estimates of the first run."
+          },
+          "second": {
+            "$ref": "#/components/schemas/TimetreeEstimates",
+            "description": "Estimates of the second run."
+          },
+          "root_shift_days": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Shift of the root date, in days."
+          },
+          "root_interval_change_days": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Change of the width of the root-date interval, in days."
+          },
+          "clock_rate_change_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Change of the clock rate, in percent of the first rate."
+          },
+          "excluded_samples_change": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Change of the number of samples the clock model left out."
+          },
+          "log_likelihood_change": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Change of the total log likelihood; absent when either value is missing or not finite."
+          }
+        },
+        "required": [
+          "first",
+          "second",
+          "excluded_samples_change"
+        ],
+        "description": "Estimates of two time-tree runs and their differences, second minus first."
+      },
+      "AncestorComparison": {
+        "type": "object",
+        "properties": {
+          "shifts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AncestorShift"
+            },
+            "description": "Ancestors dated in both trees, with the shift of their date."
+          },
+          "ancestors": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of ancestors in the first tree."
+          },
+          "mean_absolute_shift_days": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Mean absolute shift, in days."
+          }
+        },
+        "required": [
+          "shifts",
+          "ancestors"
+        ],
+        "description": "Date shifts of the ancestors two trees share, matched by their set of samples."
+      },
+      "AncestorShift": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the ancestor in the first tree."
+          },
+          "tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of samples below the ancestor."
+          },
+          "date_first": {
+            "type": "number",
+            "format": "double",
+            "description": "Date in the first tree, as a decimal year."
+          },
+          "shift_days": {
+            "type": "number",
+            "format": "double",
+            "description": "Date in the second tree minus the date in the first, in days."
+          }
+        },
+        "required": [
+          "name",
+          "tips",
+          "date_first",
+          "shift_days"
+        ],
+        "description": "Date shift of one ancestor between two trees."
+      },
+      "RunComparison": {
+        "type": "object",
+        "properties": {
+          "estimates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EstimateComparison"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estimates side by side; present when both runs are finished time-tree runs with a tree."
+          },
+          "ancestors": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AncestorComparison"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree."
+          }
+        },
+        "description": "Comparison of the results of two runs."
+      },
+      "CladeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/JobId",
+            "description": "Run whose tree holds the clade."
+          },
+          "node": {
+            "type": "string",
+            "description": "Name of the node at the top of the clade."
+          }
+        },
+        "required": [
+          "run",
+          "node"
+        ],
+        "description": "Request to find a clade of one run in the other time-tree runs."
+      },
+      "CladeMatch": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/JobId",
+            "description": "Id of the run."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the run."
+          },
+          "node": {
+            "type": "string",
+            "description": "Name of the node in that run."
+          },
+          "date": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Date of the node, as a decimal year."
+          },
+          "date_interval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateInterval"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Confidence interval of the date."
+          }
+        },
+        "required": [
+          "run",
+          "title",
+          "node"
+        ],
+        "description": "The node of another run with the same set of samples below it."
+      },
+      "UnreadableRun": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/JobId",
+            "description": "Id of the run."
+          },
+          "message": {
+            "type": "string",
+            "description": "Why the tree could not be read."
+          }
+        },
+        "required": [
+          "run",
+          "message"
+        ],
+        "description": "A run whose tree could not be read."
+      },
+      "CladeInRuns": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CladeMatch"
+            },
+            "description": "Runs whose tree has a node with the same set of samples below it."
+          },
+          "searched_runs": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of other finished time-tree runs searched."
+          },
+          "unreadable_runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnreadableRun"
+            },
+            "description": "Runs whose tree could not be read, with the reason."
+          }
+        },
+        "required": [
+          "matches",
+          "searched_runs",
+          "unreadable_runs"
+        ],
+        "description": "A clade of one run found in the other finished time-tree runs."
       }
     }
   },

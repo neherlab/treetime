@@ -1329,3 +1329,405 @@ export const zSettingDifference = z.union([
         kind: z.literal('input')
     })
 ]);
+
+/**
+ * Interval of dates, as decimal years.
+ */
+export const zDateInterval = z.object({
+    lower: z.number(),
+    upper: z.number(),
+    days: z.number()
+});
+
+/**
+ * One node of a result tree.
+ */
+export const zResultNode = z.object({
+    name: z.string(),
+    parent: z.int().gte(0).nullish(),
+    children: z.array(z.int().gte(0)),
+    tips: z.int().gte(0),
+    div: z.number().nullish(),
+    date: z.number().nullish(),
+    date_interval: zDateInterval.nullish(),
+    excluded: z.boolean().nullish(),
+    mutations: z.array(z.string())
+});
+
+/**
+ * A coloring of the Auspice tree.
+ */
+export const zResultColoring = z.object({
+    key: z.string(),
+    title: z.string(),
+    kind: z.string(),
+    states: z.array(z.string())
+});
+
+/**
+ * A tree a run wrote, read from its Auspice file.
+ */
+export const zResultTree = z.object({
+    nodes: z.array(zResultNode),
+    colorings: z.array(zResultColoring),
+    default_color_by: z.string().nullish()
+});
+
+/**
+ * Coalescent prior of a `timetree` run.
+ */
+export const zCoalescentPrior = z.union([
+    z.object({
+        kind: z.literal('none')
+    }),
+    z.object({
+        tc: z.number(),
+        kind: z.literal('fixed')
+    }),
+    z.object({
+        kind: z.literal('optimized')
+    }),
+    z.object({
+        points: z.int().gte(0),
+        stiffness: z.number(),
+        kind: z.literal('skyline')
+    })
+]);
+
+/**
+ * Parameters of a relaxed clock.
+ */
+export const zRelaxedClock = z.object({
+    slack: z.number(),
+    coupling: z.number()
+});
+
+/**
+ * Estimates of a `timetree` run.
+ */
+export const zTimetreeEstimates = z.object({
+    root_date: z.number().nullish(),
+    root_interval: zDateInterval.nullish(),
+    root_near_interval_edge: z.boolean(),
+    clock_rate: z.number().nullish(),
+    clock_rate_std: z.number().nullish(),
+    clock_rate_fixed: z.boolean(),
+    r: z.number().nullish(),
+    r_squared: z.number().nullish(),
+    samples: z.int().gte(0),
+    excluded_samples: z.int().gte(0),
+    coalescent_prior: zCoalescentPrior,
+    relaxed_clock: zRelaxedClock.nullish(),
+    log_likelihood: zJsonFloat.nullish(),
+    iterations: z.int().gte(0)
+});
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export const zClockDateSource = z.union([
+    z.literal('input'),
+    z.literal('inferred'),
+    z.literal('missing')
+]);
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export const zRootToTipPoint = z.object({
+    name: z.string(),
+    date: z.number().nullish(),
+    date_source: zClockDateSource.nullish(),
+    div: z.number(),
+    predicted_date: z.number(),
+    residual_days: z.number().nullish(),
+    outlier: z.boolean()
+});
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export const zClockLine = z.object({
+    rate: z.number(),
+    intercept: z.number()
+});
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export const zRootToTip = z.object({
+    points: z.array(zRootToTipPoint),
+    line: zClockLine.nullish()
+});
+
+/**
+ * Convergence values of one iteration.
+ */
+export const zIterationRow = z.object({
+    iteration: z.int().gte(0),
+    max_time_change: zJsonFloat.nullish(),
+    rms_time_change: zJsonFloat.nullish(),
+    log_lh_seq: zJsonFloat.nullish(),
+    log_lh_pos: zJsonFloat.nullish(),
+    log_lh_coal: zJsonFloat.nullish(),
+    log_lh_total: zJsonFloat.nullish()
+});
+
+/**
+ * An estimate with an optional confidence band.
+ */
+export const zBand = z.object({
+    value: z.number(),
+    lower: z.number().nullish(),
+    upper: z.number().nullish()
+});
+
+/**
+ * One segment of the coalescent time scale.
+ */
+export const zSkylineSegment = z.object({
+    start: z.number(),
+    end: z.number(),
+    tc: zBand,
+    ne: zBand
+});
+
+/**
+ * Results of a `timetree` run.
+ */
+export const zTimetreeResults = z.object({
+    estimates: zTimetreeEstimates.nullish(),
+    root_to_tip: zRootToTip.nullish(),
+    iterations: z.array(zIterationRow),
+    skyline: z.array(zSkylineSegment)
+});
+
+/**
+ * Estimates of a `clock` run.
+ */
+export const zClockEstimates = z.object({
+    clock_rate: z.number().nullish(),
+    clock_rate_fixed: z.boolean(),
+    r: z.number().nullish(),
+    r_squared: z.number().nullish(),
+    dated_samples: z.int().gte(0),
+    outliers: z.int().gte(0)
+});
+
+/**
+ * Results of a `clock` run.
+ */
+export const zClockResults = z.object({
+    estimates: zClockEstimates,
+    root_to_tip: zRootToTip.nullish()
+});
+
+/**
+ * Mutations on the branch above one node.
+ */
+export const zBranchMutations = z.object({
+    name: z.string(),
+    tips: z.int().gte(0),
+    mutations: z.array(z.string())
+});
+
+/**
+ * A sequence position that mutates on several branches.
+ */
+export const zRecurrentSite = z.object({
+    position: z.int().gte(0),
+    branches: z.int().gte(0)
+});
+
+/**
+ * Results of an `ancestral` run.
+ */
+export const zAncestralResults = z.object({
+    mutations: z.int().gte(0),
+    branches: z.array(zBranchMutations),
+    recurrent_sites: z.array(zRecurrentSite)
+});
+
+/**
+ * A change of state along branches.
+ */
+export const zStateChange = z.object({
+    from: z.string(),
+    to: z.string(),
+    branches: z.int().gte(0)
+});
+
+/**
+ * Most probable state of an ancestor.
+ */
+export const zAncestorState = z.object({
+    name: z.string(),
+    tips: z.int().gte(0),
+    state: z.string(),
+    probability: z.number()
+});
+
+/**
+ * Results of a `mugration` run.
+ */
+export const zMugrationResults = z.object({
+    attribute: z.string(),
+    states: z.int().gte(0),
+    state_changes: z.array(zStateChange),
+    changed_branches: z.int().gte(0),
+    uncertain_below: z.number(),
+    uncertain_ancestors: z.array(zAncestorState),
+    root: zAncestorState.nullish()
+});
+
+/**
+ * A fitted substitution model.
+ */
+export const zSubstitutionModel = z.object({
+    name: z.string(),
+    mu: z.number()
+});
+
+/**
+ * Summary of a tree an `optimize` or `prune` run wrote.
+ */
+export const zTreeSummary = z.object({
+    samples: z.int().gte(0),
+    internal_nodes: z.int().gte(0),
+    mutations: z.int().gte(0),
+    total_branch_length: z.number().nullish(),
+    substitution_model: zSubstitutionModel.nullish()
+});
+
+/**
+ * Results specific to the command of a run.
+ */
+export const zCommandResults = z.union([
+    z.object({
+        command: z.literal('timetree'),
+        data: zTimetreeResults
+    }),
+    z.object({
+        command: z.literal('clock'),
+        data: zClockResults
+    }),
+    z.object({
+        command: z.literal('ancestral'),
+        data: zAncestralResults
+    }),
+    z.object({
+        command: z.literal('mugration'),
+        data: zMugrationResults
+    }),
+    z.object({
+        command: z.literal('optimize'),
+        data: zTreeSummary
+    }),
+    z.object({
+        command: z.literal('prune'),
+        data: zTreeSummary
+    })
+]);
+
+/**
+ * The publication to cite for TreeTime.
+ */
+export const zCitation = z.object({
+    text: z.string(),
+    doi: z.string()
+});
+
+/**
+ * An output file of a run that could not be read.
+ */
+export const zOutputProblem = z.object({
+    path: z.string(),
+    message: z.string()
+});
+
+/**
+ * Results of a finished run, read from its output files.
+ */
+export const zRunResults = z.object({
+    tree: zResultTree.nullish(),
+    results: zCommandResults,
+    methods: z.string().nullish(),
+    citation: zCitation,
+    problems: z.array(zOutputProblem)
+});
+
+/**
+ * Estimates of two time-tree runs and their differences, second minus first.
+ */
+export const zEstimateComparison = z.object({
+    first: zTimetreeEstimates,
+    second: zTimetreeEstimates,
+    root_shift_days: z.number().nullish(),
+    root_interval_change_days: z.number().nullish(),
+    clock_rate_change_percent: z.number().nullish(),
+    excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
+    log_likelihood_change: z.number().nullish()
+});
+
+/**
+ * Date shift of one ancestor between two trees.
+ */
+export const zAncestorShift = z.object({
+    name: z.string(),
+    tips: z.int().gte(0),
+    date_first: z.number(),
+    shift_days: z.number()
+});
+
+/**
+ * Date shifts of the ancestors two trees share, matched by their set of samples.
+ */
+export const zAncestorComparison = z.object({
+    shifts: z.array(zAncestorShift),
+    ancestors: z.int().gte(0),
+    mean_absolute_shift_days: z.number().nullish()
+});
+
+/**
+ * Comparison of the results of two runs.
+ */
+export const zRunComparison = z.object({
+    estimates: zEstimateComparison.nullish(),
+    ancestors: zAncestorComparison.nullish()
+});
+
+/**
+ * Request to find a clade of one run in the other time-tree runs.
+ */
+export const zCladeRequest = z.object({
+    run: zJobId,
+    node: z.string()
+});
+
+/**
+ * The node of another run with the same set of samples below it.
+ */
+export const zCladeMatch = z.object({
+    run: zJobId,
+    title: z.string(),
+    node: z.string(),
+    date: z.number().nullish(),
+    date_interval: zDateInterval.nullish()
+});
+
+/**
+ * A run whose tree could not be read.
+ */
+export const zUnreadableRun = z.object({
+    run: zJobId,
+    message: z.string()
+});
+
+/**
+ * A clade of one run found in the other finished time-tree runs.
+ */
+export const zCladeInRuns = z.object({
+    matches: z.array(zCladeMatch),
+    searched_runs: z.int().gte(0),
+    unreadable_runs: z.array(zUnreadableRun)
+});

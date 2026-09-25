@@ -3202,6 +3202,815 @@ export type SettingDifference = {
     kind: 'input';
 };
 
+/**
+ * A tree a run wrote, read from its Auspice file.
+ */
+export type ResultTree = {
+    /**
+     * Nodes in preorder; the root comes first and every parent precedes its children.
+     */
+    nodes: Array<ResultNode>;
+    /**
+     * Colorings the Auspice file offers.
+     */
+    colorings: Array<ResultColoring>;
+    /**
+     * Coloring the Auspice file selects by default.
+     */
+    default_color_by?: string | null;
+};
+
+/**
+ * One node of a result tree.
+ */
+export type ResultNode = {
+    /**
+     * Name of the node.
+     */
+    name: string;
+    /**
+     * Index of the parent node; absent for the root.
+     */
+    parent?: number | null;
+    /**
+     * Indices of the child nodes.
+     */
+    children: Array<number>;
+    /**
+     * Number of samples below the node, 1 for a sample.
+     */
+    tips: number;
+    /**
+     * Divergence from the root.
+     */
+    div?: number | null;
+    /**
+     * Date of the node, as a decimal year.
+     */
+    date?: number | null;
+    /**
+     * Confidence interval of the date; absent when the run computed none or the interval is empty.
+     */
+    date_interval?: DateInterval | null;
+    /**
+     * Whether the clock model left the sample out, because it had no usable date or was a clock outlier.
+     */
+    excluded?: boolean | null;
+    /**
+     * Nucleotide mutations on the branch above the node.
+     */
+    mutations: Array<string>;
+};
+
+/**
+ * Interval of dates, as decimal years.
+ */
+export type DateInterval = {
+    /**
+     * Earliest date.
+     */
+    lower: number;
+    /**
+     * Latest date.
+     */
+    upper: number;
+    /**
+     * Width of the interval in days.
+     */
+    days: number;
+};
+
+/**
+ * A coloring of the Auspice tree.
+ */
+export type ResultColoring = {
+    /**
+     * Node attribute the coloring reads.
+     */
+    key: string;
+    /**
+     * Title of the coloring.
+     */
+    title: string;
+    /**
+     * Kind of scale, for example `categorical` or `continuous`.
+     */
+    kind: string;
+    /**
+     * Distinct states of a categorical coloring, sorted; empty for other kinds.
+     */
+    states: Array<string>;
+};
+
+/**
+ * Results specific to the command of a run.
+ */
+export type CommandResults = {
+    command: 'timetree';
+    data: TimetreeResults;
+} | {
+    command: 'clock';
+    data: ClockResults;
+} | {
+    command: 'ancestral';
+    data: AncestralResults;
+} | {
+    command: 'mugration';
+    data: MugrationResults;
+} | {
+    command: 'optimize';
+    data: TreeSummary;
+} | {
+    command: 'prune';
+    data: TreeSummary;
+};
+
+/**
+ * Results of a `timetree` run.
+ */
+export type TimetreeResults = {
+    /**
+     * Estimates of the time tree; absent when the run wrote no Auspice tree.
+     */
+    estimates?: TimetreeEstimates | null;
+    /**
+     * Samples and line of the final clock model; absent when the run wrote no clock regression table.
+     */
+    root_to_tip?: RootToTip | null;
+    /**
+     * Convergence values of every iteration, from the tracelog.
+     */
+    iterations: Array<IterationRow>;
+    /**
+     * Segments of the coalescent time scale, from the coalescent table.
+     */
+    skyline: Array<SkylineSegment>;
+};
+
+/**
+ * Estimates of a `timetree` run.
+ */
+export type TimetreeEstimates = {
+    /**
+     * Date of the root, as a decimal year.
+     */
+    root_date?: number | null;
+    /**
+     * Confidence interval of the root date.
+     */
+    root_interval?: DateInterval | null;
+    /**
+     * Whether the root date lies within 5% of the interval width from a bound of its interval.
+     */
+    root_near_interval_edge: boolean;
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    clock_rate?: number | null;
+    /**
+     * Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
+     */
+    clock_rate_std?: number | null;
+    /**
+     * Whether the clock rate was fixed by the user instead of estimated.
+     */
+    clock_rate_fixed: boolean;
+    /**
+     * Correlation coefficient of the final clock model; absent for a fixed rate.
+     */
+    r?: number | null;
+    /**
+     * Coefficient of determination of the final clock model.
+     */
+    r_squared?: number | null;
+    /**
+     * Number of samples in the tree.
+     */
+    samples: number;
+    /**
+     * Number of samples the clock model left out: without a usable date or clock outliers.
+     */
+    excluded_samples: number;
+    /**
+     * Coalescent prior the run used.
+     */
+    coalescent_prior: CoalescentPrior;
+    /**
+     * Relaxed clock the run used.
+     */
+    relaxed_clock?: RelaxedClock | null;
+    /**
+     * Total log likelihood of the last iteration.
+     */
+    log_likelihood?: JsonFloat | null;
+    /**
+     * Number of iterations the tracelog records.
+     */
+    iterations: number;
+};
+
+/**
+ * Coalescent prior of a `timetree` run.
+ */
+export type CoalescentPrior = {
+    kind: 'none';
+} | {
+    /**
+     * Coalescent time scale in years.
+     */
+    tc: number;
+    kind: 'fixed';
+} | {
+    kind: 'optimized';
+} | {
+    /**
+     * Number of grid points.
+     */
+    points: number;
+    /**
+     * Stiffness of the skyline.
+     */
+    stiffness: number;
+    kind: 'skyline';
+};
+
+/**
+ * Parameters of a relaxed clock.
+ */
+export type RelaxedClock = {
+    /**
+     * Slack: how far the rate of a branch may vary.
+     */
+    slack: number;
+    /**
+     * Coupling: how strongly the rates of parent and child branches are tied.
+     */
+    coupling: number;
+};
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export type RootToTip = {
+    /**
+     * Samples as the regression saw them.
+     */
+    points: Array<RootToTipPoint>;
+    /**
+     * Line of the clock model; absent when the run wrote no clock model.
+     */
+    line?: ClockLine | null;
+};
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export type RootToTipPoint = {
+    /**
+     * Name of the sample.
+     */
+    name: string;
+    /**
+     * Date the regression used, as a decimal year.
+     */
+    date?: number | null;
+    /**
+     * Where the date came from; absent when the table does not say.
+     */
+    date_source?: ClockDateSource | null;
+    /**
+     * Root-to-tip divergence the regression used.
+     */
+    div: number;
+    /**
+     * Date the clock model predicts from the divergence.
+     */
+    predicted_date: number;
+    /**
+     * Sampling date minus the predicted date, in days.
+     */
+    residual_days?: number | null;
+    /**
+     * Whether the clock filter flagged the sample as an outlier.
+     */
+    outlier: boolean;
+};
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export type ClockDateSource = 'input' | 'inferred' | 'missing';
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export type ClockLine = {
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    rate: number;
+    /**
+     * Divergence at year 0.
+     */
+    intercept: number;
+};
+
+/**
+ * Convergence values of one iteration.
+ */
+export type IterationRow = {
+    /**
+     * Iteration number, from 0.
+     */
+    iteration: number;
+    /**
+     * Largest change of a node time, in years.
+     */
+    max_time_change?: JsonFloat | null;
+    /**
+     * Root-mean-square change of the node times, in years.
+     */
+    rms_time_change?: JsonFloat | null;
+    /**
+     * Log likelihood of the sequences.
+     */
+    log_lh_seq?: JsonFloat | null;
+    /**
+     * Log likelihood of the node positions.
+     */
+    log_lh_pos?: JsonFloat | null;
+    /**
+     * Log likelihood of the coalescent prior.
+     */
+    log_lh_coal?: JsonFloat | null;
+    /**
+     * Total log likelihood.
+     */
+    log_lh_total?: JsonFloat | null;
+};
+
+/**
+ * One segment of the coalescent time scale.
+ */
+export type SkylineSegment = {
+    /**
+     * Start of the segment, as a decimal year.
+     */
+    start: number;
+    /**
+     * End of the segment, as a decimal year.
+     */
+    end: number;
+    /**
+     * Coalescent time scale in years.
+     */
+    tc: Band;
+    /**
+     * Effective population size.
+     */
+    ne: Band;
+};
+
+/**
+ * An estimate with an optional confidence band.
+ */
+export type Band = {
+    /**
+     * Point estimate.
+     */
+    value: number;
+    /**
+     * Lower bound of the band.
+     */
+    lower?: number | null;
+    /**
+     * Upper bound of the band.
+     */
+    upper?: number | null;
+};
+
+/**
+ * Results of a `clock` run.
+ */
+export type ClockResults = {
+    /**
+     * Estimates of the clock model.
+     */
+    estimates: ClockEstimates;
+    /**
+     * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
+     */
+    root_to_tip?: RootToTip | null;
+};
+
+/**
+ * Estimates of a `clock` run.
+ */
+export type ClockEstimates = {
+    /**
+     * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
+     */
+    clock_rate?: number | null;
+    /**
+     * Whether the clock rate was fixed by the user instead of estimated.
+     */
+    clock_rate_fixed: boolean;
+    /**
+     * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
+     */
+    r?: number | null;
+    /**
+     * Coefficient of determination of the root-to-tip regression.
+     */
+    r_squared?: number | null;
+    /**
+     * Number of samples with a date.
+     */
+    dated_samples: number;
+    /**
+     * Number of dated samples the clock filter flagged as outliers.
+     */
+    outliers: number;
+};
+
+/**
+ * Results of an `ancestral` run.
+ */
+export type AncestralResults = {
+    /**
+     * Number of nucleotide mutations on all branches.
+     */
+    mutations: number;
+    /**
+     * Branches with at least one mutation, most mutations first.
+     */
+    branches: Array<BranchMutations>;
+    /**
+     * Sequence positions that mutate on more than one branch, most branches first.
+     */
+    recurrent_sites: Array<RecurrentSite>;
+};
+
+/**
+ * Mutations on the branch above one node.
+ */
+export type BranchMutations = {
+    /**
+     * Name of the node below the branch.
+     */
+    name: string;
+    /**
+     * Number of samples below the branch.
+     */
+    tips: number;
+    /**
+     * Mutations on the branch.
+     */
+    mutations: Array<string>;
+};
+
+/**
+ * A sequence position that mutates on several branches.
+ */
+export type RecurrentSite = {
+    /**
+     * Position in the sequence, from 1.
+     */
+    position: number;
+    /**
+     * Number of branches with a mutation at the position.
+     */
+    branches: number;
+};
+
+/**
+ * Results of a `mugration` run.
+ */
+export type MugrationResults = {
+    /**
+     * The reconstructed attribute.
+     */
+    attribute: string;
+    /**
+     * Number of distinct states among the samples.
+     */
+    states: number;
+    /**
+     * Changes of state from parent to child, counted over branches, most frequent first.
+     */
+    state_changes: Array<StateChange>;
+    /**
+     * Number of branches whose state differs from the parent's.
+     */
+    changed_branches: number;
+    /**
+     * Probability below which an ancestor's most probable state counts as uncertain.
+     */
+    uncertain_below: number;
+    /**
+     * Ancestors whose most probable state is uncertain, least certain first.
+     */
+    uncertain_ancestors: Array<AncestorState>;
+    /**
+     * Most probable state of the root.
+     */
+    root?: AncestorState | null;
+};
+
+/**
+ * A change of state along branches.
+ */
+export type StateChange = {
+    /**
+     * State of the parent.
+     */
+    from: string;
+    /**
+     * State of the child.
+     */
+    to: string;
+    /**
+     * Number of branches with this change.
+     */
+    branches: number;
+};
+
+/**
+ * Most probable state of an ancestor.
+ */
+export type AncestorState = {
+    /**
+     * Name of the ancestor.
+     */
+    name: string;
+    /**
+     * Number of samples below the ancestor.
+     */
+    tips: number;
+    /**
+     * Most probable state.
+     */
+    state: string;
+    /**
+     * Probability of the state.
+     */
+    probability: number;
+};
+
+/**
+ * Summary of a tree an `optimize` or `prune` run wrote.
+ */
+export type TreeSummary = {
+    /**
+     * Number of samples.
+     */
+    samples: number;
+    /**
+     * Number of internal nodes.
+     */
+    internal_nodes: number;
+    /**
+     * Number of nucleotide mutations on all branches.
+     */
+    mutations: number;
+    /**
+     * Sum of the branch lengths in the node data file.
+     */
+    total_branch_length?: number | null;
+    /**
+     * Substitution model the run fitted.
+     */
+    substitution_model?: SubstitutionModel | null;
+};
+
+/**
+ * A fitted substitution model.
+ */
+export type SubstitutionModel = {
+    /**
+     * Name of the model.
+     */
+    name: string;
+    /**
+     * Overall substitution rate.
+     */
+    mu: number;
+};
+
+/**
+ * The publication to cite for TreeTime.
+ */
+export type Citation = {
+    /**
+     * Reference in text form.
+     */
+    text: string;
+    /**
+     * Link to the publication.
+     */
+    doi: string;
+};
+
+/**
+ * An output file of a run that could not be read.
+ */
+export type OutputProblem = {
+    /**
+     * Path of the file relative to the run's `out/` folder.
+     */
+    path: string;
+    /**
+     * Why the file could not be read.
+     */
+    message: string;
+};
+
+/**
+ * Results of a finished run, read from its output files.
+ */
+export type RunResults = {
+    /**
+     * Tree of the run's Auspice file; absent when the run wrote none.
+     */
+    tree?: ResultTree | null;
+    /**
+     * Results specific to the command of the run.
+     */
+    results: CommandResults;
+    /**
+     * Paragraph describing the analysis, for a methods section.
+     */
+    methods?: string | null;
+    /**
+     * The publication to cite.
+     */
+    citation: Citation;
+    /**
+     * Output files that could not be read.
+     */
+    problems: Array<OutputProblem>;
+};
+
+/**
+ * Estimates of two time-tree runs and their differences, second minus first.
+ */
+export type EstimateComparison = {
+    /**
+     * Estimates of the first run.
+     */
+    first: TimetreeEstimates;
+    /**
+     * Estimates of the second run.
+     */
+    second: TimetreeEstimates;
+    /**
+     * Shift of the root date, in days.
+     */
+    root_shift_days?: number | null;
+    /**
+     * Change of the width of the root-date interval, in days.
+     */
+    root_interval_change_days?: number | null;
+    /**
+     * Change of the clock rate, in percent of the first rate.
+     */
+    clock_rate_change_percent?: number | null;
+    /**
+     * Change of the number of samples the clock model left out.
+     */
+    excluded_samples_change: number;
+    /**
+     * Change of the total log likelihood; absent when either value is missing or not finite.
+     */
+    log_likelihood_change?: number | null;
+};
+
+/**
+ * Date shifts of the ancestors two trees share, matched by their set of samples.
+ */
+export type AncestorComparison = {
+    /**
+     * Ancestors dated in both trees, with the shift of their date.
+     */
+    shifts: Array<AncestorShift>;
+    /**
+     * Number of ancestors in the first tree.
+     */
+    ancestors: number;
+    /**
+     * Mean absolute shift, in days.
+     */
+    mean_absolute_shift_days?: number | null;
+};
+
+/**
+ * Date shift of one ancestor between two trees.
+ */
+export type AncestorShift = {
+    /**
+     * Name of the ancestor in the first tree.
+     */
+    name: string;
+    /**
+     * Number of samples below the ancestor.
+     */
+    tips: number;
+    /**
+     * Date in the first tree, as a decimal year.
+     */
+    date_first: number;
+    /**
+     * Date in the second tree minus the date in the first, in days.
+     */
+    shift_days: number;
+};
+
+/**
+ * Comparison of the results of two runs.
+ */
+export type RunComparison = {
+    /**
+     * Estimates side by side; present when both runs are finished time-tree runs with a tree.
+     */
+    estimates?: EstimateComparison | null;
+    /**
+     * Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
+     */
+    ancestors?: AncestorComparison | null;
+};
+
+/**
+ * Request to find a clade of one run in the other time-tree runs.
+ */
+export type CladeRequest = {
+    /**
+     * Run whose tree holds the clade.
+     */
+    run: JobId;
+    /**
+     * Name of the node at the top of the clade.
+     */
+    node: string;
+};
+
+/**
+ * The node of another run with the same set of samples below it.
+ */
+export type CladeMatch = {
+    /**
+     * Id of the run.
+     */
+    run: JobId;
+    /**
+     * Title of the run.
+     */
+    title: string;
+    /**
+     * Name of the node in that run.
+     */
+    node: string;
+    /**
+     * Date of the node, as a decimal year.
+     */
+    date?: number | null;
+    /**
+     * Confidence interval of the date.
+     */
+    date_interval?: DateInterval | null;
+};
+
+/**
+ * A run whose tree could not be read.
+ */
+export type UnreadableRun = {
+    /**
+     * Id of the run.
+     */
+    run: JobId;
+    /**
+     * Why the tree could not be read.
+     */
+    message: string;
+};
+
+/**
+ * A clade of one run found in the other finished time-tree runs.
+ */
+export type CladeInRuns = {
+    /**
+     * Runs whose tree has a node with the same set of samples below it.
+     */
+    matches: Array<CladeMatch>;
+    /**
+     * Number of other finished time-tree runs searched.
+     */
+    searched_runs: number;
+    /**
+     * Runs whose tree could not be read, with the reason.
+     */
+    unreadable_runs: Array<UnreadableRun>;
+};
+
 export type ConfigCheckData = {
     body: CheckConfigRequest;
     path?: never;
@@ -3233,6 +4042,22 @@ export type InputsCheckResponses = {
 };
 
 export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
+
+export type CladeInRunsData = {
+    body: CladeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/clade-in-runs';
+};
+
+export type CladeInRunsResponses = {
+    /**
+     * Nodes of the other finished time-tree runs with the same set of samples below them
+     */
+    200: CladeInRuns;
+};
+
+export type CladeInRunsResponse = CladeInRunsResponses[keyof CladeInRunsResponses];
 
 export type DatasetsData = {
     body?: never;
@@ -3403,6 +4228,31 @@ export type RunsCancelResponses = {
 
 export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
 
+export type RunsCompareData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the first run
+         */
+        id: string;
+        /**
+         * Id of the second run
+         */
+        other: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/compare/{other}';
+};
+
+export type RunsCompareResponses = {
+    /**
+     * Differences of the second run's results from the first run's
+     */
+    200: RunComparison;
+};
+
+export type RunsCompareResponse = RunsCompareResponses[keyof RunsCompareResponses];
+
 export type RunsEventsData = {
     body?: never;
     path: {
@@ -3551,6 +4401,36 @@ export type RunsRestoreResponses = {
 };
 
 export type RunsRestoreResponse = RunsRestoreResponses[keyof RunsRestoreResponses];
+
+export type RunsResultsData = {
+    body?: never;
+    path: {
+        /**
+         * Id of a finished run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/results';
+};
+
+export type RunsResultsErrors = {
+    /**
+     * The run has not finished successfully
+     */
+    409: ErrorResponse;
+};
+
+export type RunsResultsError = RunsResultsErrors[keyof RunsResultsErrors];
+
+export type RunsResultsResponses = {
+    /**
+     * Results of the run, read from its output files
+     */
+    200: RunResults;
+};
+
+export type RunsResultsResponse = RunsResultsResponses[keyof RunsResultsResponses];
 
 export type RunsStartData = {
     body: StartRunRequest;

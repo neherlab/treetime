@@ -52,7 +52,8 @@ mod tests {
           "ReconstructedNucFasta",
           "ClockModel",
           "CoalescentTsv",
-          "Tracelog"
+          "Tracelog",
+          "ClockCsv"
         ])
       ),
       (
@@ -485,6 +486,51 @@ mod tests {
       .find(|example| example["path"] == json!("ebola/20/ancestral-parsimony.yaml"))
       .unwrap();
     assert_eq!(json!("ancestral"), example["command"]);
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_results_comparison_and_clades_of_a_finished_run() {
+    let test = app();
+    let (_, record) = request(
+      &test,
+      "POST",
+      "/api/runs",
+      Some(json!({ "command": "timetree", "config": timetree_config() })),
+    )
+    .await;
+    let id = record["id"].as_str().unwrap().to_owned();
+    let (early, _) = request(&test, "GET", &format!("/api/runs/{id}/results"), None).await;
+    wait_for_status(&test, &id, "ok").await;
+
+    let (status, results) = request(&test, "GET", &format!("/api/runs/{id}/results"), None).await;
+    let (_, comparison) = request(&test, "GET", &format!("/api/runs/{id}/compare/{id}"), None).await;
+    let root = results["tree"]["nodes"][0]["name"].clone();
+    let (_, clade) = request(
+      &test,
+      "POST",
+      "/api/clade-in-runs",
+      Some(json!({ "run": id, "node": root })),
+    )
+    .await;
+
+    assert_eq!(
+      (
+        true,
+        200,
+        json!("timetree"),
+        json!(20),
+        json!(0.0),
+        json!({ "matches": [], "searched_runs": 0, "unreadable_runs": [] })
+      ),
+      (
+        early == 200 || early == 409,
+        status,
+        results["results"]["command"].clone(),
+        results["results"]["data"]["estimates"]["samples"].clone(),
+        comparison["estimates"]["root_shift_days"].clone(),
+        clade
+      )
+    );
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
