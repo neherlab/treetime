@@ -42,6 +42,12 @@ export type CheckConfigResult = Parsed<typeof zCheckConfigResponse>;
 
 export type RunConfigResult = Parsed<typeof zRunConfigResponse>;
 
+export type RunSummaryResult = Parsed<typeof zRunSummary>;
+
+export type RunRecordResult = Parsed<typeof zRunRecord>;
+
+export type InputFactsResult = Parsed<typeof zInputFacts>;
+
 type RunEventResult = Parsed<typeof zRunEvent>;
 
 type TerminalEventResult = Parsed<typeof zTerminalEvent>;

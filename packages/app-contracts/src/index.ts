@@ -9,8 +9,15 @@ export type {
   CheckConfigResult,
   CommandOptions,
   FollowRunOptions,
+  InputFactsResult,
   Parsed,
   RunConfigResult,
+  RunRecordResult,
+  RunSummaryResult,
   TransportEventOptions,
   TreeTimeBridge,
 } from "./bridge";
+
+export { zPickedFiles, zPickFilesRequest, type LocalFiles, type PickFilesRequest } from "./files";
+
+export { default as openApiDocument } from "../openapi.json";
