@@ -109,7 +109,10 @@ impl RunService {
     to_json(&create_run(&self.runs, &request_json).map_err(|err| to_napi(&err))?)
   }
 
-  #[napi(ts_return_type = "Promise<string>")]
+  #[napi(
+    ts_args_type = "id: string, configJson: string | null",
+    ts_return_type = "Promise<string>"
+  )]
   pub fn start(&self, id: String, config_json: Option<String>) -> napi::Result<AsyncTask<RunTask>> {
     let started = start_run(&self.runs, &id, config_json.as_deref()).map_err(|err| to_napi(&err))?;
     Ok(AsyncTask::new(RunTask { run: Some(started) }))

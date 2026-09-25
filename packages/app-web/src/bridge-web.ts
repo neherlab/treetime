@@ -1,11 +1,11 @@
 import {
   CancelledError,
   createBridge,
-  parseJobEvent,
-  type AppCommand,
+  parseRunEvent,
+  zErrorResponse,
   type BridgeTransport,
   type LogEvent,
-  type TransportCommandOptions,
+  type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
 import { EventSourceParserStream } from "eventsource-parser/stream";
@@ -15,68 +15,65 @@ export interface WebBridgeDeps {
   apiBase?: string;
 }
 
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
 export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   const fetchFn = deps.fetchFn ?? globalThis.fetch.bind(globalThis);
   const apiBase = deps.apiBase ?? "/api";
 
   const debug = readDebugFlag();
 
-  async function getJson(path: string): Promise<unknown> {
-    if (debug) console.debug("[TreeTime] GET", path);
-    const response = await fetchFn(`${apiBase}/${path}`);
+  async function send(method: Method, path: string, body?: BodyInit, headers: HeadersInit = {}): Promise<Response> {
+    if (debug) console.debug("[TreeTime]", method, path);
+
+    const init: RequestInit = { method, headers };
+
+    if (body !== undefined) {
+      init.body = body;
+    }
+
+    const response = await fetchFn(`${apiBase}/${path}`, init);
 
     if (!response.ok) {
-      throw new Error(`GET ${path}: ${response.status} ${response.statusText}`);
+      throw new Error(`${method} ${path}: ${response.status} ${await errorMessage(response)}`);
     }
+
+    return response;
+  }
+
+  async function json(method: Method, path: string, body?: unknown): Promise<unknown> {
+    const response =
+      body === undefined
+        ? await send(method, path)
+        : await send(method, path, JSON.stringify(body), { "Content-Type": "application/json" });
 
     const data: unknown = await response.json();
 
-    if (debug) console.debug("[TreeTime] GET", path, JSON.stringify(data));
+    if (debug) console.debug("[TreeTime]", method, path, JSON.stringify(data));
 
     return data;
   }
 
-  async function postJson(path: string, body: unknown): Promise<unknown> {
-    if (debug) console.debug("[TreeTime] POST", path);
+  async function bytes(path: string): Promise<Uint8Array> {
+    const response = await send("GET", path);
 
-    const response = await fetchFn(`${apiBase}/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      throw new Error(`POST ${path}: ${response.status} ${response.statusText}`);
-    }
-
-    const data: unknown = await response.json();
-
-    return data;
+    return new Uint8Array(await response.arrayBuffer());
   }
 
-  async function postSse(command: AppCommand, config: unknown, options: TransportCommandOptions): Promise<unknown> {
-    const { signal } = options;
-    let jobId: string | undefined;
+  async function runEvents(id: string, options: TransportEventOptions): Promise<void> {
+    const init: RequestInit = { headers: { Accept: "text/event-stream" } };
 
-    const requestCancel = () => {
-      if (jobId !== undefined) {
-        void postJson(`jobs/${jobId}/cancel`, {}).catch((error: unknown) => {
-          console.warn("[TreeTime] cancellation request failed", error);
-        });
-      }
-    };
+    if (options.signal !== undefined) {
+      init.signal = options.signal;
+    }
 
-    signal?.addEventListener("abort", requestCancel);
+    const path = `runs/${encodeURIComponent(id)}/events?from=${options.from}`;
 
     try {
-      const response = await fetchFn(`${apiBase}/${command}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify(config),
-      });
+      const response = await fetchFn(`${apiBase}/${path}`, init);
 
       if (!response.ok || response.body === null) {
-        throw new Error(`POST ${command}: ${response.status} ${response.statusText}`);
+        throw new Error(`GET ${path}: ${response.status} ${await errorMessage(response)}`);
       }
 
       const messages = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream());
@@ -84,20 +81,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       for await (const message of messages) {
         if (debug) console.debug("[TreeTime]", JSON.stringify(message));
 
-        const data: unknown = JSON.parse(message.data);
-        const event = parseJobEvent({ type: message.event, data });
-
-        if (event.type === "terminal") {
-          return event.data;
-        }
-
-        if (event.type === "started") {
-          jobId = event.data.job_id;
-
-          if (signal?.aborted === true) {
-            requestCancel();
-          }
-        }
+        const event = parseRunEvent(JSON.parse(message.data));
 
         if (event.type === "log") {
           logToConsole(event.data);
@@ -111,20 +95,68 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       }
 
       throw err;
-    } finally {
-      signal?.removeEventListener("abort", requestCancel);
     }
-
-    throw new Error(`${command}: the event stream ended without a terminal event`);
   }
 
   const transport: BridgeTransport = {
-    query: (endpoint) => getJson(endpoint),
-    request: (endpoint, body) => postJson(endpoint, body),
-    command: (command, config, options) => postSse(command, config, options),
+    version: () => json("GET", "version"),
+    datasets: () => json("GET", "datasets"),
+    checkConfig: (request) => json("POST", "check-config", request),
+    checkInputs: (request) => json("POST", "check-inputs", request),
+    listRuns: () => json("GET", "runs"),
+    createRun: (request) => json("POST", "runs", request),
+    getRun: (id) => json("GET", runPath(id)),
+    startRun: (id, request) => json("POST", `${runPath(id)}/start`, request),
+    updateRun: (id, request) => json("PATCH", runPath(id), request),
+    cancelRun: (id) => json("POST", `${runPath(id)}/cancel`),
+    deleteRun: async (id) => {
+      await send("DELETE", runPath(id));
+    },
+    restoreRun: (id) => json("POST", `${runPath(id)}/restore`),
+    purgeRun: async (id) => {
+      await send("POST", `${runPath(id)}/purge`);
+    },
+    runEvents,
+    runFiles: (id) => json("GET", `${runPath(id)}/files`),
+    readRunFile: (id, path) => bytes(`${runPath(id)}/file?path=${encodeURIComponent(path)}`),
+    runArchive: (id) => bytes(`${runPath(id)}/archive`),
+    uploadInput: async (id, name, data) => {
+      const response = await send("PUT", `${runPath(id)}/inputs/${encodeURIComponent(name)}`, data, {
+        "Content-Type": "application/octet-stream",
+      });
+
+      const uploaded: unknown = await response.json();
+
+      return uploaded;
+    },
   };
 
   return createBridge(transport);
+}
+
+function runPath(id: string): string {
+  return `runs/${encodeURIComponent(id)}`;
+}
+
+async function errorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  const parsed = zErrorResponse.safeParse(parseJson(text));
+
+  if (parsed.success) {
+    return parsed.data.message;
+  }
+
+  return text === "" ? response.statusText : text;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    const value: unknown = JSON.parse(text);
+
+    return value;
+  } catch {
+    return undefined;
+  }
 }
 
 function readDebugFlag(): boolean {

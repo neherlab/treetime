@@ -28,7 +28,7 @@ export function useDatasets() {
 
   return useQuery<DatasetInfo[]>({
     queryKey: ["datasets"],
-    queryFn: () => bridge.datasets(),
+    queryFn: async () => (await bridge.datasets()).datasets,
     staleTime: Infinity,
   });
 }

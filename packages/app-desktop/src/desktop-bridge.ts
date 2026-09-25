@@ -1,11 +1,9 @@
 import {
-  CancelledError,
   createBridge,
-  parseJobEvent,
-  type AppCommand,
+  parseRunEvent,
   type BridgeTransport,
   type LogEvent,
-  type TransportCommandOptions,
+  type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
 
@@ -16,61 +14,113 @@ export interface IpcRendererLike {
   send(channel: string, ...args: unknown[]): void;
 }
 
-export const JOB_EVENT_CHANNEL = "treetime:job-event";
+export const RUN_EVENT_CHANNEL = "treetime:run-event";
 
-export function createDesktopBridge(ipc: IpcRendererLike, newJobId: () => string = randomJobId): TreeTimeBridge {
-  return createBridge(createDesktopTransport(ipc, newJobId));
+export class LocalInputsError extends Error {
+  constructor() {
+    super("the desktop application reads inputs from local file paths; name the files in the run configuration");
+    this.name = "LocalInputsError";
+  }
 }
 
-function createDesktopTransport(ipc: IpcRendererLike, newJobId: () => string): BridgeTransport {
-  async function query(endpoint: string): Promise<unknown> {
-    return decode(await ipc.invoke(`treetime:${endpoint}`));
+export function createDesktopBridge(
+  ipc: IpcRendererLike,
+  newSubscriptionId: () => string = randomSubscriptionId,
+): TreeTimeBridge {
+  return createBridge(createDesktopTransport(ipc, newSubscriptionId));
+}
+
+function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => string): BridgeTransport {
+  async function call(channel: string, ...args: unknown[]): Promise<unknown> {
+    return decode(await ipc.invoke(`treetime:${channel}`, ...args));
   }
 
-  async function request(endpoint: string, body: unknown): Promise<unknown> {
-    return decode(await ipc.invoke(`treetime:${endpoint}`, JSON.stringify(body)));
+  async function bytes(channel: string, ...args: unknown[]): Promise<Uint8Array> {
+    const value = await ipc.invoke(`treetime:${channel}`, ...args);
+
+    if (!(value instanceof Uint8Array)) {
+      throw new TypeError(`treetime:${channel} returned no bytes`);
+    }
+
+    return value;
   }
 
-  async function command(command: AppCommand, config: unknown, options: TransportCommandOptions): Promise<unknown> {
-    const jobId = newJobId();
+  function runEvents(id: string, options: TransportEventOptions): Promise<void> {
+    const subscriptionId = newSubscriptionId();
 
-    const eventHandler = (_event: unknown, eventJobId: unknown, eventJson: unknown) => {
-      if (eventJobId !== jobId || typeof eventJson !== "string") {
+    return new Promise<void>((resolve, reject) => {
+      const finish = () => {
+        ipc.removeListener(RUN_EVENT_CHANNEL, handler);
+        options.signal?.removeEventListener("abort", finish);
+        resolve();
+      };
+
+      const handler = (_event: unknown, eventSubscriptionId: unknown, eventJson: unknown) => {
+        if (eventSubscriptionId !== subscriptionId || typeof eventJson !== "string") {
+          return;
+        }
+
+        try {
+          const event = parseRunEvent(JSON.parse(eventJson));
+
+          if (event.type === "log") {
+            logToConsole(event.data);
+          }
+
+          options.onEvent(event);
+
+          if (event.type === "terminal") {
+            finish();
+          }
+        } catch (error: unknown) {
+          ipc.removeListener(RUN_EVENT_CHANNEL, handler);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+
+      if (options.signal?.aborted === true) {
+        resolve();
+
         return;
       }
 
-      const event = parseJobEvent(JSON.parse(eventJson));
-
-      if (event.type === "log") {
-        logToConsole(event.data);
-      }
-
-      options.onEvent(event);
-    };
-
-    const abortHandler = () => {
-      ipc.send("treetime:cancel", jobId);
-    };
-
-    if (options.signal?.aborted === true) {
-      throw new CancelledError();
-    }
-
-    ipc.on(JOB_EVENT_CHANNEL, eventHandler);
-    options.signal?.addEventListener("abort", abortHandler);
-
-    try {
-      return decode(await ipc.invoke("treetime:run", jobId, command, JSON.stringify(config)));
-    } finally {
-      ipc.removeListener(JOB_EVENT_CHANNEL, eventHandler);
-      options.signal?.removeEventListener("abort", abortHandler);
-    }
+      ipc.on(RUN_EVENT_CHANNEL, handler);
+      options.signal?.addEventListener("abort", finish);
+      ipc.invoke("treetime:runs:subscribe", subscriptionId, id, options.from).catch((error: unknown) => {
+        ipc.removeListener(RUN_EVENT_CHANNEL, handler);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      });
+    });
   }
 
-  return { query, request, command };
+  return {
+    version: () => call("version"),
+    datasets: () => call("datasets"),
+    checkConfig: (request) => call("check-config", JSON.stringify(request)),
+    checkInputs: (request) => call("check-inputs", JSON.stringify(request)),
+    listRuns: () => call("runs:list"),
+    createRun: (request) => call("runs:create", JSON.stringify(request)),
+    getRun: (id) => call("runs:get", id),
+    startRun: (id, request) =>
+      call("runs:start", id, request.config === undefined ? null : JSON.stringify(request.config)),
+    updateRun: (id, request) => call("runs:update", id, JSON.stringify(request)),
+    cancelRun: (id) => call("runs:cancel", id),
+    deleteRun: async (id) => {
+      await call("runs:delete", id);
+    },
+    restoreRun: (id) => call("runs:restore", id),
+    purgeRun: async (id) => {
+      await call("runs:purge", id);
+    },
+    runEvents,
+    runFiles: (id) => call("runs:files", id),
+    readRunFile: (id, path) => bytes("runs:read-file", id, path),
+    runArchive: (id) => bytes("runs:archive", id),
+    uploadInput: () => Promise.reject(new LocalInputsError()),
+  };
 }
 
-function randomJobId(): string {
+function randomSubscriptionId(): string {
   return globalThis.crypto.randomUUID();
 }
 

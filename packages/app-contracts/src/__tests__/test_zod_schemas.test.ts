@@ -81,7 +81,12 @@ describe("zod_schemas command configs", () => {
 
 describe("zod_schemas terminal events", () => {
   test("an ok terminal event carries the outcome", () => {
-    const event = { status: "ok", job_id: "j", result: { command: "clock", output_files: ["out/clock.nwk"] } };
+    const event = {
+      status: "ok",
+      job_id: "j",
+      result: { command: "clock", output_files: [{ path: "out/clock.nwk", kind: "nwk" }] },
+    };
+
     expect(zTerminalEvent.safeParse(event).success).toBe(true);
   });
 

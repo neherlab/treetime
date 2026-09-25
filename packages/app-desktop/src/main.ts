@@ -1,10 +1,10 @@
 import * as path from "path";
 
-import { parseJobEvent } from "@neherlab/app-contracts";
+import { parseRunEvent, zCreateRunRequest, zRunRecord } from "@neherlab/app-contracts";
 import * as addon from "@neherlab/app-napi";
 import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 
-import { JOB_EVENT_CHANNEL } from "./desktop-bridge";
+import { RUN_EVENT_CHANNEL } from "./desktop-bridge";
 import { initDiagnostics } from "./diagnostics";
 
 initDiagnostics("treetime-desktop");
@@ -39,41 +39,76 @@ function isThemeSource(value: string): value is "system" | "light" | "dark" {
 }
 
 function registerIpcHandlers(): void {
-  const runner = new addon.CommandRunner();
+  const runs = new addon.RunService(path.join(app.getPath("userData"), "runs"));
 
-  ipcMain.handle("treetime:version", () => {
-    return addon.version();
+  const startRun = (id: string, configJson: string | null) => {
+    void runToEnd(runs, id, configJson);
+  };
+
+  ipcMain.handle("treetime:version", () => addon.version());
+  ipcMain.handle("treetime:datasets", () => addon.datasets());
+  ipcMain.handle("treetime:check-config", (_event, requestJson: string) => addon.checkConfigJson(requestJson));
+  ipcMain.handle("treetime:check-inputs", (_event, requestJson: string) => addon.checkInputsJson(requestJson));
+  ipcMain.handle("treetime:runs:list", () => runs.list());
+  ipcMain.handle("treetime:runs:get", (_event, id: string) => runs.get(id));
+  ipcMain.handle("treetime:runs:create", (_event, requestJson: string) => {
+    const record = parseRecord(runs.create(requestJson));
+
+    if (!parseDeferStart(requestJson)) {
+      startRun(record.id, null);
+    }
+
+    return runs.get(record.id);
   });
+  ipcMain.handle("treetime:runs:start", (_event, id: string, configJson: string | null) => {
+    startRun(id, configJson);
 
-  ipcMain.handle("treetime:datasets", () => {
-    return addon.datasets();
+    return runs.get(id);
   });
-
-  ipcMain.handle("treetime:check-config", (_event: Electron.IpcMainInvokeEvent, requestJson: string) => {
-    return addon.checkConfigJson(requestJson);
+  ipcMain.handle("treetime:runs:update", (_event, id: string, requestJson: string) => runs.update(id, requestJson));
+  ipcMain.handle("treetime:runs:cancel", (_event, id: string) => JSON.stringify({ cancelled: runs.cancel(id) }));
+  ipcMain.handle("treetime:runs:delete", (_event, id: string) => {
+    runs.delete(id);
   });
-
-  ipcMain.on("treetime:cancel", (_event: Electron.IpcMainEvent, jobId: string) => {
-    runner.cancel(jobId);
+  ipcMain.handle("treetime:runs:restore", (_event, id: string) => runs.restore(id));
+  ipcMain.handle("treetime:runs:purge", (_event, id: string) => {
+    runs.purge(id);
   });
-
+  ipcMain.handle("treetime:runs:files", (_event, id: string) => runs.files(id));
+  ipcMain.handle("treetime:runs:read-file", (_event, id: string, filePath: string) => runs.readFile(id, filePath));
+  ipcMain.handle("treetime:runs:archive", (_event, id: string) => runs.archive(id));
   ipcMain.handle(
-    "treetime:run",
-    (event: Electron.IpcMainInvokeEvent, jobId: string, command: string, configJson: string) => {
-      console.log(`[TreeTime IPC] ${command} job ${jobId} started`);
-
-      return runner.run(jobId, command, configJson, (err: Error | null, eventJson: string) => {
+    "treetime:runs:subscribe",
+    (event: Electron.IpcMainInvokeEvent, subscriptionId: string, id: string, from: number) => {
+      runs.subscribe(id, from, (err: Error | null, eventJson: string) => {
         if (err || event.sender.isDestroyed()) return;
 
         try {
-          parseJobEvent(JSON.parse(eventJson));
-          event.sender.send(JOB_EVENT_CHANNEL, jobId, eventJson);
+          parseRunEvent(JSON.parse(eventJson));
+          event.sender.send(RUN_EVENT_CHANNEL, subscriptionId, eventJson);
         } catch (error: unknown) {
-          console.error(`[TreeTime IPC] ${command} job ${jobId} event failed`, error);
+          console.error(`[TreeTime IPC] event of run ${id} is malformed`, error);
         }
       });
     },
   );
+}
+
+async function runToEnd(runs: addon.RunService, id: string, configJson: string | null): Promise<void> {
+  try {
+    const terminalJson = await runs.start(id, configJson);
+    console.log(`[TreeTime IPC] run ${id} ended: ${terminalJson}`);
+  } catch (error: unknown) {
+    console.error(`[TreeTime IPC] run ${id} failed to run`, error);
+  }
+}
+
+function parseRecord(json: string): { id: string } {
+  return zRunRecord.parse(JSON.parse(json));
+}
+
+function parseDeferStart(requestJson: string): boolean {
+  return zCreateRunRequest.parse(JSON.parse(requestJson)).defer_start;
 }
 
 async function createWindow(): Promise<void> {

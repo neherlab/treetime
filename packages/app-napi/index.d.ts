@@ -3,7 +3,7 @@ export declare class RunService {
   list(): string
   get(id: string): string
   create(requestJson: string): string
-  start(id: string, configJson?: string   | null): Promise<string>
+  start(id: string, configJson: string | null): Promise<string>
   cancel(id: string): boolean
   subscribe(id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void): void
   update(id: string, requestJson: string): string

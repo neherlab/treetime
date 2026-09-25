@@ -4,28 +4,67 @@ import { ZodError } from "zod";
 
 import { createWebBridge } from "../bridge-web";
 
-interface StreamMessage {
-  event: string;
-  data: unknown;
-}
-
 interface Call {
+  method: string;
   url: string;
   body: BodyInit | null | undefined;
 }
 
-const OUTCOME = { command: "ancestral", output_files: ["out/ancestral.nwk"] };
+type Route = (call: Call) => Response;
 
-function eventStreamFetch(messages: StreamMessage[], calls: Call[] = []): typeof fetch {
+const RECORD = {
+  id: "r1",
+  title: "clock",
+  command: "clock",
+  config: { tree: "t.nwk" },
+  status: "running",
+  pinned: false,
+  created_at: "2026-09-25T10:00:00Z",
+  started_at: null,
+  finished_at: null,
+  duration_seconds: null,
+  treetime_version: "1.0.0",
+  inputs: [],
+  config_hash: null,
+  changed_settings: [],
+  headline: {},
+  output_files: [],
+  error: null,
+};
+
+const OUTCOME = { command: "clock", output_files: [{ path: "/runs/r1/out/clock.nwk", kind: "nwk" }] };
+
+function routes(table: Record<string, Route>, calls: Call[] = []): typeof fetch {
   return (input, init) => {
-    calls.push({ url: urlOf(input), body: init?.body });
+    const call = { method: init?.method ?? "GET", url: urlOf(input), body: init?.body };
+    calls.push(call);
+    const route = table[`${call.method} ${call.url}`];
 
-    return Promise.resolve(new Response(sse(messages), { headers: { "Content-Type": "text/event-stream" } }));
+    if (route === undefined) {
+      return Promise.resolve(new Response(JSON.stringify({ code: "x", message: "no route" }), { status: 404 }));
+    }
+
+    if (init?.signal?.aborted === true) {
+      return Promise.reject(new DOMException("aborted", "AbortError"));
+    }
+
+    return Promise.resolve(route(call));
   };
 }
 
-function sse(messages: StreamMessage[]): string {
-  return messages.map((message) => `event: ${message.event}\ndata: ${JSON.stringify(message.data)}\n\n`).join("");
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status });
+}
+
+function sse(events: Array<{ type: string; data: unknown }>): Response {
+  const text = events
+    .map(
+      (event, seq) =>
+        `event: ${event.type}\nid: ${seq}\ndata: ${JSON.stringify({ seq, time: "t", type: event.type, data: event.data })}\n\n`,
+    )
+    .join("");
+
+  return new Response(text, { headers: { "Content-Type": "text/event-stream" } });
 }
 
 function urlOf(input: RequestInfo | URL): string {
@@ -36,137 +75,159 @@ function urlOf(input: RequestInfo | URL): string {
   return input instanceof URL ? input.href : input;
 }
 
-function jsonFetch(body: unknown, init?: { status?: number; statusText?: string }): typeof fetch {
-  return () => Promise.resolve(new Response(JSON.stringify(body), init));
-}
-
-describe("bridge_web query and request paths", () => {
+describe("bridge_web queries and requests", () => {
   test("version fetches and validates the result", async () => {
-    const bridge = createWebBridge({ fetchFn: jsonFetch({ version: "9.9.9" }), apiBase: "/api" });
+    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/version": () => json({ version: "9.9.9" }) }) });
     await expect(bridge.version()).resolves.toStrictEqual({ version: "9.9.9" });
   });
 
-  test("a non-ok response rejects with the status", async () => {
-    const bridge = createWebBridge({ fetchFn: jsonFetch({}, { status: 500, statusText: "Server Error" }) });
-    await expect(bridge.version()).rejects.toThrow("500");
+  test("a failed request rejects with the status and the server's message", async () => {
+    const bridge = createWebBridge({
+      fetchFn: routes({ "GET /api/runs/r9": () => json({ code: "not_found", message: "no run with id `r9`" }, 404) }),
+    });
+
+    await expect(bridge.getRun("r9")).rejects.toThrow("GET runs/r9: 404 no run with id `r9`");
+  });
+
+  test("a malformed result rejects with a ZodError", async () => {
+    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/version": () => json({ version: 1 }) }) });
+    await expect(bridge.version()).rejects.toBeInstanceOf(ZodError);
   });
 
   test("checkConfig posts the request body", async () => {
     const calls: Call[] = [];
 
-    const fetchFn: typeof fetch = (input, init) => {
-      calls.push({ url: urlOf(input), body: init?.body });
-
-      return Promise.resolve(new Response(JSON.stringify({ status: "valid", config: { tree: "t.nwk" } })));
-    };
-
-    const bridge = createWebBridge({ fetchFn });
-    await expect(bridge.checkConfig({ command: "prune", text: "tree: t.nwk" })).resolves.toStrictEqual({
-      status: "valid",
-      config: { tree: "t.nwk" },
-    });
-    expect(calls).toStrictEqual([
-      { url: "/api/check-config", body: JSON.stringify({ command: "prune", text: "tree: t.nwk" }) },
-    ]);
-  });
-});
-
-describe("bridge_web streaming command path", () => {
-  test("job events stream while the terminal event resolves the outcome", async () => {
-    const calls: Call[] = [];
-
-    const fetchFn = eventStreamFetch(
-      [
-        { event: "started", data: { job_id: "j1", command: "ancestral" } },
-        { event: "progress", data: { stage: "read", fraction: 0.5, message: "reading" } },
-        { event: "log", data: { level: "info", message: "working" } },
-        { event: "terminal", data: { status: "ok", job_id: "j1", result: OUTCOME } },
-      ],
+    const fetchFn = routes(
+      { "POST /api/check-config": () => json({ status: "valid", config: { tree: "t.nwk" } }) },
       calls,
     );
 
-    const received: string[] = [];
     const bridge = createWebBridge({ fetchFn });
+    await bridge.checkConfig({ command: "prune", text: "tree: t.nwk" });
+    expect(calls).toStrictEqual([
+      { method: "POST", url: "/api/check-config", body: JSON.stringify({ command: "prune", text: "tree: t.nwk" }) },
+    ]);
+  });
 
-    const result = await bridge.ancestral(
-      { tree: "t.nwk" },
+  test("run operations use their routes", async () => {
+    const calls: Call[] = [];
+    const summary = { ...RECORD, status: "ok" };
+
+    const fetchFn = routes(
       {
-        onStarted: (jobId) => {
-          received.push(`started ${jobId}`);
-        },
-        onProgress: (event) => {
-          received.push(event.stage);
-        },
+        "PATCH /api/runs/r1": () => json(summary),
+        "POST /api/runs/r1/cancel": () => json({ cancelled: false }),
+        "DELETE /api/runs/r1": () => new Response(null, { status: 204 }),
+        "POST /api/runs/r1/restore": () => json(summary),
+        "POST /api/runs/r1/start": () => json(RECORD),
       },
+      calls,
     );
 
-    expect(result).toStrictEqual(OUTCOME);
-    expect(received).toStrictEqual(["started j1", "read"]);
-    expect(calls).toStrictEqual([{ url: "/api/ancestral", body: JSON.stringify({ tree: "t.nwk" }) }]);
+    const bridge = createWebBridge({ fetchFn });
+    await bridge.updateRun("r1", { pinned: true });
+    await expect(bridge.cancelRun("r1")).resolves.toBe(false);
+    await bridge.deleteRun("r1");
+    await bridge.restoreRun("r1");
+    await bridge.startRun("r1", { config: { tree: "/runs/r1/inputs/t.nwk" } });
+    expect(calls.map((call) => `${call.method} ${call.url}`)).toStrictEqual([
+      "PATCH /api/runs/r1",
+      "POST /api/runs/r1/cancel",
+      "DELETE /api/runs/r1",
+      "POST /api/runs/r1/restore",
+      "POST /api/runs/r1/start",
+    ]);
+  });
+
+  test("uploadInput puts the file bytes", async () => {
+    const calls: Call[] = [];
+    const uploaded = { name: "a b.nwk", path: "/runs/r1/inputs/a b.nwk", size: 6, sha256: "x" };
+    const fetchFn = routes({ "PUT /api/runs/r1/inputs/a%20b.nwk": () => json(uploaded) }, calls);
+    const bridge = createWebBridge({ fetchFn });
+    const blob = new Blob(["(A,B);"]);
+    await expect(bridge.uploadInput("r1", "a b.nwk", blob)).resolves.toStrictEqual(uploaded);
+    expect(calls[0]?.body).toBe(blob);
+  });
+
+  test("readRunFile encodes the path and returns the bytes", async () => {
+    const fetchFn = routes({ "GET /api/runs/r1/file?path=out%2Fclock.nwk": () => new Response("(A,B);") });
+    const bridge = createWebBridge({ fetchFn });
+    const bytes = await bridge.readRunFile("r1", "out/clock.nwk");
+    expect(new TextDecoder().decode(bytes)).toBe("(A,B);");
+  });
+});
+
+describe("bridge_web run events", () => {
+  test("followRun reads the event stream from the given offset", async () => {
+    const calls: Call[] = [];
+
+    const fetchFn = routes(
+      {
+        "GET /api/runs/r1/events?from=0": () =>
+          sse([
+            { type: "started", data: { job_id: "r1", command: "clock" } },
+            { type: "log", data: { level: "info", message: "hello" } },
+            { type: "terminal", data: { status: "cancelled", job_id: "r1" } },
+          ]),
+      },
+      calls,
+    );
+
+    const bridge = createWebBridge({ fetchFn });
+    const seen: string[] = [];
+
+    const terminal = await bridge.followRun("r1", {
+      onEvent: (event) => {
+        seen.push(event.type);
+      },
+    });
+
+    expect(terminal).toStrictEqual({ status: "cancelled", job_id: "r1" });
+    expect(seen).toStrictEqual(["started", "log", "terminal"]);
+  });
+
+  test("a command creates a run and resolves with the outcome of its terminal event", async () => {
+    const fetchFn = routes({
+      "POST /api/runs": () => json(RECORD),
+      "GET /api/runs/r1/events?from=0": () =>
+        sse([
+          { type: "started", data: { job_id: "r1", command: "clock" } },
+          { type: "progress", data: { stage: "read", fraction: 0.5, message: "" } },
+          { type: "terminal", data: { status: "ok", job_id: "r1", result: OUTCOME } },
+        ]),
+    });
+
+    const bridge = createWebBridge({ fetchFn });
+    const fractions: number[] = [];
+    await expect(
+      bridge.clock(
+        { tree: "t.nwk" },
+        {
+          onProgress: (event) => {
+            fractions.push(event.fraction);
+          },
+        },
+      ),
+    ).resolves.toStrictEqual(OUTCOME);
+    expect(fractions).toStrictEqual([0.5]);
   });
 
   test("an error terminal event rejects with a CommandError", async () => {
-    const fetchFn = eventStreamFetch([
-      { event: "started", data: { job_id: "j2", command: "clock" } },
-      { event: "terminal", data: { status: "error", job_id: "j2", message: "bad", causes: ["cause"] } },
-    ]);
+    const fetchFn = routes({
+      "POST /api/runs": () => json(RECORD),
+      "GET /api/runs/r1/events?from=0": () =>
+        sse([{ type: "terminal", data: { status: "error", job_id: "r1", message: "bad", causes: [] } }]),
+    });
 
     const bridge = createWebBridge({ fetchFn });
     await expect(bridge.clock({ tree: "t.nwk" })).rejects.toBeInstanceOf(CommandError);
   });
 
-  test("a stream without a terminal event rejects", async () => {
-    const fetchFn = eventStreamFetch([{ event: "started", data: { job_id: "j3", command: "ancestral" } }]);
-    const bridge = createWebBridge({ fetchFn });
-    await expect(bridge.ancestral({ tree: "t.nwk" })).rejects.toThrow("ended without a terminal event");
-  });
-
-  test("a non-ok command response rejects with the status", async () => {
-    const bridge = createWebBridge({ fetchFn: jsonFetch({}, { status: 503, statusText: "Busy" }) });
-    await expect(bridge.ancestral({ tree: "t.nwk" })).rejects.toThrow("503");
-  });
-
-  test("a malformed event rejects with a ZodError", async () => {
-    const bridge = createWebBridge({ fetchFn: eventStreamFetch([{ event: "result", data: { wrong: true } }]) });
-    await expect(bridge.ancestral({ tree: "t.nwk" })).rejects.toBeInstanceOf(ZodError);
-  });
-
-  test("aborting requests cancellation of the job and resolves with its cancelled terminal event", async () => {
+  test("an aborted stream rejects with a CancelledError", async () => {
     const controller = new AbortController();
-    const calls: string[] = [];
-    let release: () => void = () => undefined;
-
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    const fetchFn: typeof fetch = (input) => {
-      const url = urlOf(input);
-      calls.push(url);
-
-      if (url.endsWith("/cancel")) {
-        release();
-
-        return Promise.resolve(new Response(JSON.stringify({ cancelled: true })));
-      }
-
-      const encoder = new TextEncoder();
-
-      const body = new ReadableStream<Uint8Array>({
-        async start(stream) {
-          stream.enqueue(encoder.encode(sse([{ event: "started", data: { job_id: "j4", command: "timetree" } }])));
-          controller.abort();
-          await released;
-          stream.enqueue(encoder.encode(sse([{ event: "terminal", data: { status: "cancelled", job_id: "j4" } }])));
-          stream.close();
-        },
-      });
-
-      return Promise.resolve(new Response(body, { headers: { "Content-Type": "text/event-stream" } }));
-    };
-
+    controller.abort();
+    const fetchFn = routes({ "GET /api/runs/r1/events?from=2": () => sse([]) });
     const bridge = createWebBridge({ fetchFn });
-    await expect(bridge.timetree({}, { signal: controller.signal })).rejects.toBeInstanceOf(CancelledError);
-    expect(calls).toStrictEqual(["/api/timetree", "/api/jobs/j4/cancel"]);
+    await expect(bridge.followRun("r1", { from: 2, signal: controller.signal })).rejects.toBeInstanceOf(CancelledError);
   });
 });

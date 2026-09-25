@@ -1,7 +1,7 @@
-import { CancelledError, CommandError } from "@neherlab/app-contracts";
+import { CancelledError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { createDesktopBridge, JOB_EVENT_CHANNEL, type IpcRendererLike } from "../desktop-bridge";
+import { createDesktopBridge, LocalInputsError, RUN_EVENT_CHANNEL, type IpcRendererLike } from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
 
@@ -10,21 +10,37 @@ type OnInvoke = (ipc: FakeIpc, channel: string, args: unknown[]) => Promise<unkn
 interface FakeIpc extends IpcRendererLike {
   emit(channel: string, ...args: unknown[]): void;
   handlerCount(channel: string): number;
-  readonly sent: unknown[][];
 }
 
-const OUTCOME = { command: "ancestral", output_files: ["out/ancestral.nwk"] };
+const RECORD = {
+  id: "r1",
+  title: "clock",
+  command: "clock",
+  config: { tree: "t.nwk" },
+  status: "running",
+  pinned: false,
+  created_at: "2026-09-25T10:00:00Z",
+  started_at: null,
+  finished_at: null,
+  duration_seconds: null,
+  treetime_version: "1.0.0",
+  inputs: [],
+  config_hash: null,
+  changed_settings: [],
+  headline: {},
+  output_files: [],
+  error: null,
+};
+
+const OUTCOME = { command: "clock", output_files: [{ path: "/runs/r1/out/clock.nwk", kind: "nwk" }] };
 
 function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
   const handlers = new Map<string, Listener[]>();
-  const sent: unknown[][] = [];
 
   const fake: FakeIpc = {
     invoke: (channel, ...args) => onInvoke(fake, channel, args),
     on(channel, listener) {
-      const list = handlers.get(channel) ?? [];
-      list.push(listener);
-      handlers.set(channel, list);
+      handlers.set(channel, [...(handlers.get(channel) ?? []), listener]);
     },
     removeListener(channel, listener) {
       handlers.set(
@@ -32,8 +48,8 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
         (handlers.get(channel) ?? []).filter((l) => l !== listener),
       );
     },
-    send(channel, ...args) {
-      sent.push([channel, ...args]);
+    send() {
+      return undefined;
     },
     emit(channel, ...args) {
       for (const listener of handlers.get(channel) ?? []) {
@@ -43,19 +59,16 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
     handlerCount(channel) {
       return (handlers.get(channel) ?? []).length;
     },
-    sent,
   };
 
   return fake;
 }
 
-function jobIds(...ids: string[]): () => string {
-  let next = 0;
-
-  return () => ids[next++] ?? "unexpected";
+function runEvent(seq: number, type: string, data: unknown): string {
+  return JSON.stringify({ seq, time: "t", type, data });
 }
 
-describe("desktop_bridge query and request paths", () => {
+describe("desktop_bridge queries and requests", () => {
   test("version parses a JSON string result", async () => {
     const bridge = createDesktopBridge(makeFakeIpc(() => Promise.resolve(JSON.stringify({ version: "2.0.0" }))));
     await expect(bridge.version()).resolves.toStrictEqual({ version: "2.0.0" });
@@ -72,107 +85,114 @@ describe("desktop_bridge query and request paths", () => {
       }),
     );
 
-    await expect(bridge.checkConfig({ command: "clock", text: "tree: t" })).resolves.toStrictEqual({
-      status: "valid",
-      config: {},
-    });
+    await bridge.checkConfig({ command: "clock", text: "tree: t" });
     expect(captured).toStrictEqual(["treetime:check-config", JSON.stringify({ command: "clock", text: "tree: t" })]);
+  });
+
+  test("startRun sends the replacement configuration as JSON", async () => {
+    let captured: unknown[] = [];
+
+    const bridge = createDesktopBridge(
+      makeFakeIpc((_ipc, channel, args) => {
+        captured = [channel, ...args];
+
+        return Promise.resolve(JSON.stringify(RECORD));
+      }),
+    );
+
+    await bridge.startRun("r1", { config: { tree: "/data/t.nwk" } });
+    expect(captured).toStrictEqual(["treetime:runs:start", "r1", JSON.stringify({ tree: "/data/t.nwk" })]);
+  });
+
+  test("readRunFile returns the bytes the main process sends", async () => {
+    const bridge = createDesktopBridge(makeFakeIpc(() => Promise.resolve(new Uint8Array([40, 65, 41]))));
+    await expect(bridge.readRunFile("r1", "clock.nwk")).resolves.toStrictEqual(new Uint8Array([40, 65, 41]));
+  });
+
+  test("readRunFile rejects a result without bytes", async () => {
+    const bridge = createDesktopBridge(makeFakeIpc(() => Promise.resolve("not bytes")));
+    await expect(bridge.readRunFile("r1", "clock.nwk")).rejects.toBeInstanceOf(TypeError);
+  });
+
+  test("uploadInput rejects because the desktop app reads local paths", async () => {
+    const bridge = createDesktopBridge(makeFakeIpc(() => Promise.resolve(null)));
+    await expect(bridge.uploadInput("r1", "t.nwk", new Blob(["x"]))).rejects.toBeInstanceOf(LocalInputsError);
   });
 });
 
-describe("desktop_bridge command path", () => {
-  test("events of this job reach the caller, events of other jobs do not", async () => {
-    let captured: unknown[] = [];
+describe("desktop_bridge run events", () => {
+  test("followRun subscribes and resolves at the terminal event of its own subscription", async () => {
+    let subscription: unknown[] = [];
 
-    const fake = makeFakeIpc((ipc, channel, args) => {
-      captured = [channel, ...args];
-      ipc.emit(
-        JOB_EVENT_CHANNEL,
-        "other",
-        JSON.stringify({ type: "progress", data: { stage: "x", fraction: 0, message: "" } }),
-      );
-      ipc.emit(
-        JOB_EVENT_CHANNEL,
-        "job-1",
-        JSON.stringify({ type: "started", data: { job_id: "job-1", command: "ancestral" } }),
-      );
-      ipc.emit(
-        JOB_EVENT_CHANNEL,
-        "job-1",
-        JSON.stringify({ type: "progress", data: { stage: "infer", fraction: 1, message: "" } }),
-      );
-
-      return Promise.resolve(JSON.stringify({ status: "ok", job_id: "job-1", result: OUTCOME }));
-    });
-
-    const received: string[] = [];
-    const bridge = createDesktopBridge(fake, jobIds("job-1"));
-
-    const result = await bridge.ancestral(
-      { tree: "t.nwk" },
-      {
-        onStarted: (jobId) => {
-          received.push(`started ${jobId}`);
-        },
-        onProgress: (event) => {
-          received.push(event.stage);
-        },
-      },
-    );
-
-    expect(result).toStrictEqual(OUTCOME);
-    expect(received).toStrictEqual(["started job-1", "infer"]);
-    expect(captured).toStrictEqual(["treetime:run", "job-1", "ancestral", JSON.stringify({ tree: "t.nwk" })]);
-    expect(fake.handlerCount(JOB_EVENT_CHANNEL)).toBe(0);
-  });
-
-  test("an error terminal event rejects with a CommandError", async () => {
-    const terminal = { status: "error", job_id: "job-2", message: "bad", causes: [] };
-
-    const bridge = createDesktopBridge(
-      makeFakeIpc(() => Promise.resolve(JSON.stringify(terminal))),
-      jobIds("job-2"),
-    );
-
-    await expect(bridge.clock({ tree: "t.nwk" })).rejects.toBeInstanceOf(CommandError);
-  });
-
-  test("aborting sends the job id on the cancel channel and the cancelled terminal event rejects", async () => {
-    let resolveInvoke: (value: unknown) => void = () => undefined;
-
-    const fake = makeFakeIpc(
-      () =>
-        new Promise<unknown>((resolve) => {
-          resolveInvoke = resolve;
-        }),
-    );
-
-    const controller = new AbortController();
-    const bridge = createDesktopBridge(fake, jobIds("job-3"));
-    const pending = bridge.ancestral({ tree: "t.nwk" }, { signal: controller.signal });
-
-    controller.abort();
-    expect(fake.sent).toStrictEqual([["treetime:cancel", "job-3"]]);
-
-    resolveInvoke(JSON.stringify({ status: "cancelled", job_id: "job-3" }));
-    await expect(pending).rejects.toBeInstanceOf(CancelledError);
-    expect(fake.handlerCount(JOB_EVENT_CHANNEL)).toBe(0);
-  });
-
-  test("a signal aborted before the call rejects without starting a job", async () => {
-    const invoked: string[] = [];
-
-    const fake = makeFakeIpc((_ipc, channel) => {
-      invoked.push(channel);
+    const ipc = makeFakeIpc((fake, channel, args) => {
+      if (channel === "treetime:runs:subscribe") {
+        subscription = args;
+        fake.emit(RUN_EVENT_CHANNEL, "other", runEvent(3, "terminal", { status: "cancelled", job_id: "x" }));
+        fake.emit(RUN_EVENT_CHANNEL, "sub-1", runEvent(3, "log", { level: "info", message: "hello" }));
+        fake.emit(RUN_EVENT_CHANNEL, "sub-1", runEvent(4, "terminal", { status: "cancelled", job_id: "r1" }));
+      }
 
       return Promise.resolve(undefined);
     });
 
-    const controller = new AbortController();
-    controller.abort();
-    const bridge = createDesktopBridge(fake, jobIds("job-4"));
+    const bridge = createDesktopBridge(ipc, () => "sub-1");
+    const seen: number[] = [];
 
-    await expect(bridge.prune({ tree: "t.nwk" }, { signal: controller.signal })).rejects.toBeInstanceOf(CancelledError);
-    expect(invoked).toStrictEqual([]);
+    const terminal = await bridge.followRun("r1", {
+      from: 3,
+      onEvent: (event) => {
+        seen.push(event.seq);
+      },
+    });
+
+    expect(subscription).toStrictEqual(["sub-1", "r1", 3]);
+    expect(terminal).toStrictEqual({ status: "cancelled", job_id: "r1" });
+    expect(seen).toStrictEqual([3, 4]);
+    expect(ipc.handlerCount(RUN_EVENT_CHANNEL)).toBe(0);
+  });
+
+  test("a command creates a run and resolves with the outcome", async () => {
+    const ipc = makeFakeIpc((fake, channel) => {
+      if (channel === "treetime:runs:create") {
+        return Promise.resolve(JSON.stringify(RECORD));
+      }
+
+      if (channel === "treetime:runs:subscribe") {
+        fake.emit(RUN_EVENT_CHANNEL, "sub-1", runEvent(0, "started", { job_id: "r1", command: "clock" }));
+        fake.emit(RUN_EVENT_CHANNEL, "sub-1", runEvent(1, "terminal", { status: "ok", job_id: "r1", result: OUTCOME }));
+      }
+
+      return Promise.resolve(undefined);
+    });
+
+    const bridge = createDesktopBridge(ipc, () => "sub-1");
+    await expect(bridge.clock({ tree: "t.nwk" })).resolves.toStrictEqual(OUTCOME);
+  });
+
+  test("a cancelled run rejects the command with a CancelledError", async () => {
+    const ipc = makeFakeIpc((fake, channel) => {
+      if (channel === "treetime:runs:create") {
+        return Promise.resolve(JSON.stringify(RECORD));
+      }
+
+      if (channel === "treetime:runs:subscribe") {
+        fake.emit(RUN_EVENT_CHANNEL, "sub-1", runEvent(0, "terminal", { status: "cancelled", job_id: "r1" }));
+      }
+
+      return Promise.resolve(undefined);
+    });
+
+    const bridge = createDesktopBridge(ipc, () => "sub-1");
+    await expect(bridge.clock({ tree: "t.nwk" })).rejects.toBeInstanceOf(CancelledError);
+  });
+
+  test("a failed subscription rejects and removes its listener", async () => {
+    const ipc = makeFakeIpc((_fake, channel) =>
+      channel === "treetime:runs:subscribe" ? Promise.reject(new Error("no run with id `r9`")) : Promise.resolve(null),
+    );
+
+    const bridge = createDesktopBridge(ipc, () => "sub-1");
+    await expect(bridge.followRun("r9")).rejects.toThrow("no run with id `r9`");
+    expect(ipc.handlerCount(RUN_EVENT_CHANNEL)).toBe(0);
   });
 });
