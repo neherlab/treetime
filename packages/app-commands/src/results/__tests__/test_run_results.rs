@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::command::AppCommand;
-  use crate::job::JobId;
   use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
@@ -12,20 +11,16 @@ mod tests {
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
   use crate::runs::setting_differences::SettingDifference;
-  use app_output::output_plan::OutputSelection;
   use eyre::Report;
-  use helpers::{auspice_path, dataset, finished_run, zika};
+  use helpers::{auspice_path, clock_model, dataset, finished_run, timetree_config, zika};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
   use std::fs;
-  use std::sync::Arc;
   use tempfile::tempdir;
-  use treetime::clock::clock_model::ClockModel;
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::json_read_file;
 
   #[test]
   fn test_run_results_of_a_timetree_run_hold_estimates_regression_and_methods() -> Result<(), Report> {
@@ -420,36 +415,39 @@ mod tests {
     Ok(())
   }
 
-  fn timetree_config(clock_rate: Option<f64>) -> Value {
-    json!({
-      "tree": zika("tree.nwk"),
-      "metadata": zika("metadata.tsv"),
-      "alignment": [zika("aln.fasta.xz")],
-      "max_iter": 2,
-      "seed": 7,
-      "clock_rate": clock_rate,
-    })
-  }
-
-  fn clock_model(runs: &Arc<RunManager>, id: &JobId) -> Result<ClockModel, Report> {
-    let record = runs.get(id)?;
-    let file = record
-      .output_files
-      .iter()
-      .find(|file| file.kind == OutputSelection::ClockModel)
-      .expect("the run wrote a clock model");
-    json_read_file(runs.store().out_dir(id).join(&file.path))
-  }
-
   mod helpers {
     use crate::command::AppCommand;
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
     use crate::runs::record::{CreateRunRequest, RunStatus};
     use app_output::output_plan::OutputSelection;
-    use serde_json::Value;
+    use eyre::Report;
+    use serde_json::{Value, json};
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
+    use treetime::clock::clock_model::ClockModel;
+    use treetime_utils::io::json::json_read_file;
+
+    pub(super) fn timetree_config(clock_rate: Option<f64>) -> Value {
+      json!({
+        "tree": zika("tree.nwk"),
+        "metadata": zika("metadata.tsv"),
+        "alignment": [zika("aln.fasta.xz")],
+        "max_iter": 2,
+        "seed": 7,
+        "clock_rate": clock_rate,
+      })
+    }
+
+    pub(super) fn clock_model(runs: &Arc<RunManager>, id: &JobId) -> Result<ClockModel, Report> {
+      let record = runs.get(id)?;
+      let file = record
+        .output_files
+        .iter()
+        .find(|file| file.kind == OutputSelection::ClockModel)
+        .expect("the run wrote a clock model");
+      json_read_file(runs.store().out_dir(id).join(&file.path))
+    }
 
     pub(super) fn finished_run(runs: &Arc<RunManager>, command: AppCommand, config: Value) -> JobId {
       let created = runs

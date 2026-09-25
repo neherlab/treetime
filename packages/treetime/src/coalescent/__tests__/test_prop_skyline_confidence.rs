@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::__tests__::helpers::{coalescent_node_times, setup_graph};
+  use crate::coalescent::__tests__::helpers::tests::{coalescent_node_times, setup_graph};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::progress::NoopProgress;
   use proptest::prelude::*;

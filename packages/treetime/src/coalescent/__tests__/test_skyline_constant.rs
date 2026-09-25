@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::{coalescent_node_times, constant_skyline, setup_graph, tc};
+  use super::super::helpers::tests::{coalescent_node_times, constant_skyline, setup_graph, tc};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use helpers::{tree3, tree3_analytic_tc};
@@ -92,7 +92,7 @@ mod tests {
 
   mod helpers {
     use crate::clock::date_constraints::DateConstraints;
-    use crate::coalescent::__tests__::helpers::graph_with_dates;
+    use crate::coalescent::__tests__::helpers::tests::graph_with_dates;
     use eyre::Report;
     use maplit::btreemap;
     use treetime_graph::graph::Graph;

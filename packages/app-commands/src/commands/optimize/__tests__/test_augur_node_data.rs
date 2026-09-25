@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::project_root;
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
   use treetime_primitives::AlignmentRecord;
@@ -123,7 +124,7 @@ mod tests {
     use treetime_io::fasta::read_many_fasta_path;
     use treetime_io::nwk::nwk_read_file;
 
-    let root = helpers::project_root();
+    let root = project_root();
     let alphabet = Alphabet::default();
     let nwk_parsed = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let confidences = nwk_parsed.confidences();
@@ -180,7 +181,7 @@ mod tests {
     use app_output::augur_node_data_optimize::build_augur_node_data_json;
     use app_output::optimize_result::OptimizeNodeOut;
     use std::collections::BTreeMap;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
@@ -251,14 +252,6 @@ mod tests {
       )
       .unwrap();
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
-    }
-
-    pub(super) fn project_root() -> PathBuf {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|p| p.parent())
-        .map(PathBuf::from)
-        .expect("project has workspace root")
     }
 
     pub(super) fn build_augur_node_data_json_from_output(

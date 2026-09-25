@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 #[cfg(feature = "clap")]
 pub mod catalog;
 #[cfg(feature = "clap")]

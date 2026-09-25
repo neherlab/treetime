@@ -5,6 +5,7 @@ mod tests {
   };
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use helpers::extract_branch_lengths;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
@@ -37,13 +38,6 @@ mod tests {
 
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
-
-  fn extract_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
-    graph
-      .get_edges()
-      .map(|e| branch_lengths[&e.key()].unwrap_or(0.0))
-      .collect_vec()
-  }
 
   #[rustfmt::skip]
   #[rstest]
@@ -189,5 +183,19 @@ mod tests {
     }
 
     Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn extract_branch_lengths(
+      graph: &Graph,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    ) -> Vec<f64> {
+      graph
+        .get_edges()
+        .map(|e| branch_lengths[&e.key()].unwrap_or(0.0))
+        .collect_vec()
+    }
   }
 }

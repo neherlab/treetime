@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::__tests__::helpers::coalescent_node_times;
+  use crate::coalescent::__tests__::helpers::tests::coalescent_node_times;
   use crate::coalescent::events::collect_tree_events;
   use crate::coalescent::node_time::CoalescentNodeTime;
   use crate::coalescent::time_coordinate::CalendarTime;

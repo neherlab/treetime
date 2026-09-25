@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::project_root;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::topology_order_args::{LadderizeArg, TopologyOrderArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::{Report, WrapErr};
+  use helpers::count_leaves;
   use std::fs::read_to_string;
-  use std::path::PathBuf;
+
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
@@ -170,19 +172,15 @@ mod tests {
     Ok(())
   }
 
-  fn project_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(|p| p.parent())
-      .map(PathBuf::from)
-      .expect("project has workspace root")
-  }
+  mod helpers {
+    use super::*;
 
-  fn count_leaves(node: &AuspiceTreeNode) -> usize {
-    if node.children.is_empty() {
-      1
-    } else {
-      node.children.iter().map(count_leaves).sum()
+    pub(super) fn count_leaves(node: &AuspiceTreeNode) -> usize {
+      if node.children.is_empty() {
+        1
+      } else {
+        node.children.iter().map(count_leaves).sum()
+      }
     }
   }
 }

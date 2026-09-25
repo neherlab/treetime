@@ -6,6 +6,7 @@ mod tests {
   use crate::commands::timetree::run::run_timetree_estimation;
   use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
+  use helpers::{fixed_rate_intercept, ordinary_least_squares, run_zika, zika_dir};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -129,56 +130,60 @@ mod tests {
     Ok(())
   }
 
-  fn run_zika(
-    output: &Path,
-    metadata: &Path,
-    configure: impl FnOnce(&mut TreetimeTimetreeArgsRaw),
-  ) -> Result<(Vec<ClockRegressionResult>, ClockModel), Report> {
-    let mut raw = TreetimeTimetreeArgsRaw {
-      alignment: AlignmentArgs {
-        alignment: vec![zika_dir().join("aln.fasta.xz")],
-      },
-      tree: Some(zika_dir().join("tree.nwk")),
-      metadata: Some(metadata.to_path_buf()),
-      output: OutputCoreArgs {
-        output_all: Some(output.to_path_buf()),
-        ..OutputCoreArgs::default()
-      },
-      output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
-      seed: Some(7),
-      ..TreetimeTimetreeArgsRaw::default()
-    };
-    configure(&mut raw);
-    let args = TreetimeTimetreeArgs::try_from(raw)?;
-    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
-    let rows = csv_read_file(output.join("timetree.clock.csv"), b',')?;
-    let model = json_read_file(output.join("timetree.clock-model.json"))?;
-    Ok((rows, model))
-  }
+  mod helpers {
+    use super::*;
 
-  fn ordinary_least_squares(points: &[(f64, f64)]) -> (f64, f64) {
-    let (mean_t, mean_d) = means(points);
-    let sxy: f64 = points.iter().map(|(t, d)| (t - mean_t) * (d - mean_d)).sum();
-    let sxx: f64 = points.iter().map(|(t, _)| (t - mean_t).powi(2)).sum();
-    let rate = sxy / sxx;
-    (rate, mean_d - rate * mean_t)
-  }
+    pub(super) fn run_zika(
+      output: &Path,
+      metadata: &Path,
+      configure: impl FnOnce(&mut TreetimeTimetreeArgsRaw),
+    ) -> Result<(Vec<ClockRegressionResult>, ClockModel), Report> {
+      let mut raw = TreetimeTimetreeArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![zika_dir().join("aln.fasta.xz")],
+        },
+        tree: Some(zika_dir().join("tree.nwk")),
+        metadata: Some(metadata.to_path_buf()),
+        output: OutputCoreArgs {
+          output_all: Some(output.to_path_buf()),
+          ..OutputCoreArgs::default()
+        },
+        output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+        seed: Some(7),
+        ..TreetimeTimetreeArgsRaw::default()
+      };
+      configure(&mut raw);
+      let args = TreetimeTimetreeArgs::try_from(raw)?;
+      run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+      let rows = csv_read_file(output.join("timetree.clock.csv"), b',')?;
+      let model = json_read_file(output.join("timetree.clock-model.json"))?;
+      Ok((rows, model))
+    }
 
-  fn fixed_rate_intercept(points: &[(f64, f64)], rate: f64) -> f64 {
-    let (mean_t, mean_d) = means(points);
-    mean_d - rate * mean_t
-  }
+    pub(super) fn ordinary_least_squares(points: &[(f64, f64)]) -> (f64, f64) {
+      let (mean_t, mean_d) = means(points);
+      let sxy: f64 = points.iter().map(|(t, d)| (t - mean_t) * (d - mean_d)).sum();
+      let sxx: f64 = points.iter().map(|(t, _)| (t - mean_t).powi(2)).sum();
+      let rate = sxy / sxx;
+      (rate, mean_d - rate * mean_t)
+    }
 
-  #[allow(clippy::as_conversions, reason = "point count is far below 2^52")]
-  fn means(points: &[(f64, f64)]) -> (f64, f64) {
-    let n = points.len() as f64;
-    (
-      points.iter().map(|(t, _)| t).sum::<f64>() / n,
-      points.iter().map(|(_, d)| d).sum::<f64>() / n,
-    )
-  }
+    pub(super) fn fixed_rate_intercept(points: &[(f64, f64)], rate: f64) -> f64 {
+      let (mean_t, mean_d) = means(points);
+      mean_d - rate * mean_t
+    }
 
-  fn zika_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20")
+    #[allow(clippy::as_conversions, reason = "point count is far below 2^52")]
+    pub(super) fn means(points: &[(f64, f64)]) -> (f64, f64) {
+      let n = points.len() as f64;
+      (
+        points.iter().map(|(t, _)| t).sum::<f64>() / n,
+        points.iter().map(|(_, d)| d).sum::<f64>() / n,
+      )
+    }
+
+    pub(super) fn zika_dir() -> PathBuf {
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20")
+    }
   }
 }

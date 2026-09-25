@@ -26,6 +26,7 @@ mod tests {
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::utils::initialize_node_divergences;
   use eyre::Report;
+  use helpers::build_timetree_setup;
   use treetime_graph::graph::Graph;
 
   use rstest::rstest;
@@ -93,59 +94,63 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     BTreeMap<GraphEdgeKey, Option<f64>>,
   );
 
-  fn build_timetree_setup(
-    dataset: &str,
-    case: &super::super::test_gm_runner_support::support::DatasetOutputs,
-  ) -> Result<TimetreeSetup, Report> {
-    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
-    let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+  mod helpers {
+    use super::*;
 
-    let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
-      gtr: jc69(JC69Params::default())?,
-      node_states: BTreeMap::new(),
-      edges: MarginalEdges::default(),
-    });
+    pub(super) fn build_timetree_setup(
+      dataset: &str,
+      case: &super::super::super::test_gm_runner_support::support::DatasetOutputs,
+    ) -> Result<TimetreeSetup, Report> {
+      let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let mut branch_lengths = nwk_parsed.branch_lengths;
+      let mut graph: Graph = graph;
+      let dates = load_dates_for_dataset(dataset)?;
+      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
-    let partitions: Vec<PartitionTimetree> = vec![dense_partition];
-    let (partitions, _) = initialize_marginal_timetree(
-      &graph,
-      &branch_lengths_or_zero(&branch_lengths),
-      partitions,
-      &node_seq_inputs(&graph, &names, aln),
-    )?;
-    let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
+      let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+      let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
+        partition: PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
+        gtr: jc69(JC69Params::default())?,
+        node_states: BTreeMap::new(),
+        edges: MarginalEdges::default(),
+      });
 
-    let times = likely_times(&graph, &constraints, None)?;
-    let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
-    let names_tt_1 = names.clone();
-    let clock_estimate_state = ClockState::new(&graph);
-    let (_clock_estimate_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
-      &mut graph,
-      &mut clock_estimate_inputs,
-      clock_estimate_state,
-      &ClockVarianceParams::default(),
-      Some(case.clock_rate()),
-      true,
-      &BranchPointOptimizationParams::default(),
-      &RerootParams::default(),
-      &mut branch_lengths,
-      None,
-      &names_tt_1,
-      &NoopProgress,
-    )?;
-    let clock_model = clock_reroot.into_clock_model()?;
+      let partitions: Vec<PartitionTimetree> = vec![dense_partition];
+      let (partitions, _) = initialize_marginal_timetree(
+        &graph,
+        &branch_lengths_or_zero(&branch_lengths),
+        partitions,
+        &node_seq_inputs(&graph, &names, aln),
+      )?;
+      let mut clock_state = ClockState::new(&graph);
+      initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    Ok((graph, names, partitions, clock_model, constraints, branch_lengths))
+      let times = likely_times(&graph, &constraints, None)?;
+      let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
+      let names_tt_1 = names.clone();
+      let clock_estimate_state = ClockState::new(&graph);
+      let (_clock_estimate_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
+        &mut graph,
+        &mut clock_estimate_inputs,
+        clock_estimate_state,
+        &ClockVarianceParams::default(),
+        Some(case.clock_rate()),
+        true,
+        &BranchPointOptimizationParams::default(),
+        &RerootParams::default(),
+        &mut branch_lengths,
+        None,
+        &names_tt_1,
+        &NoopProgress,
+      )?;
+      let clock_model = clock_reroot.into_clock_model()?;
+
+      Ok((graph, names, partitions, clock_model, constraints, branch_lengths))
+    }
   }
 }

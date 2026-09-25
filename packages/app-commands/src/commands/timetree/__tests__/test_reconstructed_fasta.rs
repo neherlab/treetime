@@ -98,25 +98,18 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::project_root;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
     use eyre::{Report, WrapErr};
     use std::collections::BTreeMap;
-    use std::path::PathBuf;
+
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
     use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
     use treetime_primitives::Seq;
-
-    fn project_root() -> PathBuf {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|p| p.parent())
-        .map(PathBuf::from)
-        .expect("project has workspace root")
-    }
 
     pub(super) fn input_leaves() -> Result<BTreeMap<String, Seq>, Report> {
       let alignment = project_root().join("data/flu/h3n2/20/aln.fasta.xz");

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::__tests__::helpers::{coalescent_node_times, constant_skyline, graph_with_dates};
+  use crate::coalescent::__tests__::helpers::tests::{coalescent_node_times, constant_skyline, graph_with_dates};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;

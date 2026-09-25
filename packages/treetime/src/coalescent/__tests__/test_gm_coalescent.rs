@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::coalescent_node_times;
+  use super::super::helpers::tests::coalescent_node_times;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;

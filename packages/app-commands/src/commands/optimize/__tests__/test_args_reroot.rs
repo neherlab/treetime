@@ -1,24 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::args::{OptimizeRerootMethod, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+  use helpers::args_with;
   use pretty_assertions::assert_eq;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use treetime::o;
-
-  fn args_with(
-    reroot: Option<OptimizeRerootMethod>,
-    reroot_tips: Vec<String>,
-    keep_root: bool,
-  ) -> TreetimeOptimizeArgs {
-    TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
-      tree: Some("tree.nwk".into()),
-      reroot,
-      reroot_tips,
-      keep_root,
-      ..Default::default()
-    })
-    .unwrap()
-  }
 
   #[test]
   fn test_optimize_args_reroot_spec_default_keeps_root() {
@@ -54,5 +40,24 @@ mod tests {
   fn test_optimize_reroot_method_converts_to_reroot_method() {
     let method: RerootMethod = OptimizeRerootMethod::MinDev.into();
     assert_eq!(RerootMethod::MinDev, method);
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn args_with(
+      reroot: Option<OptimizeRerootMethod>,
+      reroot_tips: Vec<String>,
+      keep_root: bool,
+    ) -> TreetimeOptimizeArgs {
+      TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
+        tree: Some("tree.nwk".into()),
+        reroot,
+        reroot_tips,
+        keep_root,
+        ..Default::default()
+      })
+      .unwrap()
+    }
   }
 }

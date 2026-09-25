@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
   use app_output::output_plan::{CommandKind, OutputSelection};
+  use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -11,14 +12,6 @@ mod tests {
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::NwkStyle;
   use treetime_utils::assert_error;
-
-  fn nwk(style: NwkStyle) -> TreeWriteKind {
-    TreeWriteKind::nwk(style)
-  }
-
-  fn nexus(style: NwkStyle) -> TreeWriteKind {
-    TreeWriteKind::nexus(style)
-  }
 
   #[test]
   fn test_resolve_output_all_default_selection() {
@@ -440,5 +433,17 @@ mod tests {
       command.all_selectable().is_disjoint(&coalescent),
       "{command:?} must not offer coalescent outputs"
     );
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn nwk(style: NwkStyle) -> TreeWriteKind {
+      TreeWriteKind::nwk(style)
+    }
+
+    pub(super) fn nexus(style: NwkStyle) -> TreeWriteKind {
+      TreeWriteKind::nexus(style)
+    }
   }
 }

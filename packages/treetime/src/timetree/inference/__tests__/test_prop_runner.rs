@@ -18,6 +18,7 @@ mod tests {
   use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
   use eyre::Report;
   use generators::{TimetreeCase, gen_timetree_case};
+  use helpers::run_twice_around_other_gammas;
   use itertools::Itertools;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
@@ -34,71 +35,9 @@ mod tests {
 
     #[test]
     fn test_prop_runner_run_timetree_idempotent(case in gen_timetree_case()) {
-      let (first, after_other_gammas) = run_twice_around_other_gammas(&case).unwrap();
-      prop_assert_eq!(first, after_other_gammas);
+      let runs = run_twice_around_other_gammas(&case).unwrap();
+      prop_assert_eq!(runs.first, runs.after_other_gammas);
     }
-  }
-
-  type RunResult = Result<TimeInference, String>;
-
-  fn run_twice_around_other_gammas(case: &TimetreeCase) -> Result<(RunResult, RunResult), Report> {
-    let nwk_parsed = nwk_read_str(&case.newick)?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(&case.fasta, &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?),
-      gtr: jc69(JC69Params::default())?,
-      node_states: BTreeMap::new(),
-      edges: MarginalEdges::default(),
-    })];
-    let (partitions, _) = initialize_marginal_timetree(
-      &graph,
-      &branch_lengths_or_zero(&branch_lengths),
-      partitions,
-      &node_seq_inputs(&graph, &names, aln),
-    )?;
-
-    let dates: DatesMap = case
-      .dates
-      .iter()
-      .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
-      .collect();
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
-    let leaf_bad_branches = undated_leaves(&graph, &constraints);
-    let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
-    let mut clock_state = ClockState::new(&graph);
-
-    let unit = unit_gammas(&graph);
-    let other: BTreeMap<GraphEdgeKey, f64> = unit.keys().map(|key| (*key, case.other_gamma)).collect();
-    let mut run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
-      run_timetree(
-        &graph,
-        &constraints,
-        &leaf_bad_branches,
-        gammas,
-        &partitions,
-        &branch_lengths,
-        &names,
-        &clock_model,
-        None,
-        false,
-        &mut clock_state,
-        &NoopProgress,
-      )
-      .map_err(|report| format!("{report:?}"))
-    };
-
-    let first = run(&unit);
-    let _other_gammas_result = run(&other);
-    let after_other_gammas = run(&unit);
-    Ok((first, after_other_gammas))
   }
 
   mod generators {
@@ -161,6 +100,80 @@ mod tests {
         subtrees.push(format!("({first}:{first_length},{second}:{second_length})"));
       }
       format!("{}root;", subtrees.concat())
+    }
+  }
+
+  mod helpers {
+    use super::*;
+
+    type RunResult = Result<TimeInference, String>;
+
+    pub(super) struct TwoRuns {
+      pub first: RunResult,
+      pub after_other_gammas: RunResult,
+    }
+
+    pub(super) fn run_twice_around_other_gammas(case: &TimetreeCase) -> Result<TwoRuns, Report> {
+      let nwk_parsed = nwk_read_str(&case.newick)?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
+
+      let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+      let aln: Vec<AlignmentRecord> = read_many_fasta_str(&case.fasta, &alphabet)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+      let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
+        partition: PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?),
+        gtr: jc69(JC69Params::default())?,
+        node_states: BTreeMap::new(),
+        edges: MarginalEdges::default(),
+      })];
+      let (partitions, _) = initialize_marginal_timetree(
+        &graph,
+        &branch_lengths_or_zero(&branch_lengths),
+        partitions,
+        &node_seq_inputs(&graph, &names, aln),
+      )?;
+
+      let dates: DatesMap = case
+        .dates
+        .iter()
+        .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
+        .collect();
+      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+      let leaf_bad_branches = undated_leaves(&graph, &constraints);
+      let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
+      let mut clock_state = ClockState::new(&graph);
+
+      let unit = unit_gammas(&graph);
+      let other: BTreeMap<GraphEdgeKey, f64> = unit.keys().map(|key| (*key, case.other_gamma)).collect();
+      let mut run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
+        run_timetree(
+          &graph,
+          &constraints,
+          &leaf_bad_branches,
+          gammas,
+          &partitions,
+          &branch_lengths,
+          &names,
+          &clock_model,
+          None,
+          false,
+          &mut clock_state,
+          &NoopProgress,
+        )
+        .map_err(|report| format!("{report:?}"))
+      };
+
+      let first = run(&unit);
+      let _other_gammas_result = run(&other);
+      let after_other_gammas = run(&unit);
+      Ok(TwoRuns {
+        first,
+        after_other_gammas,
+      })
     }
   }
 }

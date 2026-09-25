@@ -3,24 +3,13 @@ mod tests {
   use crate::commands::ancestral::run::{collect_ancestral_tree_maps, tree_outputs_need_sequences};
   use app_output::ancestral_result::AncestralOutputMaps;
   use eyre::Report;
+  use helpers::{marked_gather, outputs};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::NwkStyle;
-
-  fn outputs(kinds: &[TreeWriteKind]) -> BTreeMap<TreeWriteKind, PathBuf> {
-    kinds.iter().map(|kind| (kind.clone(), PathBuf::from("out"))).collect()
-  }
-
-  fn marked_gather(calls: &mut usize) -> Result<AncestralOutputMaps, Report> {
-    *calls += 1;
-    Ok(AncestralOutputMaps {
-      edge_mutations: BTreeMap::from([(GraphEdgeKey(0), vec![])]),
-      ..AncestralOutputMaps::default()
-    })
-  }
 
   #[test]
   fn test_output_demand_collects_once_for_sequence_writer() -> Result<(), Report> {
@@ -93,5 +82,21 @@ mod tests {
       TreeWriteKind::GraphJson,
       TreeWriteKind::Auspice,
     ])));
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn outputs(kinds: &[TreeWriteKind]) -> BTreeMap<TreeWriteKind, PathBuf> {
+      kinds.iter().map(|kind| (kind.clone(), PathBuf::from("out"))).collect()
+    }
+
+    pub(super) fn marked_gather(calls: &mut usize) -> Result<AncestralOutputMaps, Report> {
+      *calls += 1;
+      Ok(AncestralOutputMaps {
+        edge_mutations: BTreeMap::from([(GraphEdgeKey(0), vec![])]),
+        ..AncestralOutputMaps::default()
+      })
+    }
   }
 }

@@ -1,96 +1,20 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::{c, edge_mutation_map, make_test_partition};
   use app_output::DateCommentProvider;
   use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime::alphabet::alphabet::Alphabet;
-  use treetime::ancestral::pipeline::SparseReconstruction;
-  use treetime::gtr::get_gtr::{JC69Params, jc69};
-  use treetime::partition::marginal::shared::update::MarginalEdges;
-  use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use treetime::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+
+  use treetime::seq::mutation::Sub;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
-  use treetime_primitives::AsciiChar;
-
-  fn c(b: u8) -> AsciiChar {
-    AsciiChar::from_byte_unchecked(b)
-  }
-
-  fn edge_mutation_map(
-    graph: &Graph,
-    partition: &SparseReconstruction,
-  ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
-    graph
-      .get_edges()
-      .map(|edge| {
-        let key = edge.key();
-        Ok((key, partition.edge_mutations(key, &MutationTrack::Nucleotide)?))
-      })
-      .collect()
-  }
-
-  fn make_test_partition(
-    graph: &Graph,
-    length: usize,
-    edge_subs: &[(usize, Vec<Sub>)],
-  ) -> Result<SparseReconstruction, Report> {
-    let alphabet = Alphabet::default();
-    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
-    for (_, subs) in edge_subs {
-      for s in subs {
-        if s.pos() < length {
-          ref_seq[s.pos()] = s.reff();
-        }
-      }
-    }
-
-    let mut obs_nodes = btreemap! {};
-    let mut node_states = btreemap! {};
-    for node in graph.get_nodes() {
-      let key = node.key();
-      obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
-      node_states.insert(key, SparseNodeState::leaf(&ref_seq));
-    }
-
-    let mut obs_edges = btreemap! {};
-    let mut estimates = btreemap! {};
-    let edges = graph.get_edges().collect::<Vec<_>>();
-    for (idx, subs) in edge_subs {
-      if let Some(edge) = edges.get(*idx) {
-        let edge_key = edge.key();
-        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
-        estimates.insert(edge_key, subs.clone());
-      }
-    }
-
-    let partition = PartitionMarginalSparse {
-      index: 0,
-      alphabet,
-      length,
-      root_sequence: ref_seq,
-      obs_nodes,
-      obs_edges,
-    };
-
-    Ok(SparseReconstruction {
-      partition,
-      gtr: jc69(JC69Params::default())?,
-      node_states,
-      edges: MarginalEdges {
-        estimates,
-        ..MarginalEdges::default()
-      },
-    })
-  }
 
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {

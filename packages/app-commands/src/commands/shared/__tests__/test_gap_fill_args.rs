@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::shared::gap_fill::GapFillArgs;
   use clap::Parser;
+  use helpers::effective;
   use pretty_assertions::assert_eq;
   use treetime::seq::gap_fill::GapFill;
 
@@ -9,15 +10,6 @@ mod tests {
   struct GapFillCli {
     #[command(flatten)]
     gap_fill_args: GapFillArgs,
-  }
-
-  fn effective(extra: &[&str]) -> GapFill {
-    let mut argv = vec!["treetime"];
-    argv.extend_from_slice(extra);
-    GapFillCli::try_parse_from(argv)
-      .unwrap()
-      .gap_fill_args
-      .effective_gap_fill()
   }
 
   #[test]
@@ -44,5 +36,18 @@ mod tests {
   fn test_gap_fill_args_both_flags_is_error() {
     let result = GapFillCli::try_parse_from(["treetime", "--keep-overhangs", "--gap-fill=all"]);
     result.unwrap_err();
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn effective(extra: &[&str]) -> GapFill {
+      let mut argv = vec!["treetime"];
+      argv.extend_from_slice(extra);
+      GapFillCli::try_parse_from(argv)
+        .unwrap()
+        .gap_fill_args
+        .effective_gap_fill()
+    }
   }
 }

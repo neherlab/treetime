@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::{coalescent_node_times, setup_graph};
+  use super::super::helpers::tests::{coalescent_node_times, setup_graph};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::progress::NoopProgress;

@@ -2,6 +2,7 @@
 mod tests {
   use app_output::augur_node_data_mugration::build_augur_node_data_json;
   use app_output::mugration_result::MugrationResult;
+  use helpers::run_and_serialize;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime::cancel::NoopCancel;
@@ -11,33 +12,6 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonTraits;
-
-  fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
-    let nwk_parsed = nwk_read_str(tree).unwrap();
-    let confidences = nwk_parsed.confidences();
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let params = MugrationParams {
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-      smooth_initial_pi: false,
-      filter_uninformative_root: false,
-    };
-    let input = MugrationInput {
-      graph,
-      traits: traits.clone(),
-      weights: None,
-      branch_lengths: branch_lengths.clone(),
-    };
-    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
-    let result = MugrationResult::new(&output, &confidences, &names, &branch_lengths, "country");
-    let data = build_augur_node_data_json(&result, &output).unwrap();
-    json_write_str(&data, JsonPretty(true)).unwrap()
-  }
 
   #[test]
   fn test_augur_node_data_mugration_full_output() {
@@ -129,5 +103,36 @@ mod tests {
     let typed: AugurNodeDataJsonTraits = json_read_str(&json_str).unwrap();
     let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
     assert_eq!(original, roundtripped);
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
+      let nwk_parsed = nwk_read_str(tree).unwrap();
+      let confidences = nwk_parsed.confidences();
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
+      let params = MugrationParams {
+        missing_data: o!("?"),
+        pc: None,
+        missing_weights_threshold: 0.5,
+        iterations: 5,
+        sampling_bias_correction: None,
+        smooth_initial_pi: false,
+        filter_uninformative_root: false,
+      };
+      let input = MugrationInput {
+        graph,
+        traits: traits.clone(),
+        weights: None,
+        branch_lengths: branch_lengths.clone(),
+      };
+      let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
+      let result = MugrationResult::new(&output, &confidences, &names, &branch_lengths, "country");
+      let data = build_augur_node_data_json(&result, &output).unwrap();
+      json_write_str(&data, JsonPretty(true)).unwrap()
+    }
   }
 }

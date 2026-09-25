@@ -7,7 +7,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
-  use std::path::{Path, PathBuf};
+  use std::path::Path;
   use tempfile::TempDir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
@@ -52,6 +52,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::__tests__::test_support::tests::project_root;
 
     pub(super) const FLU_H3N2_20_FITCH_SCORE: usize = 179;
 
@@ -148,14 +149,6 @@ mod tests {
         .ok()
         .and_then(|index| MAT_NUCLEOTIDES.get(index).copied())
         .ok_or_else(|| eyre::eyre!("MAT nucleotide index {index} is out of range"))
-    }
-
-    fn project_root() -> PathBuf {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|p| p.parent())
-        .map(PathBuf::from)
-        .expect("project has workspace root")
     }
   }
 }

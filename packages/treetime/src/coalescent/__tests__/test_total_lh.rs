@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::{coalescent_node_times, setup_graph};
-  use crate::coalescent::__tests__::helpers::{constant_skyline, tc};
+  use super::super::helpers::tests::{coalescent_node_times, setup_graph};
+  use crate::coalescent::__tests__::helpers::tests::{constant_skyline, tc};
   use crate::coalescent::edge_data::collect_coalescent_edges;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
