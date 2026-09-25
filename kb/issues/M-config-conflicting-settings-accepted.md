@@ -13,7 +13,7 @@ The command line rejects conflicting flags through clap (`conflicts_with`, fixed
 ## Impact
 
 - A config that the equivalent command line rejects runs with a setting silently dropped
-- The new-analysis form presents the back end's `check-config` result as its conflict checks, so it cannot block these runs; the form adds no conflict rules of its own
+- The new-analysis form lists the checks `check-config` classifies (`packages/app-commands/src/run_checks.rs`), which has no conflict rule, so it cannot block these runs
 
 ## Potential solutions
 
