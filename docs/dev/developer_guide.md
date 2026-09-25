@@ -49,20 +49,20 @@ Optional settings go into the gitignored `.env` in the checkout; `.env.example` 
 
 ## Everyday commands
 
-| Task                                             | Command                               |
-| ------------------------------------------------ | ------------------------------------- |
-| List the recipes                                 | `just`                                |
-| Fast checks (format, clippy, TypeScript)         | `just check`                          |
-| Every check; must pass before merging            | `just check-all`                      |
-| Fast lint fixes and format (stage changes first) | `just fix`                            |
-| Every lint fix, dylint included, and format      | `just fix-all`                        |
-| Build                                            | `just build` (`just b`)               |
-| Run the CLI                                      | `just run treetime ancestral --help`  |
-| Rust tests, optionally filtered                  | `just test-rs [filter]` (`just t`)    |
-| TypeScript tests                                 | `just test-ts`                        |
-| Clippy                                           | `just lint-rs` (`just l`)             |
-| TypeScript lints                                 | `just lint-ts`                        |
-| Format one toolchain                             | `just fmt-rs`, `fmt-ts`, `fmt-other`  |
+| Task                                             | Command                              |
+| ------------------------------------------------ | ------------------------------------ |
+| List the recipes                                 | `just`                               |
+| Fast checks (format, clippy, TypeScript)         | `just check`                         |
+| Every check; must pass before merging            | `just check-all`                     |
+| Fast lint fixes and format (stage changes first) | `just fix`                           |
+| Every lint fix, dylint included, and format      | `just fix-all`                       |
+| Build                                            | `just build` (`just b`)              |
+| Run the CLI                                      | `just run treetime ancestral --help` |
+| Rust tests, optionally filtered                  | `just test-rs [filter]` (`just t`)   |
+| TypeScript tests                                 | `just test-ts`                       |
+| Clippy                                           | `just lint-rs` (`just l`)            |
+| TypeScript lints                                 | `just lint-ts`                       |
+| Format one toolchain                             | `just fmt-rs`, `fmt-ts`, `fmt-other` |
 
 In the container, prefix each command with `./dev/docker/run`.
 
@@ -111,6 +111,12 @@ data/                Example datasets
 ```
 
 ## Apps
+
+The TypeScript apps (`app-ui`, `app-web`, `app-desktop`) are a user interface around the Rust core. Algorithms, file parsers, readers and writers, configuration handling, and domain rules live in Rust and are tested there. The apps render what the Rust operations return and keep only presentation logic: layout, interaction state, and formatting for display. One implementation of each rule keeps the CLI, the web app, and the desktop app from diverging, and one test suite covers it.
+
+- **CLI knowledge**: flags, value syntax, setting groups, defaults, the equivalent command line, and the YAML config come from clap and the config types. The setting catalog in the OpenAPI document (`x-setting-catalog`) describes every setting, and `run-config` and `check-config` render the command line and YAML
+- **Checks**: `check-config` classifies configuration problems and input facts into checks that block the run, warn, or advise, with the settings that fix them
+- **Types**: every value that crosses from Rust to TypeScript is a Rust type with a derived schema in the OpenAPI document; the apps read it through the generated types and zod schemas in `app-contracts`, never through hand-written ones
 
 ### Web app
 
