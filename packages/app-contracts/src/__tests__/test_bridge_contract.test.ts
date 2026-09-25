@@ -48,6 +48,7 @@ function stubTransport(overrides: Partial<BridgeTransport>): BridgeTransport {
     version: missing("version"),
     datasets: missing("datasets"),
     checkConfig: missing("checkConfig"),
+    runConfig: missing("runConfig"),
     checkInputs: missing("checkInputs"),
     listRuns: missing("listRuns"),
     createRun: missing("createRun"),
@@ -121,6 +122,24 @@ describe("bridge result validation", () => {
 
     await expect(bridge.checkConfig({ command: "timetree", text: "tree: t.nwk\n" })).resolves.toStrictEqual(response);
     expect(captured).toStrictEqual({ command: "timetree", text: "tree: t.nwk\n" });
+  });
+
+  test("runConfig passes the request through and validates the response", async () => {
+    let captured: unknown;
+    const response = { status: "valid", config: { tree: "t.nwk", output_all: "out", output_selection: ["Auspice"] } };
+
+    const bridge = createBridge(
+      stubTransport({
+        runConfig: (request) => {
+          captured = request;
+
+          return Promise.resolve(response);
+        },
+      }),
+    );
+
+    await expect(bridge.runConfig({ command: "prune", config: { tree: "t.nwk" } })).resolves.toStrictEqual(response);
+    expect(captured).toStrictEqual({ command: "prune", config: { tree: "t.nwk" } });
   });
 
   test("checkInputs validates the facts", async () => {

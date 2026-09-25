@@ -13,6 +13,7 @@ import type {
   OptimizeConfig,
   ProgressEvent,
   PruneConfig,
+  RunConfigRequest,
   StartRunRequest,
   TimetreeConfig,
   UpdateRunRequest,
@@ -98,6 +99,7 @@ export interface BridgeTransport {
   version(): Promise<unknown>;
   datasets(): Promise<unknown>;
   checkConfig(request: CheckConfigRequest): Promise<unknown>;
+  runConfig(request: RunConfigRequest): Promise<unknown>;
   checkInputs(request: CheckInputsRequest): Promise<unknown>;
   listRuns(): Promise<unknown>;
   createRun(request: CreateRunRequest): Promise<unknown>;
@@ -119,6 +121,7 @@ export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
   datasets(): Promise<DatasetCatalog>;
   checkConfig(request: CheckConfigRequest): Promise<CheckConfigResult>;
+  runConfig(request: RunConfigRequest): Promise<CheckConfigResult>;
   checkInputs(request: CheckInputsRequest): Promise<Parsed<typeof zInputFacts>>;
   listRuns(): Promise<Parsed<typeof zRunList>>;
   createRun(request: CreateRunRequest): Promise<Parsed<typeof zRunRecord>>;
@@ -222,6 +225,9 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
     },
     async checkConfig(request) {
       return zCheckConfigResponse.parse(await transport.checkConfig(request));
+    },
+    async runConfig(request) {
+      return zCheckConfigResponse.parse(await transport.runConfig(request));
     },
     async checkInputs(request) {
       return zInputFacts.parse(await transport.checkInputs(request));

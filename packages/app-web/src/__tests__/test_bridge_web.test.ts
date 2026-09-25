@@ -109,6 +109,21 @@ describe("bridge_web queries and requests", () => {
     ]);
   });
 
+  test("runConfig posts the request body", async () => {
+    const calls: Call[] = [];
+
+    const fetchFn = routes(
+      { "POST /api/run-config": () => json({ status: "valid", config: { tree: "t.nwk" } }) },
+      calls,
+    );
+
+    const bridge = createWebBridge({ fetchFn });
+    await bridge.runConfig({ command: "prune", config: { tree: "t.nwk" } });
+    expect(calls).toStrictEqual([
+      { method: "POST", url: "/api/run-config", body: JSON.stringify({ command: "prune", config: { tree: "t.nwk" } }) },
+    ]);
+  });
+
   test("run operations use their routes", async () => {
     const calls: Call[] = [];
     const summary = { ...RECORD, status: "ok" };

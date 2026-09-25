@@ -89,6 +89,21 @@ describe("desktop_bridge queries and requests", () => {
     expect(captured).toStrictEqual(["treetime:check-config", JSON.stringify({ command: "clock", text: "tree: t" })]);
   });
 
+  test("runConfig sends the request as JSON to the run-config channel", async () => {
+    let captured: unknown[] = [];
+
+    const bridge = createDesktopBridge(
+      makeFakeIpc((_ipc, channel, args) => {
+        captured = [channel, ...args];
+
+        return Promise.resolve(JSON.stringify({ status: "valid", config: {} }));
+      }),
+    );
+
+    await bridge.runConfig({ command: "clock", config: { tree: "t" } });
+    expect(captured).toStrictEqual(["treetime:run-config", JSON.stringify({ command: "clock", config: { tree: "t" } })]);
+  });
+
   test("startRun sends the replacement configuration as JSON", async () => {
     let captured: unknown[] = [];
 

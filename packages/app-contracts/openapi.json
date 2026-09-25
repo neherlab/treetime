@@ -87,6 +87,34 @@
         "x-bridge-type": "query"
       }
     },
+    "/api/run-config": {
+      "post": {
+        "operationId": "runConfig",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "request"
+      }
+    },
     "/api/runs": {
       "get": {
         "operationId": "runsList",
@@ -3378,6 +3406,24 @@
           }
         ],
         "description": "Outcome of checking a configuration without running it."
+      },
+      "RunConfigRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/AppCommand",
+            "description": "Command the configuration is for."
+          },
+          "config": {
+            "description": "Configuration of the command, in the form `treetime <command> --config` reads."
+          }
+        },
+        "required": [
+          "command",
+          "config"
+        ],
+        "description": "Request to resolve a configuration as a run resolves it, without running it."
       },
       "OutputFile": {
         "type": "object",

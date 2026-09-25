@@ -2129,6 +2129,20 @@ export type CheckConfigResponse = {
 };
 
 /**
+ * Request to resolve a configuration as a run resolves it, without running it.
+ */
+export type RunConfigRequest = {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the command, in the form `treetime <command> --config` reads.
+     */
+    config: unknown;
+};
+
+/**
  * One file a command wrote.
  */
 export type OutputFile = {
@@ -2871,6 +2885,22 @@ export type DatasetsResponses = {
 };
 
 export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
+
+export type RunConfigData = {
+    body: RunConfigRequest;
+    path?: never;
+    query?: never;
+    url: '/api/run-config';
+};
+
+export type RunConfigResponses = {
+    /**
+     * The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it
+     */
+    200: CheckConfigResponse;
+};
+
+export type RunConfigResponse = RunConfigResponses[keyof RunConfigResponses];
 
 export type RunsListData = {
     body?: never;

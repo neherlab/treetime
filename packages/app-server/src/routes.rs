@@ -6,6 +6,7 @@ use crate::state::AppState;
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::{AppCommand, CheckConfigRequest, check_config};
 use app_commands::job::JobId;
+use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::invalid;
 use app_commands::runs::record::{CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
 use app_datasets::discover_datasets;
@@ -96,6 +97,7 @@ fn api_router() -> OpenApiRouter<Arc<AppState>> {
     .routes(routes!(handle_version))
     .routes(routes!(handle_datasets))
     .routes(routes!(handle_check_config))
+    .routes(routes!(handle_run_config))
     .routes(routes!(handle_check_inputs))
     .routes(routes!(handle_list_runs, handle_create_run))
     .routes(routes!(handle_get_run, handle_update_run, handle_delete_run))
@@ -140,6 +142,13 @@ fn operations() -> Vec<Operation> {
       method: "post",
       bridge_type: "request",
       request: json_body("CheckConfigRequest"),
+      response: json_body("CheckConfigResponse"),
+    },
+    Operation {
+      path: "/api/run-config",
+      method: "post",
+      bridge_type: "request",
+      request: json_body("RunConfigRequest"),
       response: json_body("CheckConfigResponse"),
     },
     Operation {
@@ -333,6 +342,17 @@ async fn handle_datasets(State(state): State<Arc<AppState>>) -> Result<Json<Valu
 async fn handle_check_config(Json(body): Json<Value>) -> Result<Json<Value>, AppError> {
   let request: CheckConfigRequest = serde_json::from_value(body)?;
   Ok(Json(serde_json::to_value(check_config(&request))?))
+}
+
+#[utoipa::path(
+  post,
+  path = "/api/run-config",
+  operation_id = "runConfig",
+  responses((status = 200, description = "The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it"))
+)]
+async fn handle_run_config(Json(body): Json<Value>) -> Result<Json<Value>, AppError> {
+  let request: RunConfigRequest = serde_json::from_value(body)?;
+  Ok(Json(serde_json::to_value(run_config(&request))?))
 }
 
 #[utoipa::path(

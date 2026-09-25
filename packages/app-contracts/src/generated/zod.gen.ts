@@ -696,6 +696,14 @@ export const zCheckConfigResponse = z.union([
 ]);
 
 /**
+ * Request to resolve a configuration as a run resolves it, without running it.
+ */
+export const zRunConfigRequest = z.object({
+    command: zAppCommand,
+    config: z.unknown()
+});
+
+/**
  * Canonical lookup key for selectable outputs. Command adapters convert their
  * selection enums into this type, and [`plan`] resolves each key to a path.
  * Tree variants do not encode the separately selected Newick style.

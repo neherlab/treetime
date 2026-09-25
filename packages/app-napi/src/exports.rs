@@ -1,6 +1,7 @@
 use crate::runs::{create_run, parse_id, start_run};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::{AppCommand, CheckConfigRequest, check_config};
+use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::manager::{RunManager, StartedRun};
 use app_commands::runs::record::UpdateRunRequest;
@@ -42,6 +43,16 @@ pub fn datasets() -> napi::Result<String> {
 pub fn check_config_json(request_json: String) -> napi::Result<String> {
   let request: CheckConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
   to_json(&check_config(&request))
+}
+
+#[napi]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
+pub fn run_config_json(request_json: String) -> napi::Result<String> {
+  let request: RunConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
+  to_json(&run_config(&request))
 }
 
 #[napi(ts_return_type = "Promise<string>")]

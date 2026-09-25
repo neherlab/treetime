@@ -21,4 +21,6 @@ export declare function checkInputsJson(requestJson: string): Promise<string>
 
 export declare function datasets(): string
 
+export declare function runConfigJson(requestJson: string): string
+
 export declare function version(): string

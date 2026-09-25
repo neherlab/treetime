@@ -102,6 +102,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     version: () => json("GET", "version"),
     datasets: () => json("GET", "datasets"),
     checkConfig: (request) => json("POST", "check-config", request),
+    runConfig: (request) => json("POST", "run-config", request),
     checkInputs: (request) => json("POST", "check-inputs", request),
     listRuns: () => json("GET", "runs"),
     createRun: (request) => json("POST", "runs", request),

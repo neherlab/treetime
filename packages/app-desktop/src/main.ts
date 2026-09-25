@@ -48,6 +48,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("treetime:version", () => addon.version());
   ipcMain.handle("treetime:datasets", () => addon.datasets());
   ipcMain.handle("treetime:check-config", (_event, requestJson: string) => addon.checkConfigJson(requestJson));
+  ipcMain.handle("treetime:run-config", (_event, requestJson: string) => addon.runConfigJson(requestJson));
   ipcMain.handle("treetime:check-inputs", (_event, requestJson: string) => addon.checkInputsJson(requestJson));
   ipcMain.handle("treetime:runs:list", () => runs.list());
   ipcMain.handle("treetime:runs:get", (_event, id: string) => runs.get(id));

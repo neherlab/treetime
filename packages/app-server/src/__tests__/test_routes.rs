@@ -453,6 +453,28 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_run_config_adds_the_run_outputs() {
+    let test = app();
+    let (_, response) = request(
+      &test,
+      "POST",
+      "/api/run-config",
+      Some(
+        json!({ "command": "clock", "config": { "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"] } }),
+      ),
+    )
+    .await;
+    assert_eq!(
+      (json!("valid"), json!(["Nwk", "Auspice"]), json!("out")),
+      (
+        response["status"].clone(),
+        response["config"]["output_selection"].clone(),
+        response["config"]["output_all"].clone()
+      )
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_datasets_lists_examples() {
     let test = app();
     let (_, catalog) = request(&test, "GET", "/api/datasets", None).await;

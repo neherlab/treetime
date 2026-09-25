@@ -2,6 +2,7 @@ use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CheckConfigRequest, CheckConfigResponse, CommandOutcome};
 use app_commands::config::schema::draft2020_generator;
 use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
+use app_commands::run_config::RunConfigRequest;
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::files::RunFile;
 use app_commands::runs::manager::UploadedInput;
@@ -35,6 +36,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   }
   add_type::<CheckConfigRequest>(&mut components)?;
   add_type::<CheckConfigResponse>(&mut components)?;
+  add_type::<RunConfigRequest>(&mut components)?;
   add_type::<CommandOutcome>(&mut components)?;
   add_type::<JobEvent>(&mut components)?;
   add_type::<TerminalEvent>(&mut components)?;

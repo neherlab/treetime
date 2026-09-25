@@ -9,6 +9,7 @@ pub mod job;
 pub mod json_float;
 pub mod rtt_chart;
 mod rtt_chart_render;
+pub mod run_config;
 pub mod runs;
 
 #[cfg(test)]

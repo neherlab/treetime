@@ -97,6 +97,7 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
     version: () => call("version"),
     datasets: () => call("datasets"),
     checkConfig: (request) => call("check-config", JSON.stringify(request)),
+    runConfig: (request) => call("run-config", JSON.stringify(request)),
     checkInputs: (request) => call("check-inputs", JSON.stringify(request)),
     listRuns: () => call("runs:list"),
     createRun: (request) => call("runs:create", JSON.stringify(request)),
