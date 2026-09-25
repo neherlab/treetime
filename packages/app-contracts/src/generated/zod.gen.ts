@@ -1308,3 +1308,22 @@ export const zCommandSettings = z.object({
 export const zSettingCatalog = z.object({
     commands: z.array(zCommandSettings)
 });
+
+/**
+ * A setting whose value differs between two runs.
+ */
+export const zSettingDifference = z.union([
+    z.object({
+        key: z.string(),
+        first: z.unknown(),
+        second: z.unknown(),
+        kind: z.literal('setting')
+    }),
+    z.object({
+        key: z.string(),
+        first: z.array(z.string()),
+        second: z.array(z.string()),
+        same_content: z.boolean(),
+        kind: z.literal('input')
+    })
+]);

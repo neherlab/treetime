@@ -3156,6 +3156,43 @@ export type SettingCatalog = {
     commands: Array<CommandSettings>;
 };
 
+/**
+ * A setting whose value differs between two runs.
+ */
+export type SettingDifference = {
+    /**
+     * Key path of the setting joined with `.`.
+     */
+    key: string;
+    /**
+     * Value in the first run.
+     */
+    first: unknown;
+    /**
+     * Value in the second run.
+     */
+    second: unknown;
+    kind: 'setting';
+} | {
+    /**
+     * Key path of the setting that names the files.
+     */
+    key: string;
+    /**
+     * Paths of the files the first run read.
+     */
+    first: Array<string>;
+    /**
+     * Paths of the files the second run read.
+     */
+    second: Array<string>;
+    /**
+     * Whether the files of both runs have the same contents.
+     */
+    same_content: boolean;
+    kind: 'input';
+};
+
 export type ConfigCheckData = {
     body: CheckConfigRequest;
     path?: never;

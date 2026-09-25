@@ -5673,6 +5673,76 @@
           "commands"
         ],
         "description": "Settings of every command the app runs, as the settings form shows them."
+      },
+      "SettingDifference": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Key path of the setting joined with `.`."
+              },
+              "first": {
+                "description": "Value in the first run."
+              },
+              "second": {
+                "description": "Value in the second run."
+              },
+              "kind": {
+                "type": "string",
+                "const": "setting"
+              }
+            },
+            "required": [
+              "kind",
+              "key",
+              "first",
+              "second"
+            ],
+            "description": "A value that controls the analysis."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Key path of the setting that names the files."
+              },
+              "first": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Paths of the files the first run read."
+              },
+              "second": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Paths of the files the second run read."
+              },
+              "same_content": {
+                "type": "boolean",
+                "description": "Whether the files of both runs have the same contents."
+              },
+              "kind": {
+                "type": "string",
+                "const": "input"
+              }
+            },
+            "required": [
+              "kind",
+              "key",
+              "first",
+              "second",
+              "same_content"
+            ],
+            "description": "Input files, which differ in their paths, their contents, or both."
+          }
+        ],
+        "description": "A setting whose value differs between two runs."
       }
     }
   },

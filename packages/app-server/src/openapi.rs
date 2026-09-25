@@ -10,6 +10,7 @@ use app_commands::runs::events::RunEvent;
 use app_commands::runs::files::RunFile;
 use app_commands::runs::manager::UploadedInput;
 use app_commands::runs::record::{CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest};
+use app_commands::runs::setting_differences::SettingDifference;
 use app_datasets::DatasetCatalog;
 use eyre::Report;
 use schemars::{JsonSchema, Schema};
@@ -66,6 +67,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<RunFile>(&mut components)?;
   add_type::<UploadedInput>(&mut components)?;
   add_type::<SettingCatalog>(&mut components)?;
+  add_type::<SettingDifference>(&mut components)?;
 
   let schemas = doc
     .pointer_mut("/components/schemas")
