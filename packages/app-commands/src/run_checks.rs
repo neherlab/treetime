@@ -237,14 +237,14 @@ fn metadata(context: &CheckContext<'_>) -> Vec<RunCheck> {
 }
 
 fn confidence_without_rate_uncertainty(context: &CheckContext<'_>) -> Vec<RunCheck> {
-  let Some(config) = context.config else {
+  let Some(config) = context.config.filter(|_| context.command == AppCommand::Timetree) else {
     return vec![];
   };
   let setting = |key: &str| setting_ref(config, &[key.to_owned()]);
   let confidence = setting("confidence") == Some(&Value::Bool(true));
   let covariation = setting("covariation") == Some(&Value::Bool(true));
   let clock_std_dev = setting("clock_std_dev").is_some_and(|value| !value.is_null());
-  if context.command != AppCommand::Timetree || !confidence || covariation || clock_std_dev {
+  if !confidence || covariation || clock_std_dev {
     return vec![];
   }
   vec![RunCheck {

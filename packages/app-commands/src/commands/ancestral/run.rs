@@ -508,18 +508,18 @@ impl SeqSink for AaFastaSink {
     let SeqTrack::Aa(cds) = item.track else {
       return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");
     };
-    if self.open.as_ref().map(|(name, _)| name.as_str()) != Some(cds) {
-      let path = translation_path(&self.template, cds);
-      self.open = Some((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)));
-    }
     let name = self.names[&item.key]
       .as_deref()
       .map_or_else(|| format!("node_{}", item.key.0), str::to_owned);
-    self
-      .open
-      .as_mut()
-      .expect("writer opened above")
-      .1
-      .write(&name, &None, item.seq)
+    let writer = match &mut self.open {
+      Some((open_cds, writer)) if open_cds == cds => writer,
+      slot => {
+        let path = translation_path(&self.template, cds);
+        &mut slot
+          .insert((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)))
+          .1
+      },
+    };
+    writer.write(&name, &None, item.seq)
   }
 }

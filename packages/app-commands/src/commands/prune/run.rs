@@ -4,10 +4,10 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use app_output::prune_tree_output::write_prune_tree_outputs;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::Itertools;
 use maplit::btreeset;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
@@ -167,33 +167,22 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   )
 }
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn gather_prune_output_maps(graph: &Graph, partitions: &[PartitionMarginalSparse]) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
-  let root_sequence = Some(partition.root_sequence());
-  let mut edge_mutations = BTreeMap::new();
-  let root_key = graph
-    .get_exactly_one_root()
-    .wrap_err("When gathering prune tree mutations")?
-    .key();
-  let mut queue = VecDeque::from([root_key]);
-  while let Some(node_key) = queue.pop_front() {
-    let node = graph.get_node(node_key).expect("Node from graph traversal must exist");
-    for (child_key, edge_key) in graph.children_keys_of(node) {
-      edge_mutations.insert(
+  let edge_mutations = graph
+    .get_edges()
+    .map(|edge| {
+      let edge_key = edge.key();
+      Ok((
         edge_key,
         partition.edge_fitch_mutations(edge_key, &MutationTrack::Nucleotide)?,
-      );
-      queue.push_back(child_key);
-    }
-  }
+      ))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(PruneOutputMaps {
-    root_sequence,
+    root_sequence: Some(partition.root_sequence()),
     edge_mutations,
   })
 }

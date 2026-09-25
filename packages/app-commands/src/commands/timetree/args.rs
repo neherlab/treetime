@@ -22,7 +22,7 @@ use treetime::timetree::params::TimeMarginalMode;
 
 #[cfg(feature = "clap")]
 fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
-  let n: usize = s.parse().map_err(|_err| format!("'{s}' is not a valid number"))?;
+  let n: usize = s.parse().map_err(|err| format!("'{s}' is not a valid number: {err}"))?;
   if n < 2 {
     return Err("skyline-n-points must be at least 2".to_owned());
   }
