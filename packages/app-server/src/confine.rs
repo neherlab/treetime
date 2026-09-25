@@ -78,8 +78,13 @@ impl PathPolicy {
   }
 
   pub(crate) fn confine_path(&self, setting: &str, path: &Path) -> Result<PathBuf, Report> {
-    let joined = self.data_dir.join(path);
-    let resolved = joined.canonicalize().map_err(|err| {
+    let in_data_dir = self.data_dir.join(path);
+    let candidate = if path.is_relative() && !in_data_dir.exists() {
+      path.to_path_buf()
+    } else {
+      in_data_dir
+    };
+    let resolved = candidate.canonicalize().map_err(|err| {
       make_report!(
         "input `{}` of setting `{setting}` cannot be read: {err}",
         path.display()
@@ -105,7 +110,12 @@ impl PathPolicy {
       .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect())
       .unwrap_or_default();
     let annotation = settings.get("annotation").and_then(Value::as_str).map(Path::new);
-    let template = self.data_dir.join(template).to_string_lossy().into_owned();
+    let in_data_dir = self.data_dir.join(template);
+    let template = if Path::new(template).is_relative() && !in_data_dir.parent().is_some_and(Path::exists) {
+      template.clone()
+    } else {
+      in_data_dir.to_string_lossy().into_owned()
+    };
     let paths = translation_input_paths(&template, &cdses, annotation)
       .wrap_err_with(|| format!("When listing the inputs of setting `{setting}`"))?;
     let rejected = paths

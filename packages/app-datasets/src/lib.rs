@@ -25,12 +25,19 @@ pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DatasetCa
   }
   datasets.sort_by(|a, b| a.name.cmp(&b.name));
   examples.sort_by(|a, b| a.path.cmp(&b.path));
-  Ok(DatasetCatalog { datasets, examples })
+  Ok(DatasetCatalog {
+    data_dir: data_dir.to_string_lossy().replace('\\', "/"),
+    datasets,
+    examples,
+  })
 }
 
 /// Example datasets and example command configurations found in the data directory.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DatasetCatalog {
+  /// Data directory as a run configuration names it: file `f` of dataset `d` is `<data_dir>/<d>/<f>`, a path
+  /// relative to the working directory of the process that runs the commands, as in the example configurations.
+  pub data_dir: String,
   /// Directories that hold a `tree.nwk`, with their files.
   pub datasets: Vec<DatasetInfo>,
   /// Example configurations of the commands the application runs.

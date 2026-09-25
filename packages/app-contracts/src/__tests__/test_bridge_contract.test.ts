@@ -91,6 +91,7 @@ describe("bridge result validation", () => {
 
   test("datasets returns the datasets and the example configurations", async () => {
     const catalog = {
+      data_dir: "data",
       datasets: [{ name: "zika/20", files: ["tree.nwk"] }],
       examples: [{ path: "zika/20/mugration.yaml", command: "mugration", title: "Geography", content: "tree: x" }],
     };

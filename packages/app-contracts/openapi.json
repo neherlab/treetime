@@ -4200,6 +4200,10 @@
       "DatasetCatalog": {
         "type": "object",
         "properties": {
+          "data_dir": {
+            "type": "string",
+            "description": "Data directory as a run configuration names it: file `f` of dataset `d` is `<data_dir>/<d>/<f>`, a path\nrelative to the working directory of the process that runs the commands, as in the example configurations."
+          },
           "datasets": {
             "type": "array",
             "items": {
@@ -4216,6 +4220,7 @@
           }
         },
         "required": [
+          "data_dir",
           "datasets",
           "examples"
         ],

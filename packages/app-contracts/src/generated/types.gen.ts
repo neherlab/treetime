@@ -2511,6 +2511,11 @@ export type ExampleConfig = {
  */
 export type DatasetCatalog = {
     /**
+     * Data directory as a run configuration names it: file `f` of dataset `d` is `<data_dir>/<d>/<f>`, a path
+     * relative to the working directory of the process that runs the commands, as in the example configurations.
+     */
+    data_dir: string;
+    /**
      * Directories that hold a `tree.nwk`, with their files.
      */
     datasets: Array<DatasetInfo>;

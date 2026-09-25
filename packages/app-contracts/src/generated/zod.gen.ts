@@ -962,6 +962,7 @@ export const zExampleConfig = z.object({
  * Example datasets and example command configurations found in the data directory.
  */
 export const zDatasetCatalog = z.object({
+    data_dir: z.string(),
     datasets: z.array(zDatasetInfo),
     examples: z.array(zExampleConfig)
 });

@@ -64,6 +64,12 @@ mod tests {
   }
 
   #[test]
+  fn test_examples_discovery_names_the_data_dir_as_given() {
+    let catalog = discover_datasets(Path::new("../../data"), COMMANDS).unwrap();
+    assert_eq!("../../data", catalog.data_dir);
+  }
+
+  #[test]
   fn test_examples_parse_takes_the_first_comment_after_the_directive() {
     let content = indoc! {r#"
 

@@ -7,6 +7,7 @@ mod tests {
   use serde_json::json;
   use std::fs;
   use std::os::unix::fs::symlink;
+  use std::path::Path;
   use treetime_utils::assert_error;
 
   #[test]
@@ -111,6 +112,27 @@ mod tests {
     let mut config = json!({ "tree": secret });
     policy.confine(AppCommand::Prune, &mut config).unwrap();
     assert_eq!(json!(secret.canonicalize().unwrap()), config["tree"]);
+  }
+
+  #[test]
+  fn test_confine_relative_input_missing_from_data_dir_resolves_from_working_directory() {
+    let policy = PathPolicy::new(Path::new("../../data"), &[]).unwrap();
+    let mut config = json!({ "tree": "../../data/zika/20/tree.nwk" });
+    policy.confine(AppCommand::Prune, &mut config).unwrap();
+    assert_eq!(
+      json!(Path::new("../../data/zika/20/tree.nwk").canonicalize().unwrap()),
+      config["tree"]
+    );
+  }
+
+  #[test]
+  fn test_confine_working_directory_input_outside_data_dir_is_rejected() {
+    let policy = PathPolicy::new(Path::new("../../data"), &[]).unwrap();
+    let mut config = json!({ "tree": "Cargo.toml" });
+    assert_error!(
+      policy.confine(AppCommand::Prune, &mut config),
+      "input `Cargo.toml` of setting `tree` is outside the directories the server reads inputs from"
+    );
   }
 
   #[test]
