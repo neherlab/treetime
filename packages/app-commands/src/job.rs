@@ -17,7 +17,7 @@ const JOB_ID_MAX_LEN: usize = 128;
 
 /// Identifier of one command run, unique among the jobs of a process.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(transparent)]
+#[serde(try_from = "String")]
 pub struct JobId(String);
 
 impl JobId {
@@ -38,6 +38,14 @@ impl JobId {
 
   pub fn as_str(&self) -> &str {
     &self.0
+  }
+}
+
+impl TryFrom<String> for JobId {
+  type Error = Report;
+
+  fn try_from(id: String) -> Result<Self, Report> {
+    Self::parse(&id)
   }
 }
 

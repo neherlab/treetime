@@ -6,6 +6,7 @@ mod tests {
   use helpers::{status, timetree_config};
   use parking_lot::Mutex;
   use pretty_assertions::{assert_eq, assert_ne};
+  use rstest::rstest;
   use serde_json::json;
   use std::thread;
   use tempfile::tempdir;
@@ -173,6 +174,22 @@ mod tests {
       JobId::parse("../x"),
       "invalid job id `../x`: expected 1 to 128 ASCII letters, digits, `-` or `_`"
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::traversal(r#""../../etc""#, "invalid job id `../../etc`: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
+  #[case::slash(    r#""a/b""#,       "invalid job id `a/b`: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
+  #[case::empty(    r#""""#,          "invalid job id ``: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
+  #[trace]
+  fn test_job_id_deserialization_rejects_invalid_ids(#[case] json: &str, #[case] expected: &str) {
+    assert_error!(serde_json::from_str::<JobId>(json).map_err(Report::new), expected);
+  }
+
+  #[test]
+  fn test_job_id_deserialization_accepts_a_valid_id() {
+    let id: JobId = serde_json::from_str(r#""run_1-a""#).unwrap();
+    assert_eq!("run_1-a", id.as_str());
   }
 
   #[test]
