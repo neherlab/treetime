@@ -18,8 +18,6 @@ use std::path::Path;
 use strum::VariantNames;
 use treetime_utils::make_error;
 
-pub(crate) const COMMAND_TAGS: &[&str] = AppCommand::VARIANTS;
-
 /// The whole pipeline in typed form, used for schema generation and for dumping an example config.
 ///
 /// The loader does not deserialize into this type directly: `vars`, `output_all`, and each step's
@@ -125,7 +123,10 @@ impl PipelineStepCommand {
       "ancestral" => Ok(Self::Ancestral(serde_json::from_value(payload)?)),
       "clock" => Ok(Self::Clock(serde_json::from_value(payload)?)),
       "mugration" => Ok(Self::Mugration(serde_json::from_value(payload)?)),
-      other => make_error!("unknown command `{other}`; {}", suggestion_suffix(other, COMMAND_TAGS)),
+      other => make_error!(
+        "unknown command `{other}`; {}",
+        suggestion_suffix(other, AppCommand::VARIANTS)
+      ),
     }
   }
 }
@@ -171,7 +172,7 @@ impl RawStep {
 }
 
 pub(crate) fn commands_list() -> String {
-  COMMAND_TAGS.iter().map(|tag| format!("`{tag}`")).join(", ")
+  AppCommand::VARIANTS.iter().map(|tag| format!("`{tag}`")).join(", ")
 }
 
 #[cfg(test)]

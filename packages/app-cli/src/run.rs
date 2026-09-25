@@ -28,6 +28,7 @@ use std::env;
 use treetime::cancel::NoopCancel;
 use treetime::progress::{NoopProgress, ProgressSink};
 use treetime_utils::init::global::setup_logger;
+use treetime_utils::init::thread_pool::init_thread_pool;
 use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -38,16 +39,7 @@ pub fn run_cli() -> Result<(), Report> {
   info!("# Command line arguments");
   info!("{}", json_write_str(&args, JsonPretty(true))?);
 
-  if args.jobs.jobs == 1 {
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(1)
-      .use_current_thread()
-      .build_global()?;
-  } else {
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(args.jobs.jobs)
-      .build_global()?;
-  }
+  init_thread_pool(args.jobs.jobs)?;
 
   let progress = make_progress(&args.verbosity)?;
   run_command(args.command, &*progress)

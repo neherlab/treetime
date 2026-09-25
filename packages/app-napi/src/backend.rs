@@ -9,7 +9,7 @@ use app_commands::results::compare::{RunComparison, compare_runs};
 use app_commands::results::run_results::{RunResults, run_results};
 use app_commands::run_config::{RunConfigRequest, RunConfigResponse, run_config};
 use app_commands::runs::files::{RunFile, write_run_zip};
-use app_commands::runs::manager::RunManager;
+use app_commands::runs::manager::{RunManager, unconfined};
 use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
@@ -58,7 +58,7 @@ impl DesktopService {
   }
 
   fn start(&self, id: &JobId, config: Option<Value>) -> Result<RunRecord, Report> {
-    let started = self.runs.start(id, config, Box::new(|_config: &mut Value| Ok(())))?;
+    let started = self.runs.start(id, config, unconfined())?;
     let record = started.record().clone();
     let run_id = id.clone();
     thread::Builder::new()
@@ -106,7 +106,7 @@ impl DesktopBackend for DesktopService {
   }
 
   fn run_config(&self, request: RunConfigRequest) -> Result<RunConfigResponse, Report> {
-    Ok(run_config(&request, Box::new(|_config: &mut Value| Ok(()))))
+    Ok(run_config(&request, unconfined()))
   }
 
   fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {

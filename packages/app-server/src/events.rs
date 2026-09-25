@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::state::AppState;
-use app_commands::job::{JobEvent, JobId};
+use app_commands::job::JobId;
 use app_commands::runs::events::RunEvent;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -25,13 +25,7 @@ pub(crate) fn run_events_sse(state: &AppState, id: &JobId, from: usize) -> Resul
 }
 
 fn sse_event(event: &RunEvent) -> Event {
-  let name = match &event.event {
-    JobEvent::Started(_) => "started",
-    JobEvent::Progress(_) => "progress",
-    JobEvent::Log(_) => "log",
-    JobEvent::Iteration(_) => "iteration",
-    JobEvent::Terminal(_) => "terminal",
-  };
+  let name: &'static str = (&event.event).into();
   match Event::default().json_data(event) {
     Ok(sse) => sse.event(name).id(event.seq.to_string()),
     Err(err) => Event::default().comment(format!("When serializing a {name} event: {err}")),

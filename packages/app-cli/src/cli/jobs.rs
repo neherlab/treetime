@@ -1,10 +1,6 @@
 use clap::Args;
 use serde::Serialize;
-use std::thread::available_parallelism;
-
-fn default_jobs() -> usize {
-  available_parallelism().map_or(1, |n| n.get())
-}
+use treetime_utils::init::thread_pool::available_jobs;
 
 #[derive(Args, Debug, Clone)]
 pub(crate) struct Jobs {
@@ -14,7 +10,7 @@ pub(crate) struct Jobs {
     display_order = 90,
     long,
     short = 'j',
-    default_value_t = default_jobs(),
+    default_value_t = available_jobs(),
     hide_default_value = true
   )]
   pub jobs: usize,

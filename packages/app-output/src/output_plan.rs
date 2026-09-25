@@ -236,15 +236,13 @@ impl CommandKind {
   }
 
   pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
+    let mut non_tree = self.non_tree_outputs();
     let tree_defaults = if self == Self::Timetree {
+      non_tree.remove(&OutputSelection::ClockCsv);
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus, OutputSelection::Auspice]
     } else {
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus]
     };
-    let mut non_tree = self.non_tree_outputs();
-    if self == Self::Timetree {
-      non_tree.remove(&OutputSelection::ClockCsv);
-    }
     for non_default in [
       OutputSelection::ReconstructedAaFasta,
       OutputSelection::ConfidenceTsv,

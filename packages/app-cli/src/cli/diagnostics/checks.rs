@@ -1,7 +1,8 @@
 use crate::cli::pipeline::interpolate::{Interpolator, NAMESPACES};
 use crate::cli::pipeline::resolve::{TOP_LEVEL_KEYS, step_ref};
-use crate::cli::pipeline::types::{COMMAND_TAGS, commands_list};
+use crate::cli::pipeline::types::commands_list;
 use crate::cli::schema::command_schema_for;
+use app_commands::command::AppCommand;
 use app_commands::config::schema::SCHEMA_KEY;
 use app_commands::config::schema_check::schema_diagnostics_prefixed;
 use app_commands::config::source::{RawDiagnostic, escape_pointer};
@@ -9,6 +10,7 @@ use app_commands::config::suggest::suggestion_suffix;
 use itertools::Itertools;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use strum::VariantNames;
 
 pub(crate) fn pipeline_schema_diagnostics(value: &Value) -> Vec<RawDiagnostic> {
   let mut diags = Vec::new();
@@ -164,12 +166,12 @@ fn structural_step_diagnostics(
       .build(),
     ),
     [tag] => {
-      if !COMMAND_TAGS.contains(&tag.as_str()) {
+      if !AppCommand::VARIANTS.contains(&tag.as_str()) {
         diags.push(
           RawDiagnostic::builder("config::unknown-command", format!("unknown command `{tag}`"))
             .at(format!("{base}/{tag}"))
             .key_span(true)
-            .help(suggestion_suffix(tag, COMMAND_TAGS))
+            .help(suggestion_suffix(tag, AppCommand::VARIANTS))
             .build(),
         );
       }

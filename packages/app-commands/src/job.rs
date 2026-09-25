@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
+use strum_macros::IntoStaticStr;
 use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, ProgressSink};
 use treetime::timetree::convergence::metrics::IterationRecord;
@@ -50,8 +51,9 @@ impl TryFrom<String> for JobId {
 }
 
 /// Event of a running job, in the order the job emits them.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr)]
 #[serde(tag = "type", content = "data", rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum JobEvent {
   /// The job was accepted; always the first event.
   Started(JobStarted),

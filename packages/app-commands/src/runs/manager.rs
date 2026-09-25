@@ -30,6 +30,10 @@ const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
 pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
 
+pub fn unconfined() -> ConfigHook {
+  Box::new(|_config: &mut Value| Ok(()))
+}
+
 pub struct RunManager {
   store: RunStore,
   active: Mutex<BTreeMap<JobId, Arc<ActiveRun>>>,

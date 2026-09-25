@@ -15,9 +15,9 @@ use eyre::WrapErr;
 use log::{LevelFilter, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::thread::available_parallelism;
 use treetime_utils::env::env_var_optional;
 use treetime_utils::init::global::{global_init, setup_logger};
+use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
 
 const HOST_ENV: &str = "HOST";
 const PORT_ENV: &str = "PORT";
@@ -35,14 +35,7 @@ async fn main() -> eyre::Result<()> {
   setup_logger(LevelFilter::Warn);
   let args = ServerArgs::parse();
 
-  if args.jobs == 1 {
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(1)
-      .use_current_thread()
-      .build_global()?;
-  } else {
-    rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
-  }
+  init_thread_pool(args.jobs)?;
 
   let host = match args.host {
     Some(host) => host,
@@ -93,7 +86,7 @@ struct ServerArgs {
   port: Option<u16>,
 
   /// Number of processing threads. Defaults to all available CPU threads
-  #[arg(long, short = 'j', default_value_t = default_jobs())]
+  #[arg(long, short = 'j', default_value_t = available_jobs())]
   jobs: usize,
 
   /// Directory containing input datasets
@@ -107,10 +100,6 @@ struct ServerArgs {
   /// Largest total size, in bytes, of the files uploaded into one run. Defaults to 1 GiB
   #[arg(long, default_value_t = DEFAULT_MAX_UPLOAD_SIZE)]
   max_upload_size: usize,
-}
-
-fn default_jobs() -> usize {
-  available_parallelism().map_or(1, |n| n.get())
 }
 
 #[allow(
