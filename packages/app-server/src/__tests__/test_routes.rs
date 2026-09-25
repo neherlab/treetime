@@ -527,6 +527,28 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_routes_openapi_config_components_carry_the_cli_annotations() {
+    let doc = api_doc().unwrap();
+    let schemas = &doc["components"]["schemas"];
+    assert_eq!(
+      (
+        json!("--relax"),
+        json!([2, 2]),
+        json!("--branch-split-grid-n-points"),
+        json!("input"),
+        json!("mat-pb"),
+      ),
+      (
+        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-flag"].clone(),
+        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-num-args"].clone(),
+        schemas["BranchSplitArgs"]["properties"]["n_points"]["x-cli-flag"].clone(),
+        schemas["ClockConfig"]["properties"]["tree"]["x-path"].clone(),
+        schemas["ClockConfig"]["properties"]["output_selection"]["x-cli-values"]["MatPb"].clone(),
+      )
+    );
+  }
+
   mod helpers {
     use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};

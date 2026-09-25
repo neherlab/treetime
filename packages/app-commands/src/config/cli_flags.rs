@@ -1,13 +1,34 @@
+use crate::command::AppCommand;
+use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use crate::commands::clock::args::TreetimeClockArgsRaw;
+use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use crate::commands::prune::args::TreetimePruneArgsRaw;
+use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use crate::config::properties::{
   CLI_FLAG_KEY, CLI_NUM_ARGS_KEY, CLI_VALUE_DELIMITER_KEY, CLI_VALUES_KEY, leaf_properties,
 };
 use crate::config::source::escape_pointer;
-use clap::{Arg, Command};
+use clap::{Arg, Command, CommandFactory};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::Schema;
 use serde_json::{Map, Value, json};
 use treetime_utils::{make_error, make_report};
+
+pub fn annotated_config_schema(command: AppCommand) -> Result<Schema, Report> {
+  let mut schema = command.config_schema();
+  let cli = match command {
+    AppCommand::Timetree => TreetimeTimetreeArgsRaw::command(),
+    AppCommand::Optimize => TreetimeOptimizeArgsRaw::command(),
+    AppCommand::Prune => TreetimePruneArgsRaw::command(),
+    AppCommand::Ancestral => TreetimeAncestralArgsRaw::command(),
+    AppCommand::Clock => TreetimeClockArgsRaw::command(),
+    AppCommand::Mugration => TreetimeMugrationArgsRaw::command(),
+  };
+  annotate_cli_flags(&mut schema, &cli)?;
+  Ok(schema)
+}
 
 pub fn annotate_cli_flags(schema: &mut Schema, command: &Command) -> Result<(), Report> {
   let mut command = command.clone();

@@ -1,5 +1,6 @@
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CheckConfigRequest, CheckConfigResponse, CommandOutcome};
+use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
 use app_commands::run_config::RunConfigRequest;
@@ -32,7 +33,7 @@ pub(crate) fn config_component(command: AppCommand) -> String {
 pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   let mut components = Map::new();
   for command in AppCommand::iter() {
-    add_root(&mut components, &config_component(command), command.config_schema())?;
+    add_root(&mut components, &config_component(command), annotated_config_schema(command)?)?;
   }
   add_type::<CheckConfigRequest>(&mut components)?;
   add_type::<CheckConfigResponse>(&mut components)?;
