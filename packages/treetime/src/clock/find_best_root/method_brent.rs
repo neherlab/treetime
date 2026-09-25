@@ -3,11 +3,12 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BrentParams;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use argmin::core::Executor;
 use argmin::core::observers::ObserverMode;
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use log::info;
 use treetime_graph::edge::GraphEdgeKey;
 
 #[allow(
@@ -19,10 +20,14 @@ pub(crate) fn optimize_brent(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &BrentParams,
+  branch: &str,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
-  info!(
-    "Starting Brent optimization on edge {:?} with max_iters={}, tolerance={:.2e}",
-    edge, params.brent_max_iters, params.brent_tolerance
+  progress_info!(
+    progress,
+    "Starting Brent optimization on the branch above {branch} with max_iters={}, tolerance={:.2e}",
+    params.brent_max_iters,
+    params.brent_tolerance
   );
 
   let solver = BrentOpt::new(0.0, 1.0);
@@ -46,9 +51,12 @@ pub(crate) fn optimize_brent(
   let best_split = result.state.best_param.unwrap();
   let best_chisq = result.state.best_cost;
 
-  info!(
+  progress_info!(
+    progress,
     "Brent optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}",
-    result.state.iter, best_split, best_chisq
+    result.state.iter,
+    best_split,
+    best_chisq
   );
 
   let best_clock_set = cost_fn.evaluate_clock_set(best_split)?;

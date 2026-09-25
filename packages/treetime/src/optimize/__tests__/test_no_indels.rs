@@ -18,6 +18,7 @@ mod tests {
   };
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::run_loop::{apply_initial_guess_mode, marginal_update_sparse, run_optimize_loop};
+  use crate::progress::NoopProgress;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -229,6 +230,7 @@ mod tests {
       true,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     );
     assert!(
       result.is_ok(),
@@ -265,12 +267,12 @@ mod tests {
     let indel_counts_with_indel = gather_edge_indel_counts(&graph_with_indel, &dense_with_indel, &sparse_with_indel);
     let sub_counts_with_indel = gather_edge_sub_counts(&graph_with_indel, &dense_with_indel, &sparse_with_indel)?;
     let effective_lengths_with_indel = gather_edge_effective_lengths(&graph_with_indel, &dense_with_indel, &sparse_with_indel)?;
-    apply_initial_guess_mode(&graph_with_indel, total_length_with_indel, &indel_counts_with_indel, &sub_counts_with_indel, &effective_lengths_with_indel, mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names)?;
+    apply_initial_guess_mode(&graph_with_indel, total_length_with_indel, &indel_counts_with_indel, &sub_counts_with_indel, &effective_lengths_with_indel, mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names, &NoopProgress)?;
     let total_length_without_indel = total_sequence_length(&dense_without_indel, &sparse_without_indel);
     let indel_counts_without_indel = gather_edge_indel_counts(&graph_without_indel, &dense_without_indel, &sparse_without_indel);
     let sub_counts_without_indel = gather_edge_sub_counts(&graph_without_indel, &dense_without_indel, &sparse_without_indel)?;
     let effective_lengths_without_indel = gather_edge_effective_lengths(&graph_without_indel, &dense_without_indel, &sparse_without_indel)?;
-    apply_initial_guess_mode(&graph_without_indel, total_length_without_indel, &indel_counts_without_indel, &sub_counts_without_indel, &effective_lengths_without_indel, mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names)?;
+    apply_initial_guess_mode(&graph_without_indel, total_length_without_indel, &indel_counts_without_indel, &sub_counts_without_indel, &effective_lengths_without_indel, mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names, &NoopProgress)?;
 
     let expected = get_branch_lengths(&graph_without_indel, &branch_lengths_without_indel);
     let actual = get_branch_lengths(&graph_with_indel, &branch_lengths_with_indel);

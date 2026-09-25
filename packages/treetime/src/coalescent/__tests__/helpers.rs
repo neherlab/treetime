@@ -1,6 +1,7 @@
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, SkylineResult, optimize_skyline};
+use crate::progress::NoopProgress;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use maplit::btreemap;
@@ -25,7 +26,7 @@ pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<Stri
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let graph: Graph = graph;
-  let constraints = load_date_constraints(&dates, &graph, &names)?;
+  let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
   Ok((graph, names, constraints))
 }
 
@@ -43,6 +44,8 @@ pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) 
       ..SkylineParams::default()
     },
     node_times,
+    &BTreeMap::new(),
+    &NoopProgress,
   )
 }
 
@@ -54,6 +57,6 @@ pub(crate) fn graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Grap
   let nwk_parsed = nwk_read_str(tree_nwk)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
-  let constraints = load_date_constraints(dates, &graph, &names)?;
+  let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;
   Ok((graph, constraints))
 }

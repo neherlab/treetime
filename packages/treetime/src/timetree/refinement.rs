@@ -7,6 +7,8 @@ use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::{
@@ -18,7 +20,6 @@ use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
@@ -42,6 +43,7 @@ pub(crate) struct Refinement<'a> {
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
   pub branch_lengths: &'a mut BTreeMap<GraphEdgeKey, Option<f64>>,
   pub names: &'a mut BTreeMap<GraphNodeKey, Option<String>>,
+  pub progress: &'a dyn ProgressSink,
 }
 
 impl Refinement<'_> {
@@ -60,6 +62,7 @@ impl Refinement<'_> {
       CLOCK_BRANCH_LENGTH_DAMPING,
       self.clock_branch_lengths,
       &self.state,
+      self.progress,
     );
 
     let current_states = capture_ancestral_states(self.graph, &self.partitions);
@@ -92,11 +95,15 @@ impl Refinement<'_> {
       return Ok(());
     }
     if total_length == 0 {
-      info!("Skipping relaxed clock: no sequence data (partitions empty or zero-length)");
+      progress_info!(
+        self.progress,
+        "Skipping relaxed clock: no sequence data (partitions empty or zero-length)"
+      );
       return Ok(());
     }
 
-    info!(
+    progress_info!(
+      self.progress,
       "Applying relaxed clock with slack={}, coupling={}",
       self.options.relax.first().copied().unwrap_or(1.0),
       self.options.relax.get(1).copied().unwrap_or(1.0)
@@ -137,7 +144,10 @@ impl Refinement<'_> {
       return Ok(TopologyOutcome::Unchanged);
     }
 
-    info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
+    progress_info!(
+      self.progress,
+      "Resolved polytomies, introduced {resolved_nodes} new nodes"
+    );
     *self.names = assign_node_names(std::mem::take(self.names), self.graph)?;
     propagate_bad_branches(self.graph, &mut self.state)?;
     prepare_tree_after_topology_change(self.graph, &mut self.state)
@@ -156,6 +166,7 @@ impl Refinement<'_> {
       1.0,
       self.clock_branch_lengths,
       &self.state,
+      self.progress,
     );
 
     Ok(TopologyOutcome::Changed { resolved_nodes })
@@ -166,14 +177,20 @@ impl Refinement<'_> {
     let run_names = &*self.names;
 
     if !self.partitions.is_empty() {
-      info!("Updating ancestral sequences via marginal reconstruction");
+      progress_info!(
+        self.progress,
+        "Updating ancestral sequences via marginal reconstruction"
+      );
       let branch_lengths = timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths);
       (self.partitions, _) =
         marginal_update_timetree(self.graph, &branch_lengths, std::mem::take(&mut self.partitions))?;
     }
 
     if topology_changed {
-      info!("Tree structure changed - rebuilding node-time state before coalescent inference");
+      progress_info!(
+        self.progress,
+        "Tree structure changed - rebuilding node-time state before coalescent inference"
+      );
       self.state = run_timetree(
         self.graph,
         self.constraints,
@@ -185,13 +202,14 @@ impl Refinement<'_> {
         self.options.no_indels,
         std::mem::take(&mut self.state),
         self.clock_state,
+        self.progress,
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
       if self.prior.is_none() {
         return Ok(());
       }
     } else {
-      info!("Updating node times via timetree inference");
+      progress_info!(self.progress, "Updating node times via timetree inference");
     }
 
     self.state = run_timetree(
@@ -205,6 +223,7 @@ impl Refinement<'_> {
       self.options.no_indels,
       std::mem::take(&mut self.state),
       self.clock_state,
+      self.progress,
     )
     .wrap_err("Timetree inference failed")?;
     Ok(())
@@ -232,6 +251,7 @@ impl Refinement<'_> {
       self.branch_lengths,
       Some(self.clock_model.clock_rate()),
       self.names,
+      self.progress,
     )
     .wrap_err("Failed to update clock model")?;
     *self.clock_state = new_clock_state;

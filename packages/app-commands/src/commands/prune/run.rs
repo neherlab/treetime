@@ -5,7 +5,6 @@ use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResu
 use app_output::prune_tree_output::write_prune_tree_outputs;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use log::warn;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
@@ -13,6 +12,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_error;
+use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::MutationTrack;
 use treetime_graph::edge::GraphEdgeKey;
@@ -76,7 +76,7 @@ pub fn run_prune(
 
   cancel.check()?;
   progress.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input, &names, cancel).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
     gtr,
@@ -137,7 +137,10 @@ pub fn run_prune(
           "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln."
         );
       },
-      None => warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --aln)"),
+      None => progress_warn!(
+        progress,
+        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --aln)"
+      ),
     }
   }
 

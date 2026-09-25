@@ -1,8 +1,9 @@
 use crate::make_error;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use log::warn;
 use ndarray::Array2;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
@@ -26,6 +27,7 @@ pub(crate) fn validate_trait_names(
   graph: &Graph,
   traits: &BTreeMap<String, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<(), Report> {
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
@@ -45,7 +47,8 @@ pub(crate) fn validate_trait_names(
   if !missing_in_tree.is_empty() {
     let sample = missing_in_tree.iter().take(10).join(", ");
     let suffix = if missing_in_tree.len() > 10 { "..." } else { "" };
-    warn!(
+    progress_warn!(
+      progress,
       "Mugration: {} metadata names not present in tree: {sample}{suffix}",
       missing_in_tree.len()
     );

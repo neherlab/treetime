@@ -3,6 +3,7 @@ mod tests {
   use crate::gtr::gtr::avg_transition;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, distance, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use ndarray::array;
 
@@ -23,6 +24,7 @@ mod tests {
         pc: 0.1,
         ..InferGtrOptions::default()
       },
+      &NoopProgress,
     )?;
 
     #[rustfmt::skip]

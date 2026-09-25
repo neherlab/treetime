@@ -8,11 +8,12 @@ use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::discrete::DiscreteStates;
+use crate::progress::ProgressSink;
 use crate::{make_error, make_report};
+use crate::{progress_info, progress_warn};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use log::{info, warn};
 use ndarray::Array1;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
@@ -25,6 +26,7 @@ pub fn run(
   input: MugrationInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
 ) -> Result<MugrationOutput, OperationError> {
   cancel.check()?;
 
@@ -51,7 +53,8 @@ pub fn run(
       .map_err(OperationError::InvalidInput)?;
 
       if !coverage.missing_values.is_empty() {
-        warn!(
+        progress_warn!(
+          progress,
           "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
           coverage.missing_values.iter().join(", "),
           coverage.missing_ratio
@@ -72,7 +75,8 @@ pub fn run(
     )));
   }
 
-  info!(
+  progress_info!(
+    progress,
     "Mugration: found {n_states} discrete states: {}",
     discrete_states.iter().join(", ")
   );
@@ -97,11 +101,15 @@ pub fn run(
     MIN_BRANCH_LENGTH_FRACTION,
     params.filter_uninformative_root,
   );
-  let node_states = partition.attach_traits(&graph, &traits, names)?;
+  let node_states = partition.attach_traits(&graph, &traits, names, progress)?;
 
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   let update = partition.marginal_update(&gtr, &graph, &profile_lengths, node_states)?;
-  info!("Mugration: initial log likelihood = {:.4}", update.log_lh.value());
+  progress_info!(
+    progress,
+    "Mugration: initial log likelihood = {:.4}",
+    update.log_lh.value()
+  );
 
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
     &partition,
@@ -113,6 +121,7 @@ pub fn run(
     params.sampling_bias_correction,
     &graph,
     &profile_lengths,
+    progress,
   )?;
 
   let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);

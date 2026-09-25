@@ -7,13 +7,15 @@ use crate::optimize::gather::{
 };
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
+use crate::{progress_info, progress_warn};
 use eyre::Report;
-use log::{debug, info, warn};
+use log::debug;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -41,33 +43,42 @@ pub(crate) fn run_timetree(
   no_indels: bool,
   mut state: TimetreeState,
   clock_state: &mut ClockState,
+  progress: &dyn ProgressSink,
 ) -> Result<TimetreeState, Report> {
-  info!("# Running timetree inference");
+  progress_info!(progress, "# Running timetree inference");
 
-  info!("## Calculating divergence distances");
+  progress_info!(progress, "## Calculating divergence distances");
   initialize_node_divergences(graph, clock_state, branch_lengths, names)?;
 
   state.reseed_from_values(graph);
 
-  info!("## Using clock model");
+  progress_info!(progress, "## Using clock model");
   let clock_rate = clock_model.clock_rate();
-  info!("**Clock rate:** {clock_rate:.6e}");
+  progress_info!(progress, "**Clock rate:** {clock_rate:.6e}");
 
   if !partitions.is_empty() {
-    info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, branch_lengths, clock_rate, no_indels, &mut state)?;
+    progress_info!(progress, "## Computing branch distributions from partitions");
+    compute_branch_distributions_marginal_mode(
+      graph,
+      partitions,
+      branch_lengths,
+      clock_rate,
+      no_indels,
+      &mut state,
+      progress,
+    )?;
   } else {
-    info!("## Creating branch distributions from input lengths");
+    progress_info!(progress, "## Creating branch distributions from input lengths");
     create_branch_distributions_input_mode(graph, branch_lengths, clock_rate, &mut state)?;
   }
 
-  info!("## Propagating distributions backward");
+  progress_info!(progress, "## Propagating distributions backward");
   propagate_distributions_backward(graph, constraints, coalescent, &mut state)?;
 
-  info!("## Propagating distributions forward");
-  propagate_distributions_forward(graph, constraints, names, &mut state)?;
+  progress_info!(progress, "## Propagating distributions forward");
+  propagate_distributions_forward(graph, constraints, names, &mut state, progress)?;
 
-  info!("# Timetree inference completed");
+  progress_info!(progress, "# Timetree inference completed");
   Ok(state)
 }
 
@@ -79,6 +90,7 @@ pub(crate) fn commit_clock_branch_lengths(
   damping: f64,
   clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
   state: &TimetreeState,
+  progress: &dyn ProgressSink,
 ) {
   let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
 
@@ -111,7 +123,8 @@ pub(crate) fn commit_clock_branch_lengths(
   }
 
   if inverted > 0 {
-    warn!(
+    progress_warn!(
+      progress,
       "Timetree: {inverted} branch(es) run backwards in time, i.e. the child is dated before its \
        parent. Their clock branch lengths were committed as zero. This is expected only where an \
        observed leaf date conflicts with the fitted clock, since the forward pass clamps internal \
@@ -131,6 +144,7 @@ fn compute_branch_distributions_marginal_mode(
   clock_rate: f64,
   no_indels: bool,
   state: &mut TimetreeState,
+  progress: &dyn ProgressSink,
 ) -> Result<(), Report> {
   let total_sites = timetree_total_sequence_length(partitions);
   let one_mutation = 1.0 / total_sites as f64;
@@ -143,7 +157,8 @@ fn compute_branch_distributions_marginal_mode(
   };
   let contributions = gather_timetree_edge_contributions(graph, partitions)?;
 
-  info!(
+  progress_info!(
+    progress,
     "Computing branch distributions from {} partition(s) with {} total sites",
     partitions.len(),
     total_sites

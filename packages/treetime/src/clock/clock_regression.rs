@@ -3,8 +3,11 @@ use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockNodeState, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
+use crate::node_label::node_label;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use eyre::Report;
-use log::{debug, info};
+use log::debug;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -32,23 +35,27 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<(ClockState, ClockRerootResult), Report> {
   if let Some(rate) = clock_rate {
-    info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
+    progress_info!(
+      progress,
+      "## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})"
+    );
   } else {
-    info!("## Estimating clock model (keep_root={keep_root})");
+    progress_info!(progress, "## Estimating clock model (keep_root={keep_root})");
   }
 
-  info!("### Running backward regression");
+  progress_info!(progress, "### Running backward regression");
   clock_regression_backward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
   debug!("Backward regression completed");
 
   let reroot_result = if !keep_root {
-    info!("### Running forward regression to find optimal root");
+    progress_info!(progress, "### Running forward regression to find optimal root");
     clock_regression_forward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
     debug!("Forward regression completed");
 
-    info!("### Finding best root and rerooting tree");
+    progress_info!(progress, "### Finding best root and rerooting tree");
     let reroot_params = clock_rate.map_or_else(
       || reroot_params.clone(),
       |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
@@ -62,25 +69,30 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       &reroot_params,
       branch_lengths,
       names,
+      progress,
     )?;
     state = new_state;
-    info!("Rerooted to node {}", reroot_result.new_root_key.0);
+    progress_info!(
+      progress,
+      "Rerooted to {}",
+      node_label(names, reroot_result.new_root_key)
+    );
     debug!("Rerooting completed");
     Some(reroot_result)
   } else {
-    info!("### Keeping original root (--keep-root enabled)");
+    progress_info!(progress, "### Keeping original root (--keep-root enabled)");
     None
   };
 
-  info!("### Extracting clock model from root");
+  progress_info!(progress, "### Extracting clock model from root");
   let root_key = graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clock_set.clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {
-    info!("### Using fixed clock rate: {rate:.6e}");
+    progress_info!(progress, "### Using fixed clock rate: {rate:.6e}");
     (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
   } else {
-    info!("### Using estimated clock rate");
+    progress_info!(progress, "### Using estimated clock rate");
     let regression = ClockRegression::try_from(&root_clock_set)?;
     (Some(regression), None)
   };
@@ -91,12 +103,12 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   let intercept = clock_model
     .as_ref()
     .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
-  info!("**Clock rate:** {rate:.6e}");
-  info!("**Intercept:** {intercept:.4}");
+  progress_info!(progress, "**Clock rate:** {rate:.6e}");
+  progress_info!(progress, "**Intercept:** {intercept:.4}");
   if let Some(reg) = &regression {
-    info!("**R²:** {:.4}", reg.r_val() * reg.r_val());
-    info!("**χ²:** {:.4}", reg.chisq());
-    info!("**Hessian:**\n{}", reg.hessian());
+    progress_info!(progress, "**R²:** {:.4}", reg.r_val() * reg.r_val());
+    progress_info!(progress, "**χ²:** {:.4}", reg.chisq());
+    progress_info!(progress, "**Hessian:**\n{}", reg.hessian());
   }
 
   Ok((
@@ -135,14 +147,14 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub(crate) fn into_clock_model_allow_negative(self) -> ClockModel {
+  pub(crate) fn into_clock_model_allow_negative(self, progress: &dyn ProgressSink) -> ClockModel {
     if let Some(model) = self.clock_model {
       return model;
     }
     let regression = self
       .regression
       .expect("ClockRerootResult has neither regression nor clock_model");
-    ClockModel::from_regression_allow_negative(&regression)
+    ClockModel::from_regression_allow_negative(&regression, progress)
   }
 
   #[allow(

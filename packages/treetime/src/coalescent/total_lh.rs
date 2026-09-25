@@ -2,18 +2,23 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
+use crate::progress::ProgressSink;
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
 pub(crate) fn compute_coalescent_total_lh(
   graph: &Graph,
   tc_dist: &Distribution,
   node_times: &CoalescentNodeTimes,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<LogLh, Report> {
   let model = CoalescentModel::new(&compute_lineage_counts(graph, node_times)?, tc_dist)?;
-  let edges = collect_coalescent_edges(graph, node_times)?;
+  let edges = collect_coalescent_edges(graph, node_times, names, progress)?;
 
   coalescent_log_likelihood(&edges, &model)
 }

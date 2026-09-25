@@ -5,6 +5,7 @@ mod tests {
   use crate::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
@@ -55,6 +56,8 @@ mod tests {
       &branch_lengths,
       false,
       RootObjective::FixedRate(0.0),
+      &names,
+      &NoopProgress,
     )?;
     let expected_edge = expected.edge.expect("fixture should select a root edge");
 
@@ -72,6 +75,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_9,
+      &NoopProgress,
     )?;
     let actual_split = actual.edge_split.expect("fixture should select an interior root point");
 
@@ -127,6 +131,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths_ascending,
       &names_tt_8,
+      &NoopProgress,
     )?;
     let names_tt_7 = graph_descending_names.clone();
     reroot_in_place(
@@ -138,6 +143,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths_descending,
       &names_tt_7,
+      &NoopProgress,
     )?;
 
     let graph_ascending_names = assign_node_names(graph_ascending_names, &graph_ascending)?;
@@ -181,6 +187,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_6,
+      &NoopProgress,
     )?;
 
     let node_count_after = graph.get_nodes().count();
@@ -213,6 +220,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_5,
+      &NoopProgress,
     )?;
 
     if reroot_result.new_root_key != old_root_key {
@@ -242,6 +250,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_4,
+      &NoopProgress,
     )?;
 
     let node_count_after = graph.get_nodes().count();
@@ -271,6 +280,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_3,
+      &NoopProgress,
     )?;
 
     let root = graph
@@ -312,6 +322,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     );
 
     assert_error!(result, "Reroot tip not found: missing");
@@ -336,6 +347,7 @@ mod tests {
       &reroot_params,
       &mut branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     let root = graph

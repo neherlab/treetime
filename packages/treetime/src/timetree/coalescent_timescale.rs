@@ -2,13 +2,16 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::make_error;
+use crate::progress::ProgressSink;
 use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, array};
+use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_report;
 
@@ -33,12 +36,14 @@ pub(crate) fn coalescent_timescale(
   graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
   };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times)
+  estimate_coalescent_tc(mode, graph, skyline_params, node_times, names, progress)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
@@ -48,6 +53,8 @@ pub(crate) fn estimate_coalescent_tc(
   graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<Option<CoalescentTimescale>, Report> {
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
@@ -62,6 +69,8 @@ pub(crate) fn estimate_coalescent_tc(
       ..skyline_params.clone()
     },
     node_times,
+    names,
+    progress,
   )?;
   Ok(Some(CoalescentTimescale {
     distribution: result.tc_distribution,

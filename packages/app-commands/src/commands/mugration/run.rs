@@ -6,11 +6,11 @@ use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use app_output::output_plan::OutputSelection;
 use eyre::{Report, WrapErr};
-use log::info;
 use std::collections::BTreeMap;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+use treetime::progress_info;
 use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
@@ -79,7 +79,7 @@ pub fn run_mugration(
     weights,
     branch_lengths: branch_lengths.clone(),
   };
-  let mut output = pipeline::run(&params, input, &names, cancel).map_err(|err| err.into_report())?;
+  let mut output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
 
   let topology_order = mugration_args
     .topology_order
@@ -132,7 +132,7 @@ pub fn run_mugration(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     write_augur_node_data_json(&result, &output, path)?;
-    info!("Wrote augur node data JSON to {}", path.display());
+    progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
   }
 
   progress.report("Done", 1.0, "");

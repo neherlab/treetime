@@ -60,7 +60,8 @@ mod tests {
       ignore_missing_alns: false,
     };
     let names = parse.names();
-    let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names).unwrap();
+    let sequences =
+      complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap();
     let alignment_length = get_common_length(&sequences).unwrap();
     let mask = create_mask(&sequences, alignment_length, &alphabet);
     let input = AncestralInput {
@@ -118,7 +119,7 @@ mod tests {
         ignore_missing_alns: false,
       };
       let names = parse.names();
-      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names)?;
+      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;
       let alignment_length = get_common_length(&sequences)?;
       let mask = create_mask(&sequences, alignment_length, &alphabet);
       let input = AncestralInput {

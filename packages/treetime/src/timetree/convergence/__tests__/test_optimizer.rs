@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod tests {
+  use crate::progress::NoopProgress;
   use crate::timetree::convergence::metrics::NODE_TIME_TOLERANCE_YEARS;
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -15,10 +17,20 @@ mod tests {
     let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(1, optimizer.i);
     assert_eq!(1, optimizer.trace.len());
 
@@ -31,7 +43,7 @@ mod tests {
     let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
-    assert!(optimizer.next_iter().is_some());
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
       0,
       0,
@@ -40,9 +52,11 @@ mod tests {
       &[],
       &state,
       None,
+      &BTreeMap::new(),
+      &NoopProgress,
     )?;
 
-    assert!(optimizer.next_iter().is_some());
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
       0,
       0,
@@ -51,9 +65,11 @@ mod tests {
       &[],
       &state,
       None,
+      &BTreeMap::new(),
+      &NoopProgress,
     )?;
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(2, optimizer.i);
 
     Ok(())
@@ -66,13 +82,33 @@ mod tests {
     let mut optimizer = TimetreeOptimizer::new(5, false);
     let settled = helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS);
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 2, settled, &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      2,
+      settled,
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, settled, &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      0,
+      settled,
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(2, optimizer.i);
 
     Ok(())
@@ -84,16 +120,46 @@ mod tests {
     let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      10,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(3, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      3,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(3, optimizer.i);
 
     let trace = &optimizer.trace;
@@ -112,11 +178,21 @@ mod tests {
     let mut optimizer = TimetreeOptimizer::new(3, false);
 
     for _ in 0..3 {
-      assert!(optimizer.next_iter().is_some());
-      optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+      assert!(optimizer.next_iter(&NoopProgress).is_some());
+      optimizer.record(
+        10,
+        0,
+        NodeTimeChange::default(),
+        &graph,
+        &[],
+        &state,
+        None,
+        &BTreeMap::new(),
+        &NoopProgress,
+      )?;
     }
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(3, optimizer.i);
     assert_eq!(3, optimizer.trace.len());
 
@@ -129,13 +205,33 @@ mod tests {
     let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 3, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      3,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_none());
+    assert!(optimizer.next_iter(&NoopProgress).is_none());
     assert_eq!(2, optimizer.i);
 
     Ok(())
@@ -149,11 +245,31 @@ mod tests {
     let mut optimizer =
       TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::CountingSink(Arc::clone(&count))));
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(5, 1, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      5,
+      1,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      0,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &[],
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     assert_eq!(2, optimizer.trace.len());
     assert_eq!(2, count.load(Ordering::Relaxed));

@@ -2,7 +2,9 @@
 mod tests {
   use crate::coalescent::__tests__::helpers::{coalescent_node_times, setup_graph};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::progress::NoopProgress;
   use proptest::prelude::*;
+  use std::collections::BTreeMap;
   use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg};
 
   proptest! {
@@ -23,7 +25,7 @@ mod tests {
         max_iter: 1000,
       };
 
-      let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints)).unwrap();
+      let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress).unwrap();
 
       prop_assert_array_finite!(result.tc_lower_bounds);
       prop_assert_array_finite!(result.tc_upper_bounds);

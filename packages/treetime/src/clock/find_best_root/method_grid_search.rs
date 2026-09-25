@@ -1,8 +1,10 @@
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GridSearchParams;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use eyre::Report;
-use log::{debug, info};
+use log::debug;
 use ndarray::Array1;
 use treetime_graph::edge::GraphEdgeKey;
 
@@ -14,10 +16,13 @@ pub(crate) fn optimize_grid_search(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &GridSearchParams,
+  branch: &str,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
-  info!(
-    "Starting Grid Search optimization on edge {:?} with {} points",
-    edge, params.n_points
+  progress_info!(
+    progress,
+    "Starting Grid Search optimization on the branch above {branch} with {} points",
+    params.n_points
   );
 
   let mut best_chisq = f64::INFINITY;
@@ -46,9 +51,12 @@ pub(crate) fn optimize_grid_search(
     }
   }
 
-  info!(
+  progress_info!(
+    progress,
     "Grid Search optimization completed: evaluated {} points, best_split = {:.6}, best_cost = {:.6e}",
-    params.n_points, best_split, best_chisq
+    params.n_points,
+    best_split,
+    best_chisq
   );
 
   Ok(FindRootResult {

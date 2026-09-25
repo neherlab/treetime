@@ -1,6 +1,7 @@
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::AncestralPartition;
 use crate::make_error;
+use crate::progress::ProgressSink;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use eyre::Report;
@@ -21,6 +22,7 @@ pub fn reconstruct_aa(
   params: &MarginalPartitionParams,
   plans: Vec<PartitionPlan>,
   mut seq_sink: Option<Box<dyn SeqSink>>,
+  progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
   let mut rng = get_random_number_generator(params.seed);
   let mut aa_node_data = AaNodeData::default();
@@ -28,7 +30,8 @@ pub fn reconstruct_aa(
     sink.on_topology(graph)?;
   }
   for (index, plan) in plans.into_iter().enumerate() {
-    let reconstructed = reconstruct_marginal_partition(graph, index, plan, params, names, branch_lengths, &mut rng)?;
+    let reconstructed =
+      reconstruct_marginal_partition(graph, index, plan, params, names, branch_lengths, &mut rng, progress)?;
     let guard = &reconstructed.partition;
 
     if let Some(annotation) = &reconstructed.annotation

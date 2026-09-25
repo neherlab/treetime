@@ -10,6 +10,7 @@ mod tests {
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
 
@@ -117,7 +118,7 @@ mod tests {
         &recon.edges.backward,
         &recon.edges.forward,
       )?;
-      let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+      let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
       let n_states = recon.partition.alphabet.n_canonical();
       GTR::builder().n_states(n_states).mu(mu).W(W).pi(pi).build()?
     };
@@ -134,7 +135,7 @@ mod tests {
         SPARSE_NUC_ALPHABET.clone(),
         &node_seq_inputs(&graph, &names, aln),
       )?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
     Ok(DenseSparseGtr { dense, sparse })

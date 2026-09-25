@@ -2,10 +2,14 @@ use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::partition::timetree::marginal::graph_log_lh;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use crate::timetree::timetree_state::TimetreeState;
-use log::{debug, warn};
+use log::debug;
+use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
 pub(crate) fn compute_sequence_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Option<LogLh> {
@@ -64,12 +68,14 @@ pub(crate) fn compute_coalescent_log_lh(
   graph: &Graph,
   coalescent_tc: Option<&Distribution>,
   node_times: &CoalescentNodeTimes,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Option<LogLh> {
   let tc = coalescent_tc?;
-  match compute_coalescent_total_lh(graph, tc, node_times) {
+  match compute_coalescent_total_lh(graph, tc, node_times, names, progress) {
     Ok(lh) => Some(lh),
     Err(e) => {
-      warn!("Coalescent log-likelihood unavailable: {e}");
+      progress_warn!(progress, "Coalescent log-likelihood unavailable: {e}");
       None
     },
   }

@@ -6,6 +6,7 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -99,6 +100,7 @@ mod tests {
         pc: 0.1,
         ..InferGtrOptions::default()
       },
+      &NoopProgress,
     )?;
 
     #[rustfmt::skip]

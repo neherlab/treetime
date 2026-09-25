@@ -8,6 +8,7 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::o;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -28,7 +29,7 @@ mod tests {
       o!("B") => o!("?"),
     };
 
-    let node_states = partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
 
     let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
@@ -52,7 +53,7 @@ mod tests {
       o!("A") => o!("usa"),
     };
 
-    let result = partition.attach_traits(&graph, &traits, &names);
+    let result = partition.attach_traits(&graph, &traits, &names, &NoopProgress);
     assert_error!(result, "Mugration: tree leaves missing from metadata: B");
 
     Ok(())
@@ -71,7 +72,7 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let node_states = partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
 
     let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
@@ -90,7 +91,7 @@ mod tests {
     let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    let node_states = partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
 
     let branch_lengths = branch_lengths_or_zero(&raw_branch_lengths);
     let MarginalBackward { node_states, backward } =
@@ -130,7 +131,7 @@ mod tests {
     let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    let node_states = partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
 
     let MarginalUpdate {
       node_states, log_lh, ..

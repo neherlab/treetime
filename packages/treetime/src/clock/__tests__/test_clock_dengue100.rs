@@ -81,11 +81,12 @@ mod tests {
       branch_lengths,
       None,
       &names_tt_2,
+      &NoopProgress,
     )?;
     *state = new_state;
     let pre_regression = prefilter_result.regression();
 
-    let filter_result = clock_filter_inplace(graph, inputs, state, pre_regression, branch_lengths, 3.0)?;
+    let filter_result = clock_filter_inplace(graph, inputs, state, pre_regression, branch_lengths, 3.0, &NoopProgress)?;
 
     let final_reroot_params = RerootParams::default();
     let names_tt_1 = names.clone();
@@ -101,6 +102,7 @@ mod tests {
       branch_lengths,
       None,
       &names_tt_1,
+      &NoopProgress,
     )?;
     *state = new_state;
 

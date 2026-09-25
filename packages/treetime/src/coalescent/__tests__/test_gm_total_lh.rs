@@ -3,10 +3,12 @@ mod tests {
   use super::super::helpers::{coalescent_node_times, setup_graph};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::DateConstraint;
@@ -26,7 +28,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     Ok((graph, constraints))
   }
 
@@ -39,7 +41,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints))?.value();
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress)?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }
@@ -53,7 +55,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_polytomy(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let (graph, constraints) = setup_polytomy_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints))?.value();
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress)?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }

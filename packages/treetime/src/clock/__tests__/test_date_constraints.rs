@@ -2,6 +2,7 @@
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -77,7 +78,7 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -104,7 +105,7 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -132,7 +133,7 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -160,7 +161,7 @@ mod tests {
       o!("AB") => exact(2019.5),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -188,7 +189,7 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -218,7 +219,7 @@ mod tests {
       o!("E") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -250,7 +251,7 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     assert_eq!(actual.iter().filter(|n| n.time_distribution.is_some()).count(), 3);
@@ -270,7 +271,7 @@ mod tests {
       o!("D") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -301,7 +302,7 @@ mod tests {
       o!("G") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -341,7 +342,7 @@ mod tests {
       o!("K") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -378,7 +379,7 @@ mod tests {
       o!("D") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -406,8 +407,16 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    let first_run = node_constraints(&names, &graph, &load_date_constraints(&dates, &graph, &names)?);
-    let second_run = node_constraints(&names, &graph, &load_date_constraints(&dates, &graph, &names)?);
+    let first_run = node_constraints(
+      &names,
+      &graph,
+      &load_date_constraints(&dates, &graph, &names, &NoopProgress)?,
+    );
+    let second_run = node_constraints(
+      &names,
+      &graph,
+      &load_date_constraints(&dates, &graph, &names, &NoopProgress)?,
+    );
 
     assert_eq!(first_run, second_run);
     Ok(())
@@ -426,7 +435,7 @@ mod tests {
       o!("AB") => range(2019.0, 2019.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
@@ -454,7 +463,7 @@ mod tests {
       o!("C") => exact(0.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(

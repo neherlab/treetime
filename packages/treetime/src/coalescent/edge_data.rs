@@ -1,9 +1,13 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;
+use crate::node_label::node_label;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use eyre::Report;
-use log::warn;
+use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
@@ -14,6 +18,8 @@ use treetime_utils::make_error;
 pub(crate) fn collect_coalescent_edges(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<Vec<CoalescentEdgeData>, Report> {
   let mut edges = Vec::new();
 
@@ -22,25 +28,28 @@ pub(crate) fn collect_coalescent_edges(
       return Ok(());
     }
     if node_times.get(&node.key).is_some_and(|entry| entry.bad_branch) {
-      warn!(
-        "Coalescent edge data: skipping node (key={:?}) with a bad branch",
-        node.key
+      progress_warn!(
+        progress,
+        "Coalescent edge data: skipping {} with a bad branch",
+        node_label(names, node.key)
       );
       return Ok(());
     }
 
     let Some(child_time) = node_times.get(&node.key).and_then(node_time) else {
-      warn!(
-        "Coalescent edge data: skipping node (key={:?}) without an inferred date",
-        node.key
+      progress_warn!(
+        progress,
+        "Coalescent edge data: skipping {} without an inferred date",
+        node_label(names, node.key)
       );
       return Ok(());
     };
     let parent_node_key = node.parent_keys[0].0;
     let Some(parent_time) = node_times.get(&parent_node_key).and_then(node_time) else {
-      warn!(
-        "Coalescent edge data: skipping node (key={:?}) whose parent has no inferred date",
-        node.key
+      progress_warn!(
+        progress,
+        "Coalescent edge data: skipping {} whose parent has no inferred date",
+        node_label(names, node.key)
       );
       return Ok(());
     };

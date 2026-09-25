@@ -9,6 +9,7 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::o;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -85,7 +86,15 @@ mod tests {
 
     let inputs = ClockInputs::seed_from_times(&graph, &times);
     let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let result = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    )?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -101,7 +110,15 @@ mod tests {
 
     let inputs = ClockInputs::seed_from_times(&graph, &times);
     let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let result = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    )?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -117,7 +134,15 @@ mod tests {
 
     let inputs = ClockInputs::seed_from_times(&graph, &times);
     let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0);
+    let result = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    );
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
     Ok(())
@@ -135,7 +160,7 @@ mod tests {
 
     let inputs = ClockInputs::seed_from_times(&graph, &times);
     let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd.is_finite());
     Ok(())

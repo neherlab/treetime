@@ -6,6 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+  use treetime::progress::NoopProgress;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;
@@ -32,7 +33,7 @@ mod tests {
       weights: None,
       branch_lengths: branch_lengths.clone(),
     };
-    let output = pipeline::run(&params, input, &names, &NoopCancel).unwrap();
+    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
     let result = MugrationResult::new(&output, &confidences, &names, &branch_lengths, "country");
     let data = build_augur_node_data_json(&result, &output).unwrap();
     json_write_str(&data, JsonPretty(true)).unwrap()

@@ -18,6 +18,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
@@ -60,7 +61,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
       Some(&coalescent),
       false,
       state,
-      &mut clock_state,
+      &mut clock_state, &NoopProgress,
     )?;
 
     let times = extract_node_times(&graph, &names, &state);
@@ -99,7 +100,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
       .into_iter()
@@ -138,6 +139,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
       &mut branch_lengths,
       None,
       &names_tt_1,
+      &NoopProgress,
     )?;
     let clock_model = clock_reroot.into_clock_model()?;
 

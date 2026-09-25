@@ -1,6 +1,7 @@
 use crate::gtr::gtr::avg_transition;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use eyre::Report;
-use log::warn;
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -9,7 +10,11 @@ use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec
 
 const TINY_NUMBER: f64 = 1e-12;
 
-pub(crate) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
+pub(crate) fn infer_gtr_impl(
+  counts: &MutationCounts,
+  options: &InferGtrOptions,
+  progress: &dyn ProgressSink,
+) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
     fixed_pi,
@@ -63,9 +68,15 @@ pub(crate) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions)
   }
 
   if distance(&pi_old, &pi) > *dp {
-    warn!("When inferring GTR parameters: The iterative scheme has not converged.");
+    progress_warn!(
+      progress,
+      "When inferring GTR parameters: The iterative scheme has not converged."
+    );
   } else if (pi.sum() - 1.0).abs() > *dp {
-    warn!("When inferring GTR parameters: Proper normalization was not reached.");
+    progress_warn!(
+      progress,
+      "When inferring GTR parameters: Proper normalization was not reached."
+    );
   }
   Ok(InferGtrResult { W, pi, mu })
 }

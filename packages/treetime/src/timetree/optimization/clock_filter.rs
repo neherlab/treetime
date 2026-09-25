@@ -1,9 +1,10 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use itertools::Itertools;
-use log::warn;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
@@ -17,19 +18,25 @@ pub(crate) fn report_bad_branches(
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) {
   let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates, names);
   if outliers.is_empty() {
     return;
   }
 
-  warn!("Clock filter marked {} outliers:", outliers.len());
-  warn!(
+  progress_warn!(progress, "Clock filter marked {} outliers:", outliers.len());
+  progress_warn!(
+    progress,
     "{:>20} {:>12} {:>14} {:>10}",
-    "name", "given_date", "apparent_date", "residual"
+    "name",
+    "given_date",
+    "apparent_date",
+    "residual"
   );
   for r in &outliers {
-    warn!(
+    progress_warn!(
+      progress,
       "{:>20} {:>12.2} {:>14.2} {:>10.2}",
       truncate_right_with_ellipsis(&r.name, 20),
       r.given_date,

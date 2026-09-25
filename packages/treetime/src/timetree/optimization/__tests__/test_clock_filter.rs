@@ -4,6 +4,7 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
+  use crate::progress::NoopProgress;
   use crate::timetree::optimization::clock_filter::propagate_bad_branches;
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
@@ -70,8 +71,15 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { new_outliers, iqd } =
-      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    )?;
 
     assert_eq!(count_outliers(&graph, &state), 0, "No outliers expected for clean data");
     assert!(iqd >= 0.0, "IQD should be non-negative");
@@ -99,8 +107,15 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { new_outliers, iqd } =
-      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    )?;
 
     assert!(
       count_outliers(&graph, &state) >= 1,
@@ -141,8 +156,15 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { iqd, .. } =
-      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let ClockFilterResult { iqd, .. } = clock_filter_inplace(
+      &graph,
+      &inputs,
+      &mut state,
+      &clock_model,
+      &branch_lengths,
+      3.0,
+      &NoopProgress,
+    )?;
 
     assert!(iqd.is_finite(), "IQD should be a finite number");
 
@@ -168,7 +190,15 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs_low, mut state_low) = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(&graph, &inputs_low, &mut state_low, &clock_model, &branch_lengths, 1.0)?;
+    clock_filter_inplace(
+      &graph,
+      &inputs_low,
+      &mut state_low,
+      &clock_model,
+      &branch_lengths,
+      1.0,
+      &NoopProgress,
+    )?;
     let outliers_low_threshold = count_outliers(&graph, &state_low);
 
     let (inputs_high, mut state_high) = seed_clock_state(&graph, &constraints);
@@ -179,6 +209,7 @@ mod tests {
       &clock_model,
       &branch_lengths,
       100.0,
+      &NoopProgress,
     )?;
     let outliers_high_threshold = count_outliers(&graph, &state_high);
 

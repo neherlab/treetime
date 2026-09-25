@@ -4,11 +4,12 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::timetree_state::TimetreeState;
+use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use log::{info, warn};
 use ordered_float::OrderedFloat;
 use serde::Serialize;
 use statrs::function::erf::erf_inv;
@@ -39,6 +40,7 @@ pub(crate) fn compute_rate_susceptibility(
   state: &mut TimetreeState,
   clock_state: &mut ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<BTreeMap<GraphNodeKey, [f64; 3]>, Report> {
   let current_rate = clock_model.clock_rate();
 
@@ -51,7 +53,10 @@ pub(crate) fn compute_rate_susceptibility(
   let run_names = names;
 
   scale_gammas(state, &original_gammas, upper_rate / current_rate);
-  info!("Rate susceptibility: running with upper rate {upper_rate:.6e}");
+  progress_info!(
+    progress,
+    "Rate susceptibility: running with upper rate {upper_rate:.6e}"
+  );
   *state = run_timetree(
     graph,
     constraints,
@@ -63,12 +68,16 @@ pub(crate) fn compute_rate_susceptibility(
     no_indels,
     std::mem::take(state),
     clock_state,
+    progress,
   )
   .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
   let upper_dates = collect_node_times(state);
 
   scale_gammas(state, &original_gammas, lower_rate / current_rate);
-  info!("Rate susceptibility: running with lower rate {lower_rate:.6e}");
+  progress_info!(
+    progress,
+    "Rate susceptibility: running with lower rate {lower_rate:.6e}"
+  );
   *state = run_timetree(
     graph,
     constraints,
@@ -80,12 +89,16 @@ pub(crate) fn compute_rate_susceptibility(
     no_indels,
     std::mem::take(state),
     clock_state,
+    progress,
   )
   .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
   let lower_dates = collect_node_times(state);
 
   scale_gammas(state, &original_gammas, 1.0);
-  info!("Rate susceptibility: running with central rate {current_rate:.6e}");
+  progress_info!(
+    progress,
+    "Rate susceptibility: running with central rate {current_rate:.6e}"
+  );
   *state = run_timetree(
     graph,
     constraints,
@@ -97,6 +110,7 @@ pub(crate) fn compute_rate_susceptibility(
     no_indels,
     std::mem::take(state),
     clock_state,
+    progress,
   )
   .wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
@@ -115,7 +129,7 @@ pub(crate) fn compute_rate_susceptibility(
     }
   }
 
-  info!("Rate susceptibility analysis completed");
+  progress_info!(progress, "Rate susceptibility analysis completed");
   Ok(rate_susceptibility_dates)
 }
 
@@ -208,6 +222,7 @@ pub(crate) fn determine_rate_std(
   clock_std_dev: Option<f64>,
   covariation: bool,
   clock_model: &ClockModel,
+  progress: &dyn ProgressSink,
 ) -> Result<Option<f64>, Report> {
   if let Some(std_dev) = clock_std_dev {
     if std_dev <= 0.0 {
@@ -224,7 +239,8 @@ pub(crate) fn determine_rate_std(
     ClockModelStats::Estimated(stats) => {
       let rate_variance = stats.cov[[0, 0]];
       if rate_variance <= 0.0 {
-        warn!(
+        progress_warn!(
+          progress,
           "Rate variance from regression covariance is non-positive ({rate_variance:.4e}), skipping rate susceptibility"
         );
         return Ok(None);

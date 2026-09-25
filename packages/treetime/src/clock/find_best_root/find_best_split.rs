@@ -4,11 +4,14 @@ use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
+use crate::node_label::node_label;
+use crate::progress::ProgressSink;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn find_best_split(
   graph: &Graph,
@@ -19,14 +22,21 @@ pub(crate) fn find_best_split(
   options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
   let cost_fn = BranchPointCostFunction::new(graph, inputs, state, edge, branch_lengths, options, objective)?;
+  let branch = node_label(names, graph.get_target_node_key(edge)?);
 
   match params {
-    BranchPointOptimizationParams::Grid(params) => method_grid_search::optimize_grid_search(edge, &cost_fn, params),
-    BranchPointOptimizationParams::Brent(params) => method_brent::optimize_brent(edge, &cost_fn, params),
+    BranchPointOptimizationParams::Grid(params) => {
+      method_grid_search::optimize_grid_search(edge, &cost_fn, params, &branch, progress)
+    },
+    BranchPointOptimizationParams::Brent(params) => {
+      method_brent::optimize_brent(edge, &cost_fn, params, &branch, progress)
+    },
     BranchPointOptimizationParams::GoldenSection(params) => {
-      method_golden_section::optimize_golden_section(edge, &cost_fn, params)
+      method_golden_section::optimize_golden_section(edge, &cost_fn, params, &branch, progress)
     },
   }
 }

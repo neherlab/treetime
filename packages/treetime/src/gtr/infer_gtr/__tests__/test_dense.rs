@@ -15,6 +15,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
@@ -246,7 +247,7 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+    let result = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);
     pretty_assert_ulps_eq!(1.0, result.pi.sum(), epsilon = 1e-9);

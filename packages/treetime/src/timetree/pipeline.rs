@@ -47,8 +47,9 @@ use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, 
 use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinement};
 use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
+use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
-use log::{debug, info, warn};
+use log::debug;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -75,7 +76,7 @@ pub fn run(
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, OperationError> {
-  info!("# TreeTime Timetree Estimation");
+  progress_info!(progress, "# TreeTime Timetree Estimation");
 
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
@@ -87,6 +88,7 @@ pub fn run(
     params.confidence,
     params.clock_std_dev,
     params.covariation,
+    progress,
   );
 
   let covariation_clock_params = build_covariation_clock_params(
@@ -94,11 +96,12 @@ pub fn run(
     params.sequence_length,
     params.tip_slack,
     input.sequences.as_deref(),
+    progress,
   )
   .map_err(OperationError::InvalidParams)?;
 
   let date_constraints = if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph, names)
+    load_date_constraints(dates, &input.graph, names, progress)
       .wrap_err("Failed to load date constraints")
       .map_err(OperationError::InvalidInput)?
   } else {
@@ -136,6 +139,7 @@ pub fn run(
     &mut branch_lengths,
     None,
     names,
+    progress,
   )
   .wrap_err("Failed to infer clock model")?;
   clock_state = new_clock_state;
@@ -147,11 +151,14 @@ pub fn run(
     Option<GtrModelName>,
   ) = match params.branch_length_mode {
     BranchLengthMode::Input => {
-      info!("Branch length mode: Input - using tree branch lengths");
+      progress_info!(progress, "Branch length mode: Input - using tree branch lengths");
       (vec![], None, None)
     },
     BranchLengthMode::Marginal => {
-      info!("Branch length mode: Marginal - initializing partitions from alignment");
+      progress_info!(
+        progress,
+        "Branch length mode: Marginal - initializing partitions from alignment"
+      );
       let init = initialize_partitions_from_params(
         params,
         &input.graph,
@@ -159,6 +166,7 @@ pub fn run(
         input.sequences.as_deref(),
         &branch_lengths,
         names,
+        progress,
       )?;
       (init.partitions, Some(init.gtr), Some(init.model_name))
     },
@@ -166,7 +174,7 @@ pub fn run(
 
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
-      info!("### ML branch-length optimization (pre-reroot)");
+      progress_info!(progress, "### ML branch-length optimization (pre-reroot)");
       let node_inputs = node_seq_inputs(&input.graph, names, aln.to_vec());
       (partitions, _) = initialize_marginal_timetree(
         &input.graph,
@@ -180,7 +188,7 @@ pub fn run(
   }
 
   if !params.keep_root {
-    info!("First reroot (pre-ancestral)");
+    progress_info!(progress, "First reroot (pre-ancestral)");
     (clock_model, partitions) = reroot_tree(
       &mut input.graph,
       &date_constraints,
@@ -194,6 +202,7 @@ pub fn run(
       !params.allow_negative_rate,
       &mut branch_lengths,
       names,
+      progress,
     )
     .wrap_err("Failed to reroot tree (pre-ancestral)")?;
   }
@@ -211,6 +220,7 @@ pub fn run(
       &clock_model,
       &branch_lengths,
       params.clock_filter,
+      progress,
     )?;
     report_bad_branches(
       &input.graph,
@@ -219,6 +229,7 @@ pub fn run(
       result.iqd,
       &given_dates,
       names,
+      progress,
     );
     apply_outlier_bad_branches(&input.graph, &clock_state, &mut timetree_state)?;
   }
@@ -226,10 +237,10 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     match params.branch_length_mode {
       BranchLengthMode::Input => {
-        info!("Using input branch lengths for timetree inference");
+        progress_info!(progress, "Using input branch lengths for timetree inference");
       },
       BranchLengthMode::Marginal => {
-        info!("### ML branch-length optimization (post-reroot)");
+        progress_info!(progress, "### ML branch-length optimization (post-reroot)");
         (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
         partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
@@ -239,13 +250,13 @@ pub fn run(
 
   cancel.check()?;
   progress.report("Initial timetree inference", 0.2, "");
-  info!("### TreeTime: initial round");
+  progress_info!(progress, "### TreeTime: initial round");
 
   let default_clock_params = ClockVarianceParams::default();
   let reroot_clock_params = covariation_clock_params.as_ref().unwrap_or(&default_clock_params);
 
   if !params.keep_root {
-    info!("Reroot (post-ancestral)");
+    progress_info!(progress, "Reroot (post-ancestral)");
     (clock_model, partitions) = reroot_tree(
       &mut input.graph,
       &date_constraints,
@@ -259,6 +270,7 @@ pub fn run(
       !params.allow_negative_rate,
       &mut branch_lengths,
       names,
+      progress,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
@@ -285,6 +297,7 @@ pub fn run(
     params.no_indels,
     timetree_state,
     &mut clock_state,
+    progress,
   )?;
 
   let skyline_params = SkylineParams {
@@ -306,7 +319,14 @@ pub fn run(
   let lineage_counts = compute_lineage_counts(&input.graph, &coalescent_node_times)
     .wrap_err("Failed to compute coalescent lineage counts")?;
 
-  let mut coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params, &coalescent_node_times)?;
+  let mut coalescent_tc = coalescent_timescale(
+    coalescent,
+    &input.graph,
+    &skyline_params,
+    &coalescent_node_times,
+    &names,
+    progress,
+  )?;
 
   let prior_wanted = coalescent != CoalescentMode::Disabled;
 
@@ -323,6 +343,7 @@ pub fn run(
       params.no_indels,
       timetree_state,
       &mut clock_state,
+      progress,
     )?;
   }
   commit_clock_branch_lengths(
@@ -331,11 +352,12 @@ pub fn run(
     1.0,
     &mut clock_branch_lengths,
     &timetree_state,
+    progress,
   );
 
   cancel.check()?;
   progress.report("Optimization", 0.3, "");
-  info!("### TreeTime: Optimisation rounds");
+  progress_info!(progress, "### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
   if let Some(sink) = trace_sink {
     optimizer = optimizer.with_trace_sink(sink);
@@ -354,11 +376,14 @@ pub fn run(
 
   let seed = params.seed.unwrap_or_else(rand::random);
   if params.resolve_polytomies {
-    info!("Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)");
+    progress_info!(
+      progress,
+      "Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)"
+    );
   }
   let mut rng = get_random_number_generator(Some(seed));
 
-  while let Some(IterationContext { i }) = optimizer.next_iter() {
+  while let Some(IterationContext { i }) = optimizer.next_iter(progress) {
     cancel.check()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
     progress.report(
@@ -373,6 +398,8 @@ pub fn run(
         &input.graph,
         &skyline_params,
         &timetree_state.coalescent_node_times()?,
+        &names,
+        progress,
       )?;
     }
     let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
@@ -394,6 +421,7 @@ pub fn run(
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths: &mut branch_lengths,
       names: &mut names,
+      progress,
     }
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
@@ -409,6 +437,8 @@ pub fn run(
         &partitions,
         &timetree_state,
         prior_wanted.then_some(&coalescent_tc.distribution),
+        &names,
+        progress,
       )
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
@@ -416,13 +446,15 @@ pub fn run(
 
   if coalescent.output_mode().is_some() {
     let tc_values = coalescent_tc.schedule.values();
-    info!(
+    progress_info!(
+      progress,
       "Coalescent effective population size (gen_per_year={:.4}, {} segment(s)):",
       params.gen_per_year,
       tc_values.len()
     );
     for (i, &tc) in tc_values.iter().enumerate() {
-      info!(
+      progress_info!(
+        progress,
         "  segment {i}: Tc = {tc:.6e}  N_e = {:.6e}",
         effective_population_size(tc, params.gen_per_year)
       );
@@ -431,10 +463,10 @@ pub fn run(
 
   cancel.check()?;
   progress.report("Postprocessing", 0.85, "");
-  info!("### TreeTime: postprocessing");
+  progress_info!(progress, "### TreeTime: postprocessing");
 
   let rate_std = if params.confidence {
-    determine_rate_std(params.clock_std_dev, params.covariation, &clock_model)?
+    determine_rate_std(params.clock_std_dev, params.covariation, &clock_model, progress)?
   } else {
     None
   };
@@ -443,7 +475,7 @@ pub fn run(
   let final_prior = prior_wanted.then_some(&final_model);
 
   let rate_susceptibility_dates = if let Some(rate_std) = rate_std {
-    info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
+    progress_info!(progress, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
     compute_rate_susceptibility(
       &input.graph,
       &date_constraints,
@@ -456,6 +488,7 @@ pub fn run(
       &mut timetree_state,
       &mut clock_state,
       &names,
+      progress,
     )
     .wrap_err("Rate susceptibility analysis failed")?
   } else {
@@ -463,7 +496,10 @@ pub fn run(
   };
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
-    info!("### Final round: marginal reconstruction for confidence intervals");
+    progress_info!(
+      progress,
+      "### Final round: marginal reconstruction for confidence intervals"
+    );
     timetree_state = run_timetree(
       &input.graph,
       &date_constraints,
@@ -475,6 +511,7 @@ pub fn run(
       params.no_indels,
       timetree_state,
       &mut clock_state,
+      progress,
     )
     .wrap_err("Final timetree inference failed")?;
 
@@ -484,6 +521,7 @@ pub fn run(
       1.0,
       &mut clock_branch_lengths,
       &timetree_state,
+      progress,
     );
 
     if !partitions.is_empty() {
@@ -511,7 +549,8 @@ pub fn run(
            incompatible with --branch-length-mode=input"
         )));
       }
-      warn!(
+      progress_warn!(
+        progress,
         "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
@@ -608,6 +647,7 @@ fn initialize_partitions_from_params(
   aln: Option<&[AlignmentRecord]>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<PartitionInitResult, Report> {
   let model_name = params.model;
 
@@ -621,6 +661,7 @@ fn initialize_partitions_from_params(
     model_name,
     params.dense,
     &branch_lengths_or_zero(branch_lengths),
+    progress,
   )?;
 
   let gtr = created.gtr.clone();

@@ -2,6 +2,7 @@
 mod tests {
   use crate::clock::clock_model::{ClockLine, ClockModel, ClockModelStats, ClockRegression, RegressionStats};
   use crate::clock::clock_set::ClockSet;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use indoc::indoc;
   use ndarray::array;
@@ -85,7 +86,7 @@ mod tests {
   fn test_clock_model_from_regression_allow_negative_builds_negative() -> Result<(), Report> {
     let cs = clock_set_with_rate(-0.005);
     let reg = ClockRegression::try_from(&cs)?;
-    let model = ClockModel::from_regression_allow_negative(&reg);
+    let model = ClockModel::from_regression_allow_negative(&reg, &NoopProgress);
     assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
     assert!(model.clock_rate() < 0.0);
     Ok(())
@@ -95,7 +96,7 @@ mod tests {
   fn test_clock_model_from_regression_allow_negative_builds_zero() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.0);
     let reg = ClockRegression::try_from(&cs)?;
-    let model = ClockModel::from_regression_allow_negative(&reg);
+    let model = ClockModel::from_regression_allow_negative(&reg, &NoopProgress);
     assert!(model.clock_rate().abs() < 1e-15);
     Ok(())
   }
@@ -104,7 +105,7 @@ mod tests {
   fn test_clock_model_from_regression_allow_negative_builds_positive() -> Result<(), Report> {
     let cs = clock_set_with_rate(0.003);
     let reg = ClockRegression::try_from(&cs)?;
-    let model = ClockModel::from_regression_allow_negative(&reg);
+    let model = ClockModel::from_regression_allow_negative(&reg, &NoopProgress);
     assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
     assert!(model.clock_rate() > 0.0);
     Ok(())

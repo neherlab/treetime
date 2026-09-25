@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use rstest::rstest;
@@ -49,7 +50,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
     let gtr_b = {
@@ -59,7 +60,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
     pretty_assert_ulps_eq!(gtr_a.mu, gtr_b.mu, epsilon = 1e-15);

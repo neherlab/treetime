@@ -9,6 +9,7 @@ mod tests {
   };
   use crate::o;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
@@ -113,6 +114,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.00026106623586340597, max_ulps = 4);
@@ -142,6 +145,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_256_025_848_142_593_5, max_ulps = 4);
@@ -171,6 +176,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::FixedRate(0.0),
+      &names,
+      &NoopProgress,
     )?;
 
     let expected_chisq = best_root.clock_set.chisq_fixed_rate(0.0);
@@ -196,6 +203,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
@@ -228,6 +237,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
@@ -257,6 +268,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.00025599999999690367, max_ulps = 4);
@@ -289,6 +302,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_999_2, max_ulps = 4);
@@ -318,6 +333,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
     let brent_result = find_best_root(
       &graph,
@@ -328,6 +345,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
     let golden_result = find_best_root(
       &graph,
@@ -338,6 +357,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     assert!(
@@ -398,6 +419,8 @@ mod tests {
       &branch_lengths,
       true,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     );
 
     assert!(
@@ -426,6 +449,8 @@ mod tests {
       &branch_lengths,
       false,
       RootObjective::EstimatedRate,
+      &names,
+      &NoopProgress,
     )?;
 
     let det = best_root.clock_set.determinant();

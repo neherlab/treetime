@@ -3,6 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
   };
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
@@ -46,7 +47,7 @@ mod tests {
 
     let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
       .into_iter()
@@ -75,7 +76,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
       &mut branch_lengths,
-      None, &names_tt_1
+      None, &names_tt_1, &NoopProgress
     )?;
     let clock_model = clock_reroot.into_clock_model()?;
 
@@ -91,7 +92,7 @@ mod tests {
       None,
       false,
       state,
-      &mut clock_state,
+      &mut clock_state, &NoopProgress,
     )?;
 
     let actual = extract_node_times(&graph, &names, &state);

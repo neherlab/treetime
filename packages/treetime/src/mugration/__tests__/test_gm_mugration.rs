@@ -108,6 +108,7 @@ mod tests {
   mod helpers {
     use crate::cancel::NoopCancel;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
+    use crate::progress::NoopProgress;
     use eyre::Report;
     use indexmap::IndexMap;
     use ndarray::Array1;
@@ -214,7 +215,7 @@ mod tests {
         weights,
         branch_lengths,
       };
-      let output = run(&params, input, &names, &NoopCancel).map_err(|err| err.into_report())?;
+      let output = run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
       Ok((output, names))
     }
 

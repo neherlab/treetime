@@ -3,6 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{OUTPUTS, load_dates_for_dataset};
   use super::super::test_gm_runner_support::support::{create_poisson_branch_distributions, extract_node_times};
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::progress::NoopProgress;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::GRID_POINTS;
@@ -30,7 +31,7 @@ mod tests {
 
     let graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let branch_distributions = create_poisson_branch_distributions(
       &graph,
@@ -44,7 +45,7 @@ mod tests {
       state.edge_mut(edge_key).branch_length_distribution = Some(dist);
     }
     propagate_distributions_backward(&graph, &constraints, None, &mut state)?;
-    propagate_distributions_forward(&graph, &constraints, &names, &mut state)?;
+    propagate_distributions_forward(&graph, &constraints, &names, &mut state, &NoopProgress)?;
 
     let actual = extract_node_times(&graph, &names, &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);

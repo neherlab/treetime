@@ -8,6 +8,7 @@ use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
 use crate::make_error;
+use crate::progress::ProgressSink;
 use approx::ulps_eq;
 use eyre::Report;
 use itertools::Itertools;
@@ -36,6 +37,7 @@ pub(crate) fn reroot_in_place(
   reroot_params: &RerootParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<(ClockState, RerootResult), Report> {
   let FindRootResult {
     edge, split, clock_set, ..
@@ -48,6 +50,7 @@ pub(crate) fn reroot_in_place(
     reroot_params,
     branch_lengths,
     names,
+    progress,
   )?;
 
   let old_root_key = { graph.get_exactly_one_root()?.key() };
@@ -167,6 +170,7 @@ fn select_root(
   reroot_params: &RerootParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
   match &reroot_params.spec {
     RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => find_best_root(
@@ -178,6 +182,8 @@ fn select_root(
       branch_lengths,
       reroot_params.force_positive_rate,
       reroot_params.objective,
+      names,
+      progress,
     ),
     RerootSpec::Method(RerootMethod::MinDev) => find_best_root(
       graph,
@@ -188,6 +194,8 @@ fn select_root(
       branch_lengths,
       false,
       RootObjective::FixedRate(0.0),
+      names,
+      progress,
     ),
     RerootSpec::Method(RerootMethod::Oldest) => {
       find_oldest_root(graph, inputs, state, options, branch_lengths, reroot_params.objective)

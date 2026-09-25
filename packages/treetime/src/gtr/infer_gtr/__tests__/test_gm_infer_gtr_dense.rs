@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -51,7 +52,7 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-8);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-8);
@@ -80,7 +81,7 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-6);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-6);

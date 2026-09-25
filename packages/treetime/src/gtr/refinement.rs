@@ -3,9 +3,11 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::make_internal_report;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
+use crate::progress::ProgressSink;
+use crate::{progress_info, progress_warn};
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
-use log::{debug, info, warn};
+use log::debug;
 use ndarray::Array1;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -21,6 +23,7 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   pc: f64,
   graph: &Graph,
   profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  progress: &dyn ProgressSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report> {
   let MarginalUpdate {
     node_states,
@@ -35,12 +38,12 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   let mut gtr = gtr;
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, profile_lengths, &node_states, &backward, &forward)?;
-    gtr = infer_gtr(&counts, &options, gtr.pi.len())?;
+    gtr = infer_gtr(&counts, &options, gtr.pi.len(), progress)?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
   }
 
   let update = partition.marginal_update(&gtr, graph, profile_lengths, node_states)?;
-  log_final(&gtr, update.log_lh);
+  log_final(&gtr, update.log_lh, progress);
   Ok((gtr, update))
 }
 
@@ -54,6 +57,7 @@ pub(crate) fn refine_gtr_model_and_rate<P: MarginalPasses>(
   sampling_bias_correction: Option<f64>,
   graph: &Graph,
   profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  progress: &dyn ProgressSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
 where
   P::Node: Clone,
@@ -74,23 +78,32 @@ where
   let mut backward = backward;
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, profile_lengths, &nodes, &backward, &forward)?;
-    gtr = infer_gtr(&counts, &options, gtr.pi.len())?;
-    (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, profile_lengths)?;
+    gtr = infer_gtr(&counts, &options, gtr.pi.len(), progress)?;
+    (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, profile_lengths, progress)?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
   }
 
   if let Some(correction) = sampling_bias_correction {
     gtr.mu *= correction;
-    info!("Applied sampling bias correction {correction:.4}, mu = {:.6}", gtr.mu);
+    progress_info!(
+      progress,
+      "Applied sampling bias correction {correction:.4}, mu = {:.6}",
+      gtr.mu
+    );
   }
 
   let update = partition.marginal_update(&gtr, graph, profile_lengths, nodes)?;
-  log_final(&gtr, update.log_lh);
+  log_final(&gtr, update.log_lh, progress);
   Ok((gtr, update))
 }
 
-fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions, n_states: usize) -> Result<GTR, Report> {
-  let result = infer_gtr_impl(counts, options)?;
+fn infer_gtr(
+  counts: &MutationCounts,
+  options: &InferGtrOptions,
+  n_states: usize,
+  progress: &dyn ProgressSink,
+) -> Result<GTR, Report> {
+  let result = infer_gtr_impl(counts, options, progress)?;
   build_gtr_from_inference(n_states, &result)
 }
 
@@ -103,8 +116,9 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
     .build()
 }
 
-fn log_final(gtr: &GTR, log_lh: LogLh) {
-  info!(
+fn log_final(gtr: &GTR, log_lh: LogLh, progress: &dyn ProgressSink) {
+  progress_info!(
+    progress,
     "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
     log_lh.value(),
     gtr.mu,
@@ -118,6 +132,7 @@ fn optimize_gtr_rate<P: MarginalPasses>(
   nodes: &BTreeMap<GraphNodeKey, P::Node>,
   graph: &Graph,
   profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  progress: &dyn ProgressSink,
 ) -> Result<
   (
     GTR,
@@ -154,7 +169,8 @@ where
           }),
         ),
         Err(e) => {
-          warn!(
+          progress_warn!(
+            progress,
             "GTR rate optimization: root likelihood failed at mu={:.6}: {e}",
             sqrt_mu * sqrt_mu
           );
@@ -162,7 +178,8 @@ where
         },
       },
       Err(e) => {
-        warn!(
+        progress_warn!(
+          progress,
           "GTR rate optimization: backward pass failed at mu={:.6}: {e}",
           sqrt_mu * sqrt_mu
         );

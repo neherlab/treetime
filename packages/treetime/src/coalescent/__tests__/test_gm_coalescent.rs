@@ -5,6 +5,7 @@ mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::o;
+  use crate::progress::NoopProgress;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
   use ndarray::Array1;
@@ -122,7 +123,7 @@ mod tests {
       &Some(o!("name")),
       &Some(o!("date")),
     )?;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     Ok((graph, names, constraints))
   }
 }

@@ -1,4 +1,6 @@
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
@@ -6,9 +8,10 @@ use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use crate::timetree::convergence::node_times::NodeTimeChange;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
-use log::info;
+use std::collections::BTreeMap;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 
 pub(crate) struct TimetreeOptimizer {
   pub(crate) trace: Vec<ConvergenceMetrics>,
@@ -35,13 +38,13 @@ impl TimetreeOptimizer {
     self
   }
 
-  pub(crate) fn next_iter(&mut self) -> Option<IterationContext> {
+  pub(crate) fn next_iter(&mut self, progress: &dyn ProgressSink) -> Option<IterationContext> {
     if self.has_converged() || self.has_reached_max_iterations() {
       return None;
     }
 
     self.i += 1;
-    info!("### Timetree iteration {}/{}", self.i, self.max_iterations);
+    progress_info!(progress, "### Timetree iteration {}/{}", self.i, self.max_iterations);
 
     Some(IterationContext { i: self.i })
   }
@@ -55,10 +58,12 @@ impl TimetreeOptimizer {
     partitions: &[PartitionTimetree],
     state: &TimetreeState,
     coalescent_tc: Option<&Distribution>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    progress: &dyn ProgressSink,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, partitions);
     let log_lh_pos = compute_positional_log_lh(graph, state);
-    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc, &state.coalescent_node_times()?);
+    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc, &state.coalescent_node_times()?, names, progress);
     let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
       .into_iter()
       .flatten()
@@ -79,7 +84,8 @@ impl TimetreeOptimizer {
       sink.emit(&metric)?;
     }
 
-    info!(
+    progress_info!(
+      progress,
       "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
       metric.max_time_change.unwrap_or(f64::NAN),

@@ -6,6 +6,7 @@ mod tests {
     run, validate_weight_coverage,
   };
   use crate::partition::storage::discrete::DiscreteStates;
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::{IndexMap, IndexSet};
@@ -53,7 +54,7 @@ mod tests {
       weights,
       branch_lengths,
     };
-    let output = run(&params, input, &names, &NoopCancel).map_err(|err| err.into_report())?;
+    let output = run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
     Ok((output, names))
   }
 

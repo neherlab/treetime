@@ -7,6 +7,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+  use treetime::progress::NoopProgress;
   use treetime_io::nex::NexWriteOptions;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
@@ -36,7 +37,7 @@ mod tests {
       weights: None,
       branch_lengths: branch_lengths.clone(),
     };
-    let output = pipeline::run(&params, input, &names, &NoopCancel).map_err(|err| err.into_report())?;
+    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
     let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, "country");
     let providers = CommentProviders::new().with(&provider);
 

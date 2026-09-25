@@ -18,6 +18,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
+use crate::progress_warn;
 use crate::seq::alignment::AncestralInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
@@ -75,7 +76,8 @@ pub fn run(
       let mut partitions_parsimony = vec![partition];
 
       if params.impute_missing_data {
-        log::warn!(
+        progress_warn!(
+          progress,
           "--impute-missing-data has no effect with --method-anc=parsimony: Fitch parsimony produces no \
            posterior profile to impute missing tip states from. Leaf states are emitted as observed."
         );
@@ -109,6 +111,7 @@ pub fn run(
         params.model,
         params.dense,
         &profile_lengths,
+        progress,
       )?;
       let model_name = created.model_name;
       let gtr = created.gtr;
@@ -129,6 +132,7 @@ pub fn run(
               1.0,
               graph,
               &profile_lengths,
+              progress,
             )?
           } else {
             (gtr, update)
@@ -185,6 +189,7 @@ pub fn run(
               1.0,
               graph,
               &profile_lengths,
+              progress,
             )?
           } else {
             (gtr, update)

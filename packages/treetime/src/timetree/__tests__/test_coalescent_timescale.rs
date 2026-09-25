@@ -2,6 +2,7 @@
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::progress::NoopProgress;
   use crate::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
   };
@@ -15,6 +16,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -67,8 +69,15 @@ mod tests {
       ..SkylineParams::default()
     };
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params, &node_times)?
-      .expect("a fixed Tc yields a coalescent timescale");
+    let timescale = estimate_coalescent_tc(
+      CoalescentMode::Fixed(2.5),
+      &graph,
+      &params,
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .expect("a fixed Tc yields a coalescent timescale");
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
       .expect("a fixed Tc writes a coalescent output");
@@ -189,7 +198,7 @@ mod tests {
     let nwk_parsed = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     Ok((graph, constraints))
   }
 
@@ -202,9 +211,16 @@ mod tests {
     };
 
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times()?;
-    let solve = optimize_skyline(&graph, &params, &node_times)?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params, &node_times)?
-      .expect("skyline mode yields a coalescent timescale");
+    let solve = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let timescale = estimate_coalescent_tc(
+      CoalescentMode::Skyline,
+      &graph,
+      &params,
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .expect("skyline mode yields a coalescent timescale");
     let report = timescale
       .report
       .expect("an inferred skyline carries a per-segment report");

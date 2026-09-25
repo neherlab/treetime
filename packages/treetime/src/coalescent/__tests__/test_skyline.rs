@@ -4,9 +4,11 @@ mod tests {
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_utils::assert_error;
 
@@ -35,7 +37,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
+    let result = optimize_skyline(
+      &graph,
+      &params,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     assert_eq!(6, result.segment_boundaries.len());
     assert_eq!(5, result.tc_schedule.values().len());
@@ -65,7 +73,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints)), expected);
+    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress), expected);
     Ok(())
   }
 
@@ -77,7 +85,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
+    let result = optimize_skyline(
+      &graph,
+      &params,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     for &tc in result.tc_schedule.values() {
       assert!(
@@ -97,7 +111,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
+    let result = optimize_skyline(
+      &graph,
+      &params,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     let t_min = result.segment_boundaries[0];
     let t_max = result.segment_boundaries[result.segment_boundaries.len() - 1];
@@ -137,7 +157,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints))?;
+    let result = optimize_skyline(
+      &graph,
+      &params,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     assert_eq!(10, result.tc_schedule.values().len());
     assert!(result.log_likelihood.value().is_finite());
@@ -154,8 +180,15 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution, &node_times)?.value();
+    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let expected = compute_coalescent_total_lh(
+      &graph,
+      &result.tc_distribution,
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
@@ -178,8 +211,15 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution, &node_times)?.value();
+    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let expected = compute_coalescent_total_lh(
+      &graph,
+      &result.tc_distribution,
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
@@ -196,7 +236,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times)?;
+    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
 
     let constant_tc = constant_skyline(&graph, &node_times)?;
     assert!(
@@ -222,8 +262,20 @@ mod tests {
 
     let (g1, c1) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
     let (gs, cs) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
-    let r1 = optimize_skyline(&g1, &params, &coalescent_node_times(&g1, &c1))?;
-    let rs = optimize_skyline(&gs, &params, &coalescent_node_times(&gs, &cs))?;
+    let r1 = optimize_skyline(
+      &g1,
+      &params,
+      &coalescent_node_times(&g1, &c1),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
+    let rs = optimize_skyline(
+      &gs,
+      &params,
+      &coalescent_node_times(&gs, &cs),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
 
     for i in 0..params.n_points {
       let expected = s * r1.tc_schedule.values()[i];

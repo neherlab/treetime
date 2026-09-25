@@ -3,11 +3,12 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GoldenSectionParams;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use argmin::core::Executor;
 use argmin::core::observers::ObserverMode;
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 use eyre::Report;
-use log::info;
 use treetime_graph::edge::GraphEdgeKey;
 
 #[allow(
@@ -19,10 +20,14 @@ pub(crate) fn optimize_golden_section(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
   params: &GoldenSectionParams,
+  branch: &str,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
-  info!(
-    "Starting Golden Section optimization on edge {:?} with max_iters={}, tolerance={:.2e}",
-    edge, params.golden_max_iters, params.golden_tolerance
+  progress_info!(
+    progress,
+    "Starting Golden Section optimization on the branch above {branch} with max_iters={}, tolerance={:.2e}",
+    params.golden_max_iters,
+    params.golden_tolerance
   );
   let solver = GoldenSectionSearch::new(0.0, 1.0)
     .map_err(|e| make_report!("Failed to create GoldenSectionSearch: {}", e))?
@@ -49,9 +54,12 @@ pub(crate) fn optimize_golden_section(
   let best_split = result.state.best_param.unwrap();
   let best_chisq = result.state.best_cost;
 
-  info!(
+  progress_info!(
+    progress,
     "Golden Section optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}",
-    result.state.iter, best_split, best_chisq
+    result.state.iter,
+    best_split,
+    best_chisq
   );
 
   let best_clock_set = cost_fn.evaluate_clock_set(best_split)?;

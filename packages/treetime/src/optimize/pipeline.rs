@@ -26,9 +26,9 @@ use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use crate::seq::alignment::node_seq_inputs;
+use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::Itertools;
-use log::{info, warn};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
@@ -67,6 +67,7 @@ pub fn run(
     params.model,
     params.dense,
     &branch_lengths_or_zero(&branch_lengths),
+    progress,
   )?;
   let model_name = created.model_name;
   let gtr = created.gtr;
@@ -88,12 +89,14 @@ pub fn run(
 
   if sparse_partitions.is_empty() {
     if !params.topology_ops.merge_siblings {
-      warn!(
+      progress_warn!(
+        progress,
         "--no-merge-siblings has no effect in dense mode: sibling merging requires the sparse sequence representation"
       );
     }
     if !params.topology_ops.flip_parent_child {
-      warn!(
+      progress_warn!(
+        progress,
         "--no-flip-parent-child has no effect in dense mode: the reversion hoist requires the sparse sequence representation"
       );
     }
@@ -131,11 +134,12 @@ pub fn run(
       params.no_indels,
       &mut branch_lengths,
       names,
+      progress,
     )?;
   }
 
   if let Some(spec) = &params.reroot_spec {
-    info!("Rerooting before optimization: {spec:?}");
+    progress_info!(progress, "Rerooting before optimization: {spec:?}");
     progress.report("Rerooting", 0.2, "");
     (sparse_partitions, dense_partitions) = pre_reroot_optimize(
       &input.graph,
@@ -181,7 +185,10 @@ pub fn run(
   )?;
   let branch_lengths = loop_result.branch_lengths;
 
-  info!("Re-running marginal to populate subs_ml after optimization loop");
+  progress_info!(
+    progress,
+    "Re-running marginal to populate subs_ml after optimization loop"
+  );
   let marginal_bl = branch_lengths_or_zero(&branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(&input.graph, &marginal_bl, loop_result.sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(&input.graph, &marginal_bl, loop_result.dense_partitions)?;

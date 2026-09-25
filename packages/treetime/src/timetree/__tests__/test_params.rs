@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::progress::NoopProgress;
   use crate::timetree::params::{TimeMarginalMode, compute_effective_time_marginal};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -20,6 +21,6 @@ mod tests {
     #[case] (mode, confidence, covariation, clock_std_dev): (TimeMarginalMode, bool, bool, Option<f64>),
     #[case] expected: TimeMarginalMode,
   ) {
-    assert_eq!(expected, compute_effective_time_marginal(mode, confidence, clock_std_dev, covariation));
+    assert_eq!(expected, compute_effective_time_marginal(mode, confidence, clock_std_dev, covariation, &NoopProgress));
   }
 }

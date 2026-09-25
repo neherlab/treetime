@@ -1,8 +1,10 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
 use eyre::{Report, WrapErr};
-use log::{Level, debug, log_enabled, warn};
+use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -20,14 +22,16 @@ pub(crate) fn propagate_distributions_forward(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
+  progress: &dyn ProgressSink,
 ) -> Result<(), Report> {
   state.map_forward(graph, |context| {
-    propagate_distributions_forward_node(constraints, names, &context)
+    propagate_distributions_forward_node(constraints, names, &context, progress)
   })?;
 
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
   if contradicted > 0 {
-    warn!(
+    progress_warn!(
+      progress,
       "Timetree forward pass: {contradicted} node(s) carry a date that the rest of the tree gives \
        no probability at all, so their posterior came out empty and each kept the date it was \
        given, unrefined. The usual cause is a sequence whose divergence implies a date far from \
@@ -43,6 +47,7 @@ fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   context: &GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
+  progress: &dyn ProgressSink,
 ) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
   let mut node = context.input.clone();
   let date_constraint = constraints.date_constraints.get(&context.key).cloned().flatten();
@@ -65,6 +70,7 @@ fn propagate_distributions_forward_node(
     context.parent,
     context.is_leaf,
     &mut node,
+    progress,
   )?;
   let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
@@ -135,6 +141,7 @@ fn commit_node_time(
   parent: Option<&DateNodeState>,
   is_leaf: bool,
   node: &mut DateNodeState,
+  progress: &dyn ProgressSink,
 ) -> Result<(), Report> {
   let parent_time = (!has_exact_date(date_constraint))
     .then(|| parent_time(parent))
@@ -144,7 +151,8 @@ fn commit_node_time(
   if set_likely_time(node, parent_time)?.is_none() && is_dateable {
     let name = node_name(names, key);
     let name = name.as_deref().unwrap_or("<unnamed>");
-    warn!(
+    progress_warn!(
+      progress,
       "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
        The messages meeting at this node leave no time with any probability: the dates below it \
        and the times the rest of the tree implies have disjoint support."

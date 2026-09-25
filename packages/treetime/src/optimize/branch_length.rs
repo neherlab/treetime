@@ -1,4 +1,5 @@
 use crate::make_report;
+use crate::node_label::node_label;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -42,8 +43,4 @@ pub(crate) fn validate_branch_length_value(branch_length: f64) -> Result<(), Rep
 
 pub(crate) fn is_valid_branch_length_value(branch_length: f64) -> bool {
   branch_length.is_finite() && branch_length >= 0.0
-}
-
-fn node_label(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
-  names[&key].clone().unwrap_or_else(|| format!("node {key}"))
 }

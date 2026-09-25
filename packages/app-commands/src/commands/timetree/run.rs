@@ -12,7 +12,7 @@ use app_output::timetree_trace::TraceCsvSink;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use eyre::{Report, WrapErr};
-use log::{debug, info, warn};
+use log::debug;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::clock_output::write_clock_model;
@@ -20,6 +20,7 @@ use treetime::clock::clock_state::ClockState;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::partition::timetree::partition::PartitionTimetree;
+use treetime::progress::ProgressSink;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
@@ -27,6 +28,7 @@ use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use treetime::timetree::timetree_state::TimetreeState;
+use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -39,12 +41,12 @@ use treetime_utils::io::file::create_file_or_stdout;
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
   cancel: &dyn treetime::cancel::Cancel,
-  progress: &dyn treetime::progress::ProgressSink,
+  progress: &dyn ProgressSink,
 ) -> Result<TimetreeResult, Report> {
   cancel.check()?;
   progress.report("Loading input", 0.0, "");
 
-  let input_data = load_input_data(args)?;
+  let input_data = load_input_data(args, progress)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
   let confidences = input_data.confidences;
   let parse_names = input_data.names;
@@ -129,7 +131,11 @@ pub fn run_timetree_estimation(
   let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, cancel, progress)
     .map_err(|err| err.into_report())?;
   if let Some(path) = &reconstructed_nuc_fasta {
-    info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
+    progress_info!(
+      progress,
+      "Wrote reconstructed nucleotide FASTA to {path}",
+      path = path.display()
+    );
   }
 
   let names = std::mem::take(&mut output.names);
@@ -183,7 +189,7 @@ pub fn run_timetree_estimation(
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
 
   progress.report("Writing output", 0.95, "");
-  info!("### TreeTime: writing outputs");
+  progress_info!(progress, "### TreeTime: writing outputs");
 
   let topology_order = args
     .topology_order
@@ -206,7 +212,7 @@ pub fn run_timetree_estimation(
     match confidence_intervals.as_ref() {
       Some(intervals) => {
         write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
-        info!("Wrote confidence intervals to {path}", path = path.display());
+        progress_info!(progress, "Wrote confidence intervals to {path}", path = path.display());
       },
       None if args.output_confidence_tsv.is_some() => {
         return make_error!(
@@ -214,7 +220,10 @@ pub fn run_timetree_estimation(
            Use --time-marginal to enable confidence interval computation."
         );
       },
-      None => warn!("Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"),
+      None => progress_warn!(
+        progress,
+        "Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"
+      ),
     }
   }
 
@@ -224,6 +233,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_tsv.is_some(),
       |output, path| write_coalescent_delimited(output, path, b'\t'),
+      progress,
     )?;
   }
 
@@ -233,6 +243,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_csv.is_some(),
       |output, path| write_coalescent_delimited(output, path, b','),
+      progress,
     )?;
   }
 
@@ -242,6 +253,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_json.is_some(),
       |output, path| write_coalescent_json(output, path),
+      progress,
     )?;
   }
 
@@ -258,7 +270,10 @@ pub fn run_timetree_estimation(
       _ if args.output_gtr.is_some() => {
         return make_error!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.");
       },
-      _ => warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"),
+      _ => progress_warn!(
+        progress,
+        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"
+      ),
     }
   }
 
@@ -310,7 +325,7 @@ pub fn run_timetree_estimation(
       mutation_counts.as_ref(),
       path,
     )?;
-    info!("Wrote augur node data JSON to {path}", path = path.display());
+    progress_info!(progress, "Wrote augur node data JSON to {path}", path = path.display());
   }
 
   if args.plot_rtt.is_some() {
@@ -454,11 +469,12 @@ fn write_coalescent_output(
   path: &Path,
   explicit: bool,
   write: impl FnOnce(&CoalescentOutput, &Path) -> Result<(), Report>,
+  progress: &dyn ProgressSink,
 ) -> Result<(), Report> {
   match coalescent {
     Some(output) => {
       write(output, path)?;
-      info!("Wrote coalescent output to {path}", path = path.display());
+      progress_info!(progress, "Wrote coalescent output to {path}", path = path.display());
     },
     None if explicit => {
       return make_error!(

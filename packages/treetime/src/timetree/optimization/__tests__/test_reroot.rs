@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::sparse_edge_obs;
 
@@ -148,6 +149,7 @@ mod tests {
       true,
       &mut branch_lengths,
       &names_tt_3,
+      &NoopProgress,
     )?;
 
     let root = graph.get_exactly_one_root()?;
@@ -516,6 +518,7 @@ mod tests {
       true,
       &mut branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     let _ = graph.get_exactly_one_root()?;
@@ -542,6 +545,7 @@ mod tests {
       true,
       &mut branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     let _ = graph.get_exactly_one_root()?;

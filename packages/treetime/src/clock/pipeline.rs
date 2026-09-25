@@ -9,8 +9,8 @@ use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
 use crate::progress::ProgressSink;
+use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
-use log::info;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -46,10 +46,11 @@ pub fn run(
     &params.reroot_spec,
     &mut branch_lengths,
     names,
+    progress,
   )?;
 
   if let Some(delta) = new_outliers {
-    info!("Clock filter changed outlier status for {delta} leaf nodes");
+    progress_info!(progress, "Clock filter changed outlier status for {delta} leaf nodes");
   }
 
   let names: BTreeMap<GraphNodeKey, Option<String>> = input
@@ -125,6 +126,7 @@ fn estimate_clock_model_with_prefilter(
   reroot_spec: &RerootSpec,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<(ClockState, ClockModel, Option<i32>), Report> {
   let mut delta = None;
   if clock_filter_threshold > 0.0 {
@@ -145,11 +147,13 @@ fn estimate_clock_model_with_prefilter(
       branch_lengths,
       None,
       names,
+      progress,
     )?;
     state = new_state;
     let regression = result.regression();
     if regression.clock_rate() < 0.0 {
-      log::warn!(
+      progress_warn!(
+        progress,
         "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
         regression.clock_rate()
       );
@@ -162,6 +166,7 @@ fn estimate_clock_model_with_prefilter(
         regression,
         branch_lengths,
         clock_filter_threshold,
+        progress,
       )?
       .new_outliers,
     );
@@ -172,7 +177,7 @@ fn estimate_clock_model_with_prefilter(
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()
   };
-  let (state, result) = estimate_clock_model_with_reroot_policy(graph, inputs, state, options, None, keep_root, branch_params, &reroot_params, branch_lengths, None, names)
+  let (state, result) = estimate_clock_model_with_reroot_policy(graph, inputs, state, options, None, keep_root, branch_params, &reroot_params, branch_lengths, None, names, progress)
     .wrap_err_with(|| {
       if delta.is_some() {
         "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions.".to_owned()
@@ -180,5 +185,5 @@ fn estimate_clock_model_with_prefilter(
         "Clock model estimation failed".to_owned()
       }
     })?;
-  Ok((state, result.into_clock_model_allow_negative(), delta))
+  Ok((state, result.into_clock_model_allow_negative(progress), delta))
 }

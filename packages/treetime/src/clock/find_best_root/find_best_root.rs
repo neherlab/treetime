@@ -4,12 +4,15 @@ use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use eyre::Report;
-use log::{debug, info};
+use log::debug;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
 #[allow(
@@ -25,8 +28,13 @@ pub(crate) fn find_best_root(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<FindRootResult, Report> {
-  info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");
+  progress_info!(
+    progress,
+    "Starting root optimization with method: {params:?}, force_positive={force_positive}"
+  );
 
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = root;
@@ -86,7 +94,18 @@ pub(crate) fn find_best_root(
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
-    let res = find_best_split(graph, inputs, state, *edge, branch_lengths, options, params, objective)?;
+    let res = find_best_split(
+      graph,
+      inputs,
+      state,
+      *edge,
+      branch_lengths,
+      options,
+      params,
+      objective,
+      names,
+      progress,
+    )?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -104,7 +123,18 @@ pub(crate) fn find_best_root(
 
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(graph, inputs, state, *e, branch_lengths, options, params, objective)?;
+    let res = find_best_split(
+      graph,
+      inputs,
+      state,
+      *e,
+      branch_lengths,
+      options,
+      params,
+      objective,
+      names,
+      progress,
+    )?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split
@@ -127,9 +157,11 @@ pub(crate) fn find_best_root(
     );
   }
 
-  info!(
+  progress_info!(
+    progress,
     "Root optimization completed. Final chi-squared: {:.6e}, split: {:.6}",
-    best_res.chisq, best_res.split
+    best_res.chisq,
+    best_res.split
   );
 
   Ok(best_res)

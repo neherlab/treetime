@@ -1,6 +1,8 @@
 use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::make_error;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -27,8 +29,9 @@ pub(crate) fn clock_filter_inplace(
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
+  progress: &dyn ProgressSink,
 ) -> Result<ClockFilterResult, Report> {
-  log::info!("### Filtering outliers (threshold={threshold})");
+  progress_info!(progress, "### Filtering outliers (threshold={threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",
     clock_line.clock_rate(),
@@ -95,7 +98,10 @@ pub(crate) fn clock_filter_inplace(
     state.node_mut(key).is_outlier = is_outlier;
   }
 
-  log::info!("Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}");
+  progress_info!(
+    progress,
+    "Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}"
+  );
   log::debug!(
     "Leaf clock deviations (n={}): min={:.6e}, Q1={:.6e}, Q3={:.6e}, max={:.6e}",
     n,

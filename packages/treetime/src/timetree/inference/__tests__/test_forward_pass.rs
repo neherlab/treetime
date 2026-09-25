@@ -7,6 +7,7 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::forward_pass::{propagate_distributions_forward, set_likely_time};
   use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
@@ -270,7 +271,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       mut state: TimetreeState,
     ) -> Result<TimetreeState, Report> {
-      propagate_distributions_forward(graph, constraints, names, &mut state)?;
+      propagate_distributions_forward(graph, constraints, names, &mut state, &NoopProgress)?;
       Ok(state)
     }
 

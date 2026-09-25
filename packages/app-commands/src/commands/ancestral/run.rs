@@ -9,7 +9,6 @@ use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
-use log::{info, warn};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -26,6 +25,7 @@ use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, 
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -97,7 +97,10 @@ pub fn run_ancestral_reconstruction(
       if args.output_reconstructed_aa_fasta.is_some() {
         return make_error!("--output-reconstructed-aa-fasta requires --translations");
       }
-      warn!("Skipping reconstructed amino-acid FASTA output: --translations not provided");
+      progress_warn!(
+        progress,
+        "Skipping reconstructed amino-acid FASTA output: --translations not provided"
+      );
     }
     None
   };
@@ -180,7 +183,7 @@ pub fn run_ancestral_reconstruction(
         path,
       )?;
     }
-    info!("Wrote augur node data JSON to {}", path.display());
+    progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
@@ -192,7 +195,10 @@ pub fn run_ancestral_reconstruction(
       None if args.output_gtr.is_some() => {
         return make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.");
       },
-      None => warn!("Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"),
+      None => progress_warn!(
+        progress,
+        "Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"
+      ),
     }
   }
 
@@ -229,7 +235,7 @@ fn read_nwk_fasta(
   progress.report("Reading input", 0.0, "");
 
   let mut aln = if args.alignment.alignment.is_empty() {
-    info!("Reading input fasta from standard input");
+    progress_info!(progress, "Reading input fasta from standard input");
     let reader = FastaReader::new(open_stdin()?, &alphabet);
     read_many_fasta(reader)?
   } else {
@@ -255,7 +261,7 @@ fn read_nwk_fasta(
 
   let names = parse.names();
   let aln = aln.into_iter().map(AlignmentRecord::from).collect();
-  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names)?;
+  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, progress)?;
   let alignment_length = get_common_length(&aln)?;
   let mask = create_mask(&aln, alignment_length, &alphabet);
 
@@ -452,7 +458,8 @@ fn run_aa_reconstructions(
       );
     }
     if sanitized > 0 {
-      warn!(
+      progress_warn!(
+        progress,
         "CDS '{cds}': mapped {sanitized} out-of-alphabet amino-acid characters (e.g. stop '*') to '{}'.",
         char::from(recon_alphabet.unknown())
       );
@@ -476,7 +483,7 @@ fn run_aa_reconstructions(
     .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
     .collect();
 
-  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink)?;
+  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink, progress)?;
   Ok((node_data, cds_annotations))
 }
 

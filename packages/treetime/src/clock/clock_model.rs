@@ -1,8 +1,10 @@
 use crate::clock::clock_set::ClockSet;
 use crate::make_error;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use eyre::Report;
 use getset::Getters;
-use log::{debug, warn};
+use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array2_as_vec, array2_from_vec};
@@ -56,9 +58,10 @@ impl ClockModel {
     Ok(Self::from_regression_unchecked(regression))
   }
 
-  pub(crate) fn from_regression_allow_negative(regression: &ClockRegression) -> Self {
+  pub(crate) fn from_regression_allow_negative(regression: &ClockRegression, progress: &dyn ProgressSink) -> Self {
     if regression.clock_rate <= 0.0 {
-      warn!(
+      progress_warn!(
+        progress,
         "Estimated clock rate is non-positive ({:.6e}). The root-to-tip regression found no positive \
          correlation between sampling dates and genetic divergence. Continuing, but the dates lack a \
          reliable temporal signal; interpret the clock results with caution or specify a known rate with \

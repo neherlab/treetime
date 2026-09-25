@@ -8,6 +8,7 @@ use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
 use crate::partition::storage::discrete::DiscreteStates;
+use crate::progress::ProgressSink;
 use eyre::Report;
 use ndarray::Array1;
 use serde::Serialize;
@@ -44,9 +45,10 @@ impl PartitionMarginalDiscrete {
     graph: &Graph,
     traits: &BTreeMap<String, String>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    progress: &dyn ProgressSink,
   ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
     let n_states = self.n_states();
-    validate_trait_names(graph, traits, names)?;
+    validate_trait_names(graph, traits, names, progress)?;
 
     let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {

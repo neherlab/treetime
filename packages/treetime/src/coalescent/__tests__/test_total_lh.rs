@@ -5,9 +5,11 @@ mod tests {
   use crate::coalescent::edge_data::collect_coalescent_edges;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_distribution::{Distribution, NegLog};
 
   #[test]
@@ -15,7 +17,14 @@ mod tests {
     let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
+    let lh = compute_coalescent_total_lh(
+      &graph,
+      &tc,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     assert!(lh.is_finite(), "Total coalescent LH should be finite, got {lh}");
     Ok(())
@@ -26,7 +35,14 @@ mod tests {
     let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
+    let lh = compute_coalescent_total_lh(
+      &graph,
+      &tc,
+      &coalescent_node_times(&graph, &constraints),
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     assert!(lh < 0.0, "Coalescent log-likelihood should be negative, got {lh}");
     Ok(())
@@ -43,7 +59,7 @@ mod tests {
     let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(tc_value);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
+    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress)?.value();
 
     assert!(lh.is_finite(), "LH should be finite for Tc={tc_value}");
     Ok(())
@@ -54,8 +70,22 @@ mod tests {
     let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
-    let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1), &node_times)?.value();
-    let lh_large = compute_coalescent_total_lh(&graph, &Distribution::constant(100.0), &node_times)?.value();
+    let lh_small = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(0.1),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
+    let lh_large = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(100.0),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     assert!(
       (lh_small - lh_large).abs() > 1e-6,
@@ -71,9 +101,30 @@ mod tests {
     let opt = constant_skyline(&graph, &node_times)?;
 
     let tc_opt = tc(&opt);
-    let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt), &node_times)?.value();
-    let lh_low = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 0.01), &node_times)?.value();
-    let lh_high = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 100.0), &node_times)?.value();
+    let lh_opt = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
+    let lh_low = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt * 0.01),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
+    let lh_high = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt * 100.0),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     assert!(
       lh_opt >= lh_low,
@@ -93,7 +144,14 @@ mod tests {
     let node_times = coalescent_node_times(&graph, &constraints);
     let opt = constant_skyline(&graph, &node_times)?;
 
-    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(tc(&opt)), &node_times)?.value();
+    let lh = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc(&opt)),
+      &node_times,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?
+    .value();
 
     pretty_assert_ulps_eq!(opt.log_likelihood.value(), lh, max_ulps = 10);
 
@@ -112,8 +170,10 @@ mod tests {
       1000.0,
     ));
 
-    let lh_const = compute_coalescent_total_lh(&graph, &tc_const, &node_times)?.value();
-    let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula, &node_times)?.value();
+    let lh_const =
+      compute_coalescent_total_lh(&graph, &tc_const, &node_times, &BTreeMap::new(), &NoopProgress)?.value();
+    let lh_formula =
+      compute_coalescent_total_lh(&graph, &tc_formula, &node_times, &BTreeMap::new(), &NoopProgress)?.value();
 
     pretty_assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 
@@ -130,7 +190,7 @@ mod tests {
       .expect("leaf1 in node times")
       .time_dist_likely = Distribution::<NegLog>::point(1990.0, 1.0).likely_time()?;
 
-    let error = collect_coalescent_edges(&graph, &node_times).unwrap_err();
+    let error = collect_coalescent_edges(&graph, &node_times, &BTreeMap::new(), &NoopProgress).unwrap_err();
 
     assert!(error.to_string().contains("child older than parent"));
     Ok(())

@@ -18,6 +18,7 @@ mod tests {
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::runner::run_timetree;
@@ -74,7 +75,13 @@ mod tests {
         .all(|node| { state.node(node.key()).time_distribution.is_some() })
     );
 
-    let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times()?)?;
+    let edge_lh = compute_coalescent_total_lh(
+      &graph,
+      &tc,
+      &state.coalescent_node_times()?,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
     let model = CoalescentModel::new(&compute_lineage_counts(&graph, &state.coalescent_node_times()?)?, &tc)?;
     let node_lh = -graph
       .get_nodes()
@@ -266,7 +273,7 @@ mod tests {
       "B".to_owned() => Some(DateConstraint::exact(2015.0)),
       "C".to_owned() => Some(DateConstraint::exact(2020.0)),
     };
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
@@ -286,6 +293,7 @@ mod tests {
       &mut branch_lengths,
       None,
       &names_tt_1,
+      &NoopProgress,
     )?;
     let clock_model = clock_reroot.into_clock_model()?;
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
@@ -302,6 +310,7 @@ mod tests {
       false,
       state,
       &mut clock_state,
+      &NoopProgress,
     )?;
 
     Ok((
@@ -363,6 +372,7 @@ mod tests {
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths,
       names: &mut names,
+      progress: &NoopProgress,
     }
     .run()?;
     *state = new_state;

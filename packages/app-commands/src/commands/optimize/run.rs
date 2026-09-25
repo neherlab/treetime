@@ -7,7 +7,6 @@ use app_output::optimize_result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, 
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
-use log::info;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
@@ -15,6 +14,7 @@ use treetime::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+use treetime::progress_info;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
 use treetime_graph::edge::GraphEdgeKey;
@@ -161,7 +161,7 @@ pub fn run_optimize(
       mutation_counts.as_ref(),
       path,
     )?;
-    info!("Wrote augur node data JSON to {path}", path = path.display());
+    progress_info!(progress, "Wrote augur node data JSON to {path}", path = path.display());
   }
 
   progress.report("Done", 1.0, "");

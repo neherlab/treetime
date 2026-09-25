@@ -6,6 +6,7 @@ mod tests {
   use crate::coalescent::node_time::CoalescentNodeTime;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
@@ -25,7 +26,7 @@ mod tests {
     let nwk_parsed = nwk_read_str(tree_nwk)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(dates, &graph, &names)?;
+    let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;
     Ok((graph, names, constraints))
   }
 

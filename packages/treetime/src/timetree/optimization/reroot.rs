@@ -7,9 +7,10 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
+use crate::progress::ProgressSink;
+use crate::progress_info;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
-use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -33,6 +34,7 @@ pub(crate) fn reroot_tree(
   force_positive_rate: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<(ClockModel, Vec<PartitionTimetree>), Report> {
   let reroot_params = RerootParams {
     spec: reroot_spec.clone(),
@@ -40,9 +42,11 @@ pub(crate) fn reroot_tree(
     ..RerootParams::default()
   };
 
-  info!(
+  progress_info!(
+    progress,
     "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={force_positive_rate}",
-    reroot_params.split_edge, reroot_params.remove_trivial_root
+    reroot_params.split_edge,
+    reroot_params.remove_trivial_root
   );
 
   clock_state.reseed_transitional(graph);
@@ -59,6 +63,7 @@ pub(crate) fn reroot_tree(
     branch_lengths,
     None,
     names,
+    progress,
   )
   .wrap_err("Failed to estimate clock model with reroot")?;
   *clock_state = new_clock_state;
@@ -71,7 +76,7 @@ pub(crate) fn reroot_tree(
         inverted_edge_keys: reroot_result.inverted_edge_keys.clone(),
       };
 
-      info!("Applying reroot changes to {} partitions", partitions.len());
+      progress_info!(progress, "Applying reroot changes to {} partitions", partitions.len());
       partitions = partitions
         .into_iter()
         .map(|partition| partition.apply_reroot(&changes))

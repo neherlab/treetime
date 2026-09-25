@@ -7,6 +7,7 @@ use crate::ancestral::tip_states::TipStates;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+use crate::progress::ProgressSink;
 use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -24,6 +25,7 @@ pub(crate) fn reconstruct_marginal_partition(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   rng: &mut dyn rand::RngCore,
+  progress: &dyn ProgressSink,
 ) -> Result<ReconstructedPartition, Report> {
   let PartitionPlan {
     name,
@@ -34,7 +36,8 @@ pub(crate) fn reconstruct_marginal_partition(
     reference_override,
   } = plan;
 
-  let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
+  let sequences =
+    complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, progress)?;
   let node_inputs = node_seq_inputs(graph, names, sequences);
   let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let created = create_marginal_partition(
@@ -45,6 +48,7 @@ pub(crate) fn reconstruct_marginal_partition(
     gtr_model,
     params.dense,
     &profile_lengths,
+    progress,
   )?;
   let gtr = created.gtr;
 

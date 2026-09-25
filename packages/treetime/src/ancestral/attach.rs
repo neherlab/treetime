@@ -1,8 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::progress::ProgressSink;
+use crate::progress_warn;
 use crate::seq::alignment::get_common_length;
 use crate::{make_error, make_report};
 use eyre::Report;
-use log::warn;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -18,6 +19,7 @@ pub fn complete_alignment_for_leaves(
   alphabet: &Alphabet,
   ignore_missing_alns: bool,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
 ) -> Result<Vec<AlignmentRecord>, Report> {
   let alignment_length = get_common_length(&sequences)?;
 
@@ -41,9 +43,13 @@ pub fn complete_alignment_for_leaves(
   let n_missing = missing.len();
   if n_missing > 0 {
     for name in &missing {
-      warn!("No sequence found for leaf '{name}'; treating it as fully ambiguous (missing data).");
+      progress_warn!(
+        progress,
+        "No sequence found for leaf '{name}'; treating it as fully ambiguous (missing data)."
+      );
     }
-    warn!(
+    progress_warn!(
+      progress,
       "{n_missing} of {n_leaves} tips have no matching sequence in the alignment and are treated as fully ambiguous."
     );
   }

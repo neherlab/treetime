@@ -9,6 +9,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
@@ -89,9 +90,9 @@ mod tests {
     let (graph, constraints) = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
     let node_times = helpers::coalescent_node_times(&graph, &constraints);
-    let expected = compute_coalescent_total_lh(&graph, &tc, &node_times)?.value();
+    let expected = compute_coalescent_total_lh(&graph, &tc, &node_times, &BTreeMap::new(), &NoopProgress)?.value();
 
-    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &node_times)
+    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &node_times, &BTreeMap::new(), &NoopProgress)
       .expect("coalescent log-likelihood must be available")
       .value();
 
@@ -104,7 +105,7 @@ mod tests {
     let (graph, constraints) = helpers::coalescent_graph()?;
     let node_times = helpers::coalescent_node_times(&graph, &constraints);
 
-    let actual = compute_coalescent_log_lh(&graph, None, &node_times);
+    let actual = compute_coalescent_log_lh(&graph, None, &node_times, &BTreeMap::new(), &NoopProgress);
 
     assert_eq!(None, actual);
     Ok(())
@@ -119,8 +120,18 @@ mod tests {
     let expected = -2.0 + 0.25_f64.ln();
     let state = helpers::positional_state(&graph, &names);
 
-    assert!(optimizer.next_iter().is_some());
-    optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, &state, None)?;
+    assert!(optimizer.next_iter(&NoopProgress).is_some());
+    optimizer.record(
+      1,
+      0,
+      NodeTimeChange::default(),
+      &graph,
+      &partitions,
+      &state,
+      None,
+      &BTreeMap::new(),
+      &NoopProgress,
+    )?;
     let actual = optimizer
       .trace
       .first()
@@ -191,7 +202,7 @@ mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
-      let constraints = load_date_constraints(&dates, &graph, &names)?;
+      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
       Ok((graph, constraints))
     }
 

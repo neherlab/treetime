@@ -16,6 +16,7 @@ pub(super) mod tests {
     any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
@@ -248,7 +249,7 @@ pub(super) mod tests {
       mode,
       false,
       &mut branch_lengths,
-      &names,
+      &names, &NoopProgress,
     );
 
     if expects_error {
@@ -310,6 +311,7 @@ pub(super) mod tests {
       false,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     )?;
     let after = get_branch_lengths(&graph, &branch_lengths);
     assert_eq!(before, after, "Never mode must leave branch lengths unchanged");
@@ -333,6 +335,7 @@ pub(super) mod tests {
       false,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     );
     let err = result.expect_err("Never mode must reject a tree with NaN branch lengths");
     let msg = format!("{err:?}");
@@ -361,6 +364,7 @@ pub(super) mod tests {
       false,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     )?;
     let after = get_branch_lengths(&graph, &branch_lengths);
     assert_eq!(
@@ -388,6 +392,7 @@ pub(super) mod tests {
       false,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     );
     let err = result.expect_err("Never mode must reject zero branch length on an indel-bearing edge");
     let msg = format!("{err:?}");
@@ -421,6 +426,7 @@ pub(super) mod tests {
       false,
       &mut branch_lengths,
       &names,
+      &NoopProgress,
     )?;
     let after = get_branch_lengths(&graph, &branch_lengths);
     assert_eq!(
