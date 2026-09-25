@@ -1,3 +1,4 @@
+use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -287,6 +288,40 @@ impl AuspiceTreeNodeAttr {
       value: value.to_owned(),
       other: serde_json::Value::default(),
     }
+  }
+
+  pub fn value(&self) -> &str {
+    &self.value
+  }
+
+  pub fn state_confidence(&self) -> Result<Option<BTreeMap<String, f64>>, Report> {
+    match self.other.get("confidence") {
+      Some(confidence @ serde_json::Value::Object(_)) => serde_json::from_value(confidence.clone())
+        .map(Some)
+        .wrap_err("When reading the state probabilities of a node attribute"),
+      _ => Ok(None),
+    }
+  }
+}
+
+impl AuspiceTreeNodeAttrs {
+  pub fn attr(&self, key: &str) -> Result<Option<AuspiceTreeNodeAttr>, Report> {
+    let named = match key {
+      "bad_branch" => &self.bad_branch,
+      "clade_membership" => &self.clade_membership,
+      "region" => &self.region,
+      "country" => &self.country,
+      "division" => &self.division,
+      _ => {
+        return self
+          .other
+          .get(key)
+          .map(|value| serde_json::from_value(value.clone()))
+          .transpose()
+          .wrap_err_with(|| format!("When reading the node attribute `{key}`"));
+      },
+    };
+    Ok(named.clone())
   }
 }
 

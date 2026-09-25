@@ -2,6 +2,7 @@ use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_regression::ClockRegressionPoint;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use eyre::Report;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -79,11 +80,15 @@ pub struct ClockRegressionResult {
   pub date_source: Option<ClockDateSource>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+/// Where the date a clock regression used for a sample came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ClockDateSource {
+  /// The sampling date given in the input.
   Input,
+  /// The date the time tree inferred for a sample without an input date.
   Inferred,
+  /// No date; the sample did not enter the regression.
   Missing,
 }
 

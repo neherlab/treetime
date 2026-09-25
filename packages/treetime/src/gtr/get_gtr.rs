@@ -69,6 +69,14 @@ impl GtrOutput {
       states,
     }
   }
+
+  pub fn model_name(&self) -> GtrModelName {
+    self.model_name
+  }
+
+  pub fn mu(&self) -> f64 {
+    self.mu
+  }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

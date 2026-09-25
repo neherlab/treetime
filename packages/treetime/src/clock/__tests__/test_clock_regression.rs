@@ -98,7 +98,7 @@ mod tests {
     let (_, points) = helpers::fit(TREE_4, &dates_4(), true, None)?;
 
     #[rustfmt::skip]
-    let expected = vec![
+    let expected = [
       (o!("A"), Some(2013.0), 0.2,  false),
       (o!("B"), Some(2022.0), 0.3,  false),
       (o!("C"), Some(2017.0), 0.25, false),

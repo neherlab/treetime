@@ -5,6 +5,8 @@ use std::time::Duration;
 
 const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
 
+const MILLISECONDS_PER_DAY: f64 = 86_400_000.0;
+
 pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
   let begin = date_to_year_fraction(date_range.begin());
   let end = date_to_year_fraction(date_range.end());
@@ -24,6 +26,15 @@ pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
 
 pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
+}
+
+#[allow(
+  clippy::as_conversions,
+  clippy::cast_precision_loss,
+  reason = "a millisecond count between two dates is far below 2^52"
+)]
+pub fn year_fraction_days_between(from: f64, to: f64) -> f64 {
+  (year_fraction_to_date(to) - year_fraction_to_date(from)).num_milliseconds() as f64 / MILLISECONDS_PER_DAY
 }
 
 #[allow(
