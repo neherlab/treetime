@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { setFlagsFromString } from "node:v8";
+import { setHeapSnapshotNearHeapLimit } from "node:v8";
 
 export function initDiagnostics(title: string): void {
   process.title = title;
@@ -22,5 +22,5 @@ export function initDiagnostics(title: string): void {
     process.report.signal = "SIGUSR2";
   }
 
-  setFlagsFromString("--heapsnapshot-near-heap-limit=1");
+  setHeapSnapshotNearHeapLimit(1);
 }
