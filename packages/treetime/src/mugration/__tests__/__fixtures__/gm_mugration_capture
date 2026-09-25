@@ -28,10 +28,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "packages" / "legacy" / "treetime"))
-
-from treetime.wrappers import reconstruct_discrete_traits  # noqa: E402
+from treetime.wrappers import reconstruct_discrete_traits
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[7]
 FIXTURES_DIR: Path = Path(__file__).parent

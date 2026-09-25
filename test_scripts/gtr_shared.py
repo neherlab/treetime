@@ -87,7 +87,6 @@ def avg_transition(W_ij, pi, length_by_partition, total_length):
 
 
 def test_infer():
-    from packages.legacy.treetime.treetime import gtr
     from scipy import linalg as LA
 
     nij = np.array([[0, 10, 5, 2], [10, 0, 3, 1], [5, 3, 0, 4], [2, 1, 4, 0]])
@@ -99,7 +98,6 @@ def test_infer():
     print(gtrs[0].Q)
 
 def test_multiple_partitions():
-    from packages.legacy.treetime.treetime import gtr
     from scipy import linalg as LA
 
     nij1 = np.array([[0, 10, 5, 2], [10, 0, 3, 1], [5, 3, 0, 4], [2, 1, 4, 0]])

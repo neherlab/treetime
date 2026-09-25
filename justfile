@@ -1,6 +1,6 @@
 # TreeTime task runner: `just` lists every recipe by group.
 #
-# Recipes run the tools pinned in mise.toml, on the host after `mise install` or
+# Recipes run the tools pinned in .config/mise.toml, on the host after `mise install` or
 # in the build container through `dev/docker/run just <recipe>`. Before a change
 # is merged, `just check-all` must pass.
 #
@@ -270,7 +270,7 @@ mutants *args:
 # Copy-paste duplication across Rust and TypeScript (jscpd), never a gate
 [group("report")]
 duplication *args:
-    jscpd --config .jscpd.json "$@"
+    jscpd --config .config/jscpd.json packages "$@"
 
 # Inventory of lint suppressions and other review-sensitive settings
 [group("report")]
@@ -315,7 +315,7 @@ lint-ts: _js
 lint-fix-ts: _js
     bun run --silent lint:fix
 
-# Custom lint libraries (dylint) gated against mordant-baseline.toml, then the unused public items they recorded; reports every finding, then fails if there were any
+# Custom lint libraries (dylint) gated against .config/mordant-baseline.toml, then the unused public items they recorded; reports every finding, then fails if there were any
 [group("lint")]
 [script]
 dylint *args:
@@ -332,8 +332,8 @@ dylint-fix:
     rm -f {{ quote(dylint_over_baseline) }}
     DYLINT_RUSTFLAGS="-A unknown_lints" {{ dylint_cmd }} --fix -- --allow-staged {{ dylint_cargo_args }}
 
-# Accept the current mordant findings: rewrites mordant-baseline.toml, commit it afterwards
-[confirm("Rewrite mordant-baseline.toml with the current findings?")]
+# Accept the current mordant findings: rewrites .config/mordant-baseline.toml, commit it afterwards
+[confirm("Rewrite .config/mordant-baseline.toml with the current findings?")]
 [group("lint")]
 dylint-baseline:
     DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going
@@ -341,12 +341,12 @@ dylint-baseline:
 # Unnecessary public surface (cargo-hawk), denying warnings
 [group("lint")]
 hawk *args:
-    {{ uncached_env }} cargo +{{ hawk_toolchain }} hawk check --target-dir {{ quote(hawk_target_dir) }} {{ prepend("--exclude-crate=", public_api_crates) }} -W warnings "$@"
+    {{ uncached_env }} cargo +{{ hawk_toolchain }} hawk check --config .config/hawk.toml --target-dir {{ quote(hawk_target_dir) }} {{ prepend("--exclude-crate=", public_api_crates) }} -W warnings "$@"
 
 # Dependency bans, licenses, and sources (cargo-deny, offline)
 [group("lint")]
 deny:
-    cargo deny --locked --all-features check bans licenses sources
+    cargo deny --locked --all-features --config .config/deny.toml check bans licenses sources
 
 # Unused Rust dependencies (cargo-shear)
 [group("lint")]
@@ -380,7 +380,7 @@ lint-shell:
 # Dockerfiles (hadolint)
 [group("lint")]
 lint-docker:
-    hadolint dev/docker/*.dockerfile
+    hadolint --config .config/hadolint.yaml dev/docker/*.dockerfile
 
 # GitHub Actions workflows (actionlint)
 [group("lint")]
@@ -526,19 +526,19 @@ audit: _js
 # Security advisories of the Rust dependencies (cargo-deny, network)
 [group("deps")]
 audit-rs:
-    cargo deny --locked --all-features check advisories
+    cargo deny --locked --all-features --config .config/deny.toml check advisories
 
 # Security advisories of the JavaScript dependencies (bun audit, network)
 [group("deps")]
 audit-ts: _js
     bun audit
 
-# Newer releases of the tools pinned in mise.toml
+# Newer releases of the tools pinned in .config/mise.toml
 [group("deps")]
 tools-outdated:
     mise outdated --bump
 
-# Lock mise.lock for every supported host platform after a change to mise.toml
+# Lock .config/mise.lock for every supported host platform after a change to .config/mise.toml
 [group("deps")]
 tools-lock:
     mise lock --platform linux-x64,linux-arm64,macos-x64,macos-arm64

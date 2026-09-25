@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["dev/lints/oxlint-anti-slop/**/*.ts"]
+  "include": ["**/*.ts"]
 }

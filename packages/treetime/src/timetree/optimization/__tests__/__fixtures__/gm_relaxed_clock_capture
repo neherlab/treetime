@@ -9,8 +9,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from Bio import Phylo
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[6] / "legacy" / "treetime"))
 from treetime.treetime import TreeTime
 
 

@@ -86,8 +86,7 @@ build_inputs=(
   rust-toolchain.toml
 )
 case "${kind}" in
-native) build_inputs+=(mise.toml mise.lock dev/lints/dylint-custom/rust-toolchain.toml dev/lints/dylint-mordant/rust-toolchain.toml dev/lints/dylint-trailofbits/rust-toolchain.toml) ;;
-jupyter) build_inputs+=(requirements.txt) ;;
+native) build_inputs+=(.config/mise.toml .config/mise.lock dev/lints/dylint-custom/rust-toolchain.toml dev/lints/dylint-mordant/rust-toolchain.toml dev/lints/dylint-trailofbits/rust-toolchain.toml) ;;
 esac
 image_hash="$(cd "${root}" && hash_files "${build_inputs[@]}" "${build_args[@]+"${build_args[@]}"}" "${platform}")"
 image="${registry}:${kind}-${image_hash}"
@@ -186,7 +185,7 @@ passthrough_env
 case "${kind}" in
 jupyter)
   mkdir -p "${root}/.cache/jupyter"
-  run_flags+=(--volume="${root}/.cache/jupyter:/home/user/.jupyter" --env="JUPYTER_PORT=${JUPYTER_PORT:-10000}")
+  run_flags+=(--volume="${root}/.cache/jupyter:/home/user/.jupyter" --env="JUPYTER_PORT=${JUPYTER_PORT:-10000}" --env="PYTHONPATH=${root}/packages/legacy/treetime")
   ;;
 *)
   # The cargo home and the bun cache live under .cache of the checkout; build

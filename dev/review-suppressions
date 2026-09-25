@@ -31,4 +31,4 @@ section "TypeScript suppressions" \
 section "Mutation exclusions" \
   rg -n 'exclude' .cargo/mutants.toml
 section "Lint configuration files" \
-  git ls-files -- Cargo.toml clippy.toml dylint.toml hawk.toml deny.toml mordant-baseline.toml oxlint.config.ts knip.json .cargo/mutants.toml
+  git ls-files -- Cargo.toml clippy.toml dylint.toml .config/hawk.toml .config/deny.toml .config/mordant-baseline.toml oxlint.config.ts .config/knip.json .cargo/mutants.toml

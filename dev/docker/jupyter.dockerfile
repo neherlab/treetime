@@ -89,9 +89,11 @@ RUN set -euxo pipefail >/dev/null \
   'blas=*=*openblas*' \
   'conda-forge::blas=*=*openblas*' \
   'conda-forge::libblas=*=*openblas*' \
+  'biopython>=1.67,!=1.77,!=1.78' \
   'bokeh' \
   'cython' \
   'dill' \
+  'ipdb' \
   'ipywidgets' \
   'jsonpickle' \
   'jupyter-dash' \
@@ -112,10 +114,6 @@ RUN set -euxo pipefail >/dev/null \
   'widgetsnbextension' \
 && mamba clean --all -f -y \
 && micromamba shell init --shell=bash
-
-COPY --link "requirements.txt" "/"
-RUN set -euxo pipefail >/dev/null \
-&& if [ -f "/requirements.txt" ]; then mamba install --yes --file "/requirements.txt"; fi
 
 # Import matplotlib the first time to build the font cache.
 RUN set -euxo pipefail >/dev/null \

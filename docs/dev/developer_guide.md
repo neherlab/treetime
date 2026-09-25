@@ -6,7 +6,7 @@ The `justfile` is the entry point for every routine task. `just` lists the recip
 
 ## Setup
 
-TreeTime builds in two ways: in the build container (recommended), or directly on the host. Both run the same `just` recipes with the same tool versions, which `mise.toml` pins and `mise.lock` locks by URL and checksum.
+TreeTime builds in two ways: in the build container (recommended), or directly on the host. Both run the same `just` recipes with the same tool versions, which `.config/mise.toml` pins and `.config/mise.lock` locks by URL and checksum.
 
 ### Build container (recommended)
 
@@ -106,6 +106,7 @@ packages/
   treetime-*/        Supporting crates of the core library
   util-*/            File format libraries
 dev/                 Development scripts and the container setup
+test_scripts/        Python research scripts and notebooks
 kb/                  Knowledge base
 data/                Example datasets
 ```
@@ -153,7 +154,24 @@ The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI refer
 ./dev/smoke --rerun-failed     # cases that did not pass in the last run
 ```
 
-- `dev/docker/python treetime ...` runs TreeTime v0 from `packages/legacy`
+### TreeTime v0 and Python scripts
+
+The Python image puts TreeTime v0 from `packages/legacy/treetime` of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work:
+
+```bash
+./dev/docker/python treetime ancestral --help
+./dev/docker/python python3 test_scripts/fitch.py
+```
+
+Without Docker, install v0 into a virtual environment. This provides the `treetime` command and `import treetime` together with the v0 dependencies; the research scripts in `test_scripts/` need further packages (matplotlib, seaborn, plotly, Jupyter), which the Python image lists in `dev/docker/jupyter.dockerfile`:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e packages/legacy/treetime
+```
+
+The environment provides a v0 `treetime` command, which shadows the v1 binary while the environment is active.
 
 ## Build profiles
 
@@ -176,7 +194,7 @@ Every dependency release must be at least seven days old before the project adop
 
 - Bun refuses younger npm packages (`minimumReleaseAge` in `bunfig.toml`)
 - Cargo has the age check as an unstable feature until Rust 1.100. `just deps-update` and `just deps-upgrade` enable it for their resolution, and `just deps-age` fails on a lockfile entry younger than seven days
-- Tools in `mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
+- Tools in `.config/mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
 
 Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 18.x, because Auspice runs in-process and requires it; `just lint-ts` enforces this.
 

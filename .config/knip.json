@@ -8,10 +8,9 @@
       "entry": [
         "dev/lints/oxlint/__tests__/*.ts",
         "dev/lints/oxlint-anti-slop/effect/index.ts",
-        "dev/lints/oxlint-anti-slop/**/*.test.ts",
-        "test/**/*.test.ts"
+        "dev/lints/oxlint-anti-slop/**/*.test.ts"
       ],
-      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts", "test/**/*.ts"]
+      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts"]
     },
     "packages/app-contracts": {
       "entry": ["src/bridge.ts!", "src/generated/index.ts"],

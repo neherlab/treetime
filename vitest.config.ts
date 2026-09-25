@@ -1,13 +1,14 @@
 import { defineConfig } from "vitest/config";
 
-import { DETERMINISTIC_SEED } from "./test/seed";
+const DETERMINISTIC_SEED = 20260919;
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.ts", "packages/*/src/**/*.test.{ts,tsx}", "packages/*/build/**/*.test.ts"],
+    include: ["packages/*/src/**/*.test.{ts,tsx}", "packages/*/build/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
     environment: "node",
     passWithNoTests: false,
+    provide: { seed: DETERMINISTIC_SEED },
     sequence: {
       shuffle: true,
       seed: DETERMINISTIC_SEED,

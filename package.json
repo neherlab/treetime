@@ -33,17 +33,16 @@
     "dev:desktop": "turbo run dev --filter=@neherlab/app-desktop",
     "format": "bun --bun oxfmt --write .",
     "format:check": "bun --bun oxfmt --check .",
-    "knip": "knip",
-    "knip:production": "knip --production",
+    "knip": "knip --config .config/knip.json",
+    "knip:production": "knip --config .config/knip.json --production",
     "lint": "bun --bun oxlint",
     "lint:fix": "bun --bun oxlint --fix",
     "test": "vitest run",
     "typecheck:packages": "turbo run typecheck --continue=always",
     "typecheck:tools": "tsc -p tsconfig.tools.json",
-    "typecheck:vendor": "tsc -p tsconfig.vendor.json"
+    "typecheck:vendor": "tsc -p dev/lints/oxlint-anti-slop/tsconfig.json"
   },
   "devDependencies": {
-    "@fast-check/vitest": "0.5.0",
     "@oxlint/plugins": "1.83.0",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",

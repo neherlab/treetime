@@ -56,18 +56,14 @@ Usage:
 import json
 import lzma
 import random
-import sys
 from io import StringIO
 from pathlib import Path
 
 import numpy as np
 from Bio import AlignIO, Phylo
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[6] / "legacy" / "treetime"))
-
-from treetime import TreeAnc  # noqa: E402
-from treetime.gtr import GTR  # noqa: E402
-from treetime.nuc_models import JC69  # noqa: E402
+from treetime import TreeAnc
+from treetime.gtr import GTR
+from treetime.nuc_models import JC69
 
 SEED = 1010336213
 random.seed(SEED)

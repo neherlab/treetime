@@ -6,12 +6,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": [
-    "oxlint.config.ts",
-    "oxfmt.config.ts",
-    "vitest.config.ts",
-    "vitest.setup.ts",
-    "test/**/*.ts",
-    "dev/lints/oxlint/**/*.ts"
-  ]
+  "include": ["oxlint.config.ts", "oxfmt.config.ts", "vitest.config.ts", "vitest.setup.ts", "dev/lints/oxlint/**/*.ts"]
 }

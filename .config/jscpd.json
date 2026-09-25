@@ -1,5 +1,4 @@
 {
-  "path": ["packages"],
   "format": ["rust", "typescript", "tsx"],
   "ignore": [
     "**/target/**",

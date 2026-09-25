@@ -2,7 +2,7 @@
 
 exclude = [
   "**/Cargo.lock",
-  "mise.lock",
+  ".config/mise.lock",
   ".build/**",
   ".cache/**",
   ".out/**",

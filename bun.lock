@@ -5,7 +5,6 @@
     "": {
       "name": "@neherlab/treetime",
       "devDependencies": {
-        "@fast-check/vitest": "0.5.0",
         "@oxlint/plugins": "1.83.0",
         "@types/node": "catalog:",
         "@vitest/coverage-v8": "catalog:",
@@ -426,8 +425,6 @@
     "@eslint/object-schema": ["@eslint/object-schema@3.0.5", "", {}, "sha512-vqTaUEgxzm+YDSdElad6PiRoX4t8VGDjCtt05zn4nU810UIx/uNEV7/lZJ6KwFThKZOzOxzXy48da+No7HZaMw=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.3", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q=="],
-
-    "@fast-check/vitest": ["@fast-check/vitest@0.5.0", "", { "dependencies": { "fast-check": "^3.0.0 || ^4.0.0" }, "peerDependencies": { "vitest": "^4.1.0 || ^5.0.0" } }, "sha512-Kgbj2smuq1P4OhGKuPATs5i2fAxNmGbJ/zSmTrzWhQSLUrHREbKWgv9WGbNUOXcx77q6joLVMmTygyXuwP2Bog=="],
 
     "@floating-ui/core": ["@floating-ui/core@1.8.0", "", { "dependencies": { "@floating-ui/utils": "^0.2.12" } }, "sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ=="],
 

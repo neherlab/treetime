@@ -7,7 +7,7 @@
 # naming, keys_locks, and comments stay enabled; pre-existing findings are
 # absorbed by the committed baseline so only new findings fail the mordant gate.
 [mordant]
-baseline = "mordant-baseline.toml"
+baseline = ".config/mordant-baseline.toml"
 # unused_pub judges each library from the records of whichever crates cargo
 # happened to compile before the reporting crate, so it reports items that
 # sibling binaries use. treetime_lints' pub_unused_in_workspace and the

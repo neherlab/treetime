@@ -472,14 +472,6 @@ export default defineConfig({
       },
     },
     {
-      files: ["test/property.test.ts"],
-      rules: {
-        "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-member-access": "off",
-        "vitest/no-standalone-expect": "off",
-      },
-    },
-    {
       files: ["dev/lints/oxlint/rules/tailwind-classes.ts"],
       rules: {
         "unicorn/no-array-sort": "off",

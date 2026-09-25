@@ -22,7 +22,6 @@ import copy
 import json
 import lzma
 import random
-import sys
 import tempfile
 import traceback
 from io import StringIO
@@ -31,11 +30,8 @@ from pathlib import Path
 import numpy as np
 from Bio import AlignIO, Phylo
 from Bio.Align import MultipleSeqAlignment
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "legacy" / "treetime"))
-
-from treetime import TreeTime  # noqa: E402
-from treetime import utils as tt_utils  # noqa: E402
+from treetime import TreeTime
+from treetime import utils as tt_utils
 
 SEED = 1010336213
 random.seed(SEED)

@@ -1,5 +1,10 @@
 import * as fc from "fast-check";
+import { inject } from "vitest";
 
-import { DETERMINISTIC_SEED } from "./test/seed";
+fc.configureGlobal({ ...fc.readConfigureGlobal(), seed: inject("seed") });
 
-fc.configureGlobal({ ...fc.readConfigureGlobal(), seed: DETERMINISTIC_SEED });
+declare module "vitest" {
+  export interface ProvidedContext {
+    seed: number;
+  }
+}

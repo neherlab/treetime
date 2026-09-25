@@ -2,16 +2,12 @@
 """Capture v0 support boundaries and endpoint values for mixed-support operations."""
 
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
+from treetime.distribution import Distribution
 
-PROJECT_ROOT = Path(__file__).resolve().parents[5]
 FIXTURES_DIR = Path(__file__).parent
-sys.path.insert(0, str(PROJECT_ROOT / "packages" / "legacy" / "treetime"))
-
-from treetime.distribution import Distribution  # noqa: E402
 
 
 def make_distribution(operand: dict[str, object]) -> Distribution:

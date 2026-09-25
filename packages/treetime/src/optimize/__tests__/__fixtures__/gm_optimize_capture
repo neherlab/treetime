@@ -12,14 +12,10 @@ Usage:
 import json
 import lzma
 import random
-import sys
 import tempfile
 from pathlib import Path
 
 import numpy as np
-
-sys.path.insert(0, str(Path("packages/legacy/treetime").resolve()))
-
 from treetime.treeanc import TreeAnc
 
 SEED = 1010336213

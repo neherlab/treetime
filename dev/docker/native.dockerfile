@@ -105,13 +105,13 @@ RUN set -euxo pipefail >/dev/null \
 && chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
 && rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain
 
-# mise installs every tool of mise.toml at the URL and sha256 of mise.lock and
+# mise installs every tool of .config/mise.toml at the URL and sha256 of .config/mise.lock and
 # links their executables into /usr/local/bin. The cargo registry that source
 # builds fetch is a BuildKit cache, so it stays out of the image.
 ENV MISE_DATA_DIR="/opt/mise"
 ENV MISE_CACHE_DIR="/tmp/mise/cache"
 ENV MISE_STATE_DIR="/tmp/mise/state"
-COPY mise.toml mise.lock /tmp/mise/project/
+COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
   set -euxo pipefail >/dev/null \
 && /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \

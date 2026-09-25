@@ -3,9 +3,8 @@
 # Usage: treetime [args...]
 #
 # Run TreeTime v0, the Python reference implementation in
-# packages/legacy/treetime of the checkout (TREETIME_ROOT, set by dev/docker/run).
+# packages/legacy/treetime of the checkout (on PYTHONPATH, set by dev/docker/run).
 #
 set -euo pipefail
 
-export PYTHONPATH="${TREETIME_ROOT:?}/packages/legacy/treetime${PYTHONPATH:+:${PYTHONPATH}}"
 exec python3 -m treetime "$@"
