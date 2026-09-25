@@ -10,7 +10,7 @@ use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
 use crate::commands::shared::output_args::{
   AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, OptimizeOutputSelection,
-  TimetreeOutputSelection,
+  PruneOutputSelection, TimetreeOutputSelection,
 };
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
@@ -280,7 +280,13 @@ impl_raw_config!(
   Optimize,
   [OptimizeOutputSelection::Auspice]
 );
-impl_raw_config!(TreetimePruneArgsRaw, TreetimePruneArgs, Prune, Prune, []);
+impl_raw_config!(
+  TreetimePruneArgsRaw,
+  TreetimePruneArgs,
+  Prune,
+  Prune,
+  [PruneOutputSelection::Auspice]
+);
 impl_raw_config!(
   TreetimeAncestralArgsRaw,
   TreetimeAncestralArgs,
