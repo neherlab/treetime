@@ -1,20 +1,31 @@
 import * as path from "path";
 
 import { zPickFilesRequest } from "@neherlab/app-contracts";
-import * as addon from "@neherlab/app-napi";
 import {
   app,
   BrowserWindow,
   dialog,
   ipcMain,
+  MessageChannelMain,
   nativeTheme,
   shell,
+  utilityProcess,
+  webContents,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
   type OpenDialogOptions,
+  type UtilityProcess,
+  type WebContents,
 } from "electron";
 
-import { CALL_CHANNEL, PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL, type IpcReply } from "./desktop-bridge";
+import { shouldRestart } from "./backend-process";
+import {
+  BACKEND_PORT_CHANNEL,
+  BACKEND_PORT_REQUEST_CHANNEL,
+  BACKEND_STOPPED_CHANNEL,
+  PICK_FILES_CHANNEL,
+  THEME_CHANNEL,
+} from "./channels";
 import { initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
 
@@ -39,65 +50,87 @@ const appUrl =
 
 async function main(): Promise<void> {
   await app.whenReady();
-  registerThemeHandler();
-  registerIpcHandlers();
+  const backend = new BackendProcess(path.join(app.getPath("userData"), "runs"));
+  registerIpcHandlers(backend);
   await createWindow();
 }
 
-function registerThemeHandler(): void {
-  listen("treetime:theme", (_event, theme) => {
+class BackendProcess {
+  private readonly runsDir: string;
+  private child: UtilityProcess;
+  private readonly exitTimes: number[] = [];
+
+  constructor(runsDir: string) {
+    this.runsDir = runsDir;
+    this.child = this.spawn();
+  }
+
+  connect(contents: WebContents): void {
+    const { port1, port2 } = new MessageChannelMain();
+    this.child.postMessage({ kind: "port" }, [port1]);
+    contents.postMessage(BACKEND_PORT_CHANNEL, null, [port2]);
+  }
+
+  private spawn(): UtilityProcess {
+    const child = utilityProcess.fork(path.join(__dirname, "backend.js"), [this.runsDir], {
+      serviceName: "TreeTime back end",
+      cwd: process.cwd(),
+      stdio: "inherit",
+    });
+
+    child.once("exit", (code) => {
+      this.exited(code);
+    });
+
+    return child;
+  }
+
+  private exited(code: number): void {
+    const now = performance.now();
+    this.exitTimes.push(now);
+    const restart = shouldRestart(this.exitTimes, now);
+
+    const reason = restart
+      ? `the back end stopped with exit code ${code} and restarts; the request was not answered`
+      : `the back end stopped with exit code ${code} too often and does not restart; restart TreeTime`;
+
+    console.error(`[TreeTime] ${reason}`);
+
+    for (const contents of appContents()) {
+      contents.send(BACKEND_STOPPED_CHANNEL, reason);
+    }
+
+    if (restart) {
+      setImmediate(() => {
+        this.child = this.spawn();
+
+        for (const contents of appContents()) {
+          this.connect(contents);
+        }
+      });
+    }
+  }
+}
+
+function registerIpcHandlers(backend: BackendProcess): void {
+  handle(PICK_FILES_CHANNEL, (event, request) => pickFiles(event, request));
+  listen(BACKEND_PORT_REQUEST_CHANNEL, (event) => {
+    backend.connect(event.sender);
+  });
+  listen(THEME_CHANNEL, (_event, theme) => {
     if (isThemeSource(theme)) {
       nativeTheme.themeSource = theme;
     }
   });
 }
 
-function isThemeSource(value: unknown): value is "system" | "light" | "dark" {
-  return value === "system" || value === "light" || value === "dark";
-}
-
-function registerIpcHandlers(): void {
-  const backend = new addon.Backend(path.join(app.getPath("userData"), "runs"));
-  const subscriptions = new Map<string, addon.Subscription>();
-
-  handle(PICK_FILES_CHANNEL, (event, requestJson) => pickFiles(event, text(requestJson)));
-  handle(CALL_CHANNEL, (_event, requestJson) => backend.call(text(requestJson)));
-  handle("treetime:runs:read-file", (_event, id, filePath) => backend.readFile(text(id), text(filePath)));
-  handle("treetime:runs:archive", (_event, id) => backend.archive(text(id)));
-  handle("treetime:runs:subscribe", (event, subscriptionId, id, from) => {
-    const key = text(subscriptionId);
-    const sender = event.sender;
-
-    const subscription = backend.subscribe(text(id), Number(from), (err: Error | null, eventJson: string) => {
-      if (err === null && !sender.isDestroyed()) {
-        sender.send(RUN_EVENT_CHANNEL, key, eventJson);
-      }
-    });
-
-    subscriptions.set(key, subscription);
-    sender.once("destroyed", () => {
-      subscription.unsubscribe();
-      subscriptions.delete(key);
-    });
-  });
-  listen("treetime:runs:unsubscribe", (_event, subscriptionId) => {
-    const key = text(subscriptionId);
-    subscriptions.get(key)?.unsubscribe();
-    subscriptions.delete(key);
-  });
-}
-
 function handle(channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
-  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcReply> => {
+  ipcMain.handle(channel, (event, ...args: unknown[]) => {
     if (!isTrustedSender(event.senderFrame, appUrl)) {
       throw new Error(`${channel} refused a message from a frame outside the application`);
     }
 
-    try {
-      return { ok: true, value: await handler(event, ...args) };
-    } catch (error: unknown) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) };
-    }
+    return handler(event, ...args);
   });
 }
 
@@ -109,16 +142,16 @@ function listen(channel: string, listener: (event: IpcMainEvent, ...args: unknow
   });
 }
 
-function text(value: unknown): string {
-  if (typeof value !== "string") {
-    throw new TypeError(`expected a string argument, got ${typeof value}`);
-  }
-
-  return value;
+function isThemeSource(value: unknown): value is "system" | "light" | "dark" {
+  return value === "system" || value === "light" || value === "dark";
 }
 
-async function pickFiles(event: IpcMainInvokeEvent, requestJson: string): Promise<string[]> {
-  const request = zPickFilesRequest.parse(JSON.parse(requestJson));
+function appContents(): WebContents[] {
+  return webContents.getAllWebContents().filter((contents) => isTrustedSender(contents.mainFrame, appUrl));
+}
+
+async function pickFiles(event: IpcMainInvokeEvent, data: unknown): Promise<string[]> {
+  const request = zPickFilesRequest.parse(data);
 
   const options: OpenDialogOptions = {
     title: request.title,

@@ -66,7 +66,7 @@ export type RunComparisonResult = Parsed<typeof zRunComparison>;
 
 export type CladeInRunsResult = Parsed<typeof zCladeInRuns>;
 
-type RunEventResult = Parsed<typeof zRunEvent>;
+export type RunEventResult = Parsed<typeof zRunEvent>;
 
 type TerminalEventResult = Parsed<typeof zTerminalEvent>;
 
@@ -89,7 +89,7 @@ export interface FollowRunOptions {
 
 export interface TransportEventOptions {
   from: number;
-  onEvent: (event: unknown) => void;
+  onEvent: (event: unknown) => RunEventResult;
   signal?: AbortSignal;
 }
 
@@ -224,6 +224,8 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
         }
 
         options.onEvent?.(event);
+
+        return event;
       },
     };
 

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
-    "@neherlab/app-napi": "workspace:*"
+    "@neherlab/app-napi": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@neherlab/app-contracts": "workspace:*",

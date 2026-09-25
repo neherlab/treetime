@@ -25,6 +25,7 @@ export type {
   RunConfigResult,
   RunComparisonResult,
   RunRecordResult,
+  RunEventResult,
   RunResultsResult,
   RunSummaryResult,
   TransportEventOptions,

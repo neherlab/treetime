@@ -1,28 +1,54 @@
 import {
-  createBridge,
+  BridgeError,
   bridgeErrorFromText,
+  createBridge,
   zPickedFiles,
-  type DesktopRequestInput,
   type BridgeTransport,
+  type DesktopRequestInput,
   type LocalFiles,
+  type PickFilesRequest,
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
+import * as z from "zod";
 
-export interface IpcRendererLike {
-  invoke(channel: string, ...args: unknown[]): Promise<unknown>;
-  on(channel: string, listener: (event: unknown, ...args: unknown[]) => void): void;
-  removeListener(channel: string, listener: (event: unknown, ...args: unknown[]) => void): void;
-  send(channel: string, ...args: unknown[]): void;
+import {
+  portEndpoint,
+  zBackendReply,
+  type BackendReply,
+  type BackendRequest,
+  type ClientEndpoint,
+  type PortLike,
+} from "./backend-protocol";
+import { BACKEND_PORT_CHANNEL, BACKEND_STOPPED_CHANNEL } from "./channels";
+
+export const zShellMessage = z.discriminatedUnion("channel", [
+  z.object({ channel: z.literal(BACKEND_PORT_CHANNEL) }),
+  z.object({ channel: z.literal(BACKEND_STOPPED_CHANNEL), reason: z.string() }),
+]);
+
+export type ShellMessage = z.infer<typeof zShellMessage>;
+
+export interface BackendConnection {
+  onEndpoint(listener: (endpoint: ClientEndpoint) => void): void;
+  onStopped(listener: (reason: string) => void): void;
 }
 
-export const RUN_EVENT_CHANNEL = "treetime:run-event";
+export interface WindowMessage {
+  source: unknown;
+  data: unknown;
+  ports: readonly PortLike[];
+}
 
-export const PICK_FILES_CHANNEL = "treetime:pick-files";
+export interface WindowLike {
+  addEventListener(type: "message", listener: (event: WindowMessage) => void): void;
+}
 
-export const CALL_CHANNEL = "treetime:call";
-
-export type IpcReply = { ok: true; value: unknown } | { ok: false; error: string };
+export interface DesktopShell {
+  connectBackend(): void;
+  pickFiles(request: PickFilesRequest): Promise<unknown>;
+  pathForFile(file: File): string;
+}
 
 class LocalInputsError extends Error {
   constructor() {
@@ -31,86 +57,229 @@ class LocalInputsError extends Error {
   }
 }
 
-export function createDesktopBridge(
-  ipc: IpcRendererLike,
-  newSubscriptionId: () => string = randomSubscriptionId,
-): TreeTimeBridge {
-  return createBridge(createDesktopTransport(ipc, newSubscriptionId));
+export function createDesktopBridge(connection: BackendConnection): TreeTimeBridge {
+  return createBridge(createPortTransport(new BackendClient(connection)));
 }
 
-export function createLocalFiles(ipc: IpcRendererLike, pathForFile: (file: File) => string): LocalFiles {
+export function createLocalFiles(shell: DesktopShell): LocalFiles {
   return {
     async pickFiles(request) {
-      return zPickedFiles.parse(unwrap(await ipc.invoke(PICK_FILES_CHANNEL, JSON.stringify(request))));
+      return zPickedFiles.parse(await shell.pickFiles(request));
     },
-    pathForFile,
+    pathForFile: (file) => shell.pathForFile(file),
   };
 }
 
-function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => string): BridgeTransport {
-  async function call(request: DesktopRequestInput): Promise<unknown> {
-    return decode(unwrap(await ipc.invoke(CALL_CHANNEL, JSON.stringify(request))));
-  }
+export function windowBackendConnection(target: WindowLike, shell: DesktopShell): BackendConnection {
+  const endpointListeners: Array<(endpoint: ClientEndpoint) => void> = [];
+  const stoppedListeners: Array<(reason: string) => void> = [];
 
-  async function bytes(channel: string, ...args: unknown[]): Promise<Uint8Array> {
-    const value = unwrap(await ipc.invoke(`treetime:${channel}`, ...args));
+  target.addEventListener("message", (event) => {
+    const message = zShellMessage.safeParse(event.data);
+    const [port] = event.ports;
 
-    if (!(value instanceof Uint8Array)) {
-      throw new TypeError(`treetime:${channel} returned no bytes`);
+    if (event.source !== target || !message.success) {
+      return;
     }
 
-    return value;
+    if (message.data.channel === BACKEND_STOPPED_CHANNEL) {
+      const { reason } = message.data;
+      stoppedListeners.forEach((listener) => {
+        listener(reason);
+      });
+    } else if (port !== undefined) {
+      const endpoint = portEndpoint<BackendReply, BackendRequest>(port, zBackendReply);
+      endpointListeners.forEach((listener) => {
+        listener(endpoint);
+      });
+    }
+  });
+
+  return {
+    onEndpoint(listener) {
+      endpointListeners.push(listener);
+      shell.connectBackend();
+    },
+    onStopped(listener) {
+      stoppedListeners.push(listener);
+    },
+  };
+}
+
+interface Handler {
+  reply(reply: BackendReply): void;
+  stopped(error: BridgeError): void;
+  resume?: () => BackendRequest;
+}
+
+class BackendClient {
+  private endpoint: ClientEndpoint | undefined;
+  private readonly waiting: BackendRequest[] = [];
+  private readonly handlers = new Map<number, Handler>();
+  private nextSeq = 0;
+
+  constructor(connection: BackendConnection) {
+    connection.onEndpoint((endpoint) => {
+      this.connect(endpoint);
+    });
+    connection.onStopped((reason) => {
+      this.stop(reason);
+    });
+  }
+
+  open(handler: Handler): number {
+    const seq = this.nextSeq;
+    this.nextSeq += 1;
+    this.handlers.set(seq, handler);
+
+    return seq;
+  }
+
+  close(seq: number): void {
+    this.handlers.delete(seq);
+  }
+
+  send(request: BackendRequest): void {
+    if (this.endpoint === undefined) {
+      this.waiting.push(request);
+    } else {
+      this.endpoint.post(request);
+    }
+  }
+
+  private connect(endpoint: ClientEndpoint): void {
+    this.endpoint = endpoint;
+    endpoint.listen((reply) => {
+      this.handlers.get(reply.seq)?.reply(reply);
+    });
+
+    for (const handler of this.handlers.values()) {
+      if (handler.resume !== undefined) {
+        endpoint.post(handler.resume());
+      }
+    }
+
+    for (const request of this.waiting.splice(0)) {
+      endpoint.post(request);
+    }
+  }
+
+  private stop(reason: string): void {
+    this.endpoint = undefined;
+    const error = new BridgeError({ code: "internal_error", message: reason, causes: [] });
+
+    for (const [seq, handler] of this.handlers) {
+      if (handler.resume === undefined) {
+        this.handlers.delete(seq);
+        handler.stopped(error);
+      }
+    }
+  }
+}
+
+function createPortTransport(client: BackendClient): BridgeTransport {
+  function call(request: DesktopRequestInput): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const seq = client.open({
+        reply(reply) {
+          client.close(seq);
+
+          if (reply.kind === "result") {
+            resolve(JSON.parse(reply.json));
+          } else if (reply.kind === "error") {
+            reject(bridgeErrorFromText(reply.error));
+          } else {
+            reject(new TypeError(`the back end answered a call with a ${reply.kind} message`));
+          }
+        },
+        stopped: reject,
+      });
+
+      client.send({ kind: "call", seq, request: JSON.stringify(request) });
+    });
+  }
+
+  function bytes(request: (seq: number) => BackendRequest): Promise<Uint8Array> {
+    return new Promise((resolve, reject) => {
+      const chunks: Uint8Array[] = [];
+
+      const seq = client.open({
+        reply(reply) {
+          if (reply.kind === "chunk") {
+            chunks.push(new Uint8Array(reply.bytes));
+
+            return;
+          }
+
+          client.close(seq);
+
+          if (reply.kind === "end") {
+            resolve(concat(chunks));
+          } else if (reply.kind === "error") {
+            reject(bridgeErrorFromText(reply.error));
+          } else {
+            reject(new TypeError(`the back end answered a file read with a ${reply.kind} message`));
+          }
+        },
+        stopped: reject,
+      });
+
+      client.send(request(seq));
+    });
   }
 
   function runEvents(id: string, options: TransportEventOptions): Promise<void> {
-    const subscriptionId = newSubscriptionId();
-
-    return new Promise<void>((resolve, reject) => {
-      const stop = () => {
-        ipc.removeListener(RUN_EVENT_CHANNEL, handler);
-        options.signal?.removeEventListener("abort", finish);
-        ipc.send("treetime:runs:unsubscribe", subscriptionId);
-      };
-
-      const finish = () => {
-        stop();
-        resolve();
-      };
-
-      const handler = (_event: unknown, eventSubscriptionId: unknown, eventJson: unknown) => {
-        if (eventSubscriptionId !== subscriptionId || typeof eventJson !== "string") {
-          return;
-        }
-
-        try {
-          const event: unknown = JSON.parse(eventJson);
-          options.onEvent(event);
-
-          if (isTerminal(event)) {
-            finish();
-          }
-        } catch (error: unknown) {
-          stop();
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
-      };
-
+    return new Promise((resolve, reject) => {
       if (options.signal?.aborted === true) {
         resolve();
 
         return;
       }
 
-      ipc.on(RUN_EVENT_CHANNEL, handler);
+      let from = options.from;
+
+      const end = () => {
+        client.close(seq);
+        client.send({ kind: "unsubscribe", seq });
+        options.signal?.removeEventListener("abort", finish);
+      };
+
+      const finish = () => {
+        end();
+        resolve();
+      };
+
+      const seq = client.open({
+        reply(reply) {
+          if (reply.kind === "error") {
+            end();
+            reject(bridgeErrorFromText(reply.error));
+
+            return;
+          }
+
+          if (reply.kind !== "event") {
+            return;
+          }
+
+          try {
+            const event = options.onEvent(JSON.parse(reply.json));
+            from = event.seq + 1;
+
+            if (event.type === "terminal") {
+              finish();
+            }
+          } catch (error: unknown) {
+            end();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        },
+        stopped: reject,
+        resume: () => ({ kind: "subscribe", seq, id, from }),
+      });
+
       options.signal?.addEventListener("abort", finish);
-      ipc
-        .invoke("treetime:runs:subscribe", subscriptionId, id, options.from)
-        .then(unwrap)
-        .catch((error: unknown) => {
-          ipc.removeListener(RUN_EVENT_CHANNEL, handler);
-          options.signal?.removeEventListener("abort", finish);
-          reject(error instanceof Error ? error : new Error(String(error)));
-        });
+      client.send({ kind: "subscribe", seq, id, from });
     });
   }
 
@@ -135,8 +304,8 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
     },
     runEvents,
     runFiles: (id) => call({ operation: "run-files", args: { id } }),
-    readRunFile: (id, path) => bytes("runs:read-file", id, path),
-    runArchive: (id) => bytes("runs:archive", id),
+    readRunFile: (id, path) => bytes((seq) => ({ kind: "read-file", seq, id, path })),
+    runArchive: (id) => bytes((seq) => ({ kind: "archive", seq, id })),
     uploadInput: () => Promise.reject(new LocalInputsError()),
     runResults: (id) => call({ operation: "run-results", args: { id } }),
     compareRuns: (id, other) => call({ operation: "compare-runs", args: { id, other } }),
@@ -144,32 +313,14 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
   };
 }
 
-function randomSubscriptionId(): string {
-  return globalThis.crypto.randomUUID();
-}
+function concat(chunks: Uint8Array[]): Uint8Array {
+  const result = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
+  let offset = 0;
 
-function unwrap(reply: unknown): unknown {
-  if (typeof reply !== "object" || reply === null || !("ok" in reply)) {
-    throw new TypeError("the main process sent a reply without a result");
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
   }
 
-  if (reply.ok === true && "value" in reply) {
-    return reply.value;
-  }
-
-  throw bridgeErrorFromText("error" in reply && typeof reply.error === "string" ? reply.error : "unknown error");
-}
-
-function isTerminal(event: unknown): boolean {
-  return typeof event === "object" && event !== null && "type" in event && event.type === "terminal";
-}
-
-function decode(value: unknown): unknown {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const parsed: unknown = JSON.parse(value);
-
-  return parsed;
+  return result;
 }

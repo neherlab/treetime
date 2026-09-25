@@ -48,7 +48,10 @@ export default defineConfig({
   plugins: [
     electron({
       main: {
-        entry: resolve(__dirname, "src/main.ts"),
+        entry: {
+          main: resolve(__dirname, "src/main.ts"),
+          backend: resolve(__dirname, "src/backend.ts"),
+        },
         vite: {
           build: {
             outDir: resolve(__dirname, "dist-electron"),

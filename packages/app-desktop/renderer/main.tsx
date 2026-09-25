@@ -1,18 +1,25 @@
-import type { LocalFiles, TreeTimeBridge } from "@neherlab/app-contracts";
 import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+
+import {
+  createDesktopBridge,
+  createLocalFiles,
+  windowBackendConnection,
+  type DesktopShell,
+} from "../src/desktop-bridge";
 
 import "./index.css";
 
 declare global {
   interface Window {
-    treetime: TreeTimeBridge;
-    treetimeFiles: LocalFiles;
+    treetimeShell: DesktopShell;
   }
 }
 
-const bridge = window.treetime;
+const bridge = createDesktopBridge(windowBackendConnection(window, window.treetimeShell));
+
+const localFiles = createLocalFiles(window.treetimeShell);
 
 const root = document.getElementById("root");
 
@@ -23,7 +30,7 @@ if (root) {
         <ErrorBoundary>
           <BridgeProvider bridge={bridge}>
             <QueryProvider>
-              <App localFiles={window.treetimeFiles} />
+              <App localFiles={localFiles} />
             </QueryProvider>
           </BridgeProvider>
         </ErrorBoundary>

@@ -39,6 +39,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@neherlab/app-napi": "workspace:*",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@neherlab/app-contracts": "workspace:*",
