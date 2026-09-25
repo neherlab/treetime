@@ -13,29 +13,53 @@ const BRANCHES_SORT = { key: "branches", descending: true };
 
 const PROBABILITY_SORT = { key: "probability", descending: false };
 
-const CHANGE_COLUMNS: ReadonlyArray<Column<StateChange>> = [
-  { key: "from", label: "From", kind: "text", value: (row) => row.from },
-  { key: "to", label: "To", kind: "text", value: (row) => row.to },
-  { key: "branches", label: "Branches", kind: "number", value: (row) => row.branches },
-];
+type StateColors = ReadonlyMap<string, string>;
 
-const ANCESTOR_COLUMNS: ReadonlyArray<Column<AncestorState>> = [
-  {
-    key: "name",
-    label: "Ancestor",
-    kind: "text",
-    value: (row) => row.name,
-    render: (row) => `${row.name} (${row.tips} samples)`,
-  },
-  { key: "state", label: "Most probable state", kind: "text", value: (row) => row.state },
-  {
-    key: "probability",
-    label: "Probability",
-    kind: "number",
-    value: (row) => row.probability,
-    render: (row) => row.probability.toFixed(3),
-  },
-];
+function changeColumns(colors: StateColors): ReadonlyArray<Column<StateChange>> {
+  return [
+    {
+      key: "from",
+      label: "From",
+      kind: "text",
+      value: (row) => row.from,
+      render: (row) => <StateLabel state={row.from} colors={colors} />,
+    },
+    {
+      key: "to",
+      label: "To",
+      kind: "text",
+      value: (row) => row.to,
+      render: (row) => <StateLabel state={row.to} colors={colors} />,
+    },
+    { key: "branches", label: "Branches", kind: "number", value: (row) => row.branches },
+  ];
+}
+
+function ancestorColumns(colors: StateColors): ReadonlyArray<Column<AncestorState>> {
+  return [
+    {
+      key: "name",
+      label: "Ancestor",
+      kind: "text",
+      value: (row) => row.name,
+      render: (row) => `${row.name} (${row.tips} samples)`,
+    },
+    {
+      key: "state",
+      label: "Most probable state",
+      kind: "text",
+      value: (row) => row.state,
+      render: (row) => <StateLabel state={row.state} colors={colors} />,
+    },
+    {
+      key: "probability",
+      label: "Probability",
+      kind: "number",
+      value: (row) => row.probability,
+      render: (row) => row.probability.toFixed(3),
+    },
+  ];
+}
 
 export function MugrationResults({
   record,
@@ -53,6 +77,14 @@ export function MugrationResults({
   const uncertain = data.uncertain_ancestors;
   const threshold = data.uncertain_below;
   const root = data.root ?? undefined;
+  const colorings = tree?.tree.colorings;
+
+  const [changeCols, ancestorCols] = useMemo(() => {
+    const scale = colorings?.find((coloring) => coloring.key === attribute)?.scale ?? [];
+    const colors: StateColors = new Map(scale.map((entry) => [entry.state, entry.color]));
+
+    return [changeColumns(colors), ancestorColumns(colors)] as const;
+  }, [attribute, colorings]);
 
   const summary = useMemo<SummaryEntry[]>(
     () => [
@@ -93,7 +125,7 @@ export function MugrationResults({
         <Panel title="State changes" hint="Counted over branches of the tree">
           <SortableTable
             label="State changes"
-            columns={CHANGE_COLUMNS}
+            columns={changeCols}
             rows={changes}
             rowKey={changeKey}
             initialSort={BRANCHES_SORT}
@@ -105,7 +137,7 @@ export function MugrationResults({
           ) : (
             <SortableTable
               label="Uncertain ancestors"
-              columns={ANCESTOR_COLUMNS}
+              columns={ancestorCols}
               rows={uncertain}
               rowKey={ancestorKey}
               initialSort={PROBABILITY_SORT}
@@ -115,6 +147,21 @@ export function MugrationResults({
       </div>
       <OutputFiles record={record} methods={undefined} citation={results.citation} />
     </div>
+  );
+}
+
+function StateLabel({ state, colors }: { state: string; colors: StateColors }) {
+  const color = colors.get(state);
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {color !== undefined && (
+        <svg aria-hidden viewBox="0 0 10 10" className="size-2.5 shrink-0">
+          <circle cx="5" cy="5" r="5" fill={color} />
+        </svg>
+      )}
+      {state}
+    </span>
   );
 }
 

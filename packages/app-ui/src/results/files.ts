@@ -25,10 +25,6 @@ const DESCRIPTIONS: Readonly<Partial<Record<OutputSelection, string>>> = {
   "coalescent-json": "Coalescent model and its likelihood",
 };
 
-export function outputPath(files: readonly RunFileEntry[], kind: OutputSelection): string | undefined {
-  return files.find((file) => file.kind === kind)?.path;
-}
-
 export function fileDescription(file: RunFileEntry): string {
   return file.kind === null || file.kind === undefined ? "" : (DESCRIPTIONS[file.kind] ?? "");
 }

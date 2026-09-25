@@ -135,6 +135,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       return uploaded;
     },
     runResults: (id) => json("GET", `${runPath(id)}/results`),
+    runAuspice: (id) => json("GET", `${runPath(id)}/auspice`),
     compareRuns: (id, other) => json("GET", `${runPath(id)}/compare/${encodeURIComponent(other)}`),
     cladeInRuns: (request) => json("POST", "clade-in-runs", request),
   };

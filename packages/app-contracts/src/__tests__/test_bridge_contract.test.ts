@@ -66,6 +66,7 @@ function stubTransport(overrides: Partial<BridgeTransport>): BridgeTransport {
     saveRunArchive: missing("saveRunArchive"),
     uploadInput: missing("uploadInput"),
     runResults: missing("runResults"),
+    runAuspice: missing("runAuspice"),
     compareRuns: missing("compareRuns"),
     cladeInRuns: missing("cladeInRuns"),
     ...overrides,
@@ -191,6 +192,22 @@ describe("bridge result validation", () => {
 
     const bridge = createBridge(stubTransport({ runResults: () => Promise.resolve(results) }));
     await expect(bridge.runResults("r1")).rejects.toThrow("expected number");
+  });
+
+  test("runAuspice returns the served Auspice document unchanged", async () => {
+    const document = {
+      version: "v2",
+      meta: { colorings: [{ key: "region", title: "Region", type: "categorical", scale: [["asia", "#332288"]] }] },
+      tree: { name: "root", node_attrs: { region: { value: "asia" } } },
+    };
+
+    const bridge = createBridge(stubTransport({ runAuspice: () => Promise.resolve(structuredClone(document)) }));
+    await expect(bridge.runAuspice("r1")).resolves.toStrictEqual(document);
+  });
+
+  test("runAuspice rejects a document that is not a JSON object", async () => {
+    const bridge = createBridge(stubTransport({ runAuspice: () => Promise.resolve([]) }));
+    await expect(bridge.runAuspice("r1")).rejects.toThrow("expected record");
   });
 
   test("cladeInRuns validates the matches", async () => {

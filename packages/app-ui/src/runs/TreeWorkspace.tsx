@@ -2,11 +2,9 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
 import { AuspiceTree } from "../auspice/AuspiceTree";
-import { withColorScales } from "../auspice/document";
 import type { AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
 import { focusNode, showWholeTree, useAuspiceSelector, useAuspiceStore } from "../auspice/store-hooks";
-import { mutedColorScales } from "../results/colors";
 import type { ResultNode, ResultTree } from "../results/types";
 import type { TreeData } from "./TreeView";
 
@@ -27,8 +25,7 @@ export function TreeWorkspace({
   colorBy: string | undefined;
   aside?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
-  const document = useMemo(() => withColorScales(data.document, mutedColorScales(data.tree.colorings)), [data]);
-  const store = useAuspiceStore(document, colorBy);
+  const store = useAuspiceStore(data.document, colorBy);
   const tips = useMemo(() => data.tree.nodes.filter((node) => node.children.length === 0).length, [data.tree]);
 
   return (

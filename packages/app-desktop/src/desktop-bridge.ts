@@ -310,6 +310,7 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
     saveRunArchive: async (id, name) => saved(zSaveReply.parse(await shell.saveRunArchive({ id, name }))),
     uploadInput: () => Promise.reject(new LocalInputsError()),
     runResults: (id) => call({ operation: "run-results", args: { id } }),
+    runAuspice: (id) => call({ operation: "run-auspice", args: { id } }),
     compareRuns: (id, other) => call({ operation: "compare-runs", args: { id, other } }),
     cladeInRuns: (request) => call({ operation: "clade-in-runs", args: { request } }),
   };

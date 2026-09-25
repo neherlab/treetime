@@ -3,6 +3,7 @@ import * as z from "zod";
 import type {
   AncestralConfig,
   AppCommand,
+  AuspiceDocument,
   CheckConfigRequest,
   CladeRequest,
   CheckInputsRequest,
@@ -22,6 +23,7 @@ import type {
   VersionInfo,
 } from "./generated/types.gen";
 import {
+  zAuspiceDocument,
   zCancelRunResponse,
   zCheckConfigResponse,
   zCladeInRuns,
@@ -172,6 +174,7 @@ export interface BridgeTransport {
   saveRunArchive(id: string, name: string): Promise<boolean>;
   uploadInput(id: string, name: string, data: Blob): Promise<unknown>;
   runResults(id: string): Promise<unknown>;
+  runAuspice(id: string): Promise<unknown>;
   compareRuns(id: string, other: string): Promise<unknown>;
   cladeInRuns(request: CladeRequest): Promise<unknown>;
 }
@@ -198,6 +201,7 @@ export interface TreeTimeBridge {
   saveRunArchive(id: string, name: string): Promise<boolean>;
   uploadInput(id: string, name: string, data: Blob): Promise<Parsed<typeof zUploadedInput>>;
   runResults(id: string): Promise<RunResultsResult>;
+  runAuspice(id: string): Promise<AuspiceDocument>;
   compareRuns(id: string, other: string): Promise<RunComparisonResult>;
   cladeInRuns(request: CladeRequest): Promise<CladeInRunsResult>;
   timetree(config: TimetreeConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
@@ -334,6 +338,9 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
     },
     async runResults(id) {
       return zRunResults.parse(await transport.runResults(id));
+    },
+    async runAuspice(id) {
+      return zAuspiceDocument.parse(await transport.runAuspice(id));
     },
     async compareRuns(id, other) {
       return zRunComparison.parse(await transport.compareRuns(id, other));

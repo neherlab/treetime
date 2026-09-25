@@ -10,7 +10,6 @@ import type {
   zDateInterval,
   zMugrationResults,
   zRecurrentSite,
-  zResultColoring,
   zResultNode,
   zResultTree,
   zRootToTip,
@@ -42,8 +41,6 @@ export type DateInterval = Parsed<typeof zDateInterval>;
 export type MugrationData = Parsed<typeof zMugrationResults>;
 
 export type RecurrentSite = Parsed<typeof zRecurrentSite>;
-
-export type ResultColoring = Parsed<typeof zResultColoring>;
 
 export type ResultNode = Parsed<typeof zResultNode>;
 

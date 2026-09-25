@@ -1,13 +1,13 @@
+import type { AuspiceDocument } from "@neherlab/app-contracts";
 import { lazy, Suspense, type ReactNode } from "react";
 
 import type { ResultTree } from "../results/types";
-import type { JsonObject } from "../settings/json";
 import type { TreeLink } from "./TreeWorkspace";
 
 const TreeWorkspace = lazy(async () => ({ default: (await import("./TreeWorkspace")).TreeWorkspace }));
 
 export interface TreeData {
-  document: JsonObject;
+  document: AuspiceDocument;
   tree: ResultTree;
 }
 

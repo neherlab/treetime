@@ -93,11 +93,12 @@ function ResultsTab({ record, progress }: { record: RunRecordResult; progress: R
 
 function FinishedResults({ record }: { record: RunRecordResult }) {
   const { data: results, error } = useRunResults(record.id, true);
-  const { data: document, error: treeError } = useRunAuspice(record.id, true);
+  const hasTree = results?.tree !== null && results?.tree !== undefined;
+  const { data: document, error: treeError } = useRunAuspice(record.id, hasTree);
 
   const tree = useMemo<TreeData | undefined>(
     () =>
-      results?.tree === null || results?.tree === undefined || document === null || document === undefined
+      results?.tree === null || results?.tree === undefined || document === undefined
         ? undefined
         : { document, tree: results.tree },
     [document, results],
@@ -107,7 +108,7 @@ function FinishedResults({ record }: { record: RunRecordResult }) {
     return <p className="text-signal-danger">The outputs of the run cannot be read: {(error ?? treeError)?.message}</p>;
   }
 
-  if (results === undefined || document === undefined) {
+  if (results === undefined || (hasTree && document === undefined)) {
     return <p className="text-ink-muted p-10 text-center">Reading the outputs...</p>;
   }
 

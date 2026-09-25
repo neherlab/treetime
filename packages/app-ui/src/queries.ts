@@ -2,8 +2,7 @@ import type { AppCommand, CheckInputsRequest, InputFactsResult } from "@neherlab
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 
 import { useBridge } from "./BridgeContext";
-import { outputPath } from "./results/files";
-import { canonicalJson, zJsonObject, type JsonObject } from "./settings/json";
+import { canonicalJson, type JsonObject } from "./settings/json";
 
 const ACTIVE_RUNS_POLL_MS = 2000;
 
@@ -118,13 +117,7 @@ export function useRunAuspice(id: string, enabled: boolean) {
 
   return useQuery({
     queryKey: [OUTPUTS_KEY, id, "auspice"],
-    queryFn: async (): Promise<JsonObject | null> => {
-      const path = outputPath(await bridge.runFiles(id), "auspice");
-
-      return path === undefined
-        ? null
-        : zJsonObject.parse(JSON.parse(new TextDecoder().decode(await bridge.readRunFile(id, path))));
-    },
+    queryFn: () => bridge.runAuspice(id),
     enabled,
     staleTime: Infinity,
   });
