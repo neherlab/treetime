@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-const bridge = createDesktopBridge(windowBackendConnection(window, window.treetimeShell));
+const bridge = createDesktopBridge(windowBackendConnection(window, window.treetimeShell), window.treetimeShell);
 
 const localFiles = createLocalFiles(window.treetimeShell);
 

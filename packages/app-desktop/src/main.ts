@@ -19,15 +19,19 @@ import {
 } from "electron";
 
 import { shouldRestart } from "./backend-process";
+import { zControlReply, type ControlReply, type SaveRequest } from "./backend-protocol";
 import {
   BACKEND_PORT_CHANNEL,
   BACKEND_PORT_REQUEST_CHANNEL,
   BACKEND_STOPPED_CHANNEL,
   PICK_FILES_CHANNEL,
+  SAVE_RUN_ARCHIVE_CHANNEL,
+  SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
 } from "./channels";
 import { initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
+import { zSaveRunArchiveRequest, zSaveRunFileRequest, type SaveReply } from "./shell-protocol";
 
 initDiagnostics("treetime-desktop");
 
@@ -59,6 +63,8 @@ class BackendProcess {
   private readonly runsDir: string;
   private child: UtilityProcess;
   private readonly exitTimes: number[] = [];
+  private readonly saves = new Map<number, (reply: ControlReply) => void>();
+  private nextSave = 0;
 
   constructor(runsDir: string) {
     this.runsDir = runsDir;
@@ -71,6 +77,16 @@ class BackendProcess {
     contents.postMessage(BACKEND_PORT_CHANNEL, null, [port2]);
   }
 
+  save(request: (seq: number) => SaveRequest): Promise<ControlReply> {
+    const seq = this.nextSave;
+    this.nextSave += 1;
+
+    return new Promise((resolve) => {
+      this.saves.set(seq, resolve);
+      this.child.postMessage(request(seq), []);
+    });
+  }
+
   private spawn(): UtilityProcess {
     const child = utilityProcess.fork(path.join(__dirname, "backend.js"), [this.runsDir], {
       serviceName: "TreeTime back end",
@@ -78,6 +94,14 @@ class BackendProcess {
       stdio: "inherit",
     });
 
+    child.on("message", (message) => {
+      const reply = zControlReply.safeParse(message);
+
+      if (reply.success) {
+        this.saves.get(reply.data.seq)?.(reply.data);
+        this.saves.delete(reply.data.seq);
+      }
+    });
     child.once("exit", (code) => {
       this.exited(code);
     });
@@ -95,6 +119,12 @@ class BackendProcess {
       : `the back end stopped with exit code ${code} too often and does not restart; restart TreeTime`;
 
     console.error(`[TreeTime] ${reason}`);
+
+    for (const [seq, resolve] of this.saves) {
+      resolve({ kind: "error", seq, error: reason });
+    }
+
+    this.saves.clear();
 
     for (const contents of appContents()) {
       contents.send(BACKEND_STOPPED_CHANNEL, reason);
@@ -114,6 +144,20 @@ class BackendProcess {
 
 function registerIpcHandlers(backend: BackendProcess): void {
   handle(PICK_FILES_CHANNEL, (event, request) => pickFiles(event, request));
+  handle(SAVE_RUN_FILE_CHANNEL, async (event, data) => {
+    const request = zSaveRunFileRequest.parse(data);
+
+    return saveTo(event, request.name, (destination) =>
+      backend.save((seq) => ({ kind: "save-file", seq, id: request.id, path: request.path, destination })),
+    );
+  });
+  handle(SAVE_RUN_ARCHIVE_CHANNEL, async (event, data) => {
+    const request = zSaveRunArchiveRequest.parse(data);
+
+    return saveTo(event, request.name, (destination) =>
+      backend.save((seq) => ({ kind: "save-archive", seq, id: request.id, destination })),
+    );
+  });
   listen(BACKEND_PORT_REQUEST_CHANNEL, (event) => {
     backend.connect(event.sender);
   });
@@ -163,6 +207,24 @@ async function pickFiles(event: IpcMainInvokeEvent, data: unknown): Promise<stri
   const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
 
   return result.canceled ? [] : result.filePaths;
+}
+
+async function saveTo(
+  event: IpcMainInvokeEvent,
+  name: string,
+  save: (destination: string) => Promise<ControlReply>,
+): Promise<SaveReply> {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const options = { defaultPath: name };
+  const choice = window === null ? await dialog.showSaveDialog(options) : await dialog.showSaveDialog(window, options);
+
+  if (choice.canceled || choice.filePath === "") {
+    return { saved: false };
+  }
+
+  const reply = await save(choice.filePath);
+
+  return reply.kind === "saved" ? { saved: true } : { error: reply.error };
 }
 
 async function createWindow(): Promise<void> {

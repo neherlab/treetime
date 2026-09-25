@@ -11,6 +11,7 @@ import { EventSourceParserStream } from "eventsource-parser/stream";
 export interface WebBridgeDeps {
   fetchFn?: typeof fetch;
   apiBase?: string;
+  saveBlob?: (blob: Blob, name: string) => void;
 }
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -18,6 +19,7 @@ type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   const fetchFn = deps.fetchFn ?? globalThis.fetch.bind(globalThis);
   const apiBase = deps.apiBase ?? "/api";
+  const saveBlob = deps.saveBlob ?? downloadBlob;
 
   const debug = readDebugFlag();
 
@@ -56,6 +58,13 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     const response = await send("GET", path);
 
     return new Uint8Array(await response.arrayBuffer());
+  }
+
+  async function save(path: string, name: string): Promise<boolean> {
+    const response = await send("GET", path);
+    saveBlob(await response.blob(), name);
+
+    return true;
   }
 
   async function runEvents(id: string, options: TransportEventOptions): Promise<void> {
@@ -113,8 +122,9 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     },
     runEvents,
     runFiles: (id) => json("GET", `${runPath(id)}/files`),
-    readRunFile: (id, path) => bytes(`${runPath(id)}/file?path=${encodeURIComponent(path)}`),
-    runArchive: (id) => bytes(`${runPath(id)}/archive`),
+    readRunFile: (id, path) => bytes(filePath(id, path)),
+    saveRunFile: (id, path, name) => save(filePath(id, path), name),
+    saveRunArchive: (id, name) => save(`${runPath(id)}/archive`, name),
     uploadInput: async (id, name, data) => {
       const response = await send("PUT", `${runPath(id)}/inputs/${encodeURIComponent(name)}`, data, {
         "Content-Type": "application/octet-stream",
@@ -132,8 +142,24 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   return createBridge(transport);
 }
 
+function filePath(id: string, path: string): string {
+  return `${runPath(id)}/file?path=${encodeURIComponent(path)}`;
+}
+
 function runPath(id: string): string {
   return `runs/${encodeURIComponent(id)}`;
+}
+
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = name;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function responseError(response: Response, context: string): Promise<Error> {

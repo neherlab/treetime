@@ -7,7 +7,6 @@ export const zBackendRequest = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("subscribe"), seq: zSeq, id: z.string(), from: z.int().nonnegative() }),
   z.object({ kind: z.literal("unsubscribe"), seq: zSeq }),
   z.object({ kind: z.literal("read-file"), seq: zSeq, id: z.string(), path: z.string() }),
-  z.object({ kind: z.literal("archive"), seq: zSeq, id: z.string() }),
 ]);
 
 export const zBackendReply = z.discriminatedUnion("kind", [
@@ -18,9 +17,26 @@ export const zBackendReply = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("end"), seq: zSeq }),
 ]);
 
+export const zControlRequest = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("port") }),
+  z.object({ kind: z.literal("save-file"), seq: zSeq, id: z.string(), path: z.string(), destination: z.string() }),
+  z.object({ kind: z.literal("save-archive"), seq: zSeq, id: z.string(), destination: z.string() }),
+]);
+
+export const zControlReply = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("saved"), seq: zSeq }),
+  z.object({ kind: z.literal("error"), seq: zSeq, error: z.string() }),
+]);
+
 export type BackendRequest = z.infer<typeof zBackendRequest>;
 
 export type BackendReply = z.infer<typeof zBackendReply>;
+
+export type ControlRequest = z.infer<typeof zControlRequest>;
+
+export type SaveRequest = Exclude<ControlRequest, { kind: "port" }>;
+
+export type ControlReply = z.infer<typeof zControlReply>;
 
 export interface MessageEndpoint<Incoming, Outgoing> {
   post(message: Outgoing): void;

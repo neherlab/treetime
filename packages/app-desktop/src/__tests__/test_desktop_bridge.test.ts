@@ -41,7 +41,9 @@ describe("desktop_bridge operations", () => {
       reply({ kind: "result", seq: request.seq, json: JSON.stringify({ version: "2.0.0" }) });
     });
 
-    await expect(createDesktopBridge(backend.connection).version()).resolves.toStrictEqual({ version: "2.0.0" });
+    await expect(createDesktopBridge(backend.connection, fakeShell({ picked: [] })).version()).resolves.toStrictEqual({
+      version: "2.0.0",
+    });
     expect(backend.requests).toStrictEqual([
       { kind: "call", seq: 0, request: JSON.stringify({ operation: "version", args: {} }) },
     ]);
@@ -62,7 +64,10 @@ describe("desktop_bridge operations", () => {
       });
     });
 
-    await createDesktopBridge(backend.connection).checkConfig({ command: "clock", text: "tree: t" });
+    await createDesktopBridge(backend.connection, fakeShell({ picked: [] })).checkConfig({
+      command: "clock",
+      text: "tree: t",
+    });
     expect(backend.calls()).toStrictEqual([
       { operation: "check-config", args: { request: { command: "clock", text: "tree: t" } } },
     ]);
@@ -73,7 +78,9 @@ describe("desktop_bridge operations", () => {
       reply({ kind: "result", seq: request.seq, json: JSON.stringify(RECORD) });
     });
 
-    await createDesktopBridge(backend.connection).startRun("r1", { config: { tree: "/data/t.nwk" } });
+    await createDesktopBridge(backend.connection, fakeShell({ picked: [] })).startRun("r1", {
+      config: { tree: "/data/t.nwk" },
+    });
     expect(backend.calls()).toStrictEqual([
       { operation: "start-run", args: { id: "r1", request: { config: { tree: "/data/t.nwk" } } } },
     ]);
@@ -84,7 +91,9 @@ describe("desktop_bridge operations", () => {
       reply({ kind: "result", seq: request.seq, json: JSON.stringify({ version: 2 }) });
     });
 
-    await expect(createDesktopBridge(backend.connection).version()).rejects.toThrow("expected string");
+    await expect(createDesktopBridge(backend.connection, fakeShell({ picked: [] })).version()).rejects.toThrow(
+      "expected string",
+    );
   });
 
   test("calls made before the back end connects are sent once it connects", async () => {
@@ -95,7 +104,7 @@ describe("desktop_bridge operations", () => {
       { connected: false },
     );
 
-    const version = createDesktopBridge(backend.connection).version();
+    const version = createDesktopBridge(backend.connection, fakeShell({ picked: [] })).version();
     await Promise.resolve();
     expect(backend.requests).toStrictEqual([]);
 
@@ -106,7 +115,9 @@ describe("desktop_bridge operations", () => {
 
   test("uploadInput rejects because the desktop app reads local paths", async () => {
     const backend = fakeBackend(() => undefined);
-    await expect(createDesktopBridge(backend.connection).uploadInput("r1", "t.nwk", new Blob(["x"]))).rejects.toThrow(
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).uploadInput("r1", "t.nwk", new Blob(["x"])),
+    ).rejects.toThrow(
       "the desktop application reads inputs from local file paths; name the files in the run configuration",
     );
   });
@@ -120,7 +131,7 @@ describe("desktop_bridge errors", () => {
       reply({ kind: "error", seq: request.seq, error: JSON.stringify(response) });
     });
 
-    const error = await createDesktopBridge(backend.connection)
+    const error = await createDesktopBridge(backend.connection, fakeShell({ picked: [] }))
       .getRun("r9")
       .catch((failure: unknown) => failure);
 
@@ -133,14 +144,14 @@ describe("desktop_bridge errors", () => {
       reply({ kind: "error", seq: request.seq, error: "addon failed to load" });
     });
 
-    await expect(createDesktopBridge(backend.connection).version()).rejects.toMatchObject({
+    await expect(createDesktopBridge(backend.connection, fakeShell({ picked: [] })).version()).rejects.toMatchObject({
       response: { code: "internal_error", message: "addon failed to load", causes: [] },
     });
   });
 
   test("a stopped back end rejects the calls it did not answer", async () => {
     const backend = fakeBackend(() => undefined);
-    const version = createDesktopBridge(backend.connection).version();
+    const version = createDesktopBridge(backend.connection, fakeShell({ picked: [] })).version();
     await Promise.resolve();
 
     backend.stop("the back end stopped with exit code 134 and restarts; the request was not answered");
@@ -170,7 +181,7 @@ describe("desktop_bridge run events", () => {
 
     const seen: number[] = [];
 
-    const terminal = await createDesktopBridge(backend.connection).followRun("r1", {
+    const terminal = await createDesktopBridge(backend.connection, fakeShell({ picked: [] })).followRun("r1", {
       from: 3,
       onEvent: (event) => {
         seen.push(event.seq);
@@ -189,7 +200,10 @@ describe("desktop_bridge run events", () => {
     const backend = fakeBackend(() => undefined);
     const controller = new AbortController();
 
-    const following = createDesktopBridge(backend.connection).followRun("r1", { signal: controller.signal });
+    const following = createDesktopBridge(backend.connection, fakeShell({ picked: [] })).followRun("r1", {
+      signal: controller.signal,
+    });
+
     await Promise.resolve();
     controller.abort();
 
@@ -221,7 +235,7 @@ describe("desktop_bridge run events", () => {
       }
     });
 
-    const following = createDesktopBridge(backend.connection).followRun("r1");
+    const following = createDesktopBridge(backend.connection, fakeShell({ picked: [] })).followRun("r1");
     await Promise.resolve();
 
     backend.stop("the back end stopped with exit code 134 and restarts; the request was not answered");
@@ -248,7 +262,9 @@ describe("desktop_bridge run events", () => {
       }
     });
 
-    await expect(createDesktopBridge(backend.connection).clock({ tree: "t.nwk" })).resolves.toStrictEqual(OUTCOME);
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).clock({ tree: "t.nwk" }),
+    ).resolves.toStrictEqual(OUTCOME);
   });
 
   test("a cancelled run rejects the command with a CancelledError", async () => {
@@ -264,9 +280,9 @@ describe("desktop_bridge run events", () => {
       }
     });
 
-    await expect(createDesktopBridge(backend.connection).clock({ tree: "t.nwk" })).rejects.toBeInstanceOf(
-      CancelledError,
-    );
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).clock({ tree: "t.nwk" }),
+    ).rejects.toBeInstanceOf(CancelledError);
   });
 
   test("a failed subscription rejects with the error of the back end", async () => {
@@ -278,7 +294,9 @@ describe("desktop_bridge run events", () => {
       });
     });
 
-    await expect(createDesktopBridge(backend.connection).followRun("r9")).rejects.toThrow("no run with id `r9`");
+    await expect(createDesktopBridge(backend.connection, fakeShell({ picked: [] })).followRun("r9")).rejects.toThrow(
+      "no run with id `r9`",
+    );
   });
 
   test("a malformed run event rejects with the validation error of the bridge", async () => {
@@ -286,7 +304,9 @@ describe("desktop_bridge run events", () => {
       reply({ kind: "event", seq: request.seq, json: JSON.stringify({ type: "log", data: {} }) });
     });
 
-    await expect(createDesktopBridge(backend.connection).followRun("r1")).rejects.toBeInstanceOf(ZodError);
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).followRun("r1"),
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });
 
@@ -298,9 +318,9 @@ describe("desktop_bridge files", () => {
       reply({ kind: "end", seq: request.seq });
     });
 
-    await expect(createDesktopBridge(backend.connection).readRunFile("r1", "clock.nwk")).resolves.toStrictEqual(
-      new Uint8Array([40, 65, 41]),
-    );
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).readRunFile("r1", "clock.nwk"),
+    ).resolves.toStrictEqual(new Uint8Array([40, 65, 41]));
     expect(backend.requests).toStrictEqual([{ kind: "read-file", seq: 0, id: "r1", path: "clock.nwk" }]);
   });
 
@@ -313,8 +333,38 @@ describe("desktop_bridge files", () => {
       });
     });
 
-    await expect(createDesktopBridge(backend.connection).readRunFile("r1", "../x")).rejects.toMatchObject({
+    await expect(
+      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).readRunFile("r1", "../x"),
+    ).rejects.toMatchObject({
       response: { code: "invalid_request" },
+    });
+  });
+
+  test("saveRunFile asks the shell to save the file and reports whether it was saved", async () => {
+    const backend = fakeBackend(() => undefined);
+    const shell = fakeShell({ picked: [], saved: { saved: true } });
+
+    await expect(createDesktopBridge(backend.connection, shell).saveRunFile("r1", "out/a.nwk", "a.nwk")).resolves.toBe(
+      true,
+    );
+    expect(shell.saves).toStrictEqual([{ id: "r1", path: "out/a.nwk", name: "a.nwk" }]);
+  });
+
+  test("saveRunArchive resolves false when the user cancels the save dialog", async () => {
+    const backend = fakeBackend(() => undefined);
+    const shell = fakeShell({ picked: [], saved: { saved: false } });
+
+    await expect(createDesktopBridge(backend.connection, shell).saveRunArchive("r1", "run.zip")).resolves.toBe(false);
+    expect(shell.saves).toStrictEqual([{ id: "r1", name: "run.zip" }]);
+  });
+
+  test("a save the back end refuses rejects with its typed error", async () => {
+    const response = { code: "invalid_request", message: "file path `../x` must name a file", causes: [] };
+    const backend = fakeBackend(() => undefined);
+    const shell = fakeShell({ picked: [], saved: { error: JSON.stringify(response) } });
+
+    await expect(createDesktopBridge(backend.connection, shell).saveRunFile("r1", "../x", "x")).rejects.toMatchObject({
+      response,
     });
   });
 
@@ -439,14 +489,30 @@ function fakeBackend(respond: Responder, { connected = true } = {}): FakeBackend
   return backend;
 }
 
-function fakeShell({ picked }: { picked: unknown }): DesktopShell & { connections: number } {
-  const shell = {
+interface FakeShell extends DesktopShell {
+  connections: number;
+  saves: unknown[];
+}
+
+function fakeShell({ picked, saved = null }: { picked: unknown; saved?: unknown }): FakeShell {
+  const shell: FakeShell = {
     connections: 0,
+    saves: [],
     connectBackend() {
       shell.connections += 1;
     },
     pickFiles: () => Promise.resolve(picked),
     pathForFile: () => "",
+    saveRunFile: (request: unknown) => {
+      shell.saves.push(request);
+
+      return Promise.resolve(saved);
+    },
+    saveRunArchive: (request: unknown) => {
+      shell.saves.push(request);
+
+      return Promise.resolve(saved);
+    },
   };
 
   return shell;

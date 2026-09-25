@@ -7,6 +7,7 @@ mod tests {
   use helpers::{ancestral_request, call, wait_for_terminal};
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
+  use std::fs;
   use tempfile::tempdir;
   use treetime_utils::assert_error;
 
@@ -77,6 +78,45 @@ mod tests {
       format!("run `{}` has already started", record.id.as_str())
     );
     wait_for_terminal(&service, &record);
+  }
+
+  #[test]
+  fn test_backend_saves_a_run_file_and_the_archive_to_chosen_paths() {
+    let root = tempdir().unwrap();
+    let target = tempdir().unwrap();
+    let service = DesktopService::open(root.path()).unwrap();
+    let record: RunRecord = call(
+      &service,
+      &json!({ "operation": "create-run", "args": { "request": ancestral_request(false) } }),
+    );
+    wait_for_terminal(&service, &record);
+
+    let file = target.path().join("tree.nwk");
+    let archive = target.path().join("run.zip");
+    service.save_run_file(&record.id, "ancestral.nwk", &file).unwrap();
+    service.save_run_archive(&record.id, &archive).unwrap();
+
+    let source = service.resolve_run_file(&record.id, "ancestral.nwk").unwrap();
+    assert_eq!(
+      (fs::read(&source).unwrap(), service.runs().zip(&record.id).unwrap()),
+      (fs::read(&file).unwrap(), fs::read(&archive).unwrap())
+    );
+  }
+
+  #[test]
+  fn test_backend_refuses_to_save_a_file_outside_the_run_folder() {
+    let root = tempdir().unwrap();
+    let target = tempdir().unwrap();
+    let service = DesktopService::open(root.path()).unwrap();
+    let record: RunRecord = call(
+      &service,
+      &json!({ "operation": "create-run", "args": { "request": ancestral_request(true) } }),
+    );
+    assert_error!(
+      service.save_run_file(&record.id, "../run.json", &target.path().join("run.json")),
+      "file path `../run.json` must name a file inside the run's output folder"
+    );
+    assert_eq!(0, fs::read_dir(target.path()).unwrap().count());
   }
 
   mod helpers {

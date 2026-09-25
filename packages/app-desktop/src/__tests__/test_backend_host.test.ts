@@ -2,7 +2,7 @@ import { BridgeError } from "@neherlab/app-contracts";
 import type { Subscription } from "@neherlab/app-napi";
 import { describe, expect, test } from "vitest";
 
-import { serveBackend, type AddonBackend } from "../backend-host";
+import { saveRunFiles, serveBackend, type AddonBackend, type ReadChunks } from "../backend-host";
 import {
   portEndpoint,
   zBackendReply,
@@ -89,18 +89,74 @@ describe("backend_host requests", () => {
     expect(unsubscribed).toStrictEqual(["r1", "r2"]);
   });
 
-  test("a file read streams the bytes in chunks of one mebibyte", async () => {
-    const bytes = new Uint8Array((1 << 20) + 3).fill(7);
-    const host = hostWith({ readFile: () => Buffer.from(bytes) });
+  test("a file read streams the chunks of the file the back end resolves", async () => {
+    const resolved: string[][] = [];
+
+    const host = hostWith(
+      {
+        resolveRunFile: (id, path) => {
+          resolved.push([id, path]);
+
+          return Promise.resolve(JSON.stringify("/runs/r1/out/big.json"));
+        },
+      },
+      function* (path) {
+        yield new TextEncoder().encode(path);
+        yield new Uint8Array([7, 7, 7]);
+      },
+    );
 
     host.send({ kind: "read-file", seq: 5, id: "r1", path: "big.json" });
 
     const replies = await host.replies(3);
-    expect(replies.map((reply) => [reply.kind, reply.kind === "chunk" ? reply.bytes.byteLength : 0])).toStrictEqual([
-      ["chunk", 1 << 20],
-      ["chunk", 3],
-      ["end", 0],
+    expect([
+      resolved,
+      replies.map((reply) => [reply.kind, reply.kind === "chunk" ? Array.from(new Uint8Array(reply.bytes)).length : 0]),
+    ]).toStrictEqual([
+      [["r1", "big.json"]],
+      [
+        ["chunk", "/runs/r1/out/big.json".length],
+        ["chunk", 3],
+        ["end", 0],
+      ],
     ]);
+  });
+
+  test("a file outside the run folder answers with the error of the back end", async () => {
+    const error = '{"code":"invalid_request","message":"file path `../x` must name a file","causes":[]}';
+    const host = hostWith({ resolveRunFile: () => Promise.reject(new Error(error)) });
+
+    host.send({ kind: "read-file", seq: 6, id: "r1", path: "../x" });
+
+    await expect(host.replies(1)).resolves.toStrictEqual([{ kind: "error", seq: 6, error }]);
+  });
+});
+
+describe("backend_host saves", () => {
+  test("a file save writes through the addon and reports it", async () => {
+    const saves: string[][] = [];
+
+    const reply = await saveRunFiles(
+      addonWith({
+        saveRunFile: (id, path, destination) => {
+          saves.push([id, path, destination]);
+
+          return Promise.resolve("null");
+        },
+      }),
+      { kind: "save-file", seq: 3, id: "r1", path: "a.nwk", destination: "/home/user/a.nwk" },
+    );
+
+    expect([reply, saves]).toStrictEqual([{ kind: "saved", seq: 3 }, [["r1", "a.nwk", "/home/user/a.nwk"]]]);
+  });
+
+  test("an archive save that fails reports the error of the addon", async () => {
+    const reply = await saveRunFiles(
+      addonWith({ saveRunArchive: () => Promise.reject(new Error("When saving '/ro/r1.zip': permission denied")) }),
+      { kind: "save-archive", seq: 4, id: "r1", destination: "/ro/r1.zip" },
+    );
+
+    expect(reply).toStrictEqual({ kind: "error", seq: 4, error: "When saving '/ro/r1.zip': permission denied" });
   });
 });
 
@@ -114,14 +170,24 @@ describe("backend_host with the renderer bridge over a message channel", () => {
           ? Promise.resolve('{"version":"2.0.0"}')
           : Promise.reject(new Error('{"code":"not_found","message":"no run `r9`","causes":[]}')),
       subscribe: () => subscription(() => undefined),
-      readFile: () => Buffer.from([1, 2, 3]),
-      archive: () => Buffer.from([]),
+      resolveRunFile: () => Promise.resolve(JSON.stringify("/runs/r1/out/a.nwk")),
+      saveRunFile: () => Promise.resolve("null"),
+      saveRunArchive: () => Promise.resolve("null"),
     };
 
     const hostPort = nodePort(channel.port1);
     const rendererPort = nodePort(channel.port2);
-    serveBackend(portEndpoint<BackendRequest, BackendReply>(hostPort, zBackendRequest), addon);
-    const bridge = createDesktopBridge(connected(rendererPort));
+    serveBackend(portEndpoint<BackendRequest, BackendReply>(hostPort, zBackendRequest), addon, function* () {
+      yield new Uint8Array([1, 2, 3]);
+    });
+
+    const bridge = createDesktopBridge(connected(rendererPort), {
+      connectBackend: () => undefined,
+      pickFiles: () => Promise.resolve([]),
+      pathForFile: () => "",
+      saveRunFile: () => Promise.resolve({ saved: true }),
+      saveRunArchive: () => Promise.resolve({ saved: true }),
+    });
 
     try {
       await expect(bridge.version()).resolves.toStrictEqual({ version: "2.0.0" });
@@ -134,7 +200,7 @@ describe("backend_host with the renderer bridge over a message channel", () => {
   });
 });
 
-function hostWith(overrides: Partial<AddonBackend>) {
+function hostWith(overrides: Partial<AddonBackend>, readChunks: ReadChunks = noChunks) {
   const listeners: Array<(request: BackendRequest) => void> = [];
   const closeListeners: Array<() => void> = [];
   const received: BackendReply[] = [];
@@ -155,19 +221,7 @@ function hostWith(overrides: Partial<AddonBackend>) {
     },
   };
 
-  serveBackend(endpoint, {
-    call: () => Promise.reject(new Error("call is not part of this test")),
-    subscribe: () => {
-      throw new Error("subscribe is not part of this test");
-    },
-    readFile: () => {
-      throw new Error("readFile is not part of this test");
-    },
-    archive: () => {
-      throw new Error("archive is not part of this test");
-    },
-    ...overrides,
-  });
+  serveBackend(endpoint, addonWith(overrides), readChunks);
 
   return {
     send(request: BackendRequest) {
@@ -189,6 +243,19 @@ function hostWith(overrides: Partial<AddonBackend>) {
 
       return received;
     },
+  };
+}
+
+function addonWith(overrides: Partial<AddonBackend>): AddonBackend {
+  return {
+    call: () => Promise.reject(new Error("call is not part of this test")),
+    subscribe: () => {
+      throw new Error("subscribe is not part of this test");
+    },
+    resolveRunFile: () => Promise.reject(new Error("resolveRunFile is not part of this test")),
+    saveRunFile: () => Promise.reject(new Error("saveRunFile is not part of this test")),
+    saveRunArchive: () => Promise.reject(new Error("saveRunArchive is not part of this test")),
+    ...overrides,
   };
 }
 
@@ -219,4 +286,8 @@ function nodePort(port: InstanceType<typeof MessageChannel>["port1"]): PortLike 
       port.start();
     },
   };
+}
+
+function noChunks(): Iterable<Uint8Array> {
+  return [];
 }

@@ -5,9 +5,12 @@ import {
   BACKEND_PORT_REQUEST_CHANNEL,
   BACKEND_STOPPED_CHANNEL,
   PICK_FILES_CHANNEL,
+  SAVE_RUN_ARCHIVE_CHANNEL,
+  SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
 } from "./channels";
-import type { DesktopShell, ShellMessage } from "./desktop-bridge";
+import type { DesktopShell } from "./desktop-bridge";
+import type { ShellMessage } from "./shell-protocol";
 
 interface MainWorld {
   postMessage(message: ShellMessage, targetOrigin: string, transfer?: IpcRendererEvent["ports"]): void;
@@ -28,6 +31,8 @@ const shell: DesktopShell = {
     ipcRenderer.send(BACKEND_PORT_REQUEST_CHANNEL);
   },
   pickFiles: (request) => ipcRenderer.invoke(PICK_FILES_CHANNEL, request),
+  saveRunFile: (request) => ipcRenderer.invoke(SAVE_RUN_FILE_CHANNEL, request),
+  saveRunArchive: (request) => ipcRenderer.invoke(SAVE_RUN_ARCHIVE_CHANNEL, request),
   pathForFile: (file) => webUtils.getPathForFile(file),
 };
 

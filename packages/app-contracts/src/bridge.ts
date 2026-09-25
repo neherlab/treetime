@@ -168,7 +168,8 @@ export interface BridgeTransport {
   runEvents(id: string, options: TransportEventOptions): Promise<void>;
   runFiles(id: string): Promise<unknown>;
   readRunFile(id: string, path: string): Promise<Uint8Array>;
-  runArchive(id: string): Promise<Uint8Array>;
+  saveRunFile(id: string, path: string, name: string): Promise<boolean>;
+  saveRunArchive(id: string, name: string): Promise<boolean>;
   uploadInput(id: string, name: string, data: Blob): Promise<unknown>;
   runResults(id: string): Promise<unknown>;
   compareRuns(id: string, other: string): Promise<unknown>;
@@ -193,7 +194,8 @@ export interface TreeTimeBridge {
   followRun(id: string, options?: FollowRunOptions): Promise<TerminalEventResult>;
   runFiles(id: string): Promise<Array<Parsed<typeof zRunFile>>>;
   readRunFile(id: string, path: string): Promise<Uint8Array>;
-  runArchive(id: string): Promise<Uint8Array>;
+  saveRunFile(id: string, path: string, name: string): Promise<boolean>;
+  saveRunArchive(id: string, name: string): Promise<boolean>;
   uploadInput(id: string, name: string, data: Blob): Promise<Parsed<typeof zUploadedInput>>;
   runResults(id: string): Promise<RunResultsResult>;
   compareRuns(id: string, other: string): Promise<RunComparisonResult>;
@@ -325,7 +327,8 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
       return z.array(zRunFile).parse(await transport.runFiles(id));
     },
     readRunFile: (id, path) => transport.readRunFile(id, path),
-    runArchive: (id) => transport.runArchive(id),
+    saveRunFile: (id, path, name) => transport.saveRunFile(id, path, name),
+    saveRunArchive: (id, name) => transport.saveRunArchive(id, name),
     async uploadInput(id, name, data) {
       return zUploadedInput.parse(await transport.uploadInput(id, name, data));
     },

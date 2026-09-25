@@ -8,7 +8,6 @@ import { useRunFiles } from "../queries";
 import { downloadName, fileDescription, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
 import { Button, Toast } from "../ui";
-import { saveBytes } from "./download";
 import { Panel } from "./Panel";
 import { useCopy } from "./useCopy";
 
@@ -31,7 +30,7 @@ export function OutputFiles({
     setBusy(true);
 
     try {
-      saveBytes(await bridge.runArchive(record.id), downloadName(record.title, ".zip"), "application/zip");
+      await bridge.saveRunArchive(record.id, downloadName(record.title, ".zip"));
     } catch (failure: unknown) {
       toasts.add({
         title: "The archive cannot be downloaded",
@@ -109,11 +108,7 @@ function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
 
   const download = useCallback(async () => {
     try {
-      saveBytes(
-        await bridge.readRunFile(runId, file.path),
-        file.path.split("/").at(-1) ?? file.path,
-        "application/octet-stream",
-      );
+      await bridge.saveRunFile(runId, file.path, file.path.split("/").at(-1) ?? file.path);
     } catch (failure: unknown) {
       toasts.add({
         title: "The file cannot be downloaded",

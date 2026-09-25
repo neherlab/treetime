@@ -7,7 +7,7 @@ use app_commands::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
 use app_commands::results::compare::{RunComparison, compare_runs};
 use app_commands::results::run_results::{RunResults, run_results};
 use app_commands::run_config::{RunConfigRequest, RunConfigResponse, run_config};
-use app_commands::runs::files::RunFile;
+use app_commands::runs::files::{RunFile, write_run_zip};
 use app_commands::runs::manager::RunManager;
 use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
@@ -16,10 +16,13 @@ use app_datasets::{DatasetCatalog, discover_datasets};
 use eyre::{Report, WrapErr};
 use log::{error, info};
 use serde_json::Value;
-use std::path::Path;
+use std::fs::File;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use strum::VariantNames;
+use tempfile::NamedTempFile;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::env::env_var_optional;
 
@@ -38,6 +41,25 @@ impl DesktopService {
 
   pub fn runs(&self) -> &Arc<RunManager> {
     &self.runs
+  }
+
+  pub fn resolve_run_file(&self, id: &JobId, relative: &str) -> Result<PathBuf, Report> {
+    self.runs.file_path(id, relative)
+  }
+
+  pub fn save_run_file(&self, id: &JobId, relative: &str, destination: &Path) -> Result<(), Report> {
+    let source = self.runs.file_path(id, relative)?;
+    write_atomically(destination, |file| {
+      let mut reader = File::open(&source).wrap_err_with(|| format!("When opening '{}'", source.display()))?;
+      io::copy(&mut reader, file)?;
+      Ok(())
+    })
+  }
+
+  pub fn save_run_archive(&self, id: &JobId, destination: &Path) -> Result<(), Report> {
+    self.runs.get(id)?;
+    let out_dir = self.runs.store().out_dir(id);
+    write_atomically(destination, |file| write_run_zip(&out_dir, id.as_str(), file))
   }
 
   fn start(&self, id: &JobId, config: Option<Value>) -> Result<RunRecord, Report> {
@@ -59,6 +81,19 @@ impl DesktopService {
       .wrap_err_with(|| format!("When starting a thread for run `{}`", id.as_str()))?;
     Ok(record)
   }
+}
+
+fn write_atomically(destination: &Path, write: impl FnOnce(&mut File) -> Result<(), Report>) -> Result<(), Report> {
+  let dir = destination
+    .parent()
+    .filter(|dir| !dir.as_os_str().is_empty())
+    .unwrap_or_else(|| Path::new("."));
+  let mut file = NamedTempFile::new_in(dir).wrap_err_with(|| format!("When creating a file in '{}'", dir.display()))?;
+  write(file.as_file_mut())?;
+  file
+    .persist(destination)
+    .wrap_err_with(|| format!("When saving '{}'", destination.display()))?;
+  Ok(())
 }
 
 impl DesktopBackend for DesktopService {

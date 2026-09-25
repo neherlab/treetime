@@ -1,16 +1,17 @@
 import type { Backend, Subscription } from "@neherlab/app-napi";
+import * as z from "zod";
 
-import type { BackendRequest, HostEndpoint } from "./backend-protocol";
+import type { BackendRequest, ControlReply, HostEndpoint, SaveRequest } from "./backend-protocol";
 
 type Unsubscribe = Pick<Subscription, "unsubscribe">;
 
-export interface AddonBackend extends Pick<Backend, "call" | "readFile" | "archive"> {
+export interface AddonBackend extends Pick<Backend, "call" | "resolveRunFile" | "saveRunFile" | "saveRunArchive"> {
   subscribe(...args: Parameters<Backend["subscribe"]>): Unsubscribe;
 }
 
-const CHUNK_SIZE = 1 << 20;
+export type ReadChunks = (path: string) => AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
 
-export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): void {
+export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend, readChunks: ReadChunks): void {
   const subscriptions = new Map<number, Unsubscribe>();
 
   const answer = async (request: BackendRequest): Promise<void> => {
@@ -32,12 +33,16 @@ export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): voi
         subscriptions.get(request.seq)?.unsubscribe();
         subscriptions.delete(request.seq);
         break;
-      case "read-file":
-        sendBytes(endpoint, request.seq, backend.readFile(request.id, request.path));
+      case "read-file": {
+        const path = z.string().parse(JSON.parse(await backend.resolveRunFile(request.id, request.path)));
+
+        for await (const chunk of readChunks(path)) {
+          endpoint.post({ kind: "chunk", seq: request.seq, bytes: new Uint8Array(chunk).buffer });
+        }
+
+        endpoint.post({ kind: "end", seq: request.seq });
         break;
-      case "archive":
-        sendBytes(endpoint, request.seq, backend.archive(request.id));
-        break;
+      }
     }
   };
 
@@ -56,11 +61,14 @@ export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): voi
   });
 }
 
-function sendBytes(endpoint: HostEndpoint, seq: number, bytes: Uint8Array): void {
-  for (let offset = 0; offset < bytes.byteLength; offset += CHUNK_SIZE) {
-    const chunk = new Uint8Array(bytes.subarray(offset, offset + CHUNK_SIZE));
-    endpoint.post({ kind: "chunk", seq, bytes: chunk.buffer });
-  }
+export async function saveRunFiles(backend: AddonBackend, request: SaveRequest): Promise<ControlReply> {
+  try {
+    await (request.kind === "save-file"
+      ? backend.saveRunFile(request.id, request.path, request.destination)
+      : backend.saveRunArchive(request.id, request.destination));
 
-  endpoint.post({ kind: "end", seq });
+    return { kind: "saved", seq: request.seq };
+  } catch (error: unknown) {
+    return { kind: "error", seq: request.seq, error: error instanceof Error ? error.message : String(error) };
+  }
 }

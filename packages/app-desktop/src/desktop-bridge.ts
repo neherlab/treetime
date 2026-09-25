@@ -10,7 +10,6 @@ import {
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
-import * as z from "zod";
 
 import {
   portEndpoint,
@@ -20,14 +19,14 @@ import {
   type ClientEndpoint,
   type PortLike,
 } from "./backend-protocol";
-import { BACKEND_PORT_CHANNEL, BACKEND_STOPPED_CHANNEL } from "./channels";
-
-export const zShellMessage = z.discriminatedUnion("channel", [
-  z.object({ channel: z.literal(BACKEND_PORT_CHANNEL) }),
-  z.object({ channel: z.literal(BACKEND_STOPPED_CHANNEL), reason: z.string() }),
-]);
-
-export type ShellMessage = z.infer<typeof zShellMessage>;
+import { BACKEND_STOPPED_CHANNEL } from "./channels";
+import {
+  zSaveReply,
+  zShellMessage,
+  type SaveReply,
+  type SaveRunArchiveRequest,
+  type SaveRunFileRequest,
+} from "./shell-protocol";
 
 export interface BackendConnection {
   onEndpoint(listener: (endpoint: ClientEndpoint) => void): void;
@@ -48,6 +47,8 @@ export interface DesktopShell {
   connectBackend(): void;
   pickFiles(request: PickFilesRequest): Promise<unknown>;
   pathForFile(file: File): string;
+  saveRunFile(request: SaveRunFileRequest): Promise<unknown>;
+  saveRunArchive(request: SaveRunArchiveRequest): Promise<unknown>;
 }
 
 class LocalInputsError extends Error {
@@ -57,8 +58,8 @@ class LocalInputsError extends Error {
   }
 }
 
-export function createDesktopBridge(connection: BackendConnection): TreeTimeBridge {
-  return createBridge(createPortTransport(new BackendClient(connection)));
+export function createDesktopBridge(connection: BackendConnection, shell: DesktopShell): TreeTimeBridge {
+  return createBridge(createPortTransport(new BackendClient(connection), shell));
 }
 
 export function createLocalFiles(shell: DesktopShell): LocalFiles {
@@ -177,7 +178,7 @@ class BackendClient {
   }
 }
 
-function createPortTransport(client: BackendClient): BridgeTransport {
+function createPortTransport(client: BackendClient, shell: DesktopShell): BridgeTransport {
   function call(request: DesktopRequestInput): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const seq = client.open({
@@ -305,12 +306,21 @@ function createPortTransport(client: BackendClient): BridgeTransport {
     runEvents,
     runFiles: (id) => call({ operation: "run-files", args: { id } }),
     readRunFile: (id, path) => bytes((seq) => ({ kind: "read-file", seq, id, path })),
-    runArchive: (id) => bytes((seq) => ({ kind: "archive", seq, id })),
+    saveRunFile: async (id, path, name) => saved(zSaveReply.parse(await shell.saveRunFile({ id, path, name }))),
+    saveRunArchive: async (id, name) => saved(zSaveReply.parse(await shell.saveRunArchive({ id, name }))),
     uploadInput: () => Promise.reject(new LocalInputsError()),
     runResults: (id) => call({ operation: "run-results", args: { id } }),
     compareRuns: (id, other) => call({ operation: "compare-runs", args: { id, other } }),
     cladeInRuns: (request) => call({ operation: "clade-in-runs", args: { request } }),
   };
+}
+
+function saved(reply: SaveReply): boolean {
+  if ("error" in reply) {
+    throw bridgeErrorFromText(reply.error);
+  }
+
+  return reply.saved;
 }
 
 function concat(chunks: Uint8Array[]): Uint8Array {

@@ -204,6 +204,57 @@ describe("bridge_web queries and requests", () => {
     const bytes = await bridge.readRunFile("r1", "out/clock.nwk");
     expect(new TextDecoder().decode(bytes)).toBe("(A,B);");
   });
+
+  test("saveRunFile hands the file to the browser download under the given name", async () => {
+    const saved: Array<{ name: string; blob: Blob }> = [];
+    const fetchFn = routes({ "GET /api/runs/r1/file?path=out%2Fclock.nwk": () => new Response("(A,B);") });
+
+    const bridge = createWebBridge({
+      fetchFn,
+      saveBlob: (blob, name) => {
+        saved.push({ name, blob });
+      },
+    });
+
+    await expect(bridge.saveRunFile("r1", "out/clock.nwk", "clock.nwk")).resolves.toBe(true);
+    const contents = await Promise.all(saved.map(async ({ name, blob }) => [name, await blob.text()]));
+    expect(contents).toStrictEqual([["clock.nwk", "(A,B);"]]);
+  });
+
+  test("saveRunArchive downloads the archive of the run", async () => {
+    const names: string[] = [];
+    const fetchFn = routes({ "GET /api/runs/r1/archive": () => new Response("PK") });
+
+    const bridge = createWebBridge({
+      fetchFn,
+      saveBlob: (_blob, name) => {
+        names.push(name);
+      },
+    });
+
+    await expect(bridge.saveRunArchive("r1", "clock.zip")).resolves.toBe(true);
+    expect(names).toStrictEqual(["clock.zip"]);
+  });
+
+  test("a failed download rejects without saving", async () => {
+    const names: string[] = [];
+
+    const fetchFn = routes({
+      "GET /api/runs/r9/archive": () => json({ code: "not_found", message: "no run with id `r9`", causes: [] }, 404),
+    });
+
+    const bridge = createWebBridge({
+      fetchFn,
+      saveBlob: (_blob, name) => {
+        names.push(name);
+      },
+    });
+
+    await expect(bridge.saveRunArchive("r9", "r9.zip")).rejects.toThrow(
+      "GET runs/r9/archive: 404: no run with id `r9`",
+    );
+    expect(names).toStrictEqual([]);
+  });
 });
 
 describe("bridge_web run events", () => {

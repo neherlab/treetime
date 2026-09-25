@@ -4,11 +4,10 @@ use crate::subscription::EventForwarder;
 use app_commands::bridge::operations::DesktopRequest;
 use app_commands::job::JobId;
 use eyre::Report;
-use napi::bindgen_prelude::{AsyncTask, Buffer};
+use napi::bindgen_prelude::AsyncTask;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Env, Status, Task};
 use napi_derive::napi;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use treetime_utils::make_report;
@@ -60,18 +59,31 @@ impl Backend {
     Ok(Subscription { forwarder })
   }
 
-  #[napi]
-  pub fn read_file(&self, id: String, path: String) -> napi::Result<Buffer> {
-    guarded(|| {
-      let path = self.service.runs().file_path(&JobId::parse(&id)?, &path)?;
-      Ok(Buffer::from(fs::read(&path)?))
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn resolve_run_file(&self, id: String, path: String) -> AsyncTask<JsonTask> {
+    let service = Arc::clone(&self.service);
+    JsonTask::spawn(move || {
+      let resolved = service.resolve_run_file(&JobId::parse(&id)?, &path)?;
+      Ok(serde_json::to_string(&resolved)?)
     })
-    .map_err(|err| to_napi(&err))
   }
 
-  #[napi]
-  pub fn archive(&self, id: String) -> napi::Result<Buffer> {
-    guarded(|| Ok(Buffer::from(self.service.runs().zip(&JobId::parse(&id)?)?))).map_err(|err| to_napi(&err))
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn save_run_file(&self, id: String, path: String, destination: String) -> AsyncTask<JsonTask> {
+    let service = Arc::clone(&self.service);
+    JsonTask::spawn(move || {
+      service.save_run_file(&JobId::parse(&id)?, &path, Path::new(&destination))?;
+      Ok(serde_json::to_string(&())?)
+    })
+  }
+
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn save_run_archive(&self, id: String, destination: String) -> AsyncTask<JsonTask> {
+    let service = Arc::clone(&self.service);
+    JsonTask::spawn(move || {
+      service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))?;
+      Ok(serde_json::to_string(&())?)
+    })
   }
 }
 

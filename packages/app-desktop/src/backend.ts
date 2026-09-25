@@ -1,9 +1,13 @@
+import { createReadStream } from "node:fs";
+
 import { Backend } from "@neherlab/app-napi";
 import type { MessagePortMain } from "electron";
 
-import { serveBackend } from "./backend-host";
-import { zBackendRequest, type HostEndpoint } from "./backend-protocol";
+import { saveRunFiles, serveBackend } from "./backend-host";
+import { zBackendRequest, zControlRequest, type HostEndpoint, type SaveRequest } from "./backend-protocol";
 import { initDiagnostics } from "./diagnostics";
+
+const CHUNK_SIZE = 1 << 20;
 
 initDiagnostics("treetime-backend");
 
@@ -16,12 +20,32 @@ if (runsDir === undefined) {
 const backend = new Backend(runsDir);
 
 process.parentPort.on("message", (message) => {
-  const [port] = message.ports;
+  const control = zControlRequest.safeParse(message.data);
 
-  if (port !== undefined) {
-    serveBackend(portEndpoint(port), backend);
+  if (!control.success) {
+    console.warn("[TreeTime back end] ignored a malformed control message", control.error.message);
+
+    return;
   }
+
+  if (control.data.kind === "port") {
+    const [port] = message.ports;
+
+    if (port !== undefined) {
+      serveBackend(portEndpoint(port), backend, (path) => createReadStream(path, { highWaterMark: CHUNK_SIZE }));
+    }
+
+    return;
+  }
+
+  void save(control.data);
 });
+
+async function save(request: SaveRequest): Promise<void> {
+  const reply = await saveRunFiles(backend, request);
+  // oxlint-disable-next-line unicorn/require-post-message-target-origin -- the parent port of a utility process takes no target origin
+  process.parentPort.postMessage(reply);
+}
 
 function portEndpoint(port: MessagePortMain): HostEndpoint {
   return {
