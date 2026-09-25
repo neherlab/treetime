@@ -534,18 +534,41 @@ mod tests {
     assert_eq!(
       (
         json!("--relax"),
-        json!([2, 2]),
         json!("--branch-split-grid-n-points"),
         json!("input"),
-        json!("mat-pb"),
+        Value::Null,
       ),
       (
         schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-flag"].clone(),
-        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-num-args"].clone(),
         schemas["BranchSplitArgs"]["properties"]["n_points"]["x-cli-flag"].clone(),
         schemas["ClockConfig"]["properties"]["tree"]["x-path"].clone(),
-        schemas["ClockConfig"]["properties"]["output_selection"]["x-cli-values"]["MatPb"].clone(),
+        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-num-args"].clone(),
       )
+    );
+  }
+
+  #[test]
+  fn test_routes_openapi_carries_the_setting_catalog_of_every_command() {
+    let doc = api_doc().unwrap();
+    let commands = doc["x-setting-catalog"]["commands"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|settings| settings["command"].clone())
+      .collect::<Vec<_>>();
+    assert_eq!(
+      (
+        vec![
+          json!("timetree"),
+          json!("optimize"),
+          json!("prune"),
+          json!("ancestral"),
+          json!("clock"),
+          json!("mugration")
+        ],
+        true
+      ),
+      (commands, doc["components"]["schemas"]["SettingCatalog"].is_object())
     );
   }
 

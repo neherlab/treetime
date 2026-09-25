@@ -1,12 +1,17 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::{AppCommand, CheckConfigRequest, CheckConfigResponse, check_config};
+  use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
+  use crate::check_inputs::{InputFacts, TreeFacts};
+  use crate::command::AppCommand;
   use crate::config::source::{ConfigProblem, ConfigSpan};
+  use crate::run_checks::CheckLevel;
+  use app_datasets::schema_directive;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use serde_json::{Map, json};
   use treetime_utils::assert_error;
+  use treetime_utils::o;
 
   #[test]
   fn test_check_config_valid_yaml_returns_config_with_defaults() {
@@ -18,8 +23,10 @@ mod tests {
         max_iter: 4
       "#}
       .to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
-    let CheckConfigResponse::Valid { config } = response else {
+    let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
     };
     assert_eq!(
@@ -38,8 +45,10 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: r#"{ "tree": "t.nwk", "method_anc": "parsimony" }"#.to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
-    let CheckConfigResponse::Valid { config } = response else {
+    let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
     };
     assert_eq!(json!("parsimony"), config["method_anc"]);
@@ -51,12 +60,15 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: text.to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
     let CheckConfigResponse::Invalid {
       message,
       causes,
       problems,
       rendered,
+      ..
     } = response
     else {
       panic!("expected an invalid config, got {response:?}");
@@ -85,6 +97,8 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "tree: t.nwk\nmethod_anc: margnal\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -110,6 +124,8 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Mugration,
       text: "tree: t.nwk\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -135,6 +151,8 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Clock,
       text: "tree: t.nwk\ntree: other.nwk\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -153,10 +171,16 @@ mod tests {
 
   #[test]
   fn test_check_config_response_serializes_with_status_tag() {
-    let response = CheckConfigResponse::Valid { config: Map::new() };
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Prune,
+      text: "tree: t.nwk\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
+    });
+    let value = serde_json::to_value(response).unwrap();
     assert_eq!(
-      json!({ "status": "valid", "config": {} }),
-      serde_json::to_value(response).unwrap()
+      (json!("valid"), json!("prune")),
+      (value["status"].clone(), value["command"].clone())
     );
   }
 
@@ -167,6 +191,145 @@ mod tests {
     assert_error!(
       result,
       "unknown variant `homoplasy`, expected one of `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`"
+    );
+  }
+
+  #[test]
+  fn test_check_config_schema_directive_selects_the_command() {
+    let text = format!("{}\ntree: t.nwk\nprune_empty: true\n", schema_directive("prune"));
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text,
+      inputs: Map::new(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Valid { command, config, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (AppCommand::Prune, json!(true)),
+      (command, config["prune_empty"].clone())
+    );
+  }
+
+  #[test]
+  fn test_check_config_directive_of_a_command_the_app_does_not_run_keeps_the_requested_command() {
+    let text = format!("{}\ntree: t.nwk\n", schema_directive("pipeline"));
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Prune,
+      text,
+      inputs: Map::new(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Valid { command, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(AppCommand::Prune, command);
+  }
+
+  #[test]
+  fn test_check_config_adds_the_inputs_the_text_does_not_set() {
+    let inputs = json!({ "tree": "draft.nwk", "alignment": ["draft.fasta"], "metadata": "draft.tsv" });
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "alignment: [\"text.fasta\"]\ndense: true".to_owned(),
+      inputs: inputs.as_object().unwrap().clone(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Valid { config, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (json!("draft.nwk"), json!(["text.fasta"]), json!(true)),
+      (
+        config["tree"].clone(),
+        config["alignment"].clone(),
+        config["dense"].clone()
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_config_problems_keep_their_places_in_the_text_when_inputs_are_added() {
+    let text = "definitely_not_a_real_field: 1";
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Prune,
+      text: text.to_owned(),
+      inputs: json!({ "tree": "draft.nwk" }).as_object().unwrap().clone(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Invalid { problems, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      vec![Some(ConfigSpan {
+        offset: 0,
+        length: "definitely_not_a_real_field".len(),
+      })],
+      problems.into_iter().map(|problem| problem.span).collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_check_config_invalid_lists_messages_and_blocking_checks() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "tree: t.nwk\nmethod_anc: margnal\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Invalid { messages, checks, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      (
+        messages.clone(),
+        vec![
+          (o!("missing-alignment"), CheckLevel::Block, o!("Add an alignment file.")),
+          (o!("config-0"), CheckLevel::Block, messages[0].clone()),
+        ]
+      ),
+      (
+        messages,
+        checks
+          .into_iter()
+          .map(|check| (check.id, check.level, check.text))
+          .collect::<Vec<_>>()
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_config_valid_classifies_the_input_facts() {
+    let facts = InputFacts {
+      tips_without_sequence: Some(vec![o!("A")]),
+      tree: Some(TreeFacts {
+        tips: 3,
+        internal_nodes: 2,
+        polytomies: 0,
+        unnamed_tips: 0,
+        duplicate_tip_names: vec![],
+      }),
+      ..InputFacts::default()
+    };
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "tree: t.nwk\nalignment: [a.fasta]\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: Some(facts),
+    });
+    let CheckConfigResponse::Valid { checks, code, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (
+        vec![o!("1 of 3 tree tips have no sequence in the alignment: A")],
+        o!("treetime ancestral \\\n  --alignment a.fasta \\\n  --tree t.nwk \\\n  --output-all out")
+      ),
+      (
+        checks.into_iter().map(|check| check.text).collect::<Vec<_>>(),
+        code.command_line_text
+      )
     );
   }
 }

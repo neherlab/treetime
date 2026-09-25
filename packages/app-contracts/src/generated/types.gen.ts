@@ -2051,17 +2051,270 @@ export type MugrationConfig = {
 export type AppCommand = 'timetree' | 'optimize' | 'prune' | 'ancestral' | 'clock' | 'mugration';
 
 /**
+ * Facts about the input files of a run, read with the readers the commands use.
+ */
+export type InputFacts = {
+    /**
+     * Facts about the tree, when it could be read.
+     */
+    tree?: TreeFacts | null;
+    /**
+     * Facts about the alignment, when it could be read.
+     */
+    alignment?: AlignmentFacts | null;
+    /**
+     * Facts about the metadata table, when it could be read.
+     */
+    metadata?: MetadataFacts | null;
+    /**
+     * Tree tips without a metadata row; present when both the tree and the metadata could be read.
+     */
+    tips_without_metadata?: Array<string> | null;
+    /**
+     * Tree tips without a sequence; present when both the tree and the alignment could be read.
+     */
+    tips_without_sequence?: Array<string> | null;
+    /**
+     * Inputs that could not be read, with the reason.
+     */
+    problems: Array<InputProblem>;
+};
+
+/**
+ * Facts about a tree.
+ */
+export type TreeFacts = {
+    /**
+     * Number of tips.
+     */
+    tips: number;
+    /**
+     * Number of internal nodes, the root included.
+     */
+    internal_nodes: number;
+    /**
+     * Number of internal nodes with more than two children.
+     */
+    polytomies: number;
+    /**
+     * Number of tips without a name.
+     */
+    unnamed_tips: number;
+    /**
+     * Tip names that occur more than once.
+     */
+    duplicate_tip_names: Array<string>;
+};
+
+/**
+ * Facts about an alignment.
+ */
+export type AlignmentFacts = {
+    /**
+     * Number of sequences.
+     */
+    sequences: number;
+    /**
+     * Length of the shortest sequence.
+     */
+    min_length: number;
+    /**
+     * Length of the longest sequence; equal to `min_length` for an alignment.
+     */
+    max_length: number;
+    /**
+     * Sequence names that occur more than once.
+     */
+    duplicate_names: Array<string>;
+};
+
+/**
+ * Facts about a metadata table.
+ */
+export type MetadataFacts = {
+    /**
+     * Number of data rows.
+     */
+    rows: number;
+    /**
+     * Column names, in file order.
+     */
+    columns: Array<string>;
+    /**
+     * Column that holds the sample names.
+     */
+    id_column: string;
+    /**
+     * Column that holds the sampling dates, when one was found.
+     */
+    date_column?: string | null;
+    /**
+     * Facts about the sampling dates, when the date column could be read.
+     */
+    dates?: DateFacts | null;
+};
+
+/**
+ * Facts about the sampling dates of a metadata table.
+ */
+export type DateFacts = {
+    /**
+     * Samples with a date the date parser reads.
+     */
+    readable: number;
+    /**
+     * Samples whose date cannot be read, by name.
+     */
+    unreadable: Array<string>;
+    /**
+     * Samples whose date is a calendar day.
+     */
+    exact_days: number;
+    /**
+     * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
+     */
+    on_day_1_or_15: number;
+};
+
+/**
+ * An input that could not be read.
+ */
+export type InputProblem = {
+    /**
+     * Input the problem concerns.
+     */
+    input: InputKind;
+    /**
+     * The error, with its causes.
+     */
+    message: string;
+};
+
+/**
+ * Kind of input file.
+ */
+export type InputKind = 'tree' | 'metadata' | 'alignment';
+
+/**
  * Request to check a configuration.
  */
 export type CheckConfigRequest = {
     /**
-     * Command the configuration is for.
+     * Command the configuration is for, unless the text starts with the `yaml-language-server` schema directive of
+     * another command.
      */
     command: AppCommand;
     /**
      * Configuration as YAML or JSON text.
      */
     text: string;
+    /**
+     * Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
+     * into.
+     */
+    inputs?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Facts about the input files, from `check-inputs`, for the checks that depend on them.
+     */
+    input_facts?: InputFacts | null;
+};
+
+/**
+ * A command line and a YAML config that reproduce a configuration.
+ */
+export type ConfigCode = {
+    /**
+     * The command line, one flag per line.
+     */
+    command_line: Array<CodeLine>;
+    /**
+     * The command line as a shell reads it, with a line continuation after every flag but the last.
+     */
+    command_line_text: string;
+    /**
+     * The YAML config, line by line.
+     */
+    yaml: Array<CodeLine>;
+    /**
+     * The YAML config as a file holds it.
+     */
+    yaml_text: string;
+};
+
+/**
+ * One line of a command line or a YAML config.
+ */
+export type CodeLine = {
+    /**
+     * Text of the line.
+     */
+    text: string;
+    /**
+     * What the line sets.
+     */
+    kind: CodeLineKind;
+};
+
+/**
+ * What a line of a command line or a YAML config sets.
+ */
+export type CodeLineKind = 'command' | 'input' | 'changed' | 'output' | 'comment';
+
+/**
+ * A finding about a configuration and its input files, before a run.
+ */
+export type RunCheck = {
+    /**
+     * Identifier of the check, stable across calls for the same finding.
+     */
+    id: string;
+    /**
+     * How the finding affects the run.
+     */
+    level: CheckLevel;
+    /**
+     * The finding, as a sentence.
+     */
+    text: string;
+    /**
+     * Change of settings that resolves the finding, when there is one.
+     */
+    fix?: CheckFix | null;
+};
+
+/**
+ * How a finding affects the run.
+ */
+export type CheckLevel = 'block' | 'warn' | 'advice';
+
+/**
+ * Change of settings that resolves a finding.
+ */
+export type CheckFix = {
+    /**
+     * Label of the action, for example `Use covariation`.
+     */
+    label: string;
+    /**
+     * Settings to set.
+     */
+    patch: Array<SettingPatch>;
+};
+
+/**
+ * New value of one setting.
+ */
+export type SettingPatch = {
+    /**
+     * Key path of the setting.
+     */
+    path: Array<string>;
+    /**
+     * The value to set.
+     */
+    value: unknown;
 };
 
 /**
@@ -2104,11 +2357,30 @@ export type ConfigSpan = {
  * Outcome of checking a configuration without running it.
  */
 export type CheckConfigResponse = {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * The configuration with every default filled in.
+     */
     config: {
         [key: string]: unknown;
     };
+    /**
+     * The command line and the YAML config that reproduce the configuration.
+     */
+    code: ConfigCode;
+    /**
+     * Findings about the configuration and its input files.
+     */
+    checks: Array<RunCheck>;
     status: 'valid';
 } | {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
     /**
      * The error, as the CLI prints it.
      */
@@ -2125,6 +2397,14 @@ export type CheckConfigResponse = {
      * The problems drawn against the configuration text, when the text could be parsed.
      */
     rendered?: string | null;
+    /**
+     * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
+     */
+    messages: Array<string>;
+    /**
+     * Findings about the configuration and its input files; the rejection is among them.
+     */
+    checks: Array<RunCheck>;
     status: 'invalid';
 };
 
@@ -2153,6 +2433,10 @@ export type RunConfigResponse = {
     config: {
         [key: string]: unknown;
     };
+    /**
+     * The command line and the YAML config that reproduce the run.
+     */
+    code: ConfigCode;
     /**
      * Hash that a run of this configuration records, to find finished runs with the same settings and input
      * contents; absent when an input cannot be read.
@@ -2374,151 +2658,6 @@ export type CheckInputsRequest = {
      * Name of the metadata column that holds the sampling dates; detected when absent.
      */
     date_column?: string | null;
-};
-
-/**
- * Facts about a tree.
- */
-export type TreeFacts = {
-    /**
-     * Number of tips.
-     */
-    tips: number;
-    /**
-     * Number of internal nodes, the root included.
-     */
-    internal_nodes: number;
-    /**
-     * Number of internal nodes with more than two children.
-     */
-    polytomies: number;
-    /**
-     * Number of tips without a name.
-     */
-    unnamed_tips: number;
-    /**
-     * Tip names that occur more than once.
-     */
-    duplicate_tip_names: Array<string>;
-};
-
-/**
- * Facts about an alignment.
- */
-export type AlignmentFacts = {
-    /**
-     * Number of sequences.
-     */
-    sequences: number;
-    /**
-     * Length of the shortest sequence.
-     */
-    min_length: number;
-    /**
-     * Length of the longest sequence; equal to `min_length` for an alignment.
-     */
-    max_length: number;
-    /**
-     * Sequence names that occur more than once.
-     */
-    duplicate_names: Array<string>;
-};
-
-/**
- * Facts about a metadata table.
- */
-export type MetadataFacts = {
-    /**
-     * Number of data rows.
-     */
-    rows: number;
-    /**
-     * Column names, in file order.
-     */
-    columns: Array<string>;
-    /**
-     * Column that holds the sample names.
-     */
-    id_column: string;
-    /**
-     * Column that holds the sampling dates, when one was found.
-     */
-    date_column?: string | null;
-    /**
-     * Facts about the sampling dates, when the date column could be read.
-     */
-    dates?: DateFacts | null;
-};
-
-/**
- * Facts about the sampling dates of a metadata table.
- */
-export type DateFacts = {
-    /**
-     * Samples with a date the date parser reads.
-     */
-    readable: number;
-    /**
-     * Samples whose date cannot be read, by name.
-     */
-    unreadable: Array<string>;
-    /**
-     * Samples whose date is a calendar day.
-     */
-    exact_days: number;
-    /**
-     * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
-     */
-    on_day_1_or_15: number;
-};
-
-/**
- * An input that could not be read.
- */
-export type InputProblem = {
-    /**
-     * Input the problem concerns.
-     */
-    input: InputKind;
-    /**
-     * The error, with its causes.
-     */
-    message: string;
-};
-
-/**
- * Kind of input file.
- */
-export type InputKind = 'tree' | 'metadata' | 'alignment';
-
-/**
- * Facts about the input files of a run, read with the readers the commands use.
- */
-export type InputFacts = {
-    /**
-     * Facts about the tree, when it could be read.
-     */
-    tree?: TreeFacts | null;
-    /**
-     * Facts about the alignment, when it could be read.
-     */
-    alignment?: AlignmentFacts | null;
-    /**
-     * Facts about the metadata table, when it could be read.
-     */
-    metadata?: MetadataFacts | null;
-    /**
-     * Tree tips without a metadata row; present when both the tree and the metadata could be read.
-     */
-    tips_without_metadata?: Array<string> | null;
-    /**
-     * Tree tips without a sequence; present when both the tree and the alignment could be read.
-     */
-    tips_without_sequence?: Array<string> | null;
-    /**
-     * Inputs that could not be read, with the reason.
-     */
-    problems: Array<InputProblem>;
 };
 
 /**
@@ -2873,6 +3012,148 @@ export type UploadedInput = {
      * SHA-256 of the contents, as lowercase hexadecimal.
      */
     sha256: string;
+};
+
+/**
+ * Settings of one command.
+ */
+export type CommandSettings = {
+    /**
+     * The command.
+     */
+    command: AppCommand;
+    /**
+     * Input files the command reads, in the order the form asks for them.
+     */
+    inputs: Array<CommandInput>;
+    /**
+     * Whether the command reads sampling dates from the metadata.
+     */
+    uses_dates: boolean;
+    /**
+     * Setting groups, in the order `treetime <command> --help` lists their headings.
+     */
+    groups: Array<string>;
+    /**
+     * Every setting of the command, by group, in the order `--help` lists them.
+     */
+    settings: Array<SettingSpec>;
+};
+
+/**
+ * An input file an app command reads.
+ */
+export type CommandInput = {
+    /**
+     * Kind of the file; also the setting that names it.
+     */
+    kind: InputKind;
+    /**
+     * Whether a run of the app needs the file.
+     */
+    need: InputNeed;
+};
+
+/**
+ * How much a run of the app needs an input file.
+ */
+export type InputNeed = 'required' | 'recommended' | 'optional';
+
+/**
+ * One setting of a command.
+ */
+export type SettingSpec = {
+    /**
+     * Key path of the setting joined with `.`, for example `branch_split.method`.
+     */
+    key: string;
+    /**
+     * Key path of the setting in the configuration.
+     */
+    path: Array<string>;
+    /**
+     * Command-line flag, for example `--clock-rate`.
+     */
+    flag: string;
+    /**
+     * Heading of the setting in `--help`.
+     */
+    group: string;
+    /**
+     * What the setting names: a file, or a value.
+     */
+    role: SettingRole;
+    /**
+     * Form of the value, which selects the control that edits it.
+     */
+    kind: SettingKind;
+    /**
+     * Whether the setting can be unset.
+     */
+    nullable: boolean;
+    /**
+     * Allowed values of an `enum` or `enum-list` setting.
+     */
+    options: Array<SettingOption>;
+    /**
+     * Type of the items of a `list` setting.
+     */
+    item_kind: ListItemKind;
+    /**
+     * Value of the setting when the configuration does not set it.
+     */
+    default_value: unknown;
+    /**
+     * Smallest allowed value of a number, when there is one.
+     */
+    minimum?: number | null;
+    /**
+     * First paragraph of the setting's description.
+     */
+    help: string;
+    /**
+     * Remaining paragraphs of the setting's description.
+     */
+    more: string;
+};
+
+/**
+ * What a setting names.
+ */
+export type SettingRole = 'setting' | 'input' | 'input-template' | 'output';
+
+/**
+ * Form of a setting's value.
+ */
+export type SettingKind = 'switch' | 'tristate' | 'enum' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
+
+/**
+ * One allowed value of a setting.
+ */
+export type SettingOption = {
+    /**
+     * The value, as the configuration spells it.
+     */
+    value: string;
+    /**
+     * Description of the value, when it has one.
+     */
+    help: string;
+};
+
+/**
+ * Type of the items of a list setting.
+ */
+export type ListItemKind = 'string' | 'number' | 'integer';
+
+/**
+ * Settings of every command the app runs, as the settings form shows them.
+ */
+export type SettingCatalog = {
+    /**
+     * Settings of each command.
+     */
+    commands: Array<CommandSettings>;
 };
 
 export type ConfigCheckData = {

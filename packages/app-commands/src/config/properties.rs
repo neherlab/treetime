@@ -11,12 +11,6 @@ pub const PATH_ROLE_KEY: &str = "x-path";
 
 pub const CLI_FLAG_KEY: &str = "x-cli-flag";
 
-pub const CLI_NUM_ARGS_KEY: &str = "x-cli-num-args";
-
-pub const CLI_VALUE_DELIMITER_KEY: &str = "x-cli-value-delimiter";
-
-pub const CLI_VALUES_KEY: &str = "x-cli-values";
-
 pub fn leaf_properties(schema: &Value) -> Result<Vec<LeafProperty>, Report> {
   let mut leaves = Vec::new();
   let mut visited_defs = BTreeSet::new();

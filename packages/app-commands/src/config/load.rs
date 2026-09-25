@@ -24,7 +24,7 @@ pub fn check_command_config(source: &ConfigSource, value: &Value, schema: &Schem
   render_and_bail(source, "invalid configuration", diags)
 }
 
-fn merge_value(base: &mut Value, overlay: &Value) {
+pub fn merge_value(base: &mut Value, overlay: &Value) {
   match (base, overlay) {
     (Value::Object(base), Value::Object(overlay)) => {
       for (key, value) in overlay {

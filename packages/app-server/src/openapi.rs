@@ -1,5 +1,7 @@
+use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
-use app_commands::command::{AppCommand, CheckConfigRequest, CheckConfigResponse, CommandOutcome};
+use app_commands::command::{AppCommand, CommandOutcome};
+use app_commands::config::catalog::{SettingCatalog, setting_catalog};
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
@@ -19,6 +21,7 @@ use treetime_utils::{make_error, make_report};
 
 const DEFS_PREFIX: &str = "#/$defs/";
 const COMPONENTS_PREFIX: &str = "#/components/schemas/";
+const SETTING_CATALOG_KEY: &str = "x-setting-catalog";
 
 pub(crate) fn config_component(command: AppCommand) -> String {
   let name: &str = command.into();
@@ -62,6 +65,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<RunEvent>(&mut components)?;
   add_type::<RunFile>(&mut components)?;
   add_type::<UploadedInput>(&mut components)?;
+  add_type::<SettingCatalog>(&mut components)?;
 
   let schemas = doc
     .pointer_mut("/components/schemas")
@@ -70,6 +74,15 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   for (name, schema) in components {
     insert_unique(schemas, &name, schema)?;
   }
+  Ok(())
+}
+
+pub(crate) fn add_setting_catalog(doc: &mut Value) -> Result<(), Report> {
+  let catalog = serde_json::to_value(setting_catalog()?)?;
+  doc
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
+    .insert(SETTING_CATALOG_KEY.to_owned(), catalog);
   Ok(())
 }
 

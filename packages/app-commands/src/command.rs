@@ -1,3 +1,4 @@
+use crate::check_inputs::{CommandInput, InputKind, InputNeed};
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
 use crate::commands::ancestral::run::run_ancestral_reconstruction;
 use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
@@ -15,11 +16,11 @@ use crate::commands::shared::output_args::{
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
-use crate::config::load::{check_command_config, load_config_document};
+use crate::config::load::{check_command_config, load_config_document, merge_value};
 use crate::config::properties::{PathRole, leaf_properties};
 use crate::config::schema::command_schema;
 use crate::config::settings::{remove_setting, setting_ref};
-use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig};
+use crate::config::source::ConfigSource;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::{Command, CommandFactory};
@@ -80,6 +81,47 @@ impl AppCommand {
       Self::Clock => command_schema::<TreetimeClockArgsRaw>(),
       Self::Mugration => command_schema::<TreetimeMugrationArgsRaw>(),
     }
+  }
+
+  pub fn default_config(self) -> Result<Map<String, Value>, Report> {
+    match self {
+      Self::Timetree => settings_map(&TreetimeTimetreeArgsRaw::default()),
+      Self::Optimize => settings_map(&TreetimeOptimizeArgsRaw::default()),
+      Self::Prune => settings_map(&TreetimePruneArgsRaw::default()),
+      Self::Ancestral => settings_map(&TreetimeAncestralArgsRaw::default()),
+      Self::Clock => settings_map(&TreetimeClockArgsRaw::default()),
+      Self::Mugration => settings_map(&TreetimeMugrationArgsRaw::default()),
+    }
+  }
+
+  pub fn config_over_defaults(self, settings: &Value) -> Result<Map<String, Value>, Report> {
+    let mut config = Value::Object(self.default_config()?);
+    if settings.is_object() {
+      merge_value(&mut config, settings);
+    }
+    match config {
+      Value::Object(config) => Ok(config),
+      _ => make_error!("a command configuration must be a mapping of settings"),
+    }
+  }
+
+  pub const fn inputs(self) -> &'static [CommandInput] {
+    const TREE: CommandInput = CommandInput::new(InputKind::Tree, InputNeed::Required);
+    const METADATA: CommandInput = CommandInput::new(InputKind::Metadata, InputNeed::Required);
+    const ALIGNMENT: CommandInput = CommandInput::new(InputKind::Alignment, InputNeed::Required);
+    const ALIGNMENT_RECOMMENDED: CommandInput = CommandInput::new(InputKind::Alignment, InputNeed::Recommended);
+    const ALIGNMENT_OPTIONAL: CommandInput = CommandInput::new(InputKind::Alignment, InputNeed::Optional);
+    match self {
+      Self::Timetree => &[TREE, METADATA, ALIGNMENT_RECOMMENDED],
+      Self::Clock => &[TREE, METADATA, ALIGNMENT_OPTIONAL],
+      Self::Ancestral | Self::Optimize => &[TREE, ALIGNMENT],
+      Self::Mugration => &[TREE, METADATA],
+      Self::Prune => &[TREE, ALIGNMENT_OPTIONAL],
+    }
+  }
+
+  pub const fn uses_dates(self) -> bool {
+    matches!(self, Self::Timetree | Self::Clock)
   }
 
   #[cfg(feature = "clap")]
@@ -209,52 +251,6 @@ pub struct OutputFile {
   pub path: PathBuf,
   /// Output selection that produced the file.
   pub kind: OutputSelection,
-}
-
-/// Outcome of checking a configuration without running it.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "status", rename_all = "kebab-case")]
-pub enum CheckConfigResponse {
-  /// The configuration is accepted; `config` holds it with every default filled in.
-  Valid { config: Map<String, Value> },
-  /// The configuration is rejected.
-  Invalid {
-    /// The error, as the CLI prints it.
-    message: String,
-    /// The errors that caused `message`, outermost first.
-    causes: Vec<String>,
-    /// Problems found by parsing and by the schema check, empty for other errors.
-    problems: Vec<ConfigProblem>,
-    /// The problems drawn against the configuration text, when the text could be parsed.
-    rendered: Option<String>,
-  },
-}
-
-/// Request to check a configuration.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct CheckConfigRequest {
-  /// Command the configuration is for.
-  pub command: AppCommand,
-  /// Configuration as YAML or JSON text.
-  pub text: String,
-}
-
-pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
-  match request.command.prepare_text("config.yaml", &request.text) {
-    Ok(prepared) => CheckConfigResponse::Valid {
-      config: prepared.config,
-    },
-    Err(report) => {
-      let invalid = report.downcast_ref::<InvalidConfig>();
-      CheckConfigResponse::Invalid {
-        message: report.to_string(),
-        causes: report.chain().skip(1).map(ToString::to_string).collect(),
-        problems: invalid.map(|invalid| invalid.problems.clone()).unwrap_or_default(),
-        rendered: invalid.map(|invalid| invalid.rendered.clone()),
-      }
-    },
-  }
 }
 
 trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone {

@@ -1,10 +1,11 @@
 use crate::contract::{CancelRunResponse, ErrorResponse};
 use crate::error::AppError;
 use crate::events::run_events_sse;
-use crate::openapi::{add_components, schema_ref};
+use crate::openapi::{add_components, add_setting_catalog, schema_ref};
 use crate::state::AppState;
+use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
-use app_commands::command::{AppCommand, CheckConfigRequest, check_config};
+use app_commands::command::AppCommand;
 use app_commands::job::JobId;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::invalid;
@@ -83,6 +84,7 @@ pub fn api_doc() -> Result<Value, Report> {
 
   let mut doc = serde_json::to_value(api)?;
   add_components(&mut doc)?;
+  add_setting_catalog(&mut doc)?;
   for operation in operations() {
     describe_operation(&mut doc, &operation)?;
   }

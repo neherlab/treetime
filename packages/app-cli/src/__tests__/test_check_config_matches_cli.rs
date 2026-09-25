@@ -22,7 +22,9 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
-    use app_commands::command::{AppCommand, CheckConfigRequest, CheckConfigResponse, check_config};
+    use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
+    use app_commands::command::AppCommand;
+    use serde_json::Map;
     use std::fs;
     use tempfile::tempdir;
     use treetime::progress::NoopProgress;
@@ -49,6 +51,8 @@ mod tests {
       let response = check_config(&CheckConfigRequest {
         command,
         text: text.to_owned(),
+        inputs: Map::new(),
+        input_facts: None,
       });
       match response {
         CheckConfigResponse::Valid { .. } => panic!("check-config accepted the config"),

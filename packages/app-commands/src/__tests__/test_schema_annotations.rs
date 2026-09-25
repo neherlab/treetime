@@ -2,17 +2,15 @@
 mod tests {
   use crate::command::AppCommand;
   use crate::config::cli_flags::annotate_cli_flags;
-  use crate::config::properties::{
-    CLI_FLAG_KEY, CLI_NUM_ARGS_KEY, CLI_VALUE_DELIMITER_KEY, CLI_VALUES_KEY, PathRole, leaf_properties,
-  };
+  use crate::config::properties::{CLI_FLAG_KEY, PathRole, leaf_properties};
   use clap::Arg;
-  use helpers::{annotated_property, annotated_schema, path_hinted_args};
+  use helpers::{annotated_schema, path_hinted_args};
   use itertools::Itertools;
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use schemars::Schema;
-  use serde_json::{Value, json};
+  use serde_json::json;
   use std::collections::BTreeSet;
   use strum::IntoEnumIterator;
   use treetime_utils::assert_error;
@@ -101,77 +99,6 @@ mod tests {
       Some(expected),
       schema.pointer(&leaf.schema_pointer).unwrap()[CLI_FLAG_KEY].as_str()
     );
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::switch(          AppCommand::Timetree, &["confidence"],          json!([0, 0]),    None)]
-  #[case::optional_bool(   AppCommand::Ancestral,&["dense"],               json!([1, 1]),    None)]
-  #[case::pair(            AppCommand::Timetree, &["relax"],               json!([2, 2]),    None)]
-  #[case::optional_value(  AppCommand::Optimize, &["reroot"],              json!([0, 1]),    None)]
-  #[case::comma_list(      AppCommand::Clock,    &["output_selection"],    json!([1, 1]),    Some(","))]
-  #[case::repeated_list(   AppCommand::Timetree, &["model_params"],        json!([1, 1]),    None)]
-  #[case::nested_number(   AppCommand::Clock,    &["branch_split", "n_points"], json!([1, 1]), None)]
-  #[trace]
-  fn test_schema_annotations_value_syntax_of_setting(
-    #[case] command: AppCommand,
-    #[case] key_path: &[&str],
-    #[case] num_args: Value,
-    #[case] delimiter: Option<&str>,
-  ) {
-    let property = annotated_property(command, key_path);
-    assert_eq!(
-      (&num_args, delimiter),
-      (&property[CLI_NUM_ARGS_KEY], property[CLI_VALUE_DELIMITER_KEY].as_str())
-    );
-  }
-
-  #[test]
-  fn test_schema_annotations_output_selection_values_map_to_kebab_case_cli_values() {
-    let property = annotated_property(AppCommand::Timetree, &["output_selection"]);
-    assert_eq!(
-      (
-        Some("mat-pb"),
-        Some("augur-node-data"),
-        Some("clock-model"),
-        Some("all")
-      ),
-      (
-        property[CLI_VALUES_KEY]["MatPb"].as_str(),
-        property[CLI_VALUES_KEY]["AugurNodeData"].as_str(),
-        property[CLI_VALUES_KEY]["ClockModel"].as_str(),
-        property[CLI_VALUES_KEY]["All"].as_str()
-      )
-    );
-  }
-
-  #[test]
-  fn test_schema_annotations_kebab_case_enum_values_map_to_themselves() {
-    let property = annotated_property(AppCommand::Timetree, &["reroot"]);
-    assert_eq!(
-      json!({
-        "least-squares": "least-squares",
-        "min-dev": "min-dev",
-        "oldest": "oldest",
-        "clock-filter": "clock-filter",
-      }),
-      property[CLI_VALUES_KEY]
-    );
-  }
-
-  #[test]
-  fn test_schema_annotations_every_setting_of_every_command_has_its_value_syntax() {
-    for command in AppCommand::iter() {
-      let schema = annotated_schema(command);
-      for leaf in leaf_properties(&schema).unwrap() {
-        let num_args = &schema.pointer(&leaf.schema_pointer).unwrap()[CLI_NUM_ARGS_KEY];
-        assert!(
-          num_args.as_array().is_some_and(|range| range.len() == 2),
-          "{command}: `{}` has no value syntax",
-          leaf.key_path.join(".")
-        );
-      }
-    }
   }
 
   #[test]
@@ -288,7 +215,6 @@ mod tests {
   mod helpers {
     use crate::command::AppCommand;
     use crate::config::cli_flags::annotate_cli_flags;
-    use crate::config::properties::leaf_properties;
     use clap::{Command, ValueHint};
     use serde_json::Value;
     use std::collections::BTreeSet;
@@ -297,16 +223,6 @@ mod tests {
       let mut schema = command.config_schema();
       annotate_cli_flags(&mut schema, &command.cli_command()).unwrap();
       schema.as_value().clone()
-    }
-
-    pub(super) fn annotated_property(command: AppCommand, key_path: &[&str]) -> Value {
-      let schema = annotated_schema(command);
-      let leaf = leaf_properties(&schema)
-        .unwrap()
-        .into_iter()
-        .find(|leaf| leaf.key_path == key_path)
-        .unwrap();
-      schema.pointer(&leaf.schema_pointer).unwrap().clone()
     }
 
     pub(super) fn path_hinted_args(command: &Command) -> BTreeSet<String> {

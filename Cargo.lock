@@ -177,6 +177,7 @@ dependencies = [
 name = "app-commands"
 version = "1.0.0"
 dependencies = [
+ "app-datasets",
  "app-output",
  "approx",
  "bon",
@@ -205,6 +206,7 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "sha2",
+ "shlex",
  "smart-default",
  "strsim",
  "strum 0.27.2",

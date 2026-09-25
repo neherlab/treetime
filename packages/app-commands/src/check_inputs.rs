@@ -129,6 +129,43 @@ pub enum InputKind {
   Alignment,
 }
 
+impl InputKind {
+  pub const fn setting(self) -> &'static str {
+    match self {
+      Self::Tree => "tree",
+      Self::Metadata => "metadata",
+      Self::Alignment => "alignment",
+    }
+  }
+}
+
+/// An input file an app command reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CommandInput {
+  /// Kind of the file; also the setting that names it.
+  pub kind: InputKind,
+  /// Whether a run of the app needs the file.
+  pub need: InputNeed,
+}
+
+impl CommandInput {
+  pub const fn new(kind: InputKind, need: InputNeed) -> Self {
+    Self { kind, need }
+  }
+}
+
+/// How much a run of the app needs an input file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum InputNeed {
+  /// The run does not start without the file.
+  Required,
+  /// The run starts without the file, with less information.
+  Recommended,
+  /// The file adds information that the run can do without.
+  Optional,
+}
+
 pub fn check_inputs(request: &CheckInputsRequest) -> InputFacts {
   let mut facts = InputFacts::default();
   let mut problem = |input: InputKind, report: &Report| {

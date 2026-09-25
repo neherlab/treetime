@@ -1,4 +1,5 @@
 use crate::command::AppCommand;
+use crate::config::code::{ConfigCode, config_code};
 use crate::config::source::{ConfigProblem, InvalidConfig};
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
@@ -10,6 +11,35 @@ use std::path::Path;
 use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
+
+pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
+  let resolved = request
+    .command
+    .prepare_run(&request.config, Path::new(RUN_CONFIG_OUTPUT_DIR))
+    .and_then(|prepared| Ok((config_code(request.command, &prepared.config)?, prepared.config)));
+  match resolved {
+    Ok((code, config)) => {
+      let (config_hash, config_hash_error) = match config_hash(request.command, &config, confine) {
+        Ok(hash) => (Some(hash), None),
+        Err(report) => (None, Some(format!("{report:#}"))),
+      };
+      RunConfigResponse::Valid {
+        config,
+        code,
+        config_hash,
+        config_hash_error,
+      }
+    },
+    Err(report) => RunConfigResponse::Invalid {
+      message: report.to_string(),
+      causes: report.chain().skip(1).map(ToString::to_string).collect(),
+      problems: report
+        .downcast_ref::<InvalidConfig>()
+        .map(|invalid| invalid.problems.clone())
+        .unwrap_or_default(),
+    },
+  }
+}
 
 /// Request to resolve a configuration as a run resolves it, without running it.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -30,6 +60,8 @@ pub enum RunConfigResponse {
     /// The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
     /// `output_all` set to `out`.
     config: Map<String, Value>,
+    /// The command line and the YAML config that reproduce the run.
+    code: ConfigCode,
     /// Hash that a run of this configuration records, to find finished runs with the same settings and input
     /// contents; absent when an input cannot be read.
     config_hash: Option<String>,
@@ -45,33 +77,6 @@ pub enum RunConfigResponse {
     /// Problems found by parsing and by the schema check, empty for other errors.
     problems: Vec<ConfigProblem>,
   },
-}
-
-pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
-  match request
-    .command
-    .prepare_run(&request.config, Path::new(RUN_CONFIG_OUTPUT_DIR))
-  {
-    Ok(prepared) => {
-      let (config_hash, config_hash_error) = match config_hash(request.command, &prepared.config, confine) {
-        Ok(hash) => (Some(hash), None),
-        Err(report) => (None, Some(format!("{report:#}"))),
-      };
-      RunConfigResponse::Valid {
-        config: prepared.config,
-        config_hash,
-        config_hash_error,
-      }
-    },
-    Err(report) => RunConfigResponse::Invalid {
-      message: report.to_string(),
-      causes: report.chain().skip(1).map(ToString::to_string).collect(),
-      problems: report
-        .downcast_ref::<InvalidConfig>()
-        .map(|invalid| invalid.problems.clone())
-        .unwrap_or_default(),
-    },
-  }
 }
 
 fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: ConfigHook) -> Result<String, Report> {

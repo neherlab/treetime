@@ -653,11 +653,148 @@ export const zAppCommand = z.enum([
 ]);
 
 /**
+ * Facts about a tree.
+ */
+export const zTreeFacts = z.object({
+    tips: z.int().gte(0),
+    internal_nodes: z.int().gte(0),
+    polytomies: z.int().gte(0),
+    unnamed_tips: z.int().gte(0),
+    duplicate_tip_names: z.array(z.string())
+});
+
+/**
+ * Facts about an alignment.
+ */
+export const zAlignmentFacts = z.object({
+    sequences: z.int().gte(0),
+    min_length: z.int().gte(0),
+    max_length: z.int().gte(0),
+    duplicate_names: z.array(z.string())
+});
+
+/**
+ * Facts about the sampling dates of a metadata table.
+ */
+export const zDateFacts = z.object({
+    readable: z.int().gte(0),
+    unreadable: z.array(z.string()),
+    exact_days: z.int().gte(0),
+    on_day_1_or_15: z.int().gte(0)
+});
+
+/**
+ * Facts about a metadata table.
+ */
+export const zMetadataFacts = z.object({
+    rows: z.int().gte(0),
+    columns: z.array(z.string()),
+    id_column: z.string(),
+    date_column: z.string().nullish(),
+    dates: zDateFacts.nullish()
+});
+
+/**
+ * Kind of input file.
+ */
+export const zInputKind = z.enum([
+    'tree',
+    'metadata',
+    'alignment'
+]);
+
+/**
+ * An input that could not be read.
+ */
+export const zInputProblem = z.object({
+    input: zInputKind,
+    message: z.string()
+});
+
+/**
+ * Facts about the input files of a run, read with the readers the commands use.
+ */
+export const zInputFacts = z.object({
+    tree: zTreeFacts.nullish(),
+    alignment: zAlignmentFacts.nullish(),
+    metadata: zMetadataFacts.nullish(),
+    tips_without_metadata: z.array(z.string()).nullish(),
+    tips_without_sequence: z.array(z.string()).nullish(),
+    problems: z.array(zInputProblem)
+});
+
+/**
  * Request to check a configuration.
  */
 export const zCheckConfigRequest = z.object({
     command: zAppCommand,
-    text: z.string()
+    text: z.string(),
+    inputs: z.record(z.string(), z.unknown()).optional().default({}),
+    input_facts: zInputFacts.nullish().default(null)
+});
+
+/**
+ * What a line of a command line or a YAML config sets.
+ */
+export const zCodeLineKind = z.union([
+    z.literal('command'),
+    z.literal('input'),
+    z.literal('changed'),
+    z.literal('output'),
+    z.literal('comment')
+]);
+
+/**
+ * One line of a command line or a YAML config.
+ */
+export const zCodeLine = z.object({
+    text: z.string(),
+    kind: zCodeLineKind
+});
+
+/**
+ * A command line and a YAML config that reproduce a configuration.
+ */
+export const zConfigCode = z.object({
+    command_line: z.array(zCodeLine),
+    command_line_text: z.string(),
+    yaml: z.array(zCodeLine),
+    yaml_text: z.string()
+});
+
+/**
+ * How a finding affects the run.
+ */
+export const zCheckLevel = z.union([
+    z.literal('block'),
+    z.literal('warn'),
+    z.literal('advice')
+]);
+
+/**
+ * New value of one setting.
+ */
+export const zSettingPatch = z.object({
+    path: z.array(z.string()),
+    value: z.unknown()
+});
+
+/**
+ * Change of settings that resolves a finding.
+ */
+export const zCheckFix = z.object({
+    label: z.string(),
+    patch: z.array(zSettingPatch)
+});
+
+/**
+ * A finding about a configuration and its input files, before a run.
+ */
+export const zRunCheck = z.object({
+    id: z.string(),
+    level: zCheckLevel,
+    text: z.string(),
+    fix: zCheckFix.nullish()
 });
 
 /**
@@ -683,14 +820,20 @@ export const zConfigProblem = z.object({
  */
 export const zCheckConfigResponse = z.union([
     z.object({
+        command: zAppCommand,
         config: z.record(z.string(), z.unknown()),
+        code: zConfigCode,
+        checks: z.array(zRunCheck),
         status: z.literal('valid')
     }),
     z.object({
+        command: zAppCommand,
         message: z.string(),
         causes: z.array(z.string()),
         problems: z.array(zConfigProblem),
         rendered: z.string().nullish(),
+        messages: z.array(z.string()),
+        checks: z.array(zRunCheck),
         status: z.literal('invalid')
     })
 ]);
@@ -709,6 +852,7 @@ export const zRunConfigRequest = z.object({
 export const zRunConfigResponse = z.union([
     z.object({
         config: z.record(z.string(), z.unknown()),
+        code: zConfigCode,
         config_hash: z.string().nullish(),
         config_hash_error: z.string().nullish(),
         status: z.literal('valid')
@@ -896,77 +1040,6 @@ export const zCheckInputsRequest = z.object({
 });
 
 /**
- * Facts about a tree.
- */
-export const zTreeFacts = z.object({
-    tips: z.int().gte(0),
-    internal_nodes: z.int().gte(0),
-    polytomies: z.int().gte(0),
-    unnamed_tips: z.int().gte(0),
-    duplicate_tip_names: z.array(z.string())
-});
-
-/**
- * Facts about an alignment.
- */
-export const zAlignmentFacts = z.object({
-    sequences: z.int().gte(0),
-    min_length: z.int().gte(0),
-    max_length: z.int().gte(0),
-    duplicate_names: z.array(z.string())
-});
-
-/**
- * Facts about the sampling dates of a metadata table.
- */
-export const zDateFacts = z.object({
-    readable: z.int().gte(0),
-    unreadable: z.array(z.string()),
-    exact_days: z.int().gte(0),
-    on_day_1_or_15: z.int().gte(0)
-});
-
-/**
- * Facts about a metadata table.
- */
-export const zMetadataFacts = z.object({
-    rows: z.int().gte(0),
-    columns: z.array(z.string()),
-    id_column: z.string(),
-    date_column: z.string().nullish(),
-    dates: zDateFacts.nullish()
-});
-
-/**
- * Kind of input file.
- */
-export const zInputKind = z.enum([
-    'tree',
-    'metadata',
-    'alignment'
-]);
-
-/**
- * An input that could not be read.
- */
-export const zInputProblem = z.object({
-    input: zInputKind,
-    message: z.string()
-});
-
-/**
- * Facts about the input files of a run, read with the readers the commands use.
- */
-export const zInputFacts = z.object({
-    tree: zTreeFacts.nullish(),
-    alignment: zAlignmentFacts.nullish(),
-    metadata: zMetadataFacts.nullish(),
-    tips_without_metadata: z.array(z.string()).nullish(),
-    tips_without_sequence: z.array(z.string()).nullish(),
-    problems: z.array(zInputProblem)
-});
-
-/**
  * A directory of example input files.
  */
 export const zDatasetInfo = z.object({
@@ -1139,4 +1212,99 @@ export const zUploadedInput = z.object({
     path: z.string(),
     size: z.int().gte(0),
     sha256: z.string()
+});
+
+/**
+ * How much a run of the app needs an input file.
+ */
+export const zInputNeed = z.union([
+    z.literal('required'),
+    z.literal('recommended'),
+    z.literal('optional')
+]);
+
+/**
+ * An input file an app command reads.
+ */
+export const zCommandInput = z.object({
+    kind: zInputKind,
+    need: zInputNeed
+});
+
+/**
+ * What a setting names.
+ */
+export const zSettingRole = z.union([
+    z.literal('setting'),
+    z.literal('input'),
+    z.literal('input-template'),
+    z.literal('output')
+]);
+
+/**
+ * Form of a setting's value.
+ */
+export const zSettingKind = z.union([
+    z.literal('switch'),
+    z.literal('tristate'),
+    z.literal('enum'),
+    z.literal('integer'),
+    z.literal('number'),
+    z.literal('text'),
+    z.literal('list'),
+    z.literal('enum-list')
+]);
+
+/**
+ * One allowed value of a setting.
+ */
+export const zSettingOption = z.object({
+    value: z.string(),
+    help: z.string()
+});
+
+/**
+ * Type of the items of a list setting.
+ */
+export const zListItemKind = z.enum([
+    'string',
+    'number',
+    'integer'
+]);
+
+/**
+ * One setting of a command.
+ */
+export const zSettingSpec = z.object({
+    key: z.string(),
+    path: z.array(z.string()),
+    flag: z.string(),
+    group: z.string(),
+    role: zSettingRole,
+    kind: zSettingKind,
+    nullable: z.boolean(),
+    options: z.array(zSettingOption),
+    item_kind: zListItemKind,
+    default_value: z.unknown(),
+    minimum: z.number().nullish(),
+    help: z.string(),
+    more: z.string()
+});
+
+/**
+ * Settings of one command.
+ */
+export const zCommandSettings = z.object({
+    command: zAppCommand,
+    inputs: z.array(zCommandInput),
+    uses_dates: z.boolean(),
+    groups: z.array(z.string()),
+    settings: z.array(zSettingSpec)
+});
+
+/**
+ * Settings of every command the app runs, as the settings form shows them.
+ */
+export const zSettingCatalog = z.object({
+    commands: z.array(zCommandSettings)
 });

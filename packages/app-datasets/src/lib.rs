@@ -13,6 +13,7 @@ const SCHEMA_DIRECTIVE: &str = "yaml-language-server:";
 const SCHEMA_KEY: &str = "$schema=";
 const SCHEMA_FILE_PREFIX: &str = "input-config-";
 const SCHEMA_FILE_SUFFIX: &str = ".schema.json";
+const SCHEMA_URL_BASE: &str = "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas";
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
 
 pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DatasetCatalog, Report> {
@@ -66,13 +67,24 @@ pub struct ExampleConfig {
   pub content: String,
 }
 
+pub fn schema_directive(command: &str) -> String {
+  format!("# {SCHEMA_DIRECTIVE} {SCHEMA_KEY}{SCHEMA_URL_BASE}/{SCHEMA_FILE_PREFIX}{command}{SCHEMA_FILE_SUFFIX}")
+}
+
+pub fn text_schema_command(content: &str) -> Option<&str> {
+  schema_command(content.lines().map(str::trim).find(|line| !line.is_empty())?)
+}
+
 pub fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleConfig> {
-  let mut lines = content.lines().map(str::trim).skip_while(|line| line.is_empty());
-  let command = schema_command(lines.next()?)?;
+  let command = text_schema_command(content)?;
   if !commands.contains(&command) {
     return None;
   }
-  let title = lines
+  let title = content
+    .lines()
+    .map(str::trim)
+    .skip_while(|line| line.is_empty())
+    .skip(1)
     .filter_map(|line| line.strip_prefix('#'))
     .map(str::trim)
     .find(|text| !text.is_empty())?;

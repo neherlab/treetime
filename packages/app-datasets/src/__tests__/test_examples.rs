@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::{ExampleConfig, discover_datasets, parse_example_config};
+  use crate::{ExampleConfig, discover_datasets, parse_example_config, schema_directive, text_schema_command};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::path::Path;
@@ -108,5 +108,25 @@ mod tests {
       steps: []
     "#};
     assert_eq!(None, parse_example_config("pipeline.yaml", content, COMMANDS));
+  }
+
+  #[test]
+  fn test_examples_schema_directive_names_the_published_schema_of_the_command() {
+    assert_eq!(
+      "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json",
+      schema_directive("clock")
+    );
+  }
+
+  #[test]
+  fn test_examples_schema_directive_is_read_back_as_its_command() {
+    let content = format!("\n{}\ntree: tree.nwk\n", schema_directive("prune"));
+    assert_eq!(Some("prune"), text_schema_command(&content));
+  }
+
+  #[test]
+  fn test_examples_text_without_a_leading_directive_names_no_command() {
+    let content = format!("tree: tree.nwk\n{}\n", schema_directive("prune"));
+    assert_eq!(None, text_schema_command(&content));
   }
 }

@@ -1,6 +1,7 @@
 use crate::runs::{create_run, parse_id, start_run};
+use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
-use app_commands::command::{AppCommand, CheckConfigRequest, check_config};
+use app_commands::command::AppCommand;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::manager::{RunManager, StartedRun};

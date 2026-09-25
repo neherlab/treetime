@@ -81,6 +81,20 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_run_config_command_line_includes_the_run_outputs() {
+    let response = resolve(
+      AppCommand::Timetree,
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"] }),
+    );
+    assert_eq!(
+      json!(
+        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog' \\\n  --output-all out"
+      ),
+      response["code"]["command_line_text"]
+    );
+  }
+
   mod helpers {
     use crate::command::AppCommand;
     use crate::run_config::{RunConfigRequest, run_config};

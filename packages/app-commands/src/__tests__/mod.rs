@@ -1,9 +1,12 @@
 mod test_check_config;
 mod test_check_inputs;
+mod test_config_code;
 mod test_iteration_events;
 mod test_job;
 mod test_json_float;
 mod test_prepare_run;
 mod test_progress;
+mod test_run_checks;
 mod test_run_config;
 mod test_schema_annotations;
+mod test_setting_catalog;

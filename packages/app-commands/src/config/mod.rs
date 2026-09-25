@@ -1,5 +1,9 @@
 #[cfg(feature = "clap")]
+pub mod catalog;
+#[cfg(feature = "clap")]
 pub mod cli_flags;
+#[cfg(feature = "clap")]
+pub mod code;
 pub mod load;
 pub mod properties;
 pub mod schema;

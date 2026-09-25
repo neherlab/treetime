@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod __tests__;
 
+#[cfg(feature = "clap")]
+pub mod check_config;
 pub mod check_inputs;
 pub mod command;
 pub mod commands;
@@ -9,6 +11,8 @@ pub mod job;
 pub mod json_float;
 pub mod rtt_chart;
 mod rtt_chart_render;
+pub mod run_checks;
+#[cfg(feature = "clap")]
 pub mod run_config;
 pub mod runs;
 
