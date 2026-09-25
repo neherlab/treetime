@@ -5,7 +5,7 @@ export declare class RunService {
   create(requestJson: string): string
   start(id: string, configJson: string | null): Promise<string>
   cancel(id: string): boolean
-  subscribe(id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void): void
+  subscribe(id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void): Subscription
   update(id: string, requestJson: string): string
   delete(id: string): void
   restore(id: string): string
@@ -16,6 +16,10 @@ export declare class RunService {
   results(id: string): Promise<string>
   compare(id: string, other: string): Promise<string>
   cladeInRuns(requestJson: string): Promise<string>
+}
+
+export declare class Subscription {
+  unsubscribe(): void
 }
 
 export declare function checkConfigJson(requestJson: string): string

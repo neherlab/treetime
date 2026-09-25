@@ -2,7 +2,9 @@
 mod __tests__;
 
 pub mod exports;
+pub mod guard;
 pub mod runs;
+pub mod subscription;
 
 #[cfg(test)]
 mod tests {

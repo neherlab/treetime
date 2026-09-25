@@ -1,22 +1,22 @@
+use crate::guard::{guarded, guarded_json, to_napi};
 use crate::runs::{create_run, parse_id, start_run};
+use crate::subscription::EventForwarder;
+use app_commands::bridge::error::ErrorResponse;
 use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::AppCommand;
-use app_commands::job::JobId;
 use app_commands::results::clades::{CladeRequest, clade_in_runs};
 use app_commands::results::compare::compare_runs;
 use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
-use app_commands::runs::events::RunEvent;
-use app_commands::runs::manager::{RunManager, StartedRun};
+use app_commands::runs::manager::RunManager;
 use app_commands::runs::record::UpdateRunRequest;
 use app_datasets::discover_datasets;
-use log::error;
+use eyre::Report;
 use napi::bindgen_prelude::{AsyncTask, Buffer};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
-use napi::{Status, Task};
+use napi::{Env, Status, Task};
 use napi_derive::napi;
-use serde::Serialize;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
@@ -24,21 +24,25 @@ use std::sync::Arc;
 use strum::VariantNames;
 use treetime_schema::version_info;
 use treetime_utils::env::env_var_optional;
+use treetime_utils::make_report;
 
 const DATA_DIR_ENV: &str = "DATA_DIR";
 
+type EventCallback = Arc<ThreadsafeFunction<String, ()>>;
+
+type EventSink = Box<dyn Fn(String) -> bool + Send>;
+
 #[napi]
 pub fn version() -> napi::Result<String> {
-  to_json(&version_info())
+  sync_json(|| Ok(version_info()))
 }
 
 #[napi]
 pub fn datasets() -> napi::Result<String> {
-  let data_dir = env_var_optional(DATA_DIR_ENV)
-    .map_err(|err| to_napi(&err))?
-    .unwrap_or_else(|| "data".to_owned());
-  let catalog = discover_datasets(Path::new(&data_dir), AppCommand::VARIANTS).map_err(|err| to_napi(&err))?;
-  to_json(&catalog)
+  sync_json(|| {
+    let data_dir = env_var_optional(DATA_DIR_ENV)?.unwrap_or_else(|| "data".to_owned());
+    discover_datasets(Path::new(&data_dir), AppCommand::VARIANTS)
+  })
 }
 
 #[napi]
@@ -47,8 +51,10 @@ pub fn datasets() -> napi::Result<String> {
   reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
 )]
 pub fn check_config_json(request_json: String) -> napi::Result<String> {
-  let request: CheckConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-  to_json(&check_config(&request))
+  sync_json(|| {
+    let request: CheckConfigRequest = serde_json::from_str(&request_json)?;
+    Ok(check_config(&request))
+  })
 }
 
 #[napi]
@@ -57,35 +63,18 @@ pub fn check_config_json(request_json: String) -> napi::Result<String> {
   reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
 )]
 pub fn run_config_json(request_json: String) -> napi::Result<String> {
-  let request: RunConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-  to_json(&run_config(&request, Box::new(|_config: &mut Value| Ok(()))))
+  sync_json(|| {
+    let request: RunConfigRequest = serde_json::from_str(&request_json)?;
+    Ok(run_config(&request, Box::new(|_config: &mut Value| Ok(()))))
+  })
 }
 
 #[napi(ts_return_type = "Promise<string>")]
-#[allow(
-  clippy::needless_pass_by_value,
-  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-)]
-pub fn check_inputs_json(request_json: String) -> napi::Result<AsyncTask<CheckInputsTask>> {
-  let request: CheckInputsRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-  Ok(AsyncTask::new(CheckInputsTask { request }))
-}
-
-pub struct CheckInputsTask {
-  request: CheckInputsRequest,
-}
-
-impl Task for CheckInputsTask {
-  type Output = String;
-  type JsValue = String;
-
-  fn compute(&mut self) -> napi::Result<Self::Output> {
-    to_json(&check_inputs(&self.request))
-  }
-
-  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
-    Ok(output)
-  }
+pub fn check_inputs_json(request_json: String) -> AsyncTask<JsonTask> {
+  JsonTask::spawn(move || {
+    let request: CheckInputsRequest = serde_json::from_str(&request_json)?;
+    Ok(serde_json::to_string(&check_inputs(&request))?)
+  })
 }
 
 #[napi]
@@ -101,198 +90,162 @@ pub struct RunService {
 impl RunService {
   #[napi(constructor)]
   pub fn new(runs_dir: String) -> napi::Result<Self> {
-    Ok(Self {
-      runs: RunManager::open(Path::new(&runs_dir)).map_err(|err| to_napi(&err))?,
-    })
+    let runs = guarded(|| RunManager::open(Path::new(&runs_dir))).map_err(|err| to_napi(&err))?;
+    Ok(Self { runs })
   }
 
   #[napi]
   pub fn list(&self) -> napi::Result<String> {
-    to_json(&self.runs.list().map_err(|err| to_napi(&err))?)
+    sync_json(|| self.runs.list())
   }
 
   #[napi]
   pub fn get(&self, id: String) -> napi::Result<String> {
-    to_json(
-      &self
-        .runs
-        .get(&parse_id(&id).map_err(|err| to_napi(&err))?)
-        .map_err(|err| to_napi(&err))?,
-    )
+    sync_json(|| self.runs.get(&parse_id(&id)?))
   }
 
   #[napi]
   pub fn create(&self, request_json: String) -> napi::Result<String> {
-    to_json(&create_run(&self.runs, &request_json).map_err(|err| to_napi(&err))?)
+    sync_json(|| create_run(&self.runs, &request_json))
   }
 
   #[napi(
     ts_args_type = "id: string, configJson: string | null",
     ts_return_type = "Promise<string>"
   )]
-  pub fn start(&self, id: String, config_json: Option<String>) -> napi::Result<AsyncTask<RunTask>> {
-    let started = start_run(&self.runs, &id, config_json.as_deref()).map_err(|err| to_napi(&err))?;
-    Ok(AsyncTask::new(RunTask { run: Some(started) }))
+  pub fn start(&self, id: String, config_json: Option<String>) -> napi::Result<AsyncTask<JsonTask>> {
+    let started = guarded(|| start_run(&self.runs, &id, config_json.as_deref())).map_err(|err| to_napi(&err))?;
+    Ok(JsonTask::spawn(move || Ok(serde_json::to_string(&started.run())?)))
   }
 
   #[napi]
   pub fn cancel(&self, id: String) -> napi::Result<bool> {
-    self
-      .runs
-      .cancel(&parse_id(&id).map_err(|err| to_napi(&err))?)
-      .map_err(|err| to_napi(&err))
+    guarded(|| self.runs.cancel(&parse_id(&id)?)).map_err(|err| to_napi(&err))
   }
 
   #[napi(ts_args_type = "id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void")]
-  pub fn subscribe(&self, id: String, from: u32, on_event: Arc<ThreadsafeFunction<String, ()>>) -> napi::Result<()> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    let subscriber = Box::new(move |event: &RunEvent| match serde_json::to_string(event) {
-      Ok(json) => on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok,
-      Err(err) => {
-        error!("When serializing a run event: {err}");
-        false
-      },
-    });
-    self
-      .runs
-      .subscribe(
-        &id,
-        usize::try_from(from).map_err(|err| to_napi(&err.into()))?,
-        subscriber,
-      )
-      .map_err(|err| to_napi(&err))
+  pub fn subscribe(&self, id: String, from: u32, on_event: EventCallback) -> napi::Result<Subscription> {
+    let send: EventSink =
+      Box::new(move |json: String| on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok);
+    let forwarder = EventForwarder::new(send);
+    guarded(|| {
+      self
+        .runs
+        .subscribe(&parse_id(&id)?, usize::try_from(from)?, forwarder.subscriber())
+    })
+    .map_err(|err| to_napi(&err))?;
+    Ok(Subscription { forwarder })
   }
 
   #[napi]
   pub fn update(&self, id: String, request_json: String) -> napi::Result<String> {
-    let request: UpdateRunRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    to_json(&self.runs.update(&id, request).map_err(|err| to_napi(&err))?)
+    sync_json(|| {
+      let request: UpdateRunRequest = serde_json::from_str(&request_json)?;
+      self.runs.update(&parse_id(&id)?, request)
+    })
   }
 
   #[napi]
   pub fn delete(&self, id: String) -> napi::Result<()> {
-    self
-      .runs
-      .delete(&parse_id(&id).map_err(|err| to_napi(&err))?)
-      .map_err(|err| to_napi(&err))
+    guarded(|| self.runs.delete(&parse_id(&id)?)).map_err(|err| to_napi(&err))
   }
 
   #[napi]
   pub fn restore(&self, id: String) -> napi::Result<String> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    to_json(&self.runs.restore(&id).map_err(|err| to_napi(&err))?)
+    sync_json(|| self.runs.restore(&parse_id(&id)?))
   }
 
   #[napi]
   pub fn purge(&self, id: String) -> napi::Result<()> {
-    self
-      .runs
-      .purge(&parse_id(&id).map_err(|err| to_napi(&err))?)
-      .map_err(|err| to_napi(&err))
+    guarded(|| self.runs.purge(&parse_id(&id)?)).map_err(|err| to_napi(&err))
   }
 
   #[napi]
   pub fn files(&self, id: String) -> napi::Result<String> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    to_json(&self.runs.files(&id).map_err(|err| to_napi(&err))?)
+    sync_json(|| self.runs.files(&parse_id(&id)?))
   }
 
   #[napi]
   pub fn read_file(&self, id: String, path: String) -> napi::Result<Buffer> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    let path = self.runs.file_path(&id, &path).map_err(|err| to_napi(&err))?;
-    let bytes = fs::read(&path).map_err(|err| to_napi(&err.into()))?;
-    Ok(Buffer::from(bytes))
+    guarded(|| {
+      let path = self.runs.file_path(&parse_id(&id)?, &path)?;
+      Ok(Buffer::from(fs::read(&path)?))
+    })
+    .map_err(|err| to_napi(&err))
   }
 
   #[napi]
   pub fn archive(&self, id: String) -> napi::Result<Buffer> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    Ok(Buffer::from(self.runs.zip(&id).map_err(|err| to_napi(&err))?))
+    guarded(|| Ok(Buffer::from(self.runs.zip(&parse_id(&id)?)?))).map_err(|err| to_napi(&err))
   }
 
   #[napi(ts_return_type = "Promise<string>")]
-  pub fn results(&self, id: String) -> napi::Result<AsyncTask<ResultsTask>> {
-    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
-    Ok(self.results_task(ResultsQuery::Results(id)))
+  pub fn results(&self, id: String) -> AsyncTask<JsonTask> {
+    let runs = Arc::clone(&self.runs);
+    JsonTask::spawn(move || Ok(serde_json::to_string(&run_results(&runs, &parse_id(&id)?)?)?))
   }
 
   #[napi(ts_return_type = "Promise<string>")]
-  pub fn compare(&self, id: String, other: String) -> napi::Result<AsyncTask<ResultsTask>> {
-    let first = parse_id(&id).map_err(|err| to_napi(&err))?;
-    let second = parse_id(&other).map_err(|err| to_napi(&err))?;
-    Ok(self.results_task(ResultsQuery::Compare(first, second)))
+  pub fn compare(&self, id: String, other: String) -> AsyncTask<JsonTask> {
+    let runs = Arc::clone(&self.runs);
+    JsonTask::spawn(move || {
+      let comparison = compare_runs(&runs, &parse_id(&id)?, &parse_id(&other)?)?;
+      Ok(serde_json::to_string(&comparison)?)
+    })
   }
 
   #[napi(ts_return_type = "Promise<string>")]
-  pub fn clade_in_runs(&self, request_json: String) -> napi::Result<AsyncTask<ResultsTask>> {
-    let request: CladeRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-    Ok(self.results_task(ResultsQuery::Clade(request)))
-  }
-
-  fn results_task(&self, query: ResultsQuery) -> AsyncTask<ResultsTask> {
-    AsyncTask::new(ResultsTask {
-      runs: Arc::clone(&self.runs),
-      query,
+  pub fn clade_in_runs(&self, request_json: String) -> AsyncTask<JsonTask> {
+    let runs = Arc::clone(&self.runs);
+    JsonTask::spawn(move || {
+      let request: CladeRequest = serde_json::from_str(&request_json)?;
+      Ok(serde_json::to_string(&clade_in_runs(&runs, &request)?)?)
     })
   }
 }
 
-pub struct ResultsTask {
-  runs: Arc<RunManager>,
-  query: ResultsQuery,
+#[napi]
+pub struct Subscription {
+  forwarder: EventForwarder<EventSink>,
 }
 
-enum ResultsQuery {
-  Results(JobId),
-  Compare(JobId, JobId),
-  Clade(CladeRequest),
+#[napi]
+impl Subscription {
+  #[napi]
+  pub fn unsubscribe(&self) {
+    self.forwarder.close();
+  }
 }
 
-impl Task for ResultsTask {
+type Job = Box<dyn FnOnce() -> Result<String, Report> + Send>;
+
+pub struct JsonTask {
+  job: Option<Job>,
+}
+
+impl JsonTask {
+  fn spawn(job: impl FnOnce() -> Result<String, Report> + Send + 'static) -> AsyncTask<Self> {
+    AsyncTask::new(Self {
+      job: Some(Box::new(job)),
+    })
+  }
+}
+
+impl Task for JsonTask {
   type Output = String;
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let runs = &self.runs;
-    match &self.query {
-      ResultsQuery::Results(id) => to_json(&run_results(runs, id).map_err(|err| to_napi(&err))?),
-      ResultsQuery::Compare(first, second) => to_json(&compare_runs(runs, first, second).map_err(|err| to_napi(&err))?),
-      ResultsQuery::Clade(request) => to_json(&clade_in_runs(runs, request).map_err(|err| to_napi(&err))?),
-    }
+    let job = self.job.take();
+    guarded(|| job.map_or_else(|| Err(make_report!("the task has already run")), |job| job()))
+      .map_err(|err| to_napi(&err))
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
+  fn resolve(&mut self, _env: Env, output: String) -> napi::Result<String> {
     Ok(output)
   }
 }
 
-pub struct RunTask {
-  run: Option<StartedRun>,
-}
-
-impl Task for RunTask {
-  type Output = String;
-  type JsValue = String;
-
-  fn compute(&mut self) -> napi::Result<Self::Output> {
-    let run = self
-      .run
-      .take()
-      .ok_or_else(|| napi::Error::new(Status::GenericFailure, "the run has already been computed".to_owned()))?;
-    to_json(&run.run())
-  }
-
-  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
-    Ok(output)
-  }
-}
-
-fn to_json<T: Serialize>(value: &T) -> napi::Result<String> {
-  serde_json::to_string(value).map_err(|err| to_napi(&err.into()))
-}
-
-fn to_napi(err: &eyre::Report) -> napi::Error {
-  napi::Error::new(Status::GenericFailure, format!("{err:#}"))
+fn sync_json<T: serde::Serialize>(operation: impl FnOnce() -> Result<T, Report>) -> napi::Result<String> {
+  guarded_json(operation).map_err(|err: ErrorResponse| to_napi(&err))
 }
