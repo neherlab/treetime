@@ -1,7 +1,9 @@
 import {
   createBridge,
   parseRunEvent,
+  zPickedFiles,
   type BridgeTransport,
+  type LocalFiles,
   type LogEvent,
   type TransportEventOptions,
   type TreeTimeBridge,
@@ -16,6 +18,8 @@ export interface IpcRendererLike {
 
 export const RUN_EVENT_CHANNEL = "treetime:run-event";
 
+export const PICK_FILES_CHANNEL = "treetime:pick-files";
+
 export class LocalInputsError extends Error {
   constructor() {
     super("the desktop application reads inputs from local file paths; name the files in the run configuration");
@@ -28,6 +32,15 @@ export function createDesktopBridge(
   newSubscriptionId: () => string = randomSubscriptionId,
 ): TreeTimeBridge {
   return createBridge(createDesktopTransport(ipc, newSubscriptionId));
+}
+
+export function createLocalFiles(ipc: IpcRendererLike, pathForFile: (file: File) => string): LocalFiles {
+  return {
+    async pickFiles(request) {
+      return zPickedFiles.parse(await ipc.invoke(PICK_FILES_CHANNEL, JSON.stringify(request)));
+    },
+    pathForFile,
+  };
 }
 
 function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => string): BridgeTransport {

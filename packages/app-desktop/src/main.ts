@@ -1,10 +1,10 @@
 import * as path from "path";
 
-import { parseRunEvent, zCreateRunRequest, zRunRecord } from "@neherlab/app-contracts";
+import { parseRunEvent, zCreateRunRequest, zPickFilesRequest, zRunRecord } from "@neherlab/app-contracts";
 import * as addon from "@neherlab/app-napi";
-import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, type OpenDialogOptions } from "electron";
 
-import { RUN_EVENT_CHANNEL } from "./desktop-bridge";
+import { PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL } from "./desktop-bridge";
 import { initDiagnostics } from "./diagnostics";
 
 initDiagnostics("treetime-desktop");
@@ -45,6 +45,7 @@ function registerIpcHandlers(): void {
     void runToEnd(runs, id, configJson);
   };
 
+  ipcMain.handle(PICK_FILES_CHANNEL, (event, requestJson: string) => pickFiles(event, requestJson));
   ipcMain.handle("treetime:version", () => addon.version());
   ipcMain.handle("treetime:datasets", () => addon.datasets());
   ipcMain.handle("treetime:check-config", (_event, requestJson: string) => addon.checkConfigJson(requestJson));
@@ -93,6 +94,21 @@ function registerIpcHandlers(): void {
       });
     },
   );
+}
+
+async function pickFiles(event: Electron.IpcMainInvokeEvent, requestJson: string): Promise<string[]> {
+  const request = zPickFilesRequest.parse(JSON.parse(requestJson));
+
+  const options: OpenDialogOptions = {
+    title: request.title,
+    properties: request.multiple ? ["openFile", "multiSelections"] : ["openFile"],
+    filters: request.extensions.length > 0 ? [{ name: request.title, extensions: request.extensions }] : [],
+  };
+
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
+
+  return result.canceled ? [] : result.filePaths;
 }
 
 async function runToEnd(runs: addon.RunService, id: string, configJson: string | null): Promise<void> {

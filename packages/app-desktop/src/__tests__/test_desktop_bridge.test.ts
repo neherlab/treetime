@@ -1,7 +1,13 @@
 import { CancelledError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { createDesktopBridge, LocalInputsError, RUN_EVENT_CHANNEL, type IpcRendererLike } from "../desktop-bridge";
+import {
+  createDesktopBridge,
+  createLocalFiles,
+  LocalInputsError,
+  RUN_EVENT_CHANNEL,
+  type IpcRendererLike,
+} from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
 
@@ -101,7 +107,10 @@ describe("desktop_bridge queries and requests", () => {
     );
 
     await bridge.runConfig({ command: "clock", config: { tree: "t" } });
-    expect(captured).toStrictEqual(["treetime:run-config", JSON.stringify({ command: "clock", config: { tree: "t" } })]);
+    expect(captured).toStrictEqual([
+      "treetime:run-config",
+      JSON.stringify({ command: "clock", config: { tree: "t" } }),
+    ]);
   });
 
   test("startRun sends the replacement configuration as JSON", async () => {
@@ -209,5 +218,37 @@ describe("desktop_bridge run events", () => {
     const bridge = createDesktopBridge(ipc, () => "sub-1");
     await expect(bridge.followRun("r9")).rejects.toThrow("no run with id `r9`");
     expect(ipc.handlerCount(RUN_EVENT_CHANNEL)).toBe(0);
+  });
+});
+
+describe("desktop_bridge local files", () => {
+  test("pickFiles asks the main process through the pick-files channel", async () => {
+    let captured: unknown[] = [];
+
+    const files = createLocalFiles(
+      makeFakeIpc((_ipc, channel, args) => {
+        captured = [channel, ...args];
+
+        return Promise.resolve(["/data/tree.nwk"]);
+      }),
+      () => "",
+    );
+
+    await expect(files.pickFiles({ title: "Tree", extensions: ["nwk"], multiple: false })).resolves.toStrictEqual([
+      "/data/tree.nwk",
+    ]);
+    expect(captured).toStrictEqual([
+      "treetime:pick-files",
+      JSON.stringify({ title: "Tree", extensions: ["nwk"], multiple: false }),
+    ]);
+  });
+
+  test("a malformed pick result rejects", async () => {
+    const files = createLocalFiles(
+      makeFakeIpc(() => Promise.resolve([1])),
+      () => "",
+    );
+
+    await expect(files.pickFiles({ title: "Tree", extensions: [], multiple: false })).rejects.toBeInstanceOf(Error);
   });
 });

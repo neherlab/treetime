@@ -1,4 +1,4 @@
-import type { TreeTimeBridge } from "@neherlab/app-contracts";
+import type { LocalFiles, TreeTimeBridge } from "@neherlab/app-contracts";
 import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,6 +8,7 @@ import "./index.css";
 declare global {
   interface Window {
     treetime: TreeTimeBridge;
+    treetimeFiles: LocalFiles;
   }
 }
 
@@ -22,7 +23,7 @@ if (root) {
         <ErrorBoundary>
           <BridgeProvider bridge={bridge}>
             <QueryProvider>
-              <App />
+              <App localFiles={window.treetimeFiles} />
             </QueryProvider>
           </BridgeProvider>
         </ErrorBoundary>
