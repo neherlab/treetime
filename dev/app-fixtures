@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <treetime-binary> [output-dir]
+#
+# Run every command of the desktop and web apps on data/zika/86 and keep the
+# output files in output-dir (default tmp/app-fixtures). The TypeScript result
+# readers in packages/app-ui are tested against these files, so the tests read
+# what the current TreeTime writes instead of committed copies that could go
+# stale. The outputs are not committed.
+#
+# Each case writes every output its command offers (`--output-selection all`),
+# which includes the Auspice JSON and the tracelog that app runs request.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+treetime="$1"
+out="${2:-tmp/app-fixtures}"
+data="data/zika/86"
+
+inputs=(--tree="${data}/tree.nwk" --metadata="${data}/metadata.tsv")
+alignment=(--alignment="${data}/aln.fasta.xz")
+
+run_case() {
+  local name="$1"
+  shift
+  rm -rf "${out:?}/${name}"
+  mkdir -p "${out}/${name}"
+  if ! "${treetime}" "$@" --output-all="${out}/${name}" --output-selection=all >"${out}/${name}.log" 2>&1; then
+    printf 'app fixture %s failed; its log follows\n' "${name}" >&2
+    cat "${out}/${name}.log" >&2
+    exit 1
+  fi
+}
+
+# Date intervals need clock rate uncertainty, which --covariation provides.
+run_case timetree timetree "${inputs[@]}" "${alignment[@]}" --confidence --covariation
+run_case timetree-skyline timetree "${inputs[@]}" "${alignment[@]}" --coalescent-skyline
+# A tight clock filter flags outliers, so the clock table has both kinds of rows.
+run_case clock clock "${inputs[@]}" --clock-filter=1
+run_case ancestral ancestral --tree="${data}/tree.nwk" "${alignment[@]}"
+run_case mugration mugration "${inputs[@]}" --attribute=country
+run_case optimize optimize --tree="${data}/tree.nwk" "${alignment[@]}"
+run_case prune prune --tree="${data}/tree.nwk" "${alignment[@]}" --prune-short=1e-6

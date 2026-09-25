@@ -190,11 +190,16 @@ test-list-rs *args:
 # TypeScript tests (vitest) and the custom oxlint rule tests, keep-going
 [group("test")]
 [script]
-test-ts: _js
+test-ts: _js app-fixtures
     status=0
     bun run --silent test || status=1
     node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts" || status=1
     exit "${status}"
+
+# Outputs of every app command on data/zika/86, which the TypeScript result reader tests read (tmp/app-fixtures)
+[group("test")]
+app-fixtures: (build "--bin" "treetime")
+    dev/app-fixtures {{ quote(CARGO_TARGET_DIR / "debug/treetime") }}
 
 # Tests of the custom dylint libraries and the pub-unused-report tool, keep-going
 [group("test")]
