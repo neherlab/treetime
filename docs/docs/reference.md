@@ -217,8 +217,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-
-   See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences
 
   Default value: `marginal`
@@ -426,8 +424,6 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-
-   See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
 * `--dense <DENSE>` — Use dense representation of sequences on the tree
 
    Dense mode stores full probability vectors at every alignment position for each node. Sparse mode stores only variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
@@ -793,8 +789,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-
-   See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences
 
   Default value: `marginal`
@@ -1017,8 +1011,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-
-   See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
 * `--branch-length-mode <BRANCH_LENGTH_MODE>` — If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances
 
   Default value: `marginal`
@@ -1217,8 +1209,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-
-   See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences
 
   Default value: `marginal`

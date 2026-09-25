@@ -38,9 +38,9 @@ export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
- * the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
- * input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+ * from standard input.
  */
 export type TimetreeConfig = {
     /**
@@ -258,9 +258,6 @@ export type TimetreeConfig = {
      * Parameters for the model selected by `--model`, given as a `key=value` list
      *
      * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-     *
-     * See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
-     * or treetime/aa_models.py
      */
     model_params?: Array<string>;
     /**
@@ -599,9 +596,9 @@ export type OptimizeRerootMethod = 'min-dev';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
- * the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
- * input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+ * from standard input.
  */
 export type OptimizeConfig = {
     /**
@@ -634,9 +631,6 @@ export type OptimizeConfig = {
      * Parameters for the model selected by `--model`, given as a `key=value` list
      *
      * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-     *
-     * See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
-     * or treetime/aa_models.py
      */
     model_params?: Array<string>;
     /**
@@ -904,9 +898,9 @@ export type PruneOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb'
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
- * the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
- * input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+ * from standard input.
  */
 export type PruneConfig = {
     /**
@@ -1135,9 +1129,9 @@ export type SampleMode = 'argmax' | 'root' | 'all';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
- * the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
- * input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+ * from standard input.
  */
 export type AncestralConfig = {
     /**
@@ -1174,9 +1168,6 @@ export type AncestralConfig = {
      * Parameters for the model selected by `--model`, given as a `key=value` list
      *
      * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-     *
-     * See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
-     * or treetime/aa_models.py
      */
     model_params?: Array<string>;
     /**
@@ -1528,9 +1519,9 @@ export type ClockRegressionArgs = {
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
- * the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
- * input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+ * from standard input.
  */
 export type ClockConfig = {
     /**
@@ -1588,9 +1579,6 @@ export type ClockConfig = {
      * Parameters for the model selected by `--model`, given as a `key=value` list
      *
      * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-     *
-     * See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
-     * or treetime/aa_models.py
      */
     model_params?: Array<string>;
     /**

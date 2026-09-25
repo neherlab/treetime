@@ -5,10 +5,8 @@ use treetime::alphabet::alphabet::AlphabetName;
 
 /// Alphabet selection shared by every command that reads sequences.
 ///
-/// A single `--alphabet` flag replaces the earlier redundant pair of `--alphabet` and `--aa` (the
-/// latter being a second way to request the amino-acid alphabet, which could disagree with
-/// `--alphabet`). When the alphabet is not given, callers auto-detect it from sequence content and
-/// fall back to the nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
+/// When the alphabet is not given, callers auto-detect it from sequence content and fall back to the
+/// nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
 ///
 /// The flag has no short form: `-a` is reserved for `--alignment`.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]

@@ -888,7 +888,7 @@
       "TimetreeConfig": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
         "properties": {
           "alignment": {
             "type": "array",
@@ -1229,7 +1229,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
             "default": [],
             "x-cli-flag": "--model-params"
           },
@@ -1709,7 +1709,7 @@
       "OptimizeConfig": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
         "properties": {
           "alignment": {
             "type": "array",
@@ -1755,7 +1755,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
             "default": [],
             "x-cli-flag": "--model-params"
           },
@@ -2068,7 +2068,7 @@
       "PruneConfig": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
         "properties": {
           "alignment": {
             "type": "array",
@@ -2372,7 +2372,7 @@
       "AncestralConfig": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
         "properties": {
           "alignment": {
             "type": "array",
@@ -2428,7 +2428,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
             "default": [],
             "x-cli-flag": "--model-params"
           },
@@ -2909,7 +2909,7 @@
       "ClockConfig": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
         "properties": {
           "alignment": {
             "type": "array",
@@ -3016,7 +3016,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
             "default": [],
             "x-cli-flag": "--model-params"
           },
@@ -9415,7 +9415,7 @@
             ],
             "conflicts": [],
             "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py"
+            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
           },
           {
             "key": "custom_gtr",
@@ -10673,7 +10673,7 @@
             ],
             "conflicts": [],
             "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py"
+            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
           },
           {
             "key": "dense",
@@ -12831,7 +12831,7 @@
             ],
             "conflicts": [],
             "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py"
+            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
           },
           {
             "key": "aa_model",
@@ -14209,7 +14209,7 @@
             ],
             "conflicts": [],
             "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py"
+            "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
           },
           {
             "key": "branch_length_mode",

@@ -427,7 +427,7 @@ pub struct ClockRegressionArgs {
   pub clock_params: ClockParamsCli,
 }
 
-/// CLI mirror of core `ClockVarianceParams`; see the branch-split mirror rationale above.
+/// Variance parameters of the clock regression, as core `ClockVarianceParams` takes them.
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

@@ -5,9 +5,7 @@ use treetime::seq::gap_fill::GapFill;
 
 /// Gap-handling policy shared by every command that reads sequences.
 ///
-/// Extracted from the per-command duplication of `gap_fill` plus `keep_overhangs` plus
-/// `effective_gap_fill()`. The deprecated `--keep-overhangs` flag is retained, hidden, and overrides
-/// `--gap-fill` to `none` for backward compatibility with v0 invocations.
+/// The hidden `--keep-overhangs` flag, which v0 invocations use, overrides `--gap-fill` to `none`.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

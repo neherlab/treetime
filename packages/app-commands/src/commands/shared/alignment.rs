@@ -7,9 +7,9 @@ use std::path::PathBuf;
 
 /// Sequence alignment input shared by all commands that read sequences.
 ///
-/// One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
-/// the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
-/// input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
+/// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+/// accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
+/// from standard input.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

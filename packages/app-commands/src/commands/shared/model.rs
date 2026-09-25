@@ -5,10 +5,9 @@ use treetime::gtr::get_gtr::GtrModelName;
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
 ///
-/// One flag name (`--model`, short `-g`, alias `--gtr`) replaces the earlier split between `--model`
-/// (ancestral, optimize) and `--gtr` (clock, timetree). `--model` is preferred over `--gtr` because the
-/// value set includes non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`)
-/// carries model-specific `key=value` parameters.
+/// One flag name (`--model`, short `-g`, alias `--gtr`) serves every command; the value set includes
+/// non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`) carries
+/// model-specific `key=value` parameters.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
@@ -27,9 +26,6 @@ pub struct ModelArgs {
   /// Parameters for the model selected by `--model`, given as a `key=value` list
   ///
   /// Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-  ///
-  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
-  /// or treetime/aa_models.py
   #[cfg_attr(
     feature = "clap",
     clap(
