@@ -6,7 +6,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "RUSTC_WRAPPER= napi build --platform --release --no-dts-header"
+    "build": "RUSTC_WRAPPER= napi build --platform --release --no-dts-header --dts index.build.d.ts"
   },
   "devDependencies": {
     "@napi-rs/cli": "3.10.3"
