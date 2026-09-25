@@ -34,11 +34,15 @@ dylint_target_dir := build_dir / "dylint"
 hawk_target_dir := build_dir / "hawk"
 
 # The kache compiler cache is optional. KACHE_STORE, in .env or the environment,
-# names the store directory and switches builds and clippy to kache, each pass
-# with its own store. Dylint and hawk always compile without it, because a cache
-# hit skips the lint passes.
+# names the store directory. kache turns incremental compilation off, so it
+# serves only builds without incremental state: every build in CI, where each
+# run starts cold, and the dist, profiling, and bench builds (kache_env). Local
+# dev, test, release, and clippy builds stay incremental. Builds and clippy each
+# have their own store. Dylint and hawk always compile without kache, because a
+# cache hit skips the lint passes.
 kache_store := env("KACHE_STORE", "")
-export RUSTC_WRAPPER := if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
+kache_env := if kache_store != "" { "RUSTC_WRAPPER=kache" } else { "" }
+export RUSTC_WRAPPER := if env("CI", "") == "" { env("RUSTC_WRAPPER", "") } else if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
 export KACHE_CACHE_DIR := if kache_store != "" { kache_store / "build" } else { env("KACHE_CACHE_DIR", "") }
 lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_store / "lint") } else { "" }
 uncached_env := "RUSTC_WRAPPER= CARGO_INCREMENTAL=0"
@@ -136,13 +140,13 @@ build-release bin="treetime" *args:
 # Build a binary as shipped (dist profile: fat LTO) and copy it to .out/: just build-dist treetime
 [group("build")]
 build-dist bin="treetime" *args:
-    cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
+    {{ kache_env }} cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
     mkdir -p .out && cp {{ quote(CARGO_TARGET_DIR / "dist" / bin) }} .out/
 
 # Build a binary (profiling profile: dist with full debug info)
 [group("build")]
 build-profiling bin="treetime" *args:
-    cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
+    {{ kache_env }} cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
@@ -477,7 +481,7 @@ build-desktop: _js
 # Run all benchmarks (bench profile: the shipped dist settings)
 [group("bench")]
 bench *args:
-    cargo bench --locked --workspace --benches "$@"
+    {{ kache_env }} cargo bench --locked --workspace --benches "$@"
 
 # Sample a profile of a binary (host only, needs Docker and perf or samply): just profile treetime -- <args>
 [group("bench")]

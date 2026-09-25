@@ -44,7 +44,7 @@ Host builds go to `.build/host/`. The dylint and IQ-TREE tools are available on 
 
 Optional settings go into the gitignored `.env` in the checkout; `.env.example` lists them:
 
-- `KACHE_STORE`: directory of the [kache](https://github.com/kunobi-ninja/kache) compiler cache store. Builds and clippy then compile through kache, which shares compiled crates across worktrees
+- `KACHE_STORE`: directory of the [kache](https://github.com/kunobi-ninja/kache) compiler cache store. The `dist`, `profiling`, and `bench` builds and every CI build then compile through kache, which shares compiled crates across worktrees. Local incremental builds (`dev`, tests, `release`, clippy) compile without it, because kache turns incremental compilation off
 - `TREETIME_PORTLESS`: use of the [portless](https://github.com/vercel-labs/portless) proxy by the web dev server (see [Web app](#web-app))
 
 ## Everyday commands
