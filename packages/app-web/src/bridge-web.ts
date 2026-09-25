@@ -1,10 +1,8 @@
 import {
   CancelledError,
   createBridge,
-  parseErrorResponse,
-  parseRunEvent,
+  bridgeErrorFromText,
   type BridgeTransport,
-  type LogEvent,
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
@@ -81,11 +79,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       for await (const message of messages) {
         if (debug) console.debug("[TreeTime]", JSON.stringify(message));
 
-        const event = parseRunEvent(JSON.parse(message.data));
-
-        if (event.type === "log") {
-          logToConsole(event.data);
-        }
+        const event: unknown = JSON.parse(message.data);
 
         options.onEvent(event);
       }
@@ -145,37 +139,11 @@ function runPath(id: string): string {
 async function responseError(response: Response, context: string): Promise<Error> {
   const text = await response.text();
 
-  return parseErrorResponse(parseJson(text), text === "" ? response.statusText : text, context);
-}
-
-function parseJson(text: string): unknown {
-  try {
-    const value: unknown = JSON.parse(text);
-
-    return value;
-  } catch {
-    return undefined;
-  }
+  return bridgeErrorFromText(text === "" ? response.statusText : text, context);
 }
 
 function readDebugFlag(): boolean {
   const env = import.meta.env;
 
   return env.VITE_TREETIME_DEBUG_FETCH === "true" || (env.DEV && env.VITE_TREETIME_DEBUG_FETCH !== "false");
-}
-
-function logToConsole(log: LogEvent): void {
-  switch (log.level) {
-    case "error":
-      console.error(`[TreeTime] ${log.message}`);
-      break;
-    case "warn":
-      console.warn(`[TreeTime] ${log.message}`);
-      break;
-    case "info":
-    case "debug":
-    case "trace":
-      console.log(`[TreeTime] [${log.level}] ${log.message}`);
-      break;
-  }
 }

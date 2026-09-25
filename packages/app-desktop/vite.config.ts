@@ -4,8 +4,10 @@ import { resolve } from "node:path";
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import electron from "vite-plugin-electron/simple";
+
+import { contentSecurityPolicy } from "./src/security";
 
 const projectRoot = resolve(__dirname, "../..");
 
@@ -20,6 +22,26 @@ if (existsSync(napiNode)) {
 process.env["TREETIME_PROJECT_ROOT"] ??= projectRoot;
 
 const electronArgs = process.env["ELECTRON_DISABLE_SANDBOX"] === "1" ? ["--no-sandbox"] : [];
+
+function contentSecurityPolicyMeta(): Plugin {
+  let devServer = false;
+
+  return {
+    name: "treetime-content-security-policy",
+    configResolved(config) {
+      devServer = config.command === "serve";
+    },
+    transformIndexHtml() {
+      return [
+        {
+          tag: "meta",
+          attrs: { "http-equiv": "Content-Security-Policy", content: contentSecurityPolicy(devServer) },
+          injectTo: "head-prepend",
+        },
+      ];
+    },
+  };
+}
 
 export default defineConfig({
   root: "renderer",
@@ -50,6 +72,7 @@ export default defineConfig({
         },
       },
     }),
+    contentSecurityPolicyMeta(),
     auspice(),
     tailwindcss(),
     react(),

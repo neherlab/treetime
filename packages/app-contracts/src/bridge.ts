@@ -120,13 +120,21 @@ export class BridgeError extends Error {
   }
 }
 
-export function parseErrorResponse(data: unknown, fallback: string, context?: string): BridgeError {
-  const parsed = zErrorResponse.safeParse(data);
-  const response: ErrorResponse = parsed.success
-    ? parsed.data
-    : { code: "internal_error", message: fallback, causes: [] };
+export function bridgeErrorFromText(text: string, context?: string): BridgeError {
+  const parsed = zErrorResponse.safeParse(parseJson(text));
+  const response: ErrorResponse = parsed.success ? parsed.data : { code: "internal_error", message: text, causes: [] };
 
   return new BridgeError(response, context);
+}
+
+function parseJson(text: string): unknown {
+  try {
+    const value: unknown = JSON.parse(text);
+
+    return value;
+  } catch {
+    return undefined;
+  }
 }
 
 export class RunEndedError extends Error {
@@ -203,6 +211,10 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
       from: options.from ?? 0,
       onEvent: (data) => {
         const event = parseRunEvent(data);
+
+        if (event.type === "log") {
+          logToConsole(event.data);
+        }
 
         if (event.type === "terminal") {
           terminal = event.data;
@@ -360,6 +372,22 @@ function dispatchEvent(event: RunEventResult, options: CommandOptions): void {
       options.onIteration?.(event.data);
       break;
     case "terminal":
+      break;
+  }
+}
+
+function logToConsole(log: LogEvent): void {
+  switch (log.level) {
+    case "error":
+      console.error(`[TreeTime] ${log.message}`);
+      break;
+    case "warn":
+      console.warn(`[TreeTime] ${log.message}`);
+      break;
+    case "info":
+    case "debug":
+    case "trace":
+      console.log(`[TreeTime] [${log.level}] ${log.message}`);
       break;
   }
 }

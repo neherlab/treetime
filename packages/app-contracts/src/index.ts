@@ -4,11 +4,11 @@ export * from "./generated/zod.gen";
 
 export {
   BridgeError,
+  bridgeErrorFromText,
   CancelledError,
   CommandError,
   RunEndedError,
   createBridge,
-  parseErrorResponse,
   parseRunEvent,
 } from "./bridge";
 

@@ -1,11 +1,22 @@
 import * as path from "path";
 
-import { parseRunEvent, zCreateRunRequest, zPickFilesRequest, zRunRecord } from "@neherlab/app-contracts";
+import { zCreateRunRequest, zPickFilesRequest, zRunRecord } from "@neherlab/app-contracts";
 import * as addon from "@neherlab/app-napi";
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, type OpenDialogOptions } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  shell,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  type OpenDialogOptions,
+} from "electron";
 
-import { PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL } from "./desktop-bridge";
+import { PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL, type IpcReply } from "./desktop-bridge";
 import { initDiagnostics } from "./diagnostics";
+import { confineNavigation, isTrustedSender } from "./security";
 
 initDiagnostics("treetime-desktop");
 
@@ -19,6 +30,13 @@ if (projectRoot !== undefined && projectRoot !== "") {
   process.chdir(projectRoot);
 }
 
+const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
+
+const appUrl =
+  devServerUrl !== undefined && devServerUrl !== ""
+    ? devServerUrl
+    : new URL(`file://${path.join(__dirname, "../dist/index.html")}`).href;
+
 async function main(): Promise<void> {
   await app.whenReady();
   registerThemeHandler();
@@ -27,79 +45,117 @@ async function main(): Promise<void> {
 }
 
 function registerThemeHandler(): void {
-  ipcMain.on("treetime:theme", (_event, theme: string) => {
+  listen("treetime:theme", (_event, theme) => {
     if (isThemeSource(theme)) {
       nativeTheme.themeSource = theme;
     }
   });
 }
 
-function isThemeSource(value: string): value is "system" | "light" | "dark" {
+function isThemeSource(value: unknown): value is "system" | "light" | "dark" {
   return value === "system" || value === "light" || value === "dark";
 }
 
 function registerIpcHandlers(): void {
   const runs = new addon.RunService(path.join(app.getPath("userData"), "runs"));
+  const subscriptions = new Map<string, addon.Subscription>();
 
   const startRun = (id: string, configJson: string | null) => {
     void runToEnd(runs, id, configJson);
   };
 
-  ipcMain.handle(PICK_FILES_CHANNEL, (event, requestJson: string) => pickFiles(event, requestJson));
-  ipcMain.handle("treetime:version", () => addon.version());
-  ipcMain.handle("treetime:datasets", () => addon.datasets());
-  ipcMain.handle("treetime:check-config", (_event, requestJson: string) => addon.checkConfigJson(requestJson));
-  ipcMain.handle("treetime:run-config", (_event, requestJson: string) => addon.runConfigJson(requestJson));
-  ipcMain.handle("treetime:check-inputs", (_event, requestJson: string) => addon.checkInputsJson(requestJson));
-  ipcMain.handle("treetime:runs:list", () => runs.list());
-  ipcMain.handle("treetime:runs:get", (_event, id: string) => runs.get(id));
-  ipcMain.handle("treetime:runs:create", (_event, requestJson: string) => {
-    const record = parseRecord(runs.create(requestJson));
+  handle(PICK_FILES_CHANNEL, (event, requestJson) => pickFiles(event, text(requestJson)));
+  handle("treetime:version", () => addon.version());
+  handle("treetime:datasets", () => addon.datasets());
+  handle("treetime:check-config", (_event, requestJson) => addon.checkConfigJson(text(requestJson)));
+  handle("treetime:run-config", (_event, requestJson) => addon.runConfigJson(text(requestJson)));
+  handle("treetime:check-inputs", (_event, requestJson) => addon.checkInputsJson(text(requestJson)));
+  handle("treetime:runs:list", () => runs.list());
+  handle("treetime:runs:get", (_event, id) => runs.get(text(id)));
+  handle("treetime:runs:create", (_event, requestJson) => {
+    const request = text(requestJson);
+    const record = zRunRecord.parse(JSON.parse(runs.create(request)));
 
-    if (!parseDeferStart(requestJson)) {
+    if (!zCreateRunRequest.parse(JSON.parse(request)).defer_start) {
       startRun(record.id, null);
     }
 
     return runs.get(record.id);
   });
-  ipcMain.handle("treetime:runs:start", (_event, id: string, configJson: string | null) => {
-    startRun(id, configJson);
+  handle("treetime:runs:start", (_event, id, configJson) => {
+    startRun(text(id), configJson === null ? null : text(configJson));
 
-    return runs.get(id);
+    return runs.get(text(id));
   });
-  ipcMain.handle("treetime:runs:update", (_event, id: string, requestJson: string) => runs.update(id, requestJson));
-  ipcMain.handle("treetime:runs:cancel", (_event, id: string) => JSON.stringify({ cancelled: runs.cancel(id) }));
-  ipcMain.handle("treetime:runs:delete", (_event, id: string) => {
-    runs.delete(id);
+  handle("treetime:runs:update", (_event, id, requestJson) => runs.update(text(id), text(requestJson)));
+  handle("treetime:runs:cancel", (_event, id) => JSON.stringify({ cancelled: runs.cancel(text(id)) }));
+  handle("treetime:runs:delete", (_event, id) => {
+    runs.delete(text(id));
   });
-  ipcMain.handle("treetime:runs:restore", (_event, id: string) => runs.restore(id));
-  ipcMain.handle("treetime:runs:purge", (_event, id: string) => {
-    runs.purge(id);
+  handle("treetime:runs:restore", (_event, id) => runs.restore(text(id)));
+  handle("treetime:runs:purge", (_event, id) => {
+    runs.purge(text(id));
   });
-  ipcMain.handle("treetime:runs:files", (_event, id: string) => runs.files(id));
-  ipcMain.handle("treetime:runs:read-file", (_event, id: string, filePath: string) => runs.readFile(id, filePath));
-  ipcMain.handle("treetime:runs:archive", (_event, id: string) => runs.archive(id));
-  ipcMain.handle("treetime:runs:results", (_event, id: string) => runs.results(id));
-  ipcMain.handle("treetime:runs:compare", (_event, id: string, other: string) => runs.compare(id, other));
-  ipcMain.handle("treetime:runs:clade-in-runs", (_event, requestJson: string) => runs.cladeInRuns(requestJson));
-  ipcMain.handle(
-    "treetime:runs:subscribe",
-    (event: Electron.IpcMainInvokeEvent, subscriptionId: string, id: string, from: number) => {
-      runs.subscribe(id, from, (err: Error | null, eventJson: string) => {
-        if (err || event.sender.isDestroyed()) return;
+  handle("treetime:runs:files", (_event, id) => runs.files(text(id)));
+  handle("treetime:runs:read-file", (_event, id, filePath) => runs.readFile(text(id), text(filePath)));
+  handle("treetime:runs:archive", (_event, id) => runs.archive(text(id)));
+  handle("treetime:runs:results", (_event, id) => runs.results(text(id)));
+  handle("treetime:runs:compare", (_event, id, other) => runs.compare(text(id), text(other)));
+  handle("treetime:runs:clade-in-runs", (_event, requestJson) => runs.cladeInRuns(text(requestJson)));
+  handle("treetime:runs:subscribe", (event, subscriptionId, id, from) => {
+    const key = text(subscriptionId);
+    const sender = event.sender;
 
-        try {
-          parseRunEvent(JSON.parse(eventJson));
-          event.sender.send(RUN_EVENT_CHANNEL, subscriptionId, eventJson);
-        } catch (error: unknown) {
-          console.error(`[TreeTime IPC] event of run ${id} is malformed`, error);
-        }
-      });
-    },
-  );
+    const subscription = runs.subscribe(text(id), Number(from), (err: Error | null, eventJson: string) => {
+      if (err === null && !sender.isDestroyed()) {
+        sender.send(RUN_EVENT_CHANNEL, key, eventJson);
+      }
+    });
+
+    subscriptions.set(key, subscription);
+    sender.once("destroyed", () => {
+      subscription.unsubscribe();
+      subscriptions.delete(key);
+    });
+  });
+  listen("treetime:runs:unsubscribe", (_event, subscriptionId) => {
+    const key = text(subscriptionId);
+    subscriptions.get(key)?.unsubscribe();
+    subscriptions.delete(key);
+  });
 }
 
-async function pickFiles(event: Electron.IpcMainInvokeEvent, requestJson: string): Promise<string[]> {
+function handle(channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
+  ipcMain.handle(channel, async (event, ...args: unknown[]): Promise<IpcReply> => {
+    if (!isTrustedSender(event.senderFrame, appUrl)) {
+      throw new Error(`${channel} refused a message from a frame outside the application`);
+    }
+
+    try {
+      return { ok: true, value: await handler(event, ...args) };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+}
+
+function listen(channel: string, listener: (event: IpcMainEvent, ...args: unknown[]) => void): void {
+  ipcMain.on(channel, (event, ...args: unknown[]) => {
+    if (isTrustedSender(event.senderFrame, appUrl)) {
+      listener(event, ...args);
+    }
+  });
+}
+
+function text(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new TypeError(`expected a string argument, got ${typeof value}`);
+  }
+
+  return value;
+}
+
+async function pickFiles(event: IpcMainInvokeEvent, requestJson: string): Promise<string[]> {
   const request = zPickFilesRequest.parse(JSON.parse(requestJson));
 
   const options: OpenDialogOptions = {
@@ -123,14 +179,6 @@ async function runToEnd(runs: addon.RunService, id: string, configJson: string |
   }
 }
 
-function parseRecord(json: string): { id: string } {
-  return zRunRecord.parse(JSON.parse(json));
-}
-
-function parseDeferStart(requestJson: string): boolean {
-  return zCreateRunRequest.parse(JSON.parse(requestJson)).defer_start;
-}
-
 async function createWindow(): Promise<void> {
   const win = new BrowserWindow({
     width: 1200,
@@ -138,17 +186,18 @@ async function createWindow(): Promise<void> {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
-  const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
+  confineNavigation(win.webContents, appUrl, (url) => void shell.openExternal(url));
 
   if (devServerUrl !== undefined && devServerUrl !== "") {
     await win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: "bottom" });
   } else {
-    await win.loadFile(path.join(__dirname, "../dist/index.html"));
+    await win.loadURL(appUrl);
   }
 }
 

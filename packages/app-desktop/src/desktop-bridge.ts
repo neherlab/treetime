@@ -1,10 +1,9 @@
 import {
   createBridge,
-  parseRunEvent,
+  bridgeErrorFromText,
   zPickedFiles,
   type BridgeTransport,
   type LocalFiles,
-  type LogEvent,
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
@@ -19,6 +18,8 @@ export interface IpcRendererLike {
 export const RUN_EVENT_CHANNEL = "treetime:run-event";
 
 export const PICK_FILES_CHANNEL = "treetime:pick-files";
+
+export type IpcReply = { ok: true; value: unknown } | { ok: false; error: string };
 
 class LocalInputsError extends Error {
   constructor() {
@@ -37,7 +38,7 @@ export function createDesktopBridge(
 export function createLocalFiles(ipc: IpcRendererLike, pathForFile: (file: File) => string): LocalFiles {
   return {
     async pickFiles(request) {
-      return zPickedFiles.parse(await ipc.invoke(PICK_FILES_CHANNEL, JSON.stringify(request)));
+      return zPickedFiles.parse(unwrap(await ipc.invoke(PICK_FILES_CHANNEL, JSON.stringify(request))));
     },
     pathForFile,
   };
@@ -45,11 +46,11 @@ export function createLocalFiles(ipc: IpcRendererLike, pathForFile: (file: File)
 
 function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => string): BridgeTransport {
   async function call(channel: string, ...args: unknown[]): Promise<unknown> {
-    return decode(await ipc.invoke(`treetime:${channel}`, ...args));
+    return decode(unwrap(await ipc.invoke(`treetime:${channel}`, ...args)));
   }
 
   async function bytes(channel: string, ...args: unknown[]): Promise<Uint8Array> {
-    const value = await ipc.invoke(`treetime:${channel}`, ...args);
+    const value = unwrap(await ipc.invoke(`treetime:${channel}`, ...args));
 
     if (!(value instanceof Uint8Array)) {
       throw new TypeError(`treetime:${channel} returned no bytes`);
@@ -62,9 +63,14 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
     const subscriptionId = newSubscriptionId();
 
     return new Promise<void>((resolve, reject) => {
-      const finish = () => {
+      const stop = () => {
         ipc.removeListener(RUN_EVENT_CHANNEL, handler);
         options.signal?.removeEventListener("abort", finish);
+        ipc.send("treetime:runs:unsubscribe", subscriptionId);
+      };
+
+      const finish = () => {
+        stop();
         resolve();
       };
 
@@ -74,19 +80,14 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
         }
 
         try {
-          const event = parseRunEvent(JSON.parse(eventJson));
-
-          if (event.type === "log") {
-            logToConsole(event.data);
-          }
-
+          const event: unknown = JSON.parse(eventJson);
           options.onEvent(event);
 
-          if (event.type === "terminal") {
+          if (isTerminal(event)) {
             finish();
           }
         } catch (error: unknown) {
-          ipc.removeListener(RUN_EVENT_CHANNEL, handler);
+          stop();
           reject(error instanceof Error ? error : new Error(String(error)));
         }
       };
@@ -99,10 +100,14 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
 
       ipc.on(RUN_EVENT_CHANNEL, handler);
       options.signal?.addEventListener("abort", finish);
-      ipc.invoke("treetime:runs:subscribe", subscriptionId, id, options.from).catch((error: unknown) => {
-        ipc.removeListener(RUN_EVENT_CHANNEL, handler);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      });
+      ipc
+        .invoke("treetime:runs:subscribe", subscriptionId, id, options.from)
+        .then(unwrap)
+        .catch((error: unknown) => {
+          ipc.removeListener(RUN_EVENT_CHANNEL, handler);
+          options.signal?.removeEventListener("abort", finish);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        });
     });
   }
 
@@ -141,6 +146,22 @@ function randomSubscriptionId(): string {
   return globalThis.crypto.randomUUID();
 }
 
+function unwrap(reply: unknown): unknown {
+  if (typeof reply !== "object" || reply === null || !("ok" in reply)) {
+    throw new TypeError("the main process sent a reply without a result");
+  }
+
+  if (reply.ok === true && "value" in reply) {
+    return reply.value;
+  }
+
+  throw bridgeErrorFromText("error" in reply && typeof reply.error === "string" ? reply.error : "unknown error");
+}
+
+function isTerminal(event: unknown): boolean {
+  return typeof event === "object" && event !== null && "type" in event && event.type === "terminal";
+}
+
 function decode(value: unknown): unknown {
   if (typeof value !== "string") {
     return value;
@@ -149,20 +170,4 @@ function decode(value: unknown): unknown {
   const parsed: unknown = JSON.parse(value);
 
   return parsed;
-}
-
-function logToConsole(log: LogEvent): void {
-  switch (log.level) {
-    case "error":
-      console.error(`[TreeTime] ${log.message}`);
-      break;
-    case "warn":
-      console.warn(`[TreeTime] ${log.message}`);
-      break;
-    case "info":
-    case "debug":
-    case "trace":
-      console.log(`[TreeTime] [${log.level}] ${log.message}`);
-      break;
-  }
 }

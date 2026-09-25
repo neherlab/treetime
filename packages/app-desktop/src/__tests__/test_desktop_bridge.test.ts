@@ -1,4 +1,4 @@
-import { CancelledError } from "@neherlab/app-contracts";
+import { BridgeError, CancelledError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
 import { createDesktopBridge, createLocalFiles, RUN_EVENT_CHANNEL, type IpcRendererLike } from "../desktop-bridge";
@@ -10,6 +10,7 @@ type OnInvoke = (ipc: FakeIpc, channel: string, args: unknown[]) => Promise<unkn
 interface FakeIpc extends IpcRendererLike {
   emit(channel: string, ...args: unknown[]): void;
   handlerCount(channel: string): number;
+  sent: unknown[][];
 }
 
 const RECORD = {
@@ -38,7 +39,12 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
   const handlers = new Map<string, Listener[]>();
 
   const fake: FakeIpc = {
-    invoke: (channel, ...args) => onInvoke(fake, channel, args),
+    sent: [],
+    invoke: (channel, ...args) =>
+      onInvoke(fake, channel, args).then(
+        (value) => ({ ok: true, value }),
+        (error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+      ),
     on(channel, listener) {
       handlers.set(channel, [...(handlers.get(channel) ?? []), listener]);
     },
@@ -48,8 +54,8 @@ function makeFakeIpc(onInvoke: OnInvoke): FakeIpc {
         (handlers.get(channel) ?? []).filter((l) => l !== listener),
       );
     },
-    send() {
-      return undefined;
+    send(channel, ...args) {
+      fake.sent.push([channel, ...args]);
     },
     emit(channel, ...args) {
       for (const listener of handlers.get(channel) ?? []) {
@@ -156,6 +162,37 @@ describe("desktop_bridge queries and requests", () => {
   });
 });
 
+describe("desktop_bridge errors", () => {
+  test("a typed error of the back end rejects with a BridgeError carrying its class and causes", async () => {
+    const response = { code: "not_found", message: "When reading run `r9`", causes: ["no run with id `r9`"] };
+    const bridge = createDesktopBridge(makeFakeIpc(() => Promise.reject(new Error(JSON.stringify(response)))));
+
+    const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(BridgeError);
+    expect(error).toMatchObject({ message: "When reading run `r9`: no run with id `r9`", response });
+  });
+
+  test("an untyped error rejects as an internal error with its message", async () => {
+    const bridge = createDesktopBridge(makeFakeIpc(() => Promise.reject(new Error("addon failed to load"))));
+
+    await expect(bridge.version()).rejects.toMatchObject({
+      response: { code: "internal_error", message: "addon failed to load", causes: [] },
+    });
+  });
+
+  test("a reply without the result envelope rejects", async () => {
+    const ipc: IpcRendererLike = {
+      invoke: () => Promise.resolve("{}"),
+      on: () => undefined,
+      removeListener: () => undefined,
+      send: () => undefined,
+    };
+
+    await expect(createDesktopBridge(ipc).version()).rejects.toThrow("the main process sent a reply without a result");
+  });
+});
+
 describe("desktop_bridge run events", () => {
   test("followRun subscribes and resolves at the terminal event of its own subscription", async () => {
     let subscription: unknown[] = [];
@@ -185,6 +222,21 @@ describe("desktop_bridge run events", () => {
     expect(terminal).toStrictEqual({ status: "cancelled", job_id: "r1" });
     expect(seen).toStrictEqual([3, 4]);
     expect(ipc.handlerCount(RUN_EVENT_CHANNEL)).toBe(0);
+    expect(ipc.sent).toStrictEqual([["treetime:runs:unsubscribe", "sub-1"]]);
+  });
+
+  test("aborting followRun unsubscribes the run events in the main process", async () => {
+    const ipc = makeFakeIpc(() => Promise.resolve(undefined));
+    const controller = new AbortController();
+    const bridge = createDesktopBridge(ipc, () => "sub-1");
+
+    const following = bridge.followRun("r1", { signal: controller.signal });
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(following).rejects.toThrow("the event stream of run r1 ended without a terminal event");
+    expect(ipc.handlerCount(RUN_EVENT_CHANNEL)).toBe(0);
+    expect(ipc.sent).toStrictEqual([["treetime:runs:unsubscribe", "sub-1"]]);
   });
 
   test("a command creates a run and resolves with the outcome", async () => {
