@@ -4,7 +4,7 @@ import { DETERMINISTIC_SEED } from "./test/seed";
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.ts", "packages/*/src/**/*.test.{ts,tsx}"],
+    include: ["test/**/*.test.ts", "packages/*/src/**/*.test.{ts,tsx}", "packages/*/build/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
     environment: "node",
     passWithNoTests: false,

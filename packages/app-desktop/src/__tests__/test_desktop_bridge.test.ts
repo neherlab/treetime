@@ -10,7 +10,7 @@ import {
   windowBackendConnection,
   type BackendConnection,
   type DesktopShell,
-  type WindowMessage,
+  type WindowLike,
 } from "../desktop-bridge";
 
 const RECORD = {
@@ -488,6 +488,8 @@ function fakeShell({ picked, saved = null }: { picked: unknown; saved?: unknown 
 
   return shell;
 }
+
+type WindowMessage = Parameters<Parameters<WindowLike["addEventListener"]>[1]>[0];
 
 function fakeWindow() {
   const listeners: Array<(event: WindowMessage) => void> = [];

@@ -33,7 +33,7 @@ export interface BackendConnection {
   onStopped(listener: (reason: string) => void): void;
 }
 
-export interface WindowMessage {
+interface WindowMessage {
   source: unknown;
   data: unknown;
   ports: readonly PortLike[];

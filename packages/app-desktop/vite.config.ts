@@ -7,7 +7,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import electron from "vite-plugin-electron/simple";
 
-import { contentSecurityPolicy } from "./src/security";
+import { contentSecurityPolicy } from "./build/content-security-policy";
 
 const projectRoot = resolve(__dirname, "../..");
 

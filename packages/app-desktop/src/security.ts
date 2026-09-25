@@ -1,23 +1,4 @@
-import type { WebContents } from "electron";
-
-export function contentSecurityPolicy(devServer: boolean): string {
-  const scriptSources = devServer ? "'self' 'unsafe-inline'" : "'self'";
-
-  return [
-    "default-src 'self'",
-    `script-src ${scriptSources}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "worker-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join("; ");
-}
-
-export function isAppUrl(url: string, appUrl: string): boolean {
+function isAppUrl(url: string, appUrl: string): boolean {
   const candidate = parseUrl(url);
   const app = parseUrl(appUrl);
 
@@ -41,13 +22,17 @@ export function isTrustedSender(frame: SenderFrame | null, appUrl: string): bool
   return frame !== null && frame.parent === null && isAppUrl(frame.url, appUrl);
 }
 
-export function isExternalLink(url: string): boolean {
+function isExternalLink(url: string): boolean {
   const parsed = parseUrl(url);
 
   return parsed !== undefined && (parsed.protocol === "https:" || parsed.protocol === "http:");
 }
 
-export function confineNavigation(contents: WebContents, appUrl: string, openExternal: (url: string) => void): void {
+export function confineNavigation(
+  contents: NavigableContents,
+  appUrl: string,
+  openExternal: (url: string) => void,
+): void {
   contents.setWindowOpenHandler(({ url }) => {
     if (isExternalLink(url)) {
       openExternal(url);
@@ -65,6 +50,16 @@ export function confineNavigation(contents: WebContents, appUrl: string, openExt
   contents.on("will-attach-webview", (event) => {
     event.preventDefault();
   });
+}
+
+interface PreventableEvent {
+  preventDefault(): void;
+}
+
+interface NavigableContents {
+  setWindowOpenHandler(handler: (details: { url: string }) => { action: "deny" }): void;
+  on(event: "will-navigate", listener: (event: PreventableEvent, url: string) => void): void;
+  on(event: "will-attach-webview", listener: (event: PreventableEvent) => void): void;
 }
 
 function parseUrl(url: string): URL | undefined {

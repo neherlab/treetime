@@ -29,7 +29,7 @@ export type BackendRequest = z.infer<typeof zBackendRequest>;
 
 export type BackendReply = z.infer<typeof zBackendReply>;
 
-export type ControlRequest = z.infer<typeof zControlRequest>;
+type ControlRequest = z.infer<typeof zControlRequest>;
 
 export type SaveRequest = Exclude<ControlRequest, { kind: "port" }>;
 

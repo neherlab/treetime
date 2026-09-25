@@ -26,8 +26,8 @@
       "project": ["src/**/*.{ts,tsx,css}!"]
     },
     "packages/app-desktop": {
-      "entry": ["src/preload.ts!", "renderer/index.html!"],
-      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!"]
+      "entry": ["src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],
+      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!", "build/**/*.ts"]
     },
     "packages/app-napi": {
       "entry": [],

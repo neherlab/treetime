@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-import { contentSecurityPolicy, isAppUrl, isExternalLink, isTrustedSender } from "../security";
+import { confineNavigation, isTrustedSender } from "../security";
 
 const PACKAGED = "file:///opt/treetime/resources/app/dist/index.html";
 
 const DEV_SERVER = "http://localhost:5173/";
 
-describe("security app urls", () => {
+describe("security navigation", () => {
   test.each([
     [PACKAGED, PACKAGED, true],
     [`${PACKAGED}#/runs/r1`, PACKAGED, true],
@@ -15,8 +15,14 @@ describe("security app urls", () => {
     ["http://localhost:5174/", DEV_SERVER, false],
     ["https://example.org/", DEV_SERVER, false],
     ["not a url", DEV_SERVER, false],
-  ])("%s belongs to the application at %s: %s", (url, appUrl, expected) => {
-    expect(isAppUrl(url, appUrl)).toBe(expected);
+  ])("navigating to %s stays in the application at %s: %s", (url, appUrl, allowed) => {
+    const contents = fakeContents(appUrl);
+
+    expect(contents.navigate(url)).toBe(!allowed);
+  });
+
+  test("a web view is never attached", () => {
+    expect(fakeContents(PACKAGED).attachWebview()).toBe(true);
   });
 });
 
@@ -38,27 +44,60 @@ describe("security senders", () => {
   });
 });
 
-describe("security external links", () => {
+describe("security new windows", () => {
   test.each([
     ["https://doi.org/10.1093/ve/vex042", true],
     ["http://example.org", true],
     ["file:///etc/passwd", false],
     ["javascript:alert(1)", false],
-  ])("%s opens in the system browser: %s", (url, expected) => {
-    expect(isExternalLink(url)).toBe(expected);
+  ])("a new window for %s is denied and opens in the system browser: %s", (url, external) => {
+    const contents = fakeContents(PACKAGED);
+
+    expect(contents.openWindow(url)).toStrictEqual({ action: "deny", opened: external ? [url] : [] });
   });
 });
 
-describe("security content policy", () => {
-  test("the packaged application allows scripts of its own origin only", () => {
-    expect(contentSecurityPolicy(false)).toBe(
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
-        "font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; " +
-        "form-action 'none'",
+interface Preventable {
+  preventDefault(): void;
+}
+
+function fakeContents(appUrl: string) {
+  let openHandler: ((details: { url: string }) => { action: "deny" }) | undefined;
+  const listeners = new Map<string, (event: Preventable, url: string) => void>();
+  const opened: string[] = [];
+
+  confineNavigation(
+    {
+      setWindowOpenHandler(handler) {
+        openHandler = handler;
+      },
+      on(event: string, listener: (event: Preventable, url: string) => void) {
+        listeners.set(event, listener);
+      },
+    },
+    appUrl,
+    (url) => {
+      opened.push(url);
+    },
+  );
+
+  const dispatch = (event: string, url: string): boolean => {
+    let prevented = false;
+    listeners.get(event)?.(
+      {
+        preventDefault: () => {
+          prevented = true;
+        },
+      },
+      url,
     );
-  });
 
-  test("the development server also allows the inline script of hot reloading", () => {
-    expect(contentSecurityPolicy(true)).toContain("script-src 'self' 'unsafe-inline';");
-  });
-});
+    return prevented;
+  };
+
+  return {
+    navigate: (url: string) => dispatch("will-navigate", url),
+    attachWebview: () => dispatch("will-attach-webview", ""),
+    openWindow: (url: string) => ({ action: openHandler?.({ url }).action, opened }),
+  };
+}
