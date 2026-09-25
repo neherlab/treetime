@@ -1,7 +1,6 @@
 import type { SettingSpec } from "./catalog";
 import { isChanged } from "./config";
 import type { JsonObject } from "./json";
-import { settingLabel } from "./labels";
 
 export function matchingSpecs(
   specs: readonly SettingSpec[],
@@ -19,7 +18,7 @@ export function matchingSpecs(
       return false;
     }
 
-    const haystack = [spec.key, spec.flag, settingLabel(spec.key), spec.help, spec.more].join(" ").toLowerCase();
+    const haystack = [spec.key, spec.flag, spec.label, spec.help, spec.more].join(" ").toLowerCase();
 
     return words.every((word) => haystack.includes(word));
   });

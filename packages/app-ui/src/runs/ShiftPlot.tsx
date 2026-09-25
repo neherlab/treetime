@@ -13,7 +13,7 @@ import {
   ZAxis,
 } from "recharts";
 
-import { formatDecimalDate, formatSignedDays } from "../format";
+import { formatSignedDays } from "../format";
 import type { AncestorShift } from "../results/types";
 import { PLATE, TICK_STYLE } from "./palette";
 
@@ -27,7 +27,7 @@ const CLADE_SIZE: [number, number] = [16, 160];
 
 export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShift[]; firstLabel: string }) {
   const data = useMemo(
-    () => shifts.map((shift) => ({ ...shift, x: shift.date_first, y: shift.shift_days, z: shift.tips })),
+    () => shifts.map((shift) => ({ ...shift, x: shift.date_first.year, y: shift.shift_days, z: shift.tips })),
     [shifts],
   );
 
@@ -64,7 +64,7 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div className="font-bold">
         {shift.name}, {shift.tips} samples
       </div>
-      <div>Date {formatDecimalDate(shift.date_first)}</div>
+      <div>Date {shift.date_first.date}</div>
       <div>Shift {formatSignedDays(shift.shift_days)}</div>
     </div>
   );

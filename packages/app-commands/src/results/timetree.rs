@@ -2,6 +2,7 @@ use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use crate::json_float::JsonFloat;
 use crate::results::clock::{RootToTip, is_fixed, root_to_tip};
 use crate::results::tree::{DateInterval, ResultTree};
+use crate::results::year_date::YearDate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use treetime::clock::clock_model::ClockModel;
@@ -29,8 +30,8 @@ pub struct TimetreeResults {
 /// Estimates of a `timetree` run.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TimetreeEstimates {
-  /// Date of the root, as a decimal year.
-  pub root_date: Option<f64>,
+  /// Date of the root.
+  pub root_date: Option<YearDate>,
   /// Confidence interval of the root date.
   pub root_interval: Option<DateInterval>,
   /// Whether the root date lies within 5% of the interval width from a bound of its interval.
@@ -214,12 +215,13 @@ fn timetree_estimates(
   let fixed = outputs.clock_model.is_some_and(is_fixed);
   let r = outputs.clock_model.and_then(ClockModel::r_val);
   TimetreeEstimates {
-    root_date: root.date,
-    root_interval: root.date_interval,
+    root_date: root.date.clone(),
+    root_interval: root.date_interval.clone(),
     root_near_interval_edge: root
       .date
-      .zip(root.date_interval)
-      .is_some_and(|(date, interval)| near_interval_edge(date, interval)),
+      .as_ref()
+      .zip(root.date_interval.as_ref())
+      .is_some_and(|(date, interval)| near_interval_edge(date.year, interval)),
     clock_rate: outputs
       .clock_model
       .map(ClockModel::clock_rate)
@@ -244,9 +246,9 @@ fn timetree_estimates(
   }
 }
 
-fn near_interval_edge(date: f64, interval: DateInterval) -> bool {
-  let width = interval.upper - interval.lower;
-  (date - interval.lower).min(interval.upper - date) <= INTERVAL_EDGE_FRACTION * width
+fn near_interval_edge(date: f64, interval: &DateInterval) -> bool {
+  let (lower, upper) = (interval.lower.year, interval.upper.year);
+  (date - lower).min(upper - date) <= INTERVAL_EDGE_FRACTION * (upper - lower)
 }
 
 fn log_lh(value: LogLh) -> JsonFloat {

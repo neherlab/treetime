@@ -1,24 +1,29 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{
-    AlignmentFacts, CheckInputsRequest, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_read,
+    AlignmentFacts, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_read,
   };
-  use helpers::data;
+  use crate::command::AppCommand;
+  use crate::config::properties::leaf_properties;
+  use helpers::{data, request};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
   use std::collections::BTreeSet;
   use std::fs;
+  use strum::IntoEnumIterator;
   use tempfile::tempdir;
   use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
   use treetime_io::dates_csv::read_metadata_table_from_reader;
 
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
-    let facts = check_inputs(&CheckInputsRequest {
-      tree: Some(data("zika/86/tree.nwk")),
-      ..CheckInputsRequest::default()
-    });
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({ "tree": data("zika/86/tree.nwk") }),
+    ))
+    .unwrap();
     assert_eq!(
       Some(TreeFacts {
         tips: 86,
@@ -33,12 +38,15 @@ mod tests {
 
   #[test]
   fn test_check_inputs_zika_86_metadata_and_alignment_facts() {
-    let facts = check_inputs(&CheckInputsRequest {
-      tree: Some(data("zika/86/tree.nwk")),
-      metadata: Some(data("zika/86/metadata.tsv")),
-      alignment: vec![data("zika/86/aln.fasta.xz")],
-      ..CheckInputsRequest::default()
-    });
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({
+        "tree": data("zika/86/tree.nwk"),
+        "metadata": data("zika/86/metadata.tsv"),
+        "alignment": [data("zika/86/aln.fasta.xz")],
+      }),
+    ))
+    .unwrap();
     let alignment = facts.alignment.clone().unwrap();
     assert_eq!(
       (
@@ -84,12 +92,15 @@ mod tests {
     )
     .unwrap();
     fs::write(dir.path().join("aln.fasta"), ">A\nACGT\n>B\nACGT\n>C\nACG\n").unwrap();
-    let facts = check_inputs(&CheckInputsRequest {
-      tree: Some(dir.path().join("tree.nwk")),
-      metadata: Some(dir.path().join("metadata.csv")),
-      alignment: vec![dir.path().join("aln.fasta")],
-      ..CheckInputsRequest::default()
-    });
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({
+        "tree": dir.path().join("tree.nwk"),
+        "metadata": dir.path().join("metadata.csv"),
+        "alignment": [dir.path().join("aln.fasta")],
+      }),
+    ))
+    .unwrap();
     assert_eq!(
       (
         Some(vec!["D".to_owned(), "E".to_owned()]),
@@ -117,12 +128,59 @@ mod tests {
   }
 
   #[test]
+  fn test_check_inputs_ignores_inputs_the_command_does_not_read() {
+    let facts = check_inputs(&request(
+      AppCommand::Mugration,
+      json!({
+        "tree": data("zika/86/tree.nwk"),
+        "alignment": [data("zika/86/aln.fasta.xz")],
+      }),
+    ))
+    .unwrap();
+    assert_eq!(
+      (true, None, None),
+      (facts.tree.is_some(), facts.alignment, facts.tips_without_sequence)
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_input_settings_are_settings_of_every_command_that_reads_them() {
+    let missing = AppCommand::iter()
+      .flat_map(|command| {
+        let keys = leaf_properties(command.config_schema().as_value())
+          .unwrap()
+          .into_iter()
+          .map(|leaf| leaf.key_path.join("."))
+          .collect::<BTreeSet<_>>();
+        let reads_metadata = command.inputs().iter().any(|input| input.kind == InputKind::Metadata);
+        let metadata_keys: &[&str] = if reads_metadata {
+          &["metadata_id_columns", "metadata_delimiters"]
+        } else {
+          &[]
+        };
+        let date_keys: &[&str] = if command.uses_dates() { &["date_column"] } else { &[] };
+        command
+          .inputs()
+          .iter()
+          .map(|input| input.kind.setting())
+          .chain(metadata_keys.iter().copied())
+          .chain(date_keys.iter().copied())
+          .filter(|key| !keys.contains(*key))
+          .map(|key| format!("{command}: {key}"))
+          .collect_vec()
+      })
+      .collect_vec();
+    assert_eq!(Vec::<String>::new(), missing);
+  }
+
+  #[test]
   fn test_check_inputs_reports_unreadable_inputs_as_problems() {
     let dir = tempdir().unwrap();
-    let facts = check_inputs(&CheckInputsRequest {
-      tree: Some(dir.path().join("missing.nwk")),
-      ..CheckInputsRequest::default()
-    });
+    let facts = check_inputs(&request(
+      AppCommand::Timetree,
+      json!({ "tree": dir.path().join("missing.nwk") }),
+    ))
+    .unwrap();
     assert_eq!(
       (None, vec![InputKind::Tree]),
       (
@@ -203,10 +261,20 @@ mod tests {
   }
 
   mod helpers {
+    use crate::check_inputs::CheckInputsRequest;
+    use crate::command::AppCommand;
+    use serde_json::Value;
     use std::path::{Path, PathBuf};
 
     pub(super) fn data(path: &str) -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data").join(path)
+    }
+
+    pub(super) fn request(command: AppCommand, config: Value) -> CheckInputsRequest {
+      let Value::Object(config) = config else {
+        panic!("a test configuration must be a mapping");
+      };
+      CheckInputsRequest { command, config }
     }
   }
 }

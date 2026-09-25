@@ -4,11 +4,11 @@ import { describe, expect, test } from "vitest";
 import { dayLabel, formatBytes, formatDuration, headlineText } from "../format";
 
 describe("format", () => {
-  test("a decimal root date maps to its calendar month", () => {
-    expect([headlineText({ root_date: 2015.5 }), headlineText({ root_date: 2016 })]).toStrictEqual([
-      "Jul 2015",
-      "Jan 2016",
-    ]);
+  test("the root date of the headline shows as its calendar month", () => {
+    expect([
+      headlineText({ root_date: { year: 2015.5, date: "2015-07-02" } }),
+      headlineText({ root_date: { year: 2016, date: "2016-01-01" } }),
+    ]).toStrictEqual(["Jul 2015", "Jan 2016"]);
   });
 
   test("sizes use binary kilobytes and megabytes", () => {
@@ -38,7 +38,9 @@ describe("format", () => {
   });
 
   test("the headline shows the root date of a time tree before the rate", () => {
-    expect(headlineText({ root_date: 2013.9, clock_rate: 0.0008 })).toStrictEqual("Nov 2013");
+    expect(headlineText({ root_date: { year: 2013.9, date: "2013-11-24" }, clock_rate: 0.0008 })).toStrictEqual(
+      "Nov 2013",
+    );
   });
 
   test("the headline shows the clock rate of a clock run", () => {

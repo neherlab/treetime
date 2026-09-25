@@ -124,7 +124,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
               title="Settings"
               hint={changed.length === 0 ? "All defaults" : `${changed.length} changed`}
             >
-              <SettingsPanel command={command} config={config} facts={facts ?? undefined} />
+              <SettingsPanel command={command} config={config} facts={facts ?? undefined} checks={checks} />
             </Step>
           </div>
           <aside className="grid gap-3.5 xl:sticky xl:top-4">

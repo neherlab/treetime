@@ -17,6 +17,7 @@ export type {
   CheckConfigInput,
   CheckConfigResult,
   CladeInRunsResult,
+  CommandConfigs,
   CommandOptions,
   DesktopRequestInput,
   FollowRunOptions,
@@ -28,6 +29,7 @@ export type {
   RunEventResult,
   RunResultsResult,
   RunSummaryResult,
+  SettingKey,
   TransportEventOptions,
   TreeTimeBridge,
 } from "./bridge";

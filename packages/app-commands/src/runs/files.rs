@@ -21,6 +21,8 @@ pub struct RunFile {
   pub size: usize,
   /// Output selection that produced the file; absent for files the output plan does not name.
   pub kind: Option<OutputSelection>,
+  /// What the file holds; empty for files the output plan does not name.
+  pub description: String,
 }
 
 pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec<RunFile>, Report> {
@@ -37,8 +39,10 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
         .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?
         .len(),
     )?;
+    let kind = kinds.get(&name).copied();
     files.push(RunFile {
-      kind: kinds.get(&name).copied(),
+      description: kind.map(OutputSelection::description).unwrap_or_default().to_owned(),
+      kind,
       path: name,
       size,
     });

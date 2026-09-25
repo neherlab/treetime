@@ -37,7 +37,7 @@ mod tests {
           .output_files
           .iter()
           .all(|file| out_dir.join(&file.path).is_file()),
-        record.headline.contains_key("clock_rate") && record.headline.contains_key("r_squared"),
+        record.headline.clock_rate.is_some() && record.headline.r_squared.is_some(),
         event_types(&read_events(&runs.store().events_path(&created.id), 0).unwrap())
           .into_iter()
           .filter(|kind| *kind == "started" || *kind == "terminal")

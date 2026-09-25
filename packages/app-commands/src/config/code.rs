@@ -20,6 +20,8 @@ const OUTPUT_ALL_FLAG: &str = "--output-all";
 
 const DOCUMENT_START: &str = "---\n";
 
+const CONFIG_FILE: &str = "run.yaml";
+
 pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<ConfigCode, Report> {
   let settings = command_settings(command)?;
   let cli = command.cli_command();
@@ -39,6 +41,8 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
   let command_line = command_line(command, &cli, &inputs, &changed, output_dir)?;
   let yaml = yaml(command, &inputs, &changed, output_dir)?;
   Ok(ConfigCode {
+    config_file: CONFIG_FILE.to_owned(),
+    config_command: config_command(command),
     command_line_text: command_line_text(&command_line),
     yaml_text: format!("{}\n", yaml.iter().map(|line| &line.text).join("\n")),
     command_line,
@@ -81,6 +85,10 @@ pub struct ConfigCode {
   pub yaml: Vec<CodeLine>,
   /// The YAML config as a file holds it.
   pub yaml_text: String,
+  /// Name to save the YAML config under.
+  pub config_file: String,
+  /// The command line that runs the saved YAML config.
+  pub config_command: String,
 }
 
 /// One line of a command line or a YAML config.
@@ -106,6 +114,10 @@ pub enum CodeLineKind {
   Output,
   /// A comment.
   Comment,
+}
+
+fn config_command(command: AppCommand) -> String {
+  format!("treetime {command} --config {CONFIG_FILE}")
 }
 
 fn changed_settings<'a>(settings: &'a CommandSettings, config: &Map<String, Value>) -> Vec<(&'a SettingSpec, Value)> {
@@ -199,7 +211,7 @@ fn yaml(
       kind: CodeLineKind::Comment,
     },
     CodeLine {
-      text: format!("# treetime {command} --config run.yaml"),
+      text: format!("# {}", config_command(command)),
       kind: CodeLineKind::Comment,
     },
   ];

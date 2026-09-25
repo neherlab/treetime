@@ -1,11 +1,12 @@
-use crate::check_inputs::CommandInput;
+use crate::check_inputs::InputSlot;
 use crate::command::AppCommand;
+use crate::config::labels::setting_label;
 use crate::config::properties::{LeafProperty, PathRole, leaf_properties};
 use crate::config::settings::setting_ref;
 use crate::config::source::escape_pointer;
 use clap::{Arg, Command};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,15 +27,14 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
   let defaults = Value::Object(command.default_config()?);
   let leaves = leaf_properties(&schema)?;
 
-  let mut settings = leaves
-    .iter()
-    .map(|leaf| {
-      let arg = setting_arg(&cli, leaf)?;
+  let args: Vec<&Arg> = leaves.iter().map(|leaf| setting_arg(&cli, leaf)).try_collect()?;
+  let mut settings = izip!(&leaves, &args)
+    .map(|(leaf, arg)| {
       let order = cli
         .get_arguments()
         .position(|candidate| candidate.get_id() == arg.get_id())
         .unwrap_or(usize::MAX);
-      let spec = setting_spec(&schema, leaf, arg, &defaults)?;
+      let spec = setting_spec(&schema, leaf, arg, &defaults, conflicts(&cli, &leaves, &args, arg))?;
       Ok((order, arg.get_display_order(), spec))
     })
     .collect::<Result<Vec<_>, Report>>()?;
@@ -53,9 +53,20 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     )
   });
 
+  let specs = settings.iter().map(|(_, _, spec)| spec).collect_vec();
+  let inputs = command
+    .inputs()
+    .iter()
+    .map(|input| {
+      let list = specs
+        .iter()
+        .any(|spec| spec.key == input.kind.setting() && spec.kind == SettingKind::List);
+      InputSlot::new(*input, list)
+    })
+    .collect();
   Ok(CommandSettings {
     command,
-    inputs: command.inputs().to_vec(),
+    inputs,
     uses_dates: command.uses_dates(),
     groups,
     settings: settings.into_iter().map(|(_, _, spec)| spec).collect(),
@@ -67,6 +78,22 @@ pub fn setting_arg<'a>(cli: &'a Command, leaf: &LeafProperty) -> Result<&'a Arg,
     .get_arguments()
     .find(|arg| arg.get_id() == leaf.key() && arg.get_long().is_some())
     .ok_or_else(|| make_report!("config key `{}` has no command-line flag", leaf.key_path.join(".")))
+}
+
+fn conflicts(cli: &Command, leaves: &[LeafProperty], args: &[&Arg], arg: &Arg) -> Vec<String> {
+  let declared = cli.get_arg_conflicts_with(arg);
+  izip!(leaves, args)
+    .filter(|(_, other)| {
+      declared.iter().any(|conflict| conflict.get_id() == other.get_id())
+        || cli
+          .get_arg_conflicts_with(other)
+          .iter()
+          .any(|conflict| conflict.get_id() == arg.get_id())
+    })
+    .map(|(leaf, _)| leaf.key_path.join("."))
+    .sorted()
+    .dedup()
+    .collect()
 }
 
 /// Settings of every command the app runs, as the settings form shows them.
@@ -82,7 +109,7 @@ pub struct CommandSettings {
   /// The command.
   pub command: AppCommand,
   /// Input files the command reads, in the order the form asks for them.
-  pub inputs: Vec<CommandInput>,
+  pub inputs: Vec<InputSlot>,
   /// Whether the command reads sampling dates from the metadata.
   pub uses_dates: bool,
   /// Setting groups, in the order `treetime <command> --help` lists their headings.
@@ -98,6 +125,8 @@ pub struct SettingSpec {
   pub key: String,
   /// Key path of the setting in the configuration.
   pub path: Vec<String>,
+  /// Name of the setting as the form shows it, for example `Clock rate std. dev.`.
+  pub label: String,
   /// Command-line flag, for example `--clock-rate`.
   pub flag: String,
   /// Heading of the setting in `--help`.
@@ -116,6 +145,13 @@ pub struct SettingSpec {
   pub default_value: Value,
   /// Smallest allowed value of a number, when there is one.
   pub minimum: Option<f64>,
+  /// Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
+  /// when the setting is turned on.
+  pub examples: Vec<Value>,
+  /// Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
+  pub value_names: Vec<String>,
+  /// Keys of the settings this setting cannot be used together with, as the command line rejects them.
+  pub conflicts: Vec<String>,
   /// First paragraph of the setting's description.
   pub help: String,
   /// Remaining paragraphs of the setting's description.
@@ -187,7 +223,13 @@ pub struct SettingOption {
   pub help: String,
 }
 
-fn setting_spec(schema: &Value, leaf: &LeafProperty, arg: &Arg, defaults: &Value) -> Result<SettingSpec, Report> {
+fn setting_spec(
+  schema: &Value,
+  leaf: &LeafProperty,
+  arg: &Arg,
+  defaults: &Value,
+  conflicts: Vec<String>,
+) -> Result<SettingSpec, Report> {
   let key = leaf.key_path.join(".");
   let property = schema
     .pointer(&leaf.schema_pointer)
@@ -236,6 +278,7 @@ fn setting_spec(schema: &Value, leaf: &LeafProperty, arg: &Arg, defaults: &Value
   };
 
   Ok(SettingSpec {
+    label: setting_label(&leaf.key_path),
     key,
     path: leaf.key_path.clone(),
     flag: format!("--{long}"),
@@ -254,6 +297,18 @@ fn setting_spec(schema: &Value, leaf: &LeafProperty, arg: &Arg, defaults: &Value
     .cloned()
     .unwrap_or(Value::Null),
     minimum: base.get("minimum").and_then(Value::as_f64),
+    examples: property
+      .get("examples")
+      .and_then(Value::as_array)
+      .cloned()
+      .unwrap_or_default(),
+    value_names: arg
+      .get_value_names()
+      .unwrap_or_default()
+      .iter()
+      .map(ToString::to_string)
+      .collect(),
+    conflicts,
     help: description.help,
     more: description.more,
   })

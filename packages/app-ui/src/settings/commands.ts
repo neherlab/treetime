@@ -1,4 +1,4 @@
-import type { AppCommand, InputKind } from "@neherlab/app-contracts";
+import type { AppCommand, SettingKey } from "@neherlab/app-contracts";
 
 interface CommandInfo {
   command: AppCommand;
@@ -48,17 +48,7 @@ export const COMMAND_INFO: Record<AppCommand, CommandInfo> = {
   },
 };
 
-export const INPUT_SLOT_INFO: Record<InputKind, { label: string; hint: string; extensions: string[] }> = {
-  tree: { label: "Tree", hint: "Newick or Nexus", extensions: ["nwk", "newick", "nex", "nexus", "tree", "tre"] },
-  alignment: {
-    label: "Alignment",
-    hint: "FASTA, aligned",
-    extensions: ["fasta", "fa", "fas", "aln", "xz", "gz", "zst", "bz2"],
-  },
-  metadata: { label: "Metadata", hint: "TSV or CSV with names and dates", extensions: ["tsv", "csv", "txt"] },
-};
-
-export const MAIN_SETTING_KEYS: Record<AppCommand, readonly string[]> = {
+export const MAIN_SETTING_KEYS = {
   timetree: [
     "clock_rate",
     "clock_std_dev",
@@ -83,8 +73,4 @@ export const MAIN_SETTING_KEYS: Record<AppCommand, readonly string[]> = {
   mugration: ["attribute", "weights", "pc", "missing_data", "sampling_bias_correction"],
   optimize: ["opt_method", "reroot", "divergence_units", "no_indels", "max_iter"],
   prune: ["prune_short", "prune_empty", "merge_shared_mutations", "prune_nodes_list"],
-};
-
-export function isAppCommand(value: string | undefined): value is AppCommand {
-  return APP_COMMANDS.some((command) => command === value);
-}
+} satisfies { readonly [C in AppCommand]: ReadonlyArray<SettingKey<C>> };

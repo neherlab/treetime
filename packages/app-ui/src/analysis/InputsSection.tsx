@@ -1,11 +1,10 @@
-import type { AppCommand, InputFactsResult, InputKind, InputNeed } from "@neherlab/app-contracts";
+import type { AppCommand, InputFactsResult, InputSlot } from "@neherlab/app-contracts";
 import { useCallback, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 import { formatBytes } from "../format";
 import { useLocalFiles } from "../platform";
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { INPUT_SLOT_INFO } from "../settings/commands";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { Button, cn } from "../ui";
@@ -33,7 +32,7 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
       </div>
       {showExamples && <ExamplesPanel command={command} close={closeExamples} />}
       {COMMAND_SETTINGS[command].inputs.map((input) => (
-        <InputSlotRow key={input.kind} command={command} slotKey={input.kind} need={input.need} facts={facts} />
+        <InputSlotRow key={input.kind} command={command} slot={input} facts={facts} />
       ))}
     </div>
   );
@@ -41,23 +40,19 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
 
 function InputSlotRow({
   command,
-  slotKey,
-  need,
+  slot,
   facts,
 }: {
   command: AppCommand;
-  slotKey: InputKind;
-  need: InputNeed;
+  slot: InputSlot;
   facts: InputFactsResult | undefined;
 }) {
-  const info = INPUT_SLOT_INFO[slotKey];
-  const value = useWatch<FormConfig>({ name: slotKey });
-  const source = useDraftStore((state) => state.sources[slotKey]);
-  const list = slotKey === "alignment";
-  const drop = useFileDrop(command, slotKey, list);
+  const value = useWatch<FormConfig>({ name: slot.kind });
+  const source = useDraftStore((state) => state.sources[slot.kind]);
+  const drop = useFileDrop(command, slot.kind, slot.list);
   const paths = pathList(value);
-  const factsText = slotFactsText(slotKey, facts, COMMAND_SETTINGS[command].uses_dates);
-  const problem = slotProblem(slotKey, facts);
+  const factsText = slotFactsText(slot.kind, facts, COMMAND_SETTINGS[command].uses_dates);
+  const problem = slotProblem(slot.kind, facts);
 
   return (
     <div
@@ -71,9 +66,9 @@ function InputSlotRow({
       )}
     >
       <div className="font-bold">
-        {info.label}
+        {slot.label}
         <small className="text-ink-faint block text-xs font-normal">
-          {need === "required" ? info.hint : `${info.hint}, ${need}`}
+          {slot.need === "required" ? slot.formats : `${slot.formats}, ${slot.need}`}
         </small>
       </div>
       {paths.length > 0 ? (
@@ -95,10 +90,10 @@ function InputSlotRow({
       )}
       <PathPicker
         command={command}
-        settingKey={slotKey}
-        title={info.label}
-        extensions={info.extensions}
-        list={list}
+        settingKey={slot.kind}
+        title={slot.label}
+        extensions={slot.extensions}
+        list={slot.list}
         filled={paths.length > 0}
       />
     </div>

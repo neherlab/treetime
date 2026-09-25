@@ -4,7 +4,6 @@ import type {
   AncestralConfig,
   AppCommand,
   AuspiceDocument,
-  CheckConfigRequest,
   CladeRequest,
   CheckInputsRequest,
   ClockConfig,
@@ -25,6 +24,7 @@ import type {
 import {
   zAuspiceDocument,
   zCancelRunResponse,
+  zCheckConfigRequest,
   zCheckConfigResponse,
   zCladeInRuns,
   zCommandOutcome,
@@ -48,6 +48,17 @@ import {
 
 export type Parsed<S extends z.ZodType> = z.infer<S>;
 
+export interface CommandConfigs {
+  timetree: TimetreeConfig;
+  clock: ClockConfig;
+  ancestral: AncestralConfig;
+  mugration: MugrationConfig;
+  optimize: OptimizeConfig;
+  prune: PruneConfig;
+}
+
+export type SettingKey<C extends AppCommand> = keyof CommandConfigs[C] & string;
+
 export type CheckConfigResult = Parsed<typeof zCheckConfigResponse>;
 
 export type RunConfigResult = Parsed<typeof zRunConfigResponse>;
@@ -60,7 +71,7 @@ export type InputFactsResult = Parsed<typeof zInputFacts>;
 
 export type DesktopRequestInput = z.input<typeof zDesktopRequest>;
 
-export type CheckConfigInput = Omit<CheckConfigRequest, "input_facts"> & { input_facts?: InputFactsResult | null };
+export type CheckConfigInput = z.input<typeof zCheckConfigRequest>;
 
 export type RunResultsResult = Parsed<typeof zRunResults>;
 

@@ -8,6 +8,7 @@ pub mod check_inputs;
 pub mod command;
 pub mod commands;
 pub mod config;
+pub mod datasets;
 pub mod job;
 pub mod json_float;
 pub mod results;

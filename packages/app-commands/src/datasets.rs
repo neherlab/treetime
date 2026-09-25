@@ -1,0 +1,117 @@
+use crate::check_inputs::InputKind;
+use crate::command::AppCommand;
+use app_datasets::{DatasetFiles, ExampleFile, TREE_FILE, discover_datasets};
+use eyre::Report;
+use itertools::Itertools;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+use std::str::FromStr;
+use strum::VariantNames;
+use treetime_utils::make_report;
+
+const DATASET_FILES: [(InputKind, &[&str]); 3] = [
+  (InputKind::Tree, &[TREE_FILE]),
+  (InputKind::Alignment, &["aln.fasta.xz", "aln.fasta"]),
+  (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
+];
+
+pub fn dataset_catalog(data_dir: &Path) -> Result<DatasetCatalog, Report> {
+  let discovered = discover_datasets(data_dir, AppCommand::VARIANTS)?;
+  Ok(DatasetCatalog {
+    datasets: discovered
+      .datasets
+      .iter()
+      .map(|dataset| Dataset::new(&discovered.data_dir, dataset))
+      .collect(),
+    examples: discovered.examples.into_iter().map(ExampleConfig::new).try_collect()?,
+    data_dir: discovered.data_dir,
+  })
+}
+
+/// Example datasets and example command configurations found in the data directory.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct DatasetCatalog {
+  /// Data directory as a run configuration names it: a path relative to the working directory of the process that
+  /// runs the commands, as in the example configurations.
+  pub data_dir: String,
+  /// Directories that hold a `tree.nwk`, with their files.
+  pub datasets: Vec<Dataset>,
+  /// Example configurations of the commands the application runs.
+  pub examples: Vec<ExampleConfig>,
+}
+
+/// A directory of example input files.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct Dataset {
+  /// Path of the directory relative to the data directory, with `/` separators.
+  pub name: String,
+  /// Names of the files in the directory, sorted.
+  pub files: Vec<String>,
+  /// The files of the directory that fill command inputs, at most one per kind.
+  pub inputs: Vec<DatasetInput>,
+}
+
+impl Dataset {
+  fn new(data_dir: &str, dataset: &DatasetFiles) -> Self {
+    let inputs = DATASET_FILES
+      .iter()
+      .filter_map(|(kind, names)| {
+        let file = names
+          .iter()
+          .find(|name| dataset.files.iter().any(|file| file == *name))?;
+        Some(DatasetInput {
+          kind: *kind,
+          file: format!("{}/{file}", dataset.name),
+          path: [data_dir, &dataset.name, file]
+            .iter()
+            .filter(|part| !part.is_empty())
+            .copied()
+            .collect::<Vec<_>>()
+            .join("/"),
+        })
+      })
+      .collect();
+    Self {
+      name: dataset.name.clone(),
+      files: dataset.files.clone(),
+      inputs,
+    }
+  }
+}
+
+/// A file of an example dataset that fills a command input.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DatasetInput {
+  /// Input the file fills.
+  pub kind: InputKind,
+  /// Path of the file relative to the data directory, with `/` separators.
+  pub file: String,
+  /// Path of the file as a run configuration names it.
+  pub path: String,
+}
+
+/// An example configuration file of one command.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ExampleConfig {
+  /// Path of the file relative to the data directory, with `/` separators.
+  pub path: String,
+  /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
+  pub command: AppCommand,
+  /// Title of the example: the first comment line after the directive.
+  pub title: String,
+  /// Text of the file.
+  pub content: String,
+}
+
+impl ExampleConfig {
+  fn new(example: ExampleFile) -> Result<Self, Report> {
+    Ok(Self {
+      command: AppCommand::from_str(&example.command)
+        .map_err(|err| make_report!("example `{}` names an unknown command: {err}", example.path))?,
+      path: example.path,
+      title: example.title,
+      content: example.content,
+    })
+  }
+}

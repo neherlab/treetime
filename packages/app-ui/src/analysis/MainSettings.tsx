@@ -1,28 +1,28 @@
-import type { AppCommand, InputFactsResult } from "@neherlab/app-contracts";
+import type { AppCommand, InputFactsResult, Parsed, SettingKey, zRunCheck } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import type { SettingSpec } from "../settings/catalog";
 import { MAIN_SETTING_KEYS } from "../settings/commands";
-import { isChanged, settingValue } from "../settings/config";
-import { isNumber, isString, type JsonObject, type JsonValue } from "../settings/json";
-import { settingLabel } from "../settings/labels";
+import { isChanged, resetValue, settingValue } from "../settings/config";
+import { isNumber, isString, sameJson, type JsonObject, type JsonValue } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { Segmented, Switch, cn, type SegmentedOption } from "../ui";
+import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";
 import { SettingHelp } from "./SettingField";
+
+type RunCheck = Parsed<typeof zRunCheck>;
+
+type TimetreeKey = SettingKey<"timetree">;
 
 const CLOCK_FILTER_MAX = 6;
 
 const CLOCK_FILTER_STEP = 0.5;
 
-const DEFAULT_FIXED_RATE = 0.001;
-
-const DEFAULT_TC = 1;
-
-const DEFAULT_RELAX: JsonValue = [1, 0];
+const NO_CHECKS: readonly RunCheck[] = [];
 
 type RateMode = "estimate" | "fixed";
 
@@ -47,73 +47,104 @@ const ROOT_MODES: ReadonlyArray<SegmentedOption<RootMode>> = [
   { value: "keep", label: "Keep input root" },
 ];
 
-const CLOCK_RATE_KEYS = ["clock_rate", "clock_std_dev"];
+const CLOCK_RATE_KEYS = ["clock_rate", "clock_std_dev"] as const satisfies readonly TimetreeKey[];
 
-const INTERVAL_KEYS = ["confidence", "covariation"];
+const INTERVAL_KEYS = ["confidence", "covariation"] as const satisfies readonly TimetreeKey[];
 
-const COALESCENT_KEYS = ["coalescent", "coalescent_opt", "coalescent_skyline", "skyline_n_points", "skyline_stiffness"];
+const COALESCENT_KEYS = [
+  "coalescent",
+  "coalescent_opt",
+  "coalescent_skyline",
+  "skyline_n_points",
+  "skyline_stiffness",
+] as const satisfies readonly TimetreeKey[];
 
-const ROOT_KEYS = ["reroot", "keep_root"];
+const ROOT_KEYS = ["reroot", "keep_root"] as const satisfies readonly TimetreeKey[];
 
-const CLOCK_FILTER_KEYS = ["clock_filter"];
+const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeKey[];
 
-const RELAX_KEYS = ["relax"];
+const RELAX_KEYS = ["relax"] as const satisfies readonly TimetreeKey[];
 
-const POLYTOMY_KEYS = ["keep_polytomies"];
+const POLYTOMY_KEYS = ["keep_polytomies"] as const satisfies readonly TimetreeKey[];
 
-const MODEL_KEYS = ["model", "model_params"];
+const MODEL_KEYS = ["model", "model_params"] as const satisfies readonly TimetreeKey[];
 
-const ATTRIBUTE_KEYS = ["attribute"];
+const ATTRIBUTE_KEYS = ["attribute"] as const satisfies readonly SettingKey<"mugration">[];
 
 const NO_COLUMNS: readonly string[] = [];
 
 interface RowContext {
   command: AppCommand;
   config: JsonObject;
+  checks: readonly RunCheck[];
   specs: ReadonlyMap<string, SettingSpec>;
   set: (key: string, value: JsonValue) => void;
+  reset: (keys: readonly string[]) => void;
   get: (key: string) => JsonValue;
+  example: (key: string) => JsonValue;
 }
 
 export function MainSettings({
   command,
   config,
   facts,
+  checks,
 }: {
   command: AppCommand;
   config: JsonObject;
   facts: InputFactsResult | undefined;
+  checks: readonly RunCheck[] | undefined;
 }) {
   const { setValue } = useFormContext<FormConfig>();
-
-  const set = useCallback(
-    (key: string, value: JsonValue) => setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true }),
-    [setValue],
-  );
 
   const context = useMemo((): RowContext => {
     const specs = new Map(COMMAND_SETTINGS[command].specs.map((spec) => [spec.key, spec]));
 
+    const write = (key: string, value: JsonValue) =>
+      setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true });
+
+    const reset = (keys: readonly string[]) => {
+      for (const key of keys) {
+        const spec = specs.get(key);
+
+        if (spec !== undefined) {
+          write(key, resetValue(spec));
+        }
+      }
+    };
+
     return {
       command,
       config,
+      checks: checks ?? NO_CHECKS,
       specs,
-      set,
+      reset,
+      set: (key, value) => {
+        const spec = specs.get(key);
+
+        write(key, value);
+
+        if (spec !== undefined && !sameJson(value, spec.default_value)) {
+          reset(spec.conflicts);
+        }
+      },
       get: (key) => {
         const spec = specs.get(key);
 
         return spec === undefined ? null : settingValue(config, spec);
       },
+      example: (key) => specs.get(key)?.examples[0] ?? null,
     };
-  }, [command, config, set]);
+  }, [checks, command, config, setValue]);
 
   if (command === "timetree") {
     return <TimetreeSettings context={context} />;
   }
 
-  const keys = MAIN_SETTING_KEYS[command];
+  const keys: readonly string[] = MAIN_SETTING_KEYS[command];
+  const rootKeys: readonly string[] = ROOT_KEYS;
   const hasRoot = keys.includes("reroot") && context.specs.has("keep_root");
-  const rest = keys.filter((key) => !(hasRoot && ROOT_KEYS.includes(key)));
+  const rest = keys.filter((key) => !(hasRoot && rootKeys.includes(key)));
 
   return (
     <div className="py-1">
@@ -148,15 +179,18 @@ function TimetreeSettings({ context }: { context: RowContext }) {
 }
 
 function ClockRateRow({ context }: { context: RowContext }) {
-  const { get, set } = context;
+  const { get, set, reset, example } = context;
   const fixed = get("clock_rate") !== null;
 
   const onMode = useCallback(
     (mode: RateMode) => {
-      set("clock_rate", mode === "fixed" ? DEFAULT_FIXED_RATE : null);
-      set("clock_std_dev", null);
+      reset(CLOCK_RATE_KEYS);
+
+      if (mode === "fixed") {
+        set("clock_rate", example("clock_rate"));
+      }
     },
-    [set],
+    [example, reset, set],
   );
 
   return (
@@ -179,43 +213,33 @@ function ClockRateRow({ context }: { context: RowContext }) {
 }
 
 function IntervalsRow({ context }: { context: RowContext }) {
-  const { get } = context;
-  const confidence = get("confidence") === true;
-  const uncertainty = get("covariation") === true || get("clock_std_dev") !== null;
-
   return (
     <MainRow context={context} label="Date intervals" sub="Marginal intervals on every node" keys={INTERVAL_KEYS}>
       <Inline>
         <SwitchLabel context={context} settingKey="confidence" text="Compute date intervals" />
         <SwitchLabel context={context} settingKey="covariation" text="Covariation-aware regression" />
       </Inline>
-      {confidence && !uncertainty ? (
-        <p className="text-signal-warn text-xs">
-          Intervals need rate uncertainty. Without the covariation-aware regression or a rate std. dev., TreeTime writes
-          no intervals.
-        </p>
-      ) : (
-        <Note>
-          {confidence
-            ? "Rate uncertainty comes from the covariation-aware regression or the given std. dev."
-            : "Only point estimates of dates."}
-        </Note>
-      )}
     </MainRow>
   );
 }
 
 function CoalescentRow({ context }: { context: RowContext }) {
-  const { set } = context;
+  const { set, reset, example } = context;
   const mode = coalescentMode(context);
 
   const onMode = useCallback(
     (next: CoalescentMode) => {
-      set("coalescent_skyline", next === "skyline");
-      set("coalescent_opt", next === "optimized");
-      set("coalescent", next === "fixed" ? DEFAULT_TC : null);
+      reset(COALESCENT_KEYS);
+
+      if (next === "fixed") {
+        set("coalescent", example("coalescent"));
+      } else if (next === "optimized") {
+        set("coalescent_opt", true);
+      } else if (next === "skyline") {
+        set("coalescent_skyline", true);
+      }
     },
-    [set],
+    [example, reset, set],
   );
 
   return (
@@ -260,16 +284,7 @@ function RootRow({ context }: { context: RowContext }) {
   const { get, set } = context;
   const keep = get("keep_root") === true;
 
-  const onMode = useCallback(
-    (mode: RootMode) => {
-      set("keep_root", mode === "keep");
-
-      if (mode === "keep") {
-        set("reroot", null);
-      }
-    },
-    [set],
-  );
+  const onMode = useCallback((mode: RootMode) => set("keep_root", mode === "keep"), [set]);
 
   return (
     <MainRow context={context} label="Root" sub="Where the tree is rooted" keys={ROOT_KEYS}>
@@ -322,10 +337,18 @@ function ClockFilterRow({ context }: { context: RowContext }) {
 }
 
 function RelaxRow({ context }: { context: RowContext }) {
-  const { get, set } = context;
+  const { get, set, reset, example, specs } = context;
   const relax = get("relax");
   const relaxed = Array.isArray(relax) && relax.length > 0;
-  const onRelax = useCallback((checked: boolean) => set("relax", checked ? DEFAULT_RELAX : []), [set]);
+  const valueNames = specs.get("relax")?.value_names;
+
+  const [slack = "Slack", coupling = "Coupling"] = useMemo(() => (valueNames ?? []).map(valueNameLabel), [valueNames]);
+
+  const onRelax = useCallback(
+    (checked: boolean) => (checked ? set("relax", example("relax")) : reset(RELAX_KEYS)),
+    [example, reset, set],
+  );
+
   const onPair = useCallback((next: JsonValue) => set("relax", next), [set]);
 
   return (
@@ -337,11 +360,11 @@ function RelaxRow({ context }: { context: RowContext }) {
         </span>
         {relaxed && (
           <>
-            <Labeled text="Slack">
-              <NumberPairInput value={relax} index={0} onChange={onPair} label="Slack" />
+            <Labeled text={slack}>
+              <NumberPairInput value={relax} index={0} onChange={onPair} label={slack} />
             </Labeled>
-            <Labeled text="Coupling">
-              <NumberPairInput value={relax} index={1} onChange={onPair} label="Coupling" />
+            <Labeled text={coupling}>
+              <NumberPairInput value={relax} index={1} onChange={onPair} label={coupling} />
             </Labeled>
           </>
         )}
@@ -352,9 +375,10 @@ function RelaxRow({ context }: { context: RowContext }) {
 }
 
 function ModelRow({ context }: { context: RowContext }) {
-  const { get, set } = context;
+  const { get, set, specs } = context;
   const model = get("model");
   const params = get("model_params");
+  const modelHelp = specs.get("model")?.options.find((option) => option.value === model)?.help ?? "";
 
   const onParams = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => set("model_params", parseList(event.target.value, "string")),
@@ -364,20 +388,17 @@ function ModelRow({ context }: { context: RowContext }) {
   return (
     <MainRow context={context} label="Substitution model" sub="Nucleotide or amino-acid model" keys={MODEL_KEYS}>
       <Control context={context} settingKey="model" className="w-auto" />
-      {model === "infer" ? (
-        <Note>The GTR rates and equilibrium frequencies are inferred from parsimony substitution counts.</Note>
-      ) : (
-        <Labeled text="Parameters">
-          <input
-            type="text"
-            value={formatList(params)}
-            aria-label="Model parameters"
-            placeholder="kappa=0.2 pis=0.25,0.25,0.25,0.25"
-            onChange={onParams}
-            className="border-line-strong bg-surface-1 w-72 rounded-md border px-2 py-1"
-          />
-        </Labeled>
-      )}
+      {modelHelp !== "" && <Note>{modelHelp}</Note>}
+      <Labeled text="Parameters">
+        <input
+          type="text"
+          value={formatList(params)}
+          aria-label="Model parameters"
+          placeholder="kappa=0.2 pis=0.25,0.25,0.25,0.25"
+          onChange={onParams}
+          className="border-line-strong bg-surface-1 w-72 rounded-md border px-2 py-1"
+        />
+      </Labeled>
     </MainRow>
   );
 }
@@ -426,7 +447,7 @@ function SimpleRow({ context, settingKey }: { context: RowContext; settingKey: s
   }
 
   return (
-    <MainRow context={context} label={settingLabel(settingKey)} keys={keys}>
+    <MainRow context={context} label={spec.label} keys={keys}>
       <Control context={context} settingKey={settingKey} className="max-w-72" />
       <SettingHelp spec={spec} />
     </MainRow>
@@ -453,6 +474,7 @@ function MainRow({
   });
 
   const changed = specs.some((spec) => isChanged(context.config, spec));
+  const checks = context.checks.filter((check) => check.settings.some((setting) => keys.includes(setting)));
 
   return (
     <div className="border-surface-3 grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 md:grid-cols-[12.5rem_1fr]">
@@ -468,6 +490,13 @@ function MainRow({
       </div>
       <div className="grid justify-items-start gap-2">
         {children}
+        {checks.length > 0 && (
+          <ul className="grid gap-1.5 text-xs">
+            {checks.map((check) => (
+              <CheckItem key={check.id} check={check} />
+            ))}
+          </ul>
+        )}
         <div className="flex flex-wrap gap-1">
           {specs.map((spec) => (
             <code key={spec.key} className="bg-surface-3 text-ink-muted rounded-sm px-1 font-mono text-[0.6875rem]">
@@ -484,12 +513,7 @@ function Control({ context, settingKey, className }: { context: RowContext; sett
   const spec = context.specs.get(settingKey);
 
   return spec === undefined ? null : (
-    <SettingControl
-      command={context.command}
-      spec={spec}
-      label={settingLabel(settingKey)}
-      className={cn("w-32", className)}
-    />
+    <SettingControl command={context.command} spec={spec} label={spec.label} className={cn("w-32", className)} />
   );
 }
 
@@ -535,6 +559,12 @@ function NumberPairInput({
       className="border-line-strong bg-surface-1 w-24 rounded-md border px-2 py-1"
     />
   );
+}
+
+function valueNameLabel(name: string): string {
+  const lower = name.toLowerCase().replaceAll("_", " ");
+
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 function Inline({ children }: { children: React.ReactNode }) {

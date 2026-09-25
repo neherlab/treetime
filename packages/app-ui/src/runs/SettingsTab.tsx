@@ -8,7 +8,6 @@ import { useConfigCheck } from "../queries";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { outputFreeConfig, settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
-import { settingLabel } from "../settings/labels";
 import { Button, Segmented, Switch, cn } from "../ui";
 import { Panel } from "./Panel";
 import { useCopy } from "./useCopy";
@@ -90,7 +89,7 @@ export function SettingsTab({ record }: { record: RunRecordResult }) {
                     <tr key={spec.key} className={cn("border-line border-t", changed && "bg-accent-subtle")}>
                       <td className="px-3.5 py-1.5">
                         {changed && <span className="sr-only">Changed: </span>}
-                        <span className={cn(changed && "font-bold")}>{settingLabel(spec.key)}</span>{" "}
+                        <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
                         <code className="text-ink-faint font-mono text-xs">{spec.flag}</code>
                       </td>
                       <td className="px-3.5 py-1.5 font-mono text-xs break-all">

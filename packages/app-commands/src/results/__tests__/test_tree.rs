@@ -3,6 +3,7 @@ pub(crate) mod tests {
   use crate::results::mugration::{AncestorState, MugrationResults, StateChange, mugration_results};
   use crate::results::mutations::{AncestralResults, BranchMutations, RecurrentSite, ancestral_results};
   use crate::results::tree::{DateInterval, ResultColoring, ResultNode, ResultTree, StateColor};
+  use crate::results::year_date::YearDate;
   use eyre::Report;
   use helpers::fixture;
   use pretty_assertions::assert_eq;
@@ -21,11 +22,12 @@ pub(crate) mod tests {
           children: vec![1, 4],
           tips: 3,
           div: Some(0.0),
-          date: Some(2010.0),
+          date: Some(YearDate::new(2010.0)),
           date_interval: Some(DateInterval {
-            lower: 2009.0,
-            upper: 2011.0,
+            lower: YearDate::new(2009.0),
+            upper: YearDate::new(2011.0),
             days: 730.0,
+            level: 0.9,
           }),
           excluded: None,
           mutations: vec![],
@@ -36,11 +38,12 @@ pub(crate) mod tests {
           children: vec![2, 3],
           tips: 2,
           div: Some(0.01),
-          date: Some(2012.0),
+          date: Some(YearDate::new(2012.0)),
           date_interval: Some(DateInterval {
-            lower: 2011.5,
-            upper: 2012.5,
+            lower: YearDate::new(2011.5),
+            upper: YearDate::new(2012.5),
             days: 365.5,
+            level: 0.9,
           }),
           excluded: None,
           mutations: vec_of_owned!["A10G", "C20T"],
@@ -51,7 +54,7 @@ pub(crate) mod tests {
           children: vec![],
           tips: 1,
           div: Some(0.02),
-          date: Some(2015.0),
+          date: Some(YearDate::new(2015.0)),
           date_interval: None,
           excluded: Some(false),
           mutations: vec_of_owned!["G10A"],
@@ -62,7 +65,7 @@ pub(crate) mod tests {
           children: vec![],
           tips: 1,
           div: Some(0.015),
-          date: Some(2014.0),
+          date: Some(YearDate::new(2014.0)),
           date_interval: None,
           excluded: Some(false),
           mutations: vec![],
@@ -73,7 +76,7 @@ pub(crate) mod tests {
           children: vec![],
           tips: 1,
           div: Some(0.03),
-          date: Some(2016.0),
+          date: Some(YearDate::new(2016.0)),
           date_interval: None,
           excluded: Some(true),
           mutations: vec_of_owned!["C20T", "G30-"],

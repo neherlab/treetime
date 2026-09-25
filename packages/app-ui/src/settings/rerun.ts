@@ -16,7 +16,9 @@ export function rerunDraft(record: RunRecordResult): RerunDraft {
 
   return {
     config: normalizeConfig(specs, zJsonObject.parse(record.config)),
-    inputLabels: Object.fromEntries(runInputAssignments(record.inputs).map((input) => [input.key, input.label])),
+    inputLabels: Object.fromEntries(
+      runInputAssignments(record.command, record.inputs).map((input) => [input.key, input.label]),
+    ),
     title: `${record.title} (edited)`,
   };
 }

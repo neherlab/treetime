@@ -14,12 +14,12 @@ import {
 } from "recharts";
 import * as z from "zod";
 
-import { formatDecimalDate } from "../format";
 import { PLATE, TICK_STYLE } from "./palette";
 
 export interface RttPoint {
   name: string;
   date: number;
+  dateText: string;
   div: number;
   excluded: boolean;
   inferred: boolean;
@@ -57,6 +57,7 @@ const SERIES_LOOK: readonly SeriesLook[] = [
 const zPointPayload = z.object({
   name: z.string(),
   date: z.number(),
+  dateText: z.string(),
   div: z.number(),
   excluded: z.boolean(),
   inferred: z.boolean(),
@@ -199,7 +200,7 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   return (
     <div className="rounded-md border border-[#bfcbc7] bg-white px-2.5 py-1.5 text-xs text-[#16302b] shadow-sm">
       <div className="font-bold">{point.data.name}</div>
-      <div>Date {formatDecimalDate(point.data.date)}</div>
+      <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
       {point.data.excluded && <div className="text-[#b42318]">Excluded from the clock model</div>}

@@ -1,13 +1,12 @@
 import { useCallback } from "react";
 
-import { formatDecimalDate } from "../format";
-import type { DateInterval } from "../results/types";
+import type { DateInterval, YearDate } from "../results/types";
 import { PLATE } from "./palette";
 
 export interface DateRow {
   id: string;
   label: string;
-  date: number;
+  date: YearDate;
   interval: DateInterval | undefined;
   current: boolean;
 }
@@ -29,8 +28,14 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const low = Math.min(...rows.map((row) => row.interval?.lower ?? row.date));
-  const high = Math.max(...rows.map((row) => row.interval?.upper ?? row.date));
+  const ends = rows
+    .flatMap((row) => [row.interval?.lower ?? row.date, row.interval?.upper ?? row.date])
+    .toSorted((a, b) => a.year - b.year);
+
+  const first = ends.at(0);
+  const last = ends.at(-1);
+  const low = first?.year ?? 0;
+  const high = last?.year ?? 0;
   const pad = (high - low) * 0.05 || 0.05;
   const scale = { low: low - pad, span: high - low + 2 * pad };
   const height = rows.length * ROW_HEIGHT + AXIS_HEIGHT;
@@ -48,10 +53,10 @@ export function DateIntervals({
         />
       ))}
       <text x={LABEL_WIDTH} y={height - 6} fontSize={10} fill={PLATE.muted}>
-        {formatDecimalDate(low)}
+        {first?.date}
       </text>
       <text x={WIDTH - 12} y={height - 6} fontSize={10} fill={PLATE.muted} textAnchor="end">
-        {formatDecimalDate(high)}
+        {last?.date}
       </text>
     </svg>
   );
@@ -89,8 +94,8 @@ function IntervalRow({
       </text>
       {row.interval !== undefined && (
         <line
-          x1={x(row.interval.lower)}
-          x2={Math.max(x(row.interval.upper), x(row.interval.lower) + 0.5)}
+          x1={x(row.interval.lower.year)}
+          x2={Math.max(x(row.interval.upper.year), x(row.interval.lower.year) + 0.5)}
           y1={y}
           y2={y}
           stroke={PLATE.accent}
@@ -98,17 +103,15 @@ function IntervalRow({
           strokeOpacity={0.35}
         />
       )}
-      <circle cx={x(row.date)} cy={y} r={3.5} fill={row.current ? PLATE.selection : PLATE.accent} />
+      <circle cx={x(row.date.year)} cy={y} r={3.5} fill={row.current ? PLATE.selection : PLATE.accent} />
     </g>
   );
 }
 
 function rowTitle(row: DateRow): string {
-  const date = formatDecimalDate(row.date);
-
   if (row.interval === undefined) {
-    return `${row.label}: ${date}`;
+    return `${row.label}: ${row.date.date}`;
   }
 
-  return `${row.label}: ${date} (${formatDecimalDate(row.interval.lower)} to ${formatDecimalDate(row.interval.upper)})`;
+  return `${row.label}: ${row.date.date} (${row.interval.lower.date} to ${row.interval.upper.date})`;
 }

@@ -7,10 +7,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::iter;
+use treetime_utils::vec_of_owned;
 
 const NAMES_SHOWN: usize = 3;
 
 const MONTH_ROUNDING_FACTOR: usize = 4;
+
+const DATE_COLUMN_SETTING: &str = "date_column";
 
 const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 7] = [
   missing_inputs,
@@ -67,6 +70,8 @@ pub struct RunCheck {
   pub level: CheckLevel,
   /// The finding, as a sentence.
   pub text: String,
+  /// Keys of the settings the finding concerns.
+  pub settings: Vec<String>,
   /// Change of settings that resolves the finding, when there is one.
   pub fix: Option<CheckFix>,
 }
@@ -131,6 +136,7 @@ fn unreadable_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
             format!("unreadable-{}", problem.input),
             format!("The {} cannot be read: {}", problem.input, problem.message),
           )
+          .concerning(&[problem.input.setting()])
         })
         .collect()
     })
@@ -200,13 +206,16 @@ fn metadata(context: &CheckContext<'_>) -> Vec<RunCheck> {
 
   if let Some(metadata) = facts.metadata.as_ref().filter(|_| uses_dates) {
     if metadata.date_column.is_none() {
-      checks.push(block(
-        "no-date-column",
-        format!(
-          "The metadata has no date column. Set the date column to one of: {}.",
-          metadata.columns.join(", ")
-        ),
-      ));
+      checks.push(
+        block(
+          "no-date-column",
+          format!(
+            "The metadata has no date column. Set the date column to one of: {}.",
+            metadata.columns.join(", ")
+          ),
+        )
+        .concerning(&[DATE_COLUMN_SETTING]),
+      );
     }
     let unreadable = metadata
       .dates
@@ -242,6 +251,7 @@ fn confidence_without_rate_uncertainty(context: &CheckContext<'_>) -> Vec<RunChe
     id: "confidence-without-rate-uncertainty".to_owned(),
     level: CheckLevel::Warn,
     text: "Date intervals need rate uncertainty: without the covariation-aware regression or a clock rate std. dev., this run writes no intervals.".to_owned(),
+    settings: vec_of_owned!["confidence", "covariation", "clock_std_dev"],
     fix: Some(CheckFix {
       label: "Use covariation".to_owned(),
       patch: vec![SettingPatch {
@@ -270,6 +280,7 @@ fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
           "{} of {} dates fall on the 1st or 15th of a month. If only the month is known, write it as 2015-06-XX so TreeTime treats it as a range.",
           dates.on_day_1_or_15, dates.exact_days
         ),
+        settings: vec![],
         fix: None,
       }]
     },
@@ -310,6 +321,7 @@ fn block(id: impl Into<String>, text: String) -> RunCheck {
     id: id.into(),
     level: CheckLevel::Block,
     text,
+    settings: vec![],
     fix: None,
   }
 }
@@ -319,6 +331,16 @@ fn warn(id: impl Into<String>, text: String) -> RunCheck {
     id: id.into(),
     level: CheckLevel::Warn,
     text,
+    settings: vec![],
     fix: None,
+  }
+}
+
+impl RunCheck {
+  fn concerning(self, settings: &[&str]) -> Self {
+    Self {
+      settings: settings.iter().map(|setting| (*setting).to_owned()).collect(),
+      ..self
+    }
   }
 }

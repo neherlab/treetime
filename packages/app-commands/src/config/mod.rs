@@ -3,7 +3,10 @@ pub mod catalog;
 #[cfg(feature = "clap")]
 pub mod cli_flags;
 #[cfg(feature = "clap")]
+pub mod cli_rules;
+#[cfg(feature = "clap")]
 pub mod code;
+pub mod labels;
 pub mod load;
 pub mod properties;
 pub mod schema;

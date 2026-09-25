@@ -58,7 +58,14 @@ describe("desktop_bridge operations", () => {
           status: "valid",
           command: "clock",
           config: {},
-          code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+          code: {
+            command_line: [],
+            command_line_text: "",
+            yaml: [],
+            yaml_text: "",
+            config_file: "run.yaml",
+            config_command: "treetime timetree --config run.yaml",
+          },
           checks: [],
         }),
       });

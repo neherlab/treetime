@@ -9,7 +9,10 @@ import {
 
 import { zJsonValue, type JsonValue } from "./json";
 
-export type SettingSpec = Omit<Parsed<typeof zSettingSpec>, "default_value"> & { default_value: JsonValue };
+export type SettingSpec = Omit<Parsed<typeof zSettingSpec>, "default_value" | "examples"> & {
+  default_value: JsonValue;
+  examples: JsonValue[];
+};
 
 export type CommandSettings = Omit<Parsed<typeof zCommandSettings>, "settings"> & { specs: SettingSpec[] };
 
@@ -42,7 +45,11 @@ function commandSettingsByCommand(): Record<AppCommand, CommandSettings> {
       inputs: command.inputs,
       uses_dates: command.uses_dates,
       groups: command.groups,
-      specs: command.settings.map((spec) => ({ ...spec, default_value: zJsonValue.parse(spec.default_value) })),
+      specs: command.settings.map((spec) => ({
+        ...spec,
+        default_value: zJsonValue.parse(spec.default_value),
+        examples: spec.examples.map((example) => zJsonValue.parse(example)),
+      })),
     },
   ]);
 

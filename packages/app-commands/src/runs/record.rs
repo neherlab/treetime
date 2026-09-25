@@ -1,11 +1,10 @@
 use crate::command::{AppCommand, OutputFile};
 use crate::job::JobId;
-use crate::json_float::JsonFloat;
+use crate::runs::headline::RunHeadline;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use strum_macros::Display;
 
@@ -46,7 +45,7 @@ pub struct RunRecord {
   /// Setting keys whose values differ from the command defaults, as dot-separated key paths.
   pub changed_settings: Vec<String>,
   /// Key results of a finished run, for run lists.
-  pub headline: BTreeMap<String, JsonFloat>,
+  pub headline: RunHeadline,
   /// Files the run wrote, with paths relative to the run's `out/` folder.
   pub output_files: Vec<OutputFile>,
   /// The error of a failed run.
@@ -144,7 +143,7 @@ pub struct RunSummary {
   /// Setting keys whose values differ from the command defaults.
   pub changed_settings: Vec<String>,
   /// Key results of a finished run.
-  pub headline: BTreeMap<String, JsonFloat>,
+  pub headline: RunHeadline,
 }
 
 /// Runs, newest first, and the number of runs computing now.

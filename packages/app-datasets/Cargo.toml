@@ -17,8 +17,6 @@ doctest = false
 [dependencies]
 # [external]
 eyre = { workspace = true }
-schemars = { workspace = true }
-serde = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

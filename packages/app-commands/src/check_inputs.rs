@@ -1,40 +1,61 @@
+use crate::command::AppCommand;
 use chrono::Datelike;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
+use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::{DateValue, DatesMap, MetadataTable, read_metadata_table};
-use treetime_io::fasta::read_many_fasta_path;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::fasta::{FASTA_EXTENSIONS, read_many_fasta_path};
+use treetime_io::nwk::{NEWICK_EXTENSIONS, nwk_read_file};
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::parse_date;
+use treetime_utils::io::compression::COMPRESSION_EXTENSIONS;
 
 const ROUND_DAYS: [u32; 2] = [1, 15];
 
-/// Input files to inspect before a run, with the metadata settings of the command.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
-#[serde(default, deny_unknown_fields)]
+/// A command configuration whose input files to inspect before a run.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CheckInputsRequest {
-  /// Newick tree.
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
-  /// Metadata table with one row per sample.
-  #[schemars(extend("x-path" = "input"))]
-  pub metadata: Option<PathBuf>,
-  /// FASTA alignment files.
-  #[schemars(extend("x-path" = "input"))]
-  pub alignment: Vec<PathBuf>,
-  /// Candidate names of the metadata column that holds the sample names; the command defaults when empty.
-  pub metadata_id_columns: Vec<String>,
-  /// Candidate field delimiters of the metadata table; the command defaults when empty.
-  pub metadata_delimiters: Vec<char>,
-  /// Name of the metadata column that holds the sampling dates; detected when absent.
-  pub date_column: Option<String>,
+  /// Command the configuration is for.
+  pub command: AppCommand,
+  /// Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
+  pub config: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+struct InputSettings {
+  tree: Option<PathBuf>,
+  metadata: Option<PathBuf>,
+  alignment: Vec<PathBuf>,
+  metadata_id_columns: Vec<String>,
+  metadata_delimiters: Vec<char>,
+  date_column: Option<String>,
+}
+
+impl InputSettings {
+  fn of(command: AppCommand, config: &Map<String, Value>) -> Result<Self, Report> {
+    let settings: Self =
+      serde_json::from_value(Value::Object(config.clone())).wrap_err("When reading the input settings")?;
+    let reads = |kind: InputKind| command.inputs().iter().any(|input| input.kind == kind);
+    Ok(Self {
+      tree: settings.tree.filter(|_| reads(InputKind::Tree)),
+      metadata: settings.metadata.filter(|_| reads(InputKind::Metadata)),
+      alignment: if reads(InputKind::Alignment) {
+        settings.alignment
+      } else {
+        vec![]
+      },
+      ..settings
+    })
+  }
 }
 
 /// Facts about the input files of a run, read with the readers the commands use.
@@ -137,6 +158,35 @@ impl InputKind {
       Self::Alignment => "alignment",
     }
   }
+
+  pub const fn label(self) -> &'static str {
+    match self {
+      Self::Tree => "Tree",
+      Self::Metadata => "Metadata",
+      Self::Alignment => "Alignment",
+    }
+  }
+
+  pub const fn formats(self) -> &'static str {
+    match self {
+      Self::Tree => "Newick",
+      Self::Metadata => "CSV, TSV or SSV table",
+      Self::Alignment => "Aligned FASTA",
+    }
+  }
+
+  pub fn extensions(self) -> Vec<String> {
+    let formats: Vec<&str> = match self {
+      Self::Tree => NEWICK_EXTENSIONS.to_vec(),
+      Self::Metadata => DELIMITED_EXTENSIONS.iter().map(|(extension, _)| *extension).collect(),
+      Self::Alignment => FASTA_EXTENSIONS.to_vec(),
+    };
+    formats
+      .into_iter()
+      .chain(COMPRESSION_EXTENSIONS)
+      .map(str::to_owned)
+      .collect()
+  }
 }
 
 /// An input file an app command reads.
@@ -154,6 +204,36 @@ impl CommandInput {
   }
 }
 
+/// An input file of a command, as the form asks for it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct InputSlot {
+  /// Kind of the file; also the setting that names it.
+  pub kind: InputKind,
+  /// Whether a run of the app needs the file.
+  pub need: InputNeed,
+  /// Name of the input, for example `Tree`.
+  pub label: String,
+  /// File formats the readers accept, for example `Newick`.
+  pub formats: String,
+  /// File name extensions of the accepted formats, compressed forms included, without the dot.
+  pub extensions: Vec<String>,
+  /// Whether the setting takes a list of files.
+  pub list: bool,
+}
+
+impl InputSlot {
+  pub fn new(input: CommandInput, list: bool) -> Self {
+    Self {
+      kind: input.kind,
+      need: input.need,
+      label: input.kind.label().to_owned(),
+      formats: input.kind.formats().to_owned(),
+      extensions: input.kind.extensions(),
+      list,
+    }
+  }
+}
+
 /// How much a run of the app needs an input file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -166,7 +246,8 @@ pub enum InputNeed {
   Optional,
 }
 
-pub fn check_inputs(request: &CheckInputsRequest) -> InputFacts {
+pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> {
+  let request = InputSettings::of(request.command, &request.config)?;
   let mut facts = InputFacts::default();
   let mut problem = |input: InputKind, report: &Report| {
     facts.problems.push(InputProblem {
@@ -224,7 +305,7 @@ pub fn check_inputs(request: &CheckInputsRequest) -> InputFacts {
   }
   facts.alignment = sequences.map(|(alignment, _)| alignment);
   facts.metadata = metadata;
-  facts
+  Ok(facts)
 }
 
 fn read_tree(path: &Path) -> Result<(TreeFacts, Vec<String>), Report> {

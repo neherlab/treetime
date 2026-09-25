@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::check_inputs::{CommandInput, InputKind, InputNeed};
+  use crate::check_inputs::{InputKind, InputNeed, InputSlot};
   use crate::command::AppCommand;
   use crate::config::catalog::{
     ListItemKind, SettingKind, SettingOption, SettingRole, SettingSpec, command_settings, setting_catalog,
@@ -80,6 +80,7 @@ mod tests {
       SettingSpec {
         key: o!("clock_rate"),
         path: vec_of_owned!["clock_rate"],
+        label: o!("Clock rate"),
         flag: o!("--clock-rate"),
         group: o!("Molecular clock"),
         role: SettingRole::Setting,
@@ -89,10 +90,38 @@ mod tests {
         item_kind: ListItemKind::String,
         default_value: Value::Null,
         minimum: None,
+        examples: vec![json!(0.001)],
+        value_names: vec_of_owned!["CLOCK_RATE"],
+        conflicts: vec![],
         help: o!("If specified, the rate of the molecular clock won't be optimized."),
         more: o!(""),
       },
       spec(AppCommand::Timetree, "clock_rate")
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::declared_on_the_setting( AppCommand::Timetree, "coalescent_opt",     vec_of_owned!["coalescent", "coalescent_skyline"])]
+  #[case::declared_on_the_others(  AppCommand::Timetree, "coalescent",         vec_of_owned!["coalescent_opt", "coalescent_skyline"])]
+  #[case::keep_root(               AppCommand::Clock,    "keep_root",          vec_of_owned!["reroot", "reroot_tips"])]
+  #[case::reroot(                  AppCommand::Clock,    "reroot",             vec_of_owned!["keep_root", "reroot_tips"])]
+  #[case::none(                    AppCommand::Timetree, "max_iter",           vec![])]
+  #[trace]
+  fn test_setting_catalog_conflicts_are_symmetric(
+    #[case] command: AppCommand,
+    #[case] key: &str,
+    #[case] expected: Vec<String>,
+  ) {
+    assert_eq!(expected, spec(command, key).conflicts);
+  }
+
+  #[test]
+  fn test_setting_catalog_relax_names_its_values_and_suggests_a_weak_prior() {
+    let relax = spec(AppCommand::Timetree, "relax");
+    assert_eq!(
+      (vec_of_owned!["SLACK", "COUPLING"], vec![json!([1.0, 0.0])]),
+      (relax.value_names, relax.examples)
     );
   }
 
@@ -228,8 +257,43 @@ mod tests {
     #[case] inputs: &[(InputKind, InputNeed)],
   ) {
     let settings = command_settings(command).unwrap();
-    let expected = inputs.iter().map(|(kind, need)| CommandInput::new(*kind, *need)).collect_vec();
-    assert_eq!((uses_dates, expected), (settings.uses_dates, settings.inputs));
+    let expected = inputs.iter().map(|(kind, need)| (*kind, *need)).collect_vec();
+    let actual = settings.inputs.iter().map(|input| (input.kind, input.need)).collect_vec();
+    assert_eq!((uses_dates, expected), (settings.uses_dates, actual));
+  }
+
+  #[test]
+  fn test_setting_catalog_input_slots_describe_the_readers() {
+    let settings = command_settings(AppCommand::Timetree).unwrap();
+    assert_eq!(
+      vec![
+        InputSlot {
+          kind: InputKind::Tree,
+          need: InputNeed::Required,
+          label: o!("Tree"),
+          formats: o!("Newick"),
+          extensions: vec_of_owned!["nwk", "newick", "tree", "tre", "bz2", "xz", "zst", "gz"],
+          list: false,
+        },
+        InputSlot {
+          kind: InputKind::Metadata,
+          need: InputNeed::Required,
+          label: o!("Metadata"),
+          formats: o!("CSV, TSV or SSV table"),
+          extensions: vec_of_owned!["csv", "tsv", "ssv", "bz2", "xz", "zst", "gz"],
+          list: false,
+        },
+        InputSlot {
+          kind: InputKind::Alignment,
+          need: InputNeed::Recommended,
+          label: o!("Alignment"),
+          formats: o!("Aligned FASTA"),
+          extensions: vec_of_owned!["fasta", "fa", "fas", "aln", "bz2", "xz", "zst", "gz"],
+          list: true,
+        },
+      ],
+      settings.inputs
+    );
   }
 
   #[test]

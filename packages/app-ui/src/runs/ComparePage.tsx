@@ -4,15 +4,14 @@ import { ArrowLeftRight } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import { defaultText } from "../analysis/SettingField";
-import { formatDecimalDate, formatRate, formatSignedDays } from "../format";
+import { formatLevel, formatRate, formatSignedDays } from "../format";
 import { useRunComparison, useRunList, useRunRecords } from "../queries";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import type { SettingDifference, SettingsComparison, TimetreeEstimates } from "../results/types";
+import type { SettingDifference, SettingsComparison, TimetreeEstimates, YearDate } from "../results/types";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { baseName } from "../settings/inputs";
 import { zJsonValue } from "../settings/json";
-import { settingLabel } from "../settings/labels";
 import { Button } from "../ui";
 import { DateIntervals } from "./DateIntervals";
 import { Panel } from "./Panel";
@@ -150,7 +149,7 @@ function SettingsDifferences({
           </thead>
           <tbody>
             {differences.map((difference) => (
-              <DifferenceRow key={difference.key} command={left} difference={difference} />
+              <DifferenceRow key={difference.key} record={left} difference={difference} />
             ))}
           </tbody>
         </table>
@@ -159,13 +158,13 @@ function SettingsDifferences({
   );
 }
 
-function DifferenceRow({ command, difference }: { command: RunRecordResult; difference: SettingDifference }) {
-  const flag = COMMAND_SETTINGS[command.command].specs.find((spec) => spec.key === difference.key)?.flag;
+function DifferenceRow({ record, difference }: { record: RunRecordResult; difference: SettingDifference }) {
+  const spec = COMMAND_SETTINGS[record.command].specs.find((candidate) => candidate.key === difference.key);
 
   return (
     <tr className="border-line border-t">
       <td className="px-3.5 py-1.5">
-        {settingLabel(difference.key)} <code className="text-ink-faint font-mono text-xs">{flag}</code>
+        {spec?.label ?? difference.key} <code className="text-ink-faint font-mono text-xs">{spec?.flag}</code>
         {difference.kind === "input" && (
           <span className="text-ink-muted block text-xs">
             {difference.same_content ? "Same file contents" : "Different file contents"}
@@ -238,6 +237,8 @@ function TimetreeEstimatesComparison({
 
   const a = estimates.first;
   const b = estimates.second;
+  const level = a.root_interval?.level ?? b.root_interval?.level;
+  const intervalName = level === undefined ? "Interval" : `${formatLevel(level)} interval`;
   const shifts = ancestors.shifts;
   const rateChange = estimates.clock_rate_change_percent ?? undefined;
   const likelihoodChange = estimates.log_likelihood_change ?? undefined;
@@ -267,7 +268,7 @@ function TimetreeEstimatesComparison({
                 difference={daysDifference(estimates.root_shift_days)}
               />
               <EstimateRow
-                label="90% interval width"
+                label={`${intervalName} width`}
                 first={daysText(a.root_interval?.days)}
                 second={daysText(b.root_interval?.days)}
                 difference={daysDifference(estimates.root_interval_change_days)}
@@ -304,7 +305,7 @@ function TimetreeEstimatesComparison({
           </table>
         </Panel>
         {rootRows !== undefined && (
-          <Plate title="Root date" caption="With the 90% interval of each run">
+          <Plate title="Root date" caption={`With the ${intervalName.toLowerCase()} of each run`}>
             <DateIntervals rows={rootRows} />
           </Plate>
         )}
@@ -352,8 +353,8 @@ function EstimateRow({
   );
 }
 
-function dateText(date: number | null | undefined): string {
-  return date === null || date === undefined ? "not dated" : formatDecimalDate(date);
+function dateText(date: YearDate | null | undefined): string {
+  return date === null || date === undefined ? "not dated" : date.date;
 }
 
 function daysText(days: number | undefined): string {

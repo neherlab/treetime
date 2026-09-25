@@ -752,7 +752,9 @@ export const zConfigCode = z.object({
     command_line: z.array(zCodeLine),
     command_line_text: z.string(),
     yaml: z.array(zCodeLine),
-    yaml_text: z.string()
+    yaml_text: z.string(),
+    config_file: z.string(),
+    config_command: z.string()
 });
 
 /**
@@ -787,6 +789,7 @@ export const zRunCheck = z.object({
     id: z.string(),
     level: zCheckLevel,
     text: z.string(),
+    settings: z.array(z.string()),
     fix: zCheckFix.nullish()
 });
 
@@ -1021,23 +1024,29 @@ export const zVersionInfo = z.object({
 });
 
 /**
- * Input files to inspect before a run, with the metadata settings of the command.
+ * A command configuration whose input files to inspect before a run.
  */
 export const zCheckInputsRequest = z.object({
-    tree: z.string().nullish().default(null),
-    metadata: z.string().nullish().default(null),
-    alignment: z.array(z.string()).optional().default([]),
-    metadata_id_columns: z.array(z.string()).optional().default([]),
-    metadata_delimiters: z.array(z.string().length(1)).optional().default([]),
-    date_column: z.string().nullish().default(null)
+    command: zAppCommand,
+    config: z.record(z.string(), z.unknown())
+});
+
+/**
+ * A file of an example dataset that fills a command input.
+ */
+export const zDatasetInput = z.object({
+    kind: zInputKind,
+    file: z.string(),
+    path: z.string()
 });
 
 /**
  * A directory of example input files.
  */
-export const zDatasetInfo = z.object({
+export const zDataset = z.object({
     name: z.string(),
-    files: z.array(z.string())
+    files: z.array(z.string()),
+    inputs: z.array(zDatasetInput)
 });
 
 /**
@@ -1045,7 +1054,7 @@ export const zDatasetInfo = z.object({
  */
 export const zExampleConfig = z.object({
     path: z.string(),
-    command: z.string(),
+    command: zAppCommand,
     title: z.string(),
     content: z.string()
 });
@@ -1055,7 +1064,7 @@ export const zExampleConfig = z.object({
  */
 export const zDatasetCatalog = z.object({
     data_dir: z.string(),
-    datasets: z.array(zDatasetInfo),
+    datasets: z.array(zDataset),
     examples: z.array(zExampleConfig)
 });
 
@@ -1107,6 +1116,23 @@ export const zRunInput = z.object({
 });
 
 /**
+ * A date as a decimal year and as a calendar day.
+ */
+export const zYearDate = z.object({
+    year: z.number(),
+    date: z.string()
+});
+
+/**
+ * Key results of a finished run, for run lists; the same values the run's results show.
+ */
+export const zRunHeadline = z.object({
+    root_date: zYearDate.nullish(),
+    clock_rate: zJsonFloat.nullish(),
+    r_squared: zJsonFloat.nullish()
+});
+
+/**
  * Error of a failed run.
  */
 export const zRunError = z.object({
@@ -1132,7 +1158,7 @@ export const zRunRecord = z.object({
     inputs: z.array(zRunInput),
     config_hash: z.string().nullish(),
     changed_settings: z.array(z.string()),
-    headline: z.record(z.string(), zJsonFloat),
+    headline: zRunHeadline,
     output_files: z.array(zOutputFile),
     error: zRunError.nullish()
 });
@@ -1151,7 +1177,7 @@ export const zRunSummary = z.object({
     duration_seconds: z.number().nullish(),
     config_hash: z.string().nullish(),
     changed_settings: z.array(z.string()),
-    headline: z.record(z.string(), zJsonFloat)
+    headline: zRunHeadline
 });
 
 /**
@@ -1194,7 +1220,8 @@ export const zRunEvent = z.intersection(z.union([
 export const zRunFile = z.object({
     path: z.string(),
     size: z.int().gte(0),
-    kind: zOutputSelection.nullish()
+    kind: zOutputSelection.nullish(),
+    description: z.string()
 });
 
 /**
@@ -1217,11 +1244,15 @@ export const zInputNeed = z.union([
 ]);
 
 /**
- * An input file an app command reads.
+ * An input file of a command, as the form asks for it.
  */
-export const zCommandInput = z.object({
+export const zInputSlot = z.object({
     kind: zInputKind,
-    need: zInputNeed
+    need: zInputNeed,
+    label: z.string(),
+    formats: z.string(),
+    extensions: z.array(z.string()),
+    list: z.boolean()
 });
 
 /**
@@ -1271,6 +1302,7 @@ export const zListItemKind = z.enum([
 export const zSettingSpec = z.object({
     key: z.string(),
     path: z.array(z.string()),
+    label: z.string(),
     flag: z.string(),
     group: z.string(),
     role: zSettingRole,
@@ -1280,6 +1312,9 @@ export const zSettingSpec = z.object({
     item_kind: zListItemKind,
     default_value: z.unknown(),
     minimum: z.number().nullish(),
+    examples: z.array(z.unknown()),
+    value_names: z.array(z.string()),
+    conflicts: z.array(z.string()),
     help: z.string(),
     more: z.string()
 });
@@ -1289,7 +1324,7 @@ export const zSettingSpec = z.object({
  */
 export const zCommandSettings = z.object({
     command: zAppCommand,
-    inputs: z.array(zCommandInput),
+    inputs: z.array(zInputSlot),
     uses_dates: z.boolean(),
     groups: z.array(z.string()),
     settings: z.array(zSettingSpec)
@@ -1322,12 +1357,13 @@ export const zSettingDifference = z.union([
 ]);
 
 /**
- * Interval of dates, as decimal years.
+ * Confidence interval of a date.
  */
 export const zDateInterval = z.object({
-    lower: z.number(),
-    upper: z.number(),
-    days: z.number()
+    lower: zYearDate,
+    upper: zYearDate,
+    days: z.number(),
+    level: z.number()
 });
 
 /**
@@ -1339,7 +1375,7 @@ export const zResultNode = z.object({
     children: z.array(z.int().gte(0)),
     tips: z.int().gte(0),
     div: z.number().nullish(),
-    date: z.number().nullish(),
+    date: zYearDate.nullish(),
     date_interval: zDateInterval.nullish(),
     excluded: z.boolean().nullish(),
     mutations: z.array(z.string())
@@ -1406,7 +1442,7 @@ export const zRelaxedClock = z.object({
  * Estimates of a `timetree` run.
  */
 export const zTimetreeEstimates = z.object({
-    root_date: z.number().nullish(),
+    root_date: zYearDate.nullish(),
     root_interval: zDateInterval.nullish(),
     root_near_interval_edge: z.boolean(),
     clock_rate: z.number().nullish(),
@@ -1436,10 +1472,10 @@ export const zClockDateSource = z.union([
  */
 export const zRootToTipPoint = z.object({
     name: z.string(),
-    date: z.number().nullish(),
+    date: zYearDate.nullish(),
     date_source: zClockDateSource.nullish(),
     div: z.number(),
-    predicted_date: z.number(),
+    predicted_date: zYearDate,
     residual_days: z.number().nullish(),
     outlier: z.boolean()
 });
@@ -1689,7 +1725,7 @@ export const zEstimateComparison = z.object({
 export const zAncestorShift = z.object({
     name: z.string(),
     tips: z.int().gte(0),
-    date_first: z.number(),
+    date_first: zYearDate,
     shift_days: z.number()
 });
 
@@ -1726,7 +1762,7 @@ export const zCladeMatch = z.object({
     run: zJobId,
     title: z.string(),
     node: z.string(),
-    date: z.number().nullish(),
+    date: zYearDate.nullish(),
     date_interval: zDateInterval.nullish()
 });
 

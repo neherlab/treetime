@@ -41,7 +41,7 @@ pub struct RunResults {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "command", content = "data", rename_all = "kebab-case")]
 pub enum CommandResults {
-  Timetree(TimetreeResults),
+  Timetree(Box<TimetreeResults>),
   Clock(ClockResults),
   Ancestral(AncestralResults),
   Mugration(MugrationResults),
@@ -120,7 +120,7 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
         .estimates
         .as_ref()
         .map(|estimates| timetree_methods(&record.treetime_version, &config, estimates));
-      (CommandResults::Timetree(results), methods)
+      (CommandResults::Timetree(Box::new(results)), methods)
     },
     AppCommand::Clock => (
       CommandResults::Clock(clock_results(

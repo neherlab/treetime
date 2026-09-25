@@ -1,7 +1,7 @@
 import type {
   AppCommand,
   CheckInputsRequest,
-  DatasetInfo,
+  Dataset,
   InputFactsResult,
   InputKind,
   RunInput,
@@ -19,27 +19,17 @@ export interface InputAssignment {
 
 const zPath = z.string().min(1);
 
-const DATASET_FILES: Record<InputKind, readonly string[]> = {
-  tree: ["tree.nwk"],
-  alignment: ["aln.fasta.xz", "aln.fasta"],
-  metadata: ["metadata.tsv", "metadata.csv"],
-};
+export function datasetInputs(dataset: Dataset, command: AppCommand): InputAssignment[] {
+  return COMMAND_SETTINGS[command].inputs.flatMap((slot) => {
+    const input = dataset.inputs.find((candidate) => candidate.kind === slot.kind);
 
-export function datasetInputs(dataDir: string, dataset: DatasetInfo, command: AppCommand): InputAssignment[] {
-  return COMMAND_SETTINGS[command].inputs.flatMap((input) => {
-    const file = DATASET_FILES[input.kind].find((candidate) => dataset.files.includes(candidate));
-
-    if (file === undefined) {
-      return [];
-    }
-
-    const path = joinPath(dataDir, dataset.name, file);
-
-    return [{ key: input.kind, value: input.kind === "alignment" ? [path] : path, label: `${dataset.name}/${file}` }];
+    return input === undefined
+      ? []
+      : [{ key: slot.kind, value: slot.list ? [input.path] : input.path, label: input.file }];
   });
 }
 
-export function runInputAssignments(inputs: readonly RunInput[]): InputAssignment[] {
+export function runInputAssignments(command: AppCommand, inputs: readonly RunInput[]): InputAssignment[] {
   const bySetting = new Map<string, RunInput[]>();
 
   for (const input of inputs) {
@@ -48,29 +38,15 @@ export function runInputAssignments(inputs: readonly RunInput[]): InputAssignmen
 
   return [...bySetting.entries()].map(([key, files]) => ({
     key,
-    value: key === "alignment" ? files.map((file) => file.path) : (files[0]?.path ?? null),
+    value: isListInput(command, key) ? files.map((file) => file.path) : (files[0]?.path ?? null),
     label: files.map((file) => baseName(file.path)).join(", "),
   }));
 }
 
 export function inputFactsRequest(command: AppCommand, config: JsonObject): CheckInputsRequest | null {
-  const slots = new Set(COMMAND_SETTINGS[command].inputs.map((input) => input.kind));
-  const tree = slots.has("tree") ? stringOrNull(getAt(config, ["tree"])) : null;
-  const metadata = slots.has("metadata") ? stringOrNull(getAt(config, ["metadata"])) : null;
-  const alignment = slots.has("alignment") ? stringList(getAt(config, ["alignment"])) : [];
+  const given = COMMAND_SETTINGS[command].inputs.some((slot) => pathList(getAt(config, [slot.kind])).length > 0);
 
-  if (tree === null && metadata === null && alignment.length === 0) {
-    return null;
-  }
-
-  return {
-    tree,
-    metadata,
-    alignment,
-    metadata_id_columns: stringList(getAt(config, ["metadata_id_columns"])),
-    metadata_delimiters: stringList(getAt(config, ["metadata_delimiters"])),
-    date_column: stringOrNull(getAt(config, ["date_column"])),
-  };
+  return given ? { command, config } : null;
 }
 
 export function pathList(value: JsonValue | undefined): string[] {
@@ -91,18 +67,14 @@ export function baseName(path: string): string {
   return path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1);
 }
 
-function joinPath(...parts: string[]): string {
-  return parts.filter((part) => part !== "").join("/");
+function isListInput(command: AppCommand, key: string): boolean {
+  return COMMAND_SETTINGS[command].inputs.some((slot) => slot.kind === key && slot.list);
 }
 
 function stringOrNull(value: JsonValue | undefined): string | null {
   const parsed = zPath.safeParse(value);
 
   return parsed.success ? parsed.data : null;
-}
-
-function stringList(value: JsonValue | undefined): string[] {
-  return Array.isArray(value) ? value.map(String) : [];
 }
 
 export function slotFactsText(slot: InputKind, facts: InputFactsResult | undefined, usesDates: boolean): string | null {

@@ -4,7 +4,7 @@ use crate::openapi::{add_components, add_setting_catalog, schema_ref};
 use crate::state::AppState;
 use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
-use app_commands::command::AppCommand;
+use app_commands::datasets::dataset_catalog;
 use app_commands::job::JobId;
 use app_commands::results::auspice::run_auspice;
 use app_commands::results::clades::{CladeRequest, clade_in_runs};
@@ -13,7 +13,6 @@ use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::invalid;
 use app_commands::runs::record::{CancelRunResponse, CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
-use app_datasets::discover_datasets;
 use axum::body::Body;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
@@ -25,9 +24,7 @@ use log::{error, info};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::io;
-use std::path::Path as FsPath;
 use std::sync::Arc;
-use strum::VariantNames;
 use tokio_stream::StreamExt as _;
 use tokio_util::io::{StreamReader, SyncIoBridge};
 use treetime_schema::version_info;
@@ -376,7 +373,7 @@ async fn handle_version() -> Result<Json<Value>, AppError> {
   responses((status = 200, description = "Example datasets and example configurations in the data directory"))
 )]
 async fn handle_datasets(State(state): State<Arc<AppState>>) -> Result<Json<Value>, AppError> {
-  let catalog = discover_datasets(&state.config.data_dir, AppCommand::VARIANTS)?;
+  let catalog = dataset_catalog(&state.config.data_dir)?;
   Ok(Json(serde_json::to_value(catalog)?))
 }
 
@@ -417,25 +414,20 @@ async fn handle_check_inputs(
   State(state): State<Arc<AppState>>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let mut request: CheckInputsRequest = serde_json::from_value(body)?;
-  let policy = state.path_policy()?;
-  let confine = |setting: &str, path: &FsPath| {
-    policy
-      .confine_path(setting, path)
-      .map_err(|err| invalid(format!("{err:#}")))
+  let request: CheckInputsRequest = serde_json::from_value(body)?;
+  let mut config = Value::Object(request.config);
+  state
+    .path_policy()?
+    .confine(request.command, &mut config)
+    .map_err(|err| invalid(format!("{err:#}")))?;
+  let Value::Object(config) = config else {
+    return Err(invalid("a command configuration must be a mapping of settings").into());
   };
-  request.tree = request.tree.as_deref().map(|path| confine("tree", path)).transpose()?;
-  request.metadata = request
-    .metadata
-    .as_deref()
-    .map(|path| confine("metadata", path))
-    .transpose()?;
-  request.alignment = request
-    .alignment
-    .iter()
-    .map(|path| confine("alignment", path))
-    .collect::<Result<_, _>>()?;
-  let facts = tokio::task::spawn_blocking(move || check_inputs(&request)).await?;
+  let request = CheckInputsRequest {
+    command: request.command,
+    config,
+  };
+  let facts = tokio::task::spawn_blocking(move || check_inputs(&request)).await??;
   Ok(Json(serde_json::to_value(facts)?))
 }
 

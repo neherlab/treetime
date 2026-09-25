@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::{ExampleConfig, discover_datasets, parse_example_config, schema_directive, text_schema_command};
+  use crate::{ExampleFile, discover_datasets, parse_example_config, schema_directive, text_schema_command};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::path::Path;
@@ -81,7 +81,7 @@ mod tests {
       tree: "data/dengue/100/tree.nwk"
     "#};
     assert_eq!(
-      Some(ExampleConfig {
+      Some(ExampleFile {
         path: o!("dengue/100/clock.yaml"),
         command: o!("clock"),
         title: o!("Root-to-tip regression of dengue/100."),

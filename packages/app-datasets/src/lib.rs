@@ -2,13 +2,11 @@
 mod __tests__;
 
 use eyre::{Report, WrapErr};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::fs::{self, ReadDir};
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 
-const TREE_FILE: &str = "tree.nwk";
+pub const TREE_FILE: &str = "tree.nwk";
 const SCHEMA_DIRECTIVE: &str = "yaml-language-server:";
 const SCHEMA_KEY: &str = "$schema=";
 const SCHEMA_FILE_PREFIX: &str = "input-config-";
@@ -16,7 +14,7 @@ const SCHEMA_FILE_SUFFIX: &str = ".schema.json";
 const SCHEMA_URL_BASE: &str = "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas";
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
 
-pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DatasetCatalog, Report> {
+pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DataDirectory, Report> {
   let mut datasets = Vec::new();
   let mut examples = Vec::new();
   match fs::read_dir(data_dir) {
@@ -26,44 +24,31 @@ pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DatasetCa
   }
   datasets.sort_by(|a, b| a.name.cmp(&b.name));
   examples.sort_by(|a, b| a.path.cmp(&b.path));
-  Ok(DatasetCatalog {
+  Ok(DataDirectory {
     data_dir: data_dir.to_string_lossy().replace('\\', "/"),
     datasets,
     examples,
   })
 }
 
-/// Example datasets and example command configurations found in the data directory.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DatasetCatalog {
-  /// Data directory as a run configuration names it: file `f` of dataset `d` is `<data_dir>/<d>/<f>`, a path
-  /// relative to the working directory of the process that runs the commands, as in the example configurations.
+#[derive(Clone, Debug)]
+pub struct DataDirectory {
   pub data_dir: String,
-  /// Directories that hold a `tree.nwk`, with their files.
-  pub datasets: Vec<DatasetInfo>,
-  /// Example configurations of the commands the application runs.
-  pub examples: Vec<ExampleConfig>,
+  pub datasets: Vec<DatasetFiles>,
+  pub examples: Vec<ExampleFile>,
 }
 
-/// A directory of example input files.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DatasetInfo {
-  /// Path of the directory relative to the data directory, with `/` separators.
+#[derive(Clone, Debug)]
+pub struct DatasetFiles {
   pub name: String,
-  /// Names of the files in the directory, sorted.
   pub files: Vec<String>,
 }
 
-/// An example configuration file of one command.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct ExampleConfig {
-  /// Path of the file relative to the data directory, with `/` separators.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExampleFile {
   pub path: String,
-  /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
   pub command: String,
-  /// Title of the example: the first comment line after the directive.
   pub title: String,
-  /// Text of the file.
   pub content: String,
 }
 
@@ -75,7 +60,7 @@ pub fn text_schema_command(content: &str) -> Option<&str> {
   schema_command(content.lines().map(str::trim).find(|line| !line.is_empty())?)
 }
 
-pub fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleConfig> {
+pub fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleFile> {
   let command = text_schema_command(content)?;
   if !commands.contains(&command) {
     return None;
@@ -88,7 +73,7 @@ pub fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Opt
     .filter_map(|line| line.strip_prefix('#'))
     .map(str::trim)
     .find(|text| !text.is_empty())?;
-  Some(ExampleConfig {
+  Some(ExampleFile {
     path: path.to_owned(),
     command: command.to_owned(),
     title: title.to_owned(),
@@ -112,8 +97,8 @@ fn collect(
   dir: &Path,
   entries: ReadDir,
   commands: &[&str],
-  datasets: &mut Vec<DatasetInfo>,
-  examples: &mut Vec<ExampleConfig>,
+  datasets: &mut Vec<DatasetFiles>,
+  examples: &mut Vec<ExampleFile>,
 ) -> Result<(), Report> {
   let mut files: Vec<String> = Vec::new();
   let mut subdirs: Vec<PathBuf> = Vec::new();
@@ -140,7 +125,7 @@ fn collect(
 
   if files.iter().any(|file| file == TREE_FILE) {
     files.sort();
-    datasets.push(DatasetInfo {
+    datasets.push(DatasetFiles {
       name: relative(base, dir),
       files,
     });

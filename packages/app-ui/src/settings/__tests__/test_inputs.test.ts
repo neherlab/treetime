@@ -5,11 +5,19 @@ import { defaultConfig } from "../config";
 import { datasetInputs, inputFactsRequest, pathList, runInputAssignments, slotFactsText, slotProblem } from "../inputs";
 import { setAt } from "../json";
 
-const ZIKA_86 = { name: "zika/86", files: ["aln.fasta.xz", "metadata.tsv", "tree.nwk", "zika.phylip.xz"] };
+const ZIKA_86 = {
+  name: "zika/86",
+  files: ["aln.fasta.xz", "metadata.tsv", "tree.nwk"],
+  inputs: [
+    { kind: "tree" as const, file: "zika/86/tree.nwk", path: "data/zika/86/tree.nwk" },
+    { kind: "alignment" as const, file: "zika/86/aln.fasta.xz", path: "data/zika/86/aln.fasta.xz" },
+    { kind: "metadata" as const, file: "zika/86/metadata.tsv", path: "data/zika/86/metadata.tsv" },
+  ],
+};
 
 describe("inputs", () => {
-  test("a dataset fills the slots of the command from the data directory", () => {
-    expect(datasetInputs("data", ZIKA_86, "timetree")).toStrictEqual([
+  test("a dataset fills the slots of the command in slot order, lists as lists", () => {
+    expect(datasetInputs(ZIKA_86, "timetree")).toStrictEqual([
       { key: "tree", value: "data/zika/86/tree.nwk", label: "zika/86/tree.nwk" },
       { key: "metadata", value: "data/zika/86/metadata.tsv", label: "zika/86/metadata.tsv" },
       { key: "alignment", value: ["data/zika/86/aln.fasta.xz"], label: "zika/86/aln.fasta.xz" },
@@ -17,9 +25,9 @@ describe("inputs", () => {
   });
 
   test("a dataset fills only the slots the command has", () => {
-    expect(datasetInputs("/srv/data", ZIKA_86, "mugration").map((input) => input.value)).toStrictEqual([
-      "/srv/data/zika/86/tree.nwk",
-      "/srv/data/zika/86/metadata.tsv",
+    expect(datasetInputs(ZIKA_86, "mugration").map((input) => input.value)).toStrictEqual([
+      "data/zika/86/tree.nwk",
+      "data/zika/86/metadata.tsv",
     ]);
   });
 
@@ -30,7 +38,7 @@ describe("inputs", () => {
       { setting: "alignment", path: "/runs/a/inputs/two.fasta", size: 1, sha256: "z" },
     ];
 
-    expect(runInputAssignments(inputs)).toStrictEqual([
+    expect(runInputAssignments("ancestral", inputs)).toStrictEqual([
       { key: "tree", value: "/runs/a/inputs/tree.nwk", label: "tree.nwk" },
       {
         key: "alignment",
@@ -40,21 +48,10 @@ describe("inputs", () => {
     ]);
   });
 
-  test("the input check reads the inputs and metadata settings of the command", () => {
-    const config = setAt(
-      setAt(defaultConfig(COMMAND_SETTINGS.mugration.specs), ["tree"], "t.nwk"),
-      ["metadata"],
-      "m.tsv",
-    );
+  test("the input check sends the command and its configuration", () => {
+    const config = setAt(defaultConfig(COMMAND_SETTINGS.mugration.specs), ["tree"], "t.nwk");
 
-    expect(inputFactsRequest("mugration", config)).toStrictEqual({
-      tree: "t.nwk",
-      metadata: "m.tsv",
-      alignment: [],
-      metadata_id_columns: ["strain", "name", "accession"],
-      metadata_delimiters: [",", "\t", ";"],
-      date_column: null,
-    });
+    expect(inputFactsRequest("mugration", config)).toStrictEqual({ command: "mugration", config });
   });
 
   test("a path setting lists its non-empty paths", () => {

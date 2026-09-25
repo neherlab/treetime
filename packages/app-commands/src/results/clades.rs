@@ -1,6 +1,7 @@
 use crate::command::{AppCommand, OutputFile};
 use crate::job::JobId;
 use crate::results::tree::{DateInterval, ResultTree};
+use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::RunStatus;
 use app_output::output_plan::OutputSelection;
@@ -44,8 +45,8 @@ pub struct CladeMatch {
   pub title: String,
   /// Name of the node in that run.
   pub node: String,
-  /// Date of the node, as a decimal year.
-  pub date: Option<f64>,
+  /// Date of the node.
+  pub date: Option<YearDate>,
   /// Confidence interval of the date.
   pub date_interval: Option<DateInterval>,
 }
@@ -172,8 +173,8 @@ pub fn clade_in_runs(manager: &RunManager, request: &CladeRequest) -> Result<Cla
         run: run.id.clone(),
         title: run.title.clone(),
         node: other.name.clone(),
-        date: other.date,
-        date_interval: other.date_interval,
+        date: other.date.clone(),
+        date_interval: other.date_interval.clone(),
       })
     })
     .collect();

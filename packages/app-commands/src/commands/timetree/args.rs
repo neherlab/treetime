@@ -262,6 +262,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub sequence_length: Option<usize>,
 
   /// If specified, the rate of the molecular clock won't be optimized.
+  #[schemars(example = 0.001)]
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub clock_rate: Option<f64>,
 
@@ -305,6 +306,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
   /// strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
+  #[schemars(example = [1.0, 0.0])]
   #[cfg_attr(feature = "clap", clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"], help_heading = "Molecular clock"))]
   pub relax: Vec<f64>,
 
@@ -317,6 +319,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Coalescent time scale in years.
   ///
   /// Sensible values are on the order of the time from the root to the tips and are given in units of time.
+  #[schemars(example = 1.0)]
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
   pub coalescent: Option<f64>,
 

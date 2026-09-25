@@ -248,6 +248,9 @@
             "null"
           ],
           "format": "double",
+          "examples": [
+            0.001
+          ],
           "default": null
         },
         "clock_std_dev": {
@@ -323,6 +326,12 @@
               }
             ]
           },
+          "examples": [
+            [
+              1.0,
+              0.0
+            ]
+          ],
           "default": []
         },
         "max_iter": {
@@ -347,6 +356,9 @@
             "null"
           ],
           "format": "double",
+          "examples": [
+            1.0
+          ],
           "default": null
         },
         "coalescent_opt": {

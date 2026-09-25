@@ -3,7 +3,7 @@ use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, Terminal
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
-use crate::runs::headline::run_headline;
+use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::{file_sha256, hash_inputs};
 use crate::runs::record::{CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, UpdateRunRequest};
 use crate::runs::store::RunStore;
@@ -362,12 +362,12 @@ impl StartedRun {
         TerminalEvent::Ok { result, .. } => {
           record.status = RunStatus::Ok;
           record.output_files = relative_outputs(result, &out_dir);
-          record.headline = run_headline(command, &out_dir, &record.output_files).unwrap_or_else(|err| {
+          record.headline = run_headline(record, &out_dir).unwrap_or_else(|err| {
             error!(
               "When reading the headline results of run {}: {err:#}",
               record.id.as_str()
             );
-            BTreeMap::new()
+            RunHeadline::default()
           });
         },
         TerminalEvent::Error { message, causes, .. } => {

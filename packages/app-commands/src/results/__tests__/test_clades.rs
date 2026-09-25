@@ -5,6 +5,7 @@ mod tests {
   use crate::results::compare::{AncestorComparison, AncestorShift, compare_ancestors, compare_estimates};
   use crate::results::timetree::{CoalescentPrior, TimetreeEstimates};
   use crate::results::tree::DateInterval;
+  use crate::results::year_date::YearDate;
   use helpers::{estimates, tree};
   use pretty_assertions::assert_eq;
   use treetime::o;
@@ -106,13 +107,13 @@ mod tests {
         AncestorShift {
           name: o!("root"),
           tips: 3,
-          date_first: 2000.0,
+          date_first: YearDate::new(2000.0),
           shift_days: 366.0,
         },
         AncestorShift {
           name: o!("X"),
           tips: 2,
-          date_first: 2005.0,
+          date_first: YearDate::new(2005.0),
           shift_days: 182.5,
         },
       ],
@@ -147,6 +148,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::results::tree::{ResultNode, ResultTree};
+    use crate::results::year_date::YearDate;
 
     pub(super) fn tree(spec: &[(&str, Option<usize>, Option<f64>)]) -> ResultTree {
       let mut nodes = spec
@@ -157,7 +159,7 @@ mod tests {
           children: vec![],
           tips: 0,
           div: None,
-          date,
+          date: date.map(YearDate::new),
           date_interval: None,
           excluded: None,
           mutations: vec![],
@@ -189,7 +191,7 @@ mod tests {
       log_likelihood: JsonFloat,
     ) -> TimetreeEstimates {
       TimetreeEstimates {
-        root_date: Some(root_date),
+        root_date: Some(YearDate::new(root_date)),
         root_interval: DateInterval::new(lower, upper),
         root_near_interval_edge: false,
         clock_rate: Some(clock_rate),

@@ -132,10 +132,10 @@ mod tests {
   mod helpers {
     use crate::command::AppCommand;
     use crate::job::JobId;
+    use crate::runs::headline::RunHeadline;
     use crate::runs::record::{RunInput, RunRecord, RunStatus};
     use chrono::DateTime;
     use serde_json::Value;
-    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     pub(super) fn record(settings: &Value, inputs: Vec<RunInput>) -> RunRecord {
@@ -154,7 +154,7 @@ mod tests {
         inputs,
         config_hash: None,
         changed_settings: vec![],
-        headline: BTreeMap::new(),
+        headline: RunHeadline::default(),
         output_files: vec![],
         error: None,
       }

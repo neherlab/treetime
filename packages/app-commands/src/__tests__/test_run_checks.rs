@@ -53,6 +53,7 @@ mod tests {
         id: o!("unreadable-tree"),
         level: CheckLevel::Block,
         text: o!("The tree cannot be read: When reading 't.nwk': no such file"),
+        settings: vec_of_owned!["tree"],
         fix: None,
       }],
       checks(AppCommand::Prune, Some(&config), None, Some(&facts))
@@ -219,6 +220,7 @@ mod tests {
         id: o!("unreadable-dates"),
         level: CheckLevel::Warn,
         text: o!("2 dates cannot be read and those samples get no date: A, B. Use 2015-06-21, 2015-06-XX or 2015.47."),
+        settings: vec![],
         fix: None,
       }],
       checks(AppCommand::Clock, Some(&config), None, Some(&facts))
@@ -245,6 +247,7 @@ mod tests {
       id: o!("confidence-without-rate-uncertainty"),
       level: CheckLevel::Warn,
       text: o!("Date intervals need rate uncertainty: without the covariation-aware regression or a clock rate std. dev., this run writes no intervals."),
+      settings: vec_of_owned!["confidence", "covariation", "clock_std_dev"],
       fix: Some(CheckFix {
         label: o!("Use covariation"),
         patch: vec![SettingPatch { path: vec_of_owned!["covariation"], value: json!(true) }],
@@ -275,6 +278,7 @@ mod tests {
       id: o!("dates-on-day-1-or-15"),
       level: CheckLevel::Advice,
       text: format!("{on_day_1_or_15} of {exact_days} dates fall on the 1st or 15th of a month. If only the month is known, write it as 2015-06-XX so TreeTime treats it as a range."),
+      settings: vec![],
       fix: None,
     });
     assert_eq!(expected.into_iter().collect::<Vec<_>>(), checks(command, Some(&config), None, Some(&facts)));

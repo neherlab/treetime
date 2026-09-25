@@ -1,8 +1,10 @@
+use crate::results::year_date::YearDate;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use treetime::timetree::confidence::CI_FRACTION;
 use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree, AuspiceTreeNode};
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
@@ -96,8 +98,8 @@ pub struct ResultNode {
   pub tips: usize,
   /// Divergence from the root.
   pub div: Option<f64>,
-  /// Date of the node, as a decimal year.
-  pub date: Option<f64>,
+  /// Date of the node.
+  pub date: Option<YearDate>,
   /// Confidence interval of the date; absent when the run computed none or the interval is empty.
   pub date_interval: Option<DateInterval>,
   /// Whether the clock model left the sample out, because it had no usable date or was a clock outlier.
@@ -112,23 +114,26 @@ impl ResultNode {
   }
 }
 
-/// Interval of dates, as decimal years.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+/// Confidence interval of a date.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DateInterval {
   /// Earliest date.
-  pub lower: f64,
+  pub lower: YearDate,
   /// Latest date.
-  pub upper: f64,
+  pub upper: YearDate,
   /// Width of the interval in days.
   pub days: f64,
+  /// Probability that the date lies inside the interval, for example `0.9`.
+  pub level: f64,
 }
 
 impl DateInterval {
   pub fn new(lower: f64, upper: f64) -> Option<Self> {
     (upper > lower).then(|| Self {
-      lower,
-      upper,
       days: year_fraction_days_between(lower, upper),
+      lower: YearDate::new(lower),
+      upper: YearDate::new(upper),
+      level: CI_FRACTION,
     })
   }
 }
@@ -222,7 +227,7 @@ fn result_node(node: &AuspiceTreeNode, parent: Option<usize>) -> Result<ResultNo
     children: vec![],
     tips: 0,
     div: attrs.div,
-    date: num_date.map(|date| date.value),
+    date: num_date.map(|date| YearDate::new(date.value)),
     date_interval: num_date
       .and_then(|date| date.confidence)
       .and_then(|[lower, upper]| DateInterval::new(lower, upper)),

@@ -2,13 +2,13 @@ use crate::command::AppCommand;
 use crate::job::{JobEvent, JobId, TerminalEvent};
 use crate::runs::errors::{conflict, invalid, not_found};
 use crate::runs::events::EventLog;
+use crate::runs::headline::RunHeadline;
 use crate::runs::record::{RunRecord, RunStatus};
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::Value;
 use std::cmp::Reverse;
-use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -83,7 +83,7 @@ impl RunStore {
       inputs: vec![],
       config_hash: None,
       changed_settings: vec![],
-      headline: BTreeMap::new(),
+      headline: RunHeadline::default(),
       output_files: vec![],
       error: None,
     };

@@ -1,7 +1,7 @@
 use app_commands::bridge::operations::DesktopBackend;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
-use app_commands::command::AppCommand;
+use app_commands::datasets::{DatasetCatalog, dataset_catalog};
 use app_commands::job::JobId;
 use app_commands::results::auspice::{AuspiceDocument, run_auspice};
 use app_commands::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
@@ -13,7 +13,6 @@ use app_commands::runs::manager::RunManager;
 use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
-use app_datasets::{DatasetCatalog, discover_datasets};
 use eyre::{Report, WrapErr};
 use log::{error, info};
 use serde_json::Value;
@@ -22,7 +21,6 @@ use std::io;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
-use strum::VariantNames;
 use tempfile::NamedTempFile;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::env::env_var_optional;
@@ -100,7 +98,7 @@ impl DesktopBackend for DesktopService {
 
   fn datasets(&self) -> Result<DatasetCatalog, Report> {
     let data_dir = env_var_optional(DATA_DIR_ENV)?.unwrap_or_else(|| "data".to_owned());
-    discover_datasets(Path::new(&data_dir), AppCommand::VARIANTS)
+    dataset_catalog(Path::new(&data_dir))
   }
 
   fn check_config(&self, request: CheckConfigRequest) -> Result<CheckConfigResponse, Report> {
@@ -112,7 +110,7 @@ impl DesktopBackend for DesktopService {
   }
 
   fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
-    Ok(check_inputs(&request))
+    check_inputs(&request)
   }
 
   fn list_runs(&self) -> Result<RunList, Report> {

@@ -19,7 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-const CI_FRACTION: f64 = 0.9;
+pub const CI_FRACTION: f64 = 0.9;
 
 const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5;
 const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;

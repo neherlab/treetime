@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { useBridge } from "../BridgeContext";
 import { formatBytes } from "../format";
 import { useRunFiles } from "../queries";
-import { downloadName, fileDescription, totalSize, type RunFileEntry } from "../results/files";
+import { downloadName, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
 import { Button, Toast } from "../ui";
 import { Panel } from "./Panel";
@@ -124,7 +124,7 @@ function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
       <td className="px-3.5 py-1.5">
         <code className="font-mono text-xs">{file.path}</code>
       </td>
-      <td className="text-ink-muted px-3.5 py-1.5 text-xs">{fileDescription(file)}</td>
+      <td className="text-ink-muted px-3.5 py-1.5 text-xs">{file.description}</td>
       <td className="px-3.5 py-1.5 text-right text-xs tabular-nums">{formatBytes(file.size)}</td>
       <td className="px-2 py-1 text-right">
         <Button type="button" variant="ghost" size="icon" aria-label={`Download ${file.path}`} onClick={onDownload}>

@@ -97,7 +97,7 @@ export function ChecksPanel({
   );
 }
 
-function CheckItem({ check }: { check: Parsed<typeof zRunCheck> }) {
+export function CheckItem({ check }: { check: Parsed<typeof zRunCheck> }) {
   const { setValue } = useFormContext<FormConfig>();
   const fix = check.fix ?? null;
 

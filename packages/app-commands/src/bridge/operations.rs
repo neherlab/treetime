@@ -1,5 +1,6 @@
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse};
 use crate::check_inputs::{CheckInputsRequest, InputFacts};
+use crate::datasets::DatasetCatalog;
 use crate::job::JobId;
 use crate::results::auspice::AuspiceDocument;
 use crate::results::clades::{CladeInRuns, CladeRequest};
@@ -10,7 +11,6 @@ use crate::runs::files::RunFile;
 use crate::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
-use app_datasets::DatasetCatalog;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -2,7 +2,7 @@ import type { AppCommand } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { APP_COMMANDS, COMMAND_INFO, INPUT_SLOT_INFO } from "../settings/commands";
+import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { carryOverConfig } from "../settings/config";
 import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
@@ -50,7 +50,7 @@ function CommandCard({
   const onClick = useCallback(() => select(command), [command, select]);
 
   const needs = COMMAND_SETTINGS[command].inputs
-    .flatMap((input) => (input.need === "required" ? [INPUT_SLOT_INFO[input.kind].label.toLowerCase()] : []))
+    .flatMap((input) => (input.need === "required" ? [input.label.toLowerCase()] : []))
     .join(" and ");
 
   return (

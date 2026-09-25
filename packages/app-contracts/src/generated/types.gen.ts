@@ -2241,6 +2241,14 @@ export type ConfigCode = {
      * The YAML config as a file holds it.
      */
     yaml_text: string;
+    /**
+     * Name to save the YAML config under.
+     */
+    config_file: string;
+    /**
+     * The command line that runs the saved YAML config.
+     */
+    config_command: string;
 };
 
 /**
@@ -2278,6 +2286,10 @@ export type RunCheck = {
      * The finding, as a sentence.
      */
     text: string;
+    /**
+     * Keys of the settings the finding concerns.
+     */
+    settings: Array<string>;
     /**
      * Change of settings that resolves the finding, when there is one.
      */
@@ -2631,39 +2643,25 @@ export type VersionInfo = {
 };
 
 /**
- * Input files to inspect before a run, with the metadata settings of the command.
+ * A command configuration whose input files to inspect before a run.
  */
 export type CheckInputsRequest = {
     /**
-     * Newick tree.
+     * Command the configuration is for.
      */
-    tree?: string | null;
+    command: AppCommand;
     /**
-     * Metadata table with one row per sample.
+     * Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
      */
-    metadata?: string | null;
-    /**
-     * FASTA alignment files.
-     */
-    alignment?: Array<string>;
-    /**
-     * Candidate names of the metadata column that holds the sample names; the command defaults when empty.
-     */
-    metadata_id_columns?: Array<string>;
-    /**
-     * Candidate field delimiters of the metadata table; the command defaults when empty.
-     */
-    metadata_delimiters?: Array<string>;
-    /**
-     * Name of the metadata column that holds the sampling dates; detected when absent.
-     */
-    date_column?: string | null;
+    config: {
+        [key: string]: unknown;
+    };
 };
 
 /**
  * A directory of example input files.
  */
-export type DatasetInfo = {
+export type Dataset = {
     /**
      * Path of the directory relative to the data directory, with `/` separators.
      */
@@ -2672,6 +2670,28 @@ export type DatasetInfo = {
      * Names of the files in the directory, sorted.
      */
     files: Array<string>;
+    /**
+     * The files of the directory that fill command inputs, at most one per kind.
+     */
+    inputs: Array<DatasetInput>;
+};
+
+/**
+ * A file of an example dataset that fills a command input.
+ */
+export type DatasetInput = {
+    /**
+     * Input the file fills.
+     */
+    kind: InputKind;
+    /**
+     * Path of the file relative to the data directory, with `/` separators.
+     */
+    file: string;
+    /**
+     * Path of the file as a run configuration names it.
+     */
+    path: string;
 };
 
 /**
@@ -2685,7 +2705,7 @@ export type ExampleConfig = {
     /**
      * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
      */
-    command: string;
+    command: AppCommand;
     /**
      * Title of the example: the first comment line after the directive.
      */
@@ -2701,14 +2721,14 @@ export type ExampleConfig = {
  */
 export type DatasetCatalog = {
     /**
-     * Data directory as a run configuration names it: file `f` of dataset `d` is `<data_dir>/<d>/<f>`, a path
-     * relative to the working directory of the process that runs the commands, as in the example configurations.
+     * Data directory as a run configuration names it: a path relative to the working directory of the process that
+     * runs the commands, as in the example configurations.
      */
     data_dir: string;
     /**
      * Directories that hold a `tree.nwk`, with their files.
      */
-    datasets: Array<DatasetInfo>;
+    datasets: Array<Dataset>;
     /**
      * Example configurations of the commands the application runs.
      */
@@ -2786,6 +2806,38 @@ export type RunInput = {
      * SHA-256 of the file contents, as lowercase hexadecimal.
      */
     sha256: string;
+};
+
+/**
+ * Key results of a finished run, for run lists; the same values the run's results show.
+ */
+export type RunHeadline = {
+    /**
+     * Date of the root of a time tree.
+     */
+    root_date?: YearDate | null;
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    clock_rate?: JsonFloat | null;
+    /**
+     * Coefficient of determination of the clock model.
+     */
+    r_squared?: JsonFloat | null;
+};
+
+/**
+ * A date as a decimal year and as a calendar day.
+ */
+export type YearDate = {
+    /**
+     * The date as a decimal year, for example `2015.47`.
+     */
+    year: number;
+    /**
+     * The calendar day of the date, as `YYYY-MM-DD`.
+     */
+    date: string;
 };
 
 /**
@@ -2869,9 +2921,7 @@ export type RunRecord = {
     /**
      * Key results of a finished run, for run lists.
      */
-    headline: {
-        [key: string]: JsonFloat;
-    };
+    headline: RunHeadline;
     /**
      * Files the run wrote, with paths relative to the run's `out/` folder.
      */
@@ -2929,9 +2979,7 @@ export type RunSummary = {
     /**
      * Key results of a finished run.
      */
-    headline: {
-        [key: string]: JsonFloat;
-    };
+    headline: RunHeadline;
 };
 
 /**
@@ -2990,6 +3038,10 @@ export type RunFile = {
      * Output selection that produced the file; absent for files the output plan does not name.
      */
     kind?: OutputSelection | null;
+    /**
+     * What the file holds; empty for files the output plan does not name.
+     */
+    description: string;
 };
 
 /**
@@ -3025,7 +3077,7 @@ export type CommandSettings = {
     /**
      * Input files the command reads, in the order the form asks for them.
      */
-    inputs: Array<CommandInput>;
+    inputs: Array<InputSlot>;
     /**
      * Whether the command reads sampling dates from the metadata.
      */
@@ -3041,9 +3093,9 @@ export type CommandSettings = {
 };
 
 /**
- * An input file an app command reads.
+ * An input file of a command, as the form asks for it.
  */
-export type CommandInput = {
+export type InputSlot = {
     /**
      * Kind of the file; also the setting that names it.
      */
@@ -3052,6 +3104,22 @@ export type CommandInput = {
      * Whether a run of the app needs the file.
      */
     need: InputNeed;
+    /**
+     * Name of the input, for example `Tree`.
+     */
+    label: string;
+    /**
+     * File formats the readers accept, for example `Newick`.
+     */
+    formats: string;
+    /**
+     * File name extensions of the accepted formats, compressed forms included, without the dot.
+     */
+    extensions: Array<string>;
+    /**
+     * Whether the setting takes a list of files.
+     */
+    list: boolean;
 };
 
 /**
@@ -3071,6 +3139,10 @@ export type SettingSpec = {
      * Key path of the setting in the configuration.
      */
     path: Array<string>;
+    /**
+     * Name of the setting as the form shows it, for example `Clock rate std. dev.`.
+     */
+    label: string;
     /**
      * Command-line flag, for example `--clock-rate`.
      */
@@ -3107,6 +3179,19 @@ export type SettingSpec = {
      * Smallest allowed value of a number, when there is one.
      */
     minimum?: number | null;
+    /**
+     * Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
+     * when the setting is turned on.
+     */
+    examples: Array<unknown>;
+    /**
+     * Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
+     */
+    value_names: Array<string>;
+    /**
+     * Keys of the settings this setting cannot be used together with, as the command line rejects them.
+     */
+    conflicts: Array<string>;
     /**
      * First paragraph of the setting's description.
      */
@@ -3236,9 +3321,9 @@ export type ResultNode = {
      */
     div?: number | null;
     /**
-     * Date of the node, as a decimal year.
+     * Date of the node.
      */
-    date?: number | null;
+    date?: YearDate | null;
     /**
      * Confidence interval of the date; absent when the run computed none or the interval is empty.
      */
@@ -3254,21 +3339,25 @@ export type ResultNode = {
 };
 
 /**
- * Interval of dates, as decimal years.
+ * Confidence interval of a date.
  */
 export type DateInterval = {
     /**
      * Earliest date.
      */
-    lower: number;
+    lower: YearDate;
     /**
      * Latest date.
      */
-    upper: number;
+    upper: YearDate;
     /**
      * Width of the interval in days.
      */
     days: number;
+    /**
+     * Probability that the date lies inside the interval, for example `0.9`.
+     */
+    level: number;
 };
 
 /**
@@ -3361,9 +3450,9 @@ export type TimetreeResults = {
  */
 export type TimetreeEstimates = {
     /**
-     * Date of the root, as a decimal year.
+     * Date of the root.
      */
-    root_date?: number | null;
+    root_date?: YearDate | null;
     /**
      * Confidence interval of the root date.
      */
@@ -3480,9 +3569,9 @@ export type RootToTipPoint = {
      */
     name: string;
     /**
-     * Date the regression used, as a decimal year.
+     * Date the regression used.
      */
-    date?: number | null;
+    date?: YearDate | null;
     /**
      * Where the date came from; absent when the table does not say.
      */
@@ -3494,7 +3583,7 @@ export type RootToTipPoint = {
     /**
      * Date the clock model predicts from the divergence.
      */
-    predicted_date: number;
+    predicted_date: YearDate;
     /**
      * Sampling date minus the predicted date, in days.
      */
@@ -3950,9 +4039,9 @@ export type AncestorShift = {
      */
     tips: number;
     /**
-     * Date in the first tree, as a decimal year.
+     * Date in the first tree.
      */
-    date_first: number;
+    date_first: YearDate;
     /**
      * Date in the second tree minus the date in the first, in days.
      */
@@ -4008,9 +4097,9 @@ export type CladeMatch = {
      */
     node: string;
     /**
-     * Date of the node, as a decimal year.
+     * Date of the node.
      */
-    date?: number | null;
+    date?: YearDate | null;
     /**
      * Confidence interval of the date.
      */

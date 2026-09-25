@@ -1,8 +1,9 @@
+import type { Parsed, zRunHeadline } from "@neherlab/app-contracts";
 import { DateTime } from "luxon";
 
-const SIGNIFICANT_DIGITS = 3;
+import { fromJsonFloat } from "./results/numbers";
 
-const MILLISECONDS_PER_DAY = 86_400_000;
+const SIGNIFICANT_DIGITS = 3;
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {
@@ -46,44 +47,34 @@ export function dayLabel(timestamp: string, now: DateTime): string {
   return day.toFormat("d LLL yyyy");
 }
 
-export function headlineText(headline: Readonly<Record<string, number | string>>): string {
-  const rootDate = headline["root_date"];
+export function headlineText(headline: Parsed<typeof zRunHeadline>): string {
+  const rootDate = headline.root_date;
 
-  if (rootDate !== undefined) {
-    return Number.isFinite(Number(rootDate)) ? formatMonthYear(Number(rootDate)) : `root ${String(rootDate)}`;
+  if (rootDate !== null && rootDate !== undefined) {
+    return DateTime.fromISO(rootDate.date, { zone: "utc" }).toFormat("LLL yyyy");
   }
 
-  const rate = headline["clock_rate"];
+  const rate = headline.clock_rate;
 
-  if (rate !== undefined) {
-    return Number.isFinite(Number(rate)) ? `rate ${formatRate(Number(rate))}` : `rate ${String(rate)}`;
+  if (rate !== null && rate !== undefined) {
+    const value = fromJsonFloat(rate);
+
+    return Number.isFinite(value) ? `rate ${formatRate(value)}` : `rate ${rate}`;
   }
 
   return "";
-}
-
-function formatMonthYear(year: number): string {
-  return decimalYearToDate(year).toFormat("LLL yyyy");
-}
-
-export function formatDecimalDate(year: number): string {
-  return decimalYearToDate(year).toFormat("yyyy-MM-dd");
 }
 
 export function formatRate(rate: number): string {
   return rate.toExponential(SIGNIFICANT_DIGITS - 1);
 }
 
+export function formatLevel(level: number): string {
+  return `${Math.round(level * 100)}%`;
+}
+
 export function formatSignedDays(days: number): string {
   const rounded = Math.round(days);
 
   return `${rounded > 0 ? "+" : ""}${rounded} d`;
-}
-
-function decimalYearToDate(year: number): DateTime {
-  const whole = Math.floor(year);
-  const start = DateTime.utc(whole, 1, 1);
-  const days = start.daysInYear * (year - whole);
-
-  return start.plus({ milliseconds: Math.round(days * MILLISECONDS_PER_DAY) });
 }

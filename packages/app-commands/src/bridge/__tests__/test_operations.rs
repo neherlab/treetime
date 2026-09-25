@@ -51,6 +51,7 @@ mod tests {
     use crate::bridge::operations::DesktopBackend;
     use crate::check_config::{CheckConfigRequest, CheckConfigResponse};
     use crate::check_inputs::{CheckInputsRequest, InputFacts};
+    use crate::datasets::DatasetCatalog;
     use crate::job::JobId;
     use crate::results::auspice::AuspiceDocument;
     use crate::results::clades::{CladeInRuns, CladeRequest};
@@ -62,7 +63,6 @@ mod tests {
     use crate::runs::record::{
       CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
     };
-    use app_datasets::DatasetCatalog;
     use eyre::Report;
     use treetime_schema::{VersionInfo, version_info};
     use treetime_utils::make_error;

@@ -16,11 +16,15 @@ use crate::commands::shared::output_args::{
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
+#[cfg(feature = "clap")]
+use crate::config::cli_rules::cli_rule_diagnostics;
 use crate::config::load::{check_command_config, load_config_document, merge_value};
 use crate::config::properties::{PathRole, leaf_properties};
 use crate::config::schema::command_schema;
 use crate::config::settings::{remove_setting, setting_ref};
 use crate::config::source::ConfigSource;
+#[cfg(feature = "clap")]
+use crate::config::source::render_and_bail;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::{Command, CommandFactory};
@@ -164,12 +168,12 @@ impl AppCommand {
   fn prepare_source(self, source_name: &str, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {
     let source = ConfigSource::new(source_name, text);
     match self {
-      Self::Timetree => prepare::<TreetimeTimetreeArgsRaw>(&source, text, run_out),
-      Self::Optimize => prepare::<TreetimeOptimizeArgsRaw>(&source, text, run_out),
-      Self::Prune => prepare::<TreetimePruneArgsRaw>(&source, text, run_out),
-      Self::Ancestral => prepare::<TreetimeAncestralArgsRaw>(&source, text, run_out),
-      Self::Clock => prepare::<TreetimeClockArgsRaw>(&source, text, run_out),
-      Self::Mugration => prepare::<TreetimeMugrationArgsRaw>(&source, text, run_out),
+      Self::Timetree => prepare::<TreetimeTimetreeArgsRaw>(self, &source, text, run_out),
+      Self::Optimize => prepare::<TreetimeOptimizeArgsRaw>(self, &source, text, run_out),
+      Self::Prune => prepare::<TreetimePruneArgsRaw>(self, &source, text, run_out),
+      Self::Ancestral => prepare::<TreetimeAncestralArgsRaw>(self, &source, text, run_out),
+      Self::Clock => prepare::<TreetimeClockArgsRaw>(self, &source, text, run_out),
+      Self::Mugration => prepare::<TreetimeMugrationArgsRaw>(self, &source, text, run_out),
     }
   }
 }
@@ -325,7 +329,12 @@ impl_raw_config!(
   [MugrationOutputSelection::Auspice]
 );
 
-fn prepare<R: RawConfig>(source: &ConfigSource, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {
+fn prepare<R: RawConfig>(
+  command: AppCommand,
+  source: &ConfigSource,
+  text: &str,
+  run_out: Option<&Path>,
+) -> Result<PreparedCommand, Report> {
   let schema = command_schema::<R>();
   let merged = load_config_document::<R>(source, text)?;
   check_command_config(source, &merged, &schema)?;
@@ -336,6 +345,7 @@ fn prepare<R: RawConfig>(source: &ConfigSource, text: &str, run_out: Option<&Pat
     defaults.set_run_outputs(out_dir);
   }
   let config = settings_map(&raw)?;
+  check_cli_rules(command, source, &config)?;
   let changed_settings = changed_settings(&config, &settings_map(&defaults)?, schema.as_value())?;
   let args = R::Args::try_from(raw)?;
   Ok(PreparedCommand {
@@ -343,6 +353,16 @@ fn prepare<R: RawConfig>(source: &ConfigSource, text: &str, run_out: Option<&Pat
     changed_settings,
     args: R::wrap(args),
   })
+}
+
+#[cfg(feature = "clap")]
+fn check_cli_rules(command: AppCommand, source: &ConfigSource, config: &Map<String, Value>) -> Result<(), Report> {
+  render_and_bail(source, "invalid configuration", cli_rule_diagnostics(command, config)?)
+}
+
+#[cfg(not(feature = "clap"))]
+fn check_cli_rules(_command: AppCommand, _source: &ConfigSource, _config: &Map<String, Value>) -> Result<(), Report> {
+  Ok(())
 }
 
 fn settings_map<R: Serialize>(raw: &R) -> Result<Map<String, Value>, Report> {

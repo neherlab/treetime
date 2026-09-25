@@ -1,7 +1,7 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { formatDecimalDate, formatDuration, formatRate } from "../format";
+import { formatDuration, formatLevel, formatRate } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
@@ -191,11 +191,11 @@ function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
 
   return {
     label: "Root date",
-    value: formatDecimalDate(date),
+    value: date.date,
     detail:
       interval === null || interval === undefined
         ? "No interval computed"
-        : `90%: ${formatDecimalDate(interval.lower)} to ${formatDecimalDate(interval.upper)}${edge ? "; the estimate lies at the interval edge" : ""}`,
+        : `${formatLevel(interval.level)}: ${interval.lower.date} to ${interval.upper.date}${edge ? "; the estimate lies at the interval edge" : ""}`,
     tone: edge ? "caution" : undefined,
   };
 }

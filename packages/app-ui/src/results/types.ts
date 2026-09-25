@@ -20,6 +20,7 @@ import type {
   zTimetreeEstimates,
   zTimetreeResults,
   zTreeSummary,
+  zYearDate,
 } from "@neherlab/app-contracts";
 
 export type AncestorShift = Parsed<typeof zAncestorShift>;
@@ -61,3 +62,5 @@ export type TimetreeData = Parsed<typeof zTimetreeResults>;
 export type TimetreeEstimates = Parsed<typeof zTimetreeEstimates>;
 
 export type TreeSummary = Parsed<typeof zTreeSummary>;
+
+export type YearDate = Parsed<typeof zYearDate>;

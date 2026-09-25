@@ -4,6 +4,7 @@ use crate::results::clades::matched_ancestors;
 use crate::results::run_results::{CommandResults, RunResults, run_results};
 use crate::results::timetree::TimetreeEstimates;
 use crate::results::tree::ResultTree;
+use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
 use crate::runs::setting_differences::{SettingDifference, setting_differences};
@@ -71,8 +72,8 @@ pub struct AncestorShift {
   pub name: String,
   /// Number of samples below the ancestor.
   pub tips: usize,
-  /// Date in the first tree, as a decimal year.
-  pub date_first: f64,
+  /// Date in the first tree.
+  pub date_first: YearDate,
   /// Date in the second tree minus the date in the first, in days.
   pub shift_days: f64,
 }
@@ -143,11 +144,13 @@ pub fn compare_estimates(first: TimetreeEstimates, second: TimetreeEstimates) ->
   EstimateComparison {
     root_shift_days: first
       .root_date
-      .zip(second.root_date)
-      .map(|(a, b)| year_fraction_days_between(a, b)),
+      .as_ref()
+      .zip(second.root_date.as_ref())
+      .map(|(a, b)| year_fraction_days_between(a.year, b.year)),
     root_interval_change_days: first
       .root_interval
-      .zip(second.root_interval)
+      .as_ref()
+      .zip(second.root_interval.as_ref())
       .map(|(a, b)| b.days - a.days),
     clock_rate_change_percent: first
       .clock_rate
@@ -166,13 +169,13 @@ pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorCom
     .into_iter()
     .filter_map(|(a, b)| {
       let node = &first.nodes[a];
-      let date_first = node.date?;
-      let date_second = second.nodes[b].date?;
+      let date_first = node.date.as_ref()?;
+      let date_second = second.nodes[b].date.as_ref()?;
       Some(AncestorShift {
         name: node.name.clone(),
         tips: node.tips,
-        date_first,
-        shift_days: year_fraction_days_between(date_first, date_second),
+        shift_days: year_fraction_days_between(date_first.year, date_second.year),
+        date_first: date_first.clone(),
       })
     })
     .collect::<Vec<_>>();

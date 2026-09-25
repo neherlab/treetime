@@ -6,6 +6,7 @@ use app_commands::command::{AppCommand, CommandOutcome};
 use app_commands::config::catalog::{SettingCatalog, setting_catalog};
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
+use app_commands::datasets::DatasetCatalog;
 use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
 use app_commands::results::auspice::AuspiceDocument;
 use app_commands::results::clades::{CladeInRuns, CladeRequest};
@@ -19,7 +20,6 @@ use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
 use app_commands::runs::setting_differences::SettingDifference;
-use app_datasets::DatasetCatalog;
 use eyre::Report;
 use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value, json};

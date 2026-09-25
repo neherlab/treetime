@@ -381,9 +381,12 @@ mod tests {
       "POST",
       "/api/check-inputs",
       Some(json!({
-        "tree": "zika/86/tree.nwk",
-        "metadata": "zika/86/metadata.tsv",
-        "alignment": ["zika/86/aln.fasta.xz"],
+        "command": "timetree",
+        "config": {
+          "tree": "zika/86/tree.nwk",
+          "metadata": "zika/86/metadata.tsv",
+          "alignment": ["zika/86/aln.fasta.xz"],
+        },
       })),
     )
     .await;
@@ -422,7 +425,7 @@ mod tests {
       &test,
       "POST",
       "/api/check-inputs",
-      Some(json!({ "tree": "../Cargo.toml" })),
+      Some(json!({ "command": "prune", "config": { "tree": "../Cargo.toml" } })),
     )
     .await;
     assert_eq!(

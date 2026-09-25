@@ -2,7 +2,6 @@ use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use crate::results::timetree::{CoalescentPrior, TimetreeEstimates};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
 
 const CITATION_TEXT: &str = "Sagulenko P, Puller V, Neher RA. TreeTime: Maximum-likelihood phylodynamic analysis. Virus Evolution 4 (2018), vex042.";
 
@@ -97,17 +96,18 @@ fn prior_sentence(prior: CoalescentPrior) -> String {
 }
 
 fn root_sentence(estimates: &TimetreeEstimates) -> String {
-  let Some(date) = estimates.root_date else {
+  let Some(date) = &estimates.root_date else {
     return String::new();
   };
-  let range = estimates.root_interval.map_or_else(String::new, |interval| {
+  let range = estimates.root_interval.as_ref().map_or_else(String::new, |interval| {
     format!(
-      " (90% interval {} to {})",
-      year_fraction_to_datestring(interval.lower),
-      year_fraction_to_datestring(interval.upper)
+      " ({:.0}% interval {} to {})",
+      interval.level * 100.0,
+      interval.lower.date,
+      interval.upper.date
     )
   });
-  format!("The root was dated to {}{range}.", year_fraction_to_datestring(date))
+  format!("The root was dated to {}{range}.", date.date)
 }
 
 fn rate_text(rate: f64) -> String {

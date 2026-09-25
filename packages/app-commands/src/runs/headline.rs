@@ -1,47 +1,42 @@
-use crate::command::{AppCommand, OutputFile};
 use crate::json_float::JsonFloat;
-use app_output::output_plan::OutputSelection;
-use eyre::{Report, WrapErr};
-use serde_json::Value;
-use std::collections::BTreeMap;
-use std::fs;
+use crate::results::run_results::{CommandResults, results_of_record};
+use crate::results::year_date::YearDate;
+use crate::runs::record::RunRecord;
+use eyre::Report;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub const HEADLINE_CLOCK_RATE: &str = "clock_rate";
-pub const HEADLINE_R_SQUARED: &str = "r_squared";
-pub const HEADLINE_ROOT_DATE: &str = "root_date";
-
-pub fn run_headline(
-  command: AppCommand,
-  out_dir: &Path,
-  output_files: &[OutputFile],
-) -> Result<BTreeMap<String, JsonFloat>, Report> {
-  let mut headline = BTreeMap::new();
-  for file in output_files {
-    let path = out_dir.join(&file.path);
-    match file.kind {
-      OutputSelection::ClockModel => {
-        let model = read_json(&path)?;
-        if let Some(rate) = model.get("clock_rate").and_then(Value::as_f64) {
-          headline.insert(HEADLINE_CLOCK_RATE.to_owned(), JsonFloat(rate));
-        }
-        if let Some(r) = model.pointer("/stats/estimated/r_val").and_then(Value::as_f64) {
-          headline.insert(HEADLINE_R_SQUARED.to_owned(), JsonFloat(r * r));
-        }
-      },
-      OutputSelection::Auspice if command == AppCommand::Timetree => {
-        let tree = read_json(&path)?;
-        if let Some(date) = tree.pointer("/tree/node_attrs/num_date/value").and_then(Value::as_f64) {
-          headline.insert(HEADLINE_ROOT_DATE.to_owned(), JsonFloat(date));
-        }
-      },
-      _ => {},
-    }
-  }
-  Ok(headline)
+pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, Report> {
+  let results = results_of_record(record, out_dir)?;
+  Ok(match results.results {
+    CommandResults::Timetree(results) => results
+      .estimates
+      .map(|estimates| RunHeadline {
+        root_date: estimates.root_date,
+        clock_rate: estimates.clock_rate.map(JsonFloat),
+        r_squared: estimates.r_squared.map(JsonFloat),
+      })
+      .unwrap_or_default(),
+    CommandResults::Clock(results) => RunHeadline {
+      root_date: None,
+      clock_rate: results.estimates.clock_rate.map(JsonFloat),
+      r_squared: results.estimates.r_squared.map(JsonFloat),
+    },
+    CommandResults::Ancestral(_)
+    | CommandResults::Mugration(_)
+    | CommandResults::Optimize(_)
+    | CommandResults::Prune(_) => RunHeadline::default(),
+  })
 }
 
-fn read_json(path: &Path) -> Result<Value, Report> {
-  let text = fs::read_to_string(path).wrap_err_with(|| format!("When reading '{}'", path.display()))?;
-  serde_json::from_str(&text).wrap_err_with(|| format!("When parsing '{}'", path.display()))
+/// Key results of a finished run, for run lists; the same values the run's results show.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RunHeadline {
+  /// Date of the root of a time tree.
+  pub root_date: Option<YearDate>,
+  /// Clock rate in substitutions per site per year.
+  pub clock_rate: Option<JsonFloat>,
+  /// Coefficient of determination of the clock model.
+  pub r_squared: Option<JsonFloat>,
 }

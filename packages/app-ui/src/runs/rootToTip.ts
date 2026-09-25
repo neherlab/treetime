@@ -9,7 +9,8 @@ export function rttPoints(regression: RootToTip): RttPoint[] {
       : [
           {
             name: point.name,
-            date: point.date,
+            date: point.date.year,
+            dateText: point.date.date,
             div: point.div,
             excluded: point.outlier,
             inferred: point.date_source === "inferred",

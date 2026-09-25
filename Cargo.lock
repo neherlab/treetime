@@ -231,8 +231,6 @@ dependencies = [
  "indoc",
  "pretty_assertions",
  "rayon",
- "schemars",
- "serde",
  "treetime-utils",
 ]
 
@@ -241,7 +239,6 @@ name = "app-napi"
 version = "1.0.0"
 dependencies = [
  "app-commands",
- "app-datasets",
  "app-output",
  "ctor",
  "eyre",
@@ -295,7 +292,6 @@ name = "app-server"
 version = "1.0.0"
 dependencies = [
  "app-commands",
- "app-datasets",
  "async-stream",
  "axum",
  "clap",

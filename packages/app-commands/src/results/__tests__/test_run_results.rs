@@ -2,11 +2,13 @@
 mod tests {
   use crate::command::AppCommand;
   use crate::job::JobId;
+  use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
   use crate::results::compare::compare_runs;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
+  use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
   use crate::runs::setting_differences::SettingDifference;
@@ -74,6 +76,27 @@ mod tests {
     );
     assert_eq!(timetree.iterations.len(), estimates.iterations);
     assert!(estimates.log_likelihood.is_some());
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_headline_repeats_the_estimates_of_the_results() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+
+    let CommandResults::Timetree(timetree) = run_results(&runs, &id)?.results else {
+      panic!("a timetree run has timetree results");
+    };
+    let estimates = timetree.estimates.expect("the run wrote an Auspice tree");
+    assert_eq!(
+      RunHeadline {
+        root_date: estimates.root_date,
+        clock_rate: estimates.clock_rate.map(JsonFloat),
+        r_squared: estimates.r_squared.map(JsonFloat),
+      },
+      runs.get(&id)?.headline
+    );
     Ok(())
   }
 
@@ -383,7 +406,7 @@ mod tests {
     assert_eq!(
       (
         1,
-        vec![(second, second_tree.root().name.clone(), second_tree.root().date)]
+        vec![(second, second_tree.root().name.clone(), second_tree.root().date.clone())]
       ),
       (
         found.searched_runs,

@@ -8,6 +8,7 @@ mod tests {
     CoalescentPrior, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, timetree_results,
   };
   use crate::results::tree::{DateInterval, ResultTree};
+  use crate::results::year_date::YearDate;
   use eyre::Report;
   use helpers::{clock_model, config, fixed_clock_model, metrics, node_data_clock};
   use indoc::indoc;
@@ -36,11 +37,12 @@ mod tests {
     );
 
     let expected = TimetreeEstimates {
-      root_date: Some(2010.0),
+      root_date: Some(YearDate::new(2010.0)),
       root_interval: Some(DateInterval {
-        lower: 2009.0,
-        upper: 2011.0,
+        lower: YearDate::new(2009.0),
+        upper: YearDate::new(2011.0),
         days: 730.0,
+        level: 0.9,
       }),
       root_near_interval_edge: false,
       clock_rate: Some(1e-3),
@@ -241,19 +243,19 @@ mod tests {
       points: vec![
         RootToTipPoint {
           name: o!("A"),
-          date: Some(2015.0),
+          date: Some(YearDate::new(2015.0)),
           date_source: Some(ClockDateSource::Input),
           div: 0.01,
-          predicted_date: 2014.0,
+          predicted_date: YearDate::new(2014.0),
           residual_days: Some(365.0),
           outlier: false,
         },
         RootToTipPoint {
           name: o!("C"),
-          date: Some(2014.0),
+          date: Some(YearDate::new(2014.0)),
           date_source: Some(ClockDateSource::Input),
           div: 0.01,
-          predicted_date: 2015.0,
+          predicted_date: YearDate::new(2015.0),
           residual_days: Some(-365.0),
           outlier: true,
         },

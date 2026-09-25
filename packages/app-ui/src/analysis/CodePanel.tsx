@@ -64,7 +64,9 @@ export function CodePanel({ command, code }: { command: AppCommand; code: Config
         <p className="text-ink-faint text-xs">
           {format === "cli"
             ? "Inputs, the settings that differ from the defaults, and the outputs the app adds to every run. "
-            : `Save as run.yaml and run treetime ${command} --config run.yaml. `}
+            : code === null
+              ? ""
+              : `Save as ${code.config_file} and run ${code.config_command}. `}
           <button type="button" onClick={toggleImport} className="text-accent font-bold">
             Load YAML
           </button>

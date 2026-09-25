@@ -391,6 +391,31 @@ pub enum OutputSelection {
 }
 
 impl OutputSelection {
+  pub const fn description(self) -> &'static str {
+    match self {
+      Self::All => "Every output of the command",
+      Self::Nwk => "Tree in Newick format",
+      Self::Nexus => "Tree with node annotations in Nexus format",
+      Self::Auspice => "Tree for Auspice and Nextstrain",
+      Self::MatPb => "Mutation-annotated tree (UShER protobuf)",
+      Self::MatJson => "Mutation-annotated tree (JSON)",
+      Self::GraphJson => "Tree as a graph (JSON)",
+      Self::Dot => "Tree as a graph (Graphviz)",
+      Self::AugurNodeData => "Node data for augur: dates, intervals, mutations",
+      Self::Gtr => "Substitution model",
+      Self::ClockModel => "Clock rate, intercept and regression statistics",
+      Self::ConfidenceTsv => "Date intervals of every node",
+      Self::ConfidenceCsv => "State probabilities of every node",
+      Self::ReconstructedNucFasta => "Sequences of samples and ancestors",
+      Self::ReconstructedAaFasta => "Protein sequences of samples and ancestors",
+      Self::TraitsCsv => "Inferred state of every node",
+      Self::ClockCsv => "Root-to-tip distance, date and clock prediction of every node",
+      Self::Tracelog => "Convergence values of every iteration",
+      Self::CoalescentTsv | Self::CoalescentCsv => "Coalescent time scale and effective population size",
+      Self::CoalescentJson => "Coalescent model and its likelihood",
+    }
+  }
+
   fn is_tree(self) -> bool {
     matches!(
       self,

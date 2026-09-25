@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
-import { formatDecimalDate } from "../format";
+import { formatLevel } from "../format";
 import { useCladeInRuns } from "../queries";
 import type { ResultTree } from "../results/types";
 import { Button } from "../ui";
@@ -77,14 +77,13 @@ export function SelectionPanel({
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
         <dt className="text-ink-faint">{isTip ? "Date in tree" : "Date"}</dt>
         <dd className="m-0 tabular-nums">
-          {node.date === null || node.date === undefined ? "not dated" : formatDecimalDate(node.date)}
+          {node.date === null || node.date === undefined ? "not dated" : node.date.date}
         </dd>
         {interval !== undefined && (
           <>
-            <dt className="text-ink-faint">90% interval</dt>
+            <dt className="text-ink-faint">{formatLevel(interval.level)} interval</dt>
             <dd className="m-0 tabular-nums">
-              {formatDecimalDate(interval.lower)} to {formatDecimalDate(interval.upper)} ({Math.round(interval.days)}{" "}
-              days)
+              {interval.lower.date} to {interval.upper.date} ({Math.round(interval.days)} days)
             </dd>
           </>
         )}

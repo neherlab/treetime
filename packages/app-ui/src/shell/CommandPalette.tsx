@@ -6,8 +6,7 @@ import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
 import { useDatasetCatalog, useRunList } from "../queries";
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { COMMAND_INFO, isAppCommand } from "../settings/commands";
-import { settingLabel } from "../settings/labels";
+import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
 import { Dialog, Toast, cn } from "../ui";
@@ -223,7 +222,7 @@ function usePaletteItems(): PaletteItem[] {
       items.push({
         id: `setting-${spec.key}`,
         kind: "Setting",
-        title: `${settingLabel(spec.key)}  ${spec.flag}`,
+        title: `${spec.label}  ${spec.flag}`,
         description: spec.help,
         run: () => {
           useDraftStore.getState().update({ view: "all", search: spec.key, changedOnly: false });
@@ -233,15 +232,13 @@ function usePaletteItems(): PaletteItem[] {
     }
 
     for (const example of catalog?.examples ?? []) {
-      const exampleCommand = isAppCommand(example.command) ? example.command : command;
-
       items.push({
         id: `example-${example.path}`,
         kind: "Example",
         title: example.title,
         description: example.path,
         run: () => {
-          loadConfig(example.content, exampleCommand, example.title, false)
+          loadConfig(example.content, example.command, example.title, false)
             .then((result) => {
               if (!result.loaded) {
                 toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });

@@ -1,6 +1,8 @@
 mod test_check_config;
 mod test_check_inputs;
+mod test_cli_rules;
 mod test_config_code;
+mod test_datasets;
 mod test_iteration_events;
 mod test_job;
 mod test_json_float;
@@ -10,3 +12,4 @@ mod test_run_checks;
 mod test_run_config;
 mod test_schema_annotations;
 mod test_setting_catalog;
+mod test_setting_labels;

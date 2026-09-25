@@ -1,9 +1,8 @@
-import type { AppCommand, DatasetInfo, ExampleConfig, RunRecordResult } from "@neherlab/app-contracts";
+import type { AppCommand, Dataset, ExampleConfig, RunRecordResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 
 import { useDatasetCatalog, useRunList, useRunRecords } from "../queries";
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { isAppCommand } from "../settings/commands";
 import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
 import { Button, Toast } from "../ui";
 import { useConfigLoader } from "./useConfigLoader";
@@ -28,13 +27,7 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
         <table className="w-full border-collapse">
           <tbody>
             {(catalog?.datasets ?? []).map((dataset) => (
-              <DatasetRow
-                key={dataset.name}
-                command={command}
-                dataDir={catalog?.data_dir ?? ""}
-                dataset={dataset}
-                close={close}
-              />
+              <DatasetRow key={dataset.name} command={command} dataset={dataset} close={close} />
             ))}
           </tbody>
         </table>
@@ -43,7 +36,7 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
       <table className="w-full border-collapse">
         <tbody>
           {(catalog?.examples ?? []).map((example) => (
-            <ExampleRow key={example.path} command={command} example={example} />
+            <ExampleRow key={example.path} example={example} />
           ))}
         </tbody>
       </table>
@@ -52,19 +45,9 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
   );
 }
 
-function DatasetRow({
-  command,
-  dataDir,
-  dataset,
-  close,
-}: {
-  command: AppCommand;
-  dataDir: string;
-  dataset: DatasetInfo;
-  close: () => void;
-}) {
+function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset: Dataset; close: () => void }) {
   const actions = useInputActions(command);
-  const inputs = useMemo(() => datasetInputs(dataDir, dataset, command), [command, dataDir, dataset]);
+  const inputs = useMemo(() => datasetInputs(dataset, command), [command, dataset]);
 
   const load = useCallback(() => {
     actions.assignAll(inputs, "dataset");
@@ -84,7 +67,7 @@ function DatasetRow({
   );
 }
 
-function ExampleRow({ command, example }: { command: AppCommand; example: ExampleConfig }) {
+function ExampleRow({ example }: { example: ExampleConfig }) {
   const loadConfig = useConfigLoader();
   const toasts = Toast.useToastManager();
   const [loading, setLoading] = useState(false);
@@ -93,12 +76,7 @@ function ExampleRow({ command, example }: { command: AppCommand; example: Exampl
     setLoading(true);
 
     try {
-      const result = await loadConfig(
-        example.content,
-        isAppCommand(example.command) ? example.command : command,
-        example.title,
-        false,
-      );
+      const result = await loadConfig(example.content, example.command, example.title, false);
 
       if (!result.loaded) {
         toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });
@@ -111,7 +89,7 @@ function ExampleRow({ command, example }: { command: AppCommand; example: Exampl
     } finally {
       setLoading(false);
     }
-  }, [command, example, loadConfig, toasts]);
+  }, [example, loadConfig, toasts]);
 
   const onLoad = useCallback(() => void load(), [load]);
 
@@ -146,7 +124,7 @@ function EarlierInputs({ command, close }: { command: AppCommand; close: () => v
       return [];
     }
 
-    const inputs = runInputAssignments(record.inputs).filter((input) => slots.has(input.key));
+    const inputs = runInputAssignments(command, record.inputs).filter((input) => slots.has(input.key));
 
     return inputs.length > 0 ? [{ record, inputs }] : [];
   });

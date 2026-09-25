@@ -1,4 +1,5 @@
 use crate::results::tree::ResultTree;
+use crate::results::year_date::YearDate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -55,14 +56,14 @@ pub struct ClockLine {
 pub struct RootToTipPoint {
   /// Name of the sample.
   pub name: String,
-  /// Date the regression used, as a decimal year.
-  pub date: Option<f64>,
+  /// Date the regression used.
+  pub date: Option<YearDate>,
   /// Where the date came from; absent when the table does not say.
   pub date_source: Option<ClockDateSource>,
   /// Root-to-tip divergence the regression used.
   pub div: f64,
   /// Date the clock model predicts from the divergence.
-  pub predicted_date: f64,
+  pub predicted_date: YearDate,
   /// Sampling date minus the predicted date, in days.
   pub residual_days: Option<f64>,
   /// Whether the clock filter flagged the sample as an outlier.
@@ -104,10 +105,10 @@ pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: 
         .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
       listed.then(|| RootToTipPoint {
         name: name.to_owned(),
-        date: row.date,
+        date: row.date.map(YearDate::new),
         date_source: row.date_source,
         div: row.div,
-        predicted_date: row.predicted_date,
+        predicted_date: YearDate::new(row.predicted_date),
         residual_days: row
           .date
           .map(|date| year_fraction_days_between(row.predicted_date, date)),

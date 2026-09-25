@@ -97,7 +97,13 @@ describe("bridge result validation", () => {
   test("datasets returns the datasets and the example configurations", async () => {
     const catalog = {
       data_dir: "data",
-      datasets: [{ name: "zika/20", files: ["tree.nwk"] }],
+      datasets: [
+        {
+          name: "zika/20",
+          files: ["tree.nwk"],
+          inputs: [{ kind: "tree", file: "zika/20/tree.nwk", path: "data/zika/20/tree.nwk" }],
+        },
+      ],
       examples: [{ path: "zika/20/mugration.yaml", command: "mugration", title: "Geography", content: "tree: x" }],
     };
 
@@ -117,7 +123,14 @@ describe("bridge result validation", () => {
       status: "valid",
       command: "timetree",
       config: { tree: "t.nwk", max_iter: 2 },
-      code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+      code: {
+        command_line: [],
+        command_line_text: "",
+        yaml: [],
+        yaml_text: "",
+        config_file: "run.yaml",
+        config_command: "treetime timetree --config run.yaml",
+      },
       checks: [],
     };
 
@@ -141,7 +154,14 @@ describe("bridge result validation", () => {
     const response = {
       status: "valid",
       config: { tree: "t.nwk", output_all: "out", output_selection: ["Auspice"] },
-      code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+      code: {
+        command_line: [],
+        command_line_text: "",
+        yaml: [],
+        yaml_text: "",
+        config_file: "run.yaml",
+        config_command: "treetime timetree --config run.yaml",
+      },
       config_hash: "abc",
       config_hash_error: null,
     };
@@ -171,7 +191,7 @@ describe("bridge result validation", () => {
     };
 
     const bridge = createBridge(stubTransport({ checkInputs: () => Promise.resolve(facts) }));
-    await expect(bridge.checkInputs({ tree: "t.nwk" })).resolves.toStrictEqual(facts);
+    await expect(bridge.checkInputs({ command: "prune", config: { tree: "t.nwk" } })).resolves.toStrictEqual(facts);
   });
 
   test("listRuns validates the run list", async () => {
@@ -211,7 +231,15 @@ describe("bridge result validation", () => {
 
   test("cladeInRuns validates the matches", async () => {
     const found = {
-      matches: [{ run: "r2", title: "second", node: "NODE_1", date: 2015.5, date_interval: null }],
+      matches: [
+        {
+          run: "r2",
+          title: "second",
+          node: "NODE_1",
+          date: { year: 2015.5, date: "2015-07-02" },
+          date_interval: null,
+        },
+      ],
       searched_runs: 2,
       unreadable_runs: [],
     };

@@ -1,8 +1,8 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { formatDecimalDate, formatDuration, formatRate, formatSignedDays } from "../format";
-import type { ClockData } from "../results/types";
+import { formatDuration, formatRate, formatSignedDays } from "../format";
+import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
@@ -15,8 +15,8 @@ import type { TreeLink } from "./TreeWorkspace";
 
 interface SampleRow {
   name: string;
-  date: number;
-  predictedDate: number;
+  date: YearDate;
+  predictedDate: YearDate;
   residualDays: number;
   outlier: boolean;
 }
@@ -31,15 +31,15 @@ const SAMPLE_COLUMNS: ReadonlyArray<Column<SampleRow>> = [
     key: "date",
     label: "Date",
     kind: "number",
-    value: (row) => row.date,
-    render: (row) => formatDecimalDate(row.date),
+    value: (row) => row.date.year,
+    render: (row) => row.date.date,
   },
   {
     key: "predicted",
     label: "Clock prediction",
     kind: "number",
-    value: (row) => row.predictedDate,
-    render: (row) => formatDecimalDate(row.predictedDate),
+    value: (row) => row.predictedDate.year,
+    render: (row) => row.predictedDate.date,
   },
   {
     key: "residual",

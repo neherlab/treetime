@@ -105,6 +105,9 @@
         "null"
       ],
       "format": "double",
+      "examples": [
+        0.001
+      ],
       "default": null,
       "x-cli-flag": "--clock-rate"
     },
@@ -155,6 +158,12 @@
         "type": "number",
         "format": "double"
       },
+      "examples": [
+        [
+          1.0,
+          0.0
+        ]
+      ],
       "default": [],
       "x-cli-flag": "--relax"
     },
@@ -173,6 +182,9 @@
         "null"
       ],
       "format": "double",
+      "examples": [
+        1.0
+      ],
       "default": null,
       "x-cli-flag": "--coalescent"
     },

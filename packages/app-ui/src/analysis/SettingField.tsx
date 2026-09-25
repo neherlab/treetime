@@ -5,7 +5,6 @@ import { useFormContext, useFormState } from "react-hook-form";
 import type { SettingSpec } from "../settings/catalog";
 import { isChanged, resetValue } from "../settings/config";
 import { isJsonObject, type JsonObject, type JsonValue } from "../settings/json";
-import { settingLabel } from "../settings/labels";
 import { formatList } from "../settings/lists";
 import { cn } from "../ui";
 import { settingFieldId } from "./fieldIds";
@@ -24,7 +23,7 @@ export function SettingField({
   const { setValue, getFieldState } = useFormContext<FormConfig>();
   const formState = useFormState<FormConfig>({ name: spec.key });
   const changed = isChanged(config, spec);
-  const label = settingLabel(spec.key);
+  const label = spec.label;
   const error = getFieldState(spec.key, formState).error?.message ?? null;
 
   const reset = useCallback(
