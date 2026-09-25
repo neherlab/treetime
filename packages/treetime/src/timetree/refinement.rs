@@ -18,7 +18,7 @@ use crate::timetree::inference::runner::{
 };
 use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
 use crate::timetree::optimization::polytomy::resolve::{require_internal_node_times, resolve_polytomies};
-use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
+use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -112,11 +112,10 @@ impl Refinement<'_> {
       return Ok(());
     }
 
+    let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(&self.options.relax);
     progress_info!(
       self.progress,
-      "Applying relaxed clock with slack={}, coupling={}",
-      self.options.relax.first().copied().unwrap_or(1.0),
-      self.options.relax.get(1).copied().unwrap_or(1.0)
+      "Applying relaxed clock with slack={slack}, coupling={coupling}"
     );
     self.gammas = apply_relaxed_clock(
       self.graph,

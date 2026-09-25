@@ -5,6 +5,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
+const DEFAULT_RELAX: f64 = 1.0;
+
 pub(crate) fn apply_relaxed_clock(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -13,8 +15,7 @@ pub(crate) fn apply_relaxed_clock(
   clock_rate: f64,
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
 ) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
-  let slack = params.first().copied().unwrap_or(1.0);
-  let coupling = params.get(1).copied().unwrap_or(1.0);
+  let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(params);
 
   let c = 1.0 / one_mutation;
 
@@ -92,6 +93,20 @@ pub(crate) fn apply_relaxed_clock(
     .map(|edge| (edge.key(), gammas[&edge.target()]))
     .collect();
   Ok(edge_gammas)
+}
+
+pub(crate) struct RelaxedClockPrior {
+  pub slack: f64,
+  pub coupling: f64,
+}
+
+impl RelaxedClockPrior {
+  pub(crate) fn of(params: &[f64]) -> Self {
+    Self {
+      slack: params.first().copied().unwrap_or(DEFAULT_RELAX),
+      coupling: params.get(1).copied().unwrap_or(DEFAULT_RELAX),
+    }
+  }
 }
 
 #[derive(Clone, Default)]

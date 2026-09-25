@@ -31,21 +31,15 @@ pub fn load_date_constraints(
   graph.iter_depth_first_postorder_forward(|node| {
     let key = node.key;
 
-    let name = names[&key].clone();
-    let has_constraint = name
+    let constraint = names[&key]
       .as_ref()
-      .and_then(|n| dates.get(n.as_str()))
-      .and_then(|d| d.as_ref())
-      .is_some();
+      .and_then(|name| Some((name, dates.get(name.as_str())?.as_ref()?)));
 
-    if has_constraint {
-      let name = name.unwrap();
-      let constraint = dates[name.as_str()].as_ref().unwrap();
-
+    if let Some((name, constraint)) = constraint {
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
       date_constraints.insert(key, Some(dist));
-      used_names.insert(name);
+      used_names.insert(name.clone());
 
       if node.is_leaf {
         good_leaf_count += 1;

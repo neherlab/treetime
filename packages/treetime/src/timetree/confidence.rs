@@ -117,8 +117,7 @@ pub fn extract_confidence_intervals(
 ) -> Vec<NodeConfidenceInterval> {
   graph
     .get_nodes()
-    .filter_map(|node_ref| {
-      let node = node_ref;
+    .filter_map(|node| {
       let key = node.key();
       let node_posterior = &posterior[&key];
       let name = names[&key].clone().unwrap_or_default();

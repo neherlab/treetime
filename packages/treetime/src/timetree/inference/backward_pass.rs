@@ -1,7 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::time_inference::{BranchLikelihood, TimeBackward};
+use crate::timetree::inference::time_inference::{BranchLikelihood, TimeBackward, TimeMessage};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -39,8 +39,6 @@ pub(crate) fn propagate_distributions_backward(
     messages: edges,
   })
 }
-
-type TimeMessage = Option<Arc<Distribution<NegLog>>>;
 
 fn propagate_distributions_backward_node(
   constraints: &DateConstraints,

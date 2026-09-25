@@ -42,6 +42,8 @@ impl TimeInference {
   }
 }
 
+pub type TimeMessage = Option<Arc<Distribution<NegLog>>>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchLikelihood {
   pub distribution: Option<Arc<Distribution<NegLog>>>,
@@ -50,8 +52,8 @@ pub struct BranchLikelihood {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeBackward {
-  pub subtree: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
-  pub messages: BTreeMap<GraphEdgeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub subtree: BTreeMap<GraphNodeKey, TimeMessage>,
+  pub messages: BTreeMap<GraphEdgeKey, TimeMessage>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

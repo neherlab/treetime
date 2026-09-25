@@ -1,8 +1,9 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::node_label::node_label;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward};
+use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward, TimeMessage};
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
@@ -50,13 +51,11 @@ pub(crate) fn propagate_distributions_forward(
   Ok(posterior)
 }
 
-type Subtree = Option<Arc<Distribution<NegLog>>>;
-
 fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  messages: &BTreeMap<GraphEdgeKey, Option<Arc<Distribution<NegLog>>>>,
-  context: &GraphPassForwardContext<'_, Subtree, BranchLikelihood, NodePosterior>,
+  messages: &BTreeMap<GraphEdgeKey, TimeMessage>,
+  context: &GraphPassForwardContext<'_, TimeMessage, BranchLikelihood, NodePosterior>,
   progress: &dyn ProgressSink,
 ) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
@@ -180,8 +179,7 @@ fn commit_node_time(
   let time = committed_time(distribution, parent_time)?;
   let is_dateable = !is_leaf || date_constraint.is_some();
   if time.is_none() && is_dateable {
-    let name = node_name(names, key);
-    let name = name.as_deref().unwrap_or("<unnamed>");
+    let name = node_label(names, key);
     progress_warn!(
       progress,
       "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
@@ -218,8 +216,7 @@ fn log_refinement(
   if !log_enabled!(Level::Debug) {
     return;
   }
-  let name = node_name(names, key);
-  let name = name.as_deref().unwrap_or("<unnamed>");
+  let name = node_label(names, key);
   debug!(
     "Timetree forward pass: node '{name}': parent {} -> refined {}",
     describe_grid(parent),
@@ -236,18 +233,13 @@ fn log_kept_given_date(
   if !log_enabled!(Level::Debug) {
     return;
   }
-  let name = node_name(names, key);
-  let name = name.as_deref().unwrap_or("<unnamed>");
+  let name = node_label(names, key);
   let given = date_constraint.map_or_else(|| "none".to_owned(), |constraint| describe_grid(constraint.as_ref()));
   debug!(
     "Timetree forward pass: node '{name}' keeps the date it was given, {given}: the rest of the \
      tree puts it at {}, which leaves no probability on that date",
     describe_grid(dist_from_parent)
   );
-}
-
-fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> Option<String> {
-  names[&key].clone()
 }
 
 fn describe_grid(dist: &Distribution<NegLog>) -> String {
