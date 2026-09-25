@@ -1,9 +1,13 @@
-use crate::command::{AppCommand, CheckConfigResponse};
-use crate::config::source::InvalidConfig;
+use crate::command::AppCommand;
+use crate::config::source::{ConfigProblem, InvalidConfig};
+use crate::runs::inputs::hash_inputs;
+use crate::runs::manager::ConfigHook;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::path::Path;
+use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
 
@@ -17,22 +21,64 @@ pub struct RunConfigRequest {
   pub config: Value,
 }
 
-pub fn run_config(request: &RunConfigRequest) -> CheckConfigResponse {
+/// Outcome of resolving a configuration as a run resolves it.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "status", rename_all = "kebab-case")]
+pub enum RunConfigResponse {
+  /// The configuration is accepted.
+  Valid {
+    /// The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
+    /// `output_all` set to `out`.
+    config: Map<String, Value>,
+    /// Hash that a run of this configuration records, to find finished runs with the same settings and input
+    /// contents; absent when an input cannot be read.
+    config_hash: Option<String>,
+    /// Why `config_hash` is absent.
+    config_hash_error: Option<String>,
+  },
+  /// The configuration is rejected.
+  Invalid {
+    /// The error, as the CLI prints it.
+    message: String,
+    /// The errors that caused `message`, outermost first.
+    causes: Vec<String>,
+    /// Problems found by parsing and by the schema check, empty for other errors.
+    problems: Vec<ConfigProblem>,
+  },
+}
+
+pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
   match request
     .command
     .prepare_run(&request.config, Path::new(RUN_CONFIG_OUTPUT_DIR))
   {
-    Ok(prepared) => CheckConfigResponse::Valid {
-      config: prepared.config,
-    },
-    Err(report) => {
-      let invalid = report.downcast_ref::<InvalidConfig>();
-      CheckConfigResponse::Invalid {
-        message: report.to_string(),
-        causes: report.chain().skip(1).map(ToString::to_string).collect(),
-        problems: invalid.map(|invalid| invalid.problems.clone()).unwrap_or_default(),
-        rendered: invalid.map(|invalid| invalid.rendered.clone()),
+    Ok(prepared) => {
+      let (config_hash, config_hash_error) = match config_hash(request.command, &prepared.config, confine) {
+        Ok(hash) => (Some(hash), None),
+        Err(report) => (None, Some(format!("{report:#}"))),
+      };
+      RunConfigResponse::Valid {
+        config: prepared.config,
+        config_hash,
+        config_hash_error,
       }
     },
+    Err(report) => RunConfigResponse::Invalid {
+      message: report.to_string(),
+      causes: report.chain().skip(1).map(ToString::to_string).collect(),
+      problems: report
+        .downcast_ref::<InvalidConfig>()
+        .map(|invalid| invalid.problems.clone())
+        .unwrap_or_default(),
+    },
   }
+}
+
+fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: ConfigHook) -> Result<String, Report> {
+  let mut confined = Value::Object(config.clone());
+  confine(&mut confined)?;
+  let Value::Object(confined) = confined else {
+    return make_error!("a command configuration must be a mapping of settings");
+  };
+  Ok(hash_inputs(command, &confined)?.config_hash)
 }

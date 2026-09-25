@@ -102,11 +102,11 @@
         },
         "responses": {
           "200": {
-            "description": "The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it",
+            "description": "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckConfigResponse"
+                  "$ref": "#/components/schemas/RunConfigResponse"
                 }
               }
             }
@@ -5252,6 +5252,78 @@
           "config"
         ],
         "description": "Request to resolve a configuration as a run resolves it, without running it."
+      },
+      "RunConfigResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds, and\n`output_all` set to `out`."
+              },
+              "config_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Hash that a run of this configuration records, to find finished runs with the same settings and input\ncontents; absent when an input cannot be read."
+              },
+              "config_hash_error": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Why `config_hash` is absent."
+              },
+              "status": {
+                "type": "string",
+                "const": "valid"
+              }
+            },
+            "required": [
+              "status",
+              "config"
+            ],
+            "description": "The configuration is accepted."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "The error, as the CLI prints it."
+              },
+              "causes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The errors that caused `message`, outermost first."
+              },
+              "problems": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConfigProblem"
+                },
+                "description": "Problems found by parsing and by the schema check, empty for other errors."
+              },
+              "status": {
+                "type": "string",
+                "const": "invalid"
+              }
+            },
+            "required": [
+              "status",
+              "message",
+              "causes",
+              "problems"
+            ],
+            "description": "The configuration is rejected."
+          }
+        ],
+        "description": "Outcome of resolving a configuration as a run resolves it."
       },
       "OutputFile": {
         "type": "object",

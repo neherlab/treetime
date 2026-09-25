@@ -704,6 +704,24 @@ export const zRunConfigRequest = z.object({
 });
 
 /**
+ * Outcome of resolving a configuration as a run resolves it.
+ */
+export const zRunConfigResponse = z.union([
+    z.object({
+        config: z.record(z.string(), z.unknown()),
+        config_hash: z.string().nullish(),
+        config_hash_error: z.string().nullish(),
+        status: z.literal('valid')
+    }),
+    z.object({
+        message: z.string(),
+        causes: z.array(z.string()),
+        problems: z.array(zConfigProblem),
+        status: z.literal('invalid')
+    })
+]);
+
+/**
  * Canonical lookup key for selectable outputs. Command adapters convert their
  * selection enums into this type, and [`plan`] resolves each key to a path.
  * Tree variants do not encode the separately selected Newick style.

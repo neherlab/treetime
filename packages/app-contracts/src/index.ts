@@ -10,6 +10,7 @@ export type {
   CommandOptions,
   FollowRunOptions,
   Parsed,
+  RunConfigResult,
   TransportEventOptions,
   TreeTimeBridge,
 } from "./bridge";

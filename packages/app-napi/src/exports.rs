@@ -12,6 +12,7 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Status, Task};
 use napi_derive::napi;
 use serde::Serialize;
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -52,7 +53,7 @@ pub fn check_config_json(request_json: String) -> napi::Result<String> {
 )]
 pub fn run_config_json(request_json: String) -> napi::Result<String> {
   let request: RunConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-  to_json(&run_config(&request))
+  to_json(&run_config(&request, Box::new(|_config: &mut Value| Ok(()))))
 }
 
 #[napi(ts_return_type = "Promise<string>")]

@@ -126,7 +126,13 @@ describe("bridge result validation", () => {
 
   test("runConfig passes the request through and validates the response", async () => {
     let captured: unknown;
-    const response = { status: "valid", config: { tree: "t.nwk", output_all: "out", output_selection: ["Auspice"] } };
+
+    const response = {
+      status: "valid",
+      config: { tree: "t.nwk", output_all: "out", output_selection: ["Auspice"] },
+      config_hash: "abc",
+      config_hash_error: null,
+    };
 
     const bridge = createBridge(
       stubTransport({

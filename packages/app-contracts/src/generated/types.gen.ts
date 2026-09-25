@@ -2143,6 +2143,43 @@ export type RunConfigRequest = {
 };
 
 /**
+ * Outcome of resolving a configuration as a run resolves it.
+ */
+export type RunConfigResponse = {
+    /**
+     * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
+     * `output_all` set to `out`.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+    /**
+     * Hash that a run of this configuration records, to find finished runs with the same settings and input
+     * contents; absent when an input cannot be read.
+     */
+    config_hash?: string | null;
+    /**
+     * Why `config_hash` is absent.
+     */
+    config_hash_error?: string | null;
+    status: 'valid';
+} | {
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+    /**
+     * Problems found by parsing and by the schema check, empty for other errors.
+     */
+    problems: Array<ConfigProblem>;
+    status: 'invalid';
+};
+
+/**
  * One file a command wrote.
  */
 export type OutputFile = {
@@ -2895,12 +2932,12 @@ export type RunConfigData = {
 
 export type RunConfigResponses = {
     /**
-     * The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it
+     * The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it
      */
-    200: CheckConfigResponse;
+    200: RunConfigResponse;
 };
 
-export type RunConfigResponse = RunConfigResponses[keyof RunConfigResponses];
+export type RunConfigResponse2 = RunConfigResponses[keyof RunConfigResponses];
 
 export type RunsListData = {
     body?: never;

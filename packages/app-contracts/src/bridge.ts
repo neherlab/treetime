@@ -25,6 +25,7 @@ import {
   zDatasetCatalog,
   zInputFacts,
   zIterationEvent,
+  zRunConfigResponse,
   zRunEvent,
   zRunFile,
   zRunList,
@@ -38,6 +39,8 @@ import {
 export type Parsed<S extends z.ZodType> = z.infer<S>;
 
 export type CheckConfigResult = Parsed<typeof zCheckConfigResponse>;
+
+export type RunConfigResult = Parsed<typeof zRunConfigResponse>;
 
 type RunEventResult = Parsed<typeof zRunEvent>;
 
@@ -121,7 +124,7 @@ export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
   datasets(): Promise<DatasetCatalog>;
   checkConfig(request: CheckConfigRequest): Promise<CheckConfigResult>;
-  runConfig(request: RunConfigRequest): Promise<CheckConfigResult>;
+  runConfig(request: RunConfigRequest): Promise<RunConfigResult>;
   checkInputs(request: CheckInputsRequest): Promise<Parsed<typeof zInputFacts>>;
   listRuns(): Promise<Parsed<typeof zRunList>>;
   createRun(request: CreateRunRequest): Promise<Parsed<typeof zRunRecord>>;
@@ -227,7 +230,7 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
       return zCheckConfigResponse.parse(await transport.checkConfig(request));
     },
     async runConfig(request) {
-      return zCheckConfigResponse.parse(await transport.runConfig(request));
+      return zRunConfigResponse.parse(await transport.runConfig(request));
     },
     async checkInputs(request) {
       return zInputFacts.parse(await transport.checkInputs(request));

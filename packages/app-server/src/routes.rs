@@ -149,7 +149,7 @@ fn operations() -> Vec<Operation> {
       method: "post",
       bridge_type: "request",
       request: json_body("RunConfigRequest"),
-      response: json_body("CheckConfigResponse"),
+      response: json_body("RunConfigResponse"),
     },
     Operation {
       path: "/api/check-inputs",
@@ -348,11 +348,16 @@ async fn handle_check_config(Json(body): Json<Value>) -> Result<Json<Value>, App
   post,
   path = "/api/run-config",
   operation_id = "runConfig",
-  responses((status = 200, description = "The configuration as a run resolves it, with the outputs the run layer adds, or the problems found in it"))
+  responses((status = 200, description = "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it"))
 )]
-async fn handle_run_config(Json(body): Json<Value>) -> Result<Json<Value>, AppError> {
+async fn handle_run_config(
+  State(state): State<Arc<AppState>>,
+  Json(body): Json<Value>,
+) -> Result<Json<Value>, AppError> {
   let request: RunConfigRequest = serde_json::from_value(body)?;
-  Ok(Json(serde_json::to_value(run_config(&request))?))
+  let confine = state.confine_hook(request.command)?;
+  let response = tokio::task::spawn_blocking(move || run_config(&request, confine)).await?;
+  Ok(Json(serde_json::to_value(response)?))
 }
 
 #[utoipa::path(
