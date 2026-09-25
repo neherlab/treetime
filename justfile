@@ -80,6 +80,7 @@ check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + 
 
 alias b := build
 alias br := build-release
+alias bd := build-dist
 alias bp := build-profiling
 alias r := run
 alias rr := run-release
@@ -126,18 +127,24 @@ setup:
 build *args:
     cargo build --locked "$@"
 
-# Build a binary (release profile) and copy it to .out/: just build-release treetime
+# Build a binary (release profile: optimized, fast to rebuild) and copy it to .out/: just build-release treetime
 [group("build")]
 build-release bin="treetime" *args:
     cargo build --locked --release --bin {{ quote(bin) }} "${@:2}"
     mkdir -p .out && cp {{ quote(CARGO_TARGET_DIR / "release" / bin) }} .out/
 
-# Build a binary (profiling profile: release with debug symbols)
+# Build a binary as shipped (dist profile: fat LTO) and copy it to .out/: just build-dist treetime
+[group("build")]
+build-dist bin="treetime" *args:
+    cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
+    mkdir -p .out && cp {{ quote(CARGO_TARGET_DIR / "dist" / bin) }} .out/
+
+# Build a binary (profiling profile: dist with full debug info)
 [group("build")]
 build-profiling bin="treetime" *args:
     cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
-# Cross-compile release binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
+# Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
 cross *args:
     dev/cross/all "$@" treetime
@@ -151,6 +158,11 @@ run bin *args:
 [group("run")]
 run-release bin *args:
     args=("${@:2}"); [[ "${args[0]:-}" != "--" ]] || args=("${args[@]:1}"); cargo run --locked --release --bin {{ quote(bin) }} -- ${args[@]+"${args[@]}"}
+
+# Run a binary (dev-opt profile: dev with optimized workspace crates): just run-dev-opt treetime timetree ...
+[group("run")]
+run-dev-opt bin *args:
+    args=("${@:2}"); [[ "${args[0]:-}" != "--" ]] || args=("${args[@]:1}"); cargo run --locked --profile=dev-opt --bin {{ quote(bin) }} -- ${args[@]+"${args[@]}"}
 
 # Run an example (release profile): just example validation_test
 [group("run")]
@@ -462,7 +474,7 @@ build-web: _js
 build-desktop: _js
     bun run --silent build:desktop
 
-# Run all benchmarks (release profile)
+# Run all benchmarks (bench profile: the shipped dist settings)
 [group("bench")]
 bench *args:
     cargo bench --locked --workspace --benches "$@"

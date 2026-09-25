@@ -52,27 +52,38 @@ exclude = ["dev/templates/rust-crate"]
 [profile.dev.package."*"]
 opt-level = 2
 
-# The shipped artifact: fat LTO and one codegen unit for speed, line tables for
-# readable backtraces, and overflow checks kept on for numeric correctness.
+# Development build with optimized workspace crates, for long runs on real
+# datasets and the dev server. Rebuilds are slower than `dev`.
+[profile.dev-opt]
+inherits = "dev"
+opt-level = 1
+lto = "off"
+
+# Optimized build that stays fast to rebuild, for local runs. Line tables keep
+# readable backtraces, and overflow checks stay on for numeric correctness.
 [profile.release]
-codegen-units = 1
-debug = "line-tables-only"
-lto = "fat"
-overflow-checks = true
-
-# Release optimizations with full debug info, for profilers.
-[profile.profiling]
-inherits = "release"
-debug = true
-
-# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
-# Not for benchmarks: use `release` or `profiling`.
-[profile.quick]
-inherits = "release"
 codegen-units = 16
-debug = false
+debug = "line-tables-only"
 incremental = true
 lto = "off"
+overflow-checks = true
+
+# The shipped artifact, built in CI and by the cross builds: fat LTO and one
+# codegen unit for speed.
+[profile.dist]
+inherits = "release"
+codegen-units = 1
+incremental = false
+lto = "fat"
+
+# The shipped artifact with full debug info, for profilers.
+[profile.profiling]
+inherits = "dist"
+debug = true
+
+# Benchmarks measure the shipped artifact.
+[profile.bench]
+inherits = "dist"
 
 
 [patch.crates-io]

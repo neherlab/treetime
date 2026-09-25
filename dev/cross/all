@@ -2,9 +2,9 @@
 #
 # Usage: $0 [options] <bin>...
 #
-# Cross-compile release binaries for every target in dev/cross/targets, each in
-# its cross image, in parallel. Output goes to .out/<bin>-<target>, one log per
-# target to tmp/cross/<target>.log.
+# Cross-compile shipped (dist profile) binaries for every target in
+# dev/cross/targets, each in its cross image, in parallel. Output goes to
+# .out/<bin>-<target>, one log per target to tmp/cross/<target>.log.
 #
 # Options:
 #   -h, --help          Show this help

@@ -29,7 +29,7 @@ ALN="$DATASET/aln.fasta.xz"
 
 if [[ ! -f "$BINARY" ]]; then
   echo "ERROR: binary not found: $BINARY" >&2
-  echo "Run: cargo build --release" >&2
+  echo "Run: just build-dist treetime" >&2
   exit 1
 fi
 if [[ ! -f "$TREE" ]]; then

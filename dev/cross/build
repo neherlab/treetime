@@ -2,8 +2,8 @@
 #
 # Usage: $0 <bin> [target]
 #
-# Build a release binary for a target inside its cross image and copy it to
-# .out/<bin>-<target>. The target defaults to CROSS_COMPILE, which
+# Build a shipped (dist profile) binary for a target inside its cross image and
+# copy it to .out/<bin>-<target>. The target defaults to CROSS_COMPILE, which
 # dev/docker/run sets in the cross images.
 #
 # Examples:
@@ -66,10 +66,10 @@ export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_flags}"
 export "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_flags}"
 
 target_dir="${root}/.build/cross/${target}"
-cargo build --locked --release --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
+cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
 
 ext=""
 [[ "${target}" == *windows* ]] && ext=".exe"
 mkdir -p .out
-cp "${target_dir}/${target}/release/${bin}${ext}" ".out/${bin}-${target}${ext}"
+cp "${target_dir}/${target}/dist/${bin}${ext}" ".out/${bin}-${target}${ext}"
 printf 'Built .out/%s-%s%s\n' "${bin}" "${target}" "${ext}" >&2

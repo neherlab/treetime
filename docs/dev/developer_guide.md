@@ -155,10 +155,19 @@ The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI refer
 
 - `dev/docker/python treetime ...` runs TreeTime v0 from `packages/legacy`
 
+## Build profiles
+
+- `dev` (`just build`, `just run`, the tests): unoptimized workspace crates, dependencies at `opt-level = 2`, full debug info
+- `dev-opt` (`just run-dev-opt`): `dev` with optimized workspace crates, for long runs on real datasets; rebuilds are slower
+- `release` (`just build-release`, `just run-release`, `just example`, `just smoke`): optimized and fast to rebuild, without LTO
+- `dist` (`just build-dist`, `just cross`, nightly releases): the shipped binary, with fat LTO and one codegen unit
+- `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info
+- `bench` (`just bench`): the `dist` settings
+
 ## Performance
 
 - `just bench` runs the benchmarks
-- `just build-release treetime` builds the release binary into `.out/treetime`; use it with `hyperfine`, which the container provides
+- `just build-dist treetime` builds the shipped binary into `.out/treetime`; use it with `hyperfine`, which the container provides
 - `just profile treetime -- <args>` (host) samples a profile with samply or perf; read `dev/profile --help` first
 
 ## Dependencies
@@ -175,7 +184,7 @@ The dependency recipes run in the main checkout only. `just audit` checks both d
 
 ## Cross-compilation and releases
 
-`just cross` (host) builds the release CLI for every target in `dev/cross/targets` in its cross image, in parallel, into `.out/`. `just cross --target=aarch64-apple-darwin` builds one target. Without `just` on the host, run `./dev/cross/all treetime`.
+`just cross` (host) builds the shipped CLI (`dist` profile) for every target in `dev/cross/targets` in its cross image, in parallel, into `.out/`. `just cross --target=aarch64-apple-darwin` builds one target. Without `just` on the host, run `./dev/cross/all treetime`.
 
 The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2.
 
