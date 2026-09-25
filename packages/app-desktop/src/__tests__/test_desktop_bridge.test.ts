@@ -1,13 +1,7 @@
 import { CancelledError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import {
-  createDesktopBridge,
-  createLocalFiles,
-  LocalInputsError,
-  RUN_EVENT_CHANNEL,
-  type IpcRendererLike,
-} from "../desktop-bridge";
+import { createDesktopBridge, createLocalFiles, RUN_EVENT_CHANNEL, type IpcRendererLike } from "../desktop-bridge";
 
 type Listener = (event: unknown, ...args: unknown[]) => void;
 
@@ -140,7 +134,9 @@ describe("desktop_bridge queries and requests", () => {
 
   test("uploadInput rejects because the desktop app reads local paths", async () => {
     const bridge = createDesktopBridge(makeFakeIpc(() => Promise.resolve(null)));
-    await expect(bridge.uploadInput("r1", "t.nwk", new Blob(["x"]))).rejects.toBeInstanceOf(LocalInputsError);
+    await expect(bridge.uploadInput("r1", "t.nwk", new Blob(["x"]))).rejects.toThrow(
+      "the desktop application reads inputs from local file paths; name the files in the run configuration",
+    );
   });
 });
 

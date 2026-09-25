@@ -20,7 +20,7 @@ export const RUN_EVENT_CHANNEL = "treetime:run-event";
 
 export const PICK_FILES_CHANNEL = "treetime:pick-files";
 
-export class LocalInputsError extends Error {
+class LocalInputsError extends Error {
   constructor() {
     super("the desktop application reads inputs from local file paths; name the files in the run configuration");
     this.name = "LocalInputsError";
