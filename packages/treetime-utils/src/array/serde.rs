@@ -13,6 +13,13 @@ where
   }
 }
 
+pub fn false_if_missing<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  Ok(Option::<bool>::deserialize(deserializer)?.unwrap_or(false))
+}
+
 pub fn array1_as_vec<T, S>(array: &Array1<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
   T: Serialize,

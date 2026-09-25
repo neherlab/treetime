@@ -2,13 +2,30 @@ use csv::{ReaderBuilder, Trim, Writer, WriterBuilder};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde::Serialize;
-use std::io::{BufRead, Write};
+use serde::de::DeserializeOwned;
+use std::io::{BufRead, Read, Write};
 use std::path::Path;
 use treetime_utils::io::compression::remove_compression_ext;
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 use treetime_utils::io::fs::extension;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
+
+pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, delimiter: u8) -> Result<Vec<T>, Report> {
+  let filepath = filepath.as_ref();
+  let reader = open_file_or_stdin(&Some(filepath))?;
+  csv_read(reader, delimiter).wrap_err_with(|| format!("When reading '{}'", filepath.display()))
+}
+
+pub fn csv_read<T: DeserializeOwned>(reader: impl Read, delimiter: u8) -> Result<Vec<T>, Report> {
+  ReaderBuilder::new()
+    .delimiter(delimiter)
+    .from_reader(reader)
+    .deserialize()
+    .enumerate()
+    .map(|(index, record)| record.wrap_err_with(|| format!("When parsing row {}", index + 1)))
+    .collect()
+}
 
 pub struct CsvStructFileWriter {
   writer: CsvStructWriter<Box<dyn Write + Send>>,
