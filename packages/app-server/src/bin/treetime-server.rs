@@ -8,7 +8,7 @@
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use app_server::create_router;
-use app_server::state::ServerConfig;
+use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
 use clap::Parser;
 use ctor::ctor;
 use eyre::WrapErr;
@@ -62,7 +62,8 @@ async fn main() -> eyre::Result<()> {
 
   let config = ServerConfig {
     data_dir: args.data_dir,
-    out_dir: args.out_dir,
+    runs_dir: args.runs_dir,
+    max_upload_size: args.max_upload_size,
   };
 
   let static_dir = env_var_optional(STATIC_DIR_ENV)?;
@@ -99,9 +100,13 @@ struct ServerArgs {
   #[arg(long)]
   data_dir: PathBuf,
 
-  /// Base directory for output files
+  /// Directory that holds the runs: one folder per run with its record, events, inputs and outputs
   #[arg(long)]
-  out_dir: PathBuf,
+  runs_dir: PathBuf,
+
+  /// Largest total size, in bytes, of the files uploaded into one run. Defaults to 1 GiB
+  #[arg(long, default_value_t = DEFAULT_MAX_UPLOAD_SIZE)]
+  max_upload_size: usize,
 }
 
 fn default_jobs() -> usize {

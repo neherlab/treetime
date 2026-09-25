@@ -1,14 +1,20 @@
-use crate::jobs::{PendingJob, start_job};
-use app_commands::command::{CheckConfigRequest, check_config};
-use app_commands::job::{JobId, JobRegistry};
+use crate::runs::{create_run, parse_id, start_run};
+use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
+use app_commands::command::{AppCommand, CheckConfigRequest, check_config};
+use app_commands::runs::events::RunEvent;
+use app_commands::runs::manager::{RunManager, StartedRun};
+use app_commands::runs::record::UpdateRunRequest;
 use app_datasets::discover_datasets;
 use log::error;
-use napi::Task;
-use napi::bindgen_prelude::AsyncTask;
+use napi::bindgen_prelude::{AsyncTask, Buffer};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::{Status, Task};
 use napi_derive::napi;
+use serde::Serialize;
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use strum::VariantNames;
 use treetime_schema::version_info;
 use treetime_utils::env::env_var_optional;
 
@@ -16,7 +22,7 @@ const DATA_DIR_ENV: &str = "DATA_DIR";
 
 #[napi]
 pub fn version() -> napi::Result<String> {
-  serde_json::to_string(&version_info()).map_err(|err| to_napi(&err.into()))
+  to_json(&version_info())
 }
 
 #[napi]
@@ -24,8 +30,8 @@ pub fn datasets() -> napi::Result<String> {
   let data_dir = env_var_optional(DATA_DIR_ENV)
     .map_err(|err| to_napi(&err))?
     .unwrap_or_else(|| "data".to_owned());
-  let datasets = discover_datasets(Path::new(&data_dir)).map_err(|err| to_napi(&err))?;
-  serde_json::to_string(&datasets).map_err(|err| to_napi(&err.into()))
+  let catalog = discover_datasets(Path::new(&data_dir), AppCommand::VARIANTS).map_err(|err| to_napi(&err))?;
+  to_json(&catalog)
 }
 
 #[napi]
@@ -35,77 +41,29 @@ pub fn datasets() -> napi::Result<String> {
 )]
 pub fn check_config_json(request_json: String) -> napi::Result<String> {
   let request: CheckConfigRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
-  serde_json::to_string(&check_config(&request)).map_err(|err| to_napi(&err.into()))
+  to_json(&check_config(&request))
 }
 
-#[napi]
-pub struct CommandRunner {
-  jobs: Arc<JobRegistry>,
+#[napi(ts_return_type = "Promise<string>")]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
+pub fn check_inputs_json(request_json: String) -> napi::Result<AsyncTask<CheckInputsTask>> {
+  let request: CheckInputsRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
+  Ok(AsyncTask::new(CheckInputsTask { request }))
 }
 
-#[napi]
-impl CommandRunner {
-  #[napi(constructor)]
-  pub fn new() -> Self {
-    Self {
-      jobs: Arc::new(JobRegistry::default()),
-    }
-  }
-
-  #[napi(
-    ts_args_type = "jobId: string, command: string, configJson: string, onEvent: (err: Error | null, eventJson: string) => void",
-    ts_return_type = "Promise<string>"
-  )]
-  #[allow(
-    clippy::needless_pass_by_value,
-    reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-  )]
-  pub fn run(
-    &self,
-    job_id: String,
-    command: String,
-    config_json: String,
-    on_event: Arc<ThreadsafeFunction<String, ()>>,
-  ) -> napi::Result<AsyncTask<CommandTask>> {
-    let job = start_job(&self.jobs, &job_id, &command, &config_json).map_err(|err| to_napi(&err))?;
-    Ok(AsyncTask::new(CommandTask {
-      job: Some(job),
-      on_event,
-    }))
-  }
-
-  #[napi]
-  #[allow(
-    clippy::needless_pass_by_value,
-    reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
-  )]
-  pub fn cancel(&self, job_id: String) -> bool {
-    JobId::parse(&job_id).is_ok_and(|job_id| self.jobs.cancel(&job_id))
-  }
+pub struct CheckInputsTask {
+  request: CheckInputsRequest,
 }
 
-pub struct CommandTask {
-  job: Option<PendingJob>,
-  on_event: Arc<ThreadsafeFunction<String, ()>>,
-}
-
-impl Task for CommandTask {
+impl Task for CheckInputsTask {
   type Output = String;
   type JsValue = String;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let job = self
-      .job
-      .take()
-      .ok_or_else(|| napi::Error::new(napi::Status::GenericFailure, "the job has already run".to_owned()))?;
-    let on_event = Arc::clone(&self.on_event);
-    let terminal = job.run(move |event| match serde_json::to_string(&event) {
-      Ok(json) => {
-        on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
-      },
-      Err(err) => error!("When serializing a job event: {err}"),
-    });
-    serde_json::to_string(&terminal).map_err(|err| to_napi(&err.into()))
+    to_json(&check_inputs(&self.request))
   }
 
   fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
@@ -113,6 +71,153 @@ impl Task for CommandTask {
   }
 }
 
+#[napi]
+pub struct RunService {
+  runs: Arc<RunManager>,
+}
+
+#[napi]
+#[allow(
+  clippy::needless_pass_by_value,
+  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+)]
+impl RunService {
+  #[napi(constructor)]
+  pub fn new(runs_dir: String) -> napi::Result<Self> {
+    Ok(Self {
+      runs: RunManager::open(Path::new(&runs_dir)).map_err(|err| to_napi(&err))?,
+    })
+  }
+
+  #[napi]
+  pub fn list(&self) -> napi::Result<String> {
+    to_json(&self.runs.list().map_err(|err| to_napi(&err))?)
+  }
+
+  #[napi]
+  pub fn get(&self, id: String) -> napi::Result<String> {
+    to_json(
+      &self
+        .runs
+        .get(&parse_id(&id).map_err(|err| to_napi(&err))?)
+        .map_err(|err| to_napi(&err))?,
+    )
+  }
+
+  #[napi]
+  pub fn create(&self, request_json: String) -> napi::Result<String> {
+    to_json(&create_run(&self.runs, &request_json).map_err(|err| to_napi(&err))?)
+  }
+
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn start(&self, id: String, config_json: Option<String>) -> napi::Result<AsyncTask<RunTask>> {
+    let started = start_run(&self.runs, &id, config_json.as_deref()).map_err(|err| to_napi(&err))?;
+    Ok(AsyncTask::new(RunTask { run: Some(started) }))
+  }
+
+  #[napi]
+  pub fn cancel(&self, id: String) -> napi::Result<bool> {
+    self
+      .runs
+      .cancel(&parse_id(&id).map_err(|err| to_napi(&err))?)
+      .map_err(|err| to_napi(&err))
+  }
+
+  #[napi(ts_args_type = "id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void")]
+  pub fn subscribe(&self, id: String, from: u32, on_event: Arc<ThreadsafeFunction<String, ()>>) -> napi::Result<()> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    let subscriber = Box::new(move |event: &RunEvent| match serde_json::to_string(event) {
+      Ok(json) => on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok,
+      Err(err) => {
+        error!("When serializing a run event: {err}");
+        false
+      },
+    });
+    self
+      .runs
+      .subscribe(
+        &id,
+        usize::try_from(from).map_err(|err| to_napi(&err.into()))?,
+        subscriber,
+      )
+      .map_err(|err| to_napi(&err))
+  }
+
+  #[napi]
+  pub fn update(&self, id: String, request_json: String) -> napi::Result<String> {
+    let request: UpdateRunRequest = serde_json::from_str(&request_json).map_err(|err| to_napi(&err.into()))?;
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    to_json(&self.runs.update(&id, request).map_err(|err| to_napi(&err))?)
+  }
+
+  #[napi]
+  pub fn delete(&self, id: String) -> napi::Result<()> {
+    self
+      .runs
+      .delete(&parse_id(&id).map_err(|err| to_napi(&err))?)
+      .map_err(|err| to_napi(&err))
+  }
+
+  #[napi]
+  pub fn restore(&self, id: String) -> napi::Result<String> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    to_json(&self.runs.restore(&id).map_err(|err| to_napi(&err))?)
+  }
+
+  #[napi]
+  pub fn purge(&self, id: String) -> napi::Result<()> {
+    self
+      .runs
+      .purge(&parse_id(&id).map_err(|err| to_napi(&err))?)
+      .map_err(|err| to_napi(&err))
+  }
+
+  #[napi]
+  pub fn files(&self, id: String) -> napi::Result<String> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    to_json(&self.runs.files(&id).map_err(|err| to_napi(&err))?)
+  }
+
+  #[napi]
+  pub fn read_file(&self, id: String, path: String) -> napi::Result<Buffer> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    let path = self.runs.file_path(&id, &path).map_err(|err| to_napi(&err))?;
+    let bytes = fs::read(&path).map_err(|err| to_napi(&err.into()))?;
+    Ok(Buffer::from(bytes))
+  }
+
+  #[napi]
+  pub fn archive(&self, id: String) -> napi::Result<Buffer> {
+    let id = parse_id(&id).map_err(|err| to_napi(&err))?;
+    Ok(Buffer::from(self.runs.zip(&id).map_err(|err| to_napi(&err))?))
+  }
+}
+
+pub struct RunTask {
+  run: Option<StartedRun>,
+}
+
+impl Task for RunTask {
+  type Output = String;
+  type JsValue = String;
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    let run = self
+      .run
+      .take()
+      .ok_or_else(|| napi::Error::new(Status::GenericFailure, "the run has already been computed".to_owned()))?;
+    to_json(&run.run())
+  }
+
+  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
+    Ok(output)
+  }
+}
+
+fn to_json<T: Serialize>(value: &T) -> napi::Result<String> {
+  serde_json::to_string(value).map_err(|err| to_napi(&err.into()))
+}
+
 fn to_napi(err: &eyre::Report) -> napi::Error {
-  napi::Error::new(napi::Status::GenericFailure, format!("{err:#}"))
+  napi::Error::new(Status::GenericFailure, format!("{err:#}"))
 }

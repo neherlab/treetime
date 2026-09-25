@@ -13,34 +13,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/ancestral": {
-      "post": {
-        "operationId": "ancestral",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AncestralConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "command"
-      }
-    },
     "/api/check-config": {
       "post": {
         "operationId": "configCheck",
@@ -69,32 +41,32 @@
         "x-bridge-type": "request"
       }
     },
-    "/api/clock": {
+    "/api/check-inputs": {
       "post": {
-        "operationId": "clock",
+        "operationId": "inputsCheck",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClockConfig"
+                "$ref": "#/components/schemas/CheckInputsRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
+            "description": "Facts about the input files, read with the readers the commands use",
             "content": {
-              "text/event-stream": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
+                  "$ref": "#/components/schemas/InputFacts"
                 }
               }
             }
           }
         },
-        "x-bridge-type": "command"
+        "x-bridge-type": "request"
       }
     },
     "/api/datasets": {
@@ -102,13 +74,309 @@
         "operationId": "datasets",
         "responses": {
           "200": {
-            "description": "Example datasets in the data directory",
+            "description": "Example datasets and example configurations in the data directory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetCatalog"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "operationId": "runsList",
+        "responses": {
+          "200": {
+            "description": "Runs, newest first, and the number of runs computing now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
+      },
+      "post": {
+        "operationId": "runsCreate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created run; it starts at once unless `defer_start` is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "request"
+      }
+    },
+    "/api/runs/{id}": {
+      "get": {
+        "operationId": "runsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record of the run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
+      },
+      "delete": {
+        "operationId": "runsDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The run moved to the trash; restore undoes it"
+          }
+        },
+        "x-bridge-type": "request"
+      },
+      "patch": {
+        "operationId": "runsUpdate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The run with its new title or pinned state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "request"
+      }
+    },
+    "/api/runs/{id}/archive": {
+      "get": {
+        "operationId": "runsArchive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Zip archive of the run's `out/` folder",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "file"
+      }
+    },
+    "/api/runs/{id}/cancel": {
+      "post": {
+        "operationId": "runsCancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whether cancellation was requested; the run ends with a `cancelled` terminal event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelRunResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "request"
+      }
+    },
+    "/api/runs/{id}/events": {
+      "get": {
+        "operationId": "runsEvents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Sequence number of the first event to send; the `Last-Event-ID` header of a reconnect resumes after that event",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream of the run's events from `from`: `started`, `progress`, `log` and `iteration`, then one `terminal`",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunEvent"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "stream"
+      }
+    },
+    "/api/runs/{id}/file": {
+      "get": {
+        "operationId": "runsFile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "description": "Path of the file relative to the run's `out/` folder",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contents of the file",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "file"
+      }
+    },
+    "/api/runs/{id}/files": {
+      "get": {
+        "operationId": "runsFiles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files in the run's `out/` folder, with their sizes and kinds",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/DatasetInfo"
+                    "$ref": "#/components/schemas/RunFile"
                   }
                 }
               }
@@ -118,14 +386,23 @@
         "x-bridge-type": "query"
       }
     },
-    "/api/jobs/{job_id}/cancel": {
-      "post": {
-        "operationId": "jobCancel",
+    "/api/runs/{id}/inputs/{name}": {
+      "put": {
+        "operationId": "runsUploadInput",
         "parameters": [
           {
-            "name": "job_id",
+            "name": "id",
             "in": "path",
-            "description": "Id of the job, from its `started` event",
+            "description": "Id of a run that has not started",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "File name inside the run's `inputs/` folder",
             "required": true,
             "schema": {
               "type": "string"
@@ -134,17 +411,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Cancellation requested; the job ends with a `cancelled` terminal event",
+            "description": "The stored file and the path to use for it in the run's configuration",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CancelJobResponse"
+                  "$ref": "#/components/schemas/UploadedInput"
                 }
               }
             }
           },
-          "404": {
-            "description": "No job with this id is running",
+          "413": {
+            "description": "The inputs of the run exceed the upload limit of the server",
             "content": {
               "application/json": {
                 "schema": {
@@ -154,119 +431,108 @@
             }
           }
         },
+        "x-bridge-type": "upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/purge": {
+      "post": {
+        "operationId": "runsPurge",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of a deleted run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The deleted run is removed for good"
+          }
+        },
         "x-bridge-type": "request"
       }
     },
-    "/api/mugration": {
+    "/api/runs/{id}/restore": {
       "post": {
-        "operationId": "mugration",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MugrationConfig"
-              }
+        "operationId": "runsRestore",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of a deleted run",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
+            "description": "The run, back from the trash",
             "content": {
-              "text/event-stream": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
+                  "$ref": "#/components/schemas/RunSummary"
                 }
               }
             }
           }
         },
-        "x-bridge-type": "command"
+        "x-bridge-type": "request"
       }
     },
-    "/api/optimize": {
+    "/api/runs/{id}/start": {
       "post": {
-        "operationId": "optimize",
+        "operationId": "runsStart",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OptimizeConfig"
+                "$ref": "#/components/schemas/StartRunRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
+            "description": "The started run",
             "content": {
-              "text/event-stream": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
+                  "$ref": "#/components/schemas/RunRecord"
                 }
               }
             }
           }
         },
-        "x-bridge-type": "command"
-      }
-    },
-    "/api/prune": {
-      "post": {
-        "operationId": "prune",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PruneConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "command"
-      }
-    },
-    "/api/timetree": {
-      "post": {
-        "operationId": "timetree",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TimetreeConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Stream of job events: `started`, then `progress` and `log`, then one `terminal`",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobEvent"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "command"
+        "x-bridge-type": "request"
       }
     },
     "/api/version": {
@@ -290,7 +556,7 @@
   },
   "components": {
     "schemas": {
-      "CancelJobResponse": {
+      "CancelRunResponse": {
         "type": "object",
         "required": [
           "cancelled"
@@ -298,24 +564,6 @@
         "properties": {
           "cancelled": {
             "type": "boolean"
-          }
-        }
-      },
-      "DatasetInfo": {
-        "type": "object",
-        "required": [
-          "name",
-          "files"
-        ],
-        "properties": {
-          "files": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "name": {
-            "type": "string"
           }
         }
       },
@@ -3131,6 +3379,51 @@
         ],
         "description": "Outcome of checking a configuration without running it."
       },
+      "OutputFile": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path of the file."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/OutputSelection",
+            "description": "Output selection that produced the file."
+          }
+        },
+        "required": [
+          "path",
+          "kind"
+        ],
+        "description": "One file a command wrote."
+      },
+      "OutputSelection": {
+        "type": "string",
+        "enum": [
+          "all",
+          "nwk",
+          "nexus",
+          "auspice",
+          "mat-pb",
+          "mat-json",
+          "graph-json",
+          "dot",
+          "augur-node-data",
+          "gtr",
+          "clock-model",
+          "confidence-tsv",
+          "confidence-csv",
+          "reconstructed-nuc-fasta",
+          "reconstructed-aa-fasta",
+          "traits-csv",
+          "clock-csv",
+          "tracelog",
+          "coalescent-tsv",
+          "coalescent-csv",
+          "coalescent-json"
+        ],
+        "description": "Canonical lookup key for selectable outputs. Command adapters convert their\nselection enums into this type, and [`plan`] resolves each key to a path.\nTree variants do not encode the separately selected Newick style."
+      },
       "CommandOutcome": {
         "type": "object",
         "properties": {
@@ -3141,7 +3434,7 @@
           "output_files": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/OutputFile"
             },
             "description": "Files of the command's output plan that exist after the run, sorted by path."
           }
@@ -3217,6 +3510,133 @@
           "error"
         ]
       },
+      "IterationEvent": {
+        "type": "object",
+        "properties": {
+          "iteration": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Iteration number, starting at 1."
+          },
+          "n_diff": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of ancestral sequence states that changed in this iteration."
+          },
+          "n_resolved": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of nodes added by polytomy resolution in this iteration."
+          },
+          "max_time_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Largest change of a node time, in years."
+          },
+          "rms_time_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Root-mean-square change of the node times, in years."
+          },
+          "log_lh_seq": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the sequences."
+          },
+          "log_lh_pos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the node positions under the clock model."
+          },
+          "log_lh_coal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Log likelihood of the coalescent prior."
+          },
+          "log_lh_total": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sum of the available log likelihoods."
+          },
+          "clock_rate": {
+            "$ref": "#/components/schemas/JsonFloat",
+            "description": "Clock rate of the clock model the iteration used, in substitutions per site per year."
+          },
+          "r_squared": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonFloat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate."
+          }
+        },
+        "required": [
+          "iteration",
+          "n_diff",
+          "n_resolved",
+          "clock_rate"
+        ],
+        "description": "Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the\niteration used."
+      },
+      "JsonFloat": {
+        "description": "A number; infinities and NaN are the strings \"inf\", \"-inf\" and \"nan\".",
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string",
+            "enum": [
+              "inf",
+              "-inf",
+              "nan"
+            ]
+          }
+        ]
+      },
       "TerminalEvent": {
         "oneOf": [
           {
@@ -3286,6 +3706,23 @@
               "job_id"
             ],
             "description": "The job stopped because cancellation was requested."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "job_id": {
+                "$ref": "#/components/schemas/JobId"
+              },
+              "status": {
+                "type": "string",
+                "const": "interrupted"
+              }
+            },
+            "required": [
+              "status",
+              "job_id"
+            ],
+            "description": "The job stopped because the process that ran it stopped."
           }
         ],
         "description": "How a job ended."
@@ -3348,6 +3785,23 @@
             "properties": {
               "type": {
                 "type": "string",
+                "const": "iteration"
+              },
+              "data": {
+                "$ref": "#/components/schemas/IterationEvent"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "Convergence values of one timetree optimization iteration."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
                 "const": "terminal"
               },
               "data": {
@@ -3373,6 +3827,940 @@
         "required": [
           "version"
         ]
+      },
+      "CheckInputsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tree": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Newick tree.",
+            "default": null,
+            "x-path": "input"
+          },
+          "metadata": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Metadata table with one row per sample.",
+            "default": null,
+            "x-path": "input"
+          },
+          "alignment": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "FASTA alignment files.",
+            "default": [],
+            "x-path": "input"
+          },
+          "metadata_id_columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Candidate names of the metadata column that holds the sample names; the command defaults when empty.",
+            "default": []
+          },
+          "metadata_delimiters": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1
+            },
+            "description": "Candidate field delimiters of the metadata table; the command defaults when empty.",
+            "default": []
+          },
+          "date_column": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the metadata column that holds the sampling dates; detected when absent.",
+            "default": null
+          }
+        },
+        "description": "Input files to inspect before a run, with the metadata settings of the command."
+      },
+      "TreeFacts": {
+        "type": "object",
+        "properties": {
+          "tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of tips."
+          },
+          "internal_nodes": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of internal nodes, the root included."
+          },
+          "polytomies": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of internal nodes with more than two children."
+          },
+          "unnamed_tips": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of tips without a name."
+          },
+          "duplicate_tip_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tip names that occur more than once."
+          }
+        },
+        "required": [
+          "tips",
+          "internal_nodes",
+          "polytomies",
+          "unnamed_tips",
+          "duplicate_tip_names"
+        ],
+        "description": "Facts about a tree."
+      },
+      "AlignmentFacts": {
+        "type": "object",
+        "properties": {
+          "sequences": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of sequences."
+          },
+          "min_length": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Length of the shortest sequence."
+          },
+          "max_length": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Length of the longest sequence; equal to `min_length` for an alignment."
+          },
+          "duplicate_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Sequence names that occur more than once."
+          }
+        },
+        "required": [
+          "sequences",
+          "min_length",
+          "max_length",
+          "duplicate_names"
+        ],
+        "description": "Facts about an alignment."
+      },
+      "MetadataFacts": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of data rows."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Column names, in file order."
+          },
+          "id_column": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Column that holds the sample names, when one was found."
+          },
+          "date_column": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Column that holds the sampling dates, when one was found."
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateFacts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Facts about the sampling dates, when the date column could be read."
+          }
+        },
+        "required": [
+          "rows",
+          "columns"
+        ],
+        "description": "Facts about a metadata table."
+      },
+      "DateFacts": {
+        "type": "object",
+        "properties": {
+          "readable": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Samples with a date the date parser reads."
+          },
+          "unreadable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Samples whose date cannot be read, by name."
+          },
+          "exact_days": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Samples whose date is a calendar day."
+          },
+          "on_day_1_or_15": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month."
+          }
+        },
+        "required": [
+          "readable",
+          "unreadable",
+          "exact_days",
+          "on_day_1_or_15"
+        ],
+        "description": "Facts about the sampling dates of a metadata table."
+      },
+      "InputProblem": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/InputKind",
+            "description": "Input the problem concerns."
+          },
+          "message": {
+            "type": "string",
+            "description": "The error, with its causes."
+          }
+        },
+        "required": [
+          "input",
+          "message"
+        ],
+        "description": "An input that could not be read."
+      },
+      "InputKind": {
+        "type": "string",
+        "enum": [
+          "tree",
+          "metadata",
+          "alignment"
+        ],
+        "description": "Kind of input file."
+      },
+      "InputFacts": {
+        "type": "object",
+        "properties": {
+          "tree": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TreeFacts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Facts about the tree, when it could be read."
+          },
+          "alignment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlignmentFacts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Facts about the alignment, when it could be read."
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetadataFacts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Facts about the metadata table, when it could be read."
+          },
+          "tips_without_metadata": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Tree tips without a metadata row; present when both the tree and the metadata could be read."
+          },
+          "tips_without_sequence": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Tree tips without a sequence; present when both the tree and the alignment could be read."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputProblem"
+            },
+            "description": "Inputs that could not be read, with the reason."
+          }
+        },
+        "required": [
+          "problems"
+        ],
+        "description": "Facts about the input files of a run, read with the readers the commands use."
+      },
+      "DatasetInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Path of the directory relative to the data directory, with `/` separators."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of the files in the directory, sorted."
+          }
+        },
+        "required": [
+          "name",
+          "files"
+        ],
+        "description": "A directory of example input files."
+      },
+      "ExampleConfig": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path of the file relative to the data directory, with `/` separators."
+          },
+          "command": {
+            "type": "string",
+            "description": "Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the example: the first comment line after the directive."
+          },
+          "content": {
+            "type": "string",
+            "description": "Text of the file."
+          }
+        },
+        "required": [
+          "path",
+          "command",
+          "title",
+          "content"
+        ],
+        "description": "An example configuration file of one command."
+      },
+      "DatasetCatalog": {
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatasetInfo"
+            },
+            "description": "Directories that hold a `tree.nwk`, with their files."
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExampleConfig"
+            },
+            "description": "Example configurations of the commands the application runs."
+          }
+        },
+        "required": [
+          "datasets",
+          "examples"
+        ],
+        "description": "Example datasets and example command configurations found in the data directory."
+      },
+      "CreateRunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/AppCommand",
+            "description": "Command the run executes."
+          },
+          "config": {
+            "description": "Configuration of the command, in the form `treetime <command> --config` reads."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Title of the run. Defaults to the command name.",
+            "default": null
+          },
+          "defer_start": {
+            "type": "boolean",
+            "description": "Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.",
+            "default": false
+          }
+        },
+        "required": [
+          "command",
+          "config"
+        ],
+        "description": "Request to create a run."
+      },
+      "StartRunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "description": "Configuration that replaces the one given at creation, for example to point at uploaded inputs.",
+            "default": null
+          }
+        },
+        "description": "Request to start a created run."
+      },
+      "UpdateRunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New title.",
+            "default": null
+          },
+          "pinned": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "New pinned state.",
+            "default": null
+          }
+        },
+        "description": "Changes to the presentation of a run."
+      },
+      "RunStatus": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "created",
+            "description": "Created and waiting to be started, for example while its inputs upload."
+          },
+          {
+            "type": "string",
+            "const": "running",
+            "description": "The computation is running."
+          },
+          {
+            "type": "string",
+            "const": "ok",
+            "description": "The command ran to completion."
+          },
+          {
+            "type": "string",
+            "const": "error",
+            "description": "The command failed or its configuration was rejected."
+          },
+          {
+            "type": "string",
+            "const": "cancelled",
+            "description": "The run stopped because cancellation was requested."
+          },
+          {
+            "type": "string",
+            "const": "interrupted",
+            "description": "The run stopped because the process that ran it stopped."
+          }
+        ],
+        "description": "State of a run."
+      },
+      "RunInput": {
+        "type": "object",
+        "properties": {
+          "setting": {
+            "type": "string",
+            "description": "Dot-separated key path of the setting that names the file."
+          },
+          "path": {
+            "type": "string",
+            "description": "Path of the file, as the run read it."
+          },
+          "size": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Size of the file in bytes."
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA-256 of the file contents, as lowercase hexadecimal."
+          }
+        },
+        "required": [
+          "setting",
+          "path",
+          "size",
+          "sha256"
+        ],
+        "description": "One input file of a run."
+      },
+      "RunError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The error, as the CLI prints it."
+          },
+          "causes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The errors that caused `message`, outermost first."
+          }
+        },
+        "required": [
+          "message",
+          "causes"
+        ],
+        "description": "Error of a failed run."
+      },
+      "RunRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/JobId",
+            "description": "Identifier of the run, also the name of its folder."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title shown in run lists."
+          },
+          "command": {
+            "$ref": "#/components/schemas/AppCommand",
+            "description": "Command the run executes."
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full\nresolved configuration, with every default filled in and the outputs the run layer adds."
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus",
+            "description": "State of the run."
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "Whether the run is pinned in run lists."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Time the run was created."
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Time the computation started."
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Time the run ended."
+          },
+          "duration_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Duration of the computation, in seconds."
+          },
+          "treetime_version": {
+            "type": "string",
+            "description": "Version of TreeTime that ran the command."
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunInput"
+            },
+            "description": "Input files the run read."
+          },
+          "config_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents."
+          },
+          "changed_settings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Setting keys whose values differ from the command defaults, as dot-separated key paths."
+          },
+          "headline": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonFloat"
+            },
+            "description": "Key results of a finished run, for run lists."
+          },
+          "output_files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputFile"
+            },
+            "description": "Files the run wrote, with paths relative to the run's `out/` folder."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunError"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The error of a failed run."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "config",
+          "status",
+          "pinned",
+          "created_at",
+          "treetime_version",
+          "inputs",
+          "changed_settings",
+          "headline",
+          "output_files"
+        ],
+        "description": "Durable record of one command run, stored as `run.json` in the run's folder."
+      },
+      "RunSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/JobId",
+            "description": "Identifier of the run."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the run."
+          },
+          "command": {
+            "$ref": "#/components/schemas/AppCommand",
+            "description": "Command the run executes."
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus",
+            "description": "State of the run."
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "Whether the run is pinned."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Time the run was created."
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Time the run ended."
+          },
+          "duration_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Duration of the computation, in seconds."
+          },
+          "config_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hash that identifies runs with the same settings and input contents."
+          },
+          "changed_settings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Setting keys whose values differ from the command defaults."
+          },
+          "headline": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonFloat"
+            },
+            "description": "Key results of a finished run."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "status",
+          "pinned",
+          "created_at",
+          "changed_settings",
+          "headline"
+        ],
+        "description": "Entry of a run list."
+      },
+      "RunList": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "description": "Runs, newest first."
+          },
+          "active_runs": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of runs whose computation is running now. Every run shares one pool of processing threads."
+          }
+        },
+        "required": [
+          "runs",
+          "active_runs"
+        ],
+        "description": "Runs, newest first, and the number of runs computing now."
+      },
+      "RunEvent": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it."
+          },
+          "time": {
+            "type": "string",
+            "description": "Time the event was recorded."
+          }
+        },
+        "required": [
+          "seq",
+          "time"
+        ],
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "started"
+              },
+              "data": {
+                "$ref": "#/components/schemas/JobStarted"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "The job was accepted; always the first event."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "progress"
+              },
+              "data": {
+                "$ref": "#/components/schemas/ProgressEvent"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "A stage of the computation began or advanced."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "log"
+              },
+              "data": {
+                "$ref": "#/components/schemas/LogEvent"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "A diagnostic message of the computation."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "iteration"
+              },
+              "data": {
+                "$ref": "#/components/schemas/IterationEvent"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "Convergence values of one timetree optimization iteration."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "terminal"
+              },
+              "data": {
+                "$ref": "#/components/schemas/TerminalEvent"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ],
+            "description": "The job ended; always the last event, exactly once per job."
+          }
+        ],
+        "description": "Event of a run, as stored in the run's `events.jsonl` and sent to subscribers."
+      },
+      "RunFile": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to the run's `out/` folder, with `/` separators."
+          },
+          "size": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Size in bytes."
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputSelection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Output selection that produced the file; absent for files the output plan does not name."
+          }
+        },
+        "required": [
+          "path",
+          "size"
+        ],
+        "description": "One file in a run's `out/` folder."
+      },
+      "UploadedInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name inside the run's `inputs/` folder."
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to use for the file in the run's configuration."
+          },
+          "size": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Size in bytes."
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA-256 of the contents, as lowercase hexadecimal."
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "size",
+          "sha256"
+        ],
+        "description": "A file uploaded into a run's `inputs/` folder."
       }
     }
   }

@@ -2,13 +2,8 @@
 
 import * as z from 'zod';
 
-export const zCancelJobResponse = z.object({
+export const zCancelRunResponse = z.object({
     cancelled: z.boolean()
-});
-
-export const zDatasetInfo = z.object({
-    files: z.array(z.string()),
-    name: z.string()
 });
 
 export const zErrorResponse = z.object({
@@ -701,11 +696,48 @@ export const zCheckConfigResponse = z.union([
 ]);
 
 /**
+ * Canonical lookup key for selectable outputs. Command adapters convert their
+ * selection enums into this type, and [`plan`] resolves each key to a path.
+ * Tree variants do not encode the separately selected Newick style.
+ */
+export const zOutputSelection = z.enum([
+    'all',
+    'nwk',
+    'nexus',
+    'auspice',
+    'mat-pb',
+    'mat-json',
+    'graph-json',
+    'dot',
+    'augur-node-data',
+    'gtr',
+    'clock-model',
+    'confidence-tsv',
+    'confidence-csv',
+    'reconstructed-nuc-fasta',
+    'reconstructed-aa-fasta',
+    'traits-csv',
+    'clock-csv',
+    'tracelog',
+    'coalescent-tsv',
+    'coalescent-csv',
+    'coalescent-json'
+]);
+
+/**
+ * One file a command wrote.
+ */
+export const zOutputFile = z.object({
+    path: z.string(),
+    kind: zOutputSelection
+});
+
+/**
  * Result of a command that ran to completion.
  */
 export const zCommandOutcome = z.object({
     command: zAppCommand,
-    output_files: z.array(z.string())
+    output_files: z.array(zOutputFile)
 });
 
 /**
@@ -741,6 +773,36 @@ export const zLogEvent = z.object({
 });
 
 /**
+ * A number; infinities and NaN are the strings "inf", "-inf" and "nan".
+ */
+export const zJsonFloat = z.union([
+    z.number(),
+    z.enum([
+        'inf',
+        '-inf',
+        'nan'
+    ])
+]);
+
+/**
+ * Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
+ * iteration used.
+ */
+export const zIterationEvent = z.object({
+    iteration: z.int().gte(0),
+    n_diff: z.int().gte(0),
+    n_resolved: z.int().gte(0),
+    max_time_change: zJsonFloat.nullish(),
+    rms_time_change: zJsonFloat.nullish(),
+    log_lh_seq: zJsonFloat.nullish(),
+    log_lh_pos: zJsonFloat.nullish(),
+    log_lh_coal: zJsonFloat.nullish(),
+    log_lh_total: zJsonFloat.nullish(),
+    clock_rate: zJsonFloat,
+    r_squared: zJsonFloat.nullish()
+});
+
+/**
  * How a job ended.
  */
 export const zTerminalEvent = z.union([
@@ -758,6 +820,10 @@ export const zTerminalEvent = z.union([
     z.object({
         job_id: zJobId,
         status: z.literal('cancelled')
+    }),
+    z.object({
+        job_id: zJobId,
+        status: z.literal('interrupted')
     })
 ]);
 
@@ -778,6 +844,10 @@ export const zJobEvent = z.union([
         data: zLogEvent
     }),
     z.object({
+        type: z.literal('iteration'),
+        data: zIterationEvent
+    }),
+    z.object({
         type: z.literal('terminal'),
         data: zTerminalEvent
     })
@@ -785,4 +855,261 @@ export const zJobEvent = z.union([
 
 export const zVersionInfo = z.object({
     version: z.string()
+});
+
+/**
+ * Input files to inspect before a run, with the metadata settings of the command.
+ */
+export const zCheckInputsRequest = z.object({
+    tree: z.string().nullish().default(null),
+    metadata: z.string().nullish().default(null),
+    alignment: z.array(z.string()).optional().default([]),
+    metadata_id_columns: z.array(z.string()).optional().default([]),
+    metadata_delimiters: z.array(z.string().length(1)).optional().default([]),
+    date_column: z.string().nullish().default(null)
+});
+
+/**
+ * Facts about a tree.
+ */
+export const zTreeFacts = z.object({
+    tips: z.int().gte(0),
+    internal_nodes: z.int().gte(0),
+    polytomies: z.int().gte(0),
+    unnamed_tips: z.int().gte(0),
+    duplicate_tip_names: z.array(z.string())
+});
+
+/**
+ * Facts about an alignment.
+ */
+export const zAlignmentFacts = z.object({
+    sequences: z.int().gte(0),
+    min_length: z.int().gte(0),
+    max_length: z.int().gte(0),
+    duplicate_names: z.array(z.string())
+});
+
+/**
+ * Facts about the sampling dates of a metadata table.
+ */
+export const zDateFacts = z.object({
+    readable: z.int().gte(0),
+    unreadable: z.array(z.string()),
+    exact_days: z.int().gte(0),
+    on_day_1_or_15: z.int().gte(0)
+});
+
+/**
+ * Facts about a metadata table.
+ */
+export const zMetadataFacts = z.object({
+    rows: z.int().gte(0),
+    columns: z.array(z.string()),
+    id_column: z.string().nullish(),
+    date_column: z.string().nullish(),
+    dates: zDateFacts.nullish()
+});
+
+/**
+ * Kind of input file.
+ */
+export const zInputKind = z.enum([
+    'tree',
+    'metadata',
+    'alignment'
+]);
+
+/**
+ * An input that could not be read.
+ */
+export const zInputProblem = z.object({
+    input: zInputKind,
+    message: z.string()
+});
+
+/**
+ * Facts about the input files of a run, read with the readers the commands use.
+ */
+export const zInputFacts = z.object({
+    tree: zTreeFacts.nullish(),
+    alignment: zAlignmentFacts.nullish(),
+    metadata: zMetadataFacts.nullish(),
+    tips_without_metadata: z.array(z.string()).nullish(),
+    tips_without_sequence: z.array(z.string()).nullish(),
+    problems: z.array(zInputProblem)
+});
+
+/**
+ * A directory of example input files.
+ */
+export const zDatasetInfo = z.object({
+    name: z.string(),
+    files: z.array(z.string())
+});
+
+/**
+ * An example configuration file of one command.
+ */
+export const zExampleConfig = z.object({
+    path: z.string(),
+    command: z.string(),
+    title: z.string(),
+    content: z.string()
+});
+
+/**
+ * Example datasets and example command configurations found in the data directory.
+ */
+export const zDatasetCatalog = z.object({
+    datasets: z.array(zDatasetInfo),
+    examples: z.array(zExampleConfig)
+});
+
+/**
+ * Request to create a run.
+ */
+export const zCreateRunRequest = z.object({
+    command: zAppCommand,
+    config: z.unknown(),
+    title: z.string().nullish().default(null),
+    defer_start: z.boolean().optional().default(false)
+});
+
+/**
+ * Request to start a created run.
+ */
+export const zStartRunRequest = z.object({
+    config: z.unknown().optional().default(null)
+});
+
+/**
+ * Changes to the presentation of a run.
+ */
+export const zUpdateRunRequest = z.object({
+    title: z.string().nullish().default(null),
+    pinned: z.boolean().nullish().default(null)
+});
+
+/**
+ * State of a run.
+ */
+export const zRunStatus = z.union([
+    z.literal('created'),
+    z.literal('running'),
+    z.literal('ok'),
+    z.literal('error'),
+    z.literal('cancelled'),
+    z.literal('interrupted')
+]);
+
+/**
+ * One input file of a run.
+ */
+export const zRunInput = z.object({
+    setting: z.string(),
+    path: z.string(),
+    size: z.int().gte(0),
+    sha256: z.string()
+});
+
+/**
+ * Error of a failed run.
+ */
+export const zRunError = z.object({
+    message: z.string(),
+    causes: z.array(z.string())
+});
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder.
+ */
+export const zRunRecord = z.object({
+    id: zJobId,
+    title: z.string(),
+    command: zAppCommand,
+    config: z.record(z.string(), z.unknown()),
+    status: zRunStatus,
+    pinned: z.boolean(),
+    created_at: z.string(),
+    started_at: z.string().nullish(),
+    finished_at: z.string().nullish(),
+    duration_seconds: z.number().nullish(),
+    treetime_version: z.string(),
+    inputs: z.array(zRunInput),
+    config_hash: z.string().nullish(),
+    changed_settings: z.array(z.string()),
+    headline: z.record(z.string(), zJsonFloat),
+    output_files: z.array(zOutputFile),
+    error: zRunError.nullish()
+});
+
+/**
+ * Entry of a run list.
+ */
+export const zRunSummary = z.object({
+    id: zJobId,
+    title: z.string(),
+    command: zAppCommand,
+    status: zRunStatus,
+    pinned: z.boolean(),
+    created_at: z.string(),
+    finished_at: z.string().nullish(),
+    duration_seconds: z.number().nullish(),
+    config_hash: z.string().nullish(),
+    changed_settings: z.array(z.string()),
+    headline: z.record(z.string(), zJsonFloat)
+});
+
+/**
+ * Runs, newest first, and the number of runs computing now.
+ */
+export const zRunList = z.object({
+    runs: z.array(zRunSummary),
+    active_runs: z.int().gte(0)
+});
+
+export const zRunEvent = z.intersection(z.union([
+    z.object({
+        type: z.literal('started'),
+        data: zJobStarted
+    }),
+    z.object({
+        type: z.literal('progress'),
+        data: zProgressEvent
+    }),
+    z.object({
+        type: z.literal('log'),
+        data: zLogEvent
+    }),
+    z.object({
+        type: z.literal('iteration'),
+        data: zIterationEvent
+    }),
+    z.object({
+        type: z.literal('terminal'),
+        data: zTerminalEvent
+    })
+]), z.object({
+    seq: z.int().gte(0),
+    time: z.string()
+}));
+
+/**
+ * One file in a run's `out/` folder.
+ */
+export const zRunFile = z.object({
+    path: z.string(),
+    size: z.int().gte(0),
+    kind: zOutputSelection.nullish()
+});
+
+/**
+ * A file uploaded into a run's `inputs/` folder.
+ */
+export const zUploadedInput = z.object({
+    name: z.string(),
+    path: z.string(),
+    size: z.int().gte(0),
+    sha256: z.string()
 });

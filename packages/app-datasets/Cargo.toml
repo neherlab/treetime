@@ -17,7 +17,15 @@ doctest = false
 [dependencies]
 # [external]
 eyre = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+treetime-utils = { workspace = true }
 
 [lints]
 workspace = true

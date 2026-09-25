@@ -20,15 +20,14 @@ mod tests {
     let config = config_for(command);
     let work = tempdir().unwrap();
 
+    let server = run_server(command, &config, &work.path().join("server")).await;
+    let napi_dir = run_napi(command, &config, &work.path().join("napi"));
     let cli_dir = work.path().join("cli");
-    run_cli(command, &config, work.path(), &cli_dir);
-    let server_dir = run_server(command, &config, &work.path().join("server")).await;
-    let napi_dir = work.path().join("napi");
-    run_napi(command, &config, &napi_dir);
+    run_cli(command, &server.config, work.path(), &cli_dir);
 
     let cli = output_files(&cli_dir);
     assert!(!cli.is_empty(), "the CLI wrote no outputs");
-    assert_eq!(cli, output_files(&server_dir), "server outputs differ from CLI outputs");
+    assert_eq!(cli, output_files(&server.out_dir), "server outputs differ from CLI outputs");
     assert_eq!(cli, output_files(&napi_dir), "N-API outputs differ from CLI outputs");
   }
 
@@ -36,17 +35,16 @@ mod tests {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
     use app_commands::command::AppCommand;
-    use app_commands::job::JobRegistry;
-    use app_napi::jobs::start_job;
+    use app_commands::runs::manager::RunManager;
+    use app_napi::runs::{create_run, start_run};
     use app_server::create_router;
-    use app_server::state::ServerConfig;
+    use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use axum::body::Body;
     use axum::http::Request;
     use serde_json::{Value, json};
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use std::sync::Arc;
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
 
@@ -111,40 +109,59 @@ mod tests {
       run_command(args.command, &NoopProgress).unwrap();
     }
 
-    pub(super) async fn run_server(command: AppCommand, config: &Value, out_dir: &Path) -> PathBuf {
+    pub(super) struct ServerRun {
+      pub config: Value,
+      pub out_dir: PathBuf,
+    }
+
+    pub(super) async fn run_server(command: AppCommand, config: &Value, runs_dir: &Path) -> ServerRun {
       let router = create_router(
         ServerConfig {
           data_dir: data_dir(),
-          out_dir: out_dir.to_path_buf(),
+          runs_dir: runs_dir.to_path_buf(),
+          max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         },
         None,
       )
       .unwrap();
-      let request = Request::post(format!("/api/{command}"))
+      let request = Request::post("/api/runs")
         .header("content-type", "application/json")
-        .body(Body::from(config.to_string()))
+        .body(Body::from(json!({ "command": command, "config": config }).to_string()))
         .unwrap();
-      let response = router.oneshot(request).await.unwrap();
-      let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
-      let text = String::from_utf8(body.to_vec()).unwrap();
-      let terminal: Value = text
-        .split("\n\n")
-        .filter(|block| block.contains("event: terminal"))
-        .filter_map(|block| block.lines().find_map(|line| line.strip_prefix("data: ")))
-        .map(|data| serde_json::from_str(data).unwrap())
-        .next()
+      let record = response_json(router.clone().oneshot(request).await.unwrap()).await;
+      let id = record["id"].as_str().unwrap().to_owned();
+      let events = Request::get(format!("/api/runs/{id}/events"))
+        .body(Body::empty())
         .unwrap();
-      assert_eq!(Some("ok"), terminal["status"].as_str(), "server job failed: {terminal}");
-      out_dir.join(terminal["job_id"].as_str().unwrap())
+      let stream = router.clone().oneshot(events).await.unwrap();
+      let text = String::from_utf8(
+        axum::body::to_bytes(stream.into_body(), usize::MAX)
+          .await
+          .unwrap()
+          .to_vec(),
+      )
+      .unwrap();
+      assert!(text.contains("\"status\":\"ok\""), "server run failed: {text}");
+      let request = Request::get(format!("/api/runs/{id}")).body(Body::empty()).unwrap();
+      let record = response_json(router.oneshot(request).await.unwrap()).await;
+      ServerRun {
+        config: record["config"].clone(),
+        out_dir: runs_dir.join(&id).join("out"),
+      }
     }
 
-    pub(super) fn run_napi(command: AppCommand, config: &Value, output_dir: &Path) {
-      let mut config = config.clone();
-      config["output_all"] = json!(output_dir);
-      let registry = Arc::new(JobRegistry::default());
-      let job = start_job(&registry, "parity", &command.to_string(), &config.to_string()).unwrap();
-      let terminal = serde_json::to_value(job.run(|_event| {})).unwrap();
-      assert_eq!(Some("ok"), terminal["status"].as_str(), "N-API job failed: {terminal}");
+    pub(super) fn run_napi(command: AppCommand, config: &Value, runs_dir: &Path) -> PathBuf {
+      let runs = RunManager::open(runs_dir).unwrap();
+      let request = json!({ "command": command, "config": config, "defer_start": true });
+      let record = create_run(&runs, &request.to_string()).unwrap();
+      let terminal = serde_json::to_value(start_run(&runs, record.id.as_str(), None).unwrap().run()).unwrap();
+      assert_eq!(Some("ok"), terminal["status"].as_str(), "N-API run failed: {terminal}");
+      runs.store().out_dir(&record.id)
+    }
+
+    async fn response_json(response: axum::response::Response) -> Value {
+      let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+      serde_json::from_slice(&bytes).unwrap()
     }
 
     pub(super) fn output_files(dir: &Path) -> BTreeMap<String, String> {

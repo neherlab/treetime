@@ -4,13 +4,8 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
-export type CancelJobResponse = {
+export type CancelRunResponse = {
     cancelled: boolean;
-};
-
-export type DatasetInfo = {
-    files: Array<string>;
-    name: string;
 };
 
 export type ErrorResponse = {
@@ -2134,6 +2129,27 @@ export type CheckConfigResponse = {
 };
 
 /**
+ * One file a command wrote.
+ */
+export type OutputFile = {
+    /**
+     * Path of the file.
+     */
+    path: string;
+    /**
+     * Output selection that produced the file.
+     */
+    kind: OutputSelection;
+};
+
+/**
+ * Canonical lookup key for selectable outputs. Command adapters convert their
+ * selection enums into this type, and [`plan`] resolves each key to a path.
+ * Tree variants do not encode the separately selected Newick style.
+ */
+export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
+
+/**
  * Result of a command that ran to completion.
  */
 export type CommandOutcome = {
@@ -2144,7 +2160,7 @@ export type CommandOutcome = {
     /**
      * Files of the command's output plan that exist after the run, sorted by path.
      */
-    output_files: Array<string>;
+    output_files: Array<OutputFile>;
 };
 
 /**
@@ -2174,6 +2190,62 @@ export type LogEvent = {
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
 /**
+ * Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
+ * iteration used.
+ */
+export type IterationEvent = {
+    /**
+     * Iteration number, starting at 1.
+     */
+    iteration: number;
+    /**
+     * Number of ancestral sequence states that changed in this iteration.
+     */
+    n_diff: number;
+    /**
+     * Number of nodes added by polytomy resolution in this iteration.
+     */
+    n_resolved: number;
+    /**
+     * Largest change of a node time, in years.
+     */
+    max_time_change?: JsonFloat | null;
+    /**
+     * Root-mean-square change of the node times, in years.
+     */
+    rms_time_change?: JsonFloat | null;
+    /**
+     * Log likelihood of the sequences.
+     */
+    log_lh_seq?: JsonFloat | null;
+    /**
+     * Log likelihood of the node positions under the clock model.
+     */
+    log_lh_pos?: JsonFloat | null;
+    /**
+     * Log likelihood of the coalescent prior.
+     */
+    log_lh_coal?: JsonFloat | null;
+    /**
+     * Sum of the available log likelihoods.
+     */
+    log_lh_total?: JsonFloat | null;
+    /**
+     * Clock rate of the clock model the iteration used, in substitutions per site per year.
+     */
+    clock_rate: JsonFloat;
+    /**
+     * Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
+     */
+    r_squared?: JsonFloat | null;
+};
+
+/**
+ * A number; infinities and NaN are the strings "inf", "-inf" and "nan".
+ */
+export type JsonFloat = number | 'inf' | '-inf' | 'nan';
+
+/**
  * How a job ended.
  */
 export type TerminalEvent = {
@@ -2194,6 +2266,9 @@ export type TerminalEvent = {
 } | {
     job_id: JobId;
     status: 'cancelled';
+} | {
+    job_id: JobId;
+    status: 'interrupted';
 };
 
 /**
@@ -2209,6 +2284,9 @@ export type JobEvent = {
     type: 'log';
     data: LogEvent;
 } | {
+    type: 'iteration';
+    data: IterationEvent;
+} | {
     type: 'terminal';
     data: TerminalEvent;
 };
@@ -2217,21 +2295,529 @@ export type VersionInfo = {
     version: string;
 };
 
-export type AncestralData = {
-    body: AncestralConfig;
-    path?: never;
-    query?: never;
-    url: '/api/ancestral';
-};
-
-export type AncestralResponses = {
+/**
+ * Input files to inspect before a run, with the metadata settings of the command.
+ */
+export type CheckInputsRequest = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * Newick tree.
      */
-    200: JobEvent;
+    tree?: string | null;
+    /**
+     * Metadata table with one row per sample.
+     */
+    metadata?: string | null;
+    /**
+     * FASTA alignment files.
+     */
+    alignment?: Array<string>;
+    /**
+     * Candidate names of the metadata column that holds the sample names; the command defaults when empty.
+     */
+    metadata_id_columns?: Array<string>;
+    /**
+     * Candidate field delimiters of the metadata table; the command defaults when empty.
+     */
+    metadata_delimiters?: Array<string>;
+    /**
+     * Name of the metadata column that holds the sampling dates; detected when absent.
+     */
+    date_column?: string | null;
 };
 
-export type AncestralResponse = AncestralResponses[keyof AncestralResponses];
+/**
+ * Facts about a tree.
+ */
+export type TreeFacts = {
+    /**
+     * Number of tips.
+     */
+    tips: number;
+    /**
+     * Number of internal nodes, the root included.
+     */
+    internal_nodes: number;
+    /**
+     * Number of internal nodes with more than two children.
+     */
+    polytomies: number;
+    /**
+     * Number of tips without a name.
+     */
+    unnamed_tips: number;
+    /**
+     * Tip names that occur more than once.
+     */
+    duplicate_tip_names: Array<string>;
+};
+
+/**
+ * Facts about an alignment.
+ */
+export type AlignmentFacts = {
+    /**
+     * Number of sequences.
+     */
+    sequences: number;
+    /**
+     * Length of the shortest sequence.
+     */
+    min_length: number;
+    /**
+     * Length of the longest sequence; equal to `min_length` for an alignment.
+     */
+    max_length: number;
+    /**
+     * Sequence names that occur more than once.
+     */
+    duplicate_names: Array<string>;
+};
+
+/**
+ * Facts about a metadata table.
+ */
+export type MetadataFacts = {
+    /**
+     * Number of data rows.
+     */
+    rows: number;
+    /**
+     * Column names, in file order.
+     */
+    columns: Array<string>;
+    /**
+     * Column that holds the sample names, when one was found.
+     */
+    id_column?: string | null;
+    /**
+     * Column that holds the sampling dates, when one was found.
+     */
+    date_column?: string | null;
+    /**
+     * Facts about the sampling dates, when the date column could be read.
+     */
+    dates?: DateFacts | null;
+};
+
+/**
+ * Facts about the sampling dates of a metadata table.
+ */
+export type DateFacts = {
+    /**
+     * Samples with a date the date parser reads.
+     */
+    readable: number;
+    /**
+     * Samples whose date cannot be read, by name.
+     */
+    unreadable: Array<string>;
+    /**
+     * Samples whose date is a calendar day.
+     */
+    exact_days: number;
+    /**
+     * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
+     */
+    on_day_1_or_15: number;
+};
+
+/**
+ * An input that could not be read.
+ */
+export type InputProblem = {
+    /**
+     * Input the problem concerns.
+     */
+    input: InputKind;
+    /**
+     * The error, with its causes.
+     */
+    message: string;
+};
+
+/**
+ * Kind of input file.
+ */
+export type InputKind = 'tree' | 'metadata' | 'alignment';
+
+/**
+ * Facts about the input files of a run, read with the readers the commands use.
+ */
+export type InputFacts = {
+    /**
+     * Facts about the tree, when it could be read.
+     */
+    tree?: TreeFacts | null;
+    /**
+     * Facts about the alignment, when it could be read.
+     */
+    alignment?: AlignmentFacts | null;
+    /**
+     * Facts about the metadata table, when it could be read.
+     */
+    metadata?: MetadataFacts | null;
+    /**
+     * Tree tips without a metadata row; present when both the tree and the metadata could be read.
+     */
+    tips_without_metadata?: Array<string> | null;
+    /**
+     * Tree tips without a sequence; present when both the tree and the alignment could be read.
+     */
+    tips_without_sequence?: Array<string> | null;
+    /**
+     * Inputs that could not be read, with the reason.
+     */
+    problems: Array<InputProblem>;
+};
+
+/**
+ * A directory of example input files.
+ */
+export type DatasetInfo = {
+    /**
+     * Path of the directory relative to the data directory, with `/` separators.
+     */
+    name: string;
+    /**
+     * Names of the files in the directory, sorted.
+     */
+    files: Array<string>;
+};
+
+/**
+ * An example configuration file of one command.
+ */
+export type ExampleConfig = {
+    /**
+     * Path of the file relative to the data directory, with `/` separators.
+     */
+    path: string;
+    /**
+     * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
+     */
+    command: string;
+    /**
+     * Title of the example: the first comment line after the directive.
+     */
+    title: string;
+    /**
+     * Text of the file.
+     */
+    content: string;
+};
+
+/**
+ * Example datasets and example command configurations found in the data directory.
+ */
+export type DatasetCatalog = {
+    /**
+     * Directories that hold a `tree.nwk`, with their files.
+     */
+    datasets: Array<DatasetInfo>;
+    /**
+     * Example configurations of the commands the application runs.
+     */
+    examples: Array<ExampleConfig>;
+};
+
+/**
+ * Request to create a run.
+ */
+export type CreateRunRequest = {
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the command, in the form `treetime <command> --config` reads.
+     */
+    config: unknown;
+    /**
+     * Title of the run. Defaults to the command name.
+     */
+    title?: string | null;
+    /**
+     * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
+     */
+    defer_start?: boolean;
+};
+
+/**
+ * Request to start a created run.
+ */
+export type StartRunRequest = {
+    /**
+     * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
+     */
+    config?: unknown;
+};
+
+/**
+ * Changes to the presentation of a run.
+ */
+export type UpdateRunRequest = {
+    /**
+     * New title.
+     */
+    title?: string | null;
+    /**
+     * New pinned state.
+     */
+    pinned?: boolean | null;
+};
+
+/**
+ * State of a run.
+ */
+export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | 'interrupted';
+
+/**
+ * One input file of a run.
+ */
+export type RunInput = {
+    /**
+     * Dot-separated key path of the setting that names the file.
+     */
+    setting: string;
+    /**
+     * Path of the file, as the run read it.
+     */
+    path: string;
+    /**
+     * Size of the file in bytes.
+     */
+    size: number;
+    /**
+     * SHA-256 of the file contents, as lowercase hexadecimal.
+     */
+    sha256: string;
+};
+
+/**
+ * Error of a failed run.
+ */
+export type RunError = {
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+};
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder.
+ */
+export type RunRecord = {
+    /**
+     * Identifier of the run, also the name of its folder.
+     */
+    id: JobId;
+    /**
+     * Title shown in run lists.
+     */
+    title: string;
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full
+     * resolved configuration, with every default filled in and the outputs the run layer adds.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+    /**
+     * State of the run.
+     */
+    status: RunStatus;
+    /**
+     * Whether the run is pinned in run lists.
+     */
+    pinned: boolean;
+    /**
+     * Time the run was created.
+     */
+    created_at: string;
+    /**
+     * Time the computation started.
+     */
+    started_at?: string | null;
+    /**
+     * Time the run ended.
+     */
+    finished_at?: string | null;
+    /**
+     * Duration of the computation, in seconds.
+     */
+    duration_seconds?: number | null;
+    /**
+     * Version of TreeTime that ran the command.
+     */
+    treetime_version: string;
+    /**
+     * Input files the run read.
+     */
+    inputs: Array<RunInput>;
+    /**
+     * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+     * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+     */
+    config_hash?: string | null;
+    /**
+     * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+     */
+    changed_settings: Array<string>;
+    /**
+     * Key results of a finished run, for run lists.
+     */
+    headline: {
+        [key: string]: JsonFloat;
+    };
+    /**
+     * Files the run wrote, with paths relative to the run's `out/` folder.
+     */
+    output_files: Array<OutputFile>;
+    /**
+     * The error of a failed run.
+     */
+    error?: RunError | null;
+};
+
+/**
+ * Entry of a run list.
+ */
+export type RunSummary = {
+    /**
+     * Identifier of the run.
+     */
+    id: JobId;
+    /**
+     * Title of the run.
+     */
+    title: string;
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * State of the run.
+     */
+    status: RunStatus;
+    /**
+     * Whether the run is pinned.
+     */
+    pinned: boolean;
+    /**
+     * Time the run was created.
+     */
+    created_at: string;
+    /**
+     * Time the run ended.
+     */
+    finished_at?: string | null;
+    /**
+     * Duration of the computation, in seconds.
+     */
+    duration_seconds?: number | null;
+    /**
+     * Hash that identifies runs with the same settings and input contents.
+     */
+    config_hash?: string | null;
+    /**
+     * Setting keys whose values differ from the command defaults.
+     */
+    changed_settings: Array<string>;
+    /**
+     * Key results of a finished run.
+     */
+    headline: {
+        [key: string]: JsonFloat;
+    };
+};
+
+/**
+ * Runs, newest first, and the number of runs computing now.
+ */
+export type RunList = {
+    /**
+     * Runs, newest first.
+     */
+    runs: Array<RunSummary>;
+    /**
+     * Number of runs whose computation is running now. Every run shares one pool of processing threads.
+     */
+    active_runs: number;
+};
+
+export type RunEvent = ({
+    type: 'started';
+    data: JobStarted;
+} | {
+    type: 'progress';
+    data: ProgressEvent;
+} | {
+    type: 'log';
+    data: LogEvent;
+} | {
+    type: 'iteration';
+    data: IterationEvent;
+} | {
+    type: 'terminal';
+    data: TerminalEvent;
+}) & {
+    /**
+     * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+     */
+    seq: number;
+    /**
+     * Time the event was recorded.
+     */
+    time: string;
+};
+
+/**
+ * One file in a run's `out/` folder.
+ */
+export type RunFile = {
+    /**
+     * Path relative to the run's `out/` folder, with `/` separators.
+     */
+    path: string;
+    /**
+     * Size in bytes.
+     */
+    size: number;
+    /**
+     * Output selection that produced the file; absent for files the output plan does not name.
+     */
+    kind?: OutputSelection | null;
+};
+
+/**
+ * A file uploaded into a run's `inputs/` folder.
+ */
+export type UploadedInput = {
+    /**
+     * File name inside the run's `inputs/` folder.
+     */
+    name: string;
+    /**
+     * Path to use for the file in the run's configuration.
+     */
+    path: string;
+    /**
+     * Size in bytes.
+     */
+    size: number;
+    /**
+     * SHA-256 of the contents, as lowercase hexadecimal.
+     */
+    sha256: string;
+};
 
 export type ConfigCheckData = {
     body: CheckConfigRequest;
@@ -2249,21 +2835,21 @@ export type ConfigCheckResponses = {
 
 export type ConfigCheckResponse = ConfigCheckResponses[keyof ConfigCheckResponses];
 
-export type ClockData = {
-    body: ClockConfig;
+export type InputsCheckData = {
+    body: CheckInputsRequest;
     path?: never;
     query?: never;
-    url: '/api/clock';
+    url: '/api/check-inputs';
 };
 
-export type ClockResponses = {
+export type InputsCheckResponses = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * Facts about the input files, read with the readers the commands use
      */
-    200: JobEvent;
+    200: InputFacts;
 };
 
-export type ClockResponse = ClockResponses[keyof ClockResponses];
+export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
 
 export type DatasetsData = {
     body?: never;
@@ -2274,106 +2860,319 @@ export type DatasetsData = {
 
 export type DatasetsResponses = {
     /**
-     * Example datasets in the data directory
+     * Example datasets and example configurations in the data directory
      */
-    200: Array<DatasetInfo>;
+    200: DatasetCatalog;
 };
 
 export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
 
-export type JobCancelData = {
+export type RunsListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/runs';
+};
+
+export type RunsListResponses = {
+    /**
+     * Runs, newest first, and the number of runs computing now
+     */
+    200: RunList;
+};
+
+export type RunsListResponse = RunsListResponses[keyof RunsListResponses];
+
+export type RunsCreateData = {
+    body: CreateRunRequest;
+    path?: never;
+    query?: never;
+    url: '/api/runs';
+};
+
+export type RunsCreateResponses = {
+    /**
+     * The created run; it starts at once unless `defer_start` is set
+     */
+    200: RunRecord;
+};
+
+export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
+
+export type RunsDeleteData = {
     body?: never;
     path: {
         /**
-         * Id of the job, from its `started` event
+         * Id of the run
          */
-        job_id: string;
+        id: string;
     };
     query?: never;
-    url: '/api/jobs/{job_id}/cancel';
+    url: '/api/runs/{id}';
 };
 
-export type JobCancelErrors = {
+export type RunsDeleteResponses = {
     /**
-     * No job with this id is running
+     * The run moved to the trash; restore undoes it
      */
-    404: ErrorResponse;
+    204: void;
 };
 
-export type JobCancelError = JobCancelErrors[keyof JobCancelErrors];
+export type RunsDeleteResponse = RunsDeleteResponses[keyof RunsDeleteResponses];
 
-export type JobCancelResponses = {
-    /**
-     * Cancellation requested; the job ends with a `cancelled` terminal event
-     */
-    200: CancelJobResponse;
-};
-
-export type JobCancelResponse = JobCancelResponses[keyof JobCancelResponses];
-
-export type MugrationData = {
-    body: MugrationConfig;
-    path?: never;
+export type RunsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
     query?: never;
-    url: '/api/mugration';
+    url: '/api/runs/{id}';
 };
 
-export type MugrationResponses = {
+export type RunsGetResponses = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * The record of the run
      */
-    200: JobEvent;
+    200: RunRecord;
 };
 
-export type MugrationResponse = MugrationResponses[keyof MugrationResponses];
+export type RunsGetResponse = RunsGetResponses[keyof RunsGetResponses];
 
-export type OptimizeData = {
-    body: OptimizeConfig;
-    path?: never;
+export type RunsUpdateData = {
+    body: UpdateRunRequest;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
     query?: never;
-    url: '/api/optimize';
+    url: '/api/runs/{id}';
 };
 
-export type OptimizeResponses = {
+export type RunsUpdateResponses = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * The run with its new title or pinned state
      */
-    200: JobEvent;
+    200: RunSummary;
 };
 
-export type OptimizeResponse = OptimizeResponses[keyof OptimizeResponses];
+export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
 
-export type PruneData = {
-    body: PruneConfig;
-    path?: never;
+export type RunsArchiveData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
     query?: never;
-    url: '/api/prune';
+    url: '/api/runs/{id}/archive';
 };
 
-export type PruneResponses = {
+export type RunsArchiveResponses = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * Zip archive of the run's `out/` folder
      */
-    200: JobEvent;
+    200: Blob | File;
 };
 
-export type PruneResponse = PruneResponses[keyof PruneResponses];
+export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
 
-export type TimetreeData = {
-    body: TimetreeConfig;
-    path?: never;
+export type RunsCancelData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
     query?: never;
-    url: '/api/timetree';
+    url: '/api/runs/{id}/cancel';
 };
 
-export type TimetreeResponses = {
+export type RunsCancelResponses = {
     /**
-     * Stream of job events: `started`, then `progress` and `log`, then one `terminal`
+     * Whether cancellation was requested; the run ends with a `cancelled` terminal event
      */
-    200: JobEvent;
+    200: CancelRunResponse;
 };
 
-export type TimetreeResponse = TimetreeResponses[keyof TimetreeResponses];
+export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
+
+export type RunsEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Sequence number of the first event to send; the `Last-Event-ID` header of a reconnect resumes after that event
+         */
+        from?: number;
+    };
+    url: '/api/runs/{id}/events';
+};
+
+export type RunsEventsResponses = {
+    /**
+     * Stream of the run's events from `from`: `started`, `progress`, `log` and `iteration`, then one `terminal`
+     */
+    200: RunEvent;
+};
+
+export type RunsEventsResponse = RunsEventsResponses[keyof RunsEventsResponses];
+
+export type RunsFileData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * Path of the file relative to the run's `out/` folder
+         */
+        path: string;
+    };
+    url: '/api/runs/{id}/file';
+};
+
+export type RunsFileResponses = {
+    /**
+     * Contents of the file
+     */
+    200: Blob | File;
+};
+
+export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
+
+export type RunsFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/files';
+};
+
+export type RunsFilesResponses = {
+    /**
+     * Files in the run's `out/` folder, with their sizes and kinds
+     */
+    200: Array<RunFile>;
+};
+
+export type RunsFilesResponse = RunsFilesResponses[keyof RunsFilesResponses];
+
+export type RunsUploadInputData = {
+    body: Blob | File;
+    path: {
+        /**
+         * Id of a run that has not started
+         */
+        id: string;
+        /**
+         * File name inside the run's `inputs/` folder
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/inputs/{name}';
+};
+
+export type RunsUploadInputErrors = {
+    /**
+     * The inputs of the run exceed the upload limit of the server
+     */
+    413: ErrorResponse;
+};
+
+export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputErrors];
+
+export type RunsUploadInputResponses = {
+    /**
+     * The stored file and the path to use for it in the run's configuration
+     */
+    200: UploadedInput;
+};
+
+export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
+
+export type RunsPurgeData = {
+    body?: never;
+    path: {
+        /**
+         * Id of a deleted run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/purge';
+};
+
+export type RunsPurgeResponses = {
+    /**
+     * The deleted run is removed for good
+     */
+    204: void;
+};
+
+export type RunsPurgeResponse = RunsPurgeResponses[keyof RunsPurgeResponses];
+
+export type RunsRestoreData = {
+    body?: never;
+    path: {
+        /**
+         * Id of a deleted run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/restore';
+};
+
+export type RunsRestoreResponses = {
+    /**
+     * The run, back from the trash
+     */
+    200: RunSummary;
+};
+
+export type RunsRestoreResponse = RunsRestoreResponses[keyof RunsRestoreResponses];
+
+export type RunsStartData = {
+    body: StartRunRequest;
+    path: {
+        /**
+         * Id of the run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/start';
+};
+
+export type RunsStartResponses = {
+    /**
+     * The started run
+     */
+    200: RunRecord;
+};
+
+export type RunsStartResponse = RunsStartResponses[keyof RunsStartResponses];
 
 export type VersionData = {
     body?: never;

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod check_inputs;
 pub mod command;
 pub mod commands;
 pub mod config;
@@ -8,6 +9,7 @@ pub mod job;
 pub mod json_float;
 pub mod rtt_chart;
 mod rtt_chart_render;
+pub mod runs;
 
 #[cfg(test)]
 mod tests {

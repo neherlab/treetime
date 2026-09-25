@@ -4,5 +4,6 @@ pub mod load;
 pub mod properties;
 pub mod schema;
 pub mod schema_check;
+pub mod settings;
 pub mod source;
 pub mod suggest;

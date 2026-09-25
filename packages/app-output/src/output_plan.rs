@@ -235,7 +235,7 @@ impl CommandKind {
     &Self::available_tree_outputs() | &self.non_tree_outputs()
   }
 
-  fn default_outputs(self) -> BTreeSet<OutputSelection> {
+  pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
     let tree_defaults = if self == Self::Timetree {
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus, OutputSelection::Auspice]
     } else {

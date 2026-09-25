@@ -50,7 +50,12 @@ mod tests {
     let files_at_done = last.files.clone();
     assert!(!outcome.output_files.is_empty());
     assert_eq!(
-      outcome.output_files, files_at_done,
+      outcome
+        .output_files
+        .iter()
+        .map(|file| file.path.clone())
+        .collect::<Vec<_>>(),
+      files_at_done,
       "every output is written before Done"
     );
   }

@@ -25,8 +25,10 @@ treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }
 
 bon = { workspace = true }
+chrono = { workspace = true }
 clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
+csv = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
@@ -43,10 +45,13 @@ schemars = { workspace = true }
 serde = { workspace = true }
 serde-saphyr = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 smart-default = { workspace = true }
 strsim = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+tempfile = { workspace = true }
+zip = { workspace = true }
 
 [features]
 default = ["clap"]
@@ -62,7 +67,6 @@ indoc = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
-tempfile = { workspace = true }
 
 [lints]
 workspace = true

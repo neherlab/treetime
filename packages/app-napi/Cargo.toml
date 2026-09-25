@@ -25,12 +25,15 @@ eyre = { workspace = true }
 log = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
+strum = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }
 
 [dev-dependencies]
+app-output = { workspace = true }
 ctor = { workspace = true }
 parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }

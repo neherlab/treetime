@@ -1,13 +1,12 @@
 use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::translation_input_paths;
 use app_commands::config::properties::{PathRole, leaf_properties};
+use app_commands::config::settings::{setting_mut, setting_ref};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use treetime_utils::{make_error, make_report};
-
-const OUTPUT_ALL_KEY: &str = "output_all";
 
 #[derive(Clone, Debug)]
 pub(crate) struct PathPolicy {
@@ -28,7 +27,7 @@ impl PathPolicy {
     })
   }
 
-  pub(crate) fn confine(&self, command: AppCommand, config: &mut Value, output_dir: &Path) -> Result<(), Report> {
+  pub(crate) fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
     let Value::Object(settings) = config else {
       return make_error!("a command configuration must be a mapping of settings");
     };
@@ -36,13 +35,12 @@ impl PathPolicy {
 
     for leaf in &leaves {
       match leaf.path_role {
-        Some(PathRole::Output) => remove_setting(settings, &leaf.key_path),
         Some(PathRole::Input) => {
           if let Some(value) = setting_mut(settings, &leaf.key_path) {
             self.confine_value(&leaf.key_path.join("."), value)?;
           }
         },
-        Some(PathRole::InputTemplate) | None => {},
+        Some(PathRole::InputTemplate | PathRole::Output) | None => {},
       }
     }
 
@@ -53,10 +51,6 @@ impl PathPolicy {
       self.check_template(&leaf.key_path.join("."), settings, &leaf.key_path)?;
     }
 
-    settings.insert(
-      OUTPUT_ALL_KEY.to_owned(),
-      Value::String(output_dir.to_string_lossy().into_owned()),
-    );
     Ok(())
   }
 
@@ -83,7 +77,7 @@ impl PathPolicy {
     Ok(())
   }
 
-  fn confine_path(&self, setting: &str, path: &Path) -> Result<PathBuf, Report> {
+  pub(crate) fn confine_path(&self, setting: &str, path: &Path) -> Result<PathBuf, Report> {
     let joined = self.data_dir.join(path);
     let resolved = joined.canonicalize().map_err(|err| {
       make_report!(
@@ -135,31 +129,5 @@ fn canonical_dir(dir: &Path) -> Result<PathBuf, Report> {
     Ok(resolved)
   } else {
     make_error!("'{}' is not a directory", dir.display())
-  }
-}
-
-fn setting_mut<'a>(settings: &'a mut Map<String, Value>, key_path: &[String]) -> Option<&'a mut Value> {
-  let (first, rest) = key_path.split_first()?;
-  rest
-    .iter()
-    .try_fold(settings.get_mut(first)?, |value, key| value.get_mut(key))
-}
-
-fn setting_ref<'a>(settings: &'a Map<String, Value>, key_path: &[String]) -> Option<&'a Value> {
-  let (first, rest) = key_path.split_first()?;
-  rest.iter().try_fold(settings.get(first)?, |value, key| value.get(key))
-}
-
-fn remove_setting(settings: &mut Map<String, Value>, key_path: &[String]) {
-  let Some((last, parents)) = key_path.split_last() else {
-    return;
-  };
-  let parent = if parents.is_empty() {
-    Some(settings)
-  } else {
-    setting_mut(settings, parents).and_then(Value::as_object_mut)
-  };
-  if let Some(parent) = parent {
-    parent.remove(last);
   }
 }

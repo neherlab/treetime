@@ -11,7 +11,7 @@ use treetime_io::nwk::NwkStyle;
 
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
-    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema, strum_macros::EnumIter)]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
     pub enum $name {
       All,

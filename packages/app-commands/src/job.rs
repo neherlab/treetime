@@ -1,14 +1,10 @@
 use crate::command::{AppCommand, CommandOutcome};
 use crate::json_float::JsonFloat;
 use eyre::Report;
-use parking_lot::Mutex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, ProgressSink};
@@ -132,6 +128,8 @@ pub enum TerminalEvent {
   },
   /// The job stopped because cancellation was requested.
   Cancelled { job_id: JobId },
+  /// The job stopped because the process that ran it stopped.
+  Interrupted { job_id: JobId },
 }
 
 impl TerminalEvent {
@@ -162,19 +160,10 @@ impl TerminalEvent {
 
 pub fn run_job(
   job_id: &JobId,
-  command: AppCommand,
-  config: &Value,
-  prepare_config: &dyn Fn(&mut Value) -> Result<(), Report>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  work: impl FnOnce() -> Result<CommandOutcome, Report>,
 ) -> TerminalEvent {
-  let outcome = catch_unwind(AssertUnwindSafe(|| {
-    let mut config = config.clone();
-    prepare_config(&mut config)?;
-    let prepared = command.prepare_value(&config)?;
-    cancel.check()?;
-    prepared.args.run(cancel, progress)
-  }));
+  let outcome = catch_unwind(AssertUnwindSafe(work));
   match outcome {
     Ok(Ok(result)) => TerminalEvent::Ok {
       job_id: job_id.clone(),
@@ -197,57 +186,6 @@ impl CancelToken {
 impl Cancel for CancelToken {
   fn is_cancelled(&self) -> bool {
     self.0.load(Ordering::SeqCst)
-  }
-}
-
-#[derive(Debug, Default)]
-pub struct JobRegistry {
-  jobs: Mutex<BTreeMap<JobId, Arc<CancelToken>>>,
-}
-
-impl JobRegistry {
-  pub fn register(self: &Arc<Self>, job_id: JobId) -> Result<JobHandle, Report> {
-    let token = Arc::new(CancelToken::default());
-    let mut jobs = self.jobs.lock();
-    if jobs.contains_key(&job_id) {
-      return make_error!("a job with id `{}` is already running", job_id.as_str());
-    }
-    jobs.insert(job_id.clone(), Arc::clone(&token));
-    Ok(JobHandle {
-      registry: Arc::clone(self),
-      job_id,
-      token,
-    })
-  }
-
-  pub fn cancel(&self, job_id: &JobId) -> bool {
-    self.jobs.lock().get(job_id).is_some_and(|token| {
-      token.cancel();
-      true
-    })
-  }
-}
-
-#[derive(Debug)]
-pub struct JobHandle {
-  registry: Arc<JobRegistry>,
-  job_id: JobId,
-  token: Arc<CancelToken>,
-}
-
-impl JobHandle {
-  pub const fn job_id(&self) -> &JobId {
-    &self.job_id
-  }
-
-  pub fn token(&self) -> &CancelToken {
-    &self.token
-  }
-}
-
-impl Drop for JobHandle {
-  fn drop(&mut self) {
-    self.registry.jobs.lock().remove(&self.job_id);
   }
 }
 

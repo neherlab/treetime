@@ -8,25 +8,35 @@ use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgs
 use crate::commands::optimize::run::run_optimize;
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
+use crate::commands::shared::output_args::{
+  AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, OptimizeOutputSelection,
+  TimetreeOutputSelection,
+};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
 use crate::config::load::{check_command_config, load_config_document};
+use crate::config::properties::{PathRole, leaf_properties};
 use crate::config::schema::command_schema;
+use crate::config::settings::{remove_setting, setting_ref};
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig};
-use app_output::output_plan::ResolvedOutputs;
-use eyre::Report;
-use itertools::{Itertools, chain};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use schemars::{JsonSchema, Schema};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
+
+const CDS_PLACEHOLDER: &str = "{cds}";
 
 /// Analysis command that every client can run.
 #[derive(
@@ -71,25 +81,44 @@ impl AppCommand {
   }
 
   pub fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report> {
-    let source = ConfigSource::new(source_name, text);
-    match self {
-      Self::Timetree => prepare::<TreetimeTimetreeArgsRaw>(&source, text),
-      Self::Optimize => prepare::<TreetimeOptimizeArgsRaw>(&source, text),
-      Self::Prune => prepare::<TreetimePruneArgsRaw>(&source, text),
-      Self::Ancestral => prepare::<TreetimeAncestralArgsRaw>(&source, text),
-      Self::Clock => prepare::<TreetimeClockArgsRaw>(&source, text),
-      Self::Mugration => prepare::<TreetimeMugrationArgsRaw>(&source, text),
-    }
+    self.prepare_source(source_name, text, None)
   }
 
   pub fn prepare_value(self, config: &Value) -> Result<PreparedCommand, Report> {
     let text = json_write_str(config, JsonPretty(true))?;
     self.prepare_text("config.json", &text)
   }
+
+  pub fn prepare_run(self, config: &Value, out_dir: &Path) -> Result<PreparedCommand, Report> {
+    let mut config = config.clone();
+    let Value::Object(settings) = &mut config else {
+      return make_error!("a command configuration must be a mapping of settings");
+    };
+    for leaf in leaf_properties(self.config_schema().as_value())? {
+      if leaf.path_role == Some(PathRole::Output) {
+        remove_setting(settings, &leaf.key_path);
+      }
+    }
+    let text = json_write_str(&config, JsonPretty(true))?;
+    self.prepare_source("config.json", &text, Some(out_dir))
+  }
+
+  fn prepare_source(self, source_name: &str, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {
+    let source = ConfigSource::new(source_name, text);
+    match self {
+      Self::Timetree => prepare::<TreetimeTimetreeArgsRaw>(&source, text, run_out),
+      Self::Optimize => prepare::<TreetimeOptimizeArgsRaw>(&source, text, run_out),
+      Self::Prune => prepare::<TreetimePruneArgsRaw>(&source, text, run_out),
+      Self::Ancestral => prepare::<TreetimeAncestralArgsRaw>(&source, text, run_out),
+      Self::Clock => prepare::<TreetimeClockArgsRaw>(&source, text, run_out),
+      Self::Mugration => prepare::<TreetimeMugrationArgsRaw>(&source, text, run_out),
+    }
+  }
 }
 
 pub struct PreparedCommand {
   pub config: Map<String, Value>,
+  pub changed_settings: Vec<String>,
   pub args: CommandArgs,
 }
 
@@ -143,7 +172,7 @@ impl CommandArgs {
     };
     Ok(CommandOutcome {
       command: self.command(),
-      output_files: written_files(&outputs),
+      output_files: written_files(&outputs)?,
     })
   }
 }
@@ -154,7 +183,16 @@ pub struct CommandOutcome {
   /// Command that ran.
   pub command: AppCommand,
   /// Files of the command's output plan that exist after the run, sorted by path.
-  pub output_files: Vec<PathBuf>,
+  pub output_files: Vec<OutputFile>,
+}
+
+/// One file a command wrote.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+pub struct OutputFile {
+  /// Path of the file.
+  pub path: PathBuf,
+  /// Output selection that produced the file.
+  pub kind: OutputSelection,
 }
 
 /// Outcome of checking a configuration without running it.
@@ -207,46 +245,169 @@ trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone {
   type Args: TryFrom<Self, Error = Report>;
 
   fn wrap(args: Self::Args) -> CommandArgs;
+
+  fn set_run_outputs(&mut self, out_dir: &Path);
 }
 
 macro_rules! impl_raw_config {
-  ($raw:ty, $args:ty, $variant:ident) => {
+  ($raw:ty, $args:ty, $variant:ident, $kind:ident, [$($required:expr),* $(,)?]) => {
     impl RawConfig for $raw {
       type Args = $args;
 
       fn wrap(args: Self::Args) -> CommandArgs {
         CommandArgs::$variant(Box::new(args))
       }
+
+      fn set_run_outputs(&mut self, out_dir: &Path) {
+        self.output.output_all = Some(out_dir.to_path_buf());
+        self.output_selection = run_output_selection(CommandKind::$kind, &self.output_selection, &[$($required),*]);
+      }
     }
   };
 }
 
-impl_raw_config!(TreetimeTimetreeArgsRaw, TreetimeTimetreeArgs, Timetree);
-impl_raw_config!(TreetimeOptimizeArgsRaw, TreetimeOptimizeArgs, Optimize);
-impl_raw_config!(TreetimePruneArgsRaw, TreetimePruneArgs, Prune);
-impl_raw_config!(TreetimeAncestralArgsRaw, TreetimeAncestralArgs, Ancestral);
-impl_raw_config!(TreetimeClockArgsRaw, TreetimeClockArgs, Clock);
-impl_raw_config!(TreetimeMugrationArgsRaw, TreetimeMugrationArgs, Mugration);
+impl_raw_config!(
+  TreetimeTimetreeArgsRaw,
+  TreetimeTimetreeArgs,
+  Timetree,
+  Timetree,
+  [TimetreeOutputSelection::Auspice, TimetreeOutputSelection::Tracelog,]
+);
+impl_raw_config!(
+  TreetimeOptimizeArgsRaw,
+  TreetimeOptimizeArgs,
+  Optimize,
+  Optimize,
+  [OptimizeOutputSelection::Auspice]
+);
+impl_raw_config!(TreetimePruneArgsRaw, TreetimePruneArgs, Prune, Prune, []);
+impl_raw_config!(
+  TreetimeAncestralArgsRaw,
+  TreetimeAncestralArgs,
+  Ancestral,
+  Ancestral,
+  [AncestralOutputSelection::Auspice]
+);
+impl_raw_config!(
+  TreetimeClockArgsRaw,
+  TreetimeClockArgs,
+  Clock,
+  Clock,
+  [ClockOutputSelection::Auspice]
+);
+impl_raw_config!(
+  TreetimeMugrationArgsRaw,
+  TreetimeMugrationArgs,
+  Mugration,
+  Mugration,
+  [MugrationOutputSelection::Auspice]
+);
 
-fn prepare<R: RawConfig>(source: &ConfigSource, text: &str) -> Result<PreparedCommand, Report> {
+fn prepare<R: RawConfig>(source: &ConfigSource, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {
+  let schema = command_schema::<R>();
   let merged = load_config_document::<R>(source, text)?;
-  check_command_config(source, &merged, &command_schema::<R>())?;
-  let raw: R = serde_json::from_value(merged)?;
-  let Value::Object(config) = serde_json::to_value(&raw)? else {
-    return make_error!("a command configuration must serialize to a mapping of settings");
-  };
+  check_command_config(source, &merged, &schema)?;
+  let mut raw: R = serde_json::from_value(merged)?;
+  let mut defaults = R::default();
+  if let Some(out_dir) = run_out {
+    raw.set_run_outputs(out_dir);
+    defaults.set_run_outputs(out_dir);
+  }
+  let config = settings_map(&raw)?;
+  let changed_settings = changed_settings(&config, &settings_map(&defaults)?, schema.as_value())?;
   let args = R::Args::try_from(raw)?;
   Ok(PreparedCommand {
     config,
+    changed_settings,
     args: R::wrap(args),
   })
 }
 
-fn written_files(outputs: &ResolvedOutputs) -> Vec<PathBuf> {
-  chain!(outputs.tree_outputs.values(), outputs.non_tree_outputs.values())
-    .filter(|path| path.is_file())
-    .cloned()
-    .sorted()
-    .dedup()
-    .collect()
+fn settings_map<R: Serialize>(raw: &R) -> Result<Map<String, Value>, Report> {
+  match serde_json::to_value(raw)? {
+    Value::Object(settings) => Ok(settings),
+    _ => make_error!("a command configuration must serialize to a mapping of settings"),
+  }
+}
+
+fn changed_settings(
+  config: &Map<String, Value>,
+  defaults: &Map<String, Value>,
+  schema: &Value,
+) -> Result<Vec<String>, Report> {
+  Ok(
+    leaf_properties(schema)?
+      .into_iter()
+      .filter(|leaf| leaf.path_role.is_none())
+      .filter(|leaf| setting_ref(config, &leaf.key_path) != setting_ref(defaults, &leaf.key_path))
+      .map(|leaf| leaf.key_path.join("."))
+      .collect(),
+  )
+}
+
+fn run_output_selection<S: Copy + PartialEq + Into<OutputSelection> + IntoEnumIterator>(
+  command: CommandKind,
+  chosen: &[S],
+  required: &[S],
+) -> Vec<S> {
+  let chosen = if chosen.is_empty() {
+    let defaults = command.default_outputs();
+    S::iter()
+      .filter(|selection| defaults.contains(&(*selection).into()))
+      .collect_vec()
+  } else {
+    chosen.to_vec()
+  };
+  if chosen
+    .iter()
+    .any(|selection| (*selection).into() == OutputSelection::All)
+  {
+    return chosen;
+  }
+  let missing = required
+    .iter()
+    .filter(|selection| !chosen.contains(selection))
+    .copied()
+    .collect_vec();
+  [chosen, missing].concat()
+}
+
+fn written_files(outputs: &ResolvedOutputs) -> Result<Vec<OutputFile>, Report> {
+  let mut files = vec![];
+  for (kind, paths) in outputs.paths_by_selection() {
+    for path in paths {
+      files.extend(existing_files(&path)?.into_iter().map(|path| OutputFile { path, kind }));
+    }
+  }
+  Ok(files.into_iter().sorted().dedup_by(|a, b| a.path == b.path).collect())
+}
+
+fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
+  let name = planned
+    .file_name()
+    .map(|name| name.to_string_lossy().into_owned())
+    .unwrap_or_default();
+  let Some((prefix, suffix)) = name.split_once(CDS_PLACEHOLDER) else {
+    return Ok(if planned.is_file() {
+      vec![planned.to_path_buf()]
+    } else {
+      vec![]
+    });
+  };
+  let dir = planned.parent().unwrap_or_else(|| Path::new("."));
+  if !dir.is_dir() {
+    return Ok(vec![]);
+  }
+  let mut files = vec![];
+  for entry in fs::read_dir(dir).wrap_err_with(|| format!("When listing the outputs in '{}'", dir.display()))? {
+    let path = entry?.path();
+    let matches = path.file_name().is_some_and(|file| {
+      let file = file.to_string_lossy();
+      file.len() > prefix.len() + suffix.len() && file.starts_with(prefix) && file.ends_with(suffix)
+    });
+    if matches && path.is_file() {
+      files.push(path);
+    }
+  }
+  Ok(files)
 }

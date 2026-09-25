@@ -2,7 +2,7 @@
 mod __tests__;
 
 pub mod exports;
-pub mod jobs;
+pub mod runs;
 
 #[cfg(test)]
 mod tests {

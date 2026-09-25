@@ -4,9 +4,9 @@ mod __tests__;
 mod confine;
 pub mod contract;
 mod error;
+mod events;
 mod openapi;
 pub mod routes;
-mod sse;
 pub mod state;
 
 use crate::state::{AppState, ServerConfig};
