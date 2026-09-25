@@ -12,7 +12,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -46,11 +46,16 @@ impl PartitionMarginalSparse {
     }
   }
 
+  pub fn edge_fitch_mutations(&self, edge_key: GraphEdgeKey, track: &MutationTrack) -> Result<Vec<Mutation>, Report> {
+    let edge = &self.obs_edges[&edge_key];
+    combine_edge_mutations(edge.fitch_subs().to_vec(), &edge.indels, track)
+  }
+
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
     self.obs_edges[&edge_key].indels.clone()
   }
 
-  pub(crate) fn root_sequence(&self) -> Seq {
+  pub fn root_sequence(&self) -> Seq {
     self.root_sequence.clone()
   }
 

@@ -9,9 +9,9 @@ use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_error;
+use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::MutationTrack;
@@ -170,11 +170,11 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-fn gather_prune_output_maps(graph: &Graph, partitions: &[SparseReconstruction]) -> Result<PruneOutputMaps, Report> {
+fn gather_prune_output_maps(graph: &Graph, partitions: &[PartitionMarginalSparse]) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
-  let root_sequence = Some(partition.root_sequence(graph)?);
+  let root_sequence = Some(partition.root_sequence());
   let mut edge_mutations = BTreeMap::new();
   let root_key = graph
     .get_exactly_one_root()
@@ -186,7 +186,7 @@ fn gather_prune_output_maps(graph: &Graph, partitions: &[SparseReconstruction]) 
     for (child_key, edge_key) in graph.children_keys_of(node) {
       edge_mutations.insert(
         edge_key,
-        partition.edge_mutations(edge_key, &MutationTrack::Nucleotide)?,
+        partition.edge_fitch_mutations(edge_key, &MutationTrack::Nucleotide)?,
       );
       queue.push_back(child_key);
     }

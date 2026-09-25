@@ -154,7 +154,7 @@ Usage lines show all output flags as optional (`[OPTIONS]`), but `output.rs:562`
 
 ### W2: `--output-selection` accepts values that the command rejects at runtime
 
-The macro still adds the full tree-format superset to every command, while a separate availability matrix rejects unsupported values later. For example, `prune --help` advertises Auspice and MAT selections that prune cannot produce. Per-file flags have the same drift when their writer is absent from the command matrix.
+The macro still adds the full tree-format superset to every command, while a separate availability matrix rejects unsupported values later. Per-file flags have the same drift when their writer is absent from the command matrix.
 
 Generate each command-specific parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
 

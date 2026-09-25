@@ -666,7 +666,6 @@ variant = "auspice-mat-outputs"
 datasets = ["flu/h3n2/20"]
 args = "--prune-empty"
 selection = "auspice,mat-pb,mat-json"
-fail = "kb/issues/M-prune-auspice-and-mat-outputs-internal-error.md"
 
 
 [[timetree]]
