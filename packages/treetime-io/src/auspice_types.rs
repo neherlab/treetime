@@ -1,5 +1,7 @@
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use serde_json::from_value;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -10,7 +12,7 @@ pub struct AuspiceGraphMeta {
   meta: AuspiceTreeMeta,
 
   #[serde(flatten)]
-  other: serde_json::Value,
+  other: Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -18,7 +20,7 @@ pub struct AuspiceTreeNodeAttrF64 {
   value: f64,
 
   #[serde(flatten)]
-  other: serde_json::Value,
+  other: Value,
 }
 
 impl AuspiceTreeNodeAttrF64 {}
@@ -52,7 +54,7 @@ pub struct AuspiceTreeData {
   pub root_sequence: Option<BTreeMap<String, String>>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
@@ -82,10 +84,10 @@ pub struct AuspiceTreeMeta {
   pub display_defaults: AuspiceDisplayDefaults,
 
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub geo_resolutions: Option<serde_json::Value>,
+  pub geo_resolutions: Option<Value>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,7 +104,7 @@ pub struct AuspiceColoring {
   pub scale: Vec<[String; 2]>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize, Eq, PartialEq, Debug)]
@@ -117,7 +119,7 @@ pub struct AuspiceDisplayDefaults {
   pub distance_measure: Option<String>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 impl AuspiceDisplayDefaults {
@@ -135,7 +137,7 @@ pub struct AuspiceGenomeAnnotations {
   pub cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -151,7 +153,7 @@ pub struct AuspiceGenomeAnnotationNuc {
   pub r#type: Option<String>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -187,7 +189,7 @@ pub enum Segments {
     segments: Vec<StartEnd>,
 
     #[serde(flatten)]
-    other: serde_json::Value,
+    other: Value,
   },
 }
 
@@ -197,7 +199,7 @@ pub struct StartEnd {
   pub end: isize,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -214,7 +216,7 @@ pub struct AuspiceTreeNode {
   pub children: Vec<AuspiceTreeNode>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
@@ -225,7 +227,7 @@ pub struct AuspiceTreeBranchAttrs {
   pub labels: Option<AuspiceTreeBranchAttrsLabels>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 impl AuspiceTreeBranchAttrs {
@@ -244,7 +246,7 @@ pub struct AuspiceTreeBranchAttrsLabels {
   pub clade: Option<String>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
@@ -271,7 +273,7 @@ pub struct AuspiceTreeNodeAttrs {
   pub division: Option<AuspiceTreeNodeAttr>,
 
   #[serde(flatten)]
-  pub other: serde_json::Value,
+  pub other: Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -279,14 +281,14 @@ pub struct AuspiceTreeNodeAttr {
   value: String,
 
   #[serde(flatten)]
-  other: serde_json::Value,
+  other: Value,
 }
 
 impl AuspiceTreeNodeAttr {
   pub fn new(value: &str) -> Self {
     Self {
       value: value.to_owned(),
-      other: serde_json::Value::default(),
+      other: Value::default(),
     }
   }
 
@@ -296,7 +298,7 @@ impl AuspiceTreeNodeAttr {
 
   pub fn state_confidence(&self) -> Result<Option<BTreeMap<String, f64>>, Report> {
     match self.other.get("confidence") {
-      Some(confidence @ serde_json::Value::Object(_)) => serde_json::from_value(confidence.clone())
+      Some(confidence @ Value::Object(_)) => from_value(confidence.clone())
         .map(Some)
         .wrap_err("When reading the state probabilities of a node attribute"),
       _ => Ok(None),
@@ -316,7 +318,7 @@ impl AuspiceTreeNodeAttrs {
         return self
           .other
           .get(key)
-          .map(|value| serde_json::from_value(value.clone()))
+          .map(|value| from_value(value.clone()))
           .transpose()
           .wrap_err_with(|| format!("When reading the node attribute `{key}`"));
       },

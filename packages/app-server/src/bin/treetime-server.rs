@@ -59,7 +59,7 @@ async fn main() -> eyre::Result<()> {
     max_upload_size: args.max_upload_size,
   };
 
-  let static_dir = env_var_optional(STATIC_DIR_ENV)?;
+  let static_dir = env_var_optional(STATIC_DIR_ENV)?.map(PathBuf::from);
 
   let addr = format!("{host}:{port}");
   let listener = tokio::net::TcpListener::bind(&addr)

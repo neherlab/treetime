@@ -2,8 +2,7 @@ import type { AppCommand, InputFactsResult, Parsed, SettingKey, zRunCheck } from
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import type { SettingSpec } from "../settings/catalog";
+import { COMMAND_SETTINGS, type SettingSpec } from "../settings/catalog";
 import { MAIN_SETTING_KEYS } from "../settings/commands";
 import { isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson, type JsonObject, type JsonValue } from "../settings/json";

@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Seek, Write};
 use std::path::{Component, Path, PathBuf};
+use zip::CompressionMethod;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -80,7 +81,7 @@ pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Repor
 
 pub fn write_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write + Seek) -> Result<(), Report> {
   let mut zip = ZipWriter::new(writer);
-  let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+  let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
   for path in walk_files(out_dir)? {
     let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
     zip

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
 /// Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
@@ -31,8 +32,7 @@ pub fn read_events(path: &Path, from: usize) -> Result<Vec<RunEvent>, Report> {
     .lines()
     .filter(|line| !line.trim().is_empty())
     .map(|line| {
-      serde_json::from_str::<RunEvent>(line)
-        .wrap_err_with(|| format!("When reading an event from '{}'", path.display()))
+      json_read_str::<RunEvent>(line).wrap_err_with(|| format!("When reading an event from '{}'", path.display()))
     })
     .filter(|event| event.as_ref().map_or(true, |event| event.seq >= from))
     .collect()
@@ -85,7 +85,7 @@ impl EventLog {
       time: Utc::now(),
       event,
     };
-    let line = format!("{}\n", serde_json::to_string(&event)?);
+    let line = format!("{}\n", json_write_str(&event, JsonPretty(false))?);
     state
       .file
       .write_all(line.as_bytes())

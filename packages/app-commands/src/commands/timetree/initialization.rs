@@ -57,7 +57,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, progress: &dyn Progre
       &args.metadata_id.metadata_delimiters,
       &args.metadata_id.metadata_id_columns,
       &None,
-      &args.date_column_args.date_column,
+      &args.date_column.date_column,
     )
     .wrap_err("When reading dates")?;
     load_date_constraints(&dates, &graph, &names, progress).wrap_err("Failed to load date constraints")?;

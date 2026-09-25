@@ -8,6 +8,7 @@ use app_output::output_plan::OutputSelection;
 use app_output::rtt::write_clock_regression_result_csv;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
+use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_regression::ClockVarianceParams;
@@ -17,19 +18,20 @@ use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::make_error;
 use treetime::make_report;
+use treetime::progress::ProgressSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::nwk_read_file;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
-  cancel: &dyn treetime::cancel::Cancel,
-  progress: &dyn treetime::progress::ProgressSink,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
 ) -> Result<ClockResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");

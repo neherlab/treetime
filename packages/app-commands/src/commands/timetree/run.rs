@@ -17,6 +17,7 @@ use eyre::{Report, WrapErr};
 use log::debug;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use treetime::cancel::Cancel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_state::ClockState;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
@@ -41,7 +42,7 @@ use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
-  cancel: &dyn treetime::cancel::Cancel,
+  cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeResult, Report> {
   cancel.check()?;

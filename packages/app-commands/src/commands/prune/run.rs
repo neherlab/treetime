@@ -10,9 +10,11 @@ use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use treetime::progress::ProgressSink;
 use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::MutationTrack;
@@ -28,8 +30,8 @@ use treetime_primitives::AlignmentRecord;
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
-  cancel: &dyn treetime::cancel::Cancel,
-  progress: &dyn treetime::progress::ProgressSink,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
 ) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
@@ -55,7 +57,7 @@ pub fn run_prune(
   };
 
   let node_names = parse_node_names(
-    args.prune_nodes_list.as_ref(),
+    args.prune_nodes_list.as_deref(),
     args.prune_nodes_list_delimiter,
     args.prune_nodes_list_file.as_ref(),
     args.prune_nodes_list_file_delimiter,
@@ -135,12 +137,12 @@ pub fn run_prune(
       },
       None if args.output_gtr.is_some() => {
         return make_error!(
-          "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln."
+          "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --alignment."
         );
       },
       None => progress_warn!(
         progress,
-        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --aln)"
+        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --alignment)"
       ),
     }
   }
@@ -190,25 +192,25 @@ fn gather_prune_output_maps(graph: &Graph, partitions: &[PartitionMarginalSparse
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   if args.prune_empty && args.alignment.alignment.is_empty() {
     return make_error!(
-      "The --prune-empty requires --aln. Without sequence data, it's not possible to determine which branches lack mutations."
+      "The --prune-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations."
     );
   }
 
   if args.merge_shared_mutations && args.alignment.alignment.is_empty() {
     return make_error!(
-      "The --merge-shared-mutations requires --aln. Without sequence data, it's not possible to determine which branches share mutations."
+      "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations."
     );
   }
 
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
 fn parse_node_names(
-  prune_nodes_list: Option<&String>,
+  prune_nodes_list: Option<&str>,
   prune_nodes_list_delimiter: char,
   prune_nodes_list_file: Option<&PathBuf>,
   prune_nodes_list_file_delimiter: char,

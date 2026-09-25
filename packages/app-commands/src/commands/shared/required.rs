@@ -1,14 +1,11 @@
 use eyre::Report;
+use itertools::Itertools;
 use treetime::make_report;
 
 #[cfg(feature = "clap")]
 pub fn missing_required_args<C: clap::CommandFactory>(missing_ids: &[&str]) -> Report {
   let command = C::command();
-  let list = missing_ids
-    .iter()
-    .map(|id| required_flag(&command, id))
-    .collect::<Vec<_>>()
-    .join("\n  ");
+  let list = missing_ids.iter().map(|id| required_flag(&command, id)).join("\n  ");
   make_report!("the following required arguments were not provided:\n  {list}")
 }
 

@@ -1,5 +1,6 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
+use app_commands::commands::ancestral::aa_node_data::template_has_cds_placeholder;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
@@ -12,8 +13,6 @@ use std::str::FromStr;
 use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
-
-const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
 pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
   let interp = Interpolator::default();
@@ -286,8 +285,7 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
 }
 
 pub(crate) fn is_template_path(path: &Path) -> bool {
-  let path = path.to_string_lossy();
-  CDS_PLACEHOLDERS.iter().any(|placeholder| path.contains(placeholder))
+  template_has_cds_placeholder(&path.to_string_lossy())
 }
 
 fn step_error(step: &str, err: &Report) -> Report {

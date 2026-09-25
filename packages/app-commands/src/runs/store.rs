@@ -14,7 +14,7 @@ use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 use treetime_schema::version_info;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
 const RUN_FILE: &str = "run.json";
 const EVENTS_FILE: &str = "events.jsonl";
@@ -200,5 +200,5 @@ fn read_record(path: &Path, id: &JobId) -> Result<RunRecord, Report> {
     },
     Err(err) => return Err(Report::new(err).wrap_err(format!("When reading '{}'", path.display()))),
   };
-  serde_json::from_str(&text).wrap_err_with(|| format!("When reading the run record '{}'", path.display()))
+  json_read_str(&text).wrap_err_with(|| format!("When reading the run record '{}'", path.display()))
 }

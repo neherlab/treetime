@@ -7,9 +7,11 @@ use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use std::collections::BTreeMap;
+use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+use treetime::progress::ProgressSink;
 use treetime::progress_info;
 use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
@@ -19,8 +21,8 @@ use treetime_utils::io::file::write_file_or_stdout;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
-  cancel: &dyn treetime::cancel::Cancel,
-  progress: &dyn treetime::progress::ProgressSink,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
 ) -> Result<MugrationResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");

@@ -10,8 +10,10 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::ProgressSink;
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::node_seq_inputs;
+use eyre::eyre;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -28,12 +30,12 @@ pub fn run(
   cancel.check()?;
 
   let mut names = names.clone();
-  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
+  let mut branch_lengths = take(&mut input.branch_lengths);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, gtr) = if needs_sequences {
-    let sequences = std::mem::take(&mut input.sequences).ok_or_else(|| {
-      OperationError::InvalidInput(eyre::eyre!(
+    let sequences = take(&mut input.sequences).ok_or_else(|| {
+      OperationError::InvalidInput(eyre!(
         "Sequences required for --prune-empty or --merge-shared-mutations"
       ))
     })?;

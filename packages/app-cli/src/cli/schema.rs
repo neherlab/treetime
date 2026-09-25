@@ -8,6 +8,7 @@ use log::info;
 use schemars::Schema;
 use schemars::transform::{Transform, transform_subschemas};
 use serde_json::{Value, json};
+use std::fs::{create_dir_all, write};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use treetime_schema::TreetimeSchemaFormat;
@@ -131,9 +132,9 @@ fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
       .wrap_err("When writing the JSON schema to standard output")?;
   } else {
     if let Some(parent) = output.parent() {
-      std::fs::create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
+      create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
     }
-    std::fs::write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
+    write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
     info!("Wrote JSON schema to '{}'", output.display());
   }
   Ok(())

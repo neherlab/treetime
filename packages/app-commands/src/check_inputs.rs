@@ -283,7 +283,7 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
   let metadata = request
     .metadata
     .as_deref()
-    .map(|path| read_metadata(path, &delimiters, &id_candidates, request.date_column.as_ref()))
+    .map(|path| read_metadata(path, &delimiters, &id_candidates, request.date_column.as_deref()))
     .transpose()
     .unwrap_or_else(|report| {
       problem(InputKind::Metadata, &report);
@@ -348,9 +348,9 @@ fn read_metadata(
   path: &Path,
   delimiters: &[char],
   id_candidates: &[String],
-  date_column: Option<&String>,
+  date_column: Option<&str>,
 ) -> Result<MetadataRead, Report> {
-  read_metadata_table(path, delimiters, id_candidates, &None, &date_column.cloned()).map(metadata_read)
+  read_metadata_table(path, delimiters, id_candidates, &None, &date_column.map(str::to_owned)).map(metadata_read)
 }
 
 pub(crate) fn metadata_read(table: MetadataTable) -> MetadataRead {

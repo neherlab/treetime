@@ -40,7 +40,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) vcf_reference: Option<PathBuf>,
   pub(crate) metadata: Option<PathBuf>,
   pub(crate) metadata_id: MetadataIdArgs,
-  pub(crate) date_column_args: DateColumnArgs,
+  pub(crate) date_column: DateColumnArgs,
   pub(crate) sequence_length: Option<usize>,
   pub(crate) clock_rate: Option<f64>,
   pub(crate) clock_std_dev: Option<f64>,
@@ -145,7 +145,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       vcf_reference: raw.vcf_reference,
       metadata: raw.metadata,
       metadata_id: raw.metadata_id,
-      date_column_args: raw.date_column_args,
+      date_column: raw.date_column,
       sequence_length: raw.sequence_length,
       clock_rate: raw.clock_rate,
       clock_std_dev: raw.clock_std_dev,
@@ -251,7 +251,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
-  pub date_column_args: DateColumnArgs,
+  pub date_column: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]

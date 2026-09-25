@@ -11,9 +11,11 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+use treetime::progress::ProgressSink;
 use treetime::progress_info;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::gap_fill::apply_gap_fill;
@@ -28,8 +30,8 @@ use treetime_primitives::{AlignmentRecord, Seq};
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
-  cancel: &dyn treetime::cancel::Cancel,
-  progress: &dyn treetime::progress::ProgressSink,
+  cancel: &dyn Cancel,
+  progress: &dyn ProgressSink,
 ) -> Result<OptimizeResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");

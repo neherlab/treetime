@@ -1,4 +1,5 @@
 use crate::check_inputs::{CommandInput, InputKind, InputNeed};
+use crate::commands::ancestral::aa_node_data::CDS_PLACEHOLDERS;
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
 use crate::commands::ancestral::run::run_ancestral_reconstruction;
 use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
@@ -42,8 +43,6 @@ use treetime::cancel::Cancel;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
-
-const CDS_PLACEHOLDER: &str = "{cds}";
 
 /// Analysis command that every client can run.
 #[derive(
@@ -429,7 +428,10 @@ fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
     .file_name()
     .map(|name| name.to_string_lossy().into_owned())
     .unwrap_or_default();
-  let Some((prefix, suffix)) = name.split_once(CDS_PLACEHOLDER) else {
+  let Some((prefix, suffix)) = CDS_PLACEHOLDERS
+    .iter()
+    .find_map(|placeholder| name.split_once(placeholder))
+  else {
     return Ok(if planned.is_file() {
       vec![planned.to_path_buf()]
     } else {

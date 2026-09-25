@@ -164,6 +164,26 @@ pub enum LadderizeArg {
   Descending,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
+pub enum TopologyOrderArg {
+  Keep,
+  #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
+  DescendantCount,
+  #[cfg_attr(feature = "clap", value(alias = "ladderize-reverse"))]
+  DescendantCountReverse,
+  Height,
+  HeightReverse,
+  Divergence,
+  DivergenceReverse,
+  Label,
+  #[cfg_attr(feature = "clap", value(alias = "alphabetical-reverse"))]
+  LabelReverse,
+  TargetOrder,
+  TargetOrderReverse,
+}
+
 impl From<TopologyOrderArg> for TopologyOrderPreset {
   fn from(value: TopologyOrderArg) -> Self {
     match value {
@@ -185,39 +205,10 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
-pub enum TopologyOrderArg {
-  Keep,
-  #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
-  DescendantCount,
-  #[cfg_attr(feature = "clap", value(alias = "ladderize-reverse"))]
-  DescendantCountReverse,
-  Height,
-  HeightReverse,
-  Divergence,
-  DivergenceReverse,
-  Label,
-  #[cfg_attr(feature = "clap", value(alias = "alphabetical-reverse"))]
-  LabelReverse,
-  TargetOrder,
-  TargetOrderReverse,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetSourceArg {
   Input,
   ReferenceTopology,
   List,
-}
-
-impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
-  fn from(value: TopologyOrderTargetAggregateArg) -> Self {
-    match value {
-      TopologyOrderTargetAggregateArg::Mean => Self::Mean,
-      TopologyOrderTargetAggregateArg::Median => Self::Median,
-    }
-  }
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -227,4 +218,13 @@ pub enum TopologyOrderTargetAggregateArg {
   #[default]
   Mean,
   Median,
+}
+
+impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
+  fn from(value: TopologyOrderTargetAggregateArg) -> Self {
+    match value {
+      TopologyOrderTargetAggregateArg::Mean => Self::Mean,
+      TopologyOrderTargetAggregateArg::Median => Self::Median,
+    }
+  }
 }

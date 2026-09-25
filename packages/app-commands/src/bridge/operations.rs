@@ -15,6 +15,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use treetime_schema::VersionInfo;
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 macro_rules! desktop_operations {
   ($(
@@ -49,7 +50,7 @@ macro_rules! desktop_operations {
 
       pub fn handle(self, backend: &impl DesktopBackend) -> Result<String, Report> {
         match self {
-          $(Self::$variant { $($arg),* } => Ok(serde_json::to_string(&backend.$method($($arg),*)?)?),)*
+          $(Self::$variant { $($arg),* } => json_write_str(&backend.$method($($arg),*)?, JsonPretty(false)),)*
         }
       }
     }

@@ -10,6 +10,8 @@ use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
+pub const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
+
 pub(crate) fn validate_aa_args(
   translations: Option<&str>,
   cdses: &[String],
@@ -61,8 +63,6 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
   Ok(())
 }
 
-const CDS_PLACEHOLDERS: &[&str] = &["{cds}", "%GENE"];
-
 pub fn translation_input_paths(
   template: &str,
   cdses: &[String],
@@ -88,7 +88,7 @@ pub(crate) fn selected_cdses(
   }
 }
 
-pub(crate) fn template_has_cds_placeholder(template: &str) -> bool {
+pub fn template_has_cds_placeholder(template: &str) -> bool {
   CDS_PLACEHOLDERS
     .iter()
     .any(|placeholder| template.contains(placeholder))

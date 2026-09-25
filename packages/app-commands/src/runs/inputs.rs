@@ -11,6 +11,7 @@ use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 const HASH_BUFFER_SIZE: usize = 1 << 16;
 
@@ -47,7 +48,7 @@ pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<H
       None => {},
     }
   }
-  let canonical = serde_json::to_string(&sorted_keys(&Value::Object(canonical)))?;
+  let canonical = json_write_str(&sorted_keys(&Value::Object(canonical)), JsonPretty(false))?;
   Ok(HashedInputs {
     inputs,
     config_hash: sha256_hex(canonical.as_bytes())?,

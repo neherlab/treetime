@@ -21,7 +21,9 @@ use crate::timetree::optimization::polytomy::resolve::{require_internal_node_tim
 use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use rand::RngCore;
 use std::collections::BTreeMap;
+use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -37,7 +39,7 @@ pub(crate) struct Refinement<'a> {
   pub branch_params: &'a BranchPointOptimizationParams,
   pub merger_rate: &'a PiecewiseConstantFn,
   pub prior: Option<&'a CoalescentModel>,
-  pub rng: &'a mut dyn rand::RngCore,
+  pub rng: &'a mut dyn RngCore,
   pub options: &'a RefinementOptions,
   pub constraints: &'a DateConstraints,
   pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
@@ -160,12 +162,12 @@ impl Refinement<'_> {
       self.progress,
       "Resolved polytomies, introduced {resolved_nodes} new nodes"
     );
-    *self.names = assign_node_names(std::mem::take(self.names), self.graph)?;
+    *self.names = assign_node_names(take(self.names), self.graph)?;
     node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
     require_internal_node_times(self.graph, &node_times).wrap_err("Failed to prepare tree after topology change")?;
     self.gammas = unit_gammas(self.graph);
     let graph = &*self.graph;
-    let partitions = std::mem::take(&mut self.partitions)
+    let partitions = take(&mut self.partitions)
       .into_iter()
       .map(|partition| partition.reconcile_topology(graph))
       .collect_vec();
@@ -194,8 +196,7 @@ impl Refinement<'_> {
         "Updating ancestral sequences via marginal reconstruction"
       );
       let branch_lengths = timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths);
-      (self.partitions, _) =
-        marginal_update_timetree(self.graph, &branch_lengths, std::mem::take(&mut self.partitions))?;
+      (self.partitions, _) = marginal_update_timetree(self.graph, &branch_lengths, take(&mut self.partitions))?;
     }
 
     if topology_changed {
@@ -257,7 +258,7 @@ impl Refinement<'_> {
     let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       self.graph,
       &mut clock_inputs,
-      std::mem::take(self.clock_state),
+      take(self.clock_state),
       self.clock_params,
       self.options.clock_rate,
       true,

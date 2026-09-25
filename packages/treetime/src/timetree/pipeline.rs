@@ -37,9 +37,9 @@ use crate::timetree::coalescent::CoalescentOutput;
 use crate::timetree::coalescent_timescale::{
   CoalescentMode, build_coalescent_output, coalescent_mode, coalescent_timescale,
 };
-use crate::timetree::confidence::RateSusceptibility;
 use crate::timetree::confidence::{
-  NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
+  NodeConfidenceInterval, RateSusceptibility, compute_rate_susceptibility, determine_rate_std,
+  extract_confidence_intervals,
 };
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
