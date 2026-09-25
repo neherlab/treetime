@@ -50,6 +50,24 @@ describe("zod_schemas command configs", () => {
     expect(zTimetreeConfig.safeParse({ tree: "t.nwk", relax: [1, 0.5], max_iter: 4, seed: 7 }).success).toBe(true);
   });
 
+  test.each([
+    { name: "TimetreeConfig", parse: (value: unknown) => zTimetreeConfig.parse(value).seed },
+    { name: "AncestralConfig", parse: (value: unknown) => zAncestralConfig.parse(value).seed },
+    { name: "ClockConfig", parse: (value: unknown) => zClockConfig.parse(value).seed },
+    { name: "MugrationConfig", parse: (value: unknown) => zMugrationConfig.parse(value).seed },
+  ])("$name parses the 64-bit seed as a number that JSON can send", ({ parse }) => {
+    const seed = parse({ seed: 42 });
+    expect(JSON.stringify({ seed })).toBe('{"seed":42}');
+  });
+
+  test("timetree config rejects a seed beyond the largest exact JSON integer", () => {
+    expect(zTimetreeConfig.safeParse({ seed: Number.MAX_SAFE_INTEGER + 2 }).success).toBe(false);
+  });
+
+  test("timetree config rejects a negative seed", () => {
+    expect(zTimetreeConfig.safeParse({ seed: -1 }).success).toBe(false);
+  });
+
   test("clock config accepts nested branch split settings", () => {
     expect(zClockConfig.safeParse({ branch_split: { method: "brent", brent_max_iters: 20 } }).success).toBe(true);
   });
