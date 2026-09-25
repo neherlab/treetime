@@ -1,22 +1,37 @@
+use crate::config::catalog::{SettingRole, command_settings};
 use crate::job::JobId;
 use crate::results::clades::matched_ancestors;
 use crate::results::run_results::{CommandResults, RunResults, run_results};
 use crate::results::timetree::TimetreeEstimates;
 use crate::results::tree::ResultTree;
 use crate::runs::manager::RunManager;
-use crate::runs::record::RunStatus;
+use crate::runs::record::{RunRecord, RunStatus};
+use crate::runs::setting_differences::{SettingDifference, setting_differences};
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
-/// Comparison of the results of two runs.
+/// Comparison of two runs: their settings and their results.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RunComparison {
+  /// Settings and inputs that differ; absent when the runs execute different commands.
+  pub settings: Option<SettingsComparison>,
   /// Estimates side by side; present when both runs are finished time-tree runs with a tree.
   pub estimates: Option<EstimateComparison>,
   /// Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
   pub ancestors: Option<AncestorComparison>,
+}
+
+/// Settings and inputs that differ between two runs of the same command.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SettingsComparison {
+  /// Settings and inputs whose values differ.
+  pub differences: Vec<SettingDifference>,
+  /// Number of settings and inputs compared.
+  pub compared: usize,
+  /// Whether both runs have the same configuration hash: the same settings on the same input contents.
+  pub same_config_hash: bool,
 }
 
 /// Estimates of two time-tree runs and their differences, second minus first.
@@ -63,24 +78,41 @@ pub struct AncestorShift {
 }
 
 pub fn compare_runs(manager: &RunManager, first: &JobId, second: &JobId) -> Result<RunComparison, Report> {
-  let finished_timetree = |id: &JobId| -> Result<Option<RunResults>, Report> {
-    let record = manager.get(id)?;
-    if record.status == RunStatus::Ok {
-      run_results(manager, id).map(Some)
-    } else {
-      Ok(None)
-    }
-  };
-  match (finished_timetree(first)?, finished_timetree(second)?) {
-    (Some(first), Some(second)) => Ok(compare_results(&first, &second)),
-    _ => Ok(RunComparison {
+  let first_record = manager.get(first)?;
+  let second_record = manager.get(second)?;
+  let settings = compare_settings(&first_record, &second_record)?;
+  if first_record.status == RunStatus::Ok && second_record.status == RunStatus::Ok {
+    Ok(compare_results(
+      &run_results(manager, first)?,
+      &run_results(manager, second)?,
+      settings,
+    ))
+  } else {
+    Ok(RunComparison {
+      settings,
       estimates: None,
       ancestors: None,
-    }),
+    })
   }
 }
 
-pub fn compare_results(first: &RunResults, second: &RunResults) -> RunComparison {
+fn compare_settings(first: &RunRecord, second: &RunRecord) -> Result<Option<SettingsComparison>, Report> {
+  if first.command != second.command {
+    return Ok(None);
+  }
+  let compared = command_settings(first.command)?
+    .settings
+    .iter()
+    .filter(|spec| spec.role != SettingRole::Output)
+    .count();
+  Ok(Some(SettingsComparison {
+    differences: setting_differences(first, second)?,
+    compared,
+    same_config_hash: first.config_hash.is_some() && first.config_hash == second.config_hash,
+  }))
+}
+
+fn compare_results(first: &RunResults, second: &RunResults, settings: Option<SettingsComparison>) -> RunComparison {
   let estimates = match (&first.results, &second.results) {
     (CommandResults::Timetree(a), CommandResults::Timetree(b)) => a.estimates.clone().zip(b.estimates.clone()),
     _ => None,
@@ -90,6 +122,7 @@ pub fn compare_results(first: &RunResults, second: &RunResults) -> RunComparison
     (CommandResults::Timetree(_), CommandResults::Timetree(_))
   );
   RunComparison {
+    settings,
     ancestors: first
       .tree
       .as_ref()

@@ -8,6 +8,7 @@ mod tests {
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
+  use crate::runs::setting_differences::SettingDifference;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
   use helpers::{finished_run, zika};
@@ -17,6 +18,7 @@ mod tests {
   use tempfile::tempdir;
   use treetime::clock::clock_model::ClockModel;
   use treetime::clock::rtt::ClockDateSource;
+  use treetime::o;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::json_read_file;
 
@@ -183,8 +185,13 @@ mod tests {
 
     let comparison = compare_runs(&runs, &id, &id)?;
 
+    let settings = comparison.settings.expect("both runs execute the same command");
     let estimates = comparison.estimates.expect("both runs are time trees");
     let ancestors = comparison.ancestors.expect("both runs are time trees");
+    assert_eq!(
+      (true, true),
+      (settings.differences.is_empty(), settings.same_config_hash)
+    );
     assert_eq!(
       (Some(0.0), Some(0.0), 0, ancestors.ancestors, true),
       (
@@ -194,6 +201,32 @@ mod tests {
         ancestors.shifts.len(),
         ancestors.shifts.iter().all(|shift| shift.shift_days == 0.0)
       )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_compare_runs_lists_the_settings_that_differ() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let first = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
+    let second = finished_run(&runs, AppCommand::Timetree, timetree_config(Some(1e-3)));
+
+    let settings = compare_runs(&runs, &first, &second)?
+      .settings
+      .expect("both runs execute the same command");
+
+    assert_eq!(
+      (
+        vec![SettingDifference::Setting {
+          key: o!("clock_rate"),
+          first: Value::Null,
+          second: json!(1e-3),
+        }],
+        false,
+        true,
+      ),
+      (settings.differences, settings.same_config_hash, settings.compared > 1)
     );
     Ok(())
   }
@@ -211,7 +244,10 @@ mod tests {
 
     let comparison = compare_runs(&runs, &timetree, &clock)?;
 
-    assert_eq!((None, None), (comparison.estimates, comparison.ancestors));
+    assert_eq!(
+      (None, None, None),
+      (comparison.settings, comparison.estimates, comparison.ancestors)
+    );
     Ok(())
   }
 

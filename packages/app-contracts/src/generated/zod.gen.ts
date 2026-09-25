@@ -1657,6 +1657,15 @@ export const zRunResults = z.object({
 });
 
 /**
+ * Settings and inputs that differ between two runs of the same command.
+ */
+export const zSettingsComparison = z.object({
+    differences: z.array(zSettingDifference),
+    compared: z.int().gte(0),
+    same_config_hash: z.boolean()
+});
+
+/**
  * Estimates of two time-tree runs and their differences, second minus first.
  */
 export const zEstimateComparison = z.object({
@@ -1689,9 +1698,10 @@ export const zAncestorComparison = z.object({
 });
 
 /**
- * Comparison of the results of two runs.
+ * Comparison of two runs: their settings and their results.
  */
 export const zRunComparison = z.object({
+    settings: zSettingsComparison.nullish(),
     estimates: zEstimateComparison.nullish(),
     ancestors: zAncestorComparison.nullish()
 });

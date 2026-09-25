@@ -7073,6 +7073,34 @@
         ],
         "description": "Results of a finished run, read from its output files."
       },
+      "SettingsComparison": {
+        "type": "object",
+        "properties": {
+          "differences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingDifference"
+            },
+            "description": "Settings and inputs whose values differ."
+          },
+          "compared": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "description": "Number of settings and inputs compared."
+          },
+          "same_config_hash": {
+            "type": "boolean",
+            "description": "Whether both runs have the same configuration hash: the same settings on the same input contents."
+          }
+        },
+        "required": [
+          "differences",
+          "compared",
+          "same_config_hash"
+        ],
+        "description": "Settings and inputs that differ between two runs of the same command."
+      },
       "EstimateComparison": {
         "type": "object",
         "properties": {
@@ -7195,6 +7223,17 @@
       "RunComparison": {
         "type": "object",
         "properties": {
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SettingsComparison"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Settings and inputs that differ; absent when the runs execute different commands."
+          },
           "estimates": {
             "anyOf": [
               {
@@ -7218,7 +7257,7 @@
             "description": "Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree."
           }
         },
-        "description": "Comparison of the results of two runs."
+        "description": "Comparison of two runs: their settings and their results."
       },
       "CladeRequest": {
         "type": "object",

@@ -3852,6 +3852,24 @@ export type RunResults = {
 };
 
 /**
+ * Settings and inputs that differ between two runs of the same command.
+ */
+export type SettingsComparison = {
+    /**
+     * Settings and inputs whose values differ.
+     */
+    differences: Array<SettingDifference>;
+    /**
+     * Number of settings and inputs compared.
+     */
+    compared: number;
+    /**
+     * Whether both runs have the same configuration hash: the same settings on the same input contents.
+     */
+    same_config_hash: boolean;
+};
+
+/**
  * Estimates of two time-tree runs and their differences, second minus first.
  */
 export type EstimateComparison = {
@@ -3926,9 +3944,13 @@ export type AncestorShift = {
 };
 
 /**
- * Comparison of the results of two runs.
+ * Comparison of two runs: their settings and their results.
  */
 export type RunComparison = {
+    /**
+     * Settings and inputs that differ; absent when the runs execute different commands.
+     */
+    settings?: SettingsComparison | null;
     /**
      * Estimates side by side; present when both runs are finished time-tree runs with a tree.
      */
