@@ -1,11 +1,12 @@
 use app_commands::command::AppCommand;
-use app_commands::commands::ancestral::aa_node_data::translation_input_paths;
 use app_commands::config::properties::{PathRole, leaf_properties};
-use app_commands::config::settings::{setting_mut, setting_ref};
+use app_commands::config::settings::setting_mut;
+use app_commands::runs::inputs::template_input_paths;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
+use treetime_utils::io::fs::absolute_path;
 use treetime_utils::{make_error, make_report};
 
 #[derive(Clone, Debug)]
@@ -48,7 +49,7 @@ impl PathPolicy {
       .iter()
       .filter(|leaf| leaf.path_role == Some(PathRole::InputTemplate))
     {
-      self.check_template(&leaf.key_path.join("."), settings, &leaf.key_path)?;
+      self.confine_template(&leaf.key_path.join("."), settings, &leaf.key_path)?;
     }
 
     Ok(())
@@ -100,23 +101,25 @@ impl PathPolicy {
     }
   }
 
-  fn check_template(&self, setting: &str, settings: &Map<String, Value>, key_path: &[String]) -> Result<(), Report> {
-    let Some(Value::String(template)) = setting_ref(settings, key_path) else {
+  fn confine_template(
+    &self,
+    setting: &str,
+    settings: &mut Map<String, Value>,
+    key_path: &[String],
+  ) -> Result<(), Report> {
+    let Some(Value::String(template)) = setting_mut(settings, key_path) else {
       return Ok(());
     };
-    let cdses: Vec<String> = settings
-      .get("cdses")
-      .and_then(Value::as_array)
-      .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect())
-      .unwrap_or_default();
-    let annotation = settings.get("annotation").and_then(Value::as_str).map(Path::new);
-    let in_data_dir = self.data_dir.join(template);
-    let template = if Path::new(template).is_relative() && !in_data_dir.parent().is_some_and(Path::exists) {
-      template.clone()
+    let in_data_dir = self.data_dir.join(&*template);
+    *template = if Path::new(template).is_relative() && !in_data_dir.parent().is_some_and(Path::exists) {
+      absolute_path(&*template)?
     } else {
-      in_data_dir.to_string_lossy().into_owned()
-    };
-    let paths = translation_input_paths(&template, &cdses, annotation)
+      in_data_dir
+    }
+    .to_string_lossy()
+    .into_owned();
+
+    let paths = template_input_paths(settings, key_path)
       .wrap_err_with(|| format!("When listing the inputs of setting `{setting}`"))?;
     let rejected = paths
       .iter()

@@ -32,7 +32,7 @@ pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<H
         }
       },
       Some(PathRole::InputTemplate) => {
-        let paths = template_inputs(config, &leaf.key_path)?;
+        let paths = template_input_paths(config, &leaf.key_path)?;
         if let Some(value) = setting_mut(&mut canonical, &leaf.key_path) {
           let recorded: Vec<RunInput> = paths.iter().map(|path| record_input(&setting, path)).try_collect()?;
           *value = Value::Array(
@@ -110,7 +110,7 @@ fn record_input(setting: &str, path: &Path) -> Result<RunInput, Report> {
   })
 }
 
-fn template_inputs(config: &Map<String, Value>, key_path: &[String]) -> Result<Vec<PathBuf>, Report> {
+pub fn template_input_paths(config: &Map<String, Value>, key_path: &[String]) -> Result<Vec<PathBuf>, Report> {
   let Some(Value::String(template)) = setting_ref(config, key_path) else {
     return Ok(vec![]);
   };

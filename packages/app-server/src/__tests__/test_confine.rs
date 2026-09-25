@@ -5,6 +5,7 @@ mod tests {
   use helpers::{Dirs, dirs};
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::env::current_dir;
   use std::fs;
   use std::os::unix::fs::symlink;
   use std::path::Path;
@@ -169,6 +170,58 @@ mod tests {
       format!(
         "input `{}/sub/{escape}.nwk` of setting `translations` is outside the directories the server reads inputs from",
         data.path().canonicalize().unwrap().display()
+      )
+    );
+  }
+
+  #[test]
+  fn test_confine_translation_template_is_rewritten_to_the_checked_data_dir_location() {
+    let Dirs { data, .. } = dirs();
+    fs::create_dir_all(data.path().join("src")).unwrap();
+    fs::write(data.path().join("src/lib.rs"), ">a\nM\n").unwrap();
+    let policy = PathPolicy::new(data.path(), &[]).unwrap();
+    let mut config = json!({
+      "tree": "sub/tree.nwk",
+      "translations": "src/{cds}.rs",
+      "cdses": ["lib"],
+    });
+    policy.confine(AppCommand::Ancestral, &mut config).unwrap();
+    assert_eq!(
+      json!(data.path().canonicalize().unwrap().join("src/{cds}.rs")),
+      config["translations"]
+    );
+  }
+
+  #[test]
+  fn test_confine_translation_template_missing_from_data_dir_is_rewritten_to_the_working_directory() {
+    let Dirs { data, .. } = dirs();
+    let policy = PathPolicy::new(data.path(), &[Path::new("src").to_path_buf()]).unwrap();
+    let mut config = json!({
+      "tree": "sub/tree.nwk",
+      "translations": "src/{cds}.rs",
+      "cdses": ["lib"],
+    });
+    policy.confine(AppCommand::Ancestral, &mut config).unwrap();
+    assert_eq!(
+      json!(current_dir().unwrap().join("src/{cds}.rs")),
+      config["translations"]
+    );
+  }
+
+  #[test]
+  fn test_confine_translation_template_in_working_directory_outside_roots_is_rejected() {
+    let Dirs { data, .. } = dirs();
+    let policy = PathPolicy::new(data.path(), &[]).unwrap();
+    let mut config = json!({
+      "tree": "sub/tree.nwk",
+      "translations": "src/{cds}.rs",
+      "cdses": ["lib"],
+    });
+    assert_error!(
+      policy.confine(AppCommand::Ancestral, &mut config),
+      format!(
+        "input `{}` of setting `translations` is outside the directories the server reads inputs from",
+        current_dir().unwrap().join("src/lib.rs").display()
       )
     );
   }
