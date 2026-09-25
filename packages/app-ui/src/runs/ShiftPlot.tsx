@@ -15,11 +15,10 @@ import {
 
 import { formatSignedDays } from "../format";
 import type { AncestorShift } from "../results/types";
-import { PLATE, TICK_STYLE } from "./palette";
+import { ChartTooltip } from "./ChartTooltip";
+import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 const HEIGHT = 300;
-
-const MARGIN = { top: 8, right: 16, bottom: 24, left: 16 };
 
 const DATA_EXTENT = ["dataMin", "dataMax"];
 
@@ -33,7 +32,7 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
 
   return (
     <ResponsiveContainer width="100%" height={HEIGHT}>
-      <ScatterChart margin={MARGIN}>
+      <ScatterChart margin={PLOT_MARGIN}>
         <CartesianGrid stroke={PLATE.grid} />
         <XAxis type="number" dataKey="x" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
           <Label value={`Date in ${firstLabel}`} position="bottom" offset={4} {...TICK_STYLE} />
@@ -60,16 +59,12 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   const shift = parsed.data;
 
   return (
-    <div className="rounded-md border border-[#bfcbc7] bg-white px-2.5 py-1.5 text-xs text-[#16302b] shadow-sm">
+    <ChartTooltip>
       <div className="font-bold">
         {shift.name}, {shift.tips} samples
       </div>
       <div>Date {shift.date_first.date}</div>
       <div>Shift {formatSignedDays(shift.shift_days)}</div>
-    </div>
+    </ChartTooltip>
   );
-}
-
-function yearTick(value: number): string {
-  return value.toFixed(1);
 }

@@ -8,12 +8,11 @@ import { useConfigCheck } from "../queries";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { outputFreeConfig, settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
+import type { CodeFormat } from "../store/draftSchema";
 import { Button, Segmented, Switch, cn } from "../ui";
 import { Panel } from "./Panel";
 import { useCopy } from "./useCopy";
 import { useRerun } from "./useRerun";
-
-type CodeFormat = "cli" | "yaml";
 
 const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
   { value: "cli", label: "CLI" },

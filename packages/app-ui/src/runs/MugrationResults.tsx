@@ -1,13 +1,11 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
-import { formatDuration } from "../format";
 import type { AncestorState, MugrationData, StateChange } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
+import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
 import { SortableTable, type Column } from "./SortableTable";
-import { MissingTree } from "./TimetreeResults";
-import { TreeView, type TreeData } from "./TreeView";
+import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 const BRANCHES_SORT = { key: "branches", descending: true };
 
@@ -106,13 +104,7 @@ export function MugrationResults({
         value: root?.state ?? "-",
         detail: root === undefined ? undefined : `P = ${root.probability.toFixed(3)}`,
       },
-      {
-        label: "Run time",
-        value:
-          record.duration_seconds === null || record.duration_seconds === undefined
-            ? "-"
-            : formatDuration(record.duration_seconds),
-      },
+      runTimeEntry(record),
     ],
     [attribute, data, record, root, threshold, uncertain.length],
   );

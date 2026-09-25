@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import { Area, CartesianGrid, ComposedChart, Label, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { SkylineSegment } from "../results/types";
-import { PLATE, TICK_STYLE } from "./palette";
+import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 const HEIGHT = 220;
-
-const MARGIN = { top: 8, right: 16, bottom: 24, left: 16 };
 
 const DATA_EXTENT = ["dataMin", "dataMax"];
 
@@ -24,7 +22,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
 
   return (
     <ResponsiveContainer width="100%" height={HEIGHT}>
-      <ComposedChart data={data} margin={MARGIN}>
+      <ComposedChart data={data} margin={PLOT_MARGIN}>
         <CartesianGrid stroke={PLATE.grid} />
         <XAxis type="number" dataKey="t" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
           <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
@@ -58,8 +56,4 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
 
 function band(segment: SkylineSegment): [number, number] {
   return [segment.ne.lower ?? segment.ne.value, segment.ne.upper ?? segment.ne.value];
-}
-
-function yearTick(value: number): string {
-  return value.toFixed(1);
 }

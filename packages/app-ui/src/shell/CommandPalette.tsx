@@ -1,3 +1,4 @@
+import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -9,6 +10,7 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
+import { truncate, wordMatcher } from "../text";
 import { Dialog, Toast, cn } from "../ui";
 import { changedFlags, listedRuns } from "./runList";
 import { nextTheme } from "./TopBar";
@@ -48,18 +50,9 @@ function PaletteBody({ input, close }: { input: React.RefObject<HTMLInputElement
   const [active, setActive] = useState(0);
 
   const shown = useMemo(() => {
-    const words = query
-      .toLowerCase()
-      .split(/\s+/u)
-      .filter((word) => word !== "");
+    const matches = wordMatcher(query);
 
-    return items
-      .filter((item) => {
-        const haystack = `${item.kind} ${item.title} ${item.description}`.toLowerCase();
-
-        return words.every((word) => haystack.includes(word));
-      })
-      .slice(0, ITEMS_SHOWN);
+    return items.filter((item) => matches(`${item.kind} ${item.title} ${item.description}`)).slice(0, ITEMS_SHOWN);
   }, [items, query]);
 
   const choose = useCallback(
@@ -139,9 +132,7 @@ function PaletteEntry({
   const onMouseMove = useCallback(() => hover(index), [hover, index]);
 
   const description =
-    item.description.length > DESCRIPTION_LENGTH
-      ? `${item.description.slice(0, DESCRIPTION_LENGTH - 3)}...`
-      : item.description;
+    item.description.length > DESCRIPTION_LENGTH ? truncate(item.description, DESCRIPTION_LENGTH) : item.description;
 
   return (
     <li>
@@ -173,6 +164,21 @@ function usePaletteItems(): PaletteItem[] {
   const { theme, setTheme } = useTheme();
   const loadConfig = useConfigLoader();
   const toasts = Toast.useToastManager();
+
+  const loadExample = useCallback(
+    async (example: ExampleConfig) => {
+      try {
+        const result = await loadConfig(example.content, example.command, example.title, false);
+
+        if (!result.loaded) {
+          toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });
+        }
+      } catch (error: unknown) {
+        toasts.add({ title: `${example.path} cannot be loaded`, description: errorMessage(error) });
+      }
+    },
+    [loadConfig, toasts],
+  );
 
   return useMemo(() => {
     const items: PaletteItem[] = [
@@ -237,24 +243,12 @@ function usePaletteItems(): PaletteItem[] {
         kind: "Example",
         title: example.title,
         description: example.path,
-        run: () => {
-          loadConfig(example.content, example.command, example.title, false)
-            .then((result) => {
-              if (!result.loaded) {
-                toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });
-              }
-
-              return result;
-            })
-            .catch((error: Error) => {
-              toasts.add({ title: `${example.path} cannot be loaded`, description: error.message });
-            });
-        },
+        run: () => void loadExample(example),
       });
     }
 
     return items;
-  }, [catalog, command, compareIds, loadConfig, navigate, runList, setTheme, theme, toasts]);
+  }, [catalog, command, compareIds, loadExample, navigate, runList, setTheme, theme]);
 }
 
 function focusLater(id: string) {

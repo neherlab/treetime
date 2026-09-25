@@ -7,7 +7,8 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
 import { getAt, sameJson, zJsonObject, type JsonObject } from "../settings/json";
-import { useDraftStore, type InputSource } from "../store/draft";
+import { useDraftStore } from "../store/draft";
+import type { InputSource } from "../store/draftSchema";
 
 type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
 
@@ -35,13 +36,12 @@ export function useConfigLoader() {
       const config = normalizeConfig(specs, zJsonObject.parse(result.config));
       const sources: Record<string, InputSource> = {};
 
-      for (const spec of specs) {
+      for (const spec of specs.filter((candidate) => candidate.role === "input")) {
         const value = settingValue(config, spec);
-
         const paths = pathList(value);
         const previous = draft.sources[spec.key];
 
-        if (spec.role === "input" && paths.length > 0) {
+        if (paths.length > 0) {
           sources[spec.key] =
             previous !== undefined && sameJson(value, getAt(draft.config, spec.path))
               ? previous

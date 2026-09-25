@@ -20,7 +20,7 @@ export function sameJson(left: JsonValue | undefined, right: JsonValue | undefin
   return canonicalJson(left ?? null) === canonicalJson(right ?? null);
 }
 
-export function canonicalJson(value: JsonValue): string {
+function canonicalJson(value: JsonValue): string {
   return JSON.stringify(sortKeys(value));
 }
 
@@ -55,7 +55,7 @@ export function setAt(object: JsonObject, path: readonly string[], value: JsonVa
 }
 
 export function cloneJson(value: JsonValue): JsonValue {
-  return zJsonValue.parse(JSON.parse(JSON.stringify(value)));
+  return structuredClone(value);
 }
 
 function sortKeys(value: JsonValue): JsonValue {

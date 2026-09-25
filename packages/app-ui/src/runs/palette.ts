@@ -9,3 +9,9 @@ export const PLATE = {
 } as const;
 
 export const TICK_STYLE = { fontSize: 11, fill: PLATE.muted } as const;
+
+export const PLOT_MARGIN = { top: 8, right: 16, bottom: 24, left: 16 } as const;
+
+export function yearTick(value: number): string {
+  return value.toFixed(1);
+}

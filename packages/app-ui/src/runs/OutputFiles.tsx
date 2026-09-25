@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult } from "@neherlab/app-contracts";
 import { Download } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -34,7 +35,7 @@ export function OutputFiles({
     } catch (failure: unknown) {
       toasts.add({
         title: "The archive cannot be downloaded",
-        description: failure instanceof Error ? failure.message : "",
+        description: errorMessage(failure),
       });
     } finally {
       setBusy(false);
@@ -112,7 +113,7 @@ function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
     } catch (failure: unknown) {
       toasts.add({
         title: "The file cannot be downloaded",
-        description: failure instanceof Error ? failure.message : "",
+        description: errorMessage(failure),
       });
     }
   }, [bridge, file.path, runId, toasts]);

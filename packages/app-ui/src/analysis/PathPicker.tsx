@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -31,7 +32,7 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
     try {
       await actions.pick(settingKey, title, [...extensions], list);
     } catch (error: unknown) {
-      toasts.add({ title: `${title} cannot be added`, description: error instanceof Error ? error.message : "" });
+      toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
     }
   }, [actions, extensions, list, settingKey, title, toasts]);
 
@@ -51,7 +52,7 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
       try {
         await actions.addFile(settingKey, file, list);
       } catch (error: unknown) {
-        toasts.add({ title: `${title} cannot be added`, description: error instanceof Error ? error.message : "" });
+        toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
       } finally {
         setBusy(false);
         target.value = "";
@@ -92,6 +93,17 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
   const [over, setOver] = useState(false);
   const toasts = Toast.useToastManager();
 
+  const addDropped = useCallback(
+    async (file: File) => {
+      try {
+        await actions.addFile(settingKey, file, list);
+      } catch (error: unknown) {
+        toasts.add({ title: `${file.name} cannot be added`, description: errorMessage(error) });
+      }
+    },
+    [actions, list, settingKey, toasts],
+  );
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -108,12 +120,10 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
       const file = event.dataTransfer.files[0];
 
       if (file !== undefined) {
-        actions.addFile(settingKey, file, list).catch((error: Error) => {
-          toasts.add({ title: `${file.name} cannot be added`, description: error.message });
-        });
+        void addDropped(file);
       }
     },
-    [actions, list, settingKey, toasts],
+    [addDropped],
   );
 
   return { over, onDragOver, onDragLeave, onDrop };

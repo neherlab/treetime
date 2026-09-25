@@ -14,7 +14,8 @@ import {
 } from "recharts";
 import * as z from "zod";
 
-import { PLATE, TICK_STYLE } from "./palette";
+import { ChartTooltip } from "./ChartTooltip";
+import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 export interface RttPoint {
   name: string;
@@ -34,8 +35,6 @@ export interface RttLine {
 const HEIGHT = 300;
 
 const FADED_OPACITY = 0.18;
-
-const MARGIN = { top: 8, right: 16, bottom: 24, left: 16 };
 
 const DATA_EXTENT = ["dataMin", "dataMax"];
 
@@ -82,13 +81,13 @@ export function RootToTipPlot({
   return (
     <div>
       {line !== undefined && (
-        <p className="m-0 px-2 pb-1 text-xs text-[#4b5f5a]">
-          <span className="mr-1.5 inline-block h-0.5 w-4 bg-[#17695a] align-middle" />
+        <p className="text-plate-muted m-0 px-2 pb-1 text-xs">
+          <span className="bg-plate-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
           {line.label}
         </p>
       )}
       <ResponsiveContainer width="100%" height={HEIGHT}>
-        <ScatterChart margin={MARGIN}>
+        <ScatterChart margin={PLOT_MARGIN}>
           <CartesianGrid stroke={PLATE.grid} />
           <XAxis type="number" dataKey="date" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
             <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
@@ -198,13 +197,13 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   }
 
   return (
-    <div className="rounded-md border border-[#bfcbc7] bg-white px-2.5 py-1.5 text-xs text-[#16302b] shadow-sm">
+    <ChartTooltip>
       <div className="font-bold">{point.data.name}</div>
       <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
-      {point.data.excluded && <div className="text-[#b42318]">Excluded from the clock model</div>}
-    </div>
+      {point.data.excluded && <div className="text-plate-fault">Excluded from the clock model</div>}
+    </ChartTooltip>
   );
 }
 
@@ -221,10 +220,6 @@ function lineSegment(points: readonly RttPoint[], line: RttLine | undefined) {
     { x: from, y: line.slope * from + line.intercept },
     { x: to, y: line.slope * to + line.intercept },
   ] as const;
-}
-
-function yearTick(value: number): string {
-  return value.toFixed(1);
 }
 
 function divergenceTick(value: number): string {

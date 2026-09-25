@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -81,7 +82,7 @@ async function followEvents({
     });
   } catch (error) {
     if (!signal.aborted) {
-      const failure = error instanceof Error ? error.message : String(error);
+      const failure = errorMessage(error);
 
       update((current) => ({ id, value: { ...(current.id === id ? current.value : INITIAL_STATE), failure } }));
     }

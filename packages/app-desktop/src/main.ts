@@ -1,4 +1,5 @@
-import * as path from "path";
+import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { zPickFilesRequest } from "@neherlab/app-contracts";
 import {
@@ -50,7 +51,7 @@ const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 const appUrl =
   devServerUrl !== undefined && devServerUrl !== ""
     ? devServerUrl
-    : new URL(`file://${path.join(__dirname, "../dist/index.html")}`).href;
+    : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
 
 async function main(): Promise<void> {
   await app.whenReady();

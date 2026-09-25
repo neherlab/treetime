@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand } from "@neherlab/app-contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -38,7 +39,7 @@ export function useStartRun(command: AppCommand) {
       } catch (error: unknown) {
         toasts.add({
           title: "The run cannot be started",
-          description: error instanceof Error ? error.message : String(error),
+          description: errorMessage(error),
         });
       }
     },

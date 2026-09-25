@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import { useEffect } from "react";
 
 import { useConfigLoader } from "../analysis/useConfigLoader";
@@ -27,7 +28,7 @@ export function useYamlDrop() {
       } catch (error: unknown) {
         toasts.add({
           title: `${file.name} cannot be loaded`,
-          description: error instanceof Error ? error.message : "",
+          description: errorMessage(error),
         });
       }
     }

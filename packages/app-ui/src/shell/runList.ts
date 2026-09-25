@@ -5,6 +5,7 @@ import { dayLabel } from "../format";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { settingFlags } from "../settings/titles";
+import { wordMatcher } from "../text";
 
 interface RunGroup {
   label: string;
@@ -16,22 +17,14 @@ export function listedRuns(
   filter: string,
   command: AppCommand | null,
 ): RunSummaryResult[] {
-  const words = filter
-    .toLowerCase()
-    .split(/\s+/u)
-    .filter((word) => word !== "");
+  const matches = wordMatcher(filter);
 
-  return runs.filter((run) => {
-    if (run.status === "created" || (command !== null && run.command !== command)) {
-      return false;
-    }
-
-    const haystack = [run.title, run.command, COMMAND_INFO[run.command].label, ...changedFlags(run)]
-      .join(" ")
-      .toLowerCase();
-
-    return words.every((word) => haystack.includes(word));
-  });
+  return runs.filter(
+    (run) =>
+      run.status !== "created" &&
+      (command === null || run.command === command) &&
+      matches([run.title, run.command, COMMAND_INFO[run.command].label, ...changedFlags(run)].join(" ")),
+  );
 }
 
 export function groupRuns(runs: readonly RunSummaryResult[], now: DateTime): RunGroup[] {

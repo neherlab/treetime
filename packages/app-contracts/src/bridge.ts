@@ -366,19 +366,18 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
 }
 
 function commandOutcome(terminal: TerminalEventResult): CommandOutcomeResult {
-  if (terminal.status === "ok") {
-    return terminal.result;
+  switch (terminal.status) {
+    case "ok":
+      return terminal.result;
+    case "cancelled":
+      throw new CancelledError();
+    case "error":
+      throw new CommandError(terminal.job_id, terminal.message, terminal.causes);
+    case "interrupted":
+      throw new CommandError(terminal.job_id, "the run was interrupted because the process that ran it stopped", []);
+    default:
+      throw new Error(`unknown terminal status of ${JSON.stringify(terminal satisfies never)}`);
   }
-
-  if (terminal.status === "cancelled") {
-    throw new CancelledError();
-  }
-
-  if (terminal.status === "error") {
-    throw new CommandError(terminal.job_id, terminal.message, terminal.causes);
-  }
-
-  throw new CommandError(terminal.job_id, "the run was interrupted because the process that ran it stopped", []);
 }
 
 function dispatchEvent(event: RunEventResult, options: CommandOptions): void {
@@ -417,4 +416,8 @@ function logToConsole(log: LogEvent): void {
 
 export function parseRunEvent(data: unknown): RunEventResult {
   return zRunEvent.parse(data);
+}
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

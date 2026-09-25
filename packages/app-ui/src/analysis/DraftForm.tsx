@@ -88,8 +88,9 @@ export function DraftForm({ command }: { command: AppCommand }) {
     ),
   );
 
-  const submit = form.handleSubmit((values) =>
-    startRun(outputFreeConfig(specs, normalizeConfig(specs, values)), title),
+  const submit = useMemo(
+    () => form.handleSubmit((values) => startRun(outputFreeConfig(specs, normalizeConfig(specs, values)), title)),
+    [form, specs, startRun, title],
   );
 
   const onSubmit = useCallback((event: React.FormEvent) => void submit(event), [submit]);

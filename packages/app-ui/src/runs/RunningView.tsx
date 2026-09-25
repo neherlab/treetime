@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult } from "@neherlab/app-contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, LoaderCircle } from "lucide-react";
@@ -76,7 +77,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
       <RateTrace iterations={iterations} />
       <table className="mt-1.5 w-full border-collapse text-right text-xs tabular-nums">
         <thead>
-          <tr className="text-[#4b5f5a]">
+          <tr className="text-plate-muted">
             <th className="px-1.5 py-1 text-left font-normal">Iteration</th>
             <th className="px-1.5 py-1 font-normal">Rate</th>
             <th className="px-1.5 py-1 font-normal">max Δt</th>
@@ -86,7 +87,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
         </thead>
         <tbody>
           {iterations.map((point) => (
-            <tr key={point.iteration} className="border-t border-[#e3e9e7]">
+            <tr key={point.iteration} className="border-plate-grid border-t">
               <td className="px-1.5 py-0.5 text-left">{point.iteration}</td>
               <NumberCell value={point.clockRate} format={formatRate} />
               <NumberCell value={point.maxTimeChange} format={fixed4} />
@@ -102,13 +103,13 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
 
 function NumberCell({ value, format }: { value: number | undefined; format: (value: number) => string }) {
   if (value === undefined) {
-    return <td className="px-1.5 py-0.5 text-[#8a9a95]">-</td>;
+    return <td className="text-plate-faint px-1.5 py-0.5">-</td>;
   }
 
   return Number.isFinite(value) ? (
     <td className="px-1.5 py-0.5">{format(value)}</td>
   ) : (
-    <td className="px-1.5 py-0.5 font-bold text-[#b42318]" title="Not a finite number">
+    <td className="text-plate-fault px-1.5 py-0.5 font-bold" title="Not a finite number">
       {nonFiniteLabel(value)}
     </td>
   );
@@ -127,7 +128,7 @@ function CancelButton({ id }: { id: string }) {
       await bridge.cancelRun(id);
       await queryClient.invalidateQueries({ queryKey: RUNS_KEY });
     } catch (error: unknown) {
-      toasts.add({ title: "The run cannot be cancelled", description: error instanceof Error ? error.message : "" });
+      toasts.add({ title: "The run cannot be cancelled", description: errorMessage(error) });
     } finally {
       setBusy(false);
     }

@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, Dataset, ExampleConfig, RunRecordResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 
@@ -84,7 +85,7 @@ function ExampleRow({ example }: { example: ExampleConfig }) {
     } catch (error: unknown) {
       toasts.add({
         title: `${example.path} cannot be loaded`,
-        description: error instanceof Error ? error.message : "",
+        description: errorMessage(error),
       });
     } finally {
       setLoading(false);

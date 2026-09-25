@@ -30,6 +30,14 @@
   --color-signal-warn-subtle: #fbf0d4;
   --color-signal-danger: #b42318;
   --color-signal-danger-subtle: #fbe4e1;
+
+  --color-plate-ink: #16302b;
+  --color-plate-muted: #4b5f5a;
+  --color-plate-faint: #8a9a95;
+  --color-plate-grid: #e3e9e7;
+  --color-plate-border: #bfcbc7;
+  --color-plate-accent: #17695a;
+  --color-plate-fault: #b42318;
 }
 
 @variant dark (&:where(.dark, .dark *));

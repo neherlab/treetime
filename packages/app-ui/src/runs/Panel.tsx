@@ -1,6 +1,8 @@
+import type { RunRecordResult } from "@neherlab/app-contracts";
 import { CircleX, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { formatDuration } from "../format";
 import { cn } from "../ui";
 
 export function Panel({
@@ -33,6 +35,16 @@ export interface SummaryEntry {
   value: ReactNode;
   detail?: ReactNode;
   tone?: "caution" | "fault" | undefined;
+}
+
+export function runTimeEntry(record: RunRecordResult): SummaryEntry {
+  return {
+    label: "Run time",
+    value:
+      record.duration_seconds === null || record.duration_seconds === undefined
+        ? "-"
+        : formatDuration(record.duration_seconds),
+  };
 }
 
 export function SummaryStrip({ entries }: { entries: readonly SummaryEntry[] }) {

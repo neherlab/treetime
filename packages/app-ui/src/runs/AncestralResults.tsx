@@ -1,14 +1,12 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
-import { formatDuration } from "../format";
 import type { AncestralData, BranchMutations, RecurrentSite } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
+import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
 import { settingText } from "./settingText";
 import { SortableTable, type Column } from "./SortableTable";
-import { MissingTree } from "./TimetreeResults";
-import { TreeView, type TreeData } from "./TreeView";
+import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 const COUNT_SORT = { key: "count", descending: true };
 
@@ -59,13 +57,7 @@ export function AncestralResults({
       { label: "Sites mutated on several branches", value: String(sites.length), detail: "Candidates for homoplasy" },
       { label: "Substitution model", value: settingText(record, "model") },
       { label: "Reconstruction", value: settingText(record, "method_anc") },
-      {
-        label: "Run time",
-        value:
-          record.duration_seconds === null || record.duration_seconds === undefined
-            ? "-"
-            : formatDuration(record.duration_seconds),
-      },
+      runTimeEntry(record),
     ],
     [branches.length, record, sites.length, total],
   );

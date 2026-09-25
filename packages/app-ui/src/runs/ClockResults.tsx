@@ -1,16 +1,15 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { formatDuration, formatRate, formatSignedDays, rSquaredText } from "../format";
+import { formatRate, formatSignedDays, rSquaredText } from "../format";
 import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
+import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
-import { rttLine, rttPoints } from "./rootToTip";
+import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { SortableTable, type Column } from "./SortableTable";
-import { MissingTree } from "./TimetreeResults";
-import { initialColorBy, TreeView, type TreeData } from "./TreeView";
+import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
 interface SampleRow {
@@ -65,15 +64,7 @@ export function ClockResults({
   const regression = data.root_to_tip;
   const samples = useMemo(() => sampleRows(data), [data]);
 
-  const points = useMemo(
-    () => (regression === null || regression === undefined ? [] : rttPoints(regression)),
-    [regression],
-  );
-
-  const line = useMemo(
-    () => (regression === null || regression === undefined ? undefined : rttLine(regression)),
-    [regression],
-  );
+  const { points, line } = useRootToTip(regression);
 
   const summary = useMemo(() => clockSummary(record, data), [data, record]);
 
@@ -166,12 +157,6 @@ function clockSummary(record: RunRecordResult, data: ClockData): SummaryEntry[] 
       detail: outliers === 0 ? "None flagged by the clock filter" : "Flagged by the clock filter",
       tone: outliers === 0 ? undefined : "caution",
     },
-    {
-      label: "Run time",
-      value:
-        record.duration_seconds === null || record.duration_seconds === undefined
-          ? "-"
-          : formatDuration(record.duration_seconds),
-    },
+    runTimeEntry(record),
   ];
 }

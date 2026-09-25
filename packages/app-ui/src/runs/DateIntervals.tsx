@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import type { DateInterval, YearDate } from "../results/types";
+import { truncate } from "../text";
 import { PLATE } from "./palette";
 
 export interface DateRow {
@@ -90,7 +91,7 @@ function IntervalRow({
         fill={row.current ? PLATE.ink : PLATE.muted}
         fontWeight={row.current ? 700 : 400}
       >
-        {row.label.length > LABEL_LENGTH ? `${row.label.slice(0, LABEL_LENGTH - 1)}...` : row.label}
+        {truncate(row.label, LABEL_LENGTH)}
       </text>
       {row.interval !== undefined && (
         <line

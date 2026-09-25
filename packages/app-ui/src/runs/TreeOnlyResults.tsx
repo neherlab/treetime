@@ -1,12 +1,10 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
-import { formatDuration } from "../format";
 import type { TreeSummary } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { SummaryStrip, type SummaryEntry } from "./Panel";
-import { MissingTree } from "./TimetreeResults";
-import { TreeView, type TreeData } from "./TreeView";
+import { runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
+import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 export function TreeOnlyResults({
   record,
@@ -49,13 +47,7 @@ export function TreeOnlyResults({
               detail: `Overall rate μ = ${model.mu.toPrecision(4)}`,
             },
           ]),
-      {
-        label: "Run time",
-        value:
-          record.duration_seconds === null || record.duration_seconds === undefined
-            ? "-"
-            : formatDuration(record.duration_seconds),
-      },
+      runTimeEntry(record),
     ];
   }, [data, record, tree]);
 

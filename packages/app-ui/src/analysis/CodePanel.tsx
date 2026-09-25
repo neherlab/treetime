@@ -1,8 +1,10 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, CodeLine, ConfigCode } from "@neherlab/app-contracts";
 import { Copy } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { useDraftStore, type CodeFormat } from "../store/draft";
+import { useDraftStore } from "../store/draft";
+import type { CodeFormat } from "../store/draftSchema";
 import { Button, Segmented, Toast, cn } from "../ui";
 import { useConfigLoader } from "./useConfigLoader";
 
@@ -125,7 +127,7 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
         setMessages(result.messages);
       }
     } catch (error: unknown) {
-      setMessages([error instanceof Error ? error.message : "The config cannot be checked"]);
+      setMessages([errorMessage(error)]);
     } finally {
       setBusy(false);
     }

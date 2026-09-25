@@ -2,7 +2,7 @@ import type { AppCommand, CheckInputsRequest, InputFactsResult } from "@neherlab
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 
 import { useBridge } from "./BridgeContext";
-import { canonicalJson, type JsonObject } from "./settings/json";
+import type { JsonObject } from "./settings/json";
 
 const ACTIVE_RUNS_POLL_MS = 2000;
 
@@ -71,7 +71,7 @@ export function useRunConfig(command: AppCommand, config: JsonObject) {
   const bridge = useBridge();
 
   return useQuery({
-    queryKey: ["run-config", command, canonicalJson(config)],
+    queryKey: ["run-config", command, config],
     queryFn: () => bridge.runConfig({ command, config }),
     placeholderData: keepPreviousData,
     staleTime: 10_000,

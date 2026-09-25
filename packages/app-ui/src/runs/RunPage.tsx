@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -225,7 +226,7 @@ function RunHeader({ record }: { record: RunRecordResult }) {
       await bridge.updateRun(record.id, { pinned: !record.pinned });
       await queryClient.invalidateQueries({ queryKey: RUNS_KEY });
     } catch (error: unknown) {
-      toasts.add({ title: "The run cannot be pinned", description: error instanceof Error ? error.message : "" });
+      toasts.add({ title: "The run cannot be pinned", description: errorMessage(error) });
     }
   }, [bridge, queryClient, record.id, record.pinned, toasts]);
 

@@ -7,11 +7,11 @@ import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../result
 import { OutputFiles } from "./OutputFiles";
 import { SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
-import { rttLine, rttPoints } from "./rootToTip";
+import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { SelectionPanel } from "./SelectionPanel";
 import { SkylinePlot } from "./SkylinePlot";
-import { initialColorBy, TreeView, type TreeData } from "./TreeView";
+import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
 const TIMETREE_COLORINGS = ["num_date"];
@@ -65,14 +65,6 @@ function TimetreeView({
   );
 }
 
-export function MissingTree() {
-  return (
-    <p className="border-line bg-surface-1 text-ink-muted rounded-lg border px-4 py-3.5">
-      This run wrote no Auspice tree, so the tree view is not available. The output files are listed below.
-    </p>
-  );
-}
-
 function TimetreeAside({
   record,
   tree,
@@ -86,15 +78,7 @@ function TimetreeAside({
 }) {
   const regression = data.root_to_tip;
 
-  const points = useMemo(
-    () => (regression === null || regression === undefined ? [] : rttPoints(regression)),
-    [regression],
-  );
-
-  const line = useMemo(
-    () => (regression === null || regression === undefined ? undefined : rttLine(regression)),
-    [regression],
-  );
+  const { points, line } = useRootToTip(regression);
 
   return (
     <>
@@ -104,7 +88,7 @@ function TimetreeAside({
         caption="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
       >
         {points.length === 0 ? (
-          <p className="m-0 px-2 py-3 text-sm text-[#4b5f5a]">This run wrote no clock regression table.</p>
+          <p className="text-plate-muted m-0 px-2 py-3 text-sm">This run wrote no clock regression table.</p>
         ) : (
           <RootToTipPlot
             points={points}

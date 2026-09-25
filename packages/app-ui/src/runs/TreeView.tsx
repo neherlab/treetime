@@ -27,6 +27,14 @@ export function TreeView({
   );
 }
 
+export function MissingTree() {
+  return (
+    <p className="border-line bg-surface-1 text-ink-muted rounded-lg border px-4 py-3.5">
+      This run wrote no Auspice tree, so the tree view is not available. The output files are listed below.
+    </p>
+  );
+}
+
 export function initialColorBy(tree: ResultTree, preferred: readonly string[]): string | undefined {
   const keys = new Set(tree.colorings.map((coloring) => coloring.key));
 

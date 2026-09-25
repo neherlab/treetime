@@ -1,9 +1,10 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import { ErrorBoundary as ReactErrorBoundary, type FallbackProps } from "react-error-boundary";
 
 import { Button } from "./ui";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
 
   return (
     <div role="alert" className="bg-surface-0 text-ink flex h-screen flex-col items-center justify-center gap-4 p-8">

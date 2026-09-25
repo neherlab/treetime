@@ -8,6 +8,7 @@ import { headlineText } from "../format";
 import { useRunList } from "../queries";
 import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { useShellStore } from "../store/shell";
+import { truncate } from "../text";
 import { Button, cn } from "../ui";
 import { changedFlags, groupRuns, listedRuns } from "./runList";
 import { StatusIcon, statusLabel } from "./StatusIcon";
@@ -144,7 +145,7 @@ function RunRow({ run }: { run: RunSummaryResult }) {
               key={flag}
               className="bg-surface-3 text-ink-muted rounded-sm px-1 font-mono text-[0.6875rem] whitespace-nowrap"
             >
-              {flag.length > CHIP_LENGTH ? `${flag.slice(0, CHIP_LENGTH - 3)}...` : flag}
+              {truncate(flag, CHIP_LENGTH)}
             </span>
           ))}
           {flags.length > CHIPS_SHOWN && <span>+{flags.length - CHIPS_SHOWN}</span>}

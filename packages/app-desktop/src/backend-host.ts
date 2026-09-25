@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import type { Backend, Subscription } from "@neherlab/app-napi";
 
 import type { BackendRequest, ControlReply, HostEndpoint, SaveRequest } from "./backend-protocol";
@@ -33,11 +34,15 @@ export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): voi
     }
   };
 
-  endpoint.listen((request) => {
-    answer(request).catch((error: Error) => {
-      endpoint.post({ kind: "error", seq: request.seq, error: error.message });
-    });
-  });
+  const answerOrReport = async (request: BackendRequest) => {
+    try {
+      await answer(request);
+    } catch (error: unknown) {
+      endpoint.post({ kind: "error", seq: request.seq, error: errorMessage(error) });
+    }
+  };
+
+  endpoint.listen((request) => void answerOrReport(request));
 
   endpoint.onClose(() => {
     for (const subscription of subscriptions.values()) {
@@ -56,6 +61,6 @@ export async function saveRunFiles(backend: AddonBackend, request: SaveRequest):
 
     return { kind: "saved", seq: request.seq };
   } catch (error: unknown) {
-    return { kind: "error", seq: request.seq, error: error instanceof Error ? error.message : String(error) };
+    return { kind: "error", seq: request.seq, error: errorMessage(error) };
   }
 }

@@ -6,7 +6,8 @@ import { useBridge } from "../BridgeContext";
 import { useLocalFiles } from "../platform";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import type { JsonValue } from "../settings/json";
-import { useDraftStore, type InputOrigin } from "../store/draft";
+import { useDraftStore } from "../store/draft";
+import type { InputOrigin } from "../store/draftSchema";
 import { toFormValue, type FormConfig } from "./formValues";
 
 const UPLOAD_RUN_TITLE = "Uploaded inputs";

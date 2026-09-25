@@ -2,7 +2,15 @@ export type * from "./generated/types.gen";
 
 export * from "./generated/zod.gen";
 
-export { BridgeError, bridgeErrorFromText, CancelledError, CommandError, RunEndedError, createBridge } from "./bridge";
+export {
+  BridgeError,
+  bridgeErrorFromText,
+  CancelledError,
+  CommandError,
+  RunEndedError,
+  createBridge,
+  errorMessage,
+} from "./bridge";
 
 export type {
   BridgeTransport,

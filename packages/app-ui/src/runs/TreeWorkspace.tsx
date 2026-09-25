@@ -1,3 +1,4 @@
+import { errorMessage } from "@neherlab/app-contracts";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
@@ -71,7 +72,7 @@ function TreeFailure({ error }: FallbackProps) {
   return (
     <div role="alert" className="border-signal-danger bg-signal-danger-subtle rounded-lg border px-4 py-3.5">
       <h3 className="mb-1 font-bold">Auspice cannot draw this tree</h3>
-      <p className="m-0">{error instanceof Error ? error.message : String(error)}</p>
+      <p className="m-0">{errorMessage(error)}</p>
     </div>
   );
 }
