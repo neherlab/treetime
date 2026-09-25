@@ -4,10 +4,10 @@ When no `--date-column` is given, v1 auto-detects the date column by exact heade
 
 ## Cause
 
-[`read_dates_from_reader()`](../../packages/treetime-io/src/dates_csv.rs#L85) passes the single candidate `["date"]` to the shared column detector [`get_col_name()`](../../packages/treetime-io/src/csv.rs#L131):
+[`read_metadata_table_from_reader()`](../../packages/treetime-io/src/dates_csv.rs#L114) passes the single candidate `["date"]` to the shared column detector [`get_col_name()`](../../packages/treetime-io/src/csv.rs#L55):
 
 ```rust
-let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
+let date_index = get_col_name(&columns, &date_candidates, date_column);
 ```
 
 The auto-detect branch of `get_col_name()` matches by whole-string equality after lowercasing, not substring containment:
@@ -20,8 +20,11 @@ candidates_lower.contains(&header_lower)
 
 ## Affected commands
 
-- `clock` - [`run()`](../../packages/treetime/src/commands/clock/run.rs#L56) passes `name_column` and `date_column` to `read_dates()`
-- `timetree` - [`initialization.rs`](../../packages/treetime/src/commands/timetree/initialization.rs#L59) passes `name_column` and `date_column` to `read_dates()`
+- `clock` - [`run.rs`](../../packages/app-commands/src/commands/clock/run.rs#L46) passes the ID column candidates and `date_column` to `read_dates()`
+- `timetree` - [`initialization.rs`](../../packages/app-commands/src/commands/timetree/initialization.rs#L63) passes the ID column candidates and `date_column` to `read_dates()`
+- `check-inputs` - [`check_inputs.rs`](../../packages/app-commands/src/check_inputs.rs) reads the same table through `read_metadata_table()`, so it reports no date column where the commands fail
+
+The help text of `struct DateColumnArgs` in [`packages/app-commands/src/commands/shared/metadata.rs`](../../packages/app-commands/src/commands/shared/metadata.rs) describes the v0 rule ("the leftmost column whose name contains `date`"), so it disagrees with the current behavior.
 
 ## Project datasets
 
@@ -32,7 +35,7 @@ All datasets in `data/` have an exact `date` column, so this does not affect pro
 Change date-column auto-detection to case-insensitive substring matching. Either:
 
 - add a matching mode to `get_col_name()` (e.g. `MatchMode::Exact` vs `MatchMode::ContainsIgnoreCase`), or
-- add a separate detection path in `read_dates_from_reader()` that bypasses `get_col_name()` for date columns.
+- add a separate detection path in `read_metadata_table_from_reader()` that bypasses `get_col_name()` for date columns.
 
 When multiple columns contain `"date"`, the leftmost column wins (v0 behavior, already the v1 header-iteration order in `get_col_name()`).
 

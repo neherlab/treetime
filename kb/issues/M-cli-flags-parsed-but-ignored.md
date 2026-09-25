@@ -20,6 +20,8 @@ Flags marked *hidden* are accepted but not listed in `--help`.
 
 `optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
+`clock` and `timetree` accept `--date-format` (config key `date_format`, default `%Y-%m-%d`) and never read it. The flag lives in the shared `DateColumnArgs` struct in `packages/app-commands/src/commands/shared/metadata.rs`, which also derives `Serialize`, so no `dead_code` expectation marks the field. The date reader in `packages/treetime-io/src/dates_csv.rs` parses every date cell with `DateParserOptions::default()`, and `struct DateParserOptions` has no format field, so a string date in a format outside the built-in list stays unreadable whatever `--date-format` says.
+
 Tracked elsewhere, with their own `expect` reasons:
 
 - `--vcf-reference` in `ancestral`, `clock`, and `timetree`: [M-io-vcf-input-output-unimplemented.md](M-io-vcf-input-output-unimplemented.md)
@@ -39,6 +41,7 @@ The `timetree` command copies these flags into `TimetreeParams` in `packages/tre
 - `--seed` in `clock` and `mugration` does not make runs reproducible, because the value never reaches a random number generator
 - `--model` and `--model-params` in `clock` do not change the substitution model
 - `--model-params` in `ancestral`, `optimize`, and `timetree` does not change the parameters of the selected model, so a named model always uses its default parameters
+- `--date-format` in `clock` and `timetree` does not change how dates are parsed, although its help text says it controls the parsing of string dates
 - `--greedy-resolve` and `--stochastic-resolve` in `timetree` do not select a polytomy resolution strategy; see [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md)
 
 ## Potential solutions

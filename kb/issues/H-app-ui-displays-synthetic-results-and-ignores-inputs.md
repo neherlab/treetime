@@ -1,6 +1,6 @@
 # Application UI ignores inputs and displays synthetic scientific results
 
-Visible parameter controls keep only component-local state and do not affect requests. Dataset switching retains absent files, command results are discarded, fixed mock scientific values are displayed after completion, and caught errors are hidden. Browser-selected file ownership is a separate unresolved contract in [M-app-browser-file-ownership-undecided.md](M-app-browser-file-ownership-undecided.md).
+Visible parameter controls keep only component-local state and do not affect requests. Dataset switching retains absent files, command results are discarded, fixed mock scientific values are displayed after completion, and caught errors are hidden. The UI records only the name and size of a browser-selected file, while the server expects such files to be uploaded into a run's `inputs/` folder before the run starts.
 
 ## Evidence
 
@@ -19,8 +19,4 @@ The UI can run a different computation from the one configured by the user and t
 
 ## Recommendation
 
-Store typed command state centrally, replace dataset selections atomically, preserve typed command results, render only real result data, and show causal errors. Until a real result projection exists, keep that result view unavailable after execution. Browser file selection remains disabled until its ownership decision is approved.
-
-## Related issues
-
-- [M-app-browser-file-ownership-undecided.md](M-app-browser-file-ownership-undecided.md)
+Store typed command state centrally, replace dataset selections atomically, preserve typed command results, render only real result data, and show causal errors. Until a real result projection exists, keep that result view unavailable after execution. Browser-selected files are uploaded into the run's `inputs/` folder, and the run configuration names the uploaded copies.

@@ -19,7 +19,7 @@ For internal node date constraints (rare in practice), the argument is weaker. A
 
 ### A1. Cap at today (v0 parity)
 
-Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L112) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
+Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L155) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
 
 ### A2. Cap at today with warning
 
@@ -39,4 +39,4 @@ Add a flag (e.g. `--cap-uncertain-dates`) controlling behavior. Adds complexity 
 
 ## Recommendation
 
-A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L112) in `dates_csv.rs`, where `DateOrRange::YearFractionRange` values from uncertain parsing can be clamped before returning.
+A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L155) in `dates_csv.rs`, where `DateOrRange::YearFractionRange` values from uncertain parsing can be clamped before returning.
