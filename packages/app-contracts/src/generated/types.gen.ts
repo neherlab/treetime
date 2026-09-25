@@ -2386,9 +2386,9 @@ export type MetadataFacts = {
      */
     columns: Array<string>;
     /**
-     * Column that holds the sample names, when one was found.
+     * Column that holds the sample names.
      */
-    id_column?: string | null;
+    id_column: string;
     /**
      * Column that holds the sampling dates, when one was found.
      */

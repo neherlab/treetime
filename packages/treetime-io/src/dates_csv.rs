@@ -1,7 +1,7 @@
 use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
-use csv::{ReaderBuilder, StringRecord, Trim};
+use csv::{ReaderBuilder, Trim};
 use eyre::{Report, WrapErr};
-use std::io::Read;
+use std::io::BufRead;
 use std::path::Path;
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
@@ -12,6 +12,41 @@ use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
+#[derive(Debug)]
+pub struct MetadataTable {
+  pub delimiter: char,
+  pub columns: Vec<String>,
+  pub id_column: String,
+  pub date_column: Result<String, Report>,
+  pub rows: Vec<MetadataRow>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MetadataRow {
+  pub name: String,
+  pub date: Option<String>,
+}
+
+impl MetadataTable {
+  pub fn dates(&self) -> Result<DatesMap, Report> {
+    let column = self.date_column.as_ref().map_err(|report| make_report!("{report}"))?;
+    let options = DateParserOptions::default();
+    self
+      .rows
+      .iter()
+      .enumerate()
+      .map(|(index, row)| {
+        let raw = row
+          .date
+          .as_deref()
+          .ok_or_else(|| make_internal_report!("Row '{index}' has no value in date column '{column}'"))?;
+        let date = read_date(raw, &options).wrap_err_with(|| format!("When reading row {index}, column '{column}'"))?;
+        Ok((row.name.clone(), date))
+      })
+      .collect()
+  }
+}
+
 pub fn read_dates(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
@@ -20,75 +55,95 @@ pub fn read_dates(
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
-  let mut file =
+  read_metadata_table(filepath, delimiters, name_candidates, name_column, date_column)?
+    .dates()
+    .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
+}
+
+pub fn read_metadata_table(
+  filepath: impl AsRef<Path>,
+  delimiters: &[char],
+  name_candidates: &[String],
+  name_column: &Option<String>,
+  date_column: &Option<String>,
+) -> Result<MetadataTable, Report> {
+  let filepath = filepath.as_ref();
+  let file =
     open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  let delimiter = detect_csv_delimiter(&mut *file, filepath, delimiters, |headers| {
-    get_col_name(headers, name_candidates, name_column.as_deref()).is_ok()
-      && get_col_name(headers, &vec_of_owned!["date"], date_column.as_deref()).is_ok()
-  })
-  .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
-  read_dates_from_reader(
+  read_metadata_table_from_reader(
     file,
-    delimiter,
+    filepath,
+    delimiters,
     name_candidates,
     name_column.as_deref(),
     date_column.as_deref(),
   )
-  .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
+  .wrap_err_with(|| format!("When reading metadata from file: '{}'", filepath.display()))
 }
 
-pub(crate) fn read_dates_from_reader(
-  reader: impl Read,
-  delimiter: u8,
+pub fn read_metadata_table_from_reader(
+  mut reader: impl BufRead,
+  filepath: impl AsRef<Path>,
+  delimiters: &[char],
   name_candidates: &[String],
   name_column: Option<&str>,
   date_column: Option<&str>,
-) -> Result<DatesMap, Report> {
+) -> Result<MetadataTable, Report> {
+  let filepath = filepath.as_ref();
+  let date_candidates = vec_of_owned!["date"];
+  let delimiter = detect_csv_delimiter(&mut reader, filepath, delimiters, |headers| {
+    get_col_name(headers, name_candidates, name_column).is_ok()
+      && get_col_name(headers, &date_candidates, date_column).is_ok()
+  })
+  .or_else(|_without_dates| {
+    detect_csv_delimiter(&mut reader, filepath, delimiters, |headers| {
+      get_col_name(headers, name_candidates, name_column).is_ok()
+    })
+  })
+  .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
+
   let mut reader = ReaderBuilder::new()
     .trim(Trim::All)
     .delimiter(delimiter)
     .from_reader(reader);
-
-  let headers = reader
+  let columns = reader
     .headers()
     .map(normalize_csv_headers)
     .map_err(|err| make_report!("{err}"))?;
+  let id_index = get_col_name(&columns, name_candidates, name_column)?;
+  let date_index = get_col_name(&columns, &date_candidates, date_column);
 
-  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
-  let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
-
-  reader
+  let rows = reader
     .records()
     .enumerate()
     .map(|(index, record)| {
       let record = record?;
-      convert_record(index, &record, name_column_idx, date_column_idx)
-        .wrap_err_with(|| format!("When reading row {index}, column '{date_column_idx}'"))
+      let name = record
+        .get(id_index)
+        .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{id_index}'"))?
+        .to_owned();
+      let date = date_index
+        .as_ref()
+        .ok()
+        .map(|&date_index| {
+          record
+            .get(date_index)
+            .map(str::to_owned)
+            .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{date_index}'"))
+        })
+        .transpose()?;
+      Ok(MetadataRow { name, date })
     })
-    .collect::<Result<DatesMap, Report>>()
+    .collect::<Result<Vec<_>, Report>>()?;
+
+  Ok(MetadataTable {
+    delimiter: char::from(delimiter),
+    id_column: columns[id_index].clone(),
+    date_column: date_index.map(|index| columns[index].clone()),
+    columns,
+    rows,
+  })
 }
-
-fn convert_record(
-  index: usize,
-  record: &StringRecord,
-  name_column_idx: usize,
-  date_column_idx: usize,
-) -> Result<DateRecord, Report> {
-  let name = record
-    .get(name_column_idx)
-    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{name_column_idx}'"))?
-    .to_owned();
-
-  let date = record
-    .get(date_column_idx)
-    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{date_column_idx}'"))?;
-
-  let date = read_date(date, &DateParserOptions::default())?;
-
-  Ok((name, date))
-}
-
-type DateRecord = (String, Option<DateConstraint>);
 
 #[cfg_attr(
   dylint_lib = "treetime_lints",

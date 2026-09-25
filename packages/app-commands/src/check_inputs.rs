@@ -1,24 +1,19 @@
 use chrono::Datelike;
-use csv::{ReaderBuilder, Trim};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
-use treetime_io::dates_csv::{DateValue, DatesMap, read_dates};
+use treetime_io::dates_csv::{DateValue, DatesMap, MetadataTable, read_metadata_table};
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::parse_date;
-use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::{make_error, make_internal_report};
 
-const DATE_COLUMN_CANDIDATE: &str = "date";
 const ROUND_DAYS: [u32; 2] = [1, 15];
 
 /// Input files to inspect before a run, with the metadata settings of the command.
@@ -94,8 +89,8 @@ pub struct MetadataFacts {
   pub rows: usize,
   /// Column names, in file order.
   pub columns: Vec<String>,
-  /// Column that holds the sample names, when one was found.
-  pub id_column: Option<String>,
+  /// Column that holds the sample names.
+  pub id_column: String,
   /// Column that holds the sampling dates, when one was found.
   pub date_column: Option<String>,
   /// Facts about the sampling dates, when the date column could be read.
@@ -225,10 +220,10 @@ fn read_sequence_names(paths: &[PathBuf]) -> Result<(AlignmentFacts, BTreeSet<St
   Ok((facts, names.into_iter().collect()))
 }
 
-struct MetadataRead {
-  facts: MetadataFacts,
-  names: BTreeSet<String>,
-  date_problem: Option<Report>,
+pub(crate) struct MetadataRead {
+  pub(crate) facts: MetadataFacts,
+  pub(crate) names: BTreeSet<String>,
+  pub(crate) date_problem: Option<Report>,
 }
 
 fn read_metadata(
@@ -237,126 +232,28 @@ fn read_metadata(
   id_candidates: &[String],
   date_column: Option<&String>,
 ) -> Result<MetadataRead, Report> {
-  let mut text = String::new();
-  open_file_or_stdin(&Some(path))?
-    .read_to_string(&mut text)
-    .wrap_err_with(|| format!("When reading '{}'", path.display()))?;
-  let table = parse_table(&text, path, delimiters, id_candidates)?;
-  let id_column = find_column(&table.columns, id_candidates);
-  let detected_date_column = match date_column {
-    Some(column) => table.columns.iter().find(|name| *name == column).cloned(),
-    None => find_column(&table.columns, &[DATE_COLUMN_CANDIDATE.to_owned()]),
-  };
-  let names = id_column
-    .as_ref()
-    .and_then(|column| table.columns.iter().position(|name| name == column))
-    .map(|index| {
-      table
-        .rows
-        .iter()
-        .filter_map(|row| row.get(index).cloned())
-        .collect::<BTreeSet<_>>()
-    })
-    .unwrap_or_default();
+  read_metadata_table(path, delimiters, id_candidates, &None, &date_column.cloned()).map(metadata_read)
+}
 
-  let (dates, date_problem) = if detected_date_column.is_some() {
-    match read_dates(path, delimiters, id_candidates, &None, &date_column.cloned()) {
+pub(crate) fn metadata_read(table: MetadataTable) -> MetadataRead {
+  let (dates, date_problem) = if table.date_column.is_ok() {
+    match table.dates() {
       Ok(dates) => (Some(date_facts(&dates)), None),
       Err(report) => (None, Some(report)),
     }
   } else {
     (None, None)
   };
-
-  Ok(MetadataRead {
+  MetadataRead {
+    names: table.rows.iter().map(|row| row.name.clone()).collect(),
     facts: MetadataFacts {
       rows: table.rows.len(),
       columns: table.columns,
-      id_column,
-      date_column: detected_date_column,
+      id_column: table.id_column,
+      date_column: table.date_column.ok(),
       dates,
     },
-    names,
     date_problem,
-  })
-}
-
-struct Table {
-  columns: Vec<String>,
-  rows: Vec<Vec<String>>,
-}
-
-fn parse_table(text: &str, path: &Path, delimiters: &[char], id_candidates: &[String]) -> Result<Table, Report> {
-  let tables: Vec<Table> = delimiters
-    .iter()
-    .unique()
-    .map(|delimiter| parse_with_delimiter(text, *delimiter))
-    .try_collect()?;
-  let with_ids = tables
-    .iter()
-    .positions(|table| find_column(&table.columns, id_candidates).is_some())
-    .collect_vec();
-  let chosen = match with_ids.as_slice() {
-    [index] => Some(*index),
-    _ => extension_delimiter(path)
-      .and_then(|delimiter| delimiters.iter().unique().position(|candidate| *candidate == delimiter))
-      .or_else(|| with_ids.first().copied()),
-  };
-  match chosen {
-    Some(index) => tables
-      .into_iter()
-      .nth(index)
-      .ok_or_else(|| make_internal_report!("metadata delimiter {index} has no parsed table")),
-    None => make_error!(
-      "no column of '{}' holds the sample names; looked for: {}",
-      path.display(),
-      id_candidates.join(", ")
-    ),
-  }
-}
-
-fn parse_with_delimiter(text: &str, delimiter: char) -> Result<Table, Report> {
-  let delimiter = u8::try_from(u32::from(delimiter))
-    .wrap_err_with(|| format!("Metadata delimiter {delimiter:?} must fit in one byte"))?;
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .flexible(true)
-    .from_reader(text.as_bytes());
-  let columns = reader
-    .headers()?
-    .iter()
-    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
-    .collect_vec();
-  let rows: Vec<Vec<String>> = reader
-    .records()
-    .map(|record| record.map(|record| record.iter().map(str::to_owned).collect_vec()))
-    .try_collect()?;
-  Ok(Table { columns, rows })
-}
-
-fn find_column(columns: &[String], candidates: &[String]) -> Option<String> {
-  let candidates = candidates
-    .iter()
-    .map(|candidate| candidate.to_lowercase())
-    .collect_vec();
-  columns
-    .iter()
-    .find(|column| candidates.contains(&column.to_lowercase()))
-    .cloned()
-}
-
-fn extension_delimiter(path: &Path) -> Option<char> {
-  let name = path.file_name()?.to_string_lossy().to_lowercase();
-  let name = [".gz", ".bz2", ".xz", ".zst"]
-    .iter()
-    .find_map(|suffix| name.strip_suffix(suffix))
-    .unwrap_or(&name);
-  match Path::new(name).extension()?.to_str()? {
-    "csv" => Some(','),
-    "tsv" => Some('\t'),
-    "ssv" => Some(';'),
-    _ => None,
   }
 }
 

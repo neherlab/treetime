@@ -3986,11 +3986,8 @@
             "description": "Column names, in file order."
           },
           "id_column": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Column that holds the sample names, when one was found."
+            "type": "string",
+            "description": "Column that holds the sample names."
           },
           "date_column": {
             "type": [
@@ -4013,7 +4010,8 @@
         },
         "required": [
           "rows",
-          "columns"
+          "columns",
+          "id_column"
         ],
         "description": "Facts about a metadata table."
       },

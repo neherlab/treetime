@@ -183,7 +183,6 @@ dependencies = [
  "chrono",
  "clap",
  "color-eyre",
- "csv",
  "ctor",
  "derive_more",
  "eyre",

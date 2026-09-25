@@ -28,7 +28,6 @@ bon = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
-csv = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }

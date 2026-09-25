@@ -906,7 +906,7 @@ export const zDateFacts = z.object({
 export const zMetadataFacts = z.object({
     rows: z.int().gte(0),
     columns: z.array(z.string()),
-    id_column: z.string().nullish(),
+    id_column: z.string(),
     date_column: z.string().nullish(),
     dates: zDateFacts.nullish()
 });

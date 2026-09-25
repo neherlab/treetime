@@ -110,7 +110,7 @@ mod tests {
   }
 
   #[test]
-  fn test_read_dates_from_reader() -> Result<(), Report> {
+  fn test_read_metadata_table_from_reader_dates() -> Result<(), Report> {
     let content = r#"name	 date
 A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409	2013.40520192
 A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409	2012.83778234
@@ -133,7 +133,15 @@ A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416	2011.65160849
 A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
 "#;
 
-    let actual = read_dates_from_reader(content.as_bytes(), b'\t', &[], Some("name"), Some("date"))?;
+    let actual = read_metadata_table_from_reader(
+      content.as_bytes(),
+      "dates.tsv",
+      &['\t'],
+      &[],
+      Some("name"),
+      Some("date"),
+    )?
+    .dates()?;
 
     let expected = btreemap! {
       o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2013.40520192)),
@@ -160,5 +168,56 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
     assert_eq!(actual, expected);
 
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::csv(               "metadata.csv",    "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",       ',',  Some("date"))]
+  #[case::tsv(               "metadata.tsv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n", '\t', Some("date"))]
+  #[case::tsv_named_as_csv(  "metadata.csv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n", '\t', Some("date"))]
+  #[case::csv_named_as_tsv(  "metadata.tsv.xz", "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",       ',',  Some("date"))]
+  #[case::without_dates(     "metadata.tsv",    "strain\tcountry\nA\tusa\nB\tperu\n",                               '\t', None)]
+  #[case::explicit_date_column("metadata.tsv",  "strain\tdate,x\nA\t2020,1\nB\t2021,2\n",                          '\t', Some("date,x"))]
+  #[case::tie_broken_by_tsv( "metadata.tsv",    "strain,date,x\tstrain\tdate\nq\tA\t2020-01-15\nq\tB\t2020-02-03\n", '\t', Some("date"))]
+  #[case::tie_broken_by_csv( "metadata.csv",    "strain,date,x\tstrain\tdate\nA,2020-01-15,q\nB,2020-02-03,q\n",     ',',  Some("date"))]
+  #[trace]
+  fn test_read_metadata_table_from_reader_picks_columns(
+    #[case] file_name: &str,
+    #[case] content: &str,
+    #[case] delimiter: char,
+    #[case] date_column: Option<&str>,
+  ) {
+    let table = read_metadata_table_from_reader(
+      content.as_bytes(),
+      file_name,
+      &[',', '\t', ';'],
+      &[o!("strain"), o!("name")],
+      None,
+      date_column.filter(|column| *column != "date"),
+    )
+    .unwrap();
+    assert_eq!(
+      (delimiter, o!("strain"), date_column.map(str::to_owned), vec![o!("A"), o!("B")]),
+      (
+        table.delimiter,
+        table.id_column.clone(),
+        table.date_column.as_ref().ok().cloned(),
+        table.rows.iter().map(|row| row.name.clone()).collect::<Vec<_>>(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_read_metadata_table_dates_require_a_date_column() {
+    let table = read_metadata_table_from_reader(
+      &b"strain\tcountry\nA\tusa\n"[..],
+      "metadata.tsv",
+      &[',', '\t'],
+      &[o!("strain")],
+      None,
+      None,
+    )
+    .unwrap();
+    assert!(table.dates().unwrap_err().to_string().contains("Looking for: date"));
   }
 }

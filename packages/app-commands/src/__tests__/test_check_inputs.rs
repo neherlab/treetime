@@ -1,12 +1,17 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{
-    AlignmentFacts, CheckInputsRequest, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs,
+    AlignmentFacts, CheckInputsRequest, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_read,
   };
   use helpers::data;
+  use itertools::Itertools;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::BTreeSet;
   use std::fs;
   use tempfile::tempdir;
+  use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
+  use treetime_io::dates_csv::read_metadata_table_from_reader;
 
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
@@ -40,7 +45,7 @@ mod tests {
         Some(MetadataFacts {
           rows: 86,
           columns: vec!["name".to_owned(), "date".to_owned(), "country".to_owned()],
-          id_column: Some("name".to_owned()),
+          id_column: "name".to_owned(),
           date_column: Some("date".to_owned()),
           dates: Some(DateFacts {
             readable: 86,
@@ -127,23 +132,72 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::csv(             "metadata.csv", ',')]
+  #[case::tsv(             "metadata.tsv", '\t')]
+  #[case::tsv_named_as_csv("metadata.csv", '\t')]
+  #[case::csv_named_as_tsv("metadata.tsv", ',')]
+  #[trace]
+  fn test_check_inputs_metadata_facts_match_the_command_dates(#[case] file_name: &str, #[case] delimiter: char) {
+    let rows = [["strain", "date", "country"], ["A", "2020-01-15", "usa"], ["B", "2020-02-03", "peru"], ["C", "soon", "chile"]];
+    let text = rows.iter().map(|row| row.join(&delimiter.to_string())).join("\n");
+    let table = || {
+      read_metadata_table_from_reader(
+        text.as_bytes(),
+        file_name,
+        &default_metadata_delimiters(),
+        &default_name_candidates(),
+        None,
+        None,
+      )
+      .unwrap()
+    };
+
+    let command_dates = table().dates().unwrap();
+    let read = metadata_read(table());
+
+    let date_facts = read.facts.dates.clone().unwrap();
+    assert_eq!(
+      (
+        "strain".to_owned(),
+        Some("date".to_owned()),
+        command_dates.keys().cloned().collect::<BTreeSet<_>>(),
+        command_dates.values().filter(|date| date.is_some()).count(),
+        vec!["C".to_owned()],
+        1,
+      ),
+      (
+        read.facts.id_column,
+        read.facts.date_column,
+        read.names,
+        date_facts.readable,
+        date_facts.unreadable,
+        date_facts.on_day_1_or_15,
+      )
+    );
+  }
+
   #[test]
   fn test_check_inputs_metadata_without_date_column_has_no_date_facts() {
-    let dir = tempdir().unwrap();
-    fs::write(dir.path().join("traits.tsv"), "name\tcountry\nA\tusa\n").unwrap();
-    let facts = check_inputs(&CheckInputsRequest {
-      metadata: Some(dir.path().join("traits.tsv")),
-      ..CheckInputsRequest::default()
-    });
-    let metadata = facts.metadata.unwrap();
+    let table = read_metadata_table_from_reader(
+      &b"name\tcountry\nA\tusa\n"[..],
+      "traits.tsv",
+      &default_metadata_delimiters(),
+      &default_name_candidates(),
+      None,
+      None,
+    )
+    .unwrap();
+    let read = metadata_read(table);
     assert_eq!(
-      (1, Some("name".to_owned()), None, None, 0),
+      (1, "name".to_owned(), None, None, true),
       (
-        metadata.rows,
-        metadata.id_column,
-        metadata.date_column,
-        metadata.dates,
-        facts.problems.len()
+        read.facts.rows,
+        read.facts.id_column,
+        read.facts.date_column,
+        read.facts.dates,
+        read.date_problem.is_none()
       )
     );
   }
