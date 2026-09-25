@@ -22,6 +22,9 @@
 #                           mounted at the same path when set (see .env.example)
 #   PORTLESS_STATE_DIR      State directory of the optional portless proxy
 #                           (default ~/.portless); mounted when it exists
+#   CARGO_PROFILE_*, NEXTEST_*, PROPTEST_*, RUST_LOG, ...
+#                           Build, test, and runtime settings forwarded to the
+#                           container (full list in passthrough_env)
 #
 # Examples:
 #   dev/docker/run just check
@@ -163,11 +166,22 @@ if git_common_dir="$(git -C "${root}" rev-parse --path-format=absolute --git-com
   run_flags+=(--volume="${git_common_dir}:${git_common_dir}:ro")
 fi
 
-for name in CI GITHUB_ACTIONS COLORTERM NO_COLOR FORCE_COLOR TREETIME_BUILD_MODE TREETIME_VERSION_SUFFIX TREETIME_API_PORT TREETIME_WEB_PORT TREETIME_PORTLESS; do
-  if [[ -n "${!name+x}" ]]; then
-    run_flags+=(--env="${name}=${!name}")
-  fi
-done
+# Paths and RUSTFLAGS stay out: the container sets its own directories and link flags.
+passthrough_env() {
+  local name
+  for name in $(compgen -e); do
+    case "${name}" in
+    CI | GITHUB_ACTIONS | COLORTERM | NO_COLOR | FORCE_COLOR | \
+      TREETIME_BUILD_MODE | TREETIME_VERSION_SUFFIX | TREETIME_API_PORT | TREETIME_WEB_PORT | TREETIME_PORTLESS | \
+      CARGO_PROFILE_* | CARGO_TERM_* | CARGO_BUILD_JOBS | CARGO_INCREMENTAL | NEXTEST_* | PROPTEST_* | \
+      RUST_LOG | RUST_LOG_STYLE | RUST_BACKTRACE | RUST_LIB_BACKTRACE | RUST_SPANTRACE | RAYON_NUM_THREADS | \
+      OPENBLAS_NUM_THREADS | OPENBLAS_CORETYPE | OPENBLAS_VERBOSE | KACHE_DISABLED | KACHE_LOG | *_COMPRESSION)
+      run_flags+=(--env="${name}=${!name}")
+      ;;
+    esac
+  done
+}
+passthrough_env
 
 case "${kind}" in
 jupyter)
