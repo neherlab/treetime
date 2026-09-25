@@ -1,4 +1,5 @@
 use crate::command::{AppCommand, CommandOutcome};
+use crate::json_float::JsonFloat;
 use eyre::Report;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
@@ -11,6 +12,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, ProgressSink};
+use treetime::timetree::convergence::metrics::IterationRecord;
+use treetime_primitives::LogLh;
 use treetime_schema::ProgressEvent;
 use treetime_utils::make_error;
 
@@ -52,8 +55,58 @@ pub enum JobEvent {
   Progress(ProgressEvent),
   /// A diagnostic message of the computation.
   Log(LogEvent),
+  /// Convergence values of one timetree optimization iteration.
+  Iteration(IterationEvent),
   /// The job ended; always the last event, exactly once per job.
   Terminal(TerminalEvent),
+}
+
+/// Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
+/// iteration used.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct IterationEvent {
+  /// Iteration number, starting at 1.
+  pub iteration: usize,
+  /// Number of ancestral sequence states that changed in this iteration.
+  pub n_diff: usize,
+  /// Number of nodes added by polytomy resolution in this iteration.
+  pub n_resolved: usize,
+  /// Largest change of a node time, in years.
+  pub max_time_change: Option<JsonFloat>,
+  /// Root-mean-square change of the node times, in years.
+  pub rms_time_change: Option<JsonFloat>,
+  /// Log likelihood of the sequences.
+  pub log_lh_seq: Option<JsonFloat>,
+  /// Log likelihood of the node positions under the clock model.
+  pub log_lh_pos: Option<JsonFloat>,
+  /// Log likelihood of the coalescent prior.
+  pub log_lh_coal: Option<JsonFloat>,
+  /// Sum of the available log likelihoods.
+  pub log_lh_total: Option<JsonFloat>,
+  /// Clock rate of the clock model the iteration used, in substitutions per site per year.
+  pub clock_rate: JsonFloat,
+  /// Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
+  pub r_squared: Option<JsonFloat>,
+}
+
+impl From<&IterationRecord> for IterationEvent {
+  fn from(record: &IterationRecord) -> Self {
+    let metrics = &record.metrics;
+    let log_lh = |value: Option<LogLh>| value.map(|log_lh| JsonFloat(log_lh.value()));
+    Self {
+      iteration: record.iteration,
+      n_diff: metrics.n_diff,
+      n_resolved: metrics.n_resolved,
+      max_time_change: metrics.max_time_change.map(JsonFloat),
+      rms_time_change: metrics.rms_time_change.map(JsonFloat),
+      log_lh_seq: log_lh(metrics.log_lh_seq),
+      log_lh_pos: log_lh(metrics.log_lh_pos),
+      log_lh_coal: log_lh(metrics.log_lh_coal),
+      log_lh_total: log_lh(metrics.log_lh_total),
+      clock_rate: JsonFloat(record.clock.clock_rate),
+      r_squared: record.clock.r_val.map(|r| JsonFloat(r * r)),
+    }
+  }
 }
 
 /// Identity of an accepted job.
@@ -226,5 +279,9 @@ impl<F: Fn(JobEvent) + Send + Sync> ProgressSink for JobProgress<F> {
 
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
+  }
+
+  fn iteration(&self, record: &IterationRecord) {
+    (self.emit)(JobEvent::Iteration(IterationEvent::from(record)));
   }
 }

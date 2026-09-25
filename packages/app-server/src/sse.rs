@@ -74,6 +74,7 @@ fn sse_event(event: &JobEvent) -> Event {
     JobEvent::Started(data) => ("started", Event::default().json_data(data)),
     JobEvent::Progress(data) => ("progress", Event::default().json_data(data)),
     JobEvent::Log(data) => ("log", Event::default().json_data(data)),
+    JobEvent::Iteration(data) => ("iteration", Event::default().json_data(data)),
     JobEvent::Terminal(data) => ("terminal", Event::default().json_data(data)),
   };
   match event {

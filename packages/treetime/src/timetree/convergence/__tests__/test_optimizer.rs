@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::progress::NoopProgress;
-  use crate::timetree::convergence::metrics::NODE_TIME_TOLERANCE_YEARS;
+  use crate::timetree::convergence::metrics::{IterationClock, NODE_TIME_TOLERANCE_YEARS};
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
+  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use std::sync::atomic::{AtomicUsize, Ordering};
 
   #[test]
   fn test_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
@@ -26,6 +26,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -52,6 +53,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -65,6 +67,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -91,6 +94,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -104,6 +108,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -129,6 +134,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -142,6 +148,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -155,6 +162,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -187,6 +195,7 @@ mod tests {
         &[],
         &state,
         None,
+        helpers::fixed_clock(),
         &BTreeMap::new(),
         &NoopProgress,
       )?;
@@ -214,6 +223,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -227,6 +237,7 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -238,12 +249,12 @@ mod tests {
   }
 
   #[test]
-  fn test_optimizer_trace_sink_receives_each_iteration() -> Result<(), Report> {
+  fn test_optimizer_trace_sink_receives_each_iteration_with_its_clock() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let state = TimetreeState::new(&graph);
-    let count = Arc::new(AtomicUsize::new(0));
+    let records = Arc::new(Mutex::new(vec![]));
     let mut optimizer =
-      TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::CountingSink(Arc::clone(&count))));
+      TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::RecordingSink(Arc::clone(&records))));
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -254,6 +265,10 @@ mod tests {
       &[],
       &state,
       None,
+      IterationClock {
+        clock_rate: 2e-3,
+        r_val: Some(0.5),
+      },
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -267,30 +282,63 @@ mod tests {
       &[],
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
 
-    assert_eq!(2, optimizer.trace.len());
-    assert_eq!(2, count.load(Ordering::Relaxed));
+    let summary: Vec<(usize, usize, usize, IterationClock)> = records
+      .lock()
+      .iter()
+      .map(|record| {
+        (
+          record.iteration,
+          record.metrics.n_diff,
+          record.metrics.n_resolved,
+          record.clock,
+        )
+      })
+      .collect();
+    assert_eq!(
+      vec![
+        (
+          1,
+          5,
+          1,
+          IterationClock {
+            clock_rate: 2e-3,
+            r_val: Some(0.5)
+          }
+        ),
+        (2, 0, 0, helpers::fixed_clock()),
+      ],
+      summary
+    );
     Ok(())
   }
 
   mod helpers {
-    use crate::timetree::convergence::metrics::ConvergenceMetrics;
+    use crate::timetree::convergence::metrics::{IterationClock, IterationRecord};
     use crate::timetree::convergence::node_times::NodeTimeChange;
     use crate::timetree::convergence::optimizer::TraceSink;
     use eyre::Report;
+    use parking_lot::Mutex;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use treetime_graph::graph::Graph;
 
-    pub(super) struct CountingSink(pub(crate) Arc<AtomicUsize>);
+    pub(super) struct RecordingSink(pub(crate) Arc<Mutex<Vec<IterationRecord>>>);
 
-    impl TraceSink for CountingSink {
-      fn emit(&mut self, _metric: &ConvergenceMetrics) -> Result<(), Report> {
-        self.0.fetch_add(1, Ordering::Relaxed);
+    impl TraceSink for RecordingSink {
+      fn emit(&mut self, record: &IterationRecord) -> Result<(), Report> {
+        self.0.lock().push(record.clone());
         Ok(())
+      }
+    }
+
+    pub(super) const fn fixed_clock() -> IterationClock {
+      IterationClock {
+        clock_rate: 1e-3,
+        r_val: None,
       }
     }
 

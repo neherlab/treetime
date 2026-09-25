@@ -1,6 +1,6 @@
 use eyre::Report;
 use std::io::Write;
-use treetime::timetree::convergence::metrics::ConvergenceMetrics;
+use treetime::timetree::convergence::metrics::IterationRecord;
 use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime_io::csv::CsvStructWriter;
 
@@ -17,7 +17,7 @@ impl TraceCsvSink {
 }
 
 impl TraceSink for TraceCsvSink {
-  fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report> {
-    self.writer.write(metric)
+  fn emit(&mut self, record: &IterationRecord) -> Result<(), Report> {
+    self.writer.write(&record.metrics)
   }
 }

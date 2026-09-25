@@ -2,13 +2,13 @@ use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
+use crate::commands::timetree::trace::timetree_trace_sink;
 use app_output::DateCommentProvider;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data::write_augur_node_data_json;
 use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
 use app_output::output_plan::OutputSelection;
-use app_output::timetree_trace::TraceCsvSink;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use eyre::{Report, WrapErr};
@@ -25,7 +25,6 @@ use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
-use treetime::timetree::convergence::optimizer::TraceSink;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use treetime::timetree::timetree_state::TimetreeState;
 use treetime::{progress_info, progress_warn};
@@ -52,10 +51,13 @@ pub fn run_timetree_estimation(
   let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
-  let trace_sink: Option<Box<dyn TraceSink>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog) {
-    Some(path) => Some(Box::new(TraceCsvSink::new(create_file_or_stdout(path)?)?)),
-    None => None,
-  };
+  let trace_sink = timetree_trace_sink(
+    resolved
+      .non_tree_outputs
+      .get(&OutputSelection::Tracelog)
+      .map(PathBuf::as_path),
+    progress,
+  )?;
 
   let params = TimetreeParams {
     model: args.model_args.model_name(),
@@ -128,8 +130,16 @@ pub fn run_timetree_estimation(
     None => None,
   };
 
-  let mut output = pipeline::run(&params, input, &parse_names, trace_sink, recon_sink, cancel, progress)
-    .map_err(|err| err.into_report())?;
+  let mut output = pipeline::run(
+    &params,
+    input,
+    &parse_names,
+    Some(trace_sink),
+    recon_sink,
+    cancel,
+    progress,
+  )
+  .map_err(|err| err.into_report())?;
   if let Some(path) = &reconstructed_nuc_fasta {
     progress_info!(
       progress,

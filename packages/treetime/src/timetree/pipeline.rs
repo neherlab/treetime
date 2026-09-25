@@ -39,6 +39,7 @@ use crate::timetree::coalescent_timescale::{
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
+use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
 use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree, timetree_branch_lengths};
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
@@ -71,7 +72,7 @@ pub fn run(
   params: &TimetreeParams,
   mut input: TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  trace_sink: Option<Box<dyn TraceSink>>,
+  trace_sink: Option<Box<dyn TraceSink + '_>>,
   mut seq_sink: Option<Box<dyn SeqSink>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
@@ -405,6 +406,7 @@ pub fn run(
     let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
+    let iteration_clock = IterationClock::of(&clock_model);
     let (new_timetree_state, new_partitions, outcome) = Refinement {
       graph: &mut input.graph,
       partitions,
@@ -437,6 +439,7 @@ pub fn run(
         &partitions,
         &timetree_state,
         prior_wanted.then_some(&coalescent_tc.distribution),
+        iteration_clock,
         &names,
         progress,
       )

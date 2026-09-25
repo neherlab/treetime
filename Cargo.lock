@@ -4501,6 +4501,7 @@ dependencies = [
  "num-traits",
  "openblas-src",
  "ordered-float",
+ "parking_lot",
  "petgraph",
  "pretty_assertions",
  "proptest",

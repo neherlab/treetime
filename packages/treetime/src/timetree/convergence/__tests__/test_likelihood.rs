@@ -129,6 +129,7 @@ mod tests {
       &partitions,
       &state,
       None,
+      helpers::fixed_clock(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -146,6 +147,14 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::timetree::convergence::metrics::IterationClock;
+
+    pub(super) const fn fixed_clock() -> IterationClock {
+      IterationClock {
+        clock_rate: 1e-3,
+        r_val: None,
+      }
+    }
 
     pub(super) fn single_root_graph() -> Result<(Graph, GraphNodeKey), Report> {
       let mut graph = Graph::new();

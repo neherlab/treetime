@@ -1,3 +1,4 @@
+use crate::timetree::convergence::metrics::IterationRecord;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -6,6 +7,7 @@ pub trait ProgressSink: Send + Sync {
   fn report(&self, stage: &str, fraction: f64, message: &str);
   fn log(&self, level: LogLevel, message: &str);
   fn log_enabled(&self, level: LogLevel) -> bool;
+  fn iteration(&self, _record: &IterationRecord) {}
 }
 
 pub struct NoopProgress;

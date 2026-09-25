@@ -4,7 +4,7 @@ use crate::progress_info;
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
-use crate::timetree::convergence::metrics::ConvergenceMetrics;
+use crate::timetree::convergence::metrics::{ConvergenceMetrics, IterationClock, IterationRecord};
 use crate::timetree::convergence::node_times::NodeTimeChange;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
@@ -13,15 +13,15 @@ use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) struct TimetreeOptimizer {
+pub(crate) struct TimetreeOptimizer<'a> {
   pub(crate) trace: Vec<ConvergenceMetrics>,
-  trace_sink: Option<Box<dyn TraceSink>>,
+  trace_sink: Option<Box<dyn TraceSink + 'a>>,
   max_iterations: usize,
   suppress_convergence: bool,
   pub(crate) i: usize,
 }
 
-impl TimetreeOptimizer {
+impl<'a> TimetreeOptimizer<'a> {
   pub(crate) fn new(max_iter: usize, suppress_convergence: bool) -> Self {
     Self {
       trace: vec![],
@@ -33,7 +33,7 @@ impl TimetreeOptimizer {
   }
 
   #[must_use]
-  pub(crate) fn with_trace_sink(mut self, sink: Box<dyn TraceSink>) -> Self {
+  pub(crate) fn with_trace_sink(mut self, sink: Box<dyn TraceSink + 'a>) -> Self {
     self.trace_sink = Some(sink);
     self
   }
@@ -58,6 +58,7 @@ impl TimetreeOptimizer {
     partitions: &[PartitionTimetree],
     state: &TimetreeState,
     coalescent_tc: Option<&Distribution>,
+    clock: IterationClock,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     progress: &dyn ProgressSink,
   ) -> Result<(), Report> {
@@ -81,7 +82,11 @@ impl TimetreeOptimizer {
     };
 
     if let Some(sink) = &mut self.trace_sink {
-      sink.emit(&metric)?;
+      sink.emit(&IterationRecord {
+        iteration: self.i,
+        metrics: metric.clone(),
+        clock,
+      })?;
     }
 
     progress_info!(
@@ -111,7 +116,7 @@ impl TimetreeOptimizer {
 }
 
 pub trait TraceSink: Send {
-  fn emit(&mut self, metric: &ConvergenceMetrics) -> Result<(), Report>;
+  fn emit(&mut self, record: &IterationRecord) -> Result<(), Report>;
 }
 
 pub(crate) struct IterationContext {

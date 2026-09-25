@@ -5,6 +5,7 @@ pub mod command;
 pub mod commands;
 pub mod config;
 pub mod job;
+pub mod json_float;
 pub mod rtt_chart;
 mod rtt_chart_render;
 
