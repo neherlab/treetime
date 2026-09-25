@@ -64,6 +64,9 @@ function stubTransport(overrides: Partial<BridgeTransport>): BridgeTransport {
     readRunFile: missing("readRunFile"),
     runArchive: missing("runArchive"),
     uploadInput: missing("uploadInput"),
+    runResults: missing("runResults"),
+    compareRuns: missing("compareRuns"),
+    cladeInRuns: missing("cladeInRuns"),
     ...overrides,
   };
 }
@@ -174,6 +177,30 @@ describe("bridge result validation", () => {
     const list = { runs: [], active_runs: 2 };
     const bridge = createBridge(stubTransport({ listRuns: () => Promise.resolve(list) }));
     await expect(bridge.listRuns()).resolves.toStrictEqual(list);
+  });
+
+  test("runResults rejects results whose command does not match their data", async () => {
+    const results = {
+      tree: null,
+      results: { command: "clock", data: { branches: [], mutations: 0, recurrent_sites: [] } },
+      methods: null,
+      citation: { text: "TreeTime", doi: "https://doi.org/10.1093/ve/vex042" },
+      problems: [],
+    };
+
+    const bridge = createBridge(stubTransport({ runResults: () => Promise.resolve(results) }));
+    await expect(bridge.runResults("r1")).rejects.toThrow("expected number");
+  });
+
+  test("cladeInRuns validates the matches", async () => {
+    const found = {
+      matches: [{ run: "r2", title: "second", node: "NODE_1", date: 2015.5, date_interval: null }],
+      searched_runs: 2,
+      unreadable_runs: [],
+    };
+
+    const bridge = createBridge(stubTransport({ cladeInRuns: () => Promise.resolve(found) }));
+    await expect(bridge.cladeInRuns({ run: "r1", node: "NODE_1" })).resolves.toStrictEqual(found);
   });
 
   test("cancelRun returns whether cancellation was requested", async () => {

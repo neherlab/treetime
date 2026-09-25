@@ -4,6 +4,7 @@ import type {
   AncestralConfig,
   AppCommand,
   CheckConfigRequest,
+  CladeRequest,
   CheckInputsRequest,
   ClockConfig,
   CreateRunRequest,
@@ -20,7 +21,9 @@ import type {
   VersionInfo,
 } from "./generated/types.gen";
 import {
+  zCancelRunResponse,
   zCheckConfigResponse,
+  zCladeInRuns,
   zCommandOutcome,
   zDatasetCatalog,
   zInputFacts,
@@ -28,8 +31,10 @@ import {
   zRunConfigResponse,
   zRunEvent,
   zRunFile,
+  zRunComparison,
   zRunList,
   zRunRecord,
+  zRunResults,
   zRunSummary,
   zTerminalEvent,
   zUploadedInput,
@@ -49,6 +54,12 @@ export type RunRecordResult = Parsed<typeof zRunRecord>;
 export type InputFactsResult = Parsed<typeof zInputFacts>;
 
 export type CheckConfigInput = Omit<CheckConfigRequest, "input_facts"> & { input_facts?: InputFactsResult | null };
+
+export type RunResultsResult = Parsed<typeof zRunResults>;
+
+export type RunComparisonResult = Parsed<typeof zRunComparison>;
+
+export type CladeInRunsResult = Parsed<typeof zCladeInRuns>;
 
 type RunEventResult = Parsed<typeof zRunEvent>;
 
@@ -126,6 +137,9 @@ export interface BridgeTransport {
   readRunFile(id: string, path: string): Promise<Uint8Array>;
   runArchive(id: string): Promise<Uint8Array>;
   uploadInput(id: string, name: string, data: Blob): Promise<unknown>;
+  runResults(id: string): Promise<unknown>;
+  compareRuns(id: string, other: string): Promise<unknown>;
+  cladeInRuns(request: CladeRequest): Promise<unknown>;
 }
 
 export interface TreeTimeBridge {
@@ -148,6 +162,9 @@ export interface TreeTimeBridge {
   readRunFile(id: string, path: string): Promise<Uint8Array>;
   runArchive(id: string): Promise<Uint8Array>;
   uploadInput(id: string, name: string, data: Blob): Promise<Parsed<typeof zUploadedInput>>;
+  runResults(id: string): Promise<RunResultsResult>;
+  compareRuns(id: string, other: string): Promise<RunComparisonResult>;
+  cladeInRuns(request: CladeRequest): Promise<CladeInRunsResult>;
   timetree(config: TimetreeConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
   optimize(config: OptimizeConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
   prune(config: PruneConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
@@ -155,8 +172,6 @@ export interface TreeTimeBridge {
   clock(config: ClockConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
   mugration(config: MugrationConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
 }
-
-const zCancelResponse = z.object({ cancelled: z.boolean() });
 
 export function createBridge(transport: BridgeTransport): TreeTimeBridge {
   async function followRun(id: string, options: FollowRunOptions = {}): Promise<TerminalEventResult> {
@@ -259,7 +274,7 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
       return zRunSummary.parse(await transport.updateRun(id, request));
     },
     async cancelRun(id) {
-      return zCancelResponse.parse(await transport.cancelRun(id)).cancelled;
+      return zCancelRunResponse.parse(await transport.cancelRun(id)).cancelled;
     },
     deleteRun: (id) => transport.deleteRun(id),
     async restoreRun(id) {
@@ -274,6 +289,15 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
     runArchive: (id) => transport.runArchive(id),
     async uploadInput(id, name, data) {
       return zUploadedInput.parse(await transport.uploadInput(id, name, data));
+    },
+    async runResults(id) {
+      return zRunResults.parse(await transport.runResults(id));
+    },
+    async compareRuns(id, other) {
+      return zRunComparison.parse(await transport.compareRuns(id, other));
+    },
+    async cladeInRuns(request) {
+      return zCladeInRuns.parse(await transport.cladeInRuns(request));
     },
     timetree: (config, options) => run("timetree", config, options),
     optimize: (config, options) => run("optimize", config, options),

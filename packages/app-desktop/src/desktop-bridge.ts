@@ -131,6 +131,9 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
     readRunFile: (id, path) => bytes("runs:read-file", id, path),
     runArchive: (id) => bytes("runs:archive", id),
     uploadInput: () => Promise.reject(new LocalInputsError()),
+    runResults: (id) => call("runs:results", id),
+    compareRuns: (id, other) => call("runs:compare", id, other),
+    cladeInRuns: (request) => call("runs:clade-in-runs", JSON.stringify(request)),
   };
 }
 

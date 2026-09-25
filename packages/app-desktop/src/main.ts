@@ -79,6 +79,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle("treetime:runs:files", (_event, id: string) => runs.files(id));
   ipcMain.handle("treetime:runs:read-file", (_event, id: string, filePath: string) => runs.readFile(id, filePath));
   ipcMain.handle("treetime:runs:archive", (_event, id: string) => runs.archive(id));
+  ipcMain.handle("treetime:runs:results", (_event, id: string) => runs.results(id));
+  ipcMain.handle("treetime:runs:compare", (_event, id: string, other: string) => runs.compare(id, other));
+  ipcMain.handle("treetime:runs:clade-in-runs", (_event, requestJson: string) => runs.cladeInRuns(requestJson));
   ipcMain.handle(
     "treetime:runs:subscribe",
     (event: Electron.IpcMainInvokeEvent, subscriptionId: string, id: string, from: number) => {
