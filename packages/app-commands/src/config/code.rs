@@ -1,6 +1,6 @@
 use crate::command::AppCommand;
 use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
-use crate::config::settings::setting_ref;
+use crate::config::settings::{has_path, setting_ref};
 use crate::run_config::RUN_CONFIG_OUTPUT_DIR;
 use app_datasets::schema_directive;
 use clap::{Arg, Command};
@@ -134,14 +134,6 @@ fn setting_value(config: &Map<String, Value>, spec: &SettingSpec) -> Value {
   setting_ref(config, &spec.path)
     .cloned()
     .unwrap_or_else(|| spec.default_value.clone())
-}
-
-fn has_path(value: &Value) -> bool {
-  match value {
-    Value::String(path) => !path.is_empty(),
-    Value::Array(paths) => paths.iter().any(has_path),
-    _ => false,
-  }
 }
 
 fn command_line(

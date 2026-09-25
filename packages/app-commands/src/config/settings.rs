@@ -25,3 +25,11 @@ pub fn remove_setting(settings: &mut Map<String, Value>, key_path: &[String]) {
     parent.remove(last);
   }
 }
+
+pub fn has_path(value: &Value) -> bool {
+  match value {
+    Value::String(path) => !path.is_empty(),
+    Value::Array(paths) => paths.iter().any(has_path),
+    _ => false,
+  }
+}

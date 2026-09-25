@@ -2,6 +2,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
+use treetime_primitives::LogLh;
 
 const POSITIVE_INFINITY: &str = "inf";
 const NEGATIVE_INFINITY: &str = "-inf";
@@ -9,6 +10,12 @@ const NOT_A_NUMBER: &str = "nan";
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct JsonFloat(pub f64);
+
+impl From<LogLh> for JsonFloat {
+  fn from(value: LogLh) -> Self {
+    Self(value.value())
+  }
+}
 
 impl Serialize for JsonFloat {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

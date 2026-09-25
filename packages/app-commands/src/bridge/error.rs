@@ -3,6 +3,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
+use treetime_utils::error::{ReportChain, panic_message};
 
 /// Error of a back-end operation, as the web server and the desktop back end report it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -17,19 +18,16 @@ pub struct ErrorResponse {
 
 impl ErrorResponse {
   pub fn from_report(report: &Report) -> Self {
-    let mut chain = report.chain().map(ToString::to_string);
+    let ReportChain { message, causes } = ReportChain::of(report);
     Self {
       code: ErrorCode::of(report),
-      message: chain.next().unwrap_or_default(),
-      causes: chain.collect(),
+      message,
+      causes,
     }
   }
 
   pub fn from_panic(payload: &(dyn Any + Send)) -> Self {
-    let detail = payload
-      .downcast_ref::<&str>()
-      .map(|message| (*message).to_owned())
-      .or_else(|| payload.downcast_ref::<String>().cloned());
+    let detail = panic_message(payload);
     Self {
       code: ErrorCode::InternalError,
       message: "the back end stopped the operation after an internal error".to_owned(),

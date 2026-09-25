@@ -9,7 +9,6 @@ use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
 use treetime::timetree::convergence::metrics::ConvergenceMetrics;
-use treetime_primitives::LogLh;
 use util_augur_node_data_json::AugurNodeDataJsonClock;
 
 const INTERVAL_EDGE_FRACTION: f64 = 0.05;
@@ -157,10 +156,10 @@ pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetree
         iteration,
         max_time_change: metrics.max_time_change.map(JsonFloat),
         rms_time_change: metrics.rms_time_change.map(JsonFloat),
-        log_lh_seq: metrics.log_lh_seq.map(log_lh),
-        log_lh_pos: metrics.log_lh_pos.map(log_lh),
-        log_lh_coal: metrics.log_lh_coal.map(log_lh),
-        log_lh_total: metrics.log_lh_total.map(log_lh),
+        log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
+        log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
+        log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
+        log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
       })
       .collect(),
     skyline: outputs
@@ -241,7 +240,7 @@ fn timetree_estimates(
     log_likelihood: outputs
       .trace
       .last()
-      .and_then(|metrics| metrics.log_lh_total.map(log_lh)),
+      .and_then(|metrics| metrics.log_lh_total.map(JsonFloat::from)),
     iterations: outputs.trace.len(),
   }
 }
@@ -249,8 +248,4 @@ fn timetree_estimates(
 fn near_interval_edge(date: f64, interval: &DateInterval) -> bool {
   let (lower, upper) = (interval.lower.year, interval.upper.year);
   (date - lower).min(upper - date) <= INTERVAL_EDGE_FRACTION * (upper - lower)
-}
-
-fn log_lh(value: LogLh) -> JsonFloat {
-  JsonFloat(value.value())
 }

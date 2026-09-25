@@ -11,6 +11,8 @@ pub const PATH_ROLE_KEY: &str = "x-path";
 
 pub const CLI_FLAG_KEY: &str = "x-cli-flag";
 
+pub const DEFS_PREFIX: &str = "#/$defs/";
+
 pub fn leaf_properties(schema: &Value) -> Result<Vec<LeafProperty>, Report> {
   let mut leaves = Vec::new();
   let mut visited_defs = BTreeSet::new();
@@ -64,13 +66,7 @@ fn collect_leaves(
           "schema definition `{def}` holds the settings of more than one config key, so its settings cannot carry per-key annotations"
         );
       }
-      collect_leaves(
-        schema,
-        &format!("/$defs/{}", escape_pointer(&def)),
-        &key_path,
-        visited_defs,
-        leaves,
-      )?;
+      collect_leaves(schema, &def_pointer(&def), &key_path, visited_defs, leaves)?;
     } else {
       let path_role = match property.get(PATH_ROLE_KEY).and_then(Value::as_str) {
         Some(role) => Some(
@@ -100,11 +96,15 @@ fn nested_object_def(schema: &Value, property: &Value) -> Option<String> {
   );
   refs
     .filter_map(|candidate| candidate.get("$ref").and_then(Value::as_str))
-    .filter_map(|reference| reference.strip_prefix("#/$defs/"))
+    .filter_map(|reference| reference.strip_prefix(DEFS_PREFIX))
     .find(|def| {
       schema
-        .pointer(&format!("/$defs/{}", escape_pointer(def)))
+        .pointer(&def_pointer(def))
         .is_some_and(|def| def.get("properties").is_some())
     })
     .map(str::to_owned)
+}
+
+pub fn def_pointer(name: &str) -> String {
+  format!("/$defs/{}", escape_pointer(name))
 }

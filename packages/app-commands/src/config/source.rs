@@ -67,6 +67,15 @@ pub struct InvalidConfig {
   pub rendered: String,
 }
 
+impl InvalidConfig {
+  pub fn problems_of(report: &Report) -> Vec<ConfigProblem> {
+    report
+      .downcast_ref::<Self>()
+      .map(|invalid| invalid.problems.clone())
+      .unwrap_or_default()
+  }
+}
+
 /// One problem found in a configuration.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigProblem {

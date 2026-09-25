@@ -1,9 +1,8 @@
 use crate::check_inputs::InputSlot;
 use crate::command::AppCommand;
 use crate::config::labels::setting_label;
-use crate::config::properties::{LeafProperty, PathRole, leaf_properties};
+use crate::config::properties::{DEFS_PREFIX, LeafProperty, PathRole, def_pointer, leaf_properties};
 use crate::config::settings::setting_ref;
-use crate::config::source::escape_pointer;
 use clap::{Arg, Command};
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -12,8 +11,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::IntoEnumIterator;
 use treetime_utils::{make_error, make_report};
-
-const DEFS_PREFIX: &str = "#/$defs/";
 
 pub fn setting_catalog() -> Result<SettingCatalog, Report> {
   Ok(SettingCatalog {
@@ -374,7 +371,7 @@ fn deref<'a>(schema: &'a Value, node: &'a Value) -> Result<&'a Value, Report> {
         .strip_prefix(DEFS_PREFIX)
         .ok_or_else(|| make_report!("schema reference `{reference}` is not a local definition"))?;
       schema
-        .pointer(&format!("/$defs/{}", escape_pointer(name)))
+        .pointer(&def_pointer(name))
         .ok_or_else(|| make_report!("schema has no definition `{name}`"))
     },
   }

@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::Path;
+use treetime_utils::error::ReportChain;
 use treetime_utils::make_error;
 
 pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
@@ -30,13 +31,13 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
         config_hash_error,
       }
     },
-    Err(report) => RunConfigResponse::Invalid {
-      message: report.to_string(),
-      causes: report.chain().skip(1).map(ToString::to_string).collect(),
-      problems: report
-        .downcast_ref::<InvalidConfig>()
-        .map(|invalid| invalid.problems.clone())
-        .unwrap_or_default(),
+    Err(report) => {
+      let ReportChain { message, causes } = ReportChain::of(&report);
+      RunConfigResponse::Invalid {
+        message,
+        causes,
+        problems: InvalidConfig::problems_of(&report),
+      }
     },
   }
 }

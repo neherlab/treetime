@@ -9,8 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, ProgressSink};
 use treetime::timetree::convergence::metrics::IterationRecord;
-use treetime_primitives::LogLh;
 use treetime_schema::ProgressEvent;
+use treetime_utils::error::{ReportChain, panic_message};
 use treetime_utils::make_error;
 
 const JOB_ID_MAX_LEN: usize = 128;
@@ -96,17 +96,16 @@ pub struct IterationEvent {
 impl From<&IterationRecord> for IterationEvent {
   fn from(record: &IterationRecord) -> Self {
     let metrics = &record.metrics;
-    let log_lh = |value: Option<LogLh>| value.map(|log_lh| JsonFloat(log_lh.value()));
     Self {
       iteration: record.iteration,
       n_diff: metrics.n_diff,
       n_resolved: metrics.n_resolved,
       max_time_change: metrics.max_time_change.map(JsonFloat),
       rms_time_change: metrics.rms_time_change.map(JsonFloat),
-      log_lh_seq: log_lh(metrics.log_lh_seq),
-      log_lh_pos: log_lh(metrics.log_lh_pos),
-      log_lh_coal: log_lh(metrics.log_lh_coal),
-      log_lh_total: log_lh(metrics.log_lh_total),
+      log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
+      log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
+      log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
+      log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
       clock_rate: JsonFloat(record.clock.clock_rate),
       r_squared: record.clock.r_val.map(|r| JsonFloat(r * r)),
     }
@@ -145,19 +144,16 @@ impl TerminalEvent {
     if report.downcast_ref::<CancelledError>().is_some() || cancel.is_cancelled() {
       return Self::Cancelled { job_id };
     }
+    let ReportChain { message, causes } = ReportChain::of(report);
     Self::Error {
       job_id,
-      message: report.to_string(),
-      causes: report.chain().skip(1).map(ToString::to_string).collect(),
+      message,
+      causes,
     }
   }
 
   fn from_panic(job_id: JobId, payload: &(dyn Any + Send)) -> Self {
-    let detail = payload
-      .downcast_ref::<&str>()
-      .map(|message| (*message).to_owned())
-      .or_else(|| payload.downcast_ref::<String>().cloned())
-      .unwrap_or_else(|| "no panic message".to_owned());
+    let detail = panic_message(payload).unwrap_or_else(|| "no panic message".to_owned());
     Self::Error {
       job_id,
       message: format!("internal error: the computation panicked: {detail}"),

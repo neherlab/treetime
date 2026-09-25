@@ -2,6 +2,7 @@ use crate::check_inputs::InputFacts;
 use crate::command::AppCommand;
 use crate::config::catalog::{SettingRole, command_settings};
 use crate::config::code::{ConfigCode, config_code, yaml_text};
+use crate::config::settings::has_path;
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
 use app_datasets::text_schema_command;
@@ -10,6 +11,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use strum::IntoEnumIterator;
+use treetime_utils::error::ReportChain;
 
 const SOURCE_NAME: &str = "config.yaml";
 
@@ -104,9 +106,8 @@ fn invalid(
   facts: Option<&InputFacts>,
 ) -> CheckConfigResponse {
   let invalid = report.downcast_ref::<InvalidConfig>();
-  let message = report.to_string();
-  let causes = report.chain().skip(1).map(ToString::to_string).collect::<Vec<_>>();
-  let problems = invalid.map(|invalid| invalid.problems.clone()).unwrap_or_default();
+  let ReportChain { message, causes } = ReportChain::of(report);
+  let problems = InvalidConfig::problems_of(report);
   let rejection = ConfigRejection {
     message: &message,
     causes: &causes,
@@ -159,12 +160,4 @@ fn with_inputs(
     "\n"
   };
   Ok((format!("{text}{separator}{added}"), document))
-}
-
-fn has_path(value: &Value) -> bool {
-  match value {
-    Value::String(path) => !path.is_empty(),
-    Value::Array(paths) => paths.iter().any(has_path),
-    _ => false,
-  }
 }

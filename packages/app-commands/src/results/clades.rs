@@ -1,18 +1,16 @@
 use crate::command::{AppCommand, OutputFile};
 use crate::job::JobId;
+use crate::results::outputs::read_auspice;
 use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::RunStatus;
-use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_io::auspice_types::AuspiceTree;
-use treetime_utils::io::json::json_read_file;
 use treetime_utils::make_report;
 
 /// Request to find a clade of one run in the other time-tree runs.
@@ -186,12 +184,7 @@ pub fn clade_in_runs(manager: &RunManager, request: &CladeRequest) -> Result<Cla
 }
 
 fn read_result_tree(out_dir: &Path, output_files: &[OutputFile]) -> Result<Option<ResultTree>, Report> {
-  output_files
-    .iter()
-    .find(|file| file.kind == OutputSelection::Auspice)
-    .map(|file| {
-      let auspice: AuspiceTree = json_read_file(out_dir.join(&file.path))?;
-      ResultTree::from_auspice(&auspice)
-    })
+  read_auspice(out_dir, output_files)?
+    .map(|auspice| ResultTree::from_auspice(&auspice))
     .transpose()
 }

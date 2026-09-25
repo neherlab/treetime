@@ -1,6 +1,6 @@
 use crate::check_inputs::{InputFacts, InputKind, InputNeed};
 use crate::command::AppCommand;
-use crate::config::settings::setting_ref;
+use crate::config::settings::{has_path, setting_ref};
 use crate::config::source::ConfigProblem;
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -114,7 +114,7 @@ fn missing_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
     .command
     .inputs()
     .iter()
-    .filter(|input| input.need == InputNeed::Required && !has_path(config.get(input.kind.setting())))
+    .filter(|input| input.need == InputNeed::Required && !config.get(input.kind.setting()).is_some_and(has_path))
     .map(|input| {
       block(
         format!("missing-{}", input.kind),
@@ -290,14 +290,6 @@ fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
 
 fn reads(command: AppCommand, kind: InputKind) -> bool {
   command.inputs().iter().any(|input| input.kind == kind)
-}
-
-fn has_path(value: Option<&Value>) -> bool {
-  match value {
-    Some(Value::String(path)) => !path.is_empty(),
-    Some(Value::Array(paths)) => paths.iter().any(|path| has_path(Some(path))),
-    _ => false,
-  }
 }
 
 const fn article(kind: InputKind) -> &'static str {

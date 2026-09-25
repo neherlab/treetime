@@ -15,6 +15,14 @@ use treetime_io::csv::csv_read_file;
 use treetime_utils::io::json::json_read_file;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
+pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Option<AuspiceTree>, Report> {
+  output_files
+    .iter()
+    .find(|file| file.kind == OutputSelection::Auspice)
+    .map(|file| json_read_file(out_dir.join(&file.path)))
+    .transpose()
+}
+
 /// An output file of a run that could not be read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct OutputProblem {
