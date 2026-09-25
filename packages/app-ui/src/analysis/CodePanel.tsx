@@ -80,7 +80,7 @@ export function CodePanel({ command, config }: { command: AppCommand; config: Js
   );
 }
 
-function keyedLines(lines: readonly CodeLine[]): Array<{ key: string; line: CodeLine; index: number }> {
+export function keyedLines(lines: readonly CodeLine[]): Array<{ key: string; line: CodeLine; index: number }> {
   const seen = new Map<string, number>();
 
   return lines.map((line, index) => {
@@ -93,7 +93,7 @@ function keyedLines(lines: readonly CodeLine[]): Array<{ key: string; line: Code
   });
 }
 
-function CodeLineView({ line, continued, indent }: { line: CodeLine; continued: boolean; indent: boolean }) {
+export function CodeLineView({ line, continued, indent }: { line: CodeLine; continued: boolean; indent: boolean }) {
   const prefix = indent && line.kind !== "comment" ? "  " : "";
   const suffix = continued && line.kind !== "comment" ? " \\" : "";
 

@@ -83,6 +83,12 @@
   }
 }
 
+@utility plate {
+  background-color: #ffffff;
+  color: #16302b;
+  color-scheme: light;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
