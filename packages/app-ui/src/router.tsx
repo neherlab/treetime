@@ -1,36 +1,82 @@
 import { createRootRoute, createRoute, createRouter, Navigate } from "@tanstack/react-router";
 
-import { Workspace } from "./components/Workspace";
+import { NewAnalysisPage } from "./analysis/NewAnalysisPage";
 import { RootLayout } from "./RootLayout";
-import { DEFAULT_COMMAND } from "./types";
+import { ComparePage } from "./runs/ComparePage";
+import { RunPage } from "./runs/RunPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
-function IndexRedirect() {
-  return <Navigate to="/$command" params={{ command: DEFAULT_COMMAND }} replace />;
-}
+const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: IndexRedirect });
 
-const indexRoute = createRoute({
+const newRoute = createRoute({ getParentRoute: () => rootRoute, path: "/new", component: NewAnalysisPage });
+
+const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id", component: RunRedirect });
+
+const runResultsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
-  component: IndexRedirect,
+  path: "/runs/$id/results",
+  component: RunResults,
 });
 
-const commandRoute = createRoute({
+const runSettingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "$command",
-  component: Workspace,
+  path: "/runs/$id/settings",
+  component: RunSettings,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, commandRoute]);
+const runLogRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id/log", component: RunLog });
 
-export const router = createRouter({
-  routeTree,
-  defaultPreload: "intent",
-});
+const compareRoute = createRoute({ getParentRoute: () => rootRoute, path: "/compare/$a/$b", component: CompareRuns });
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  newRoute,
+  runRoute,
+  runResultsRoute,
+  runSettingsRoute,
+  runLogRoute,
+  compareRoute,
+]);
+
+export const router = createRouter({ routeTree, defaultPreload: "intent" });
 
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
+}
+
+function IndexRedirect() {
+  return <Navigate to="/new" replace />;
+}
+
+function RunRedirect() {
+  const { id } = runRoute.useParams();
+
+  return <Navigate to="/runs/$id/results" params={{ id }} replace />;
+}
+
+function RunResults() {
+  const { id } = runResultsRoute.useParams();
+
+  return <RunPage id={id} tab="results" />;
+}
+
+function RunSettings() {
+  const { id } = runSettingsRoute.useParams();
+
+  return <RunPage id={id} tab="settings" />;
+}
+
+function RunLog() {
+  const { id } = runLogRoute.useParams();
+
+  return <RunPage id={id} tab="log" />;
+}
+
+function CompareRuns() {
+  const { a, b } = compareRoute.useParams();
+
+  return <ComparePage first={a} second={b} />;
 }

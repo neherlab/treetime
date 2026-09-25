@@ -1,0 +1,50 @@
+import type { AppCommand } from "@neherlab/app-contracts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
+
+import { useBridge } from "../BridgeContext";
+import { RUNS_KEY } from "../queries";
+import { COMMAND_SETTINGS } from "../settings/catalog";
+import type { JsonObject } from "../settings/json";
+import { autoTitle } from "../settings/titles";
+import { useDraftStore } from "../store/draft";
+import { Toast } from "../ui";
+
+export function useStartRun(command: AppCommand) {
+  const bridge = useBridge();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const toasts = Toast.useToastManager();
+
+  return useCallback(
+    async (config: JsonObject) => {
+      const draft = useDraftStore.getState();
+
+      const title =
+        draft.title.trim() === "" ? autoTitle(command, COMMAND_SETTINGS[command].specs, config) : draft.title.trim();
+
+      try {
+        const upload = draft.uploadRunId === null ? null : await bridge.getRun(draft.uploadRunId).catch(() => null);
+        let id: string;
+
+        if (upload !== null && upload.status === "created" && upload.command === command) {
+          await bridge.updateRun(upload.id, { title });
+          id = (await bridge.startRun(upload.id, { config })).id;
+        } else {
+          id = (await bridge.createRun({ command, config, title, defer_start: false })).id;
+        }
+
+        draft.update({ title: "", fromRunId: null, uploadRunId: null });
+        await queryClient.invalidateQueries({ queryKey: RUNS_KEY });
+        await navigate({ to: "/runs/$id/results", params: { id } });
+      } catch (error: unknown) {
+        toasts.add({
+          title: "The run cannot be started",
+          description: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+    [bridge, command, navigate, queryClient, toasts],
+  );
+}

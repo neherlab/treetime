@@ -27,10 +27,8 @@ const buttonVariants = cva(
   },
 );
 
-export type ButtonProps = BaseButton.Props & VariantProps<typeof buttonVariants> & { className?: string };
+type ButtonProps = BaseButton.Props & VariantProps<typeof buttonVariants> & { className?: string };
 
 export function Button({ className, variant, size, ...props }: ButtonProps) {
   return <BaseButton className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 }
-
-export { buttonVariants };
