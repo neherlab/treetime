@@ -713,6 +713,19 @@ args = "--time-marginal=always"
 selection = "nwk,nexus,auspice,augur-node-data,clock-model,gtr,confidence-tsv"
 
 [[timetree]]
+variant = "clock-csv"
+datasets = ["zika/20", "ebola/20"]
+selection = "nwk,clock-model,clock-csv"
+outputs = ["timetree.clock.csv"]
+
+[[timetree]]
+variant = "clock-csv-no-iterations"
+datasets = ["zika/20"]
+args = "--max-iter=0"
+selection = "nwk,clock-model,clock-csv"
+outputs = ["timetree.clock.csv"]
+
+[[timetree]]
 variant = "marginal-final"
 datasets = ["flu/h3n2/20"]
 args = "--time-marginal=only-final"

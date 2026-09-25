@@ -242,6 +242,9 @@ impl CommandKind {
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus]
     };
     let mut non_tree = self.non_tree_outputs();
+    if self == Self::Timetree {
+      non_tree.remove(&OutputSelection::ClockCsv);
+    }
     for non_default in [
       OutputSelection::ReconstructedAaFasta,
       OutputSelection::ConfidenceTsv,
@@ -280,6 +283,7 @@ impl CommandKind {
         OutputSelection::Gtr,
         OutputSelection::ReconstructedNucFasta,
         OutputSelection::ClockModel,
+        OutputSelection::ClockCsv,
         OutputSelection::ConfidenceTsv,
         OutputSelection::Tracelog,
         OutputSelection::CoalescentTsv,

@@ -54,6 +54,7 @@ per_command_output_selection!(TimetreeOutputSelection {
   Gtr,
   ReconstructedNucFasta,
   ClockModel,
+  ClockCsv,
   ConfidenceTsv,
   Tracelog,
   CoalescentTsv,

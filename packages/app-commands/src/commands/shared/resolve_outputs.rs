@@ -42,6 +42,7 @@ impl_resolve_outputs!(Timetree; TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw; |
   (OutputSelection::Gtr, s.output_gtr.as_deref()),
   (OutputSelection::ReconstructedNucFasta, s.output_reconstructed_nuc_fasta.as_deref()),
   (OutputSelection::ClockModel, s.output_clock_model.as_deref()),
+  (OutputSelection::ClockCsv, s.output_clock_csv.as_deref()),
   (OutputSelection::ConfidenceTsv, s.output_confidence_tsv.as_deref()),
   (OutputSelection::Tracelog, s.output_tracelog.as_deref()),
   (OutputSelection::CoalescentTsv, s.output_coalescent_tsv.as_deref()),

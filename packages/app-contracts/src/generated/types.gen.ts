@@ -34,7 +34,7 @@ export type DivergenceUnits = 'mutations-per-site' | 'mutations';
  */
 export type NwkStyleArg = 'plain' | 'beast' | 'nhx';
 
-export type TimetreeOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr' | 'ReconstructedNucFasta' | 'ClockModel' | 'ConfidenceTsv' | 'Tracelog' | 'CoalescentTsv' | 'CoalescentCsv' | 'CoalescentJson';
+export type TimetreeOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr' | 'ReconstructedNucFasta' | 'ClockModel' | 'ClockCsv' | 'ConfidenceTsv' | 'Tracelog' | 'CoalescentTsv' | 'CoalescentCsv' | 'CoalescentJson';
 
 export type LadderizeArg = 'none' | 'ascending' | 'descending';
 
@@ -371,6 +371,15 @@ export type TimetreeConfig = {
      * Takes precedence over paths configured with `--output-all` and `--output-selection`.
      */
     output_clock_model?: string | null;
+    /**
+     * Path to output clock regression CSV.
+     *
+     * One row per sample as the final clock model saw it: the date the regression used, marked
+     * `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
+     * from that distance, and whether the clock filter excluded the sample. Not written by default.
+     * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+     */
+    output_clock_csv?: string | null;
     /**
      * Path to output date-confidence-interval TSV.
      *

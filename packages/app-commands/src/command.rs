@@ -283,7 +283,11 @@ impl_raw_config!(
   TreetimeTimetreeArgs,
   Timetree,
   Timetree,
-  [TimetreeOutputSelection::Auspice, TimetreeOutputSelection::Tracelog,]
+  [
+    TimetreeOutputSelection::Auspice,
+    TimetreeOutputSelection::Tracelog,
+    TimetreeOutputSelection::ClockCsv,
+  ]
 );
 impl_raw_config!(
   TreetimeOptimizeArgsRaw,

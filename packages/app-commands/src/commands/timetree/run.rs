@@ -9,6 +9,7 @@ use app_output::augur_node_data::write_augur_node_data_json;
 use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
 use app_output::output_plan::OutputSelection;
+use app_output::rtt::write_clock_regression_result_csv;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use eyre::{Report, WrapErr};
@@ -184,6 +185,7 @@ pub fn run_timetree_estimation(
   let pipeline::TimetreeOutput {
     mut graph,
     clock_model,
+    clock_regression,
     confidence_intervals,
     partitions,
     dates,
@@ -271,6 +273,10 @@ pub fn run_timetree_estimation(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
     write_clock_model(&clock_model, path)?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
+    write_clock_regression_result_csv(&clock_regression, path, b',')?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {

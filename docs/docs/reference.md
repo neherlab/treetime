@@ -275,6 +275,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--output-clock-model <OUTPUT_CLOCK_MODEL>` — Path to output clock model JSON.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-clock-csv <OUTPUT_CLOCK_CSV>` — Path to output clock regression CSV.
+
+   One row per sample as the final clock model saw it: the date the regression used, marked `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts from that distance, and whether the clock filter excluded the sample. Not written by default. Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-confidence-tsv <OUTPUT_CONFIDENCE_TSV>` — Path to output date-confidence-interval TSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -354,7 +357,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `clock-csv`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 

@@ -710,6 +710,7 @@
           "Gtr",
           "ReconstructedNucFasta",
           "ClockModel",
+          "ClockCsv",
           "ConfidenceTsv",
           "Tracelog",
           "CoalescentTsv",
@@ -1213,6 +1214,16 @@
             "default": null,
             "x-path": "output",
             "x-cli-flag": "--output-clock-model"
+          },
+          "output_clock_csv": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Path to output clock regression CSV.\n\nOne row per sample as the final clock model saw it: the date the regression used, marked\n`input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts\nfrom that distance, and whether the clock filter excluded the sample. Not written by default.\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "default": null,
+            "x-path": "output",
+            "x-cli-flag": "--output-clock-csv"
           },
           "output_confidence_tsv": {
             "type": [
@@ -6947,6 +6958,23 @@
             "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
           },
           {
+            "key": "output_clock_csv",
+            "path": [
+              "output_clock_csv"
+            ],
+            "flag": "--output-clock-csv",
+            "group": "Output",
+            "role": "output",
+            "kind": "text",
+            "nullable": true,
+            "options": [],
+            "item_kind": "string",
+            "default_value": null,
+            "minimum": null,
+            "help": "Path to output clock regression CSV.",
+            "more": "One row per sample as the final clock model saw it: the date the regression used, marked `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts from that distance, and whether the clock filter excluded the sample. Not written by default. Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          },
+          {
             "key": "output_confidence_tsv",
             "path": [
               "output_confidence_tsv"
@@ -7254,6 +7282,10 @@
               },
               {
                 "value": "ClockModel",
+                "help": ""
+              },
+              {
+                "value": "ClockCsv",
                 "help": ""
               },
               {

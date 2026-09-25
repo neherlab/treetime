@@ -100,6 +100,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) output_gtr: Option<PathBuf>,
   pub(crate) output_reconstructed_nuc_fasta: Option<PathBuf>,
   pub(crate) output_clock_model: Option<PathBuf>,
+  pub(crate) output_clock_csv: Option<PathBuf>,
   pub(crate) output_confidence_tsv: Option<PathBuf>,
   pub(crate) output_tracelog: Option<PathBuf>,
   pub(crate) output_coalescent_tsv: Option<PathBuf>,
@@ -192,6 +193,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       output_gtr: raw.output_gtr,
       output_reconstructed_nuc_fasta: raw.output_reconstructed_nuc_fasta,
       output_clock_model: raw.output_clock_model,
+      output_clock_csv: raw.output_clock_csv,
       output_confidence_tsv: raw.output_confidence_tsv,
       output_tracelog: raw.output_tracelog,
       output_coalescent_tsv: raw.output_coalescent_tsv,
@@ -533,6 +535,16 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_model: Option<PathBuf>,
+
+  /// Path to output clock regression CSV.
+  ///
+  /// One row per sample as the final clock model saw it: the date the regression used, marked
+  /// `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
+  /// from that distance, and whether the clock filter excluded the sample. Not written by default.
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_csv: Option<PathBuf>,
 
   /// Path to output date-confidence-interval TSV.
   ///

@@ -754,6 +754,15 @@
           "default": null,
           "x-path": "output"
         },
+        "output_clock_csv": {
+          "description": "Path to output clock regression CSV.\n\nOne row per sample as the final clock model saw it: the date the regression used, marked\n`input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts\nfrom that distance, and whether the clock filter excluded the sample. Not written by default.\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "x-path": "output"
+        },
         "output_confidence_tsv": {
           "description": "Path to output date-confidence-interval TSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
           "type": [
@@ -1202,6 +1211,7 @@
             "Gtr",
             "ReconstructedNucFasta",
             "ClockModel",
+            "ClockCsv",
             "ConfidenceTsv",
             "Tracelog",
             "CoalescentTsv",
