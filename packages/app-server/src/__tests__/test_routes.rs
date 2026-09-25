@@ -532,17 +532,11 @@ mod tests {
     let doc = api_doc().unwrap();
     let schemas = &doc["components"]["schemas"];
     assert_eq!(
-      (
-        json!("--relax"),
-        json!("--branch-split-grid-n-points"),
-        json!("input"),
-        Value::Null,
-      ),
+      (json!("--relax"), json!("--branch-split-grid-n-points"), json!("input"),),
       (
         schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-flag"].clone(),
         schemas["BranchSplitArgs"]["properties"]["n_points"]["x-cli-flag"].clone(),
         schemas["ClockConfig"]["properties"]["tree"]["x-path"].clone(),
-        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-num-args"].clone(),
       )
     );
   }
