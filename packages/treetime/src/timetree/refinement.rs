@@ -1,5 +1,7 @@
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{
+  ClockRegressionPoint, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -30,6 +32,7 @@ pub(crate) struct Refinement<'a> {
   pub graph: &'a mut Graph,
   pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
+  pub clock_points: &'a mut Vec<ClockRegressionPoint>,
   pub clock_params: &'a ClockVarianceParams,
   pub branch_params: &'a BranchPointOptimizationParams,
   pub merger_rate: &'a PiecewiseConstantFn,
@@ -268,7 +271,9 @@ impl Refinement<'_> {
     )
     .wrap_err("Failed to update clock model")?;
     *self.clock_state = new_clock_state;
-    *self.clock_model = clock_reroot.into_clock_model()?;
+    let fit = clock_reroot.into_clock_fit()?;
+    *self.clock_model = fit.model;
+    *self.clock_points = fit.points;
     Ok(())
   }
 }

@@ -6,11 +6,12 @@ use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockFit, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
+use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::population_size::effective_population_size;
@@ -147,7 +148,10 @@ pub fn run(
   )
   .wrap_err("Failed to infer clock model")?;
   clock_state = new_clock_state;
-  let mut clock_model = clock_reroot.into_clock_model()?;
+  let ClockFit {
+    model: mut clock_model,
+    points: mut clock_points,
+  } = clock_reroot.into_clock_fit()?;
 
   let (mut partitions, partition_gtr, partition_model_name): (
     Vec<PartitionTimetree>,
@@ -193,7 +197,13 @@ pub fn run(
 
   if !params.keep_root {
     progress_info!(progress, "First reroot (pre-ancestral)");
-    (clock_model, partitions) = reroot_tree(
+    (
+      ClockFit {
+        model: clock_model,
+        points: clock_points,
+      },
+      partitions,
+    ) = reroot_tree(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
@@ -258,7 +268,13 @@ pub fn run(
 
   if !params.keep_root {
     progress_info!(progress, "Reroot (post-ancestral)");
-    (clock_model, partitions) = reroot_tree(
+    (
+      ClockFit {
+        model: clock_model,
+        points: clock_points,
+      },
+      partitions,
+    ) = reroot_tree(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
@@ -420,6 +436,7 @@ pub fn run(
       graph: &mut input.graph,
       partitions,
       clock_model: &mut clock_model,
+      clock_points: &mut clock_points,
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
       merger_rate: &merger_rate,
@@ -568,6 +585,14 @@ pub fn run(
 
   let names = assign_node_names(names, &input.graph)?;
 
+  let clock_regression = clock_fit_regression_results(&clock_model, &clock_points, &names, |key| {
+    if date_constraints.date_constraint(key).is_some() {
+      ClockDateSource::Input
+    } else {
+      ClockDateSource::Inferred
+    }
+  });
+
   if seq_sink.is_some() || params.include_leaves || params.impute_missing_data {
     if partitions.is_empty() {
       if seq_sink.is_some() {
@@ -612,6 +637,7 @@ pub fn run(
   Ok(TimetreeOutput {
     graph: input.graph,
     clock_model,
+    clock_regression,
     confidence_intervals,
     partitions,
     dates: input.dates,
@@ -642,6 +668,8 @@ pub struct TimetreeOutput {
   pub graph: Graph,
   #[serde(skip)]
   pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub clock_regression: Vec<ClockRegressionResult>,
   #[serde(skip)]
   pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
   #[serde(skip)]

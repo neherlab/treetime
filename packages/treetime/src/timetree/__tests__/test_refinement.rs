@@ -366,6 +366,7 @@ mod tests {
     let mut clock_state = ClockState::new(graph);
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
     let mut names = names.clone();
+    let mut clock_points = vec![];
     let leaf_bad_branches = undated_leaves(graph, constraints);
     let gammas = unit_gammas(graph);
 
@@ -378,6 +379,7 @@ mod tests {
       graph,
       partitions,
       clock_model,
+      clock_points: &mut clock_points,
       clock_params: &ClockVarianceParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
       merger_rate: &merger_rate,

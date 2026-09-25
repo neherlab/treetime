@@ -8,7 +8,9 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
-  use crate::clock::clock_regression::{ClockVarianceParams, clock_regression_backward, clock_regression_forward};
+  use crate::clock::clock_regression::{
+    ClockFit, ClockVarianceParams, clock_regression_backward, clock_regression_forward,
+  };
   use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
@@ -132,7 +134,7 @@ mod tests {
     let initial_node_count = graph.get_nodes().count();
 
     let names_tt_3 = names;
-    let (clock_model, partitions) = reroot_tree(
+    let (ClockFit { model: clock_model, .. }, partitions) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
@@ -499,7 +501,12 @@ mod tests {
     let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
     let names_tt_2 = names.clone();
-    let (clock_model_1, partitions) = reroot_tree(
+    let (
+      ClockFit {
+        model: clock_model_1, ..
+      },
+      partitions,
+    ) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
@@ -524,7 +531,12 @@ mod tests {
     let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
 
     let names_tt_1 = names;
-    let (clock_model_2, partitions) = reroot_tree(
+    let (
+      ClockFit {
+        model: clock_model_2, ..
+      },
+      partitions,
+    ) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,

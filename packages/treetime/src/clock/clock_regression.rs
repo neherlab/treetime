@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -84,6 +85,8 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     None
   };
 
+  let points = clock_regression_points(graph, inputs, &state, branch_lengths, prev_clock_rate)?;
+
   progress_info!(progress, "### Extracting clock model from root");
   let root_key = graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clock_set.clone();
@@ -117,6 +120,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       regression,
       clock_model,
       reroot_result,
+      points,
     },
   ))
 }
@@ -126,9 +130,33 @@ pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
   clock_model: Option<ClockModel>,
   reroot_result: Option<RerootResult>,
+  #[serde(skip)]
+  points: Vec<ClockRegressionPoint>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ClockFit {
+  pub model: ClockModel,
+  pub points: Vec<ClockRegressionPoint>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClockRegressionPoint {
+  pub key: GraphNodeKey,
+  pub date: Option<f64>,
+  pub div: f64,
+  pub is_outlier: bool,
 }
 
 impl ClockRerootResult {
+  pub(crate) fn into_clock_fit(mut self) -> Result<ClockFit, Report> {
+    let points = mem::take(&mut self.points);
+    Ok(ClockFit {
+      model: self.into_clock_model()?,
+      points,
+    })
+  }
+
   #[allow(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
@@ -278,6 +306,43 @@ pub(crate) fn clock_regression_forward(
     };
     Ok(GraphPassNodeOutput { node, parent_message })
   })
+}
+
+pub(crate) fn clock_regression_points(
+  graph: &Graph,
+  inputs: &ClockInputs,
+  state: &ClockState,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  prev_clock_rate: Option<f64>,
+) -> Result<Vec<ClockRegressionPoint>, Report> {
+  let mut divs: BTreeMap<GraphNodeKey, f64> = BTreeMap::new();
+  let mut points = vec![];
+  graph.iter_depth_first_preorder_forward(|node| {
+    let div = match node.parent_keys.first() {
+      Some((parent_key, edge_key)) => {
+        let edge_input = inputs.edge(*edge_key);
+        divs[parent_key]
+          + edge_divergence(
+            branch_lengths[edge_key],
+            edge_input.time_length,
+            edge_input.gamma,
+            prev_clock_rate,
+          )
+      },
+      None => 0.0,
+    };
+    divs.insert(node.key, div);
+    if node.is_leaf {
+      points.push(ClockRegressionPoint {
+        key: node.key,
+        date: inputs.likely_time(node.key),
+        div,
+        is_outlier: state.node(node.key).is_outlier,
+      });
+    }
+    Ok(())
+  })?;
+  Ok(points)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]

@@ -94,6 +94,7 @@ mod tests {
         clock_deviation: None,
         is_outlier,
         is_leaf: true,
+        date_source: None,
       }
     }
   }
