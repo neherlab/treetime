@@ -17,21 +17,15 @@ pub fn annotate_cli_flags(schema: &mut Schema, command: &Command) -> Result<(), 
   let mut command = command.clone();
   command.build();
   let leaves = leaf_properties(schema.as_value())?;
-  let object = schema.ensure_object();
-  let mut annotated = Value::Object(object.clone());
   for leaf in &leaves {
     let arg = setting_arg(&command, leaf)?;
     let long = arg
       .get_long()
       .ok_or_else(|| make_report!("config key `{}` has no command-line flag", leaf.key_path.join(".")))?;
-    let Some(Value::Object(property)) = annotated.pointer_mut(&leaf.schema_pointer) else {
+    let Some(Value::Object(property)) = schema.pointer_mut(&leaf.schema_pointer) else {
       return make_error!("schema has no property at `{}`", leaf.schema_pointer);
     };
     property.insert(CLI_FLAG_KEY.to_owned(), Value::String(format!("--{long}")));
   }
-  let Value::Object(annotated) = annotated else {
-    return make_error!("a command schema must be a JSON object");
-  };
-  *object = annotated;
   Ok(())
 }

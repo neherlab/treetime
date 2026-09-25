@@ -78,12 +78,11 @@ pub fn mugration_results(
 
   let mut counts: BTreeMap<(String, String), usize> = BTreeMap::new();
   for (index, node) in tree.nodes.iter().enumerate() {
-    if let (Some(parent), Some(to)) = (node.parent, &values[index]) {
-      if let Some(from) = &values[parent] {
-        if from != to {
-          *counts.entry((from.clone(), to.clone())).or_default() += 1;
-        }
-      }
+    if let (Some(parent), Some(to)) = (node.parent, &values[index])
+      && let Some(from) = &values[parent]
+      && from != to
+    {
+      *counts.entry((from.clone(), to.clone())).or_default() += 1;
     }
   }
   let state_changes = counts

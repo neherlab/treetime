@@ -359,10 +359,9 @@ fn gather_augur_output_maps_opt(
   graph: &Graph,
   partition: Option<&AncestralPartition>,
 ) -> Result<Option<AugurOutputMaps>, Report> {
-  let Some(partition) = partition else {
-    return Ok(None);
-  };
-  Ok(Some(gather_augur_output_maps(graph, partition)?))
+  partition
+    .map(|partition| gather_augur_output_maps(graph, partition))
+    .transpose()
 }
 
 pub fn gather_augur_output_maps(graph: &Graph, partition: &AncestralPartition) -> Result<AugurOutputMaps, Report> {

@@ -68,14 +68,15 @@ fn collect_leaves(
       }
       collect_leaves(schema, &def_pointer(&def), &key_path, visited_defs, leaves)?;
     } else {
-      let path_role = match property.get(PATH_ROLE_KEY).and_then(Value::as_str) {
-        Some(role) => Some(
+      let path_role = property
+        .get(PATH_ROLE_KEY)
+        .and_then(Value::as_str)
+        .map(|role| {
           role
             .parse()
-            .map_err(|err| make_report!("unknown `{PATH_ROLE_KEY}` value `{role}` at `{schema_pointer}`: {err}"))?,
-        ),
-        None => None,
-      };
+            .map_err(|err| make_report!("unknown `{PATH_ROLE_KEY}` value `{role}` at `{schema_pointer}`: {err}"))
+        })
+        .transpose()?;
       leaves.push(LeafProperty {
         key_path,
         schema_pointer,

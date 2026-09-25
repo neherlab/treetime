@@ -282,10 +282,7 @@ fn list_tokens(arg: &Arg, flag: &str, items: &[Value]) -> Option<Vec<String>> {
 fn cli_value(arg: &Arg, value: &Value) -> String {
   let text = match value {
     Value::String(text) => text.clone(),
-    Value::Array(_) | Value::Object(_) => value.to_string(),
-    Value::Number(number) => number.to_string(),
-    Value::Bool(flag) => flag.to_string(),
-    Value::Null => "null".to_owned(),
+    Value::Array(_) | Value::Object(_) | Value::Number(_) | Value::Bool(_) | Value::Null => value.to_string(),
   };
   arg
     .get_possible_values()

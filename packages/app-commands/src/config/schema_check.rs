@@ -14,13 +14,7 @@ pub fn schema_diagnostics_prefixed(
   skip_templates: bool,
   base: &str,
 ) -> Vec<RawDiagnostic> {
-  let schema_value = match serde_json::to_value(schema) {
-    Ok(schema_value) => schema_value,
-    Err(err) => {
-      return vec![RawDiagnostic::builder("config::internal", format!("could not build schema: {err}")).build()];
-    },
-  };
-  let validator = match jsonschema::validator_for(&schema_value) {
+  let validator = match jsonschema::validator_for(schema.as_value()) {
     Ok(validator) => validator,
     Err(err) => return vec![RawDiagnostic::builder("config::internal", format!("invalid schema: {err}")).build()],
   };

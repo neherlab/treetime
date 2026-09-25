@@ -93,7 +93,7 @@ impl TopologyOrderArgs {
       || self.topology_order_target_aggregate != TopologyOrderTargetAggregateArg::Mean;
     let target_mode = self
       .topology_order
-      .is_some_and(|order| order.into_preset().is_target_order());
+      .is_some_and(|order| TopologyOrderPreset::from(order).is_target_order());
 
     if target_fields_present && !target_mode {
       return make_error!(
@@ -200,12 +200,6 @@ pub enum TopologyOrderArg {
   LabelReverse,
   TargetOrder,
   TargetOrderReverse,
-}
-
-impl TopologyOrderArg {
-  fn into_preset(self) -> TopologyOrderPreset {
-    self.into()
-  }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -57,53 +57,29 @@ where
     .y_label_style(("sans-serif", 16))
     .draw()?;
 
-  chart
-    .draw_series(PointSeries::of_element(
-      norm_points,
-      4,
-      &NORM_POINT_COLOR,
-      &|c, s, st| {
+  for (points, color, label) in [
+    (norm_points, NORM_POINT_COLOR, "Samples (norm)"),
+    (outlier_points, OUTLIER_POINT_COLOR, "Samples (outliers)"),
+  ] {
+    chart
+      .draw_series(PointSeries::of_element(points, 4, &color, &|c, s, st| {
         EmptyElement::at(c)
           + Circle::new((0, 0), s, st.filled())
           + Circle::new((0, 0), s, RGBAColor(128, 128, 128, 0.25).stroke_width(1))
-      },
-    ))?
-    .label("Samples (norm)")
-    .legend(move |(x, y)| {
-      Circle::new(
-        (x + 10, y),
-        4,
-        ShapeStyle {
-          color: NORM_POINT_COLOR.to_rgba(),
-          filled: true,
-          stroke_width: 0,
-        },
-      )
-    });
-
-  chart
-    .draw_series(PointSeries::of_element(
-      outlier_points,
-      4,
-      &OUTLIER_POINT_COLOR,
-      &|c, s, st| {
-        EmptyElement::at(c)
-          + Circle::new((0, 0), s, st.filled())
-          + Circle::new((0, 0), s, RGBAColor(128, 128, 128, 0.25).stroke_width(1))
-      },
-    ))?
-    .label("Samples (outliers)")
-    .legend(move |(x, y)| {
-      Circle::new(
-        (x + 10, y),
-        4,
-        ShapeStyle {
-          color: OUTLIER_POINT_COLOR.to_rgba(),
-          filled: true,
-          stroke_width: 0,
-        },
-      )
-    });
+      }))?
+      .label(label)
+      .legend(move |(x, y)| {
+        Circle::new(
+          (x + 10, y),
+          4,
+          ShapeStyle {
+            color: color.to_rgba(),
+            filled: true,
+            stroke_width: 0,
+          },
+        )
+      });
+  }
 
   chart
     .draw_series(LineSeries::new(

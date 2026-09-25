@@ -114,23 +114,18 @@ fn compare_settings(first: &RunRecord, second: &RunRecord) -> Result<Option<Sett
 }
 
 fn compare_results(first: &RunResults, second: &RunResults, settings: Option<SettingsComparison>) -> RunComparison {
-  let estimates = match (&first.results, &second.results) {
-    (CommandResults::Timetree(a), CommandResults::Timetree(b)) => a.estimates.clone().zip(b.estimates.clone()),
+  let timetrees = match (&first.results, &second.results) {
+    (CommandResults::Timetree(a), CommandResults::Timetree(b)) => Some((a, b)),
     _ => None,
   };
-  let timetrees = matches!(
-    (&first.results, &second.results),
-    (CommandResults::Timetree(_), CommandResults::Timetree(_))
-  );
   RunComparison {
     settings,
-    ancestors: first
-      .tree
-      .as_ref()
-      .zip(second.tree.as_ref())
-      .filter(|_| timetrees)
+    ancestors: timetrees
+      .and_then(|_| first.tree.as_ref().zip(second.tree.as_ref()))
       .map(|(a, b)| compare_ancestors(a, b)),
-    estimates: estimates.map(|(a, b)| compare_estimates(a, b)),
+    estimates: timetrees
+      .and_then(|(a, b)| a.estimates.clone().zip(b.estimates.clone()))
+      .map(|(a, b)| compare_estimates(a, b)),
   }
 }
 
