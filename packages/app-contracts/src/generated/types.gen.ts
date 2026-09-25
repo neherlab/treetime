@@ -3291,6 +3291,24 @@ export type ResultColoring = {
      * Distinct states of a categorical coloring, sorted; empty for other kinds.
      */
     states: Array<string>;
+    /**
+     * Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
+     */
+    scale: Array<StateColor>;
+};
+
+/**
+ * Color of one state of a categorical coloring.
+ */
+export type StateColor = {
+    /**
+     * Value of the node attribute.
+     */
+    state: string;
+    /**
+     * CSS hex color.
+     */
+    color: string;
 };
 
 /**
@@ -3843,6 +3861,13 @@ export type RunResults = {
 };
 
 /**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export type AuspiceDocument = {
+    [key: string]: unknown;
+};
+
+/**
  * Settings and inputs that differ between two runs of the same command.
  */
 export type SettingsComparison = {
@@ -4143,6 +4168,11 @@ export type DesktopRequest = {
         id: JobId;
     };
 } | {
+    operation: 'run-auspice';
+    args: {
+        id: JobId;
+    };
+} | {
     operation: 'compare-runs';
     args: {
         id: JobId;
@@ -4350,6 +4380,40 @@ export type RunsArchiveResponses = {
 };
 
 export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
+
+export type RunsAuspiceData = {
+    body?: never;
+    path: {
+        /**
+         * Id of a finished run
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/auspice';
+};
+
+export type RunsAuspiceErrors = {
+    /**
+     * The run wrote no Auspice file
+     */
+    404: ErrorResponse;
+    /**
+     * The run has not finished successfully
+     */
+    409: ErrorResponse;
+};
+
+export type RunsAuspiceError = RunsAuspiceErrors[keyof RunsAuspiceErrors];
+
+export type RunsAuspiceResponses = {
+    /**
+     * Auspice JSON of the run, with the color scales the app displays
+     */
+    200: AuspiceDocument;
+};
+
+export type RunsAuspiceResponse = RunsAuspiceResponses[keyof RunsAuspiceResponses];
 
 export type RunsCancelData = {
     body?: never;

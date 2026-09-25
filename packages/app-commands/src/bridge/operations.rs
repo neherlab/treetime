@@ -1,6 +1,7 @@
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse};
 use crate::check_inputs::{CheckInputsRequest, InputFacts};
 use crate::job::JobId;
+use crate::results::auspice::AuspiceDocument;
 use crate::results::clades::{CladeInRuns, CladeRequest};
 use crate::results::compare::RunComparison;
 use crate::results::run_results::RunResults;
@@ -88,6 +89,8 @@ desktop_operations! {
   "run-files" => RunFiles fn run_files(id: JobId) -> Vec<RunFile>;
   /// Results of a finished run, read from its output files.
   "run-results" => RunResults fn run_results(id: JobId) -> RunResults;
+  /// Auspice JSON of a finished run, with the color scales the app displays.
+  "run-auspice" => RunAuspice fn run_auspice(id: JobId) -> AuspiceDocument;
   /// Differences of the second run's results from the first run's.
   "compare-runs" => CompareRuns fn compare_runs(id: JobId, other: JobId) -> RunComparison;
   /// Nodes of other finished time-tree runs with the same samples below them.

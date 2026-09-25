@@ -2,6 +2,7 @@
 mod tests {
   use crate::command::AppCommand;
   use crate::job::JobId;
+  use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
   use crate::results::compare::compare_runs;
@@ -11,9 +12,11 @@ mod tests {
   use crate::runs::setting_differences::SettingDifference;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
-  use helpers::{finished_run, zika};
+  use helpers::{auspice_path, dataset, finished_run, zika};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::{Value, json};
+  use std::fs;
   use std::sync::Arc;
   use tempfile::tempdir;
   use treetime::clock::clock_model::ClockModel;
@@ -178,6 +181,110 @@ mod tests {
   }
 
   #[test]
+  fn test_run_auspice_colors_a_mugration_trait_with_the_app_palette() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Mugration,
+      json!({
+        "tree": dataset("dengue/20", "tree.nwk"),
+        "metadata": dataset("dengue/20", "metadata.tsv"),
+        "metadata_id_columns": ["genbank_accession"],
+        "attribute": "region",
+      }),
+    );
+
+    let document = serde_json::to_value(run_auspice(&runs, &id)?)?;
+
+    let tree = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree");
+    let region = tree
+      .colorings
+      .iter()
+      .find(|coloring| coloring.key == "region")
+      .expect("the trait is a coloring");
+    let scale = document["meta"]["colorings"]
+      .as_array()
+      .expect("colorings")
+      .iter()
+      .find(|coloring| coloring["key"] == "region")
+      .map(|coloring| coloring["scale"].clone());
+    assert_eq!(
+      (
+        vec!["#332288", "#88ccee", "#44aa99", "#117733"],
+        Some(json!(
+          region
+            .scale
+            .iter()
+            .map(|color| [&color.state, &color.color])
+            .collect::<Vec<_>>()
+        )),
+      ),
+      (
+        region
+          .scale
+          .iter()
+          .map(|color| color.color.as_str())
+          .collect::<Vec<_>>(),
+        scale,
+      )
+    );
+    assert_eq!(
+      region.states,
+      region.scale.iter().map(|color| color.state.clone()).collect::<Vec<_>>()
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::mugration(AppCommand::Mugration, json!({ "tree": dataset("dengue/20", "tree.nwk"), "metadata": dataset("dengue/20", "metadata.tsv"), "metadata_id_columns": ["genbank_accession"], "attribute": "region" }))]
+  #[case::timetree( AppCommand::Timetree,  timetree_config(None))]
+  #[case::ancestral(AppCommand::Ancestral, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] }))]
+  #[case::clock(    AppCommand::Clock,     json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv") }))]
+  #[trace]
+  fn test_run_auspice_changes_only_color_scales_and_leaves_the_written_file_unchanged(
+    #[case] command: AppCommand,
+    #[case] config: Value,
+  ) -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, command, config);
+    let path = auspice_path(&runs, &id);
+    let written = fs::read(&path)?;
+
+    let document = serde_json::to_value(run_auspice(&runs, &id)?)?;
+
+    let colorings = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree").colorings;
+    let mut expected: Value = serde_json::from_slice(&written)?;
+    for (coloring, result) in expected["meta"]["colorings"].as_array_mut().expect("colorings").iter_mut().zip(&colorings) {
+      if !result.scale.is_empty() {
+        coloring["scale"] = json!(result.scale.iter().map(|color| [&color.state, &color.color]).collect::<Vec<_>>());
+      }
+    }
+    assert_eq!((written, expected), (fs::read(&path)?, document));
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_auspice_refuses_a_run_that_did_not_finish() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let created = runs.create(CreateRunRequest {
+      command: AppCommand::Clock,
+      config: json!({ "tree": zika("tree.nwk") }),
+      title: None,
+      defer_start: true,
+    })?;
+
+    assert_error!(
+      run_auspice(&runs, &created.id),
+      format!("run `{}` has no results: it is created", created.id.as_str())
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_compare_a_run_with_itself_shifts_nothing() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
@@ -316,6 +423,7 @@ mod tests {
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
     use crate::runs::record::{CreateRunRequest, RunStatus};
+    use app_output::output_plan::OutputSelection;
     use serde_json::Value;
     use std::path::{Path, PathBuf};
     use std::sync::Arc;
@@ -338,9 +446,24 @@ mod tests {
     }
 
     pub(super) fn zika(file: &str) -> PathBuf {
+      dataset("zika/20", file)
+    }
+
+    pub(super) fn dataset(name: &str, file: &str) -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data/zika/20")
+        .join("../../data")
+        .join(name)
         .join(file)
+    }
+
+    pub(super) fn auspice_path(runs: &Arc<RunManager>, id: &JobId) -> PathBuf {
+      let record = runs.get(id).unwrap();
+      let file = record
+        .output_files
+        .iter()
+        .find(|file| file.kind == OutputSelection::Auspice)
+        .expect("the run wrote an Auspice file");
+      runs.store().out_dir(id).join(&file.path)
     }
   }
 }

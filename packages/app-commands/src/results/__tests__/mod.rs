@@ -1,3 +1,4 @@
+mod test_auspice;
 mod test_clades;
 mod test_run_results;
 mod test_timetree;

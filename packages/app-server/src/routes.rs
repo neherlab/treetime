@@ -6,6 +6,7 @@ use app_commands::check_config::{CheckConfigRequest, check_config};
 use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
 use app_commands::command::AppCommand;
 use app_commands::job::JobId;
+use app_commands::results::auspice::run_auspice;
 use app_commands::results::clades::{CladeRequest, clade_in_runs};
 use app_commands::results::compare::compare_runs;
 use app_commands::results::run_results::run_results;
@@ -112,6 +113,7 @@ fn api_router() -> OpenApiRouter<Arc<AppState>> {
     .routes(routes!(handle_run_file))
     .routes(routes!(handle_run_archive))
     .routes(routes!(handle_run_results))
+    .routes(routes!(handle_run_auspice))
     .routes(routes!(handle_compare_runs))
     .routes(routes!(handle_clade_in_runs))
     .merge(uploads)
@@ -276,6 +278,13 @@ fn operations() -> Vec<Operation> {
       bridge_type: "query",
       request: None,
       response: json_body("RunResults"),
+    },
+    Operation {
+      path: "/api/runs/{id}/auspice",
+      method: "get",
+      bridge_type: "query",
+      request: None,
+      response: json_body("AuspiceDocument"),
     },
     Operation {
       path: "/api/runs/{id}/compare/{other}",
@@ -718,6 +727,27 @@ async fn handle_run_results(
   let runs = Arc::clone(&state.runs);
   let results = tokio::task::spawn_blocking(move || run_results(&runs, &id)).await??;
   Ok(Json(serde_json::to_value(results)?))
+}
+
+#[utoipa::path(
+  get,
+  path = "/api/runs/{id}/auspice",
+  operation_id = "runsAuspice",
+  params(("id" = String, Path, description = "Id of a finished run")),
+  responses(
+    (status = 200, description = "Auspice JSON of the run, with the color scales the app displays"),
+    (status = 404, description = "The run wrote no Auspice file"),
+    (status = 409, description = "The run has not finished successfully"),
+  )
+)]
+async fn handle_run_auspice(
+  State(state): State<Arc<AppState>>,
+  Path(id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+  let id = run_id(&id)?;
+  let runs = Arc::clone(&state.runs);
+  let document = tokio::task::spawn_blocking(move || run_auspice(&runs, &id)).await??;
+  Ok(Json(serde_json::to_value(document)?))
 }
 
 #[utoipa::path(

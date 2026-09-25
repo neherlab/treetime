@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod auspice;
 pub mod clades;
 pub mod clock;
 pub mod compare;

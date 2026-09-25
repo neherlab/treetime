@@ -303,6 +303,55 @@
         "x-bridge-type": "file"
       }
     },
+    "/api/runs/{id}/auspice": {
+      "get": {
+        "operationId": "runsAuspice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of a finished run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auspice JSON of the run, with the color scales the app displays",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuspiceDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The run wrote no Auspice file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run has not finished successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-bridge-type": "query"
+      }
+    },
     "/api/runs/{id}/cancel": {
       "post": {
         "operationId": "runsCancel",
@@ -5993,15 +6042,41 @@
               "type": "string"
             },
             "description": "Distinct states of a categorical coloring, sorted; empty for other kinds."
+          },
+          "scale": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateColor"
+            },
+            "description": "Colors of the states in the displayed Auspice tree; empty when Auspice chooses them."
           }
         },
         "required": [
           "key",
           "title",
           "kind",
-          "states"
+          "states",
+          "scale"
         ],
         "description": "A coloring of the Auspice tree."
+      },
+      "StateColor": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "Value of the node attribute."
+          },
+          "color": {
+            "type": "string",
+            "description": "CSS hex color."
+          }
+        },
+        "required": [
+          "state",
+          "color"
+        ],
+        "description": "Color of one state of a categorical coloring."
       },
       "CommandResults": {
         "oneOf": [
@@ -7047,6 +7122,11 @@
         ],
         "description": "Results of a finished run, read from its output files."
       },
+      "AuspiceDocument": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Auspice JSON of a run, with the color scales the app displays."
+      },
       "SettingsComparison": {
         "type": "object",
         "properties": {
@@ -7829,6 +7909,33 @@
             ],
             "additionalProperties": false,
             "description": "Results of a finished run, read from its output files."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "run-auspice"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Auspice JSON of a finished run, with the color scales the app displays."
           },
           {
             "type": "object",

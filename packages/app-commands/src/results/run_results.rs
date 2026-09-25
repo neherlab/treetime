@@ -74,6 +74,11 @@ pub struct SubstitutionModel {
 }
 
 pub fn run_results(manager: &RunManager, id: &JobId) -> Result<RunResults, Report> {
+  let record = finished_record(manager, id)?;
+  results_of_record(&record, &manager.store().out_dir(id))
+}
+
+pub fn finished_record(manager: &RunManager, id: &JobId) -> Result<RunRecord, Report> {
   let record = manager.get(id)?;
   if record.status != RunStatus::Ok {
     return Err(conflict(format!(
@@ -82,7 +87,7 @@ pub fn run_results(manager: &RunManager, id: &JobId) -> Result<RunResults, Repor
       record.status
     )));
   }
-  results_of_record(&record, &manager.store().out_dir(id))
+  Ok(record)
 }
 
 pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResults, Report> {

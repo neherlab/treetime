@@ -1,0 +1,38 @@
+use crate::job::JobId;
+use crate::results::run_results::finished_record;
+use crate::results::tree::{ResultColoring, result_colorings};
+use crate::runs::errors::not_found;
+use crate::runs::manager::RunManager;
+use app_output::output_plan::OutputSelection;
+use eyre::{Report, WrapErr};
+use itertools::izip;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+use treetime_io::auspice_types::AuspiceTree;
+use treetime_utils::io::json::json_read_file;
+
+/// Auspice JSON of a run, with the color scales the app displays.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(transparent)]
+pub struct AuspiceDocument(#[schemars(with = "Map<String, Value>")] pub AuspiceTree);
+
+pub fn run_auspice(manager: &RunManager, id: &JobId) -> Result<AuspiceDocument, Report> {
+  let record = finished_record(manager, id)?;
+  let file = record
+    .output_files
+    .iter()
+    .find(|file| file.kind == OutputSelection::Auspice)
+    .ok_or_else(|| not_found(format!("run `{}` wrote no Auspice file", id.as_str())))?;
+  let auspice = json_read_file(manager.store().out_dir(id).join(&file.path))
+    .wrap_err_with(|| format!("When reading the Auspice file of run `{}`", id.as_str()))?;
+  display_auspice(auspice)
+}
+
+pub fn display_auspice(mut auspice: AuspiceTree) -> Result<AuspiceDocument, Report> {
+  let colorings = result_colorings(&auspice)?;
+  for (coloring, ResultColoring { scale, .. }) in izip!(&mut auspice.data.meta.colorings, colorings) {
+    coloring.scale = scale.into_iter().map(|color| [color.state, color.color]).collect();
+  }
+  Ok(AuspiceDocument(auspice))
+}

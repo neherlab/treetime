@@ -2,7 +2,7 @@
 pub(crate) mod tests {
   use crate::results::mugration::{AncestorState, MugrationResults, StateChange, mugration_results};
   use crate::results::mutations::{AncestralResults, BranchMutations, RecurrentSite, ancestral_results};
-  use crate::results::tree::{DateInterval, ResultColoring, ResultNode, ResultTree};
+  use crate::results::tree::{DateInterval, ResultColoring, ResultNode, ResultTree, StateColor};
   use eyre::Report;
   use helpers::fixture;
   use pretty_assertions::assert_eq;
@@ -85,18 +85,30 @@ pub(crate) mod tests {
           title: o!("Date"),
           kind: o!("continuous"),
           states: vec![],
+          scale: vec![],
         },
         ResultColoring {
           key: o!("country"),
           title: o!("Country"),
           kind: o!("categorical"),
           states: vec_of_owned!["brazil", "china"],
+          scale: vec![
+            StateColor {
+              state: o!("brazil"),
+              color: o!("#332288"),
+            },
+            StateColor {
+              state: o!("china"),
+              color: o!("#88ccee"),
+            },
+          ],
         },
         ResultColoring {
           key: o!("gt"),
           title: o!("Genotype"),
           kind: o!("categorical"),
           states: vec![],
+          scale: vec![],
         },
       ],
       default_color_by: Some(o!("country")),

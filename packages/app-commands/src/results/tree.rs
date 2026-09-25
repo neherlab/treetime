@@ -1,14 +1,20 @@
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
+use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree, AuspiceTreeNode};
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 const CATEGORICAL: &str = "categorical";
 
 const BAD_BRANCH: &str = "bad_branch";
+
+const GENOTYPE: &str = "gt";
+
+const MUTED_PALETTE: [&str; 9] = [
+  "#332288", "#88ccee", "#44aa99", "#117733", "#999933", "#ddcc77", "#cc6677", "#882255", "#aa4499",
+];
 
 const BAD_BRANCH_YES: &str = "Yes";
 
@@ -56,31 +62,7 @@ impl ResultTree {
       };
       nodes[index].tips = tips;
     }
-    let colorings = tree
-      .data
-      .meta
-      .colorings
-      .iter()
-      .map(|coloring| {
-        let states = if coloring.type_ == CATEGORICAL {
-          order
-            .iter()
-            .map(|(node, _)| node.node_attrs.attr(&coloring.key))
-            .filter_map_ok(|attr| attr.map(|attr| attr.value().to_owned()))
-            .collect::<Result<BTreeSet<_>, Report>>()?
-            .into_iter()
-            .collect()
-        } else {
-          vec![]
-        };
-        Ok(ResultColoring {
-          key: coloring.key.clone(),
-          title: coloring.title.clone(),
-          kind: coloring.type_.clone(),
-          states,
-        })
-      })
-      .collect::<Result<Vec<_>, Report>>()?;
+    let colorings = result_colorings(tree)?;
     Ok(Self {
       nodes,
       colorings,
@@ -162,6 +144,72 @@ pub struct ResultColoring {
   pub kind: String,
   /// Distinct states of a categorical coloring, sorted; empty for other kinds.
   pub states: Vec<String>,
+  /// Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
+  pub scale: Vec<StateColor>,
+}
+
+/// Color of one state of a categorical coloring.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct StateColor {
+  /// Value of the node attribute.
+  pub state: String,
+  /// CSS hex color.
+  pub color: String,
+}
+
+pub fn result_colorings(tree: &AuspiceTree) -> Result<Vec<ResultColoring>, Report> {
+  let order = preorder(&tree.tree);
+  tree
+    .data
+    .meta
+    .colorings
+    .iter()
+    .map(|coloring| {
+      let states = if coloring.type_ == CATEGORICAL {
+        order
+          .iter()
+          .map(|(node, _)| node.node_attrs.attr(&coloring.key))
+          .filter_map_ok(|attr| attr.map(|attr| attr.value().to_owned()))
+          .collect::<Result<BTreeSet<_>, Report>>()?
+          .into_iter()
+          .collect()
+      } else {
+        vec![]
+      };
+      let scale = coloring_scale(coloring, &states);
+      Ok(ResultColoring {
+        key: coloring.key.clone(),
+        title: coloring.title.clone(),
+        kind: coloring.type_.clone(),
+        states,
+        scale,
+      })
+    })
+    .collect()
+}
+
+fn coloring_scale(coloring: &AuspiceColoring, states: &[String]) -> Vec<StateColor> {
+  let muted = coloring.type_ == CATEGORICAL
+    && coloring.key != GENOTYPE
+    && coloring.key != BAD_BRANCH
+    && (1..=MUTED_PALETTE.len()).contains(&states.len());
+  if muted {
+    izip!(states, MUTED_PALETTE)
+      .map(|(state, color)| StateColor {
+        state: state.clone(),
+        color: color.to_owned(),
+      })
+      .collect()
+  } else {
+    coloring
+      .scale
+      .iter()
+      .map(|[state, color]| StateColor {
+        state: state.clone(),
+        color: color.clone(),
+      })
+      .collect()
+  }
 }
 
 fn result_node(node: &AuspiceTreeNode, parent: Option<usize>) -> Result<ResultNode, Report> {

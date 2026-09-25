@@ -3,6 +3,7 @@ use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse, check_
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
 use app_commands::command::AppCommand;
 use app_commands::job::JobId;
+use app_commands::results::auspice::{AuspiceDocument, run_auspice};
 use app_commands::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
 use app_commands::results::compare::{RunComparison, compare_runs};
 use app_commands::results::run_results::{RunResults, run_results};
@@ -168,6 +169,10 @@ impl DesktopBackend for DesktopService {
 
   fn run_results(&self, id: JobId) -> Result<RunResults, Report> {
     run_results(&self.runs, &id)
+  }
+
+  fn run_auspice(&self, id: JobId) -> Result<AuspiceDocument, Report> {
+    run_auspice(&self.runs, &id)
   }
 
   fn compare_runs(&self, id: JobId, other: JobId) -> Result<RunComparison, Report> {

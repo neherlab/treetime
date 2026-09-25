@@ -7,6 +7,7 @@ use app_commands::config::catalog::{SettingCatalog, setting_catalog};
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
+use app_commands::results::auspice::AuspiceDocument;
 use app_commands::results::clades::{CladeInRuns, CladeRequest};
 use app_commands::results::compare::RunComparison;
 use app_commands::results::run_results::RunResults;
@@ -76,6 +77,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<SettingCatalog>(&mut components)?;
   add_type::<SettingDifference>(&mut components)?;
   add_type::<RunResults>(&mut components)?;
+  add_type::<AuspiceDocument>(&mut components)?;
   add_type::<RunComparison>(&mut components)?;
   add_type::<CladeRequest>(&mut components)?;
   add_type::<CladeInRuns>(&mut components)?;

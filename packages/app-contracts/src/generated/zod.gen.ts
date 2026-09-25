@@ -1346,13 +1346,22 @@ export const zResultNode = z.object({
 });
 
 /**
+ * Color of one state of a categorical coloring.
+ */
+export const zStateColor = z.object({
+    state: z.string(),
+    color: z.string()
+});
+
+/**
  * A coloring of the Auspice tree.
  */
 export const zResultColoring = z.object({
     key: z.string(),
     title: z.string(),
     kind: z.string(),
-    states: z.array(z.string())
+    states: z.array(z.string()),
+    scale: z.array(zStateColor)
 });
 
 /**
@@ -1648,6 +1657,11 @@ export const zRunResults = z.object({
 });
 
 /**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export const zAuspiceDocument = z.record(z.string(), z.unknown());
+
+/**
  * Settings and inputs that differ between two runs of the same command.
  */
 export const zSettingsComparison = z.object({
@@ -1852,6 +1866,12 @@ export const zDesktopRequest = z.union([
     }),
     z.object({
         operation: z.literal('run-results'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('run-auspice'),
         args: z.object({
             id: zJobId
         })

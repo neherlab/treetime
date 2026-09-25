@@ -38,7 +38,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::unknown_operation(r#"{"operation":"format-disk","args":{}}"#,               "unknown variant `format-disk`, expected one of `version`, `datasets`, `check-config`, `run-config`, `check-inputs`, `list-runs`, `create-run`, `get-run`, `start-run`, `update-run`, `cancel-run`, `delete-run`, `restore-run`, `purge-run`, `run-files`, `run-results`, `compare-runs`, `clade-in-runs` at line 1 column 26")]
+  #[case::unknown_operation(r#"{"operation":"format-disk","args":{}}"#,               "unknown variant `format-disk`, expected one of `version`, `datasets`, `check-config`, `run-config`, `check-inputs`, `list-runs`, `create-run`, `get-run`, `start-run`, `update-run`, `cancel-run`, `delete-run`, `restore-run`, `purge-run`, `run-files`, `run-results`, `run-auspice`, `compare-runs`, `clade-in-runs` at line 1 column 26")]
   #[case::invalid_id(       r#"{"operation":"get-run","args":{"id":"../x"}}"#,          "invalid job id `../x`: expected 1 to 128 ASCII letters, digits, `-` or `_` at line 1 column 43")]
   #[case::unknown_argument( r#"{"operation":"get-run","args":{"id":"r1","path":"/"}}"#, "unknown field `path`, expected `id` at line 1 column 47")]
   #[case::missing_argument( r#"{"operation":"get-run","args":{}}"#,                     "missing field `id` at line 1 column 32")]
@@ -52,6 +52,7 @@ mod tests {
     use crate::check_config::{CheckConfigRequest, CheckConfigResponse};
     use crate::check_inputs::{CheckInputsRequest, InputFacts};
     use crate::job::JobId;
+    use crate::results::auspice::AuspiceDocument;
     use crate::results::clades::{CladeInRuns, CladeRequest};
     use crate::results::compare::RunComparison;
     use crate::results::run_results::RunResults;
@@ -131,6 +132,10 @@ mod tests {
 
       fn run_results(&self, _id: JobId) -> Result<RunResults, Report> {
         make_error!("run-results is not part of this test")
+      }
+
+      fn run_auspice(&self, _id: JobId) -> Result<AuspiceDocument, Report> {
+        make_error!("run-auspice is not part of this test")
       }
 
       fn compare_runs(&self, _id: JobId, _other: JobId) -> Result<RunComparison, Report> {
