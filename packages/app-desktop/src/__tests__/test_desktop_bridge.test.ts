@@ -80,7 +80,7 @@ describe("desktop_bridge queries and requests", () => {
     await expect(bridge.version()).resolves.toStrictEqual({ version: "2.0.0" });
   });
 
-  test("checkConfig sends the request as JSON to the check-config channel", async () => {
+  test("checkConfig sends the check-config operation with its request", async () => {
     let captured: unknown[] = [];
 
     const bridge = createDesktopBridge(
@@ -100,10 +100,13 @@ describe("desktop_bridge queries and requests", () => {
     );
 
     await bridge.checkConfig({ command: "clock", text: "tree: t" });
-    expect(captured).toStrictEqual(["treetime:check-config", JSON.stringify({ command: "clock", text: "tree: t" })]);
+    expect(captured).toStrictEqual([
+      "treetime:call",
+      JSON.stringify({ operation: "check-config", args: { request: { command: "clock", text: "tree: t" } } }),
+    ]);
   });
 
-  test("runConfig sends the request as JSON to the run-config channel", async () => {
+  test("runConfig sends the run-config operation with its request", async () => {
     let captured: unknown[] = [];
 
     const bridge = createDesktopBridge(
@@ -124,12 +127,12 @@ describe("desktop_bridge queries and requests", () => {
 
     await bridge.runConfig({ command: "clock", config: { tree: "t" } });
     expect(captured).toStrictEqual([
-      "treetime:run-config",
-      JSON.stringify({ command: "clock", config: { tree: "t" } }),
+      "treetime:call",
+      JSON.stringify({ operation: "run-config", args: { request: { command: "clock", config: { tree: "t" } } } }),
     ]);
   });
 
-  test("startRun sends the replacement configuration as JSON", async () => {
+  test("startRun sends the start-run operation with the replacement configuration", async () => {
     let captured: unknown[] = [];
 
     const bridge = createDesktopBridge(
@@ -141,7 +144,10 @@ describe("desktop_bridge queries and requests", () => {
     );
 
     await bridge.startRun("r1", { config: { tree: "/data/t.nwk" } });
-    expect(captured).toStrictEqual(["treetime:runs:start", "r1", JSON.stringify({ tree: "/data/t.nwk" })]);
+    expect(captured).toStrictEqual([
+      "treetime:call",
+      JSON.stringify({ operation: "start-run", args: { id: "r1", request: { config: { tree: "/data/t.nwk" } } } }),
+    ]);
   });
 
   test("readRunFile returns the bytes the main process sends", async () => {
@@ -241,7 +247,7 @@ describe("desktop_bridge run events", () => {
 
   test("a command creates a run and resolves with the outcome", async () => {
     const ipc = makeFakeIpc((fake, channel) => {
-      if (channel === "treetime:runs:create") {
+      if (channel === "treetime:call") {
         return Promise.resolve(JSON.stringify(RECORD));
       }
 
@@ -259,7 +265,7 @@ describe("desktop_bridge run events", () => {
 
   test("a cancelled run rejects the command with a CancelledError", async () => {
     const ipc = makeFakeIpc((fake, channel) => {
-      if (channel === "treetime:runs:create") {
+      if (channel === "treetime:call") {
         return Promise.resolve(JSON.stringify(RECORD));
       }
 

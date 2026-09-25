@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::guard::{guarded, guarded_json, to_napi};
+  use crate::guard::{guarded, to_napi};
   use app_commands::bridge::error::{ErrorCode, ErrorResponse};
   use app_commands::runs::errors::not_found;
   use eyre::WrapErr;
@@ -10,7 +10,7 @@ mod tests {
 
   #[test]
   fn test_guard_passes_a_result_through() {
-    assert_eq!(Ok(o!("{\"a\":1}")), guarded_json(|| Ok(json!({ "a": 1 }))));
+    assert_eq!(Ok(json!({ "a": 1 })), guarded(|| Ok(json!({ "a": 1 }))));
   }
 
   #[test]

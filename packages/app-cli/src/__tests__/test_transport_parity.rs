@@ -34,9 +34,10 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
+    use app_commands::bridge::operations::DesktopRequest;
     use app_commands::command::AppCommand;
-    use app_commands::runs::manager::RunManager;
-    use app_napi::runs::{create_run, start_run};
+    use app_commands::runs::record::RunRecord;
+    use app_napi::backend::DesktopService;
     use app_server::create_router;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use axum::body::Body;
@@ -151,12 +152,20 @@ mod tests {
     }
 
     pub(super) fn run_napi(command: AppCommand, config: &Value, runs_dir: &Path) -> PathBuf {
-      let runs = RunManager::open(runs_dir).unwrap();
-      let request = json!({ "command": command, "config": config, "defer_start": true });
-      let record = create_run(&runs, &request.to_string()).unwrap();
-      let terminal = serde_json::to_value(start_run(&runs, record.id.as_str(), None).unwrap().run()).unwrap();
+      let service = DesktopService::open(runs_dir).unwrap();
+      let request: DesktopRequest = serde_json::from_value(json!({
+        "operation": "create-run",
+        "args": { "request": { "command": command, "config": config, "defer_start": true } },
+      }))
+      .unwrap();
+      let record: RunRecord = serde_json::from_str(&request.handle(&service).unwrap()).unwrap();
+      let started = service
+        .runs()
+        .start(&record.id, None, Box::new(|_config| Ok(())))
+        .unwrap();
+      let terminal = serde_json::to_value(started.run()).unwrap();
       assert_eq!(Some("ok"), terminal["status"].as_str(), "N-API run failed: {terminal}");
-      runs.store().out_dir(&record.id)
+      service.runs().store().out_dir(&record.id)
     }
 
     async fn response_json(response: axum::response::Response) -> Value {

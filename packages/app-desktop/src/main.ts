@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { zCreateRunRequest, zPickFilesRequest, zRunRecord } from "@neherlab/app-contracts";
+import { zPickFilesRequest } from "@neherlab/app-contracts";
 import * as addon from "@neherlab/app-napi";
 import {
   app,
@@ -14,7 +14,7 @@ import {
   type OpenDialogOptions,
 } from "electron";
 
-import { PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL, type IpcReply } from "./desktop-bridge";
+import { CALL_CHANNEL, PICK_FILES_CHANNEL, RUN_EVENT_CHANNEL, type IpcReply } from "./desktop-bridge";
 import { initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
 
@@ -57,56 +57,18 @@ function isThemeSource(value: unknown): value is "system" | "light" | "dark" {
 }
 
 function registerIpcHandlers(): void {
-  const runs = new addon.RunService(path.join(app.getPath("userData"), "runs"));
+  const backend = new addon.Backend(path.join(app.getPath("userData"), "runs"));
   const subscriptions = new Map<string, addon.Subscription>();
 
-  const startRun = (id: string, configJson: string | null) => {
-    void runToEnd(runs, id, configJson);
-  };
-
   handle(PICK_FILES_CHANNEL, (event, requestJson) => pickFiles(event, text(requestJson)));
-  handle("treetime:version", () => addon.version());
-  handle("treetime:datasets", () => addon.datasets());
-  handle("treetime:check-config", (_event, requestJson) => addon.checkConfigJson(text(requestJson)));
-  handle("treetime:run-config", (_event, requestJson) => addon.runConfigJson(text(requestJson)));
-  handle("treetime:check-inputs", (_event, requestJson) => addon.checkInputsJson(text(requestJson)));
-  handle("treetime:runs:list", () => runs.list());
-  handle("treetime:runs:get", (_event, id) => runs.get(text(id)));
-  handle("treetime:runs:create", (_event, requestJson) => {
-    const request = text(requestJson);
-    const record = zRunRecord.parse(JSON.parse(runs.create(request)));
-
-    if (!zCreateRunRequest.parse(JSON.parse(request)).defer_start) {
-      startRun(record.id, null);
-    }
-
-    return runs.get(record.id);
-  });
-  handle("treetime:runs:start", (_event, id, configJson) => {
-    startRun(text(id), configJson === null ? null : text(configJson));
-
-    return runs.get(text(id));
-  });
-  handle("treetime:runs:update", (_event, id, requestJson) => runs.update(text(id), text(requestJson)));
-  handle("treetime:runs:cancel", (_event, id) => JSON.stringify({ cancelled: runs.cancel(text(id)) }));
-  handle("treetime:runs:delete", (_event, id) => {
-    runs.delete(text(id));
-  });
-  handle("treetime:runs:restore", (_event, id) => runs.restore(text(id)));
-  handle("treetime:runs:purge", (_event, id) => {
-    runs.purge(text(id));
-  });
-  handle("treetime:runs:files", (_event, id) => runs.files(text(id)));
-  handle("treetime:runs:read-file", (_event, id, filePath) => runs.readFile(text(id), text(filePath)));
-  handle("treetime:runs:archive", (_event, id) => runs.archive(text(id)));
-  handle("treetime:runs:results", (_event, id) => runs.results(text(id)));
-  handle("treetime:runs:compare", (_event, id, other) => runs.compare(text(id), text(other)));
-  handle("treetime:runs:clade-in-runs", (_event, requestJson) => runs.cladeInRuns(text(requestJson)));
+  handle(CALL_CHANNEL, (_event, requestJson) => backend.call(text(requestJson)));
+  handle("treetime:runs:read-file", (_event, id, filePath) => backend.readFile(text(id), text(filePath)));
+  handle("treetime:runs:archive", (_event, id) => backend.archive(text(id)));
   handle("treetime:runs:subscribe", (event, subscriptionId, id, from) => {
     const key = text(subscriptionId);
     const sender = event.sender;
 
-    const subscription = runs.subscribe(text(id), Number(from), (err: Error | null, eventJson: string) => {
+    const subscription = backend.subscribe(text(id), Number(from), (err: Error | null, eventJson: string) => {
       if (err === null && !sender.isDestroyed()) {
         sender.send(RUN_EVENT_CHANNEL, key, eventJson);
       }
@@ -168,15 +130,6 @@ async function pickFiles(event: IpcMainInvokeEvent, requestJson: string): Promis
   const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
 
   return result.canceled ? [] : result.filePaths;
-}
-
-async function runToEnd(runs: addon.RunService, id: string, configJson: string | null): Promise<void> {
-  try {
-    const terminalJson = await runs.start(id, configJson);
-    console.log(`[TreeTime IPC] run ${id} ended: ${terminalJson}`);
-  } catch (error: unknown) {
-    console.error(`[TreeTime IPC] run ${id} failed to run`, error);
-  }
 }
 
 async function createWindow(): Promise<void> {

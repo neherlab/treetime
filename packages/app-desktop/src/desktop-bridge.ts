@@ -2,6 +2,7 @@ import {
   createBridge,
   bridgeErrorFromText,
   zPickedFiles,
+  type DesktopRequestInput,
   type BridgeTransport,
   type LocalFiles,
   type TransportEventOptions,
@@ -18,6 +19,8 @@ export interface IpcRendererLike {
 export const RUN_EVENT_CHANNEL = "treetime:run-event";
 
 export const PICK_FILES_CHANNEL = "treetime:pick-files";
+
+export const CALL_CHANNEL = "treetime:call";
 
 export type IpcReply = { ok: true; value: unknown } | { ok: false; error: string };
 
@@ -45,8 +48,8 @@ export function createLocalFiles(ipc: IpcRendererLike, pathForFile: (file: File)
 }
 
 function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => string): BridgeTransport {
-  async function call(channel: string, ...args: unknown[]): Promise<unknown> {
-    return decode(unwrap(await ipc.invoke(`treetime:${channel}`, ...args)));
+  async function call(request: DesktopRequestInput): Promise<unknown> {
+    return decode(unwrap(await ipc.invoke(CALL_CHANNEL, JSON.stringify(request))));
   }
 
   async function bytes(channel: string, ...args: unknown[]): Promise<Uint8Array> {
@@ -112,33 +115,32 @@ function createDesktopTransport(ipc: IpcRendererLike, newSubscriptionId: () => s
   }
 
   return {
-    version: () => call("version"),
-    datasets: () => call("datasets"),
-    checkConfig: (request) => call("check-config", JSON.stringify(request)),
-    runConfig: (request) => call("run-config", JSON.stringify(request)),
-    checkInputs: (request) => call("check-inputs", JSON.stringify(request)),
-    listRuns: () => call("runs:list"),
-    createRun: (request) => call("runs:create", JSON.stringify(request)),
-    getRun: (id) => call("runs:get", id),
-    startRun: (id, request) =>
-      call("runs:start", id, request.config === undefined ? null : JSON.stringify(request.config)),
-    updateRun: (id, request) => call("runs:update", id, JSON.stringify(request)),
-    cancelRun: (id) => call("runs:cancel", id),
+    version: () => call({ operation: "version", args: {} }),
+    datasets: () => call({ operation: "datasets", args: {} }),
+    checkConfig: (request) => call({ operation: "check-config", args: { request } }),
+    runConfig: (request) => call({ operation: "run-config", args: { request } }),
+    checkInputs: (request) => call({ operation: "check-inputs", args: { request } }),
+    listRuns: () => call({ operation: "list-runs", args: {} }),
+    createRun: (request) => call({ operation: "create-run", args: { request } }),
+    getRun: (id) => call({ operation: "get-run", args: { id } }),
+    startRun: (id, request) => call({ operation: "start-run", args: { id, request } }),
+    updateRun: (id, request) => call({ operation: "update-run", args: { id, request } }),
+    cancelRun: (id) => call({ operation: "cancel-run", args: { id } }),
     deleteRun: async (id) => {
-      await call("runs:delete", id);
+      await call({ operation: "delete-run", args: { id } });
     },
-    restoreRun: (id) => call("runs:restore", id),
+    restoreRun: (id) => call({ operation: "restore-run", args: { id } }),
     purgeRun: async (id) => {
-      await call("runs:purge", id);
+      await call({ operation: "purge-run", args: { id } });
     },
     runEvents,
-    runFiles: (id) => call("runs:files", id),
+    runFiles: (id) => call({ operation: "run-files", args: { id } }),
     readRunFile: (id, path) => bytes("runs:read-file", id, path),
     runArchive: (id) => bytes("runs:archive", id),
     uploadInput: () => Promise.reject(new LocalInputsError()),
-    runResults: (id) => call("runs:results", id),
-    compareRuns: (id, other) => call("runs:compare", id, other),
-    cladeInRuns: (request) => call("runs:clade-in-runs", JSON.stringify(request)),
+    runResults: (id) => call({ operation: "run-results", args: { id } }),
+    compareRuns: (id, other) => call({ operation: "compare-runs", args: { id, other } }),
+    cladeInRuns: (request) => call({ operation: "clade-in-runs", args: { request } }),
   };
 }
 
