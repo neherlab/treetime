@@ -1,0 +1,71 @@
+import { transformWithOxc, type Plugin } from "vite";
+
+const AUSPICE_SOURCE = /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?auspice[\\/]src[\\/].+\.js$/u;
+
+const AUSPICE_ENTRIES = [
+  "auspice/src/actions/colors",
+  "auspice/src/actions/recomputeReduxState",
+  "auspice/src/actions/tree",
+  "auspice/src/actions/types",
+  "auspice/src/components/controls/choose-branch-labelling",
+  "auspice/src/components/controls/choose-layout",
+  "auspice/src/components/controls/choose-metric",
+  "auspice/src/components/controls/choose-tip-label",
+  "auspice/src/components/controls/color-by",
+  "auspice/src/components/controls/filter",
+  "auspice/src/components/controls/miscInfoText",
+  "auspice/src/components/controls/styles",
+  "auspice/src/components/download/downloadButtons",
+  "auspice/src/components/download/downloadModal",
+  "auspice/src/components/info/filtersSummary",
+  "auspice/src/components/tree",
+  "auspice/src/reducers/browserDimensions",
+  "auspice/src/reducers/controls",
+  "auspice/src/reducers/entropy",
+  "auspice/src/reducers/frequencies",
+  "auspice/src/reducers/measurements",
+  "auspice/src/reducers/metadata",
+  "auspice/src/reducers/narrative",
+  "auspice/src/reducers/notifications",
+  "auspice/src/reducers/tree",
+  "auspice/src/reducers/tree/treeToo",
+  "auspice/src/util/globals",
+];
+
+const SHARED_PACKAGES = ["react", "react-dom"];
+
+const AUSPICE_TRANSFORM = {
+  filter: { id: AUSPICE_SOURCE },
+  async handler(code: string, id: string) {
+    const result = await transformWithOxc(code, id, {
+      lang: "jsx",
+      jsx: { runtime: "automatic" },
+      decorator: { legacy: true },
+      sourcemap: true,
+    });
+
+    return { code: result.code, map: result.map ?? null };
+  },
+} satisfies Plugin["transform"];
+
+export function auspice(): Plugin {
+  return {
+    name: "treetime-auspice",
+    enforce: "pre",
+    config() {
+      return {
+        define: {
+          "process.env.EXTENSION_DATA": "undefined",
+          "process.env.SKIP_REDUX_CHECKS": "undefined",
+          "process.env.ENABLE_SERVICE_WORKER": "false",
+        },
+        resolve: { dedupe: SHARED_PACKAGES },
+        optimizeDeps: {
+          include: AUSPICE_ENTRIES,
+          rolldownOptions: { plugins: [{ name: "treetime-auspice-source", transform: AUSPICE_TRANSFORM }] },
+        },
+      };
+    },
+    transform: AUSPICE_TRANSFORM,
+  };
+}

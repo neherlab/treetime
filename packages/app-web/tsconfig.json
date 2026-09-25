@@ -6,7 +6,10 @@
     "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": "src",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "auspice/src/*": ["../app-ui/src/auspice/types/*"]
+    }
   },
   "include": ["src"]
 }

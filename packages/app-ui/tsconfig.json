@@ -2,9 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": [],
+    "types": ["node"],
     "jsx": "react-jsx",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "auspice/src/*": ["./src/auspice/types/*"]
+    }
   },
   "include": ["src"]
 }

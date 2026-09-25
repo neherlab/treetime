@@ -4,7 +4,10 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": [],
     "jsx": "react-jsx",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "auspice/src/*": ["../app-ui/src/auspice/types/*"]
+    }
   },
   "include": ["renderer"]
 }

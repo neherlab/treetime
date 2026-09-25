@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { RouteStore, formatUrl, parseHostname } from "portless";
@@ -21,7 +22,7 @@ logger.info = (msg, options) => {
 };
 
 export default defineConfig({
-  plugins: [tailwindcss(), react(), portless()],
+  plugins: [auspice(), tailwindcss(), react(), portless()],
   customLogger: logger,
   clearScreen: false,
   server: {

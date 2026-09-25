@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -49,6 +50,7 @@ export default defineConfig({
         },
       },
     }),
+    auspice(),
     tailwindcss(),
     react(),
   ],
