@@ -60,15 +60,6 @@ impl Backend {
   }
 
   #[napi(ts_return_type = "Promise<string>")]
-  pub fn resolve_run_file(&self, id: String, path: String) -> AsyncTask<JsonTask> {
-    let service = Arc::clone(&self.service);
-    JsonTask::spawn(move || {
-      let resolved = service.resolve_run_file(&JobId::parse(&id)?, &path)?;
-      Ok(serde_json::to_string(&resolved)?)
-    })
-  }
-
-  #[napi(ts_return_type = "Promise<string>")]
   pub fn save_run_file(&self, id: String, path: String, destination: String) -> AsyncTask<JsonTask> {
     let service = Arc::clone(&self.service);
     JsonTask::spawn(move || {

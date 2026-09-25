@@ -61,7 +61,6 @@ function stubTransport(overrides: Partial<BridgeTransport>): BridgeTransport {
     purgeRun: missing("purgeRun"),
     runEvents: missing("runEvents"),
     runFiles: missing("runFiles"),
-    readRunFile: missing("readRunFile"),
     saveRunFile: missing("saveRunFile"),
     saveRunArchive: missing("saveRunArchive"),
     uploadInput: missing("uploadInput"),

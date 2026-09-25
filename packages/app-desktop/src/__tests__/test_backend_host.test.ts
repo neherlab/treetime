@@ -2,7 +2,7 @@ import { BridgeError } from "@neherlab/app-contracts";
 import type { Subscription } from "@neherlab/app-napi";
 import { describe, expect, test } from "vitest";
 
-import { saveRunFiles, serveBackend, type AddonBackend, type ReadChunks } from "../backend-host";
+import { saveRunFiles, serveBackend, type AddonBackend } from "../backend-host";
 import {
   portEndpoint,
   zBackendReply,
@@ -88,48 +88,6 @@ describe("backend_host requests", () => {
 
     expect(unsubscribed).toStrictEqual(["r1", "r2"]);
   });
-
-  test("a file read streams the chunks of the file the back end resolves", async () => {
-    const resolved: string[][] = [];
-
-    const host = hostWith(
-      {
-        resolveRunFile: (id, path) => {
-          resolved.push([id, path]);
-
-          return Promise.resolve(JSON.stringify("/runs/r1/out/big.json"));
-        },
-      },
-      function* (path) {
-        yield new TextEncoder().encode(path);
-        yield new Uint8Array([7, 7, 7]);
-      },
-    );
-
-    host.send({ kind: "read-file", seq: 5, id: "r1", path: "big.json" });
-
-    const replies = await host.replies(3);
-    expect([
-      resolved,
-      replies.map((reply) => [reply.kind, reply.kind === "chunk" ? Array.from(new Uint8Array(reply.bytes)).length : 0]),
-    ]).toStrictEqual([
-      [["r1", "big.json"]],
-      [
-        ["chunk", "/runs/r1/out/big.json".length],
-        ["chunk", 3],
-        ["end", 0],
-      ],
-    ]);
-  });
-
-  test("a file outside the run folder answers with the error of the back end", async () => {
-    const error = '{"code":"invalid_request","message":"file path `../x` must name a file","causes":[]}';
-    const host = hostWith({ resolveRunFile: () => Promise.reject(new Error(error)) });
-
-    host.send({ kind: "read-file", seq: 6, id: "r1", path: "../x" });
-
-    await expect(host.replies(1)).resolves.toStrictEqual([{ kind: "error", seq: 6, error }]);
-  });
 });
 
 describe("backend_host saves", () => {
@@ -170,16 +128,13 @@ describe("backend_host with the renderer bridge over a message channel", () => {
           ? Promise.resolve('{"version":"2.0.0"}')
           : Promise.reject(new Error('{"code":"not_found","message":"no run `r9`","causes":[]}')),
       subscribe: () => subscription(() => undefined),
-      resolveRunFile: () => Promise.resolve(JSON.stringify("/runs/r1/out/a.nwk")),
       saveRunFile: () => Promise.resolve("null"),
       saveRunArchive: () => Promise.resolve("null"),
     };
 
     const hostPort = nodePort(channel.port1);
     const rendererPort = nodePort(channel.port2);
-    serveBackend(portEndpoint<BackendRequest, BackendReply>(hostPort, zBackendRequest), addon, function* () {
-      yield new Uint8Array([1, 2, 3]);
-    });
+    serveBackend(portEndpoint<BackendRequest, BackendReply>(hostPort, zBackendRequest), addon);
 
     const bridge = createDesktopBridge(connected(rendererPort), {
       connectBackend: () => undefined,
@@ -192,7 +147,6 @@ describe("backend_host with the renderer bridge over a message channel", () => {
     try {
       await expect(bridge.version()).resolves.toStrictEqual({ version: "2.0.0" });
       await expect(bridge.getRun("r9")).rejects.toBeInstanceOf(BridgeError);
-      await expect(bridge.readRunFile("r1", "a.nwk")).resolves.toStrictEqual(new Uint8Array([1, 2, 3]));
     } finally {
       channel.port1.close();
       channel.port2.close();
@@ -200,7 +154,7 @@ describe("backend_host with the renderer bridge over a message channel", () => {
   });
 });
 
-function hostWith(overrides: Partial<AddonBackend>, readChunks: ReadChunks = noChunks) {
+function hostWith(overrides: Partial<AddonBackend>) {
   const listeners: Array<(request: BackendRequest) => void> = [];
   const closeListeners: Array<() => void> = [];
   const received: BackendReply[] = [];
@@ -221,7 +175,7 @@ function hostWith(overrides: Partial<AddonBackend>, readChunks: ReadChunks = noC
     },
   };
 
-  serveBackend(endpoint, addonWith(overrides), readChunks);
+  serveBackend(endpoint, addonWith(overrides));
 
   return {
     send(request: BackendRequest) {
@@ -252,7 +206,6 @@ function addonWith(overrides: Partial<AddonBackend>): AddonBackend {
     subscribe: () => {
       throw new Error("subscribe is not part of this test");
     },
-    resolveRunFile: () => Promise.reject(new Error("resolveRunFile is not part of this test")),
     saveRunFile: () => Promise.reject(new Error("saveRunFile is not part of this test")),
     saveRunArchive: () => Promise.reject(new Error("saveRunArchive is not part of this test")),
     ...overrides,
@@ -286,8 +239,4 @@ function nodePort(port: InstanceType<typeof MessageChannel>["port1"]): PortLike 
       port.start();
     },
   };
-}
-
-function noChunks(): Iterable<Uint8Array> {
-  return [];
 }

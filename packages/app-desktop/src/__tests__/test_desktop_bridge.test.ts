@@ -311,35 +311,6 @@ describe("desktop_bridge run events", () => {
 });
 
 describe("desktop_bridge files", () => {
-  test("readRunFile joins the chunks the back end streams", async () => {
-    const backend = fakeBackend((request, reply) => {
-      reply({ kind: "chunk", seq: request.seq, bytes: new Uint8Array([40, 65]).buffer });
-      reply({ kind: "chunk", seq: request.seq, bytes: new Uint8Array([41]).buffer });
-      reply({ kind: "end", seq: request.seq });
-    });
-
-    await expect(
-      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).readRunFile("r1", "clock.nwk"),
-    ).resolves.toStrictEqual(new Uint8Array([40, 65, 41]));
-    expect(backend.requests).toStrictEqual([{ kind: "read-file", seq: 0, id: "r1", path: "clock.nwk" }]);
-  });
-
-  test("readRunFile rejects with the error of the back end", async () => {
-    const backend = fakeBackend((request, reply) => {
-      reply({
-        kind: "error",
-        seq: request.seq,
-        error: JSON.stringify({ code: "invalid_request", message: "file path `../x` must name a file", causes: [] }),
-      });
-    });
-
-    await expect(
-      createDesktopBridge(backend.connection, fakeShell({ picked: [] })).readRunFile("r1", "../x"),
-    ).rejects.toMatchObject({
-      response: { code: "invalid_request" },
-    });
-  });
-
   test("saveRunFile asks the shell to save the file and reports whether it was saved", async () => {
     const backend = fakeBackend(() => undefined);
     const shell = fakeShell({ picked: [], saved: { saved: true } });

@@ -200,35 +200,6 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
     });
   }
 
-  function bytes(request: (seq: number) => BackendRequest): Promise<Uint8Array> {
-    return new Promise((resolve, reject) => {
-      const chunks: Uint8Array[] = [];
-
-      const seq = client.open({
-        reply(reply) {
-          if (reply.kind === "chunk") {
-            chunks.push(new Uint8Array(reply.bytes));
-
-            return;
-          }
-
-          client.close(seq);
-
-          if (reply.kind === "end") {
-            resolve(concat(chunks));
-          } else if (reply.kind === "error") {
-            reject(bridgeErrorFromText(reply.error));
-          } else {
-            reject(new TypeError(`the back end answered a file read with a ${reply.kind} message`));
-          }
-        },
-        stopped: reject,
-      });
-
-      client.send(request(seq));
-    });
-  }
-
   function runEvents(id: string, options: TransportEventOptions): Promise<void> {
     return new Promise((resolve, reject) => {
       if (options.signal?.aborted === true) {
@@ -305,7 +276,6 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
     },
     runEvents,
     runFiles: (id) => call({ operation: "run-files", args: { id } }),
-    readRunFile: (id, path) => bytes((seq) => ({ kind: "read-file", seq, id, path })),
     saveRunFile: async (id, path, name) => saved(zSaveReply.parse(await shell.saveRunFile({ id, path, name }))),
     saveRunArchive: async (id, name) => saved(zSaveReply.parse(await shell.saveRunArchive({ id, name }))),
     uploadInput: () => Promise.reject(new LocalInputsError()),
@@ -322,16 +292,4 @@ function saved(reply: SaveReply): boolean {
   }
 
   return reply.saved;
-}
-
-function concat(chunks: Uint8Array[]): Uint8Array {
-  const result = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return result;
 }

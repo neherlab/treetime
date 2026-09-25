@@ -198,13 +198,6 @@ describe("bridge_web queries and requests", () => {
     expect(calls[0]?.body).toBe(blob);
   });
 
-  test("readRunFile encodes the path and returns the bytes", async () => {
-    const fetchFn = routes({ "GET /api/runs/r1/file?path=out%2Fclock.nwk": () => new Response("(A,B);") });
-    const bridge = createWebBridge({ fetchFn });
-    const bytes = await bridge.readRunFile("r1", "out/clock.nwk");
-    expect(new TextDecoder().decode(bytes)).toBe("(A,B);");
-  });
-
   test("saveRunFile hands the file to the browser download under the given name", async () => {
     const saved: Array<{ name: string; blob: Blob }> = [];
     const fetchFn = routes({ "GET /api/runs/r1/file?path=out%2Fclock.nwk": () => new Response("(A,B);") });

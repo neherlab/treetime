@@ -19,7 +19,7 @@ use log::{error, info};
 use serde_json::Value;
 use std::fs::File;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use strum::VariantNames;
@@ -42,10 +42,6 @@ impl DesktopService {
 
   pub fn runs(&self) -> &Arc<RunManager> {
     &self.runs
-  }
-
-  pub fn resolve_run_file(&self, id: &JobId, relative: &str) -> Result<PathBuf, Report> {
-    self.runs.file_path(id, relative)
   }
 
   pub fn save_run_file(&self, id: &JobId, relative: &str, destination: &Path) -> Result<(), Report> {

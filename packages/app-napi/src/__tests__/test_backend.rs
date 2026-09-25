@@ -96,7 +96,7 @@ mod tests {
     service.save_run_file(&record.id, "ancestral.nwk", &file).unwrap();
     service.save_run_archive(&record.id, &archive).unwrap();
 
-    let source = service.resolve_run_file(&record.id, "ancestral.nwk").unwrap();
+    let source = service.runs().file_path(&record.id, "ancestral.nwk").unwrap();
     assert_eq!(
       (fs::read(&source).unwrap(), service.runs().zip(&record.id).unwrap()),
       (fs::read(&file).unwrap(), fs::read(&archive).unwrap())

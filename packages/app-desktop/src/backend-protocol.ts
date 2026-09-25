@@ -6,15 +6,12 @@ export const zBackendRequest = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("call"), seq: zSeq, request: z.string() }),
   z.object({ kind: z.literal("subscribe"), seq: zSeq, id: z.string(), from: z.int().nonnegative() }),
   z.object({ kind: z.literal("unsubscribe"), seq: zSeq }),
-  z.object({ kind: z.literal("read-file"), seq: zSeq, id: z.string(), path: z.string() }),
 ]);
 
 export const zBackendReply = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("result"), seq: zSeq, json: z.string() }),
   z.object({ kind: z.literal("error"), seq: zSeq, error: z.string() }),
   z.object({ kind: z.literal("event"), seq: zSeq, json: z.string() }),
-  z.object({ kind: z.literal("chunk"), seq: zSeq, bytes: z.instanceof(ArrayBuffer) }),
-  z.object({ kind: z.literal("end"), seq: zSeq }),
 ]);
 
 export const zControlRequest = z.discriminatedUnion("kind", [

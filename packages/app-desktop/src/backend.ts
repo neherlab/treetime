@@ -1,13 +1,9 @@
-import { createReadStream } from "node:fs";
-
 import { Backend } from "@neherlab/app-napi";
 import type { MessagePortMain } from "electron";
 
 import { saveRunFiles, serveBackend } from "./backend-host";
 import { zBackendRequest, zControlRequest, type HostEndpoint, type SaveRequest } from "./backend-protocol";
 import { initDiagnostics } from "./diagnostics";
-
-const CHUNK_SIZE = 1 << 20;
 
 initDiagnostics("treetime-backend");
 
@@ -32,7 +28,7 @@ process.parentPort.on("message", (message) => {
     const [port] = message.ports;
 
     if (port !== undefined) {
-      serveBackend(portEndpoint(port), backend, (path) => createReadStream(path, { highWaterMark: CHUNK_SIZE }));
+      serveBackend(portEndpoint(port), backend);
     }
 
     return;

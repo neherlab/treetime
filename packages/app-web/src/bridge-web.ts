@@ -54,12 +54,6 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     return data;
   }
 
-  async function bytes(path: string): Promise<Uint8Array> {
-    const response = await send("GET", path);
-
-    return new Uint8Array(await response.arrayBuffer());
-  }
-
   async function save(path: string, name: string): Promise<boolean> {
     const response = await send("GET", path);
     saveBlob(await response.blob(), name);
@@ -122,7 +116,6 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     },
     runEvents,
     runFiles: (id) => json("GET", `${runPath(id)}/files`),
-    readRunFile: (id, path) => bytes(filePath(id, path)),
     saveRunFile: (id, path, name) => save(filePath(id, path), name),
     saveRunArchive: (id, name) => save(`${runPath(id)}/archive`, name),
     uploadInput: async (id, name, data) => {
