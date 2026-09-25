@@ -31,6 +31,3 @@ rustflags = [
   "-Clink-arg=-static-libgfortran",
   "-Clink-arg=-static-libgcc",
 ]
-
-[future-incompat-report]
-frequency = "always"

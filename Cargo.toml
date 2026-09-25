@@ -1,6 +1,25 @@
 [workspace]
 resolver = '3'
 
+package.description = "Maximum-likelihood phylodynamic inference"
+package.version = "1.0.0"
+package.documentation = "https://treetime.readthedocs.io/en/stable/"
+package.repository = "https://github.com/neherlab/treetime"
+package.homepage = "https://github.com/neherlab/treetime"
+package.edition = "2024"
+package.rust-version = "1.98"
+package.license = "MIT"
+package.publish = false
+package.keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
+package.authors = [
+  "NeherLab <https://neherlab.org>",
+  "Richard Neher",
+  "Pavel Sagulenko",
+  "Emma Hodcroft",
+  "Ivan Aksamentov",
+]
+
+
 members = [
   "packages/app-cli",
   "packages/app-commands",
@@ -27,26 +46,33 @@ members = [
 
 exclude = ["dev/templates/rust-crate"]
 
-[workspace.metadata.dylint]
-libraries = [
-  { path = "dev/lints/dylint-custom" },
-  { path = "dev/lints/dylint-mordant" },
-  { path = "dev/lints/dylint-trailofbits" },
-]
 
+# Dependencies build optimized in development and tests, so the math-heavy test
+# suites stay fast while the workspace crates keep fast incremental builds.
+[profile.dev.package."*"]
+opt-level = 2
 
-[workspace.package]
-description = "Maximum-likelihood phylodynamic inference"
-version = "1.0.0"
-documentation = "https://treetime.readthedocs.io/en/stable/"
-repository = "https://github.com/neherlab/treetime"
-homepage = "https://github.com/neherlab/treetime"
-edition = "2024"
-rust-version = "1.98"
-license = "MIT"
-publish = false
-keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
-authors = ["NeherLab <https://neherlab.org>", "Richard Neher", "Pavel Sagulenko", "Emma Hodcroft", "Ivan Aksamentov"]
+# The shipped artifact: fat LTO and one codegen unit for speed, line tables for
+# readable backtraces, and overflow checks kept on for numeric correctness.
+[profile.release]
+codegen-units = 1
+debug = "line-tables-only"
+lto = "fat"
+overflow-checks = true
+
+# Release optimizations with full debug info, for profilers.
+[profile.profiling]
+inherits = "release"
+debug = true
+
+# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
+# Not for benchmarks: use `release` or `profiling`.
+[profile.quick]
+inherits = "release"
+codegen-units = 16
+debug = false
+incremental = true
+lto = "off"
 
 
 [patch.crates-io]
@@ -58,16 +84,11 @@ openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" 
 argmin = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
 argmin-math = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
 
-# This table is the single list of dependency owners: one crate per job, no separate owners
-# document.
-#
-# YAML has two owners on purpose: serde-saphyr reads typed values, and saphyr owns the byte-span index
-# that places carets in configuration diagnostics and emits the YAML text of the configs the app shows.
-# serde-saphyr cannot report source positions, and its writer needs an extra crate, so both stay.
-#
-# Reserved owners, added here when their first caller lands, so nothing unused is pinned now: reqwest
-# with reqwest-middleware and reqwest-retry for the HTTP client, backon for retry around non-HTTP
-# operations, and globwalk for globbing.
+
+[workspace.metadata.cargo-shear]
+ignored = ["blas-src", "openblas-src", "argmin-math"]
+
+
 [workspace.dependencies]
 blas-src = { version = "=0.12.1", features = ["openblas-src"] }
 ndarray = { version = "=0.16.1", features = ["rayon", "serde", "approx", "blas"] }
@@ -188,39 +209,6 @@ treetime-utils = { path = "packages/treetime-utils" }
 util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
 util-newick = { path = "packages/util-newick" }
 util-usher-mat = { path = "packages/util-usher-mat" }
-
-# Dependencies build optimized in development and tests, so the math-heavy test
-# suites stay fast while the workspace crates keep fast incremental builds.
-[profile.dev.package."*"]
-opt-level = 2
-
-[profile.test.package."*"]
-opt-level = 2
-
-# The shipped artifact: fat LTO and one codegen unit for speed, line tables for
-# readable backtraces, and overflow checks kept on for numeric correctness.
-[profile.release]
-codegen-units = 1
-debug = "line-tables-only"
-lto = "fat"
-overflow-checks = true
-
-# Release optimizations with full debug info, for profilers.
-[profile.profiling]
-inherits = "release"
-debug = true
-
-# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
-# Not for benchmarks: use `release` or `profiling`.
-[profile.quick]
-inherits = "release"
-codegen-units = 16
-debug = false
-incremental = true
-lto = "off"
-
-[workspace.metadata.cargo-shear]
-ignored = ["blas-src", "openblas-src", "argmin-math"]
 
 [workspace.lints.rust]
 # Lint groups
@@ -454,3 +442,10 @@ let_underscore_untyped = "allow"
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "warn"
 bare_urls = "warn"
+
+[workspace.metadata.dylint]
+libraries = [
+  { path = "dev/lints/dylint-custom" },
+  { path = "dev/lints/dylint-mordant" },
+  { path = "dev/lints/dylint-trailofbits" },
+]
