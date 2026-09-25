@@ -1,5 +1,6 @@
 use eyre::{Report, WrapErr};
 use indicatif::{ProgressBar, ProgressStyle};
+use log::{Level, log};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, ProgressSink};
 
@@ -26,13 +27,6 @@ impl Drop for BarProgress {
   }
 }
 
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    debug_remnants,
-    reason = "the progress sink renders progress and log lines on stderr and has no error channel"
-  )
-)]
 impl ProgressSink for BarProgress {
   #[allow(
     clippy::as_conversions,
@@ -52,9 +46,7 @@ impl ProgressSink for BarProgress {
 
   fn log(&self, level: LogLevel, message: &str) {
     if self.log_enabled(level) {
-      self.bar.suspend(|| {
-        eprintln!("[{level}] {message}");
-      });
+      self.bar.suspend(|| write_log(level, message));
     }
   }
 
@@ -97,11 +89,21 @@ impl ProgressSink for TextProgress {
 
   fn log(&self, level: LogLevel, message: &str) {
     if self.log_enabled(level) {
-      eprintln!("[{level}] {message}");
+      write_log(level, message);
     }
   }
 
   fn log_enabled(&self, level: LogLevel) -> bool {
     level >= self.min_level
   }
+}
+fn write_log(level: LogLevel, message: &str) {
+  let level = match level {
+    LogLevel::Trace => Level::Trace,
+    LogLevel::Debug => Level::Debug,
+    LogLevel::Info => Level::Info,
+    LogLevel::Warn => Level::Warn,
+    LogLevel::Error => Level::Error,
+  };
+  log!(level, "{message}");
 }
