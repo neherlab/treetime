@@ -1,0 +1,228 @@
+import { useCallback, useMemo } from "react";
+import {
+  CartesianGrid,
+  Label,
+  ReferenceLine,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ZAxis,
+  type ScatterPointItem,
+} from "recharts";
+import * as z from "zod";
+
+import { formatDecimalDate } from "../format";
+import { PLATE, TICK_STYLE } from "./palette";
+
+export interface RttPoint {
+  name: string;
+  date: number;
+  div: number;
+  tip: boolean;
+  excluded: boolean;
+}
+
+export interface RttLine {
+  slope: number;
+  intercept: number;
+  label: string;
+}
+
+const HEIGHT = 300;
+
+const FADED_OPACITY = 0.18;
+
+const MARGIN = { top: 8, right: 16, bottom: 24, left: 16 };
+
+const DATA_EXTENT = ["dataMin", "dataMax"];
+
+const TIP_SIZE: [number, number] = [36, 36];
+
+const NODE_SIZE: [number, number] = [14, 14];
+
+const RING_SIZE: [number, number] = [220, 220];
+
+const TIP_COLOR = "#27477f";
+
+const SERIES_LOOK: readonly SeriesLook[] = [
+  { key: "nodesFaded", size: "node", fill: PLATE.faint, opacity: FADED_OPACITY },
+  { key: "tipsFaded", size: "tip", fill: TIP_COLOR, opacity: FADED_OPACITY },
+  { key: "excludedFaded", size: "tip", fill: PLATE.fault, opacity: FADED_OPACITY },
+  { key: "nodes", size: "node", fill: PLATE.faint, opacity: 1 },
+  { key: "tips", size: "tip", fill: TIP_COLOR, opacity: 1 },
+  { key: "excluded", size: "tip", fill: PLATE.fault, opacity: 1 },
+];
+
+const zPointPayload = z.object({ name: z.string(), date: z.number(), div: z.number(), excluded: z.boolean() });
+
+export function RootToTipPlot({
+  points,
+  line,
+  selected,
+  inView,
+  onSelect,
+}: {
+  points: readonly RttPoint[];
+  line: RttLine | undefined;
+  selected: string | undefined;
+  inView: ReadonlySet<string> | undefined;
+  onSelect: ((name: string) => void) | undefined;
+}) {
+  const series = useMemo(() => pointSeries(points, selected, inView), [inView, points, selected]);
+  const segment = useMemo(() => lineSegment(points, line), [line, points]);
+
+  return (
+    <div>
+      {line !== undefined && (
+        <p className="m-0 px-2 pb-1 text-xs text-[#4b5f5a]">
+          <span className="mr-1.5 inline-block h-0.5 w-4 bg-[#17695a] align-middle" />
+          {line.label}
+        </p>
+      )}
+      <ResponsiveContainer width="100%" height={HEIGHT}>
+        <ScatterChart margin={MARGIN}>
+          <CartesianGrid stroke={PLATE.grid} />
+          <XAxis type="number" dataKey="date" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
+            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
+          </XAxis>
+          <YAxis type="number" dataKey="div" tick={TICK_STYLE} tickFormatter={divergenceTick} width={56}>
+            <Label value="Divergence from the root" angle={-90} position="insideLeft" {...TICK_STYLE} />
+          </YAxis>
+          <ZAxis zAxisId="node" range={NODE_SIZE} />
+          <ZAxis zAxisId="tip" range={TIP_SIZE} />
+          <ZAxis zAxisId="ring" range={RING_SIZE} />
+          <Tooltip content={<PointTooltip />} isAnimationActive={false} />
+          {segment !== undefined && (
+            <ReferenceLine segment={segment} stroke={PLATE.accent} strokeWidth={1.5} ifOverflow="extendDomain" />
+          )}
+          {SERIES_LOOK.map((look) => (
+            <SeriesScatter key={look.key} look={look} points={series[look.key]} onSelect={onSelect} />
+          ))}
+          <Scatter
+            data={series.selected}
+            zAxisId="ring"
+            fill="none"
+            stroke={PLATE.selection}
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function SeriesScatter({
+  look,
+  points,
+  onSelect,
+}: {
+  look: SeriesLook;
+  points: readonly RttPoint[];
+  onSelect: ((name: string) => void) | undefined;
+}) {
+  const select = useCallback(
+    (_item: ScatterPointItem, index: number) => {
+      const point = points[index];
+
+      if (point !== undefined) {
+        onSelect?.(point.name);
+      }
+    },
+    [onSelect, points],
+  );
+
+  return (
+    <Scatter
+      data={points}
+      zAxisId={look.size}
+      fill={look.fill}
+      fillOpacity={look.opacity}
+      isAnimationActive={false}
+      onClick={select}
+    />
+  );
+}
+
+function pointSeries(
+  points: readonly RttPoint[],
+  selected: string | undefined,
+  inView: ReadonlySet<string> | undefined,
+) {
+  const visible = (point: RttPoint) => inView === undefined || inView.has(point.name);
+
+  const of = (kind: PointRole, shown: boolean) =>
+    points.filter((point) => pointRole(point) === kind && visible(point) === shown);
+
+  return {
+    nodes: of("node", true),
+    nodesFaded: of("node", false),
+    tips: of("tip", true),
+    tipsFaded: of("tip", false),
+    excluded: of("excluded", true),
+    excludedFaded: of("excluded", false),
+    selected: points.filter((point) => point.name === selected),
+  };
+}
+
+function pointRole(point: RttPoint): PointRole {
+  if (!point.tip) {
+    return "node";
+  }
+
+  return point.excluded ? "excluded" : "tip";
+}
+
+type PointRole = "node" | "tip" | "excluded";
+
+type SeriesKey = "nodes" | "nodesFaded" | "tips" | "tipsFaded" | "excluded" | "excludedFaded";
+
+interface SeriesLook {
+  key: SeriesKey;
+  size: "node" | "tip";
+  fill: string;
+  opacity: number;
+}
+
+function PointTooltip({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> }) {
+  const point = zPointPayload.safeParse(payload?.[0]?.payload);
+
+  if (active !== true || !point.success) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-md border border-[#bfcbc7] bg-white px-2.5 py-1.5 text-xs text-[#16302b] shadow-sm">
+      <div className="font-bold">{point.data.name}</div>
+      <div>Date {formatDecimalDate(point.data.date)}</div>
+      <div>Divergence {point.data.div.toExponential(3)}</div>
+      {point.data.excluded && <div className="text-[#b42318]">Excluded from the clock model</div>}
+    </div>
+  );
+}
+
+function lineSegment(points: readonly RttPoint[], line: RttLine | undefined) {
+  if (line === undefined || points.length === 0) {
+    return undefined;
+  }
+
+  const dates = points.map((point) => point.date);
+  const from = Math.min(...dates);
+  const to = Math.max(...dates);
+
+  return [
+    { x: from, y: line.slope * from + line.intercept },
+    { x: to, y: line.slope * to + line.intercept },
+  ] as const;
+}
+
+function yearTick(value: number): string {
+  return value.toFixed(1);
+}
+
+function divergenceTick(value: number): string {
+  return value === 0 ? "0" : value.toExponential(1);
+}
