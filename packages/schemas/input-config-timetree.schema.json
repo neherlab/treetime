@@ -12,7 +12,11 @@
       },
       "default": [],
       "x-path": "input",
-      "x-cli-flag": "--alignment"
+      "x-cli-flag": "--alignment",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "tree": {
       "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -22,7 +26,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--tree"
+      "x-cli-flag": "--tree",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "vcf_reference": {
       "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
@@ -32,7 +40,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--vcf-reference"
+      "x-cli-flag": "--vcf-reference",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "metadata": {
       "description": "CSV/TSV file with metadata including sampling dates",
@@ -42,7 +54,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--metadata"
+      "x-cli-flag": "--metadata",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "metadata_id_columns": {
       "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
@@ -55,7 +71,11 @@
         "name",
         "accession"
       ],
-      "x-cli-flag": "--metadata-id-columns"
+      "x-cli-flag": "--metadata-id-columns",
+      "x-cli-num-args": [
+        1,
+        null
+      ]
     },
     "metadata_delimiters": {
       "description": "Candidate field delimiter(s) for the metadata table\n\nThe delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.",
@@ -70,7 +90,11 @@
         "\t",
         ";"
       ],
-      "x-cli-flag": "--metadata-delimiters"
+      "x-cli-flag": "--metadata-delimiters",
+      "x-cli-num-args": [
+        1,
+        null
+      ]
     },
     "date_column": {
       "description": "Label of the column to be used as sampling date (auto-detected when omitted)",
@@ -79,13 +103,21 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--date-column"
+      "x-cli-flag": "--date-column",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "date_format": {
       "description": "Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)",
       "type": "string",
       "default": "%Y-%m-%d",
-      "x-cli-flag": "--date-format"
+      "x-cli-flag": "--date-format",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "sequence_length": {
       "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
@@ -96,7 +128,11 @@
       "format": "uint",
       "minimum": 0,
       "default": null,
-      "x-cli-flag": "--sequence-length"
+      "x-cli-flag": "--sequence-length",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "clock_rate": {
       "description": "If specified, the rate of the molecular clock won't be optimized.",
@@ -106,7 +142,11 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--clock-rate"
+      "x-cli-flag": "--clock-rate",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "clock_std_dev": {
       "description": "Standard deviation of the provided clock rate estimate",
@@ -116,37 +156,70 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--clock-std-dev"
+      "x-cli-flag": "--clock-std-dev",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "branch_length_mode": {
       "description": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
       "$ref": "#/$defs/BranchLengthMode",
       "default": "marginal",
-      "x-cli-flag": "--branch-length-mode"
+      "x-cli-flag": "--branch-length-mode",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "input": "input",
+        "marginal": "marginal"
+      }
     },
     "time_marginal": {
       "description": "Control when marginal time distributions are used for output.\n\nAll modes use marginal inference during optimization. The mode controls whether\nconfidence intervals are extracted from the resulting distributions:\n\n- `never`: no confidence interval output (default)\n- `always`: write confidence intervals from distributions computed during optimization\n- `only-final`: run one extra inference pass after optimization, then write confidence intervals",
       "$ref": "#/$defs/TimeMarginalMode",
       "default": "never",
-      "x-cli-flag": "--time-marginal"
+      "x-cli-flag": "--time-marginal",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "never": "never",
+        "always": "always",
+        "only-final": "only-final"
+      }
     },
     "confidence": {
       "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. Requires `--covariation` or `--clock-std-dev`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--confidence"
+      "x-cli-flag": "--confidence",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "keep_polytomies": {
       "description": "Don't resolve polytomies using temporal information.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-polytomies"
+      "x-cli-flag": "--keep-polytomies",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "resolve_polytomies": {
       "description": "Resolve polytomies using temporal information",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--resolve-polytomies"
+      "x-cli-flag": "--resolve-polytomies",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "relax": {
       "description": "use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate\ndeviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0\n0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more\nstrongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.",
@@ -156,7 +229,11 @@
         "format": "double"
       },
       "default": [],
-      "x-cli-flag": "--relax"
+      "x-cli-flag": "--relax",
+      "x-cli-num-args": [
+        2,
+        2
+      ]
     },
     "max_iter": {
       "description": "maximal number of iterations the inference cycle is run. For polytomy resolution and\ncoalescence models max_iter should be at least 2",
@@ -164,7 +241,11 @@
       "format": "uint",
       "minimum": 0,
       "default": 2,
-      "x-cli-flag": "--max-iter"
+      "x-cli-flag": "--max-iter",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "coalescent": {
       "description": "Coalescent time scale in years.\n\nSensible values are on the order of the time from the root to the tips and are given in units of time.",
@@ -174,19 +255,31 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--coalescent"
+      "x-cli-flag": "--coalescent",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "coalescent_opt": {
       "description": "Optimize coalescent time scale Tc to maximize coalescent likelihood.\n\nWhen set, TreeTime finds the optimal constant Tc analytically (closed-form maximum\nof the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,\nwhich used a numerical search.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--coalescent-opt"
+      "x-cli-flag": "--coalescent-opt",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "coalescent_skyline": {
       "description": "Use skyline coalescent model instead of constant Tc.\n\nEstimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify\nthe number of grid points.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--coalescent-skyline"
+      "x-cli-flag": "--coalescent-skyline",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "skyline_n_points": {
       "description": "Number of grid points in skyline coalescent model.\n\nOnly used when --coalescent-skyline is set. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.",
@@ -194,21 +287,33 @@
       "format": "uint",
       "minimum": 0,
       "default": 20,
-      "x-cli-flag": "--skyline-n-points"
+      "x-cli-flag": "--skyline-n-points",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "skyline_stiffness": {
       "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Only used when --coalescent-skyline is set.",
       "type": "number",
       "format": "double",
       "default": 2.0,
-      "x-cli-flag": "--skyline-stiffness"
+      "x-cli-flag": "--skyline-stiffness",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "coalescent_confidence": {
       "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies to every inferred coalescent mode (constant, --coalescent-opt, and\n--coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\n--coalescent value is not inferred and therefore has no band.",
       "type": "number",
       "format": "double",
       "default": 2.0,
-      "x-cli-flag": "--coalescent-confidence"
+      "x-cli-flag": "--coalescent-confidence",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "n_branches_posterior": {
       "description": "add posterior LH to coalescent model: use the posterior probability distributions of\ndivergence times for estimating the number of branches when calculating the coalescent\nmergerrate or use inferred time before present (default).",
@@ -219,7 +324,11 @@
       "format": "uint",
       "minimum": 0,
       "default": null,
-      "x-cli-flag": "--n-branches-posterior"
+      "x-cli-flag": "--n-branches-posterior",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "plot_tree": {
       "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
@@ -229,7 +338,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--plot-tree"
+      "x-cli-flag": "--plot-tree",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "plot_rtt": {
       "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
@@ -239,26 +352,42 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--plot-rtt"
+      "x-cli-flag": "--plot-rtt",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "tip_labels": {
       "description": "add tip labels (default for small trees with <30 leaves)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--tip-labels"
+      "x-cli-flag": "--tip-labels",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "no_tip_labels": {
       "description": "don't show tip labels (default for trees with >=30 leaves)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-tip-labels"
+      "x-cli-flag": "--no-tip-labels",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "clock_filter": {
       "description": "ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from\nregression'. Default=3.0, set to 0 to switch off.",
       "type": "number",
       "format": "double",
       "default": 3.0,
-      "x-cli-flag": "--clock-filter"
+      "x-cli-flag": "--clock-filter",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "n_iqd": {
       "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
@@ -268,7 +397,11 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--n-iqd"
+      "x-cli-flag": "--n-iqd",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "reroot": {
       "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
@@ -281,7 +414,17 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--reroot"
+      "x-cli-flag": "--reroot",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "least-squares": "least-squares",
+        "min-dev": "min-dev",
+        "oldest": "oldest",
+        "clock-filter": "clock-filter"
+      }
     },
     "reroot_tips": {
       "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
@@ -290,19 +433,32 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--reroot-tips"
+      "x-cli-flag": "--reroot-tips",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ","
     },
     "keep_root": {
       "description": "don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of\nroot-to-tip distance and sampling time",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-root"
+      "x-cli-flag": "--keep-root",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "allow_negative_rate": {
       "description": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--allow-negative-rate"
+      "x-cli-flag": "--allow-negative-rate",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "tip_slack": {
       "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
@@ -312,19 +468,41 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--tip-slack"
+      "x-cli-flag": "--tip-slack",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "covariation": {
       "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--covariation"
+      "x-cli-flag": "--covariation",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "model": {
       "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
       "$ref": "#/$defs/GtrModelName",
       "default": "infer",
-      "x-cli-flag": "--model"
+      "x-cli-flag": "--model",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "jc69": "jc69",
+        "k80": "k80",
+        "f81": "f81",
+        "hky85": "hky85",
+        "t92": "t92",
+        "tn93": "tn93",
+        "jtt92": "jtt92",
+        "infer": "infer"
+      }
     },
     "model_params": {
       "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
@@ -333,13 +511,26 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--model-params"
+      "x-cli-flag": "--model-params",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "method_anc": {
       "description": "Method used for reconstructing ancestral sequences",
       "$ref": "#/$defs/MethodAncestral",
       "default": "marginal",
-      "x-cli-flag": "--method-anc"
+      "x-cli-flag": "--method-anc",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "marginal": "marginal",
+        "parsimony": "parsimony",
+        "joint": "joint"
+      }
     },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -352,7 +543,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--alphabet"
+      "x-cli-flag": "--alphabet",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "nuc": "nuc",
+        "aa": "aa",
+        "aa-no-stop": "aa-no-stop"
+      }
     },
     "dense": {
       "description": "Use dense representation for sequences (store full probability distributions)",
@@ -361,61 +561,110 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--dense"
+      "x-cli-flag": "--dense",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "gap_fill": {
       "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
-      "x-cli-flag": "--gap-fill"
+      "x-cli-flag": "--gap-fill",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "only-terminal": "only-terminal",
+        "all": "all",
+        "none": "none"
+      }
     },
     "keep_overhangs": {
       "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-overhangs"
+      "x-cli-flag": "--keep-overhangs",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "zero_based": {
       "description": "Zero-based mutation indexing",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--zero-based"
+      "x-cli-flag": "--zero-based",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "include_leaves": {
       "description": "Emit reconstructed leaf (tip) sequences in addition to internal nodes.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--include-leaves"
+      "x-cli-flag": "--include-leaves",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "impute_missing_data": {
       "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely\ninferred state. Gaps are left as deletions.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--impute-missing-data"
+      "x-cli-flag": "--impute-missing-data",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "reconstruct_tip_states": {
       "description": "v0-compatible alias for `--include-leaves --impute-missing-data`.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--reconstruct-tip-states"
+      "x-cli-flag": "--reconstruct-tip-states",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "report_ambiguous": {
       "description": "Include transitions involving ambiguous states",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--report-ambiguous"
+      "x-cli-flag": "--report-ambiguous",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "no_indels": {
       "description": "Disable indel (insertion/deletion) contributions to branch-length\noptimization and branch-length distributions.\n\nWhen set, branch-length optimization uses substitution-only likelihood\nand timetree branch distributions exclude the Poisson indel term.\nMatches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)\nand enables v0 parity testing. Default: indels enabled.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-indels"
+      "x-cli-flag": "--no-indels",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "divergence_units": {
       "description": "Units for divergence values in augur node data JSON and auspice output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions. Requires ancestral reconstruction\n(incompatible with `--branch-length-mode=input`).",
       "$ref": "#/$defs/DivergenceUnits",
       "default": "mutations-per-site",
-      "x-cli-flag": "--divergence-units"
+      "x-cli-flag": "--divergence-units",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "mutations-per-site": "mutations-per-site",
+        "mutations": "mutations"
+      }
     },
     "output_augur_node_data": {
       "description": "Path to output augur-compatible node data JSON.\n\nContains per-node dates, branch lengths, clock model parameters, confidence\nintervals, and divergence metrics. The output is compatible with augur\nexport v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -425,7 +674,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-augur-node-data"
+      "x-cli-flag": "--output-augur-node-data",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_gtr": {
       "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -435,7 +688,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-gtr"
+      "x-cli-flag": "--output-gtr",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_reconstructed_nuc_fasta": {
       "description": "Path to output reconstructed ancestral-sequence nucleotide FASTA.\n\nThe v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences\nreconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`\n(or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -445,7 +702,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-reconstructed-nuc-fasta"
+      "x-cli-flag": "--output-reconstructed-nuc-fasta",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_clock_model": {
       "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -455,7 +716,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-clock-model"
+      "x-cli-flag": "--output-clock-model",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_confidence_tsv": {
       "description": "Path to output date-confidence-interval TSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -465,7 +730,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-confidence-tsv"
+      "x-cli-flag": "--output-confidence-tsv",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tracelog": {
       "description": "Path to output iteration-statistics tracelog CSV (monitors convergence).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -475,7 +744,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tracelog"
+      "x-cli-flag": "--output-tracelog",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_coalescent_tsv": {
       "description": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).\n\nWritten when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or\n`--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree\nspan. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -485,7 +758,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-coalescent-tsv"
+      "x-cli-flag": "--output-coalescent-tsv",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_coalescent_csv": {
       "description": "Path to output the coalescent time scale as a flat CSV (one row per skyline segment).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
@@ -495,7 +772,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-coalescent-csv"
+      "x-cli-flag": "--output-coalescent-csv",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_coalescent_json": {
       "description": "Path to output the coalescent time scale as a rich JSON document (inputs + segments).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
@@ -505,7 +786,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-coalescent-json"
+      "x-cli-flag": "--output-coalescent-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -515,7 +800,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-all"
+      "x-cli-flag": "--output-all",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_nwk_style": {
       "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -524,7 +813,17 @@
         "$ref": "#/$defs/NwkStyleArg"
       },
       "default": [],
-      "x-cli-flag": "--output-nwk-style"
+      "x-cli-flag": "--output-nwk-style",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "plain": "plain",
+        "beast": "beast",
+        "nhx": "nhx"
+      }
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -534,7 +833,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nwk"
+      "x-cli-flag": "--output-tree-nwk",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -544,7 +847,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nexus"
+      "x-cli-flag": "--output-tree-nexus",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -554,7 +861,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-auspice"
+      "x-cli-flag": "--output-tree-auspice",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -564,7 +875,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-pb"
+      "x-cli-flag": "--output-tree-mat-pb",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -574,7 +889,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-json"
+      "x-cli-flag": "--output-tree-mat-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -584,7 +903,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-graph-json"
+      "x-cli-flag": "--output-tree-graph-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -594,7 +917,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-dot"
+      "x-cli-flag": "--output-tree-dot",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_selection": {
       "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -603,7 +930,31 @@
         "$ref": "#/$defs/TimetreeOutputSelection"
       },
       "default": [],
-      "x-cli-flag": "--output-selection"
+      "x-cli-flag": "--output-selection",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "All": "all",
+        "Nwk": "nwk",
+        "Nexus": "nexus",
+        "Auspice": "auspice",
+        "MatPb": "mat-pb",
+        "MatJson": "mat-json",
+        "GraphJson": "graph-json",
+        "Dot": "dot",
+        "AugurNodeData": "augur-node-data",
+        "Gtr": "gtr",
+        "ReconstructedNucFasta": "reconstructed-nuc-fasta",
+        "ClockModel": "clock-model",
+        "ConfidenceTsv": "confidence-tsv",
+        "Tracelog": "tracelog",
+        "CoalescentTsv": "coalescent-tsv",
+        "CoalescentCsv": "coalescent-csv",
+        "CoalescentJson": "coalescent-json"
+      }
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
@@ -616,7 +967,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--ladderize"
+      "x-cli-flag": "--ladderize",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "none": "none",
+        "ascending": "ascending",
+        "descending": "descending"
+      }
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
@@ -629,7 +989,24 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order"
+      "x-cli-flag": "--topology-order",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "keep": "keep",
+        "descendant-count": "descendant-count",
+        "descendant-count-reverse": "descendant-count-reverse",
+        "height": "height",
+        "height-reverse": "height-reverse",
+        "divergence": "divergence",
+        "divergence-reverse": "divergence-reverse",
+        "label": "label",
+        "label-reverse": "label-reverse",
+        "target-order": "target-order",
+        "target-order-reverse": "target-order-reverse"
+      }
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
@@ -642,7 +1019,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order-target-source"
+      "x-cli-flag": "--topology-order-target-source",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "input": "input",
+        "reference-topology": "reference-topology",
+        "list": "list"
+      }
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
@@ -652,13 +1038,25 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--topology-order-target-file"
+      "x-cli-flag": "--topology-order-target-file",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "topology_order_target_aggregate": {
       "description": "Aggregate used to map a subtree to a target-order position.",
       "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
       "default": "mean",
-      "x-cli-flag": "--topology-order-target-aggregate"
+      "x-cli-flag": "--topology-order-target-aggregate",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "mean": "mean",
+        "median": "median"
+      }
     },
     "seed": {
       "description": "Random seed",
@@ -669,13 +1067,21 @@
       "format": "uint64",
       "minimum": 0,
       "default": null,
-      "x-cli-flag": "--seed"
+      "x-cli-flag": "--seed",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "aa": {
       "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--aa"
+      "x-cli-flag": "--aa",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "custom_gtr": {
       "description": "Load a custom GTR model from file (not yet implemented)",
@@ -685,7 +1091,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--custom-gtr"
+      "x-cli-flag": "--custom-gtr",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "clock_filter_method": {
       "description": "Method for clock filter outlier detection (not yet implemented)",
@@ -694,26 +1104,42 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--clock-filter-method"
+      "x-cli-flag": "--clock-filter-method",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "gen_per_year": {
       "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.",
       "type": "number",
       "format": "double",
       "default": 50.0,
-      "x-cli-flag": "--gen-per-year"
+      "x-cli-flag": "--gen-per-year",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "greedy_resolve": {
       "description": "Use greedy polytomy resolution (not yet implemented)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--greedy-resolve"
+      "x-cli-flag": "--greedy-resolve",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "stochastic_resolve": {
       "description": "Use stochastic polytomy resolution (not yet implemented)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--stochastic-resolve"
+      "x-cli-flag": "--stochastic-resolve",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",

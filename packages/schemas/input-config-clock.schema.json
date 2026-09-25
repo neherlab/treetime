@@ -12,7 +12,11 @@
       },
       "default": [],
       "x-path": "input",
-      "x-cli-flag": "--alignment"
+      "x-cli-flag": "--alignment",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "tree": {
       "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -22,7 +26,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--tree"
+      "x-cli-flag": "--tree",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "vcf_reference": {
       "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
@@ -32,7 +40,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--vcf-reference"
+      "x-cli-flag": "--vcf-reference",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "metadata": {
       "description": "CSV/TSV file with metadata including sampling dates",
@@ -42,7 +54,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--metadata"
+      "x-cli-flag": "--metadata",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "metadata_id_columns": {
       "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
@@ -55,7 +71,11 @@
         "name",
         "accession"
       ],
-      "x-cli-flag": "--metadata-id-columns"
+      "x-cli-flag": "--metadata-id-columns",
+      "x-cli-num-args": [
+        1,
+        null
+      ]
     },
     "metadata_delimiters": {
       "description": "Candidate field delimiter(s) for the metadata table\n\nThe delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.",
@@ -70,7 +90,11 @@
         "\t",
         ";"
       ],
-      "x-cli-flag": "--metadata-delimiters"
+      "x-cli-flag": "--metadata-delimiters",
+      "x-cli-num-args": [
+        1,
+        null
+      ]
     },
     "date_column": {
       "description": "Label of the column to be used as sampling date (auto-detected when omitted)",
@@ -79,13 +103,21 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--date-column"
+      "x-cli-flag": "--date-column",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "date_format": {
       "description": "Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)",
       "type": "string",
       "default": "%Y-%m-%d",
-      "x-cli-flag": "--date-format"
+      "x-cli-flag": "--date-format",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "sequence_length": {
       "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
@@ -96,13 +128,31 @@
       "format": "uint",
       "minimum": 0,
       "default": null,
-      "x-cli-flag": "--sequence-length"
+      "x-cli-flag": "--sequence-length",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "model": {
       "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
       "$ref": "#/$defs/GtrModelName",
       "default": "infer",
-      "x-cli-flag": "--model"
+      "x-cli-flag": "--model",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "jc69": "jc69",
+        "k80": "k80",
+        "f81": "f81",
+        "hky85": "hky85",
+        "t92": "t92",
+        "tn93": "tn93",
+        "jtt92": "jtt92",
+        "infer": "infer"
+      }
     },
     "model_params": {
       "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
@@ -111,26 +161,51 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--model-params"
+      "x-cli-flag": "--model-params",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "branch_length_mode": {
       "description": "If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.",
       "$ref": "#/$defs/BranchLengthMode",
       "default": "marginal",
-      "x-cli-flag": "--branch-length-mode"
+      "x-cli-flag": "--branch-length-mode",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "input": "input",
+        "marginal": "marginal"
+      }
     },
     "method_anc": {
       "description": "Method used for reconstructing ancestral sequences",
       "$ref": "#/$defs/MethodAncestral",
       "default": "marginal",
-      "x-cli-flag": "--method-anc"
+      "x-cli-flag": "--method-anc",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "marginal": "marginal",
+        "parsimony": "parsimony",
+        "joint": "joint"
+      }
     },
     "clock_filter": {
       "description": "ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.",
       "type": "number",
       "format": "double",
       "default": 3.0,
-      "x-cli-flag": "--clock-filter"
+      "x-cli-flag": "--clock-filter",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "reroot": {
       "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
@@ -143,7 +218,17 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--reroot"
+      "x-cli-flag": "--reroot",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "least-squares": "least-squares",
+        "min-dev": "min-dev",
+        "oldest": "oldest",
+        "clock-filter": "clock-filter"
+      }
     },
     "reroot_tips": {
       "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
@@ -152,18 +237,31 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--reroot-tips"
+      "x-cli-flag": "--reroot-tips",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ","
     },
     "keep_root": {
       "description": "don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of\nroot-to-tip distance and sampling time",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-root"
+      "x-cli-flag": "--keep-root",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "prune_short": {
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--prune-short"
+      "x-cli-flag": "--prune-short",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "tip_slack": {
       "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
@@ -173,19 +271,31 @@
       ],
       "format": "double",
       "default": null,
-      "x-cli-flag": "--tip-slack"
+      "x-cli-flag": "--tip-slack",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "covariation": {
       "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--covariation"
+      "x-cli-flag": "--covariation",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "allow_negative_rate": {
       "description": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--allow-negative-rate"
+      "x-cli-flag": "--allow-negative-rate",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -195,7 +305,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-all"
+      "x-cli-flag": "--output-all",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_nwk_style": {
       "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -204,7 +318,17 @@
         "$ref": "#/$defs/NwkStyleArg"
       },
       "default": [],
-      "x-cli-flag": "--output-nwk-style"
+      "x-cli-flag": "--output-nwk-style",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "plain": "plain",
+        "beast": "beast",
+        "nhx": "nhx"
+      }
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -214,7 +338,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nwk"
+      "x-cli-flag": "--output-tree-nwk",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -224,7 +352,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nexus"
+      "x-cli-flag": "--output-tree-nexus",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -234,7 +366,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-auspice"
+      "x-cli-flag": "--output-tree-auspice",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -244,7 +380,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-pb"
+      "x-cli-flag": "--output-tree-mat-pb",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -254,7 +394,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-json"
+      "x-cli-flag": "--output-tree-mat-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -264,7 +408,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-graph-json"
+      "x-cli-flag": "--output-tree-graph-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -274,7 +422,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-dot"
+      "x-cli-flag": "--output-tree-dot",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_clock_model": {
       "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -284,7 +436,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-clock-model"
+      "x-cli-flag": "--output-clock-model",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_clock_csv": {
       "description": "Path to output clock regression CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -294,7 +450,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-clock-csv"
+      "x-cli-flag": "--output-clock-csv",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_selection": {
       "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -303,7 +463,24 @@
         "$ref": "#/$defs/ClockOutputSelection"
       },
       "default": [],
-      "x-cli-flag": "--output-selection"
+      "x-cli-flag": "--output-selection",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "All": "all",
+        "Nwk": "nwk",
+        "Nexus": "nexus",
+        "Auspice": "auspice",
+        "MatPb": "mat-pb",
+        "MatJson": "mat-json",
+        "GraphJson": "graph-json",
+        "Dot": "dot",
+        "ClockModel": "clock-model",
+        "ClockCsv": "clock-csv"
+      }
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
@@ -316,7 +493,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--ladderize"
+      "x-cli-flag": "--ladderize",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "none": "none",
+        "ascending": "ascending",
+        "descending": "descending"
+      }
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
@@ -329,7 +515,24 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order"
+      "x-cli-flag": "--topology-order",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "keep": "keep",
+        "descendant-count": "descendant-count",
+        "descendant-count-reverse": "descendant-count-reverse",
+        "height": "height",
+        "height-reverse": "height-reverse",
+        "divergence": "divergence",
+        "divergence-reverse": "divergence-reverse",
+        "label": "label",
+        "label-reverse": "label-reverse",
+        "target-order": "target-order",
+        "target-order-reverse": "target-order-reverse"
+      }
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
@@ -342,7 +545,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order-target-source"
+      "x-cli-flag": "--topology-order-target-source",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "input": "input",
+        "reference-topology": "reference-topology",
+        "list": "list"
+      }
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
@@ -352,13 +564,25 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--topology-order-target-file"
+      "x-cli-flag": "--topology-order-target-file",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "topology_order_target_aggregate": {
       "description": "Aggregate used to map a subtree to a target-order position.",
       "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
       "default": "mean",
-      "x-cli-flag": "--topology-order-target-aggregate"
+      "x-cli-flag": "--topology-order-target-aggregate",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "mean": "mean",
+        "median": "median"
+      }
     },
     "seed": {
       "description": "Random seed",
@@ -369,7 +593,11 @@
       "format": "uint64",
       "minimum": 0,
       "default": null,
-      "x-cli-flag": "--seed"
+      "x-cli-flag": "--seed",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "clock_filter_method": {
       "description": "Method for clock filter outlier detection (not yet implemented)",
@@ -378,7 +606,11 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--clock-filter-method"
+      "x-cli-flag": "--clock-filter-method",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "plot_rtt": {
       "description": "Filename to save root-to-tip regression plot (not yet implemented)",
@@ -388,13 +620,21 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--plot-rtt"
+      "x-cli-flag": "--plot-rtt",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "prune_outliers": {
       "description": "Prune clock outlier tips from the tree (not yet implemented)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--prune-outliers"
+      "x-cli-flag": "--prune-outliers",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "branch_split": {
       "description": "Branch split optimization parameters",
@@ -540,7 +780,16 @@
           "description": "Optimization method to use for finding the best root position",
           "$ref": "#/$defs/OptimizationMethod",
           "default": "grid",
-          "x-cli-flag": "--branch-split-method"
+          "x-cli-flag": "--branch-split-method",
+          "x-cli-num-args": [
+            1,
+            1
+          ],
+          "x-cli-values": {
+            "grid": "grid",
+            "brent": "brent",
+            "golden-section": "golden-section"
+          }
         },
         "n_points": {
           "description": "Number of equally-spaced points to evaluate (grid method only)",
@@ -548,7 +797,11 @@
           "format": "uint",
           "minimum": 0,
           "default": 11,
-          "x-cli-flag": "--branch-split-grid-n-points"
+          "x-cli-flag": "--branch-split-grid-n-points",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "brent_max_iters": {
           "description": "Maximum number of iterations for Brent's method",
@@ -556,14 +809,22 @@
           "format": "uint",
           "minimum": 0,
           "default": 50,
-          "x-cli-flag": "--branch-split-brent-max-iters"
+          "x-cli-flag": "--branch-split-brent-max-iters",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "brent_tolerance": {
           "description": "Convergence tolerance for Brent's method",
           "type": "number",
           "format": "double",
           "default": 1e-12,
-          "x-cli-flag": "--branch-split-brent-tolerance"
+          "x-cli-flag": "--branch-split-brent-tolerance",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "golden_max_iters": {
           "description": "Maximum number of iterations for golden section search",
@@ -571,14 +832,22 @@
           "format": "uint",
           "minimum": 0,
           "default": 50,
-          "x-cli-flag": "--branch-split-golden-max-iters"
+          "x-cli-flag": "--branch-split-golden-max-iters",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "golden_tolerance": {
           "description": "Convergence tolerance for golden section search",
           "type": "number",
           "format": "double",
           "default": 1e-12,
-          "x-cli-flag": "--branch-split-golden-tolerance"
+          "x-cli-flag": "--branch-split-golden-tolerance",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         }
       },
       "additionalProperties": false
@@ -612,21 +881,33 @@
           "type": "number",
           "format": "double",
           "default": 0.0,
-          "x-cli-flag": "--variance-factor"
+          "x-cli-flag": "--variance-factor",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "variance_offset": {
           "description": "Constant variance offset for all branches",
           "type": "number",
           "format": "double",
           "default": 0.0,
-          "x-cli-flag": "--variance-offset"
+          "x-cli-flag": "--variance-offset",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         },
         "variance_offset_leaf": {
           "description": "Additional variance offset for leaf (terminal) nodes",
           "type": "number",
           "format": "double",
           "default": 1.0,
-          "x-cli-flag": "--variance-offset-leaf"
+          "x-cli-flag": "--variance-offset-leaf",
+          "x-cli-num-args": [
+            1,
+            1
+          ]
         }
       },
       "additionalProperties": false

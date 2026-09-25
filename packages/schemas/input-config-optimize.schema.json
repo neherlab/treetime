@@ -12,7 +12,11 @@
       },
       "default": [],
       "x-path": "input",
-      "x-cli-flag": "--alignment"
+      "x-cli-flag": "--alignment",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "tree": {
       "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
@@ -22,7 +26,11 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--tree"
+      "x-cli-flag": "--tree",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -35,13 +43,36 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--alphabet"
+      "x-cli-flag": "--alphabet",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "nuc": "nuc",
+        "aa": "aa",
+        "aa-no-stop": "aa-no-stop"
+      }
     },
     "model": {
       "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
       "$ref": "#/$defs/GtrModelName",
       "default": "infer",
-      "x-cli-flag": "--model"
+      "x-cli-flag": "--model",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "jc69": "jc69",
+        "k80": "k80",
+        "f81": "f81",
+        "hky85": "hky85",
+        "t92": "t92",
+        "tn93": "tn93",
+        "jtt92": "jtt92",
+        "infer": "infer"
+      }
     },
     "model_params": {
       "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
@@ -50,7 +81,11 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--model-params"
+      "x-cli-flag": "--model-params",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "dense": {
       "description": "Use dense representation of sequences on the tree\n\nDense mode stores full probability vectors at every alignment position for each\nnode. Sparse mode stores only variable positions. Dense is more accurate when\nbranches are long and many sites change, but uses more memory.",
@@ -59,7 +94,11 @@
         "null"
       ],
       "default": null,
-      "x-cli-flag": "--dense"
+      "x-cli-flag": "--dense",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -69,7 +108,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-all"
+      "x-cli-flag": "--output-all",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_nwk_style": {
       "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
@@ -78,7 +121,17 @@
         "$ref": "#/$defs/NwkStyleArg"
       },
       "default": [],
-      "x-cli-flag": "--output-nwk-style"
+      "x-cli-flag": "--output-nwk-style",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "plain": "plain",
+        "beast": "beast",
+        "nhx": "nhx"
+      }
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -88,7 +141,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nwk"
+      "x-cli-flag": "--output-tree-nwk",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -98,7 +155,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-nexus"
+      "x-cli-flag": "--output-tree-nexus",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -108,7 +169,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-auspice"
+      "x-cli-flag": "--output-tree-auspice",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -118,7 +183,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-pb"
+      "x-cli-flag": "--output-tree-mat-pb",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -128,7 +197,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-mat-json"
+      "x-cli-flag": "--output-tree-mat-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -138,7 +211,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-graph-json"
+      "x-cli-flag": "--output-tree-graph-json",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
@@ -148,13 +225,25 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-tree-dot"
+      "x-cli-flag": "--output-tree-dot",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "divergence_units": {
       "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions.",
       "$ref": "#/$defs/DivergenceUnits",
       "default": "mutations-per-site",
-      "x-cli-flag": "--divergence-units"
+      "x-cli-flag": "--divergence-units",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "mutations-per-site": "mutations-per-site",
+        "mutations": "mutations"
+      }
     },
     "output_augur_node_data": {
       "description": "Path to output augur-compatible node data JSON.\n\nContains per-node optimized branch lengths (divergence, substitutions per\nsite) and the input alignment and tree paths. The output is compatible with\naugur export v2 --node-data.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -164,7 +253,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-augur-node-data"
+      "x-cli-flag": "--output-augur-node-data",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_gtr": {
       "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -174,7 +267,11 @@
       ],
       "default": null,
       "x-path": "output",
-      "x-cli-flag": "--output-gtr"
+      "x-cli-flag": "--output-gtr",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "output_selection": {
       "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
@@ -183,7 +280,24 @@
         "$ref": "#/$defs/OptimizeOutputSelection"
       },
       "default": [],
-      "x-cli-flag": "--output-selection"
+      "x-cli-flag": "--output-selection",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ",",
+      "x-cli-values": {
+        "All": "all",
+        "Nwk": "nwk",
+        "Nexus": "nexus",
+        "Auspice": "auspice",
+        "MatPb": "mat-pb",
+        "MatJson": "mat-json",
+        "GraphJson": "graph-json",
+        "Dot": "dot",
+        "AugurNodeData": "augur-node-data",
+        "Gtr": "gtr"
+      }
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
@@ -196,7 +310,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--ladderize"
+      "x-cli-flag": "--ladderize",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "none": "none",
+        "ascending": "ascending",
+        "descending": "descending"
+      }
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
@@ -209,7 +332,24 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order"
+      "x-cli-flag": "--topology-order",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "keep": "keep",
+        "descendant-count": "descendant-count",
+        "descendant-count-reverse": "descendant-count-reverse",
+        "height": "height",
+        "height-reverse": "height-reverse",
+        "divergence": "divergence",
+        "divergence-reverse": "divergence-reverse",
+        "label": "label",
+        "label-reverse": "label-reverse",
+        "target-order": "target-order",
+        "target-order-reverse": "target-order-reverse"
+      }
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
@@ -222,7 +362,16 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--topology-order-target-source"
+      "x-cli-flag": "--topology-order-target-source",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "input": "input",
+        "reference-topology": "reference-topology",
+        "list": "list"
+      }
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
@@ -232,13 +381,25 @@
       ],
       "default": null,
       "x-path": "input",
-      "x-cli-flag": "--topology-order-target-file"
+      "x-cli-flag": "--topology-order-target-file",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "topology_order_target_aggregate": {
       "description": "Aggregate used to map a subtree to a target-order position.",
       "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
       "default": "mean",
-      "x-cli-flag": "--topology-order-target-aggregate"
+      "x-cli-flag": "--topology-order-target-aggregate",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "mean": "mean",
+        "median": "median"
+      }
     },
     "max_iter": {
       "description": "Maximum number of iterations",
@@ -246,39 +407,76 @@
       "format": "uint",
       "minimum": 0,
       "default": 10,
-      "x-cli-flag": "--max-iter"
+      "x-cli-flag": "--max-iter",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "dp": {
       "description": "Likelihood convergence threshold. The loop stops when successive\nlikelihoods differ by less than this value, or when a 2-cycle with\namplitude below this value is detected.",
       "type": "number",
       "format": "double",
       "default": 0.1,
-      "x-cli-flag": "--dp"
+      "x-cli-flag": "--dp",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "damping": {
       "description": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,\nwhere $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;\nzero disables damping. Must be in $[0,1)$.",
       "type": "number",
       "format": "double",
       "default": 0.75,
-      "x-cli-flag": "--damping"
+      "x-cli-flag": "--damping",
+      "x-cli-num-args": [
+        1,
+        1
+      ]
     },
     "branch_length_initial_guess": {
       "description": "Initial branch length estimate before Newton optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
       "$ref": "#/$defs/InitialGuessMode",
       "default": "auto",
-      "x-cli-flag": "--branch-length-initial-guess"
+      "x-cli-flag": "--branch-length-initial-guess",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "auto": "auto",
+        "always": "always",
+        "never": "never"
+      }
     },
     "opt_method": {
       "description": "Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`\n(default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and\n`newton-log`; suffixes select $\\sqrt{t}$ or $\\ln(t)$.",
       "$ref": "#/$defs/BranchOptMethod",
       "default": "brent-sqrt",
-      "x-cli-flag": "--opt-method"
+      "x-cli-flag": "--opt-method",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "brent": "brent",
+        "brent-sqrt": "brent-sqrt",
+        "brent-log": "brent-log",
+        "newton": "newton",
+        "newton-sqrt": "newton-sqrt",
+        "newton-log": "newton-log"
+      }
     },
     "no_indels": {
       "description": "Disable indel (insertion/deletion) contributions to branch-length\noptimization.\n\nWhen set, the optimizer uses substitution-only likelihood, matching\nstandard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and\nenabling v0 parity testing. Default: indels enabled.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-indels"
+      "x-cli-flag": "--no-indels",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "reroot": {
       "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
@@ -291,7 +489,14 @@
         }
       ],
       "default": null,
-      "x-cli-flag": "--reroot"
+      "x-cli-flag": "--reroot",
+      "x-cli-num-args": [
+        0,
+        1
+      ],
+      "x-cli-values": {
+        "min-dev": "min-dev"
+      }
     },
     "reroot_tips": {
       "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
@@ -300,43 +505,77 @@
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--reroot-tips"
+      "x-cli-flag": "--reroot-tips",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-value-delimiter": ","
     },
     "keep_root": {
       "description": "Keep the input tree root instead of rerooting.\n\nOptimize keeps the input root by default; this flag is the explicit form and\nis mutually exclusive with the reroot options.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-root"
+      "x-cli-flag": "--keep-root",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "no_collapse_short_branches": {
       "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-collapse-short-branches"
+      "x-cli-flag": "--no-collapse-short-branches",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "no_merge_siblings": {
       "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--dense` and the flag is then a no-op.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-merge-siblings"
+      "x-cli-flag": "--no-merge-siblings",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "no_flip_parent_child": {
       "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--dense` and the flag is\nthen a no-op.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--no-flip-parent-child"
+      "x-cli-flag": "--no-flip-parent-child",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "gap_fill": {
       "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
-      "x-cli-flag": "--gap-fill"
+      "x-cli-flag": "--gap-fill",
+      "x-cli-num-args": [
+        1,
+        1
+      ],
+      "x-cli-values": {
+        "only-terminal": "only-terminal",
+        "all": "all",
+        "none": "none"
+      }
     },
     "keep_overhangs": {
       "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--keep-overhangs"
+      "x-cli-flag": "--keep-overhangs",
+      "x-cli-num-args": [
+        0,
+        0
+      ]
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
