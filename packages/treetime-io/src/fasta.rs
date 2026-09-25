@@ -10,6 +10,8 @@ use treetime_utils::fmt::string::quote_single;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
 
+pub const FASTA_EXTENSIONS: [&str; 4] = ["fasta", "fa", "fas", "aln"];
+
 pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
   filepaths: &[P],
   alphabet: &A,

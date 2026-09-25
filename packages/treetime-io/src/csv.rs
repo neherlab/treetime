@@ -11,6 +11,8 @@ use treetime_utils::io::fs::extension;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 
+pub const DELIMITED_EXTENSIONS: [(&str, u8); 3] = [("csv", b','), ("tsv", b'\t'), ("ssv", b';')];
+
 pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, delimiter: u8) -> Result<Vec<T>, Report> {
   let filepath = filepath.as_ref();
   let reader = open_file_or_stdin(&Some(filepath))?;
@@ -180,10 +182,9 @@ pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> 
 
 fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {
   let filepath = remove_compression_ext(filepath);
-  match extension(filepath)?.to_lowercase().as_str() {
-    "csv" => Some(b','),
-    "tsv" => Some(b'\t'),
-    "ssv" => Some(b';'),
-    _ => None,
-  }
+  let ext = extension(filepath)?.to_lowercase();
+  DELIMITED_EXTENSIONS
+    .iter()
+    .find(|(known, _)| *known == ext)
+    .map(|(_, delimiter)| *delimiter)
 }

@@ -21,6 +21,8 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
+pub const NEWICK_EXTENSIONS: [&str; 4] = ["nwk", "newick", "tree", "tre"];
+
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
   let filepath = filepath.as_ref();
   nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))

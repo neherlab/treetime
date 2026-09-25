@@ -23,14 +23,15 @@ use xz2::read::XzDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use xz2::write::XzEncoder;
 
+pub const COMPRESSION_EXTENSIONS: [&str; 4] = ["bz2", "xz", "zst", "gz"];
+
 pub fn remove_compression_ext(filepath: impl AsRef<Path>) -> PathBuf {
-  let compressed_exts = ["bz2", "xz", "zst", "gz"];
   let path = filepath.as_ref();
 
   path
     .extension()
     .and_then(|ext| ext.to_str())
-    .filter(|ext| compressed_exts.iter().any(|&e| e.eq_ignore_ascii_case(ext)))
+    .filter(|ext| COMPRESSION_EXTENSIONS.iter().any(|&e| e.eq_ignore_ascii_case(ext)))
     .map_or_else(|| path.to_path_buf(), |_| path.with_extension(""))
 }
 
