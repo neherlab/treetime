@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 
+import { COMMAND_SETTINGS, type SettingSpec } from "../catalog";
 import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";
 import { setAt } from "../json";
-import { commandSettings, type SettingSpec } from "../schema";
 
-const clock = commandSettings("clock").specs;
+const clock = COMMAND_SETTINGS.clock.specs;
 
-const timetree = commandSettings("timetree").specs;
+const timetree = COMMAND_SETTINGS.timetree.specs;
 
 function spec(specs: readonly SettingSpec[], key: string): SettingSpec {
   const found = specs.find((candidate) => candidate.key === key);
@@ -19,7 +19,7 @@ function spec(specs: readonly SettingSpec[], key: string): SettingSpec {
 }
 
 describe("form config", () => {
-  test("defaults fill nested settings from the schema", () => {
+  test("defaults fill nested settings from the catalog", () => {
     const config = defaultConfig(clock);
 
     expect({ branchSplit: config["branch_split"], clockFilter: config["clock_filter"] }).toStrictEqual({

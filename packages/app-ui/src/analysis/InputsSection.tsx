@@ -1,10 +1,11 @@
-import type { AppCommand, InputFactsResult } from "@neherlab/app-contracts";
+import type { AppCommand, InputFactsResult, InputKind, InputNeed } from "@neherlab/app-contracts";
 import { useCallback, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 import { formatBytes } from "../format";
 import { useLocalFiles } from "../platform";
-import { COMMAND_INFO, INPUT_SLOT_INFO, type InputNeed, type InputSlotKey } from "../settings/commands";
+import { COMMAND_SETTINGS } from "../settings/catalog";
+import { INPUT_SLOT_INFO } from "../settings/commands";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { Button, cn } from "../ui";
@@ -31,8 +32,8 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
         </Button>
       </div>
       {showExamples && <ExamplesPanel command={command} close={closeExamples} />}
-      {COMMAND_INFO[command].slots.map((slot) => (
-        <InputSlotRow key={slot.key} command={command} slotKey={slot.key} need={slot.need} facts={facts} />
+      {COMMAND_SETTINGS[command].inputs.map((input) => (
+        <InputSlotRow key={input.kind} command={command} slotKey={input.kind} need={input.need} facts={facts} />
       ))}
     </div>
   );
@@ -45,7 +46,7 @@ function InputSlotRow({
   facts,
 }: {
   command: AppCommand;
-  slotKey: InputSlotKey;
+  slotKey: InputKind;
   need: InputNeed;
   facts: InputFactsResult | undefined;
 }) {
@@ -55,7 +56,7 @@ function InputSlotRow({
   const list = slotKey === "alignment";
   const drop = useFileDrop(command, slotKey, list);
   const paths = pathList(value);
-  const factsText = slotFactsText(slotKey, facts, COMMAND_INFO[command].usesDates);
+  const factsText = slotFactsText(slotKey, facts, COMMAND_SETTINGS[command].uses_dates);
   const problem = slotProblem(slotKey, facts);
 
   return (

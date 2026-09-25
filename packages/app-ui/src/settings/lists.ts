@@ -1,5 +1,6 @@
+import type { ListItemKind } from "@neherlab/app-contracts";
+
 import { isJsonObject, type JsonValue } from "./json";
-import type { ListItemKind } from "./schema";
 
 const TAB_ESCAPE = "\\t";
 

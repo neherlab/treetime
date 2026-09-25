@@ -3,12 +3,12 @@ import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { COMMAND_SETTINGS } from "../settings/catalog";
+import type { SettingSpec } from "../settings/catalog";
 import { MAIN_SETTING_KEYS } from "../settings/commands";
 import { isChanged, settingValue } from "../settings/config";
 import { isNumber, isString, type JsonObject, type JsonValue } from "../settings/json";
 import { settingLabel } from "../settings/labels";
 import { formatList, parseList } from "../settings/lists";
-import type { SettingSpec } from "../settings/schema";
 import { Segmented, Switch, cn, type SegmentedOption } from "../ui";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";

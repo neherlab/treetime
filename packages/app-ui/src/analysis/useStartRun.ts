@@ -5,9 +5,7 @@ import { useCallback } from "react";
 
 import { useBridge } from "../BridgeContext";
 import { RUNS_KEY } from "../queries";
-import { COMMAND_SETTINGS } from "../settings/catalog";
 import type { JsonObject } from "../settings/json";
-import { autoTitle } from "../settings/titles";
 import { useDraftStore } from "../store/draft";
 import { Toast } from "../ui";
 
@@ -18,11 +16,10 @@ export function useStartRun(command: AppCommand) {
   const toasts = Toast.useToastManager();
 
   return useCallback(
-    async (config: JsonObject) => {
+    async (config: JsonObject, fallbackTitle: string) => {
       const draft = useDraftStore.getState();
 
-      const title =
-        draft.title.trim() === "" ? autoTitle(command, COMMAND_SETTINGS[command].specs, config) : draft.title.trim();
+      const title = draft.title.trim() === "" ? fallbackTitle : draft.title.trim();
 
       try {
         const upload = draft.uploadRunId === null ? null : await bridge.getRun(draft.uploadRunId).catch(() => null);

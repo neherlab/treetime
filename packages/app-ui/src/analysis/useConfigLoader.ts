@@ -4,11 +4,9 @@ import { useCallback } from "react";
 
 import { useBridge } from "../BridgeContext";
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { configCheckMessages } from "../settings/checks";
 import { normalizeConfig, settingValue } from "../settings/config";
-import { configTextCommand, withMissingInputs } from "../settings/configText";
 import { baseName, pathList } from "../settings/inputs";
-import { getAt, sameJson, zJsonObject } from "../settings/json";
+import { getAt, sameJson, zJsonObject, type JsonObject } from "../settings/json";
 import { useDraftStore, type InputSource } from "../store/draft";
 
 export type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
@@ -24,15 +22,15 @@ export function useConfigLoader() {
       title: string | null,
       keepInputs: boolean,
     ): Promise<ConfigLoadResult> => {
-      const command = configTextCommand(text) ?? fallbackCommand;
       const draft = useDraftStore.getState();
-      const checked = keepInputs ? withMissingInputs(text, COMMAND_SETTINGS[command].specs, draft.config) : text;
-      const result = await bridge.checkConfig({ command, text: checked });
+      const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
+      const result = await bridge.checkConfig({ command: fallbackCommand, text, inputs });
 
       if (result.status === "invalid") {
-        return { loaded: false, messages: configCheckMessages(result, false) };
+        return { loaded: false, messages: result.messages };
       }
 
+      const command = result.command;
       const specs = COMMAND_SETTINGS[command].specs;
       const config = normalizeConfig(specs, zJsonObject.parse(result.config));
       const sources: Record<string, InputSource> = {};
@@ -43,7 +41,7 @@ export function useConfigLoader() {
         const paths = pathList(value);
         const previous = draft.sources[spec.key];
 
-        if (spec.pathRole === "input" && paths.length > 0) {
+        if (spec.role === "input" && paths.length > 0) {
           sources[spec.key] =
             previous !== undefined && sameJson(value, getAt(draft.config, spec.path))
               ? previous
@@ -63,5 +61,13 @@ export function useConfigLoader() {
       return { loaded: true, command };
     },
     [bridge, navigate],
+  );
+}
+
+function inputSettings(command: AppCommand, config: JsonObject): JsonObject {
+  return Object.fromEntries(
+    COMMAND_SETTINGS[command].specs.flatMap((spec) =>
+      spec.role === "input" ? [[spec.key, getAt(config, spec.path) ?? null] as const] : [],
+    ),
   );
 }

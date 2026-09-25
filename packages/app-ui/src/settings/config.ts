@@ -1,22 +1,22 @@
+import type { SettingSpec } from "./catalog";
 import { cloneJson, getAt, sameJson, setAt, type JsonObject, type JsonValue } from "./json";
-import type { SettingSpec } from "./schema";
 
 export function defaultConfig(specs: readonly SettingSpec[]): JsonObject {
   let config: JsonObject = {};
 
   for (const spec of specs) {
-    config = setAt(config, spec.path, cloneJson(spec.defaultValue));
+    config = setAt(config, spec.path, cloneJson(spec.default_value));
   }
 
   return config;
 }
 
 export function settingValue(config: JsonObject, spec: SettingSpec): JsonValue {
-  return getAt(config, spec.path) ?? spec.defaultValue;
+  return getAt(config, spec.path) ?? spec.default_value;
 }
 
 export function isChanged(config: JsonObject, spec: SettingSpec): boolean {
-  return spec.pathRole === null && !sameJson(settingValue(config, spec), spec.defaultValue);
+  return spec.role === "setting" && !sameJson(settingValue(config, spec), spec.default_value);
 }
 
 export function changedSpecs(specs: readonly SettingSpec[], config: JsonObject): SettingSpec[] {
@@ -24,7 +24,7 @@ export function changedSpecs(specs: readonly SettingSpec[], config: JsonObject):
 }
 
 export function resetValue(spec: SettingSpec): JsonValue {
-  return cloneJson(spec.defaultValue);
+  return cloneJson(spec.default_value);
 }
 
 export function normalizeConfig(specs: readonly SettingSpec[], config: JsonObject): JsonObject {
@@ -33,7 +33,7 @@ export function normalizeConfig(specs: readonly SettingSpec[], config: JsonObjec
   for (const spec of specs) {
     const value = getAt(config, spec.path);
 
-    if (value !== undefined && spec.pathRole !== "output") {
+    if (value !== undefined && spec.role !== "output") {
       normalized = setAt(normalized, spec.path, cloneJson(value));
     }
   }
@@ -47,7 +47,7 @@ export function carryOverConfig(
   previous: JsonObject,
 ): JsonObject {
   const carried = new Set(
-    previousSpecs.flatMap((spec) => (spec.pathRole === "input" || isChanged(previous, spec) ? [spec.key] : [])),
+    previousSpecs.flatMap((spec) => (spec.role === "input" || isChanged(previous, spec) ? [spec.key] : [])),
   );
 
   let config = defaultConfig(specs);
@@ -67,7 +67,7 @@ export function outputFreeConfig(specs: readonly SettingSpec[], config: JsonObje
   let result = config;
 
   for (const spec of specs) {
-    if (spec.pathRole === "output") {
+    if (spec.role === "output") {
       result = setAt(result, spec.path, null);
     }
   }

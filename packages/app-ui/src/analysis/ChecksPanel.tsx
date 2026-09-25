@@ -1,13 +1,10 @@
-import type { AppCommand, RunSummaryResult } from "@neherlab/app-contracts";
+import type { CheckLevel, Parsed, RunSummaryResult, zRunCheck } from "@neherlab/app-contracts";
 import { Link } from "@tanstack/react-router";
 import { CircleAlert, CircleCheck, Info, OctagonX } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { hasBlockingCheck, type Check, type CheckLevel } from "../settings/checks";
-import type { JsonObject } from "../settings/json";
-import { autoTitle } from "../settings/titles";
+import { zJsonValue } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import { Button } from "../ui";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -19,33 +16,34 @@ const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {
 };
 
 export function ChecksPanel({
-  command,
-  config,
+  suggestedTitle,
   checks,
   duplicate,
   verb,
 }: {
-  command: AppCommand;
-  config: JsonObject;
-  checks: readonly Check[];
+  suggestedTitle: string;
+  checks: readonly Parsed<typeof zRunCheck>[] | undefined;
   duplicate: RunSummaryResult | undefined;
   verb: string;
 }) {
   const { isSubmitting, isValid } = useFormState<FormConfig>();
   const title = useDraftStore((state) => state.title);
   const update = useDraftStore((state) => state.update);
-  const blocking = hasBlockingCheck(checks);
+  const checking = checks === undefined;
+  const blocking = checks?.some((check) => check.level === "block") ?? false;
 
   const onTitle = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => update({ title: event.target.value }),
     [update],
   );
 
-  const reason = blocking
-    ? "Resolve the blocking checks first"
-    : isValid
-      ? "Ctrl Enter"
-      : "Correct the settings marked as invalid first";
+  const reason = checking
+    ? "Checking the settings"
+    : blocking
+      ? "Resolve the blocking checks first"
+      : isValid
+        ? "Ctrl Enter"
+        : "Correct the settings marked as invalid first";
 
   return (
     <div className="border-line bg-surface-1 rounded-lg border">
@@ -54,10 +52,10 @@ export function ChecksPanel({
       </div>
       <div className="grid gap-2.5 px-3.5 py-3">
         <ul className="grid gap-1.5">
-          {checks.map((check) => (
+          {(checks ?? []).map((check) => (
             <CheckItem key={check.id} check={check} />
           ))}
-          {checks.length === 0 && (
+          {checks?.length === 0 && (
             <li className="grid grid-cols-[1.125rem_1fr] items-start gap-1.5">
               <CircleCheck size={15} aria-hidden className="text-signal-ok mt-0.5" />
               <span>Ready to run.</span>
@@ -81,26 +79,34 @@ export function ChecksPanel({
             type="text"
             value={title}
             onChange={onTitle}
-            placeholder={autoTitle(command, COMMAND_SETTINGS[command].specs, config)}
+            placeholder={suggestedTitle}
             className="border-line-strong bg-surface-1 text-ink rounded-md border px-2.5 py-1.5"
           />
         </label>
-        <Button type="submit" className="w-full" disabled={blocking || !isValid || isSubmitting} title={reason}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={checking || blocking || !isValid || isSubmitting}
+          title={reason}
+        >
           {duplicate === undefined ? verb : `${verb} again`}
         </Button>
-        {(blocking || !isValid) && <p className="text-ink-faint text-center text-xs">{reason}</p>}
+        {(checking || blocking || !isValid) && <p className="text-ink-faint text-center text-xs">{reason}</p>}
       </div>
     </div>
   );
 }
 
-function CheckItem({ check }: { check: Check }) {
+function CheckItem({ check }: { check: Parsed<typeof zRunCheck> }) {
   const { setValue } = useFormContext<FormConfig>();
-  const fix = check.fix;
+  const fix = check.fix ?? null;
 
   const apply = useCallback(() => {
-    if (fix !== null) {
-      setValue(fix.path.join("."), toFormValue(fix.value), { shouldDirty: true, shouldValidate: true });
+    for (const setting of fix?.patch ?? []) {
+      setValue(setting.path.join("."), toFormValue(zJsonValue.parse(setting.value)), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     }
   }, [fix, setValue]);
 

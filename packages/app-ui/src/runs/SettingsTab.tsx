@@ -4,10 +4,9 @@ import { Fragment, useCallback, useMemo, useState } from "react";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
 import { defaultText } from "../analysis/SettingField";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { commandLineLines, commandLineText, yamlLines, yamlText } from "../settings/commandLine";
-import { isChanged, outputFreeConfig, settingValue } from "../settings/config";
-import { groupedSpecs } from "../settings/groups";
+import { useConfigCheck } from "../queries";
+import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
+import { outputFreeConfig, settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
 import { settingLabel } from "../settings/labels";
 import { Button, Segmented, Switch, cn } from "../ui";
@@ -23,38 +22,33 @@ const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
 ];
 
 export function SettingsTab({ record }: { record: RunRecordResult }) {
-  const specs = COMMAND_SETTINGS[record.command].specs;
+  const settings = COMMAND_SETTINGS[record.command];
+  const specs = settings.specs;
   const config = useMemo(() => zJsonObject.parse(record.config), [record.config]);
   const [changedOnly, setChangedOnly] = useState(true);
   const [format, setFormat] = useState<CodeFormat>("cli");
   const copy = useCopy();
   const rerun = useRerun(record);
+  const changedKeys = useMemo(() => new Set(record.changed_settings), [record.changed_settings]);
 
   const groups = useMemo(
     () =>
-      groupedSpecs(specs).flatMap(([group, members]) => {
+      groupedSpecs(settings, specs).flatMap(([group, members]) => {
         const rows = members.filter(
-          (spec) =>
-            spec.pathRole !== "output" && (!changedOnly || spec.pathRole === "input" || isChanged(config, spec)),
+          (spec) => spec.role !== "output" && (!changedOnly || spec.role === "input" || changedKeys.has(spec.key)),
         );
 
         return rows.length === 0 ? [] : [{ group, rows }];
       }),
-    [changedOnly, config, specs],
+    [changedKeys, changedOnly, settings, specs],
   );
 
-  const changedCount = specs.filter((spec) => spec.pathRole === null && isChanged(config, spec)).length;
+  const changedCount = changedKeys.size;
   const reproducible = useMemo(() => outputFreeConfig(specs, config), [config, specs]);
-
-  const lines = useMemo(
-    () =>
-      format === "cli"
-        ? commandLineLines(record.command, specs, reproducible)
-        : yamlLines(record.command, specs, reproducible),
-    [format, record.command, reproducible, specs],
-  );
-
-  const text = format === "cli" ? commandLineText(lines) : yamlText(lines);
+  const { data: check } = useConfigCheck(record.command, reproducible, null);
+  const code = check?.status === "valid" ? check.code : null;
+  const lines = code === null ? [] : format === "cli" ? code.command_line : code.yaml;
+  const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;
 
   const onCopy = useCallback(
     () => copy(text, format === "cli" ? "Command copied to the clipboard" : "Config copied to the clipboard"),
@@ -90,7 +84,7 @@ export function SettingsTab({ record }: { record: RunRecordResult }) {
                   </th>
                 </tr>
                 {rows.map((spec) => {
-                  const changed = spec.pathRole === null && isChanged(config, spec);
+                  const changed = changedKeys.has(spec.key);
 
                   return (
                     <tr key={spec.key} className={cn("border-line border-t", changed && "bg-accent-subtle")}>
@@ -103,7 +97,7 @@ export function SettingsTab({ record }: { record: RunRecordResult }) {
                         {defaultText(settingValue(config, spec))}
                       </td>
                       <td className="text-ink-faint px-3.5 py-1.5 font-mono text-xs">
-                        {spec.pathRole === null ? defaultText(spec.defaultValue) : ""}
+                        {spec.role === "setting" ? defaultText(spec.default_value) : ""}
                       </td>
                     </tr>
                   );

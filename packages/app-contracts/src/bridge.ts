@@ -48,6 +48,8 @@ export type RunRecordResult = Parsed<typeof zRunRecord>;
 
 export type InputFactsResult = Parsed<typeof zInputFacts>;
 
+export type CheckConfigInput = Omit<CheckConfigRequest, "input_facts"> & { input_facts?: InputFactsResult | null };
+
 type RunEventResult = Parsed<typeof zRunEvent>;
 
 type TerminalEventResult = Parsed<typeof zTerminalEvent>;
@@ -107,7 +109,7 @@ export class RunEndedError extends Error {
 export interface BridgeTransport {
   version(): Promise<unknown>;
   datasets(): Promise<unknown>;
-  checkConfig(request: CheckConfigRequest): Promise<unknown>;
+  checkConfig(request: CheckConfigInput): Promise<unknown>;
   runConfig(request: RunConfigRequest): Promise<unknown>;
   checkInputs(request: CheckInputsRequest): Promise<unknown>;
   listRuns(): Promise<unknown>;
@@ -129,7 +131,7 @@ export interface BridgeTransport {
 export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
   datasets(): Promise<DatasetCatalog>;
-  checkConfig(request: CheckConfigRequest): Promise<CheckConfigResult>;
+  checkConfig(request: CheckConfigInput): Promise<CheckConfigResult>;
   runConfig(request: RunConfigRequest): Promise<RunConfigResult>;
   checkInputs(request: CheckInputsRequest): Promise<Parsed<typeof zInputFacts>>;
   listRuns(): Promise<Parsed<typeof zRunList>>;

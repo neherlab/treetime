@@ -6,6 +6,7 @@ export { CancelledError, CommandError, RunEndedError, createBridge, parseRunEven
 
 export type {
   BridgeTransport,
+  CheckConfigInput,
   CheckConfigResult,
   CommandOptions,
   FollowRunOptions,

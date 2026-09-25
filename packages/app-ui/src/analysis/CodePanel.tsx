@@ -1,10 +1,7 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, CodeLine, ConfigCode } from "@neherlab/app-contracts";
 import { Copy } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { commandLineLines, commandLineText, yamlLines, yamlText, type CodeLine } from "../settings/commandLine";
-import type { JsonObject } from "../settings/json";
 import { useDraftStore, type CodeFormat } from "../store/draft";
 import { Button, Segmented, Toast, cn } from "../ui";
 import { useConfigLoader } from "./useConfigLoader";
@@ -14,19 +11,14 @@ const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
   { value: "yaml", label: "YAML" },
 ];
 
-export function CodePanel({ command, config }: { command: AppCommand; config: JsonObject }) {
+export function CodePanel({ command, code }: { command: AppCommand; code: ConfigCode | null }) {
   const format = useDraftStore((state) => state.codeFormat);
   const update = useDraftStore((state) => state.update);
   const toasts = Toast.useToastManager();
   const [importing, setImporting] = useState(false);
 
-  const lines = useMemo(() => {
-    const specs = COMMAND_SETTINGS[command].specs;
-
-    return format === "cli" ? commandLineLines(command, specs, config) : yamlLines(command, specs, config);
-  }, [command, config, format]);
-
-  const text = format === "cli" ? commandLineText(lines) : yamlText(lines);
+  const lines = useMemo(() => (code === null ? [] : format === "cli" ? code.command_line : code.yaml), [code, format]);
+  const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;
   const keyed = useMemo(() => keyedLines(lines), [lines]);
 
   const onFormat = useCallback((next: CodeFormat) => update({ codeFormat: next }), [update]);
@@ -47,7 +39,7 @@ export function CodePanel({ command, config }: { command: AppCommand; config: Js
         <h3 className="font-bold">Command</h3>
         <div className="ml-auto flex items-center gap-2">
           <Segmented label="Command format" value={format} onChange={onFormat} options={CODE_FORMATS} />
-          <Button type="button" variant="ghost" size="icon" aria-label="Copy" onClick={copy}>
+          <Button type="button" variant="ghost" size="icon" aria-label="Copy" onClick={copy} disabled={code === null}>
             <Copy size={14} aria-hidden />
           </Button>
         </div>
@@ -57,6 +49,9 @@ export function CodePanel({ command, config }: { command: AppCommand; config: Js
           aria-label={format === "cli" ? "Command line" : "YAML config"}
           className="border-line bg-surface-2 m-0 max-h-80 overflow-auto rounded-md border px-3 py-2.5 font-mono text-xs leading-relaxed"
         >
+          {code === null && (
+            <span className="text-ink-faint block">The command appears when the settings are valid.</span>
+          )}
           {keyed.map(({ key, line, index }) => (
             <CodeLineView
               key={key}

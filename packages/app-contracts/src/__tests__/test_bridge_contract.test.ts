@@ -108,7 +108,14 @@ describe("bridge result validation", () => {
 
   test("checkConfig passes the request through and validates the response", async () => {
     let captured: unknown;
-    const response = { status: "valid", config: { tree: "t.nwk", max_iter: 2 } };
+
+    const response = {
+      status: "valid",
+      command: "timetree",
+      config: { tree: "t.nwk", max_iter: 2 },
+      code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+      checks: [],
+    };
 
     const bridge = createBridge(
       stubTransport({
@@ -130,6 +137,7 @@ describe("bridge result validation", () => {
     const response = {
       status: "valid",
       config: { tree: "t.nwk", output_all: "out", output_selection: ["Auspice"] },
+      code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
       config_hash: "abc",
       config_hash_error: null,
     };

@@ -49,8 +49,8 @@ function CommandCard({
   const info = COMMAND_INFO[command];
   const onClick = useCallback(() => select(command), [command, select]);
 
-  const needs = info.slots
-    .flatMap((slot) => (slot.need === "required" ? [INPUT_SLOT_INFO[slot.key].label.toLowerCase()] : []))
+  const needs = COMMAND_SETTINGS[command].inputs
+    .flatMap((input) => (input.need === "required" ? [INPUT_SLOT_INFO[input.kind].label.toLowerCase()] : []))
     .join(" and ");
 
   return (

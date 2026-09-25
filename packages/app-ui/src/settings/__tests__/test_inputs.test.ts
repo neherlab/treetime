@@ -1,17 +1,9 @@
 import { describe, expect, test } from "vitest";
 
+import { COMMAND_SETTINGS } from "../catalog";
 import { defaultConfig } from "../config";
-import {
-  datasetInputs,
-  filledSlots,
-  inputFactsRequest,
-  pathList,
-  runInputAssignments,
-  slotFactsText,
-  slotProblem,
-} from "../inputs";
+import { datasetInputs, inputFactsRequest, pathList, runInputAssignments, slotFactsText, slotProblem } from "../inputs";
 import { setAt } from "../json";
-import { commandSettings } from "../schema";
 
 const ZIKA_86 = { name: "zika/86", files: ["aln.fasta.xz", "metadata.tsv", "tree.nwk", "zika.phylip.xz"] };
 
@@ -48,15 +40,9 @@ describe("inputs", () => {
     ]);
   });
 
-  test("filled slots are the inputs with a path", () => {
-    const config = setAt(defaultConfig(commandSettings("clock").specs), ["tree"], "t.nwk");
-
-    expect([...filledSlots("clock", config)]).toStrictEqual(["tree"]);
-  });
-
   test("the input check reads the inputs and metadata settings of the command", () => {
     const config = setAt(
-      setAt(defaultConfig(commandSettings("mugration").specs), ["tree"], "t.nwk"),
+      setAt(defaultConfig(COMMAND_SETTINGS.mugration.specs), ["tree"], "t.nwk"),
       ["metadata"],
       "m.tsv",
     );
@@ -81,7 +67,7 @@ describe("inputs", () => {
   });
 
   test("no input means no input check", () => {
-    expect(inputFactsRequest("prune", defaultConfig(commandSettings("prune").specs))).toStrictEqual(null);
+    expect(inputFactsRequest("prune", defaultConfig(COMMAND_SETTINGS.prune.specs))).toStrictEqual(null);
   });
 });
 

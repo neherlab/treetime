@@ -2,7 +2,8 @@ import type { AppCommand, DatasetInfo, ExampleConfig, RunRecordResult } from "@n
 import { useCallback, useMemo, useState } from "react";
 
 import { useDatasetCatalog, useRunList, useRunRecords } from "../queries";
-import { COMMAND_INFO, isAppCommand } from "../settings/commands";
+import { COMMAND_SETTINGS } from "../settings/catalog";
+import { isAppCommand } from "../settings/commands";
 import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
 import { Button, Toast } from "../ui";
 import { useConfigLoader } from "./useConfigLoader";
@@ -136,7 +137,7 @@ function EarlierInputs({ command, close }: { command: AppCommand; close: () => v
     .map((run) => run.id);
 
   const records = useRunRecords(ids);
-  const slots = new Set<string>(COMMAND_INFO[command].slots.map((slot) => slot.key));
+  const slots = new Set<string>(COMMAND_SETTINGS[command].inputs.map((input) => input.kind));
 
   const rows = records.flatMap((query) => {
     const record = query.data;

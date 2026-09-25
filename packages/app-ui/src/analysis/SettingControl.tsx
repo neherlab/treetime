@@ -1,11 +1,11 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, SettingKind, SettingOption } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import type { SettingSpec } from "../settings/catalog";
 import { baseName, pathList } from "../settings/inputs";
 import { isJsonObject, sameJson, type JsonValue } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import type { SettingKind, SettingOption, SettingSpec } from "../settings/schema";
 import { Switch, cn } from "../ui";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -45,7 +45,7 @@ export function SettingControl({
   label: string;
   className?: string | undefined;
 }) {
-  if (spec.pathRole === "output") {
+  if (spec.role === "output") {
     return (
       <input
         id={settingFieldId(spec.key)}
@@ -58,7 +58,7 @@ export function SettingControl({
     );
   }
 
-  if (spec.pathRole !== null) {
+  if (spec.role !== "setting") {
     return <PathControl command={command} spec={spec} label={label} className={className} />;
   }
 
@@ -209,14 +209,14 @@ function TextControl({ spec, label, className }: ControlProps) {
 function ListControl({ spec, label, className }: ControlProps) {
   const { value, set, invalid } = useSetting(spec);
   const [text, setText] = useState(() => formatList(value));
-  const shown = sameJson(parseList(text, spec.itemKind), value) ? text : formatList(value);
+  const shown = sameJson(parseList(text, spec.item_kind), value) ? text : formatList(value);
 
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setText(event.target.value);
-      set(parseList(event.target.value, spec.itemKind));
+      set(parseList(event.target.value, spec.item_kind));
     },
-    [set, spec.itemKind],
+    [set, spec.item_kind],
   );
 
   return (
@@ -226,7 +226,7 @@ function ListControl({ spec, label, className }: ControlProps) {
       aria-label={label}
       aria-invalid={invalid}
       value={shown}
-      placeholder={spec.itemKind === "string" ? "Values, separated by spaces" : "Numbers, separated by spaces"}
+      placeholder={spec.item_kind === "string" ? "Values, separated by spaces" : "Numbers, separated by spaces"}
       onChange={onChange}
       className={cn(INPUT_CLASS, className)}
     />

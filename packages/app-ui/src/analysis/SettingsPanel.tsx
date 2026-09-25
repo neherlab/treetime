@@ -1,9 +1,8 @@
 import type { AppCommand, InputFactsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { COMMAND_SETTINGS } from "../settings/catalog";
+import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { isChanged } from "../settings/config";
-import { groupedSpecs } from "../settings/groups";
 import type { JsonObject } from "../settings/json";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore, type SettingsView } from "../store/draft";
@@ -24,7 +23,7 @@ export function SettingsPanel({
   const search = useDraftStore((state) => state.search);
   const changedOnly = useDraftStore((state) => state.changedOnly);
   const update = useDraftStore((state) => state.update);
-  const total = COMMAND_SETTINGS[command].specs.filter((spec) => spec.pathRole !== "output").length;
+  const total = COMMAND_SETTINGS[command].specs.filter((spec) => spec.role !== "output").length;
 
   const views = useMemo(
     () => [
@@ -91,9 +90,10 @@ function AllSettings({
   search: string;
   changedOnly: boolean;
 }) {
-  const specs = COMMAND_SETTINGS[command].specs;
-  const groups = groupedSpecs(matchingSpecs(specs, config, search, changedOnly));
-  const allGroups = groupedSpecs(specs);
+  const settings = COMMAND_SETTINGS[command];
+  const specs = settings.specs;
+  const groups = groupedSpecs(settings, matchingSpecs(specs, config, search, changedOnly));
+  const allGroups = groupedSpecs(settings, specs);
   const filtering = search.trim() !== "" || changedOnly;
 
   if (groups.length === 0) {
@@ -127,15 +127,15 @@ function AllSettings({
         })}
       </nav>
       {groups.map(([group, members]) => {
-        const editable = members.filter((spec) => spec.pathRole !== "output");
-        const outputs = members.filter((spec) => spec.pathRole === "output");
+        const editable = members.filter((spec) => spec.role !== "output");
+        const outputs = members.filter((spec) => spec.role === "output");
         const changed = members.filter((spec) => isChanged(config, spec)).length;
 
         return (
           <details
             key={group}
             id={`group-${groupAnchor(group)}`}
-            open={filtering || group !== "Outputs"}
+            open={filtering || outputs.length === 0}
             className="border-line border-b last:border-b-0"
           >
             <summary className="flex cursor-pointer items-center gap-2 px-3.5 py-2.5 font-bold">

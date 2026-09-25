@@ -1,7 +1,7 @@
+import type { SettingSpec } from "./catalog";
 import { isChanged } from "./config";
 import type { JsonObject } from "./json";
 import { settingLabel } from "./labels";
-import type { SettingSpec } from "./schema";
 
 export function matchingSpecs(
   specs: readonly SettingSpec[],

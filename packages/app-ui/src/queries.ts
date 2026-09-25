@@ -1,4 +1,4 @@
-import type { AppCommand, CheckInputsRequest, TreeTimeBridge } from "@neherlab/app-contracts";
+import type { AppCommand, CheckInputsRequest, InputFactsResult, TreeTimeBridge } from "@neherlab/app-contracts";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 
 import { useBridge } from "./BridgeContext";
@@ -58,13 +58,14 @@ export function useRunRecords(ids: readonly string[]) {
   });
 }
 
-export function useConfigCheck(command: AppCommand, config: JsonObject) {
+export function useConfigCheck(command: AppCommand, config: JsonObject, facts: InputFactsResult | null | undefined) {
   const bridge = useBridge();
   const text = JSON.stringify(config);
+  const inputFacts = facts ?? null;
 
   return useQuery({
-    queryKey: ["check-config", command, text],
-    queryFn: () => bridge.checkConfig({ command, text }),
+    queryKey: ["check-config", command, text, inputFacts],
+    queryFn: () => bridge.checkConfig({ command, text, input_facts: inputFacts }),
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });

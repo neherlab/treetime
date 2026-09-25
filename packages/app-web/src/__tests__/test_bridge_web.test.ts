@@ -98,7 +98,16 @@ describe("bridge_web queries and requests", () => {
     const calls: Call[] = [];
 
     const fetchFn = routes(
-      { "POST /api/check-config": () => json({ status: "valid", config: { tree: "t.nwk" } }) },
+      {
+        "POST /api/check-config": () =>
+          json({
+            status: "valid",
+            command: "prune",
+            config: { tree: "t.nwk" },
+            code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+            checks: [],
+          }),
+      },
       calls,
     );
 
@@ -113,7 +122,14 @@ describe("bridge_web queries and requests", () => {
     const calls: Call[] = [];
 
     const fetchFn = routes(
-      { "POST /api/run-config": () => json({ status: "valid", config: { tree: "t.nwk" } }) },
+      {
+        "POST /api/run-config": () =>
+          json({
+            status: "valid",
+            config: { tree: "t.nwk" },
+            code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+          }),
+      },
       calls,
     );
 

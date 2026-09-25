@@ -81,7 +81,15 @@ describe("desktop_bridge queries and requests", () => {
       makeFakeIpc((_ipc, channel, args) => {
         captured = [channel, ...args];
 
-        return Promise.resolve(JSON.stringify({ status: "valid", config: {} }));
+        return Promise.resolve(
+          JSON.stringify({
+            status: "valid",
+            command: "clock",
+            config: {},
+            code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+            checks: [],
+          }),
+        );
       }),
     );
 
@@ -96,7 +104,15 @@ describe("desktop_bridge queries and requests", () => {
       makeFakeIpc((_ipc, channel, args) => {
         captured = [channel, ...args];
 
-        return Promise.resolve(JSON.stringify({ status: "valid", config: {} }));
+        return Promise.resolve(
+          JSON.stringify({
+            status: "valid",
+            command: "clock",
+            config: {},
+            code: { command_line: [], command_line_text: "", yaml: [], yaml_text: "" },
+            checks: [],
+          }),
+        );
       }),
     );
 

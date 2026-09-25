@@ -36,10 +36,8 @@
     "recharts": "3.10.1",
     "redux": "4.2.1",
     "redux-thunk": "2.4.2",
-    "shlex": "3.0.0",
     "styled-components": "5.3.11",
     "use-debounce": "10.1.1",
-    "yaml": "2.9.1",
     "zod": "catalog:",
     "zustand": "5.0.15"
   },

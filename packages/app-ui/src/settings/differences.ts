@@ -1,8 +1,8 @@
 import type { RunInput } from "@neherlab/app-contracts";
 
+import type { SettingSpec } from "./catalog";
 import { settingValue } from "./config";
 import { sameJson, type JsonObject, type JsonValue } from "./json";
-import type { SettingSpec } from "./schema";
 
 export interface RunSettings {
   config: JsonObject;
@@ -19,11 +19,11 @@ export function settingDifferences(
   second: RunSettings,
 ): SettingDifference[] {
   return specs.flatMap((spec): SettingDifference[] => {
-    if (spec.pathRole === "output") {
+    if (spec.role === "output") {
       return [];
     }
 
-    if (spec.pathRole === "input" || spec.pathRole === "input-template") {
+    if (spec.role === "input" || spec.role === "input-template") {
       return inputDifference(spec, first, second);
     }
 

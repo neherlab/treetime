@@ -5,12 +5,11 @@ import { useDebounce } from "use-debounce";
 
 import { useConfigCheck, useInputFacts, useRunConfig, useRunList } from "../queries";
 import { COMMAND_SETTINGS } from "../settings/catalog";
-import { formChecks } from "../settings/checks";
-import { RUN_OUTPUT_DIR } from "../settings/commandLine";
 import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig, outputFreeConfig } from "../settings/config";
-import { filledSlots, inputFactsRequest } from "../settings/inputs";
+import { inputFactsRequest } from "../settings/inputs";
 import { zJsonObject } from "../settings/json";
+import { autoTitle, changedChips } from "../settings/titles";
 import { useDraftStore } from "../store/draft";
 import { ChecksPanel } from "./ChecksPanel";
 import { CodePanel } from "./CodePanel";
@@ -44,9 +43,9 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const [settled] = useDebounce(config, CHECK_DEBOUNCE_MS);
   const request = useMemo(() => outputFreeConfig(specs, settled), [settled, specs]);
-  const { data: configCheck } = useConfigCheck(command, request);
-  const { data: runConfig } = useRunConfig(command, request);
   const { data: facts } = useInputFacts(useMemo(() => inputFactsRequest(command, settled), [command, settled]));
+  const { data: configCheck } = useConfigCheck(command, request, facts);
+  const { data: runConfig } = useRunConfig(command, request);
   const { data: runList } = useRunList();
   const startRun = useStartRun(command);
 
@@ -65,25 +64,8 @@ export function DraftForm({ command }: { command: AppCommand }) {
     [form, setConfig],
   );
 
-  const checks = useMemo(
-    () =>
-      formChecks({
-        command,
-        config,
-        filledSlots: filledSlots(command, config),
-        facts: facts ?? undefined,
-        configCheck,
-      }),
-    [command, config, configCheck, facts],
-  );
-
-  const displayConfig = useMemo(() => {
-    if (runConfig?.status === "valid") {
-      return zJsonObject.parse(runConfig.config);
-    }
-
-    return { ...outputFreeConfig(specs, config), output_all: RUN_OUTPUT_DIR };
-  }, [config, runConfig, specs]);
+  const checks = configCheck?.checks;
+  const code = runConfig?.status === "valid" ? runConfig.code : null;
 
   const configHash = runConfig?.status === "valid" ? (runConfig.config_hash ?? null) : null;
 
@@ -96,7 +78,20 @@ export function DraftForm({ command }: { command: AppCommand }) {
   );
 
   const changed = changedSpecs(specs, config);
-  const submit = form.handleSubmit((values) => startRun(outputFreeConfig(specs, normalizeConfig(specs, values))));
+
+  const title = autoTitle(
+    command,
+    changedChips(
+      code,
+      specs,
+      changed.map((spec) => spec.key),
+    ),
+  );
+
+  const submit = form.handleSubmit((values) =>
+    startRun(outputFreeConfig(specs, normalizeConfig(specs, values)), title),
+  );
+
   const onSubmit = useCallback((event: React.FormEvent) => void submit(event), [submit]);
 
   useEffect(() => {
@@ -133,10 +128,9 @@ export function DraftForm({ command }: { command: AppCommand }) {
             </Step>
           </div>
           <aside className="grid gap-3.5 xl:sticky xl:top-4">
-            <CodePanel command={command} config={displayConfig} />
+            <CodePanel command={command} code={code} />
             <ChecksPanel
-              command={command}
-              config={config}
+              suggestedTitle={title}
               checks={checks}
               duplicate={duplicate}
               verb={COMMAND_INFO[command].verb}

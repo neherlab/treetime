@@ -2,11 +2,11 @@ import type { AppCommand } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
+import type { SettingSpec } from "../settings/catalog";
 import { isChanged, resetValue } from "../settings/config";
 import { isJsonObject, type JsonObject, type JsonValue } from "../settings/json";
 import { settingLabel } from "../settings/labels";
 import { formatList } from "../settings/lists";
-import type { SettingSpec } from "../settings/schema";
 import { cn } from "../ui";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -44,8 +44,8 @@ export function SettingField({
           {label}
         </label>
         <code className="text-ink-faint font-mono text-xs">{spec.flag}</code>
-        {spec.pathRole === null && (
-          <span className="text-ink-faint text-xs">Default: {defaultText(spec.defaultValue)}</span>
+        {spec.role === "setting" && (
+          <span className="text-ink-faint text-xs">Default: {defaultText(spec.default_value)}</span>
         )}
       </div>
       <div className="flex items-start gap-1.5 md:col-start-2 md:row-span-2 md:row-start-1">
@@ -53,7 +53,7 @@ export function SettingField({
           <SettingControl command={command} spec={spec} label={label} />
           {error !== null && <p className="text-signal-danger mt-0.5 text-xs">{error}</p>}
         </div>
-        {spec.pathRole === null && (
+        {spec.role === "setting" && (
           <button
             type="button"
             onClick={reset}

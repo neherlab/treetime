@@ -216,7 +216,7 @@ function usePaletteItems(): PaletteItem[] {
     }
 
     for (const spec of COMMAND_SETTINGS[command].specs) {
-      if (spec.pathRole === "output") {
+      if (spec.role === "output") {
         continue;
       }
 

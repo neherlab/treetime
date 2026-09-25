@@ -1,7 +1,14 @@
-import type { AppCommand, CheckInputsRequest, DatasetInfo, InputFactsResult, RunInput } from "@neherlab/app-contracts";
+import type {
+  AppCommand,
+  CheckInputsRequest,
+  DatasetInfo,
+  InputFactsResult,
+  InputKind,
+  RunInput,
+} from "@neherlab/app-contracts";
 import * as z from "zod";
 
-import { COMMAND_INFO, type InputSlotKey } from "./commands";
+import { COMMAND_SETTINGS } from "./catalog";
 import { getAt, type JsonObject, type JsonValue } from "./json";
 
 export interface InputAssignment {
@@ -12,15 +19,15 @@ export interface InputAssignment {
 
 const zPath = z.string().min(1);
 
-const DATASET_FILES: Record<InputSlotKey, readonly string[]> = {
+const DATASET_FILES: Record<InputKind, readonly string[]> = {
   tree: ["tree.nwk"],
   alignment: ["aln.fasta.xz", "aln.fasta"],
   metadata: ["metadata.tsv", "metadata.csv"],
 };
 
 export function datasetInputs(dataDir: string, dataset: DatasetInfo, command: AppCommand): InputAssignment[] {
-  return COMMAND_INFO[command].slots.flatMap((slot) => {
-    const file = DATASET_FILES[slot.key].find((candidate) => dataset.files.includes(candidate));
+  return COMMAND_SETTINGS[command].inputs.flatMap((input) => {
+    const file = DATASET_FILES[input.kind].find((candidate) => dataset.files.includes(candidate));
 
     if (file === undefined) {
       return [];
@@ -28,7 +35,7 @@ export function datasetInputs(dataDir: string, dataset: DatasetInfo, command: Ap
 
     const path = joinPath(dataDir, dataset.name, file);
 
-    return [{ key: slot.key, value: slot.key === "alignment" ? [path] : path, label: `${dataset.name}/${file}` }];
+    return [{ key: input.kind, value: input.kind === "alignment" ? [path] : path, label: `${dataset.name}/${file}` }];
   });
 }
 
@@ -46,12 +53,8 @@ export function runInputAssignments(inputs: readonly RunInput[]): InputAssignmen
   }));
 }
 
-export function filledSlots(command: AppCommand, config: JsonObject): Set<InputSlotKey> {
-  return new Set(COMMAND_INFO[command].slots.flatMap((slot) => (hasPath(getAt(config, [slot.key])) ? [slot.key] : [])));
-}
-
 export function inputFactsRequest(command: AppCommand, config: JsonObject): CheckInputsRequest | null {
-  const slots = new Set(COMMAND_INFO[command].slots.map((slot) => slot.key));
+  const slots = new Set(COMMAND_SETTINGS[command].inputs.map((input) => input.kind));
   const tree = slots.has("tree") ? stringOrNull(getAt(config, ["tree"])) : null;
   const metadata = slots.has("metadata") ? stringOrNull(getAt(config, ["metadata"])) : null;
   const alignment = slots.has("alignment") ? stringList(getAt(config, ["alignment"])) : [];
@@ -92,10 +95,6 @@ function joinPath(...parts: string[]): string {
   return parts.filter((part) => part !== "").join("/");
 }
 
-function hasPath(value: JsonValue | undefined): boolean {
-  return pathList(value).length > 0;
-}
-
 function stringOrNull(value: JsonValue | undefined): string | null {
   const parsed = zPath.safeParse(value);
 
@@ -106,11 +105,7 @@ function stringList(value: JsonValue | undefined): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
-export function slotFactsText(
-  slot: InputSlotKey,
-  facts: InputFactsResult | undefined,
-  usesDates: boolean,
-): string | null {
+export function slotFactsText(slot: InputKind, facts: InputFactsResult | undefined, usesDates: boolean): string | null {
   if (slot === "tree") {
     const tree = facts?.tree;
 
@@ -150,6 +145,6 @@ export function slotFactsText(
   return `${metadata.rows} rows; ID column ${metadata.id_column}${dates}`;
 }
 
-export function slotProblem(slot: InputSlotKey, facts: InputFactsResult | undefined): string | null {
+export function slotProblem(slot: InputKind, facts: InputFactsResult | undefined): string | null {
   return facts?.problems.find((problem) => problem.input === slot)?.message ?? null;
 }

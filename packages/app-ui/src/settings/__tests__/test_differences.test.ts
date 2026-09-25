@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
+import { COMMAND_SETTINGS } from "../catalog";
 import { defaultConfig } from "../config";
 import { settingDifferences } from "../differences";
 import { setAt } from "../json";
-import { commandSettings } from "../schema";
 
-const SPECS = commandSettings("timetree").specs;
+const SPECS = COMMAND_SETTINGS.timetree.specs;
 
 const BASE = setAt(setAt(defaultConfig(SPECS), ["tree"], "/runs/a/inputs/tree.nwk"), ["output_all"], "/runs/a/out");
 
