@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
+  use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
@@ -136,8 +137,14 @@ mod tests {
       > {
         let bad_branches = derive_bad_branches(&self.graph, constraints, &undated_leaves(&self.graph, constraints))?;
         let backward = propagate_distributions_backward(&self.graph, constraints, None, &bad_branches, &self.branches)?;
-        let posterior =
-          propagate_distributions_forward(&self.graph, constraints, &self.names, &self.branches, &backward)?;
+        let posterior = propagate_distributions_forward(
+          &self.graph,
+          constraints,
+          &self.names,
+          &self.branches,
+          &backward,
+          &NoopProgress,
+        )?;
         Ok((bad_branches, backward, posterior))
       }
 

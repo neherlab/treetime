@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::progress::NoopProgress;
   use crate::seq::alignment::{get_common_length, node_seq_inputs};
   use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
@@ -69,7 +70,7 @@ mod tests {
       .iter()
       .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
       .collect();
-    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     let leaf_bad_branches = undated_leaves(&graph, &constraints);
     let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
     let mut clock_state = ClockState::new(&graph);
@@ -89,6 +90,7 @@ mod tests {
         None,
         false,
         &mut clock_state,
+        &NoopProgress,
       )
       .map_err(|report| format!("{report:?}"))
     };
