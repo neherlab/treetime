@@ -60,7 +60,10 @@ mod tests {
 
   #[test]
   fn test_timetree_reconstructed_fasta_imputes_ambiguous_tips() -> Result<(), Report> {
-    let records = helpers::run_reconstructed_fasta("test-tt-recon-impute", |args| args.reconstruct_tip_states = true)?;
+    let records = helpers::run_reconstructed_fasta("test-tt-recon-impute", |args| {
+      args.include_leaves = true;
+      args.impute_missing_data = true;
+    })?;
     let leaves = helpers::input_leaves()?;
     let alphabet = Alphabet::default();
 

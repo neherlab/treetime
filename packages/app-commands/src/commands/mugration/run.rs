@@ -5,7 +5,7 @@ use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
 use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use app_output::output_plan::OutputSelection;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::make_report;
@@ -15,7 +15,7 @@ use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::write_file_or_stdout;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
@@ -119,15 +119,11 @@ pub fn run_mugration(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
-    let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.traits.render_csv().as_bytes())
-      .wrap_err_with(|| format!("When writing traits CSV file '{}'", path.display()))?;
+    write_file_or_stdout(path, result.traits.render_csv())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
-    let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.confidence.render_csv().as_bytes())
-      .wrap_err_with(|| format!("When writing confidence CSV file '{}'", path.display()))?;
+    write_file_or_stdout(path, result.confidence.render_csv())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {

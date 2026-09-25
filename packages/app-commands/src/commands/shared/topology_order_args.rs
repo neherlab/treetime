@@ -1,3 +1,4 @@
+use crate::commands::shared::leaf_order::leaf_order;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::{Report, WrapErr};
@@ -232,16 +233,4 @@ pub enum TopologyOrderTargetAggregateArg {
   #[default]
   Mean,
   Median,
-}
-
-fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
-  graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      names[&key]
-        .clone()
-        .ok_or_else(|| make_report!("Leaf node {key} has no name"))
-    })
-    .collect()
 }

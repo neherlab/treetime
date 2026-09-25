@@ -68,12 +68,24 @@ pub fn translation_input_paths(
   cdses: &[String],
   annotation: Option<&Path>,
 ) -> Result<Vec<PathBuf>, Report> {
-  let cdses: Vec<String> = if cdses.is_empty() {
-    read_gff3_annotations(annotation, cdses)?.into_keys().collect()
+  let annotations = read_gff3_annotations(annotation, cdses)?;
+  Ok(
+    selected_cdses(cdses, &annotations)
+      .iter()
+      .map(|cds| translation_path(template, cds))
+      .collect(),
+  )
+}
+
+pub(crate) fn selected_cdses(
+  listed: &[String],
+  annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+) -> Vec<String> {
+  if listed.is_empty() {
+    annotations.keys().cloned().collect()
   } else {
-    cdses.to_vec()
-  };
-  Ok(cdses.iter().map(|cds| translation_path(template, cds)).collect())
+    listed.to_vec()
+  }
 }
 
 pub(crate) fn template_has_cds_placeholder(template: &str) -> bool {

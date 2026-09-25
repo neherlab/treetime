@@ -15,6 +15,7 @@ use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::progress_info;
+use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
 use treetime_graph::edge::GraphEdgeKey;
@@ -109,27 +110,21 @@ pub fn run_optimize(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    if maps.root_sequence.is_some() {
-      let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
-      let providers = CommentProviders::new().with(&provider);
-      write_optimize_tree_outputs(
-        &graph,
-        &nodes,
-        &branch_lengths,
-        &maps,
-        &resolved.tree_outputs,
-        &providers,
-      )?;
-    } else {
-      write_optimize_tree_outputs(
-        &graph,
-        &nodes,
-        &branch_lengths,
-        &maps,
-        &resolved.tree_outputs,
-        &CommentProviders::new(),
-      )?;
-    }
+    let mutation_provider = maps
+      .root_sequence
+      .is_some()
+      .then(|| EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph));
+    let providers = mutation_provider
+      .iter()
+      .fold(CommentProviders::new(), |providers, provider| providers.with(provider));
+    write_optimize_tree_outputs(
+      &graph,
+      &nodes,
+      &branch_lengths,
+      &maps,
+      &resolved.tree_outputs,
+      &providers,
+    )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
@@ -140,13 +135,7 @@ pub fn run_optimize(
             "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
           );
         }
-        Some(
-          maps
-            .edge_subs
-            .iter()
-            .map(|(&key, subs)| (key, subs.len()))
-            .collect::<BTreeMap<GraphEdgeKey, usize>>(),
-        )
+        Some(compute_edge_mutation_counts(&graph, &maps.edge_subs))
       },
       DivergenceUnits::MutationsPerSite => None,
     };

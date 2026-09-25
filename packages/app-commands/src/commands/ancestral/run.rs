@@ -1,7 +1,9 @@
 use crate::commands::ancestral::aa_node_data::{
-  read_aa_root_sequences, read_gff3_annotations, template_has_cds_placeholder, translation_path, validate_aa_args,
+  read_aa_root_sequences, read_gff3_annotations, selected_cdses, template_has_cds_placeholder, translation_path,
+  validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
+use crate::commands::shared::alignment::sequence_descriptions;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut};
@@ -246,12 +248,7 @@ fn read_nwk_fasta(
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
-  let descs = aln.iter().fold(BTreeMap::new(), |mut descs, record| {
-    descs
-      .entry(record.seq_name.clone())
-      .or_insert_with(|| record.desc.clone());
-    descs
-  });
+  let descs = sequence_descriptions(&aln);
 
   cancel.check()?;
   progress.report("Parsing tree", 0.1, "");
@@ -412,11 +409,7 @@ fn run_aa_reconstructions(
 
   let annotations = read_gff3_annotations(ancestral_args.annotation.as_deref(), &ancestral_args.cdses)?;
 
-  let cdses: Vec<String> = if ancestral_args.cdses.is_empty() {
-    annotations.keys().cloned().collect()
-  } else {
-    ancestral_args.cdses.clone()
-  };
+  let cdses = selected_cdses(&ancestral_args.cdses, &annotations);
 
   if let Some(aa_seq_template) = aa_fasta_template {
     if cdses.len() > 1 && !template_has_cds_placeholder(aa_seq_template) {
@@ -434,8 +427,8 @@ fn run_aa_reconstructions(
 
   let params = MarginalPartitionParams {
     dense: ancestral_args.dense,
-    include_leaves: ancestral_args.include_leaves || ancestral_args.reconstruct_tip_states,
-    impute_missing_data: ancestral_args.impute_missing_data || ancestral_args.reconstruct_tip_states,
+    include_leaves: ancestral_args.include_leaves,
+    impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,
     seed: ancestral_args.seed,
     ignore_missing_alns: ancestral_args.ignore_missing_alns,

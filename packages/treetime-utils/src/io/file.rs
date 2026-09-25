@@ -52,6 +52,15 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write
   Ok(Box::new(buf_compressor))
 }
 
+pub fn write_file_or_stdout(filepath: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<(), Report> {
+  let filepath = filepath.as_ref();
+  let mut writer = create_file_or_stdout(filepath)?;
+  writer
+    .write_all(content.as_ref())
+    .and_then(|()| writer.flush())
+    .wrap_err_with(|| format!("When writing file '{}'", filepath.display()))
+}
+
 pub fn is_path_stdin(filepath: impl AsRef<Path>) -> bool {
   let filepath = filepath.as_ref();
   filepath == "-" || filepath == "/dev/stdin"

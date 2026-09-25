@@ -3,7 +3,9 @@ use clap::ValueHint;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime_io::fasta::FastaRecord;
 
 /// Sequence alignment input shared by all commands that read sequences.
 ///
@@ -31,4 +33,15 @@ pub struct AlignmentArgs {
   )]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: Vec<PathBuf>,
+}
+
+pub(crate) fn sequence_descriptions<'a>(
+  records: impl IntoIterator<Item = &'a FastaRecord>,
+) -> BTreeMap<String, Option<String>> {
+  records.into_iter().fold(BTreeMap::new(), |mut descs, record| {
+    descs
+      .entry(record.seq_name.clone())
+      .or_insert_with(|| record.desc.clone());
+    descs
+  })
 }

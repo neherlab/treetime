@@ -1,4 +1,5 @@
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
+use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
 use app_output::clock_result::ClockNodeOut;
@@ -171,16 +172,4 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
       BranchPointOptimizationParams::golden_section_with(args.golden_params.clone().into())
     },
   }
-}
-
-fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
-  graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      names[&key]
-        .clone()
-        .ok_or_else(|| make_report!("Leaf node {key} has no name"))
-    })
-    .collect()
 }

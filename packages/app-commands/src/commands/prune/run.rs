@@ -1,4 +1,5 @@
 use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
@@ -211,18 +212,6 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   }
 
   Ok(())
-}
-
-fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
-  graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      names[&key]
-        .clone()
-        .ok_or_else(|| treetime::make_report!("Leaf node {key} has no name"))
-    })
-    .collect()
 }
 
 #[allow(

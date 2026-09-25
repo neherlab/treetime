@@ -1,3 +1,4 @@
+use crate::commands::shared::alignment::sequence_descriptions;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
@@ -90,23 +91,14 @@ pub fn run_timetree_estimation(
     n_branches_posterior: args.n_branches_posterior,
     time_marginal: args.time_marginal,
     confidence: args.confidence,
-    include_leaves: args.include_leaves || args.reconstruct_tip_states,
-    impute_missing_data: args.impute_missing_data || args.reconstruct_tip_states,
+    include_leaves: args.include_leaves,
+    impute_missing_data: args.impute_missing_data,
     report_ambiguous: args.report_ambiguous,
     zero_based: args.zero_based,
     seed: args.seed,
   };
 
-  let aln_descs = input_data
-    .aln
-    .iter()
-    .flatten()
-    .fold(BTreeMap::new(), |mut descs, record| {
-      descs
-        .entry(record.seq_name.clone())
-        .or_insert_with(|| record.desc.clone());
-      descs
-    });
+  let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
 
   let input = TimetreeInput {
     graph: input_data.graph,
@@ -301,32 +293,24 @@ pub fn run_timetree_estimation(
       .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
       .collect();
     let date_provider = DateCommentProvider::new(&date_times);
-    if maps.root_sequence.is_some() {
-      let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
-      let providers = CommentProviders::new().with(&provider).with(&date_provider);
-      write_timetree_tree_outputs(
-        &graph,
-        &nodes,
-        &edges,
-        &maps,
-        confidence_intervals.as_deref(),
-        mutation_counts.as_ref(),
-        &resolved.tree_outputs,
-        &providers,
-      )?;
-    } else {
-      let providers = CommentProviders::new().with(&date_provider);
-      write_timetree_tree_outputs(
-        &graph,
-        &nodes,
-        &edges,
-        &maps,
-        confidence_intervals.as_deref(),
-        mutation_counts.as_ref(),
-        &resolved.tree_outputs,
-        &providers,
-      )?;
-    }
+    let mutation_provider = maps
+      .root_sequence
+      .is_some()
+      .then(|| EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph));
+    let providers = mutation_provider
+      .iter()
+      .fold(CommentProviders::new(), |providers, provider| providers.with(provider))
+      .with(&date_provider);
+    write_timetree_tree_outputs(
+      &graph,
+      &nodes,
+      &edges,
+      &maps,
+      confidence_intervals.as_deref(),
+      mutation_counts.as_ref(),
+      &resolved.tree_outputs,
+      &providers,
+    )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {

@@ -1,10 +1,10 @@
+use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::make_error;
-use treetime::make_report;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::ProgressSink;
 use treetime::seq::gap_fill::apply_gap_fill;
@@ -31,15 +31,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, progress: &dyn Progre
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
-  let input_leaf_order = graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      names[&key]
-        .clone()
-        .ok_or_else(|| make_report!("Leaf node {key} has no name"))
-    })
-    .collect::<Result<Vec<_>, _>>()?;
+  let input_leaf_order = leaf_order(&graph, &names)?;
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
