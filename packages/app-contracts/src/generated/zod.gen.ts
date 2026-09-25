@@ -1759,3 +1759,114 @@ export const zErrorResponse = z.object({
 export const zCancelRunResponse = z.object({
     cancelled: z.boolean()
 });
+
+/**
+ * Request to the desktop back end: the name of an operation and its arguments.
+ */
+export const zDesktopRequest = z.union([
+    z.object({
+        operation: z.literal('version'),
+        args: z.record(z.string(), z.never())
+    }),
+    z.object({
+        operation: z.literal('datasets'),
+        args: z.record(z.string(), z.never())
+    }),
+    z.object({
+        operation: z.literal('check-config'),
+        args: z.object({
+            request: zCheckConfigRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('run-config'),
+        args: z.object({
+            request: zRunConfigRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('check-inputs'),
+        args: z.object({
+            request: zCheckInputsRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('list-runs'),
+        args: z.record(z.string(), z.never())
+    }),
+    z.object({
+        operation: z.literal('create-run'),
+        args: z.object({
+            request: zCreateRunRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('get-run'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('start-run'),
+        args: z.object({
+            id: zJobId,
+            request: zStartRunRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('update-run'),
+        args: z.object({
+            id: zJobId,
+            request: zUpdateRunRequest
+        })
+    }),
+    z.object({
+        operation: z.literal('cancel-run'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('delete-run'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('restore-run'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('purge-run'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('run-files'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('run-results'),
+        args: z.object({
+            id: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('compare-runs'),
+        args: z.object({
+            id: zJobId,
+            other: zJobId
+        })
+    }),
+    z.object({
+        operation: z.literal('clade-in-runs'),
+        args: z.object({
+            request: zCladeRequest
+        })
+    })
+]);

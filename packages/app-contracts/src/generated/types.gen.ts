@@ -4057,6 +4057,104 @@ export type CancelRunResponse = {
     cancelled: boolean;
 };
 
+/**
+ * Request to the desktop back end: the name of an operation and its arguments.
+ */
+export type DesktopRequest = {
+    operation: 'version';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'datasets';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'check-config';
+    args: {
+        request: CheckConfigRequest;
+    };
+} | {
+    operation: 'run-config';
+    args: {
+        request: RunConfigRequest;
+    };
+} | {
+    operation: 'check-inputs';
+    args: {
+        request: CheckInputsRequest;
+    };
+} | {
+    operation: 'list-runs';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'create-run';
+    args: {
+        request: CreateRunRequest;
+    };
+} | {
+    operation: 'get-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'start-run';
+    args: {
+        id: JobId;
+        request: StartRunRequest;
+    };
+} | {
+    operation: 'update-run';
+    args: {
+        id: JobId;
+        request: UpdateRunRequest;
+    };
+} | {
+    operation: 'cancel-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'delete-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'restore-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'purge-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'run-files';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'run-results';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'compare-runs';
+    args: {
+        id: JobId;
+        other: JobId;
+    };
+} | {
+    operation: 'clade-in-runs';
+    args: {
+        request: CladeRequest;
+    };
+};
+
 export type ConfigCheckData = {
     body: CheckConfigRequest;
     path?: never;

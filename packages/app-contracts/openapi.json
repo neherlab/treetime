@@ -7411,6 +7411,485 @@
           "cancelled"
         ],
         "description": "Answer to a cancellation request."
+      },
+      "DesktopRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "version"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Version of TreeTime."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "datasets"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Example datasets and example configurations."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "check-config"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CheckConfigRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "The configuration with every default filled in, or the problems found in it."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "run-config"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/RunConfigRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "The configuration as a run resolves it."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "check-inputs"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CheckInputsRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Facts about input files, read with the readers the commands use."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "list-runs"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Runs, newest first."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "create-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CreateRunRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Create a run; it starts at once unless `defer_start` is set."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "get-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "The record of a run."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "start-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/StartRunRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Start a created run."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "update-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/UpdateRunRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Change the title or pinned state of a run."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "cancel-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Request cancellation of a run."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "delete-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Move a run to the trash."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "restore-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Bring a run back from the trash."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "purge-run"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Remove a deleted run for good."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "run-files"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Files in the run's `out/` folder."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "run-results"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Results of a finished run, read from its output files."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "compare-runs"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/JobId"
+                  },
+                  "other": {
+                    "$ref": "#/components/schemas/JobId"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "other"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Differences of the second run's results from the first run's."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "clade-in-runs"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CladeRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "args"
+            ],
+            "additionalProperties": false,
+            "description": "Nodes of other finished time-tree runs with the same samples below them."
+          }
+        ],
+        "description": "Request to the desktop back end: the name of an operation and its arguments."
       }
     }
   },

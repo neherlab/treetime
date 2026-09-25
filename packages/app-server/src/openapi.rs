@@ -1,4 +1,5 @@
 use app_commands::bridge::error::ErrorResponse;
+use app_commands::bridge::operations::DesktopRequest;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CommandOutcome};
@@ -80,6 +81,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<CladeInRuns>(&mut components)?;
   add_type::<ErrorResponse>(&mut components)?;
   add_type::<CancelRunResponse>(&mut components)?;
+  add_type::<DesktopRequest>(&mut components)?;
 
   let schemas = doc
     .as_object_mut()

@@ -27,6 +27,7 @@ import {
   zCladeInRuns,
   zCommandOutcome,
   zDatasetCatalog,
+  zDesktopRequest,
   zErrorResponse,
   zInputFacts,
   zIterationEvent,
@@ -54,6 +55,8 @@ export type RunSummaryResult = Parsed<typeof zRunSummary>;
 export type RunRecordResult = Parsed<typeof zRunRecord>;
 
 export type InputFactsResult = Parsed<typeof zInputFacts>;
+
+export type DesktopRequestInput = z.input<typeof zDesktopRequest>;
 
 export type CheckConfigInput = Omit<CheckConfigRequest, "input_facts"> & { input_facts?: InputFactsResult | null };
 

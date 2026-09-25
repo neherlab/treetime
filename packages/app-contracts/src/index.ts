@@ -18,6 +18,7 @@ export type {
   CheckConfigResult,
   CladeInRunsResult,
   CommandOptions,
+  DesktopRequestInput,
   FollowRunOptions,
   InputFactsResult,
   Parsed,
