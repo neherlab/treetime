@@ -1,42 +1,52 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { formatDuration } from "../format";
-import type { RunResults } from "../results/load";
+import type { TreeSummary } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { SummaryStrip, type SummaryEntry } from "./Panel";
 import { MissingTree } from "./TimetreeResults";
-import { TreeView } from "./TreeView";
+import { TreeView, type TreeData } from "./TreeView";
 
-export function TreeOnlyResults({ record, results }: { record: RunRecordResult; results: RunResults }) {
-  const tree = results.auspice?.tree;
-  const mutations = tree?.nodes.reduce((sum, node) => sum + node.mutations.length, 0);
+export function TreeOnlyResults({
+  record,
+  results,
+  data,
+  tree,
+}: {
+  record: RunRecordResult;
+  results: RunResultsResult;
+  data: TreeSummary;
+  tree: TreeData | undefined;
+}) {
+  const summary = useMemo<SummaryEntry[]>(() => {
+    const length = data.total_branch_length ?? undefined;
+    const model = data.substitution_model ?? undefined;
 
-  const summary = useMemo<SummaryEntry[]>(
-    () => [
-      { label: "Samples", value: tree === undefined ? "-" : String(tree.tips.length) },
-      { label: "Internal nodes", value: tree === undefined ? "-" : String(tree.nodes.length - tree.tips.length) },
+    return [
+      { label: "Samples", value: tree === undefined ? "-" : String(data.samples) },
+      { label: "Internal nodes", value: tree === undefined ? "-" : String(data.internal_nodes) },
       {
         label: "Mutations",
-        value: mutations === undefined ? "-" : String(mutations),
+        value: tree === undefined ? "-" : String(data.mutations),
         detail: "On all branches of the written tree",
       },
-      ...(results.totalBranchLength === undefined
+      ...(length === undefined
         ? []
         : [
             {
               label: "Total branch length",
-              value: results.totalBranchLength.toPrecision(4),
+              value: length.toPrecision(4),
               detail: "Sum of the branch lengths in the node data",
             },
           ]),
-      ...(results.gtr === undefined
+      ...(model === undefined
         ? []
         : [
             {
               label: "Substitution model",
-              value: results.gtr.model,
-              detail: `Overall rate μ = ${results.gtr.mu.toPrecision(4)}`,
+              value: model.name,
+              detail: `Overall rate μ = ${model.mu.toPrecision(4)}`,
             },
           ]),
       {
@@ -46,15 +56,14 @@ export function TreeOnlyResults({ record, results }: { record: RunRecordResult; 
             ? "-"
             : formatDuration(record.duration_seconds),
       },
-    ],
-    [mutations, record, results.gtr, results.totalBranchLength, tree],
-  );
+    ];
+  }, [data, record, tree]);
 
   return (
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
-      {results.auspice === undefined ? <MissingTree /> : <TreeView auspice={results.auspice} colorBy={undefined} />}
-      <OutputFiles record={record} methods={undefined} />
+      {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={undefined} />}
+      <OutputFiles record={record} methods={undefined} citation={results.citation} />
     </div>
   );
 }

@@ -1,10 +1,6 @@
-import type { OutputSelection } from "@neherlab/app-contracts";
+import type { OutputSelection, Parsed, zRunFile } from "@neherlab/app-contracts";
 
-export interface RunFileEntry {
-  path: string;
-  size: number;
-  kind?: OutputSelection | null | undefined;
-}
+export type RunFileEntry = Parsed<typeof zRunFile>;
 
 const DESCRIPTIONS: Readonly<Partial<Record<OutputSelection, string>>> = {
   nwk: "Tree in Newick format",

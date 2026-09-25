@@ -1,13 +1,14 @@
 import { useCallback } from "react";
 
 import { formatDecimalDate } from "../format";
+import type { DateInterval } from "../results/types";
 import { PLATE } from "./palette";
 
 export interface DateRow {
   id: string;
   label: string;
   date: number;
-  interval: readonly [number, number] | undefined;
+  interval: DateInterval | undefined;
   current: boolean;
 }
 
@@ -28,8 +29,8 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const low = Math.min(...rows.map((row) => row.interval?.[0] ?? row.date));
-  const high = Math.max(...rows.map((row) => row.interval?.[1] ?? row.date));
+  const low = Math.min(...rows.map((row) => row.interval?.lower ?? row.date));
+  const high = Math.max(...rows.map((row) => row.interval?.upper ?? row.date));
   const pad = (high - low) * 0.05 || 0.05;
   const scale = { low: low - pad, span: high - low + 2 * pad };
   const height = rows.length * ROW_HEIGHT + AXIS_HEIGHT;
@@ -88,8 +89,8 @@ function IntervalRow({
       </text>
       {row.interval !== undefined && (
         <line
-          x1={x(row.interval[0])}
-          x2={Math.max(x(row.interval[1]), x(row.interval[0]) + 0.5)}
+          x1={x(row.interval.lower)}
+          x2={Math.max(x(row.interval.upper), x(row.interval.lower) + 0.5)}
           y1={y}
           y2={y}
           stroke={PLATE.accent}
@@ -109,5 +110,5 @@ function rowTitle(row: DateRow): string {
     return `${row.label}: ${date}`;
   }
 
-  return `${row.label}: ${date} (${formatDecimalDate(row.interval[0])} to ${formatDecimalDate(row.interval[1])})`;
+  return `${row.label}: ${date} (${formatDecimalDate(row.interval.lower)} to ${formatDecimalDate(row.interval.upper)})`;
 }

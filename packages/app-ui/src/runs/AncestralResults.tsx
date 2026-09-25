@@ -1,20 +1,14 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { formatDuration } from "../format";
-import type { RunResults } from "../results/load";
-import {
-  branchesByMutationCount,
-  recurrentSites,
-  type BranchMutations,
-  type RecurrentSite,
-} from "../results/mutations";
+import type { AncestralData, BranchMutations, RecurrentSite } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
 import { settingText } from "./settingText";
 import { SortableTable, type Column } from "./SortableTable";
 import { MissingTree } from "./TimetreeResults";
-import { TreeView } from "./TreeView";
+import { TreeView, type TreeData } from "./TreeView";
 
 const COUNT_SORT = { key: "count", descending: true };
 
@@ -43,12 +37,20 @@ const SITE_COLUMNS: ReadonlyArray<Column<RecurrentSite>> = [
   { key: "branches", label: "Branches", kind: "number", value: (row) => row.branches },
 ];
 
-export function AncestralResults({ record, results }: { record: RunRecordResult; results: RunResults }) {
-  const tree = results.auspice?.tree;
-  const branches = useMemo(() => (tree === undefined ? [] : branchesByMutationCount(tree)), [tree]);
-  const sites = useMemo(() => (tree === undefined ? [] : recurrentSites(tree)), [tree]);
-  const total = branches.reduce((sum, branch) => sum + branch.mutations.length, 0);
-  const auspice = results.auspice;
+export function AncestralResults({
+  record,
+  results,
+  data,
+  tree,
+}: {
+  record: RunRecordResult;
+  results: RunResultsResult;
+  data: AncestralData;
+  tree: TreeData | undefined;
+}) {
+  const branches = data.branches;
+  const sites = data.recurrent_sites;
+  const total = data.mutations;
 
   const summary = useMemo<SummaryEntry[]>(
     () => [
@@ -71,7 +73,7 @@ export function AncestralResults({ record, results }: { record: RunRecordResult;
   return (
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
-      {auspice === undefined ? <MissingTree /> : <TreeView auspice={auspice} colorBy={undefined} />}
+      {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={undefined} />}
       <div className="grid gap-3.5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel title="Branches with the most mutations">
           <SortableTable
@@ -92,7 +94,7 @@ export function AncestralResults({ record, results }: { record: RunRecordResult;
           />
         </Panel>
       </div>
-      <OutputFiles record={record} methods={undefined} />
+      <OutputFiles record={record} methods={undefined} citation={results.citation} />
     </div>
   );
 }

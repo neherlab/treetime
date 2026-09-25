@@ -1,14 +1,13 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunComparisonResult, RunRecordResult } from "@neherlab/app-contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftRight } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import { defaultText } from "../analysis/SettingField";
 import { formatDecimalDate, formatRate, formatSignedDays } from "../format";
-import { useRunList, useRunRecords, useRunResults } from "../queries";
-import { ancestorShifts, compareEstimates, timetreeEstimates, type TimetreeEstimates } from "../results/estimates";
-import type { RunResults } from "../results/load";
-import { nonFiniteLabel } from "../results/numbers";
+import { useRunComparison, useRunList, useRunRecords } from "../queries";
+import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
+import type { TimetreeEstimates } from "../results/types";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { settingDifferences, type SettingDifference } from "../settings/differences";
@@ -187,12 +186,9 @@ function RunLink({ record }: { record: RunRecordResult }) {
 }
 
 function TimetreeComparison({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
-  const first = useRunResults(left.id, left.command, true);
-  const second = useRunResults(right.id, right.command, true);
+  const { data, error } = useRunComparison(left.id, right.id, true);
 
-  if (first.data === undefined || second.data === undefined) {
-    const error = first.error ?? second.error;
-
+  if (data === undefined) {
     return (
       <p className="text-ink-muted">
         {error === null ? "Reading the outputs..." : `The outputs cannot be read: ${error.message}`}
@@ -200,73 +196,56 @@ function TimetreeComparison({ left, right }: { left: RunRecordResult; right: Run
     );
   }
 
-  return <TimetreeEstimatesComparison left={left} right={right} first={first.data} second={second.data} />;
+  return <TimetreeEstimatesComparison left={left} right={right} comparison={data} />;
 }
 
 function TimetreeEstimatesComparison({
   left,
   right,
-  first,
-  second,
+  comparison,
 }: {
   left: RunRecordResult;
   right: RunRecordResult;
-  first: RunResults;
-  second: RunResults;
+  comparison: RunComparisonResult;
 }) {
-  const firstTree = first.auspice?.tree;
-  const secondTree = second.auspice?.tree;
-
-  const estimates = useMemo(() => {
-    if (firstTree === undefined || secondTree === undefined) {
-      return undefined;
-    }
-
-    return [
-      timetreeEstimates({
-        tree: firstTree,
-        clockModel: first.clockModel,
-        augurClock: first.augurClock,
-        trace: first.trace,
-      }),
-      timetreeEstimates({
-        tree: secondTree,
-        clockModel: second.clockModel,
-        augurClock: second.augurClock,
-        trace: second.trace,
-      }),
-    ] as const;
-  }, [first, firstTree, second, secondTree]);
+  const estimates = comparison.estimates ?? undefined;
+  const ancestors = comparison.ancestors ?? undefined;
 
   const rootRows = useMemo(() => {
-    const [a, b] = estimates ?? [];
+    const a = estimates?.first;
+    const b = estimates?.second;
 
-    return a?.rootDate === undefined || b?.rootDate === undefined
+    return a?.root_date === null || a?.root_date === undefined || b?.root_date === null || b?.root_date === undefined
       ? undefined
       : [
-          { id: left.id, label: left.title, date: a.rootDate, interval: a.rootInterval, current: false },
-          { id: right.id, label: right.title, date: b.rootDate, interval: b.rootInterval, current: true },
+          {
+            id: left.id,
+            label: left.title,
+            date: a.root_date,
+            interval: a.root_interval ?? undefined,
+            current: false,
+          },
+          {
+            id: right.id,
+            label: right.title,
+            date: b.root_date,
+            interval: b.root_interval ?? undefined,
+            current: true,
+          },
         ];
   }, [estimates, left, right]);
 
-  const shifts = useMemo(
-    () => (firstTree === undefined || secondTree === undefined ? [] : ancestorShifts(firstTree, secondTree)),
-    [firstTree, secondTree],
-  );
-
-  if (estimates === undefined || firstTree === undefined) {
+  if (estimates === undefined || ancestors === undefined) {
     return (
       <p className="text-ink-muted">One of the runs wrote no Auspice tree, so their estimates cannot be compared.</p>
     );
   }
 
-  const [a, b] = estimates;
-  const comparison = compareEstimates(a, b);
-
-  const ancestors = firstTree.nodes.length - firstTree.tips.length;
-
-  const meanShift =
-    shifts.length === 0 ? undefined : shifts.reduce((sum, shift) => sum + Math.abs(shift.shiftDays), 0) / shifts.length;
+  const a = estimates.first;
+  const b = estimates.second;
+  const shifts = ancestors.shifts;
+  const rateChange = estimates.clock_rate_change_percent ?? undefined;
+  const likelihoodChange = estimates.log_likelihood_change ?? undefined;
 
   return (
     <>
@@ -288,43 +267,43 @@ function TimetreeEstimatesComparison({
             <tbody>
               <EstimateRow
                 label="Root date"
-                first={dateText(a.rootDate)}
-                second={dateText(b.rootDate)}
-                difference={comparison.rootShiftDays === undefined ? "-" : formatSignedDays(comparison.rootShiftDays)}
+                first={dateText(a.root_date)}
+                second={dateText(b.root_date)}
+                difference={daysDifference(estimates.root_shift_days)}
               />
               <EstimateRow
                 label="90% interval width"
-                first={daysText(comparison.intervalWidthDays[0])}
-                second={daysText(comparison.intervalWidthDays[1])}
-                difference={widthDifference(comparison.intervalWidthDays)}
+                first={daysText(a.root_interval?.days)}
+                second={daysText(b.root_interval?.days)}
+                difference={daysDifference(estimates.root_interval_change_days)}
               />
               <EstimateRow
                 label="Clock rate"
                 first={rateText(a)}
                 second={rateText(b)}
-                difference={
-                  comparison.ratePercentChange === undefined
-                    ? "-"
-                    : `${comparison.ratePercentChange > 0 ? "+" : ""}${comparison.ratePercentChange.toFixed(1)}%`
-                }
+                difference={rateChange === undefined ? "-" : `${rateChange > 0 ? "+" : ""}${rateChange.toFixed(1)}%`}
               />
               <EstimateRow
                 label="r"
-                first={a.r === undefined ? "-" : a.r.toFixed(3)}
-                second={b.r === undefined ? "-" : b.r.toFixed(3)}
+                first={a.r === null || a.r === undefined ? "-" : a.r.toFixed(3)}
+                second={b.r === null || b.r === undefined ? "-" : b.r.toFixed(3)}
                 difference=""
               />
               <EstimateRow
                 label="Excluded samples"
-                first={String(a.excludedSamples)}
-                second={String(b.excludedSamples)}
-                difference={signedCount(b.excludedSamples - a.excludedSamples)}
+                first={String(a.excluded_samples)}
+                second={String(b.excluded_samples)}
+                difference={signedCount(estimates.excluded_samples_change)}
               />
               <EstimateRow
                 label="Log likelihood"
                 first={likelihoodText(a)}
                 second={likelihoodText(b)}
-                difference={likelihoodDifference(a, b)}
+                difference={
+                  likelihoodChange === undefined
+                    ? "-"
+                    : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
+                }
               />
             </tbody>
           </table>
@@ -335,7 +314,10 @@ function TimetreeEstimatesComparison({
           </Plate>
         )}
       </div>
-      <Plate title="How far each shared ancestor moves" caption={shiftCaption(shifts.length, ancestors, meanShift)}>
+      <Plate
+        title="How far each shared ancestor moves"
+        caption={shiftCaption(shifts.length, ancestors.ancestors, ancestors.mean_absolute_shift_days ?? undefined)}
+      >
         {shifts.length === 0 ? (
           <p className="m-0 px-2 py-3 text-sm text-[#4b5f5a]">
             The trees share no ancestor with the same set of samples.
@@ -375,39 +357,36 @@ function EstimateRow({
   );
 }
 
-function dateText(date: number | undefined): string {
-  return date === undefined ? "not dated" : formatDecimalDate(date);
+function dateText(date: number | null | undefined): string {
+  return date === null || date === undefined ? "not dated" : formatDecimalDate(date);
 }
 
 function daysText(days: number | undefined): string {
   return days === undefined ? "no interval" : `${Math.round(days)} days`;
 }
 
-function widthDifference([first, second]: readonly [number | undefined, number | undefined]): string {
-  return first === undefined || second === undefined ? "-" : formatSignedDays(second - first);
+function daysDifference(days: number | null | undefined): string {
+  return days === null || days === undefined ? "-" : formatSignedDays(days);
 }
 
 function rateText(estimates: TimetreeEstimates): string {
-  return estimates.rate === undefined ? "-" : `${formatRate(estimates.rate)}${estimates.rateFixed ? " (fixed)" : ""}`;
+  const rate = estimates.clock_rate;
+
+  return rate === null || rate === undefined
+    ? "-"
+    : `${formatRate(rate)}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
 }
 
 function likelihoodText(estimates: TimetreeEstimates): string {
-  const value = estimates.logLikelihood;
+  const written = estimates.log_likelihood;
 
-  if (value === undefined) {
+  if (written === null || written === undefined) {
     return "not written";
   }
 
+  const value = fromJsonFloat(written);
+
   return Number.isFinite(value) ? value.toFixed(1) : `not finite (${nonFiniteLabel(value)})`;
-}
-
-function likelihoodDifference(first: TimetreeEstimates, second: TimetreeEstimates): string {
-  const a = first.logLikelihood;
-  const b = second.logLikelihood;
-
-  return a !== undefined && b !== undefined && Number.isFinite(a) && Number.isFinite(b)
-    ? `${b - a > 0 ? "+" : ""}${(b - a).toFixed(1)}`
-    : "-";
 }
 
 function signedCount(count: number): string {

@@ -1,12 +1,9 @@
-import type { AppCommand, CheckInputsRequest, InputFactsResult, TreeTimeBridge } from "@neherlab/app-contracts";
+import type { AppCommand, CheckInputsRequest, InputFactsResult } from "@neherlab/app-contracts";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 
 import { useBridge } from "./BridgeContext";
-import { indexClades } from "./results/clades";
 import { outputPath } from "./results/files";
-import { loadRunResults } from "./results/load";
-import { parseAuspiceJson, readAuspiceTree } from "./results/tree";
-import { canonicalJson, type JsonObject } from "./settings/json";
+import { canonicalJson, zJsonObject, type JsonObject } from "./settings/json";
 
 const ACTIVE_RUNS_POLL_MS = 2000;
 
@@ -105,39 +102,52 @@ export function useRunFiles(id: string, enabled: boolean) {
   });
 }
 
-export function useRunResults(id: string, command: AppCommand, enabled: boolean) {
+export function useRunResults(id: string, enabled: boolean) {
   const bridge = useBridge();
 
   return useQuery({
     queryKey: [OUTPUTS_KEY, id, "results"],
-    queryFn: async () => loadRunResults(command, await bridge.runFiles(id), (path) => readText(bridge, id, path)),
+    queryFn: () => bridge.runResults(id),
     enabled,
     staleTime: Infinity,
   });
 }
 
-export function useRunTrees(ids: readonly string[]) {
+export function useRunAuspice(id: string, enabled: boolean) {
   const bridge = useBridge();
 
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: [OUTPUTS_KEY, id, "tree"],
-      queryFn: async () => {
-        const path = outputPath(await bridge.runFiles(id), "auspice");
+  return useQuery({
+    queryKey: [OUTPUTS_KEY, id, "auspice"],
+    queryFn: async (): Promise<JsonObject | null> => {
+      const path = outputPath(await bridge.runFiles(id), "auspice");
 
-        if (path === undefined) {
-          return null;
-        }
-
-        const tree = readAuspiceTree(parseAuspiceJson(await readText(bridge, id, path)));
-
-        return { tree, clades: indexClades(tree) };
-      },
-      staleTime: Infinity,
-    })),
+      return path === undefined
+        ? null
+        : zJsonObject.parse(JSON.parse(new TextDecoder().decode(await bridge.readRunFile(id, path))));
+    },
+    enabled,
+    staleTime: Infinity,
   });
 }
 
-async function readText(bridge: TreeTimeBridge, id: string, path: string): Promise<string> {
-  return new TextDecoder().decode(await bridge.readRunFile(id, path));
+export function useRunComparison(first: string, second: string, enabled: boolean) {
+  const bridge = useBridge();
+
+  return useQuery({
+    queryKey: [OUTPUTS_KEY, first, "compare", second],
+    queryFn: () => bridge.compareRuns(first, second),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+export function useCladeInRuns(run: string, node: string) {
+  const bridge = useBridge();
+
+  return useQuery({
+    queryKey: [OUTPUTS_KEY, run, "clade", node],
+    queryFn: () => bridge.cladeInRuns({ run, node }),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
 }

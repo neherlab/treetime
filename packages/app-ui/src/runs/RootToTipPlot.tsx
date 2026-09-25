@@ -21,8 +21,8 @@ export interface RttPoint {
   name: string;
   date: number;
   div: number;
-  tip: boolean;
   excluded: boolean;
+  inferred: boolean;
 }
 
 export interface RttLine {
@@ -41,22 +41,26 @@ const DATA_EXTENT = ["dataMin", "dataMax"];
 
 const TIP_SIZE: [number, number] = [36, 36];
 
-const NODE_SIZE: [number, number] = [14, 14];
-
 const RING_SIZE: [number, number] = [220, 220];
 
 const TIP_COLOR = "#27477f";
 
 const SERIES_LOOK: readonly SeriesLook[] = [
-  { key: "nodesFaded", size: "node", fill: PLATE.faint, opacity: FADED_OPACITY },
-  { key: "tipsFaded", size: "tip", fill: TIP_COLOR, opacity: FADED_OPACITY },
-  { key: "excludedFaded", size: "tip", fill: PLATE.fault, opacity: FADED_OPACITY },
-  { key: "nodes", size: "node", fill: PLATE.faint, opacity: 1 },
-  { key: "tips", size: "tip", fill: TIP_COLOR, opacity: 1 },
-  { key: "excluded", size: "tip", fill: PLATE.fault, opacity: 1 },
+  { key: "inferredFaded", fill: PLATE.faint, opacity: FADED_OPACITY },
+  { key: "tipsFaded", fill: TIP_COLOR, opacity: FADED_OPACITY },
+  { key: "excludedFaded", fill: PLATE.fault, opacity: FADED_OPACITY },
+  { key: "inferred", fill: PLATE.faint, opacity: 1 },
+  { key: "tips", fill: TIP_COLOR, opacity: 1 },
+  { key: "excluded", fill: PLATE.fault, opacity: 1 },
 ];
 
-const zPointPayload = z.object({ name: z.string(), date: z.number(), div: z.number(), excluded: z.boolean() });
+const zPointPayload = z.object({
+  name: z.string(),
+  date: z.number(),
+  div: z.number(),
+  excluded: z.boolean(),
+  inferred: z.boolean(),
+});
 
 export function RootToTipPlot({
   points,
@@ -91,7 +95,6 @@ export function RootToTipPlot({
           <YAxis type="number" dataKey="div" tick={TICK_STYLE} tickFormatter={divergenceTick} width={56}>
             <Label value="Divergence from the root" angle={-90} position="insideLeft" {...TICK_STYLE} />
           </YAxis>
-          <ZAxis zAxisId="node" range={NODE_SIZE} />
           <ZAxis zAxisId="tip" range={TIP_SIZE} />
           <ZAxis zAxisId="ring" range={RING_SIZE} />
           <Tooltip content={<PointTooltip />} isAnimationActive={false} />
@@ -138,7 +141,7 @@ function SeriesScatter({
   return (
     <Scatter
       data={points}
-      zAxisId={look.size}
+      zAxisId="tip"
       fill={look.fill}
       fillOpacity={look.opacity}
       isAnimationActive={false}
@@ -158,8 +161,8 @@ function pointSeries(
     points.filter((point) => pointRole(point) === kind && visible(point) === shown);
 
   return {
-    nodes: of("node", true),
-    nodesFaded: of("node", false),
+    inferred: of("inferred", true),
+    inferredFaded: of("inferred", false),
     tips: of("tip", true),
     tipsFaded: of("tip", false),
     excluded: of("excluded", true),
@@ -169,20 +172,19 @@ function pointSeries(
 }
 
 function pointRole(point: RttPoint): PointRole {
-  if (!point.tip) {
-    return "node";
+  if (point.excluded) {
+    return "excluded";
   }
 
-  return point.excluded ? "excluded" : "tip";
+  return point.inferred ? "inferred" : "tip";
 }
 
-type PointRole = "node" | "tip" | "excluded";
+type PointRole = "inferred" | "tip" | "excluded";
 
-type SeriesKey = "nodes" | "nodesFaded" | "tips" | "tipsFaded" | "excluded" | "excludedFaded";
+type SeriesKey = "inferred" | "inferredFaded" | "tips" | "tipsFaded" | "excluded" | "excludedFaded";
 
 interface SeriesLook {
   key: SeriesKey;
-  size: "node" | "tip";
   fill: string;
   opacity: number;
 }
@@ -199,6 +201,7 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div className="font-bold">{point.data.name}</div>
       <div>Date {formatDecimalDate(point.data.date)}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
+      {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
       {point.data.excluded && <div className="text-[#b42318]">Excluded from the clock model</div>}
     </div>
   );

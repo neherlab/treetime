@@ -1,0 +1,31 @@
+import { formatRate } from "../format";
+import type { RootToTip } from "../results/types";
+import type { RttLine, RttPoint } from "./RootToTipPlot";
+
+export function rttPoints(regression: RootToTip): RttPoint[] {
+  return regression.points.flatMap((point) =>
+    point.date === null || point.date === undefined
+      ? []
+      : [
+          {
+            name: point.name,
+            date: point.date,
+            div: point.div,
+            excluded: point.outlier,
+            inferred: point.date_source === "inferred",
+          },
+        ],
+  );
+}
+
+export function rttLine(regression: RootToTip): RttLine | undefined {
+  const line = regression.line;
+
+  return line === null || line === undefined
+    ? undefined
+    : {
+        slope: line.rate,
+        intercept: line.intercept,
+        label: `TreeTime clock model: rate ${formatRate(line.rate)} /site/yr`,
+      };
+}

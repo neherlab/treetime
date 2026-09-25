@@ -1,87 +1,66 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { formatDecimalDate, formatDuration, formatRate } from "../format";
-import { timetreeEstimates, type TimetreeEstimates } from "../results/estimates";
-import type { AuspiceOutput, RunResults } from "../results/load";
-import { coalescentPrior, relaxedClock, timetreeMethods } from "../results/methods";
-import { nonFiniteLabel } from "../results/numbers";
-import { leastSquares } from "../results/regression";
-import { initialColorBy, type ResultTree } from "../results/tree";
-import { isNumber, zJsonObject, type JsonObject } from "../settings/json";
+import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
+import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
-import { RootToTipPlot, type RttLine, type RttPoint } from "./RootToTipPlot";
+import { rttLine, rttPoints } from "./rootToTip";
+import { RootToTipPlot } from "./RootToTipPlot";
 import { SelectionPanel } from "./SelectionPanel";
 import { SkylinePlot } from "./SkylinePlot";
-import { TreeView } from "./TreeView";
+import { initialColorBy, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
 const TIMETREE_COLORINGS = ["num_date"];
 
-export function TimetreeResults({ record, results }: { record: RunRecordResult; results: RunResults }) {
-  const config = useMemo(() => zJsonObject.parse(record.config), [record.config]);
-  const auspice = results.auspice;
+export function TimetreeResults({
+  record,
+  results,
+  data,
+  tree,
+}: {
+  record: RunRecordResult;
+  results: RunResultsResult;
+  data: TimetreeData;
+  tree: TreeData | undefined;
+}) {
+  const estimates = data.estimates;
 
-  const estimates = useMemo(
-    () =>
-      auspice === undefined
-        ? undefined
-        : timetreeEstimates({
-            tree: auspice.tree,
-            clockModel: results.clockModel,
-            augurClock: results.augurClock,
-            trace: results.trace,
-          }),
-    [auspice, results],
-  );
-
-  if (auspice === undefined || estimates === undefined) {
+  if (tree === undefined || estimates === null || estimates === undefined) {
     return <MissingTree />;
   }
 
-  const methods = timetreeMethods(record.treetime_version, config, estimates);
-
-  return (
-    <TimetreeView
-      record={record}
-      config={config}
-      estimates={estimates}
-      auspice={auspice}
-      results={results}
-      methods={methods}
-    />
-  );
+  return <TimetreeView record={record} results={results} data={data} estimates={estimates} tree={tree} />;
 }
 
 function TimetreeView({
   record,
-  config,
-  estimates,
-  auspice,
   results,
-  methods,
+  data,
+  estimates,
+  tree,
 }: {
   record: RunRecordResult;
-  config: JsonObject;
+  results: RunResultsResult;
+  data: TimetreeData;
   estimates: TimetreeEstimates;
-  auspice: AuspiceOutput;
-  results: RunResults;
-  methods: string;
+  tree: TreeData;
 }) {
-  const summary = useMemo(() => timetreeSummary(record, config, estimates), [config, estimates, record]);
+  const summary = useMemo(() => timetreeSummary(record, estimates), [estimates, record]);
 
   const aside = useCallback(
-    (link: TreeLink) => <TimetreeAside record={record} tree={auspice.tree} results={results} link={link} />,
-    [auspice.tree, record, results],
+    (link: TreeLink) => <TimetreeAside record={record} tree={tree} data={data} link={link} />,
+    [data, record, tree],
   );
 
   return (
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
-      <TreeView auspice={auspice} colorBy={initialColorBy(auspice.tree, TIMETREE_COLORINGS)} aside={aside} />
-      <OutputFiles record={record} methods={methods} />
+      <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} aside={aside} />
+      <OutputFiles record={record} methods={results.methods ?? undefined} citation={results.citation} />
     </div>
   );
 }
@@ -97,144 +76,152 @@ export function MissingTree() {
 function TimetreeAside({
   record,
   tree,
-  results,
+  data,
   link,
 }: {
   record: RunRecordResult;
-  tree: ResultTree;
-  results: RunResults;
+  tree: TreeData;
+  data: TimetreeData;
   link: TreeLink;
 }) {
-  const points = useMemo(() => rttPoints(tree), [tree]);
-  const line = useMemo(() => leastSquaresLine(points), [points]);
+  const regression = data.root_to_tip;
+
+  const points = useMemo(
+    () => (regression === null || regression === undefined ? [] : rttPoints(regression)),
+    [regression],
+  );
+
+  const line = useMemo(
+    () => (regression === null || regression === undefined ? undefined : rttLine(regression)),
+    [regression],
+  );
 
   return (
     <>
-      <SelectionPanel runId={record.id} title={record.title} tree={tree} link={link} />
-      <Plate title="Root-to-tip distance" caption="Every node of the time tree; click a point to select it in the tree">
-        <RootToTipPlot
-          points={points}
-          line={line}
-          selected={link.focus?.name}
-          inView={link.zoomed ? link.inView : undefined}
-          onSelect={link.select}
-        />
+      <SelectionPanel runId={record.id} title={record.title} tree={tree.tree} link={link} />
+      <Plate
+        title="Root-to-tip regression"
+        caption="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
+      >
+        {points.length === 0 ? (
+          <p className="m-0 px-2 py-3 text-sm text-[#4b5f5a]">This run wrote no clock regression table.</p>
+        ) : (
+          <RootToTipPlot
+            points={points}
+            line={line}
+            selected={link.focus?.name}
+            inView={link.zoomed ? link.inView : undefined}
+            onSelect={link.select}
+          />
+        )}
       </Plate>
-      {results.skyline !== undefined && results.skyline.length > 0 && (
+      {data.skyline.length > 0 && (
         <Plate
           title="Effective population size"
           caption="Skyline estimate with its interval, from the coalescent table"
         >
-          <SkylinePlot segments={results.skyline} />
+          <SkylinePlot segments={data.skyline} />
         </Plate>
       )}
     </>
   );
 }
 
-function rttPoints(tree: ResultTree): RttPoint[] {
-  return tree.nodes.flatMap((node) =>
-    node.date === undefined || node.div === undefined
-      ? []
-      : [
-          {
-            name: node.name,
-            date: node.date,
-            div: node.div,
-            tip: node.children.length === 0,
-            excluded: node.excluded === true && node.children.length === 0,
-          },
-        ],
-  );
-}
-
-function leastSquaresLine(points: readonly RttPoint[]): RttLine | undefined {
-  const fit = leastSquares(
-    points.flatMap((point) => (point.tip && !point.excluded ? [{ x: point.date, y: point.div }] : [])),
-  );
-
-  return fit === undefined
-    ? undefined
-    : {
-        ...fit,
-        label: `Least squares through the samples in the clock model: slope ${formatRate(fit.slope)} (a visual guide, not TreeTime's rate estimate)`,
-      };
-}
-
-function timetreeSummary(record: RunRecordResult, config: JsonObject, estimates: TimetreeEstimates): SummaryEntry[] {
-  const relax = relaxedClock(config);
+function timetreeSummary(record: RunRecordResult, estimates: TimetreeEstimates): SummaryEntry[] {
+  const relax = estimates.relaxed_clock;
+  const r = estimates.r ?? undefined;
+  const excluded = estimates.excluded_samples;
 
   return [
     rootEntry(estimates),
-    rateEntry(config, estimates),
+    rateEntry(estimates),
     {
       label: "Temporal signal",
-      value: estimates.r === undefined ? "not computed" : `r = ${estimates.r.toFixed(3)}`,
+      value: r === undefined ? "not computed" : `r = ${r.toFixed(3)}`,
       detail:
-        estimates.r === undefined
-          ? estimates.rateFixed
+        r === undefined
+          ? estimates.clock_rate_fixed
             ? "Fixed clock rate"
             : undefined
-          : `R² = ${(estimates.r ** 2).toFixed(3)}`,
+          : `R² = ${(estimates.r_squared ?? r * r).toFixed(3)}`,
     },
     {
       label: "Samples",
       value: String(estimates.samples),
-      detail:
-        estimates.excludedSamples === 0
-          ? "All in the clock model"
-          : `${estimates.excludedSamples} without usable date or clock outliers`,
-      tone: estimates.excludedSamples === 0 ? undefined : "caution",
+      detail: excluded === 0 ? "All in the clock model" : `${excluded} without usable date or clock outliers`,
+      tone: excluded === 0 ? undefined : "caution",
     },
     {
       label: "Coalescent prior",
-      value: coalescentPrior(config),
-      detail: relax === undefined ? "Strict clock" : `Relaxed clock: slack ${relax[0]}, coupling ${relax[1]}`,
+      value: coalescentPriorText(estimates.coalescent_prior),
+      detail:
+        relax === null || relax === undefined
+          ? "Strict clock"
+          : `Relaxed clock: slack ${relax.slack}, coupling ${relax.coupling}`,
     },
     likelihoodEntry(record, estimates),
   ];
 }
 
+function coalescentPriorText(prior: CoalescentPrior): string {
+  if (prior.kind === "fixed") {
+    return `Constant size, Tc = ${prior.tc} years`;
+  }
+
+  if (prior.kind === "optimized") {
+    return "Constant size, optimized Tc";
+  }
+
+  if (prior.kind === "skyline") {
+    return `Skyline, ${prior.points} points, stiffness ${prior.stiffness}`;
+  }
+
+  return "None";
+}
+
 function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
-  if (estimates.rootDate === undefined) {
+  const date = estimates.root_date;
+
+  if (date === null || date === undefined) {
     return { label: "Root date", value: "not dated" };
   }
 
-  const interval = estimates.rootInterval;
+  const interval = estimates.root_interval;
+  const edge = estimates.root_near_interval_edge;
 
   return {
     label: "Root date",
-    value: formatDecimalDate(estimates.rootDate),
+    value: formatDecimalDate(date),
     detail:
-      interval === undefined
+      interval === null || interval === undefined
         ? "No interval computed"
-        : `90%: ${formatDecimalDate(interval[0])} to ${formatDecimalDate(interval[1])}${estimates.rootNearIntervalEdge ? "; the estimate lies at the interval edge" : ""}`,
-    tone: estimates.rootNearIntervalEdge ? "caution" : undefined,
+        : `90%: ${formatDecimalDate(interval.lower)} to ${formatDecimalDate(interval.upper)}${edge ? "; the estimate lies at the interval edge" : ""}`,
+    tone: edge ? "caution" : undefined,
   };
 }
 
-function rateEntry(config: JsonObject, estimates: TimetreeEstimates): SummaryEntry {
-  if (estimates.rate === undefined) {
+function rateEntry(estimates: TimetreeEstimates): SummaryEntry {
+  const rate = estimates.clock_rate;
+
+  if (rate === null || rate === undefined) {
     return { label: "Clock rate", value: "not written" };
   }
 
-  const std = config["clock_std_dev"];
-  const fixedDetail = isNumber(std) ? `Fixed, std. dev. ${formatRate(std)}` : "Fixed";
+  const std = estimates.clock_rate_std ?? undefined;
 
-  const estimatedDetail =
-    estimates.rateStd === undefined
+  const detail = estimates.clock_rate_fixed
+    ? std === undefined
+      ? "Fixed"
+      : `Fixed, std. dev. ${formatRate(std)}`
+    : std === undefined
       ? "No standard deviation computed"
-      : `± ${formatRate(estimates.rateStd)} (1 std. dev.)`;
+      : `± ${formatRate(std)} (1 std. dev.)`;
 
-  return {
-    label: "Clock rate",
-    value: `${formatRate(estimates.rate)} /site/yr`,
-    detail: estimates.rateFixed ? fixedDetail : estimatedDetail,
-  };
+  return { label: "Clock rate", value: `${formatRate(rate)} /site/yr`, detail };
 }
 
 function likelihoodEntry(record: RunRecordResult, estimates: TimetreeEstimates): SummaryEntry {
-  const value = estimates.logLikelihood;
+  const written = estimates.log_likelihood;
 
   const runTime =
     record.duration_seconds === null || record.duration_seconds === undefined
@@ -243,9 +230,11 @@ function likelihoodEntry(record: RunRecordResult, estimates: TimetreeEstimates):
 
   const iterations = `${estimates.iterations} ${estimates.iterations === 1 ? "iteration" : "iterations"}${runTime}`;
 
-  if (value === undefined) {
+  if (written === null || written === undefined) {
     return { label: "Log likelihood", value: "not written", detail: iterations };
   }
+
+  const value = fromJsonFloat(written);
 
   return Number.isFinite(value)
     ? { label: "Log likelihood", value: value.toFixed(1), detail: iterations }

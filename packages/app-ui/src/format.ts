@@ -70,10 +70,6 @@ export function formatDecimalDate(year: number): string {
   return decimalYearToDate(year).toFormat("yyyy-MM-dd");
 }
 
-export function daysBetween(from: number, to: number): number {
-  return decimalYearToDate(to).diff(decimalYearToDate(from), "days").days;
-}
-
 export function formatRate(rate: number): string {
   return rate.toExponential(SIGNIFICANT_DIGITS - 1);
 }

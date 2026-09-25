@@ -1,13 +1,12 @@
-import type { AppCommand, RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { DateTime } from "luxon";
-import { useCallback, useMemo, type ComponentType } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useBridge } from "../BridgeContext";
 import { formatDuration } from "../format";
-import { RUNS_KEY, useRunList, useRunRecord, useRunResults } from "../queries";
-import type { RunResults } from "../results/load";
+import { RUNS_KEY, useRunAuspice, useRunList, useRunRecord, useRunResults } from "../queries";
 import { countWarnings, type RunProgress } from "../results/progress";
 import { COMMAND_INFO } from "../settings/commands";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
@@ -20,6 +19,7 @@ import { RunningView } from "./RunningView";
 import { SettingsTab } from "./SettingsTab";
 import { TimetreeResults } from "./TimetreeResults";
 import { TreeOnlyResults } from "./TreeOnlyResults";
+import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
 import { useRunProgress } from "./useRunProgress";
 
@@ -92,13 +92,22 @@ function ResultsTab({ record, progress }: { record: RunRecordResult; progress: R
 }
 
 function FinishedResults({ record }: { record: RunRecordResult }) {
-  const { data: results, error } = useRunResults(record.id, record.command, true);
+  const { data: results, error } = useRunResults(record.id, true);
+  const { data: document, error: treeError } = useRunAuspice(record.id, true);
 
-  if (error !== null) {
-    return <p className="text-signal-danger">The outputs of the run cannot be read: {error.message}</p>;
+  const tree = useMemo<TreeData | undefined>(
+    () =>
+      results?.tree === null || results?.tree === undefined || document === null || document === undefined
+        ? undefined
+        : { document, tree: results.tree },
+    [document, results],
+  );
+
+  if (error !== null || treeError !== null) {
+    return <p className="text-signal-danger">The outputs of the run cannot be read: {(error ?? treeError)?.message}</p>;
   }
 
-  if (results === undefined) {
+  if (results === undefined || document === undefined) {
     return <p className="text-ink-muted p-10 text-center">Reading the outputs...</p>;
   }
 
@@ -116,24 +125,39 @@ function FinishedResults({ record }: { record: RunRecordResult }) {
           </ul>
         </div>
       )}
-      <CommandResults record={record} results={results} />
+      <CommandResults record={record} results={results} tree={tree} />
     </div>
   );
 }
 
-const RESULT_VIEWS: Readonly<Record<AppCommand, ComponentType<{ record: RunRecordResult; results: RunResults }>>> = {
-  timetree: TimetreeResults,
-  clock: ClockResults,
-  ancestral: AncestralResults,
-  mugration: MugrationResults,
-  optimize: TreeOnlyResults,
-  prune: TreeOnlyResults,
-};
+function CommandResults({
+  record,
+  results,
+  tree,
+}: {
+  record: RunRecordResult;
+  results: RunResultsResult;
+  tree: TreeData | undefined;
+}) {
+  const view = results.results;
 
-function CommandResults({ record, results }: { record: RunRecordResult; results: RunResults }) {
-  const View = RESULT_VIEWS[record.command];
+  if (view.command === "timetree") {
+    return <TimetreeResults record={record} results={results} data={view.data} tree={tree} />;
+  }
 
-  return <View record={record} results={results} />;
+  if (view.command === "clock") {
+    return <ClockResults record={record} results={results} data={view.data} tree={tree} />;
+  }
+
+  if (view.command === "ancestral") {
+    return <AncestralResults record={record} results={results} data={view.data} tree={tree} />;
+  }
+
+  if (view.command === "mugration") {
+    return <MugrationResults record={record} results={results} data={view.data} tree={tree} />;
+  }
+
+  return <TreeOnlyResults record={record} results={results} data={view.data} tree={tree} />;
 }
 
 function EndedRun({ record, progress }: { record: RunRecordResult; progress: RunProgress }) {

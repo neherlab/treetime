@@ -6,13 +6,21 @@ import { useBridge } from "../BridgeContext";
 import { formatBytes } from "../format";
 import { useRunFiles } from "../queries";
 import { downloadName, fileDescription, totalSize, type RunFileEntry } from "../results/files";
-import { CITATION, CITATION_DOI } from "../results/methods";
+import type { Citation } from "../results/types";
 import { Button, Toast } from "../ui";
 import { saveBytes } from "./download";
 import { Panel } from "./Panel";
 import { useCopy } from "./useCopy";
 
-export function OutputFiles({ record, methods }: { record: RunRecordResult; methods: string | undefined }) {
+export function OutputFiles({
+  record,
+  methods,
+  citation,
+}: {
+  record: RunRecordResult;
+  methods: string | undefined;
+  citation: Citation;
+}) {
   const bridge = useBridge();
   const toasts = Toast.useToastManager();
   const copy = useCopy();
@@ -75,8 +83,8 @@ export function OutputFiles({ record, methods }: { record: RunRecordResult; meth
       )}
       <div className="border-line text-ink-muted grid gap-2 border-t px-3.5 py-3 text-xs">
         <p className="m-0">
-          Please cite: {CITATION}{" "}
-          <a href={CITATION_DOI} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
+          Please cite: {citation.text}{" "}
+          <a href={citation.doi} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
             doi:10.1093/ve/vex042
           </a>
         </p>

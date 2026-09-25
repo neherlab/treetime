@@ -1,22 +1,20 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { daysBetween, formatDecimalDate, formatDuration, formatRate, formatSignedDays } from "../format";
-import type { RunResults } from "../results/load";
-import type { ClockRow } from "../results/readers";
-import { initialColorBy } from "../results/tree";
+import { formatDecimalDate, formatDuration, formatRate, formatSignedDays } from "../format";
+import type { ClockData } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
-import { RootToTipPlot, type RttLine, type RttPoint } from "./RootToTipPlot";
+import { rttLine, rttPoints } from "./rootToTip";
+import { RootToTipPlot } from "./RootToTipPlot";
 import { SortableTable, type Column } from "./SortableTable";
 import { MissingTree } from "./TimetreeResults";
-import { TreeView } from "./TreeView";
+import { initialColorBy, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
 interface SampleRow {
   name: string;
-  div: number;
   date: number;
   predictedDate: number;
   residualDays: number;
@@ -53,35 +51,35 @@ const SAMPLE_COLUMNS: ReadonlyArray<Column<SampleRow>> = [
   { key: "outlier", label: "Clock filter", kind: "text", value: (row) => (row.outlier ? "outlier" : "kept") },
 ];
 
-export function ClockResults({ record, results }: { record: RunRecordResult; results: RunResults }) {
-  const tips = useMemo(() => new Set(results.auspice?.tree.tips.map((tip) => tip.name) ?? []), [results.auspice]);
-  const samples = useMemo(() => sampleRows(results.clockRows ?? [], tips), [results.clockRows, tips]);
+export function ClockResults({
+  record,
+  results,
+  data,
+  tree,
+}: {
+  record: RunRecordResult;
+  results: RunResultsResult;
+  data: ClockData;
+  tree: TreeData | undefined;
+}) {
+  const regression = data.root_to_tip;
+  const samples = useMemo(() => sampleRows(data), [data]);
 
-  const points = useMemo<RttPoint[]>(
-    () => samples.map((row) => ({ name: row.name, date: row.date, div: row.div, tip: true, excluded: row.outlier })),
-    [samples],
+  const points = useMemo(
+    () => (regression === null || regression === undefined ? [] : rttPoints(regression)),
+    [regression],
   );
 
-  const model = results.clockModel;
-
-  const line = useMemo<RttLine | undefined>(
-    () =>
-      model === undefined
-        ? undefined
-        : {
-            slope: model.rate,
-            intercept: model.intercept,
-            label: `TreeTime clock model: rate ${formatRate(model.rate)} /site/yr`,
-          },
-    [model],
+  const line = useMemo(
+    () => (regression === null || regression === undefined ? undefined : rttLine(regression)),
+    [regression],
   );
 
-  const auspice = results.auspice;
-  const summary = useMemo(() => clockSummary(record, results, samples), [record, results, samples]);
+  const summary = useMemo(() => clockSummary(record, data), [data, record]);
 
   const aside = useCallback(
     (link: TreeLink) => (
-      <Plate title="Root-to-tip regression" caption="Dated samples; red rings mark clock-filter outliers">
+      <Plate title="Root-to-tip regression" caption="Dated samples; red points are clock-filter outliers">
         <RootToTipPlot
           points={points}
           line={line}
@@ -97,10 +95,10 @@ export function ClockResults({ record, results }: { record: RunRecordResult; res
   return (
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
-      {auspice === undefined ? (
+      {tree === undefined ? (
         <MissingTree />
       ) : (
-        <TreeView auspice={auspice} colorBy={initialColorBy(auspice.tree, CLOCK_COLORINGS)} aside={aside} />
+        <TreeView data={tree} colorBy={initialColorBy(tree.tree, CLOCK_COLORINGS)} aside={aside} />
       )}
       <Panel
         title="Samples"
@@ -115,7 +113,7 @@ export function ClockResults({ record, results }: { record: RunRecordResult; res
           rowTone={sampleTone}
         />
       </Panel>
-      <OutputFiles record={record} methods={undefined} />
+      <OutputFiles record={record} methods={undefined} citation={results.citation} />
     </div>
   );
 }
@@ -128,39 +126,40 @@ function sampleTone(row: SampleRow): "caution" | undefined {
   return row.outlier ? "caution" : undefined;
 }
 
-function sampleRows(rows: readonly ClockRow[], tips: ReadonlySet<string>): SampleRow[] {
-  return rows.flatMap((row) =>
-    row.date === undefined || !tips.has(row.name)
+function sampleRows(data: ClockData): SampleRow[] {
+  return (data.root_to_tip?.points ?? []).flatMap((point) =>
+    point.date === null || point.date === undefined || point.residual_days === null || point.residual_days === undefined
       ? []
       : [
           {
-            name: row.name,
-            div: row.div,
-            date: row.date,
-            predictedDate: row.predictedDate,
-            residualDays: daysBetween(row.predictedDate, row.date),
-            outlier: row.outlier,
+            name: point.name,
+            date: point.date,
+            predictedDate: point.predicted_date,
+            residualDays: point.residual_days,
+            outlier: point.outlier,
           },
         ],
   );
 }
 
-function clockSummary(record: RunRecordResult, results: RunResults, samples: readonly SampleRow[]): SummaryEntry[] {
-  const model = results.clockModel;
-  const outliers = samples.filter((row) => row.outlier).length;
+function clockSummary(record: RunRecordResult, data: ClockData): SummaryEntry[] {
+  const estimates = data.estimates;
+  const rate = estimates.clock_rate ?? undefined;
+  const r = estimates.r ?? undefined;
+  const outliers = estimates.outliers;
 
   return [
     {
       label: "Clock rate",
-      value: model === undefined ? "not written" : `${formatRate(model.rate)} /site/yr`,
-      detail: model?.fixed === true ? "Fixed" : "Root-to-tip regression",
+      value: rate === undefined ? "not written" : `${formatRate(rate)} /site/yr`,
+      detail: estimates.clock_rate_fixed ? "Fixed" : "Root-to-tip regression",
     },
     {
       label: "Temporal signal",
-      value: model?.r === undefined ? "not computed" : `r = ${model.r.toFixed(3)}`,
-      detail: model?.r === undefined ? undefined : `R² = ${(model.r ** 2).toFixed(3)}`,
+      value: r === undefined ? "not computed" : `r = ${r.toFixed(3)}`,
+      detail: r === undefined ? undefined : `R² = ${(estimates.r_squared ?? r * r).toFixed(3)}`,
     },
-    { label: "Dated samples", value: String(samples.length) },
+    { label: "Dated samples", value: String(estimates.dated_samples) },
     {
       label: "Clock outliers",
       value: String(outliers),

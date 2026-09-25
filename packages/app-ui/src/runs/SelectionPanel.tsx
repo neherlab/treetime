@@ -2,11 +2,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { formatDecimalDate } from "../format";
-import { useRunList, useRunTrees } from "../queries";
-import { indexClades, type CladeIndex } from "../results/clades";
-import { intervalWidthDays } from "../results/estimates";
-import { tipCount } from "../results/mutations";
-import type { ResultTree } from "../results/tree";
+import { useCladeInRuns } from "../queries";
+import type { ResultTree } from "../results/types";
 import { Button } from "../ui";
 import { DateIntervals, type DateRow } from "./DateIntervals";
 import { Panel } from "./Panel";
@@ -23,40 +20,49 @@ export function SelectionPanel({
   tree: ResultTree;
   link: TreeLink;
 }) {
-  const node = link.focus ?? tree.root;
-  const others = useOtherTimetrees(runId);
+  const root = tree.nodes[0];
+  const node = link.focus ?? root;
   const navigate = useNavigate();
-  const clades = useMemo(() => indexClades(tree), [tree]);
-  const key = clades.keyOf.get(node) ?? "";
+  const { data: found } = useCladeInRuns(runId, node?.name ?? "");
   const open = useCallback((id: string) => void navigate({ to: "/runs/$id/results", params: { id } }), [navigate]);
 
   const rows = useMemo(() => {
     const current: DateRow[] =
-      node.date === undefined
+      node?.date === null || node?.date === undefined
         ? []
-        : [{ id: runId, label: title, date: node.date, interval: node.dateInterval, current: true }];
+        : [{ id: runId, label: title, date: node.date, interval: node.date_interval ?? undefined, current: true }];
 
     return [
       ...current,
-      ...others.flatMap(({ id, label, clades: other }) => {
-        const match = other.nodeOf.get(key);
-
-        return match?.date === undefined
+      ...(found?.matches ?? []).flatMap((match) =>
+        match.date === null || match.date === undefined
           ? []
-          : [{ id, label, date: match.date, interval: match.dateInterval, current: false }];
-      }),
+          : [
+              {
+                id: match.run,
+                label: match.title,
+                date: match.date,
+                interval: match.date_interval ?? undefined,
+                current: false,
+              },
+            ],
+      ),
     ];
-  }, [key, node, others, runId, title]);
+  }, [found, node, runId, title]);
 
-  const missing = others.length - (rows.length - (node.date === undefined ? 0 : 1));
-  const width = intervalWidthDays(node.dateInterval);
+  if (node === undefined) {
+    return null;
+  }
+
+  const missing = (found?.searched_runs ?? 0) - (found?.matches.length ?? 0);
+  const interval = node.date_interval ?? undefined;
   const isTip = node.children.length === 0;
 
   return (
     <Panel
-      title={isTip ? node.name : `Ancestor of ${tipCount(node)} samples`}
+      title={isTip ? node.name : `Ancestor of ${node.tips} samples`}
       hint={
-        link.focus === undefined || link.focus === tree.root
+        link.focus === undefined || link.focus === root
           ? "Click a branch in the tree to zoom into its clade"
           : undefined
       }
@@ -70,13 +76,15 @@ export function SelectionPanel({
     >
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
         <dt className="text-ink-faint">{isTip ? "Date in tree" : "Date"}</dt>
-        <dd className="m-0 tabular-nums">{node.date === undefined ? "not dated" : formatDecimalDate(node.date)}</dd>
-        {node.dateInterval !== undefined && width !== undefined && width > 0 && (
+        <dd className="m-0 tabular-nums">
+          {node.date === null || node.date === undefined ? "not dated" : formatDecimalDate(node.date)}
+        </dd>
+        {interval !== undefined && (
           <>
             <dt className="text-ink-faint">90% interval</dt>
             <dd className="m-0 tabular-nums">
-              {formatDecimalDate(node.dateInterval[0])} to {formatDecimalDate(node.dateInterval[1])} (
-              {Math.round(width)} days)
+              {formatDecimalDate(interval.lower)} to {formatDecimalDate(interval.upper)} ({Math.round(interval.days)}{" "}
+              days)
             </dd>
           </>
         )}
@@ -109,21 +117,4 @@ export function SelectionPanel({
       )}
     </Panel>
   );
-}
-
-function useOtherTimetrees(runId: string): Array<{ id: string; label: string; clades: CladeIndex }> {
-  const { data } = useRunList();
-
-  const runs = useMemo(
-    () => (data?.runs ?? []).filter((run) => run.id !== runId && run.command === "timetree" && run.status === "ok"),
-    [data, runId],
-  );
-
-  const trees = useRunTrees(runs.map((run) => run.id));
-
-  return runs.flatMap((run, index) => {
-    const loaded = trees[index]?.data;
-
-    return loaded === null || loaded === undefined ? [] : [{ id: run.id, label: run.title, clades: loaded.clades }];
-  });
 }

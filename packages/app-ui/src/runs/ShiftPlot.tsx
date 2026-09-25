@@ -1,3 +1,4 @@
+import { zAncestorShift } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -11,10 +12,9 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
-import * as z from "zod";
 
 import { formatDecimalDate, formatSignedDays } from "../format";
-import type { AncestorShift } from "../results/estimates";
+import type { AncestorShift } from "../results/types";
 import { PLATE, TICK_STYLE } from "./palette";
 
 const HEIGHT = 300;
@@ -25,11 +25,9 @@ const DATA_EXTENT = ["dataMin", "dataMax"];
 
 const CLADE_SIZE: [number, number] = [16, 160];
 
-const zShift = z.object({ name: z.string(), tips: z.number(), dateFirst: z.number(), shiftDays: z.number() });
-
 export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShift[]; firstLabel: string }) {
   const data = useMemo(
-    () => shifts.map((shift) => ({ ...shift, x: shift.dateFirst, y: shift.shiftDays, z: shift.tips })),
+    () => shifts.map((shift) => ({ ...shift, x: shift.date_first, y: shift.shift_days, z: shift.tips })),
     [shifts],
   );
 
@@ -53,7 +51,7 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
 }
 
 function ShiftTooltip({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> }) {
-  const parsed = zShift.safeParse(payload?.[0]?.payload);
+  const parsed = zAncestorShift.safeParse(payload?.[0]?.payload);
 
   if (active !== true || !parsed.success) {
     return null;
@@ -66,8 +64,8 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div className="font-bold">
         {shift.name}, {shift.tips} samples
       </div>
-      <div>Date {formatDecimalDate(shift.dateFirst)}</div>
-      <div>Shift {formatSignedDays(shift.shiftDays)}</div>
+      <div>Date {formatDecimalDate(shift.date_first)}</div>
+      <div>Shift {formatSignedDays(shift.shift_days)}</div>
     </div>
   );
 }
