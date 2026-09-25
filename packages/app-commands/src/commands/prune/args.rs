@@ -77,7 +77,7 @@ pub struct TreetimePruneArgsRaw {
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
@@ -115,7 +115,10 @@ pub struct TreetimePruneArgsRaw {
   /// Threshold value for pruning of branches
   ///
   /// If set, prune branches with a length below this value
-  #[cfg_attr(feature = "clap", clap(long, short = 's', value_name = "THRESHOLD"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, short = 's', value_name = "THRESHOLD", help_heading = "Pruning")
+  )]
   pub prune_short: Option<f64>,
 
   /// Prune empty branches
@@ -123,7 +126,7 @@ pub struct TreetimePruneArgsRaw {
   /// If set, prune any branch that does not have a mutation or other state transition mapped to it.
   ///
   /// Requires --alignment
-  #[cfg_attr(feature = "clap", clap(long, short = 'e'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'e', help_heading = "Pruning"))]
   pub prune_empty: bool,
 
   /// Merge branches in polytomies that share identical mutations
@@ -134,7 +137,7 @@ pub struct TreetimePruneArgsRaw {
   /// Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
   ///
   /// Requires --alignment
-  #[cfg_attr(feature = "clap", clap(long, short = 'm'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Pruning"))]
   pub merge_shared_mutations: bool,
 
   /// List of node names to prune
@@ -142,13 +145,19 @@ pub struct TreetimePruneArgsRaw {
   /// List of node names to remove from the tree, comma-separated (,)
   ///
   /// Use --prune-nodes-list-delimiter to specify a different delimiter.
-  #[cfg_attr(feature = "clap", clap(long, short = 'n', value_name = "NODE_NAMES"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, short = 'n', value_name = "NODE_NAMES", help_heading = "Pruning")
+  )]
   pub prune_nodes_list: Option<String>,
 
   /// Name separator for `--prune-nodes-list`
   ///
   /// String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
-  #[cfg_attr(feature = "clap", clap(long, default_value = ",", value_name = "DELIMITER"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value = ",", value_name = "DELIMITER", help_heading = "Pruning")
+  )]
   #[default = ',']
   pub prune_nodes_list_delimiter: char,
 
@@ -159,14 +168,17 @@ pub struct TreetimePruneArgsRaw {
   /// Use '-' to read from standard input (stdin).
   ///
   /// Use --prune-nodes-list-file-delimiter to specify a different delimiter.
-  #[cfg_attr(feature = "clap", clap(long, short = 'N', value_hint = ValueHint::FilePath, value_name = "FILEPATH"))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'N', value_hint = ValueHint::FilePath, value_name = "FILEPATH", help_heading = "Pruning"))]
   #[schemars(extend("x-path" = "input"))]
   pub prune_nodes_list_file: Option<PathBuf>,
 
   /// Separator for node names in the list file
   ///
   /// Character or string used to separate node names in the list file.
-  #[cfg_attr(feature = "clap", clap(long, default_value = "\n", value_name = "DELIMITER"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value = "\n", value_name = "DELIMITER", help_heading = "Pruning")
+  )]
   #[default = '\n']
   pub prune_nodes_list_file_delimiter: char,
 }

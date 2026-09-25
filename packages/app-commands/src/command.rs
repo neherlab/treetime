@@ -21,6 +21,8 @@ use crate::config::schema::command_schema;
 use crate::config::settings::{remove_setting, setting_ref};
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig};
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+#[cfg(feature = "clap")]
+use clap::{Command, CommandFactory};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::{JsonSchema, Schema};
@@ -78,6 +80,20 @@ impl AppCommand {
       Self::Clock => command_schema::<TreetimeClockArgsRaw>(),
       Self::Mugration => command_schema::<TreetimeMugrationArgsRaw>(),
     }
+  }
+
+  #[cfg(feature = "clap")]
+  pub fn cli_command(self) -> Command {
+    let mut command = match self {
+      Self::Timetree => TreetimeTimetreeArgsRaw::command(),
+      Self::Optimize => TreetimeOptimizeArgsRaw::command(),
+      Self::Prune => TreetimePruneArgsRaw::command(),
+      Self::Ancestral => TreetimeAncestralArgsRaw::command(),
+      Self::Clock => TreetimeClockArgsRaw::command(),
+      Self::Mugration => TreetimeMugrationArgsRaw::command(),
+    };
+    command.build();
+    command
   }
 
   pub fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report> {

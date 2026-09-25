@@ -27,6 +27,7 @@ pub struct AlignmentArgs {
       value_hint = ValueHint::FilePath,
       value_name = "FILEPATH",
       display_order = 1,
+      help_heading = "Input data",
     )
   )]
   #[schemars(extend("x-path" = "input"))]

@@ -227,19 +227,22 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
-  #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
   /// CSV/TSV file with metadata including sampling dates
-  #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long = "metadata", visible_alias = "dates", short = 'd', help_heading = "Input data")
+  )]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,
@@ -253,19 +256,19 @@ pub struct TreetimeTimetreeArgsRaw {
   pub date_column_args: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub sequence_length: Option<usize>,
 
   /// If specified, the rate of the molecular clock won't be optimized.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub clock_rate: Option<f64>,
 
   /// Standard deviation of the provided clock rate estimate
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub clock_std_dev: Option<f64>,
 
   /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default(), help_heading = "Branch lengths"))]
   pub branch_length_mode: BranchLengthModeCli,
 
   /// Control when marginal time distributions are used for output.
@@ -276,7 +279,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// - `never`: no confidence interval output (default)
   /// - `always`: write confidence intervals from distributions computed during optimization
   /// - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalModeCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalModeCli::default(), help_heading = "Dating"))]
   pub time_marginal: TimeMarginalModeCli,
 
   /// Add rate-uncertainty to confidence intervals.
@@ -285,34 +288,34 @@ pub struct TreetimeTimetreeArgsRaw {
   /// This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
   /// via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
   /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
   pub confidence: bool,
 
   /// Don't resolve polytomies using temporal information.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub keep_polytomies: bool,
 
   /// Resolve polytomies using temporal information
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub resolve_polytomies: bool,
 
   /// use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
   /// strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
-  #[cfg_attr(feature = "clap", clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"]))]
+  #[cfg_attr(feature = "clap", clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"], help_heading = "Molecular clock"))]
   pub relax: Vec<f64>,
 
   /// maximal number of iterations the inference cycle is run. For polytomy resolution and
   /// coalescence models max_iter should be at least 2
   #[default = 2]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter, help_heading = "Dating"))]
   pub max_iter: usize,
 
   /// Coalescent time scale in years.
   ///
   /// Sensible values are on the order of the time from the root to the tips and are given in units of time.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
   pub coalescent: Option<f64>,
 
   /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
@@ -322,7 +325,12 @@ pub struct TreetimeTimetreeArgsRaw {
   /// which used a numerical search.
   #[cfg_attr(
     feature = "clap",
-    clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline")
+    clap(
+      long,
+      conflicts_with = "coalescent",
+      conflicts_with = "coalescent_skyline",
+      help_heading = "Coalescent prior"
+    )
   )]
   pub coalescent_opt: bool,
 
@@ -330,7 +338,7 @@ pub struct TreetimeTimetreeArgsRaw {
   ///
   /// Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
   /// the number of grid points.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
   #[cfg_attr(
     feature = "clap",
     clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")
@@ -342,7 +350,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
   /// are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
   #[default = 20]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_n_points))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_n_points, help_heading = "Coalescent prior"))]
   #[cfg_attr(feature = "clap", clap(value_parser = parse_skyline_n_points))]
   pub skyline_n_points: usize,
 
@@ -354,7 +362,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// stiffness is dimensionless and scale-independent. Larger values enforce a
   /// smoother Tc(t). Only used when --coalescent-skyline is set.
   #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_stiffness))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_stiffness, help_heading = "Coalescent prior"))]
   pub skyline_stiffness: f64,
 
   /// Confidence level for coalescent time scale (Tc) bands, in standard deviations.
@@ -364,45 +372,48 @@ pub struct TreetimeTimetreeArgsRaw {
   /// the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
   /// --coalescent value is not inferred and therefore has no band.
   #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence, help_heading = "Coalescent prior"))]
   pub coalescent_confidence: f64,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent
   /// mergerrate or use inferred time before present (default).
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Dating"))]
   pub n_branches_posterior: Option<usize>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Plots"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "output"))]
   pub plot_tree: Option<PathBuf>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Plots"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "output"))]
   pub plot_rtt: Option<PathBuf>,
 
   /// add tip labels (default for small trees with <30 leaves)
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Plots"))]
   pub tip_labels: bool,
 
   /// don't show tip labels (default for trees with >=30 leaves)
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Plots"))]
   pub no_tip_labels: bool,
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
   /// regression'. Default=3.0, set to 0 to switch off.
-  #[cfg_attr(feature = "clap", clap(long, default_value = "3.0"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value = "3.0", help_heading = "Molecular clock")
+  )]
   #[default = 3.0]
   pub clock_filter: f64,
 
   /// Number of IQD (interquartile distance) for clock filter outlier detection
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub n_iqd: Option<f64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -411,20 +422,20 @@ pub struct TreetimeTimetreeArgsRaw {
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
   /// root-to-tip distance and sampling time
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
   pub keep_root: bool,
 
   /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub allow_negative_rate: bool,
 
   /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
   /// clock
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub tip_slack: Option<f64>,
 
   /// Account for covariation when estimating rates or rerooting using root-to-tip regression
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub covariation: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -432,7 +443,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
   pub method_anc: MethodAncestralCli,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -440,7 +451,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub alphabet_args: AlphabetArgs,
 
   /// Use dense representation for sequences (store full probability distributions)
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -448,24 +459,24 @@ pub struct TreetimeTimetreeArgsRaw {
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub zero_based: bool,
 
   /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub include_leaves: bool,
 
   /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
   /// inferred state. Gaps are left as deletions.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub impute_missing_data: bool,
 
   /// v0-compatible alias for `--include-leaves --impute-missing-data`.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub reconstruct_tip_states: bool,
 
   /// Include transitions involving ambiguous states
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 
   /// Disable indel (insertion/deletion) contributions to branch-length
@@ -475,7 +486,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// and timetree branch distributions exclude the Poisson indel term.
   /// Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
   /// and enables v0 parity testing. Default: indels enabled.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_indels: bool,
 
   /// Units for divergence values in augur node data JSON and auspice output.
@@ -484,7 +495,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// `mutations`: absolute count of reconstructed substitutions per branch,
   /// excluding ambiguous and gap positions. Requires ancestral reconstruction
   /// (incompatible with `--branch-length-mode=input`).
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default(), help_heading = "Output"))]
   pub divergence_units: DivergenceUnits,
 
   /// Path to output augur-compatible node data JSON.
@@ -582,21 +593,24 @@ pub struct TreetimeTimetreeArgsRaw {
   pub topology_order: TopologyOrderArgs,
 
   /// Random seed
-  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
+  )]
   pub seed: Option<u64>,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]
   pub aa: bool,
 
   /// Load a custom GTR model from file (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub custom_gtr: Option<PathBuf>,
 
   /// Method for clock filter outlier detection (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Molecular clock"))]
   pub clock_filter_method: Option<String>,
 
   /// Generations per year for converting the coalescent time scale Tc into an effective
@@ -608,16 +622,16 @@ pub struct TreetimeTimetreeArgsRaw {
   #[default = 50.0]
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().gen_per_year)
+    clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().gen_per_year, help_heading = "Coalescent prior")
   )]
   pub gen_per_year: f64,
 
   /// Use greedy polytomy resolution (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Polytomies"))]
   pub greedy_resolve: bool,
 
   /// Use stochastic polytomy resolution (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Polytomies"))]
   pub stochastic_resolve: bool,
 }
 

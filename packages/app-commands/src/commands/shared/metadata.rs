@@ -29,6 +29,7 @@ pub struct MetadataIdArgs {
       num_args = 1..,
       value_name = "COLUMN",
       default_values_t = default_name_candidates(),
+      help_heading = "Input data",
     )
   )]
   pub metadata_id_columns: Vec<String>,
@@ -39,7 +40,7 @@ pub struct MetadataIdArgs {
   #[default(_code = "default_metadata_delimiters()")]
   #[cfg_attr(
     feature = "clap",
-    clap(long = "metadata-delimiters", num_args = 1.., value_name = "CHAR", default_values_t = default_metadata_delimiters())
+    clap(long = "metadata-delimiters", num_args = 1.., value_name = "CHAR", default_values_t = default_metadata_delimiters(), help_heading = "Input data")
   )]
   pub metadata_delimiters: Vec<char>,
 }
@@ -54,11 +55,14 @@ pub struct MetadataIdArgs {
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct DateColumnArgs {
   /// Label of the column to be used as sampling date (auto-detected when omitted)
-  #[cfg_attr(feature = "clap", clap(long = "date-column", value_name = "COLUMN"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long = "date-column", value_name = "COLUMN", help_heading = "Input data")
+  )]
   pub date_column: Option<String>,
 
   /// Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
   #[default(DEFAULT_DATE_FORMAT.to_owned())]
-  #[cfg_attr(feature = "clap", clap(long = "date-format", value_name = "FORMAT", default_value = DEFAULT_DATE_FORMAT))]
+  #[cfg_attr(feature = "clap", clap(long = "date-format", value_name = "FORMAT", default_value = DEFAULT_DATE_FORMAT, help_heading = "Input data"))]
   pub date_format: String,
 }

@@ -119,7 +119,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
@@ -137,7 +137,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Dense mode stores full probability vectors at every alignment position for each
   /// node. Sparse mode stores only variable positions. Dense is more accurate when
   /// branches are long and many sites change, but uses more memory.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -149,7 +149,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// `mutations-per-site` (default): branch divergence as substitutions per site.
   /// `mutations`: absolute count of reconstructed substitutions per branch,
   /// excluding ambiguous and gap positions.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default(), help_heading = "Output"))]
   pub divergence_units: DivergenceUnits,
 
   /// Path to output augur-compatible node data JSON.
@@ -186,21 +186,24 @@ pub struct TreetimeOptimizeArgsRaw {
   pub topology_order: TopologyOrderArgs,
 
   /// Maximum number of iterations
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 10))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 10, help_heading = "Branch lengths"))]
   #[default = 10]
   pub max_iter: usize,
 
   /// Likelihood convergence threshold. The loop stops when successive
   /// likelihoods differ by less than this value, or when a 2-cycle with
   /// amplitude below this value is detected.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.1))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.1, help_heading = "Branch lengths"))]
   #[default = 0.1]
   pub dp: f64,
 
   /// Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
   /// where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
   /// zero disables damping. Must be in $[0,1)$.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.75))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value_t = 0.75, help_heading = "Branch lengths")
+  )]
   #[default = 0.75]
   pub damping: f64,
 
@@ -210,13 +213,13 @@ pub struct TreetimeOptimizeArgsRaw {
   ///   preserve valid input values (default)
   /// - always: estimate all edges, overwriting input branch lengths
   /// - never: use input branch lengths as-is; fails if any are missing
-  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto))]
+  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
   pub branch_length_initial_guess: InitialGuessModeCli,
 
   /// Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
   /// (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
   /// `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
-  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub opt_method: BranchOptMethodCli,
 
   /// Disable indel (insertion/deletion) contributions to branch-length
@@ -225,7 +228,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// When set, the optimizer uses substitution-only likelihood, matching
   /// standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
   /// enabling v0 parity testing. Default: indels enabled.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_indels: bool,
 
   /// Reroot the tree by minimizing root-to-tip divergence variance.
@@ -239,18 +242,22 @@ pub struct TreetimeOptimizeArgsRaw {
     num_args = 0..=1,
     default_missing_value = "min-dev",
     conflicts_with = "reroot_tips",
+    help_heading = "Rooting",
   ))]
   pub reroot: Option<OptimizeRerootMethod>,
 
   /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-  #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', conflicts_with = "reroot"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', conflicts_with = "reroot", help_heading = "Rooting")
+  )]
   pub reroot_tips: Vec<String>,
 
   /// Keep the input tree root instead of rerooting.
   ///
   /// Optimize keeps the input root by default; this flag is the explicit form and
   /// is mutually exclusive with the reroot options.
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
   pub keep_root: bool,
 
   /// Disable collapsing of internal branches whose optimized length is zero.
@@ -258,7 +265,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// By default the optimize loop contracts internal edges the per-edge optimizer drove to
   /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
   /// polytomies. When set, such edges are kept in the output tree with length zero.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_collapse_short_branches: bool,
 
   /// Disable merging of polytomy siblings that share substitutions.
@@ -266,7 +273,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
   /// under a new internal node. Requires the sparse sequence representation, so this step has no
   /// effect under `--dense` and the flag is then a no-op.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_merge_siblings: bool,
 
   /// Disable the flip-parent-child step (reversion hoist) in polytomies.
@@ -276,7 +283,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// mutation per reverted position. When set, those reversions are left in place. Requires the
   /// sparse sequence representation, so this step has no effect under `--dense` and the flag is
   /// then a no-op.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_flip_parent_child: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]

@@ -5,7 +5,9 @@ mod tests {
   use crate::config::properties::{
     CLI_FLAG_KEY, CLI_NUM_ARGS_KEY, CLI_VALUE_DELIMITER_KEY, CLI_VALUES_KEY, PathRole, leaf_properties,
   };
-  use helpers::{annotated_property, annotated_schema, clap_command, path_hinted_args};
+  use clap::Arg;
+  use helpers::{annotated_property, annotated_schema, path_hinted_args};
+  use itertools::Itertools;
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -28,6 +30,53 @@ mod tests {
         );
       }
     }
+  }
+
+  #[test]
+  fn test_schema_annotations_every_setting_of_every_command_has_a_help_heading() {
+    for command in AppCommand::iter() {
+      let cli = command.cli_command();
+      let missing = leaf_properties(command.config_schema().as_value())
+        .unwrap()
+        .into_iter()
+        .filter(|leaf| {
+          cli
+            .get_arguments()
+            .find(|arg| arg.get_id() == leaf.key())
+            .and_then(Arg::get_help_heading)
+            .is_none()
+        })
+        .map(|leaf| leaf.key_path.join("."))
+        .collect_vec();
+      assert_eq!(
+        Vec::<String>::new(),
+        missing,
+        "{command}: settings without a help heading"
+      );
+    }
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::timetree_input(    AppCommand::Timetree,  "tree",                        "Input data")]
+  #[case::timetree_clock(    AppCommand::Timetree,  "clock_rate",                  "Molecular clock")]
+  #[case::timetree_dating(   AppCommand::Timetree,  "max_iter",                    "Dating")]
+  #[case::optimize_iter(     AppCommand::Optimize,  "max_iter",                    "Branch lengths")]
+  #[case::prune_threshold(   AppCommand::Prune,     "prune_short",                 "Pruning")]
+  #[case::clock_flattened(   AppCommand::Clock,     "variance_factor",             "Clock regression")]
+  #[case::shared_alignment(  AppCommand::Ancestral, "alignment",                   "Input data")]
+  #[case::shared_order(      AppCommand::Mugration, "topology_order",              "Tree ordering")]
+  #[case::output_path(       AppCommand::Timetree,  "output_clock_model",          "Output")]
+  #[case::hidden_plot(       AppCommand::Timetree,  "plot_tree",                   "Plots")]
+  #[trace]
+  fn test_schema_annotations_help_heading_of_setting(
+    #[case] command: AppCommand,
+    #[case] id: &str,
+    #[case] expected: &str,
+  ) {
+    let cli = command.cli_command();
+    let arg = cli.get_arguments().find(|arg| arg.get_id() == id).unwrap();
+    assert_eq!(Some(expected), arg.get_help_heading());
   }
 
   #[rustfmt::skip]
@@ -135,7 +184,7 @@ mod tests {
         .filter(|leaf| leaf.path_role.is_some())
         .map(|leaf| leaf.key().to_owned())
         .collect();
-      assert_eq!(path_hinted_args(&clap_command(command)), annotated, "{command}");
+      assert_eq!(path_hinted_args(&command.cli_command()), annotated, "{command}");
     }
   }
 
@@ -189,7 +238,7 @@ mod tests {
       "properties": { "not_a_flag": { "type": "string" } }
     }))
     .unwrap();
-    let command = clap_command(AppCommand::Prune);
+    let command = AppCommand::Prune.cli_command();
     assert_error!(
       annotate_cli_flags(&mut schema, &command),
       "config key `not_a_flag` has no command-line flag"
@@ -238,32 +287,15 @@ mod tests {
 
   mod helpers {
     use crate::command::AppCommand;
-    use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
-    use crate::commands::clock::args::TreetimeClockArgsRaw;
-    use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-    use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
-    use crate::commands::prune::args::TreetimePruneArgsRaw;
-    use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use crate::config::cli_flags::annotate_cli_flags;
     use crate::config::properties::leaf_properties;
-    use clap::{Command, CommandFactory, ValueHint};
+    use clap::{Command, ValueHint};
     use serde_json::Value;
     use std::collections::BTreeSet;
 
-    pub(super) fn clap_command(command: AppCommand) -> Command {
-      match command {
-        AppCommand::Timetree => TreetimeTimetreeArgsRaw::command(),
-        AppCommand::Optimize => TreetimeOptimizeArgsRaw::command(),
-        AppCommand::Prune => TreetimePruneArgsRaw::command(),
-        AppCommand::Ancestral => TreetimeAncestralArgsRaw::command(),
-        AppCommand::Clock => TreetimeClockArgsRaw::command(),
-        AppCommand::Mugration => TreetimeMugrationArgsRaw::command(),
-      }
-    }
-
     pub(super) fn annotated_schema(command: AppCommand) -> Value {
       let mut schema = command.config_schema();
-      annotate_cli_flags(&mut schema, &clap_command(command)).unwrap();
+      annotate_cli_flags(&mut schema, &command.cli_command()).unwrap();
       schema.as_value().clone()
     }
 

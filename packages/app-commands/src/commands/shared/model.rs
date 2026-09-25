@@ -21,7 +21,7 @@ pub struct ModelArgs {
   #[default(GtrModelNameCli::Infer)]
   #[cfg_attr(
     feature = "clap",
-    clap(long = "model", short = 'g', visible_alias = "gtr", value_enum, default_value_t = GtrModelNameCli::Infer)
+    clap(long = "model", short = 'g', visible_alias = "gtr", value_enum, default_value_t = GtrModelNameCli::Infer, help_heading = "Substitution model")
   )]
   pub model: GtrModelNameCli,
 
@@ -31,7 +31,14 @@ pub struct ModelArgs {
   ///
   /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py
   /// or treetime/aa_models.py
-  #[cfg_attr(feature = "clap", clap(long = "model-params", visible_alias = "gtr-params"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long = "model-params",
+      visible_alias = "gtr-params",
+      help_heading = "Substitution model"
+    )
+  )]
   pub model_params: Vec<String>,
 }
 

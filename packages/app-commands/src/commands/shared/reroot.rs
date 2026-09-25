@@ -10,13 +10,26 @@ pub struct RerootArgs {
   /// Reroot the tree by temporal-signal optimization.
   ///
   /// Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
-  #[cfg_attr(feature = "clap", clap(long = "reroot", value_enum, conflicts_with = "reroot_tips"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long = "reroot",
+      value_enum,
+      conflicts_with = "reroot_tips",
+      help_heading = "Rooting"
+    )
+  )]
   reroot: Option<RerootMethodCli>,
 
   /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
   #[cfg_attr(
     feature = "clap",
-    clap(long = "reroot-tips", value_delimiter = ',', conflicts_with = "reroot")
+    clap(
+      long = "reroot-tips",
+      value_delimiter = ',',
+      conflicts_with = "reroot",
+      help_heading = "Rooting"
+    )
   )]
   reroot_tips: Vec<String>,
 }

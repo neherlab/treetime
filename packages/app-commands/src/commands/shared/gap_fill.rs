@@ -20,12 +20,12 @@ pub struct GapFillArgs {
   /// 'none': leave all gap characters unchanged.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_enum, default_value_t = GapFillCli::default(), conflicts_with = "keep_overhangs")
+    clap(long, value_enum, default_value_t = GapFillCli::default(), conflicts_with = "keep_overhangs", help_heading = "Ancestral reconstruction")
   )]
   gap_fill: GapFillCli,
 
   /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Ancestral reconstruction"))]
   keep_overhangs: bool,
 }
 

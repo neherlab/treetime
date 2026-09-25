@@ -161,7 +161,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub alignment: AlignmentArgs,
 
   /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
-  #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
@@ -169,7 +169,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
@@ -183,14 +183,14 @@ pub struct TreetimeAncestralArgsRaw {
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
   pub method_anc: MethodAncestralCli,
 
   /// Use dense representation (stores full probability vectors at each position)
   ///
   /// When combined with `--model infer`, marginal reconstruction runs twice: once to populate
   /// profiles for GTR inference, and again with the inferred GTR.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -198,11 +198,11 @@ pub struct TreetimeAncestralArgsRaw {
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub zero_based: bool,
 
   /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub include_leaves: bool,
 
   /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
@@ -210,17 +210,17 @@ pub struct TreetimeAncestralArgsRaw {
   ///
   /// Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
   /// reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub impute_missing_data: bool,
 
   /// v0-compatible alias for `--include-leaves --impute-missing-data`.
   ///
   /// Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub reconstruct_tip_states: bool,
 
   /// Include transitions involving ambiguous states
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 
   /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
@@ -229,7 +229,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching
   /// TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
   /// given CDS.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub ignore_missing_alns: bool,
 
   /// Path to output augur-compatible node data JSON.
@@ -262,7 +262,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
   /// CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
   /// `--output-translations`) and `%GENE` (augur) placeholders are accepted.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input-template"))]
   pub translations: Option<String>,
@@ -272,26 +272,32 @@ pub struct TreetimeAncestralArgsRaw {
   /// When omitted, the CDS set is derived from `--annotation`.
   #[cfg_attr(
     feature = "clap",
-    clap(long = "cdses", visible_alias = "genes", value_name = "CDS", value_delimiter = ',')
+    clap(
+      long = "cdses",
+      visible_alias = "genes",
+      value_name = "CDS",
+      value_delimiter = ',',
+      help_heading = "Input data"
+    )
   )]
   pub cdses: Vec<String>,
 
   /// GFF3 file with CDS coordinates for Augur node data annotations.
   ///
   /// Also supplies the CDS set when `--cdses` is omitted.
-  #[cfg_attr(feature = "clap", clap(long, alias = "annotation-gff"))]
+  #[cfg_attr(feature = "clap", clap(long, alias = "annotation-gff", help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub annotation: Option<PathBuf>,
 
   /// FASTA file with one amino-acid root/reference sequence per CDS.
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub aa_root_sequence: Option<PathBuf>,
 
   /// Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AaModelName::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AaModelName::default(), help_heading = "Substitution model"))]
   pub aa_model: AaModelName,
 
   /// Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
@@ -328,7 +334,10 @@ pub struct TreetimeAncestralArgsRaw {
   /// Re-estimates the rate matrix from marginal posterior profiles after each
   /// reconstruction pass. Only effective with `--model infer`. Default 0 preserves
   /// the current single-pass behavior. Mugration uses 5 by default.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value_t = 0, help_heading = "Substitution model")
+  )]
   pub gtr_iterations: usize,
 
   /// Use site-specific GTR model with per-site equilibrium frequencies.
@@ -336,23 +345,26 @@ pub struct TreetimeAncestralArgsRaw {
   /// Requires `--model infer` and `--dense true`. Incompatible with sequence compression
   /// (sparse representation). When enabled, each alignment position gets its own
   /// eigendecomposition based on position-specific base composition.
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
   pub site_specific_gtr: bool,
 
   /// Random seed
-  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
+  )]
   pub seed: Option<u64>,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]
   pub aa: bool,
 
   /// Shortcut for `--method-anc=marginal` (v0 compat)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Ancestral reconstruction"))]
   pub marginal: bool,
 
   /// Load a custom GTR model from file (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub custom_gtr: Option<PathBuf>,
@@ -365,7 +377,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// 'all': sample from the posterior at every node.
   ///
   /// Only affects marginal reconstruction (`--method-anc=marginal`).
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default(), help_heading = "Ancestral reconstruction"))]
   pub sample_from_profile: SampleModeCli,
 }
 
