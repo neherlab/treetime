@@ -14,7 +14,6 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::MethodAncestral;
 use treetime::clock::clock_regression::ClockVarianceParams;

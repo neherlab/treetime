@@ -5,7 +5,7 @@ import type { JsonValue } from "../settings/json";
 import { Button, Toast } from "../ui";
 import { useInputActions } from "./useInputActions";
 
-export interface PathPickerProps {
+interface PathPickerProps {
   command: AppCommand;
   settingKey: string;
   title: string;

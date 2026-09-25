@@ -1,7 +1,7 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { formatDuration, formatRate, formatSignedDays } from "../format";
+import { formatDuration, formatRate, formatSignedDays, rSquaredText } from "../format";
 import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { Panel, SummaryStrip, type SummaryEntry } from "./Panel";
@@ -157,7 +157,7 @@ function clockSummary(record: RunRecordResult, data: ClockData): SummaryEntry[] 
     {
       label: "Temporal signal",
       value: r === undefined ? "not computed" : `r = ${r.toFixed(3)}`,
-      detail: r === undefined ? undefined : `R² = ${(estimates.r_squared ?? r * r).toFixed(3)}`,
+      detail: rSquaredText(estimates.r_squared),
     },
     { label: "Dated samples", value: String(estimates.dated_samples) },
     {

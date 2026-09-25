@@ -6,7 +6,7 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { settingFlags } from "../settings/titles";
 
-export interface RunGroup {
+interface RunGroup {
   label: string;
   runs: RunSummaryResult[];
 }

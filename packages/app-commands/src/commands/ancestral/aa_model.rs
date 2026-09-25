@@ -1,7 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use strum_macros::Display;
 use treetime::alphabet::alphabet::AlphabetName;
 use treetime::gtr::get_gtr::GtrModelName;
 
@@ -11,9 +10,7 @@ use treetime::gtr::get_gtr::GtrModelName;
 /// The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
 /// GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
 /// alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
-#[derive(
-  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum AaModelName {

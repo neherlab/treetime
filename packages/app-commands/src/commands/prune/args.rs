@@ -10,7 +10,6 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]

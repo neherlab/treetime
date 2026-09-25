@@ -23,7 +23,7 @@ import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
 import { useRunProgress } from "./useRunProgress";
 
-export type RunTab = "results" | "settings" | "log";
+type RunTab = "results" | "settings" | "log";
 
 const TABS: ReadonlyArray<{
   tab: RunTab;

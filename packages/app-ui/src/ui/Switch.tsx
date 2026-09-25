@@ -2,7 +2,7 @@ import { Switch as BaseSwitch } from "@base-ui/react/switch";
 
 import { cn } from "./cn";
 
-export interface SwitchProps {
+interface SwitchProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label?: string | undefined;

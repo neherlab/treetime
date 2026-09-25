@@ -8,7 +8,7 @@ import {
 } from "@neherlab/app-contracts";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
-export interface WebBridgeDeps {
+interface WebBridgeDeps {
   fetchFn?: typeof fetch;
   apiBase?: string;
   saveBlob?: (blob: Blob, name: string) => void;

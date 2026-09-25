@@ -9,7 +9,7 @@ import { baseName, pathList } from "../settings/inputs";
 import { getAt, sameJson, zJsonObject, type JsonObject } from "../settings/json";
 import { useDraftStore, type InputSource } from "../store/draft";
 
-export type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
+type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
 
 export function useConfigLoader() {
   const bridge = useBridge();

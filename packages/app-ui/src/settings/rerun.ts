@@ -5,7 +5,7 @@ import { normalizeConfig } from "./config";
 import { runInputAssignments } from "./inputs";
 import { zJsonObject, type JsonObject } from "./json";
 
-export interface RerunDraft {
+interface RerunDraft {
   config: JsonObject;
   inputLabels: Record<string, string>;
   title: string;

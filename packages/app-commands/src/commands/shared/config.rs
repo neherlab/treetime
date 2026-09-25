@@ -2,7 +2,6 @@
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]

@@ -1,7 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use treetime::seq::gap_fill::GapFill;
 
 /// Gap-handling policy shared by every command that reads sequences.

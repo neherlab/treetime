@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { ZodError } from "zod";
 
+import { parseRunEvent } from "../bridge";
 import {
   CancelledError,
   CommandError,
   RunEndedError,
   createBridge,
-  parseRunEvent,
   type BridgeTransport,
   type CommandOutcome,
   type LogEvent,

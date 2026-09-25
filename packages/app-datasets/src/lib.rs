@@ -60,7 +60,7 @@ pub fn text_schema_command(content: &str) -> Option<&str> {
   schema_command(content.lines().map(str::trim).find(|line| !line.is_empty())?)
 }
 
-pub fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleFile> {
+pub(crate) fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleFile> {
   let command = text_schema_command(content)?;
   if !commands.contains(&command) {
     return None;

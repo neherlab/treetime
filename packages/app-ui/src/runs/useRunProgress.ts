@@ -6,7 +6,7 @@ import { useBridge } from "../BridgeContext";
 import { RUNS_KEY } from "../queries";
 import { EMPTY_PROGRESS, foldRunEvents, type RunEvent, type RunProgress } from "../results/progress";
 
-export interface RunProgressState {
+interface RunProgressState {
   progress: RunProgress;
   failure: string | undefined;
 }

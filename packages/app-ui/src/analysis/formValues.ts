@@ -4,7 +4,7 @@ import type { JsonObject, JsonValue } from "../settings/json";
 
 type FormScalar = string | number | boolean | null;
 
-export type FormValue = FormScalar | FormScalar[] | Record<string, FormScalar | FormScalar[]>;
+type FormValue = FormScalar | FormScalar[] | Record<string, FormScalar | FormScalar[]>;
 
 export type FormConfig = Record<string, FormValue>;
 

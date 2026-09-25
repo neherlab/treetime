@@ -1,25 +1,20 @@
 import { useCallback } from "react";
 
-import { cn } from "./cn";
-
 export interface SegmentedOption<Value extends string> {
   value: Value;
   label: string;
 }
 
-export interface SegmentedProps<Value extends string> {
+interface SegmentedProps<Value extends string> {
   options: ReadonlyArray<SegmentedOption<Value>>;
   value: Value;
   onChange: (value: Value) => void;
   label: string;
-  className?: string | undefined;
 }
 
-export function Segmented<Value extends string>({ options, value, onChange, label, className }: SegmentedProps<Value>) {
+export function Segmented<Value extends string>({ options, value, onChange, label }: SegmentedProps<Value>) {
   return (
-    <fieldset
-      className={cn("border-line-strong bg-surface-1 m-0 inline-flex overflow-hidden rounded-md border p-0", className)}
-    >
+    <fieldset className="border-line-strong bg-surface-1 m-0 inline-flex overflow-hidden rounded-md border p-0">
       <legend className="sr-only">{label}</legend>
       {options.map((option) => (
         <SegmentButton key={option.value} option={option} pressed={option.value === value} onChange={onChange} />

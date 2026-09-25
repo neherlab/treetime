@@ -3,18 +3,18 @@ use log::error;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-pub struct EventForwarder<S> {
+pub(crate) struct EventForwarder<S> {
   sink: Arc<Mutex<Option<S>>>,
 }
 
 impl<S: Fn(String) -> bool + Send + 'static> EventForwarder<S> {
-  pub fn new(sink: S) -> Self {
+  pub(crate) fn new(sink: S) -> Self {
     Self {
       sink: Arc::new(Mutex::new(Some(sink))),
     }
   }
 
-  pub fn subscriber(&self) -> Subscriber {
+  pub(crate) fn subscriber(&self) -> Subscriber {
     let sink = Arc::clone(&self.sink);
     Box::new(move |event: &RunEvent| {
       let mut sink = sink.lock();
@@ -35,7 +35,7 @@ impl<S: Fn(String) -> bool + Send + 'static> EventForwarder<S> {
     })
   }
 
-  pub fn close(&self) {
+  pub(crate) fn close(&self) {
     self.sink.lock().take();
   }
 }

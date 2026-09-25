@@ -15,10 +15,10 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::optimize::params::BranchLengthMode;
+use treetime::timetree::params::TimeMarginalMode;
 
 #[cfg(feature = "clap")]
 fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
@@ -28,8 +28,6 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
   }
   Ok(n)
 }
-
-pub use treetime::timetree::params::TimeMarginalMode;
 
 #[derive(Debug, Clone)]
 pub struct TreetimeTimetreeArgs {

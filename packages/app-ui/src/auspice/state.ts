@@ -20,7 +20,7 @@ export interface AuspiceTreeState {
   visibility: number[] | null;
 }
 
-export interface AuspiceNode {
+interface AuspiceNode {
   name: string;
   arrayIdx: number;
   hasChildren: boolean;
@@ -32,7 +32,7 @@ export interface AuspiceControlsState {
   selectedNode: AuspiceSelectedNode | null;
 }
 
-export interface AuspiceSelectedNode {
+interface AuspiceSelectedNode {
   name: string;
   idx: number;
   isBranch: boolean;

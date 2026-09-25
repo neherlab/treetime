@@ -1,7 +1,7 @@
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { formatDuration, formatLevel, formatRate } from "../format";
+import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
@@ -138,12 +138,7 @@ function timetreeSummary(record: RunRecordResult, estimates: TimetreeEstimates):
     {
       label: "Temporal signal",
       value: r === undefined ? "not computed" : `r = ${r.toFixed(3)}`,
-      detail:
-        r === undefined
-          ? estimates.clock_rate_fixed
-            ? "Fixed clock rate"
-            : undefined
-          : `R² = ${(estimates.r_squared ?? r * r).toFixed(3)}`,
+      detail: estimates.clock_rate_fixed ? "Fixed clock rate" : rSquaredText(estimates.r_squared),
     },
     {
       label: "Samples",

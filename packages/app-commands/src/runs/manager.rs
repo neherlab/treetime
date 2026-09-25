@@ -308,10 +308,6 @@ pub struct StartedRun {
 }
 
 impl StartedRun {
-  pub fn id(&self) -> &JobId {
-    &self.record.id
-  }
-
   pub fn record(&self) -> &RunRecord {
     &self.record
   }

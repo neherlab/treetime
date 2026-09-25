@@ -19,7 +19,7 @@ pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, delimiter:
   csv_read(reader, delimiter).wrap_err_with(|| format!("When reading '{}'", filepath.display()))
 }
 
-pub fn csv_read<T: DeserializeOwned>(reader: impl Read, delimiter: u8) -> Result<Vec<T>, Report> {
+pub(crate) fn csv_read<T: DeserializeOwned>(reader: impl Read, delimiter: u8) -> Result<Vec<T>, Report> {
   ReaderBuilder::new()
     .delimiter(delimiter)
     .from_reader(reader)

@@ -54,7 +54,6 @@ pub enum RerootMethodCli {
   LeastSquares,
   MinDev,
   Oldest,
-  #[cfg_attr(feature = "clap", value(alias = "clock-filter"))]
   ClockFilter,
 }
 

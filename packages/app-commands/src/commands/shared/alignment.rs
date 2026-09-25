@@ -3,7 +3,6 @@ use clap::ValueHint;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use std::path::PathBuf;
 
 /// Sequence alignment input shared by all commands that read sequences.

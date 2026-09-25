@@ -1,7 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::fmt::Debug;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 
 const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";

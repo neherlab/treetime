@@ -3,8 +3,8 @@ mod __tests__;
 
 pub mod backend;
 pub mod exports;
-pub mod guard;
-pub mod subscription;
+mod guard;
+mod subscription;
 
 #[cfg(test)]
 mod tests {

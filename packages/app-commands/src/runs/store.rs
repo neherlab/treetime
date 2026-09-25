@@ -37,10 +37,6 @@ impl RunStore {
     Ok(Self { root })
   }
 
-  pub fn root(&self) -> &Path {
-    &self.root
-  }
-
   pub fn run_dir(&self, id: &JobId) -> PathBuf {
     self.root.join(id.as_str())
   }

@@ -135,13 +135,13 @@ pub struct ClockRerootResult {
 }
 
 #[derive(Clone, Debug)]
-pub struct ClockFit {
+pub(crate) struct ClockFit {
   pub model: ClockModel,
   pub points: Vec<ClockRegressionPoint>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ClockRegressionPoint {
+pub(crate) struct ClockRegressionPoint {
   pub key: GraphNodeKey,
   pub date: Option<f64>,
   pub div: f64,

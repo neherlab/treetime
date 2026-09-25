@@ -13,7 +13,7 @@ function isAppUrl(url: string, appUrl: string): boolean {
   return candidate.origin === app.origin;
 }
 
-export interface SenderFrame {
+interface SenderFrame {
   url: string;
   parent: unknown;
 }

@@ -11,7 +11,7 @@ import { toFormValue, type FormConfig } from "./formValues";
 
 const UPLOAD_RUN_TITLE = "Uploaded inputs";
 
-export interface InputActions {
+interface InputActions {
   canPick: boolean;
   assign: (key: string, value: JsonValue, label: string, origin: InputOrigin, size: number | null) => void;
   assignAll: (assignments: readonly InputAssignment[], origin: InputOrigin) => void;

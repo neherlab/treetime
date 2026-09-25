@@ -35,7 +35,7 @@ export type SaveRequest = Exclude<ControlRequest, { kind: "port" }>;
 
 export type ControlReply = z.infer<typeof zControlReply>;
 
-export interface MessageEndpoint<Incoming, Outgoing> {
+interface MessageEndpoint<Incoming, Outgoing> {
   post(message: Outgoing): void;
   listen(listener: (message: Incoming) => void): void;
   onClose(listener: () => void): void;

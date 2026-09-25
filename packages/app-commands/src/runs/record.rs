@@ -89,12 +89,6 @@ pub enum RunStatus {
   Interrupted,
 }
 
-impl RunStatus {
-  pub const fn is_finished(self) -> bool {
-    matches!(self, Self::Ok | Self::Error | Self::Cancelled | Self::Interrupted)
-  }
-}
-
 /// One input file of a run.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunInput {

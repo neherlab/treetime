@@ -20,7 +20,7 @@ export type SettingsView = "main" | "all";
 
 export type CodeFormat = "cli" | "yaml";
 
-export interface DraftState {
+interface DraftState {
   command: AppCommand;
   config: JsonObject;
   sources: Record<string, InputSource>;

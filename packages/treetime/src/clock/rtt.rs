@@ -92,7 +92,7 @@ pub enum ClockDateSource {
   Missing,
 }
 
-pub fn clock_fit_regression_results(
+pub(crate) fn clock_fit_regression_results(
   model: &ClockModel,
   points: &[ClockRegressionPoint],
   names: &BTreeMap<GraphNodeKey, Option<String>>,

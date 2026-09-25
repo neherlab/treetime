@@ -2,31 +2,15 @@ export type * from "./generated/types.gen";
 
 export * from "./generated/zod.gen";
 
-export {
-  BridgeError,
-  bridgeErrorFromText,
-  CancelledError,
-  CommandError,
-  RunEndedError,
-  createBridge,
-  parseRunEvent,
-} from "./bridge";
+export { BridgeError, bridgeErrorFromText, CancelledError, CommandError, RunEndedError, createBridge } from "./bridge";
 
 export type {
   BridgeTransport,
-  CheckConfigInput,
-  CheckConfigResult,
-  CladeInRunsResult,
-  CommandConfigs,
-  CommandOptions,
   DesktopRequestInput,
-  FollowRunOptions,
   InputFactsResult,
   Parsed,
-  RunConfigResult,
   RunComparisonResult,
   RunRecordResult,
-  RunEventResult,
   RunResultsResult,
   RunSummaryResult,
   SettingKey,
