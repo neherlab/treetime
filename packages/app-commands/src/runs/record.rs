@@ -181,6 +181,13 @@ pub struct StartRunRequest {
   pub config: Option<Value>,
 }
 
+/// Answer to a cancellation request.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct CancelRunResponse {
+  /// Whether cancellation was requested; the run ends with a `cancelled` terminal event.
+  pub cancelled: bool,
+}
+
 /// Changes to the presentation of a run.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

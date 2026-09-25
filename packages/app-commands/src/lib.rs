@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod bridge;
 #[cfg(feature = "clap")]
 pub mod check_config;
 pub mod check_inputs;

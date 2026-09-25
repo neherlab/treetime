@@ -1,8 +1,8 @@
 import {
   CancelledError,
   createBridge,
+  parseErrorResponse,
   parseRunEvent,
-  zErrorResponse,
   type BridgeTransport,
   type LogEvent,
   type TransportEventOptions,
@@ -35,7 +35,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     const response = await fetchFn(`${apiBase}/${path}`, init);
 
     if (!response.ok) {
-      throw new Error(`${method} ${path}: ${response.status} ${await errorMessage(response)}`);
+      throw await responseError(response, `${method} ${path}: ${response.status}`);
     }
 
     return response;
@@ -73,7 +73,7 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
       const response = await fetchFn(`${apiBase}/${path}`, init);
 
       if (!response.ok || response.body === null) {
-        throw new Error(`GET ${path}: ${response.status} ${await errorMessage(response)}`);
+        throw await responseError(response, `GET ${path}: ${response.status}`);
       }
 
       const messages = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream());
@@ -142,15 +142,10 @@ function runPath(id: string): string {
   return `runs/${encodeURIComponent(id)}`;
 }
 
-async function errorMessage(response: Response): Promise<string> {
+async function responseError(response: Response, context: string): Promise<Error> {
   const text = await response.text();
-  const parsed = zErrorResponse.safeParse(parseJson(text));
 
-  if (parsed.success) {
-    return parsed.data.message;
-  }
-
-  return text === "" ? response.statusText : text;
+  return parseErrorResponse(parseJson(text), text === "" ? response.statusText : text, context);
 }
 
 function parseJson(text: string): unknown {

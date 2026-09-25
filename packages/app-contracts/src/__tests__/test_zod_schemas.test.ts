@@ -119,11 +119,15 @@ describe("zod_schemas terminal events", () => {
 
 describe("zod_schemas error and enum shapes", () => {
   test("error response accepts a well-formed error", () => {
-    expect(zErrorResponse.safeParse({ code: "E_BAD", message: "bad input" }).success).toBe(true);
+    expect(zErrorResponse.safeParse({ code: "invalid_request", message: "bad input", causes: [] }).success).toBe(true);
   });
 
   test("error response rejects a missing message", () => {
-    expect(zErrorResponse.safeParse({ code: "E_BAD" }).success).toBe(false);
+    expect(zErrorResponse.safeParse({ code: "invalid_request", causes: [] }).success).toBe(false);
+  });
+
+  test("error response rejects a code the back end does not send", () => {
+    expect(zErrorResponse.safeParse({ code: "E_BAD", message: "bad input", causes: [] }).success).toBe(false);
   });
 
   test.each(["trace", "debug", "info", "warn", "error"])("LogLevel accepts %s, the spelling Rust sends", (level) => {

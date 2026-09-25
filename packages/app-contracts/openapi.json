@@ -689,32 +689,6 @@
   },
   "components": {
     "schemas": {
-      "CancelRunResponse": {
-        "type": "object",
-        "required": [
-          "cancelled"
-        ],
-        "properties": {
-          "cancelled": {
-            "type": "boolean"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "required": [
-          "code",
-          "message"
-        ],
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
       "BranchLengthMode": {
         "type": "string",
         "enum": [
@@ -7368,6 +7342,75 @@
           "unreadable_runs"
         ],
         "description": "A clade of one run found in the other finished time-tree runs."
+      },
+      "ErrorCode": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "not_found",
+            "description": "The run or file does not exist."
+          },
+          {
+            "type": "string",
+            "const": "upload_too_large",
+            "description": "The inputs of a run exceed the upload limit."
+          },
+          {
+            "type": "string",
+            "const": "conflict",
+            "description": "The run is in a state that does not allow the operation."
+          },
+          {
+            "type": "string",
+            "const": "invalid_request",
+            "description": "The request is malformed or names an invalid value."
+          },
+          {
+            "type": "string",
+            "const": "internal_error",
+            "description": "The back end failed."
+          }
+        ],
+        "description": "Class of a back-end error. The web server answers each class with its own HTTP status."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Class of the error."
+          },
+          "message": {
+            "type": "string",
+            "description": "What failed."
+          },
+          "causes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Underlying causes, outermost first."
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "causes"
+        ],
+        "description": "Error of a back-end operation, as the web server and the desktop back end report it."
+      },
+      "CancelRunResponse": {
+        "type": "object",
+        "properties": {
+          "cancelled": {
+            "type": "boolean",
+            "description": "Whether cancellation was requested; the run ends with a `cancelled` terminal event."
+          }
+        },
+        "required": [
+          "cancelled"
+        ],
+        "description": "Answer to a cancellation request."
       }
     }
   },

@@ -2,15 +2,6 @@
 
 import * as z from 'zod';
 
-export const zCancelRunResponse = z.object({
-    cancelled: z.boolean()
-});
-
-export const zErrorResponse = z.object({
-    code: z.string(),
-    message: z.string()
-});
-
 export const zBranchLengthMode = z.enum(['input', 'marginal']);
 
 export const zTimeMarginalMode = z.enum([
@@ -1740,4 +1731,31 @@ export const zCladeInRuns = z.object({
     matches: z.array(zCladeMatch),
     searched_runs: z.int().gte(0),
     unreadable_runs: z.array(zUnreadableRun)
+});
+
+/**
+ * Class of a back-end error. The web server answers each class with its own HTTP status.
+ */
+export const zErrorCode = z.union([
+    z.literal('not_found'),
+    z.literal('upload_too_large'),
+    z.literal('conflict'),
+    z.literal('invalid_request'),
+    z.literal('internal_error')
+]);
+
+/**
+ * Error of a back-end operation, as the web server and the desktop back end report it.
+ */
+export const zErrorResponse = z.object({
+    code: zErrorCode,
+    message: z.string(),
+    causes: z.array(z.string())
+});
+
+/**
+ * Answer to a cancellation request.
+ */
+export const zCancelRunResponse = z.object({
+    cancelled: z.boolean()
 });

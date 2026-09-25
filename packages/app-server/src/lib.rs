@@ -2,7 +2,6 @@
 mod __tests__;
 
 mod confine;
-pub mod contract;
 mod error;
 mod events;
 mod openapi;

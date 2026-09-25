@@ -9,6 +9,7 @@ import type {
   ClockConfig,
   CreateRunRequest,
   DatasetCatalog,
+  ErrorResponse,
   LogEvent,
   MugrationConfig,
   OptimizeConfig,
@@ -26,6 +27,7 @@ import {
   zCladeInRuns,
   zCommandOutcome,
   zDatasetCatalog,
+  zErrorResponse,
   zInputFacts,
   zIterationEvent,
   zRunConfigResponse,
@@ -105,6 +107,26 @@ export class CommandError extends Error {
     this.jobId = jobId;
     this.causes = causes;
   }
+}
+
+export class BridgeError extends Error {
+  readonly response: ErrorResponse;
+
+  constructor(response: ErrorResponse, context?: string) {
+    const chain = [response.message, ...response.causes].join(": ");
+    super(context === undefined ? chain : `${context}: ${chain}`);
+    this.name = "BridgeError";
+    this.response = response;
+  }
+}
+
+export function parseErrorResponse(data: unknown, fallback: string, context?: string): BridgeError {
+  const parsed = zErrorResponse.safeParse(data);
+  const response: ErrorResponse = parsed.success
+    ? parsed.data
+    : { code: "internal_error", message: fallback, causes: [] };
+
+  return new BridgeError(response, context);
 }
 
 export class RunEndedError extends Error {

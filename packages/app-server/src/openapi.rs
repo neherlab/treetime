@@ -1,3 +1,4 @@
+use app_commands::bridge::error::ErrorResponse;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CommandOutcome};
@@ -12,7 +13,9 @@ use app_commands::run_config::{RunConfigRequest, RunConfigResponse};
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::files::RunFile;
 use app_commands::runs::manager::UploadedInput;
-use app_commands::runs::record::{CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest};
+use app_commands::runs::record::{
+  CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
+};
 use app_commands::runs::setting_differences::SettingDifference;
 use app_datasets::DatasetCatalog;
 use eyre::Report;
@@ -75,11 +78,20 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<RunComparison>(&mut components)?;
   add_type::<CladeRequest>(&mut components)?;
   add_type::<CladeInRuns>(&mut components)?;
+  add_type::<ErrorResponse>(&mut components)?;
+  add_type::<CancelRunResponse>(&mut components)?;
 
   let schemas = doc
-    .pointer_mut("/components/schemas")
-    .and_then(Value::as_object_mut)
-    .ok_or_else(|| make_report!("the OpenAPI document has no component schemas"))?;
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
+    .entry("components")
+    .or_insert_with(|| json!({}))
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI components must be a JSON object"))?
+    .entry("schemas")
+    .or_insert_with(|| json!({}))
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI component schemas must be a JSON object"))?;
   for (name, schema) in components {
     insert_unique(schemas, &name, schema)?;
   }

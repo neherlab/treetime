@@ -1,4 +1,4 @@
-import { CancelledError, CommandError } from "@neherlab/app-contracts";
+import { BridgeError, CancelledError, CommandError } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 import { ZodError } from "zod";
 
@@ -81,12 +81,30 @@ describe("bridge_web queries and requests", () => {
     await expect(bridge.version()).resolves.toStrictEqual({ version: "9.9.9" });
   });
 
-  test("a failed request rejects with the status and the server's message", async () => {
+  test("a failed request rejects with the server's typed error, its causes and the status", async () => {
+    const response = { code: "not_found", message: "When reading run `r9`", causes: ["no run with id `r9`"] };
+    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/runs/r9": () => json(response, 404) }) });
+
+    const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(BridgeError);
+    expect(error).toMatchObject({
+      message: "GET runs/r9: 404: When reading run `r9`: no run with id `r9`",
+      response,
+    });
+  });
+
+  test("a failed request without a typed error body rejects as an internal error with the body text", async () => {
     const bridge = createWebBridge({
-      fetchFn: routes({ "GET /api/runs/r9": () => json({ code: "not_found", message: "no run with id `r9`" }, 404) }),
+      fetchFn: routes({ "GET /api/runs/r9": () => new Response("Bad Gateway", { status: 502 }) }),
     });
 
-    await expect(bridge.getRun("r9")).rejects.toThrow("GET runs/r9: 404 no run with id `r9`");
+    const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
+
+    expect(error).toMatchObject({
+      message: "GET runs/r9: 502: Bad Gateway",
+      response: { code: "internal_error", message: "Bad Gateway", causes: [] },
+    });
   });
 
   test("a malformed result rejects with a ZodError", async () => {

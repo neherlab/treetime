@@ -1,4 +1,3 @@
-use crate::contract::{CancelRunResponse, ErrorResponse};
 use crate::error::AppError;
 use crate::events::run_events_sse;
 use crate::openapi::{add_components, add_setting_catalog, schema_ref};
@@ -12,7 +11,7 @@ use app_commands::results::compare::compare_runs;
 use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::invalid;
-use app_commands::runs::record::{CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
+use app_commands::runs::record::{CancelRunResponse, CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
 use app_datasets::discover_datasets;
 use axum::body::Body;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
@@ -32,7 +31,6 @@ use tokio_stream::StreamExt as _;
 use tokio_util::io::{StreamReader, SyncIoBridge};
 use treetime_schema::version_info;
 use treetime_utils::make_report;
-use utoipa::OpenApi;
 use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -83,7 +81,6 @@ pub fn api_doc() -> Result<Value, Report> {
       .build(),
   );
   api.info.license = Some(LicenseBuilder::new().name(env!("CARGO_PKG_LICENSE")).build());
-  api.merge(SharedSchemas::openapi());
 
   let mut doc = serde_json::to_value(api)?;
   add_components(&mut doc)?;
@@ -314,6 +311,18 @@ fn describe_operation(doc: &mut Value, operation: &Operation) -> Result<(), Repo
       )
     })?;
   entry.insert("x-bridge-type".to_owned(), json!(operation.bridge_type));
+  if let Some(responses) = entry.get_mut("responses").and_then(Value::as_object_mut) {
+    for (status, response) in responses.iter_mut() {
+      if status.starts_with('4') || status.starts_with('5') {
+        if let Some(response) = response.as_object_mut() {
+          response.insert(
+            "content".to_owned(),
+            json!({ "application/json": { "schema": schema_ref("ErrorResponse") } }),
+          );
+        }
+      }
+    }
+  }
   if let Some((content_type, schema)) = &operation.request {
     let mut content = Map::new();
     content.insert((*content_type).to_owned(), json!({ "schema": schema }));
@@ -516,7 +525,7 @@ async fn handle_start_run(
   path = "/api/runs/{id}/cancel",
   operation_id = "runsCancel",
   params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "Whether cancellation was requested; the run ends with a `cancelled` terminal event", body = CancelRunResponse))
+  responses((status = 200, description = "Whether cancellation was requested; the run ends with a `cancelled` terminal event"))
 )]
 async fn handle_cancel_run(
   State(state): State<Arc<AppState>>,
@@ -592,7 +601,7 @@ async fn handle_run_events(
   ),
   responses(
     (status = 200, description = "The stored file and the path to use for it in the run's configuration"),
-    (status = 413, description = "The inputs of the run exceed the upload limit of the server", body = ErrorResponse),
+    (status = 413, description = "The inputs of the run exceed the upload limit of the server"),
   )
 )]
 async fn handle_upload_input(
@@ -698,7 +707,7 @@ fn start_run(state: &Arc<AppState>, id: &JobId, config: Option<Value>) -> Result
   params(("id" = String, Path, description = "Id of a finished run")),
   responses(
     (status = 200, description = "Results of the run, read from its output files"),
-    (status = 409, description = "The run has not finished successfully", body = ErrorResponse),
+    (status = 409, description = "The run has not finished successfully"),
   )
 )]
 async fn handle_run_results(
@@ -759,7 +768,3 @@ fn content_type(extension: &str) -> HeaderValue {
     .map_or("application/octet-stream", |(_, content_type)| *content_type);
   HeaderValue::from_static(content_type)
 }
-
-#[derive(OpenApi)]
-#[openapi(components(schemas(ErrorResponse, CancelRunResponse)))]
-struct SharedSchemas;

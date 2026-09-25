@@ -2,7 +2,15 @@ export type * from "./generated/types.gen";
 
 export * from "./generated/zod.gen";
 
-export { CancelledError, CommandError, RunEndedError, createBridge, parseRunEvent } from "./bridge";
+export {
+  BridgeError,
+  CancelledError,
+  CommandError,
+  RunEndedError,
+  createBridge,
+  parseErrorResponse,
+  parseRunEvent,
+} from "./bridge";
 
 export type {
   BridgeTransport,

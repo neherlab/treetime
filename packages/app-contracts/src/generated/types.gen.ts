@@ -4,15 +4,6 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
-export type CancelRunResponse = {
-    cancelled: boolean;
-};
-
-export type ErrorResponse = {
-    code: string;
-    message: string;
-};
-
 export type BranchLengthMode = 'input' | 'marginal';
 
 export type TimeMarginalMode = 'never' | 'always' | 'only-final';
@@ -4031,6 +4022,39 @@ export type CladeInRuns = {
      * Runs whose tree could not be read, with the reason.
      */
     unreadable_runs: Array<UnreadableRun>;
+};
+
+/**
+ * Class of a back-end error. The web server answers each class with its own HTTP status.
+ */
+export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'internal_error';
+
+/**
+ * Error of a back-end operation, as the web server and the desktop back end report it.
+ */
+export type ErrorResponse = {
+    /**
+     * Class of the error.
+     */
+    code: ErrorCode;
+    /**
+     * What failed.
+     */
+    message: string;
+    /**
+     * Underlying causes, outermost first.
+     */
+    causes: Array<string>;
+};
+
+/**
+ * Answer to a cancellation request.
+ */
+export type CancelRunResponse = {
+    /**
+     * Whether cancellation was requested; the run ends with a `cancelled` terminal event.
+     */
+    cancelled: boolean;
 };
 
 export type ConfigCheckData = {
