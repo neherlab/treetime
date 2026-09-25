@@ -7,12 +7,11 @@ import { defaultText } from "../analysis/SettingField";
 import { formatDecimalDate, formatRate, formatSignedDays } from "../format";
 import { useRunComparison, useRunList, useRunRecords } from "../queries";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import type { TimetreeEstimates } from "../results/types";
+import type { SettingDifference, SettingsComparison, TimetreeEstimates } from "../results/types";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
-import { settingDifferences, type SettingDifference } from "../settings/differences";
 import { baseName } from "../settings/inputs";
-import { zJsonObject } from "../settings/json";
+import { zJsonValue } from "../settings/json";
 import { settingLabel } from "../settings/labels";
 import { Button } from "../ui";
 import { DateIntervals } from "./DateIntervals";
@@ -38,6 +37,10 @@ export function ComparePage({ first, second }: { first: string; second: string }
 
 function Comparison({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
   const navigate = useNavigate();
+  const { data: comparison, error } = useRunComparison(left.id, right.id, true);
+
+  const timetrees =
+    left.command === "timetree" && right.command === "timetree" && left.status === "ok" && right.status === "ok";
 
   const swap = useCallback(
     () => void navigate({ to: "/compare/$a/$b", params: { a: right.id, b: left.id } }),
@@ -55,10 +58,16 @@ function Comparison({ left, right }: { left: RunRecordResult; right: RunRecordRe
         </Button>
         <RunPicker current={right} other={left} side="second" />
       </div>
-      {left.command === "timetree" && right.command === "timetree" && left.status === "ok" && right.status === "ok" && (
-        <TimetreeComparison left={left} right={right} />
+      {comparison === undefined ? (
+        <p className="text-ink-muted">
+          {error === null ? "Comparing the runs..." : `The runs cannot be compared: ${error.message}`}
+        </p>
+      ) : (
+        <>
+          {timetrees && <TimetreeEstimatesComparison left={left} right={right} comparison={comparison} />}
+          <SettingsDifferences left={left} right={right} settings={comparison.settings ?? undefined} />
+        </>
       )}
-      <SettingsDifferences left={left} right={right} />
     </div>
   );
 }
@@ -102,36 +111,31 @@ function RunPicker({
   );
 }
 
-function SettingsDifferences({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
-  const differences = useMemo(() => {
-    if (left.command !== right.command) {
-      return undefined;
-    }
-
-    return settingDifferences(
-      COMMAND_SETTINGS[left.command].specs,
-      { config: zJsonObject.parse(left.config), inputs: left.inputs },
-      { config: zJsonObject.parse(right.config), inputs: right.inputs },
-    );
-  }, [left, right]);
-
-  const sameHash =
-    left.config_hash !== null && left.config_hash !== undefined && left.config_hash === right.config_hash;
+function SettingsDifferences({
+  left,
+  right,
+  settings,
+}: {
+  left: RunRecordResult;
+  right: RunRecordResult;
+  settings: SettingsComparison | undefined;
+}) {
+  const differences = settings?.differences ?? [];
 
   return (
     <Panel
       title="Settings that differ"
       hint={
-        differences === undefined
+        settings === undefined
           ? "The runs use different analyses"
           : differences.length === 0
-            ? sameHash
+            ? settings.same_config_hash
               ? "None: same settings on the same input contents"
               : "None"
-            : `${differences.length} of ${COMMAND_SETTINGS[left.command].specs.length}`
+            : `${differences.length} of ${settings.compared}`
       }
     >
-      {differences !== undefined && differences.length > 0 && (
+      {differences.length > 0 && (
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="text-ink-faint text-xs">
@@ -146,7 +150,7 @@ function SettingsDifferences({ left, right }: { left: RunRecordResult; right: Ru
           </thead>
           <tbody>
             {differences.map((difference) => (
-              <DifferenceRow key={difference.spec.key} difference={difference} />
+              <DifferenceRow key={difference.key} command={left} difference={difference} />
             ))}
           </tbody>
         </table>
@@ -155,23 +159,28 @@ function SettingsDifferences({ left, right }: { left: RunRecordResult; right: Ru
   );
 }
 
-function DifferenceRow({ difference }: { difference: SettingDifference }) {
+function DifferenceRow({ command, difference }: { command: RunRecordResult; difference: SettingDifference }) {
+  const flag = COMMAND_SETTINGS[command.command].specs.find((spec) => spec.key === difference.key)?.flag;
+
   return (
     <tr className="border-line border-t">
       <td className="px-3.5 py-1.5">
-        {settingLabel(difference.spec.key)}{" "}
-        <code className="text-ink-faint font-mono text-xs">{difference.spec.flag}</code>
+        {settingLabel(difference.key)} <code className="text-ink-faint font-mono text-xs">{flag}</code>
         {difference.kind === "input" && (
           <span className="text-ink-muted block text-xs">
-            {difference.sameContent ? "Same file contents" : "Different file contents"}
+            {difference.same_content ? "Same file contents" : "Different file contents"}
           </span>
         )}
       </td>
       <td className="px-3.5 py-1.5 font-mono text-xs break-all">
-        {difference.kind === "input" ? difference.first.map(baseName).join(", ") : defaultText(difference.first)}
+        {difference.kind === "input"
+          ? difference.first.map(baseName).join(", ")
+          : defaultText(zJsonValue.parse(difference.first))}
       </td>
       <td className="px-3.5 py-1.5 font-mono text-xs break-all">
-        {difference.kind === "input" ? difference.second.map(baseName).join(", ") : defaultText(difference.second)}
+        {difference.kind === "input"
+          ? difference.second.map(baseName).join(", ")
+          : defaultText(zJsonValue.parse(difference.second))}
       </td>
     </tr>
   );
@@ -183,20 +192,6 @@ function RunLink({ record }: { record: RunRecordResult }) {
       {record.title}
     </Link>
   );
-}
-
-function TimetreeComparison({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
-  const { data, error } = useRunComparison(left.id, right.id, true);
-
-  if (data === undefined) {
-    return (
-      <p className="text-ink-muted">
-        {error === null ? "Reading the outputs..." : `The outputs cannot be read: ${error.message}`}
-      </p>
-    );
-  }
-
-  return <TimetreeEstimatesComparison left={left} right={right} comparison={data} />;
 }
 
 function TimetreeEstimatesComparison({

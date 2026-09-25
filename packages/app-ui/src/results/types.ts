@@ -14,6 +14,8 @@ import type {
   zResultNode,
   zResultTree,
   zRootToTip,
+  zSettingDifference,
+  zSettingsComparison,
   zSkylineSegment,
   zStateChange,
   zTimetreeEstimates,
@@ -48,6 +50,10 @@ export type ResultNode = Parsed<typeof zResultNode>;
 export type ResultTree = Parsed<typeof zResultTree>;
 
 export type RootToTip = Parsed<typeof zRootToTip>;
+
+export type SettingDifference = Parsed<typeof zSettingDifference>;
+
+export type SettingsComparison = Parsed<typeof zSettingsComparison>;
 
 export type SkylineSegment = Parsed<typeof zSkylineSegment>;
 
