@@ -8,9 +8,9 @@ Multiple locations suppress errors by substituting default values for semantical
 
 ### unwrap_or_default() on semantically important data (8 instances)
 
-- `clock/clock_filter.rs:41:` branch length defaults to 0.0
+- `clock/clock_filter.rs:124:` branch length defaults to 0.0
 - `clock/reroot.rs:178:` branch length defaults to 0.0
-- `clock/rtt.rs:36:` branch length defaults to 0.0
+- `clock/rtt.rs:30:` branch length defaults to 0.0. The clock regression panics on the same input instead: [M-clock-regression-panics-on-missing-branch-length.md](M-clock-regression-panics-on-missing-branch-length.md)
 - `seq/div.rs:26:` parent divergence defaults to 0.0
 - `seq/div.rs:28:` branch length defaults to 0.0
 - `partition/marginal_discrete.rs:60:` node name defaults to empty string
