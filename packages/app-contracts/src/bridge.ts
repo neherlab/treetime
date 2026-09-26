@@ -221,7 +221,9 @@ export interface TreeTimeBridge {
   mugration(config: MugrationConfig, options?: CommandOptions): Promise<CommandOutcomeResult>;
 }
 
-export function createBridge(transport: BridgeTransport): TreeTimeBridge {
+export function createBridge(transport: BridgeTransport, logger: RunLogger = console): TreeTimeBridge {
+  const loggedEvents = new Map<string, number>();
+
   async function followRun(id: string, options: FollowRunOptions = {}): Promise<TerminalEventResult> {
     let terminal: TerminalEventResult | undefined;
 
@@ -230,8 +232,9 @@ export function createBridge(transport: BridgeTransport): TreeTimeBridge {
       onEvent: (data) => {
         const event = parseRunEvent(data);
 
-        if (event.type === "log") {
-          logToConsole(event.data);
+        if (event.type === "log" && event.seq >= (loggedEvents.get(id) ?? 0)) {
+          loggedEvents.set(id, event.seq + 1);
+          logRunEvent(logger, event.data);
         }
 
         if (event.type === "terminal") {
@@ -398,21 +401,23 @@ function dispatchEvent(event: RunEventResult, options: CommandOptions): void {
   }
 }
 
-function logToConsole(log: LogEvent): void {
+function logRunEvent(logger: RunLogger, log: LogEvent): void {
   switch (log.level) {
     case "error":
-      console.error(`[TreeTime] ${log.message}`);
+      logger.error(`[TreeTime] ${log.message}`);
       break;
     case "warn":
-      console.warn(`[TreeTime] ${log.message}`);
+      logger.warn(`[TreeTime] ${log.message}`);
       break;
     case "info":
     case "debug":
     case "trace":
-      console.log(`[TreeTime] [${log.level}] ${log.message}`);
+      logger.log(`[TreeTime] [${log.level}] ${log.message}`);
       break;
   }
 }
+
+type RunLogger = Pick<Console, "error" | "warn" | "log">;
 
 export function parseRunEvent(data: unknown): RunEventResult {
   return zRunEvent.parse(data);

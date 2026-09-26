@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { setHeapSnapshotNearHeapLimit } from "node:v8";
 
-export function initDiagnostics(title: string): void {
+export const DIAGNOSTIC_DIR_ENV = "TREETIME_DIAGNOSTIC_DIR";
+
+export function initDiagnostics(title: string, diagnosticDir: string): void {
   process.title = title;
 
   Error.stackTraceLimit = 50;
@@ -12,7 +13,6 @@ export function initDiagnostics(title: string): void {
     console.warn(warning.stack ?? `${warning.name}: ${warning.message}`);
   });
 
-  const diagnosticDir = resolve(process.env["TREETIME_DIAGNOSTIC_DIR"] ?? resolve(process.cwd(), "tmp/diagnostics"));
   mkdirSync(diagnosticDir, { recursive: true });
 
   if (process.report !== undefined) {

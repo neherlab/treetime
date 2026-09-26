@@ -30,11 +30,15 @@ import {
   SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
 } from "./channels";
-import { initDiagnostics } from "./diagnostics";
+import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
 import { zSaveRunArchiveRequest, zSaveRunFileRequest, type SaveReply } from "./shell-protocol";
 
-initDiagnostics("treetime-desktop");
+const diagnosticDir =
+  process.env[DIAGNOSTIC_DIR_ENV] ??
+  (app.isPackaged ? path.join(app.getPath("logs"), "diagnostics") : path.resolve(process.cwd(), "tmp/diagnostics"));
+
+initDiagnostics("treetime-desktop", diagnosticDir);
 
 if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
   app.commandLine.appendSwitch("no-sandbox");
@@ -104,6 +108,7 @@ class BackendProcess {
       serviceName: "TreeTime back end",
       cwd: process.cwd(),
       stdio: "inherit",
+      env: { ...process.env, [DIAGNOSTIC_DIR_ENV]: diagnosticDir },
     });
 
     child.on("message", (message) => {

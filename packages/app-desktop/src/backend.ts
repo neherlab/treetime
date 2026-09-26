@@ -3,9 +3,13 @@ import type { MessagePortMain } from "electron";
 
 import { saveRunFiles, serveBackend } from "./backend-host";
 import { zBackendRequest, zControlRequest, type HostEndpoint, type SaveRequest } from "./backend-protocol";
-import { initDiagnostics } from "./diagnostics";
+import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 
-initDiagnostics("treetime-backend");
+const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV];
+
+if (diagnosticDir !== undefined) {
+  initDiagnostics("treetime-backend", diagnosticDir);
+}
 
 const runsDir = process.argv.at(-1);
 

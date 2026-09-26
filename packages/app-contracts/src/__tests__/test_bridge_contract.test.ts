@@ -293,6 +293,31 @@ describe("bridge run events", () => {
     expect(seen).toStrictEqual([1, 2]);
   });
 
+  test("following a run again prints each log event to the console once", async () => {
+    const stream = events(
+      { type: "log", data: { level: "info", message: "a" } },
+      { type: "log", data: { level: "info", message: "b" } },
+      { type: "terminal", data: { status: "cancelled", job_id: "r1" } },
+    );
+
+    const printed: string[] = [];
+
+    const print = (message: string) => {
+      printed.push(message);
+    };
+
+    const bridge = createBridge(stubTransport({ runEvents: replay(stream) }), {
+      log: print,
+      warn: print,
+      error: print,
+    });
+
+    await bridge.followRun("r1");
+    await bridge.followRun("r1");
+
+    expect(printed).toStrictEqual(["[TreeTime] [info] a", "[TreeTime] [info] b"]);
+  });
+
   test("followRun rejects when the stream ends without a terminal event", async () => {
     const stream = events({ type: "started", data: { job_id: "r1", command: "clock" } });
     const bridge = createBridge(stubTransport({ runEvents: replay(stream) }));
