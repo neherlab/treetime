@@ -7,6 +7,7 @@ use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
+use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
@@ -32,7 +33,7 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 #[derive(Debug, Clone)]
 pub struct TreetimeTimetreeArgs {
   pub(crate) alignment: AlignmentArgs,
-  pub(crate) tree: Option<PathBuf>,
+  pub(crate) tree: PathBuf,
   #[expect(
     dead_code,
     reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
@@ -139,9 +140,12 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
+    let tree = raw
+      .tree
+      .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
     Ok(Self {
       alignment: raw.alignment,
-      tree: raw.tree,
+      tree,
       vcf_reference: raw.vcf_reference,
       metadata: raw.metadata,
       metadata_id: raw.metadata_id,
@@ -222,9 +226,7 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Name of file containing the tree in newick, nexus, or phylip format.
-  ///
-  /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+  /// Tree in Newick format.
   #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

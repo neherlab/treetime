@@ -50,9 +50,7 @@ export type TimetreeConfig = {
      */
     alignment?: Array<string>;
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
-     *
-     * If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**
@@ -608,9 +606,7 @@ export type OptimizeConfig = {
      */
     alignment?: Array<string>;
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
-     *
-     * If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**
@@ -910,7 +906,7 @@ export type PruneConfig = {
      */
     alignment?: Array<string>;
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**
@@ -1145,9 +1141,7 @@ export type AncestralConfig = {
      */
     vcf_reference?: string | null;
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
-     *
-     * If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**
@@ -1531,9 +1525,7 @@ export type ClockConfig = {
      */
     alignment?: Array<string>;
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
-     *
-     * If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**
@@ -1802,9 +1794,7 @@ export type MugrationOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'Ma
  */
 export type MugrationConfig = {
     /**
-     * Name of file containing the tree in newick, nexus, or phylip format.
-     *
-     * If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+     * Tree in Newick format.
      */
     tree?: string | null;
     /**

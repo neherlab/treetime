@@ -16,7 +16,6 @@ use treetime::clock::clock_state::{ClockInputs, ClockState};
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime::make_error;
 use treetime::make_report;
 use treetime::progress::ProgressSink;
 use treetime_graph::graph::Graph;
@@ -36,11 +35,7 @@ pub fn run_clock(
   cancel.check()?;
   progress.report("Reading input", 0.0, "");
 
-  let nwk_parsed = if let Some(tree) = &clock_args.tree {
-    nwk_read_file(tree)
-  } else {
-    return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
-  }?;
+  let nwk_parsed = nwk_read_file(&clock_args.tree)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

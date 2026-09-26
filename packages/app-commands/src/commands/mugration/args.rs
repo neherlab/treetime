@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct TreetimeMugrationArgs {
-  pub(crate) tree: Option<PathBuf>,
+  pub(crate) tree: PathBuf,
   pub(crate) attribute: String,
   pub(crate) metadata: PathBuf,
   pub(crate) weights: Option<PathBuf>,
@@ -53,9 +53,9 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeMugrationArgsRaw) -> Result<Self, Report> {
-    match (raw.metadata, raw.attribute) {
-      (Some(metadata), Some(attribute)) => Ok(Self {
-        tree: raw.tree,
+    match (raw.tree, raw.metadata, raw.attribute) {
+      (Some(tree), Some(metadata), Some(attribute)) => Ok(Self {
+        tree,
         attribute,
         metadata,
         weights: raw.weights,
@@ -76,8 +76,11 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
         output_selection: raw.output_selection,
         topology_order: raw.topology_order,
       }),
-      (metadata, attribute) => {
+      (tree, metadata, attribute) => {
         let mut missing = Vec::new();
+        if tree.is_none() {
+          missing.push("tree");
+        }
         if metadata.is_none() {
           missing.push("metadata");
         }
@@ -98,9 +101,7 @@ pub struct TreetimeMugrationArgsRaw {
   #[serde(skip)]
   pub config_args: ConfigArgs,
 
-  /// Name of file containing the tree in newick, nexus, or phylip format.
-  ///
-  /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+  /// Tree in Newick format.
   #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

@@ -324,7 +324,7 @@ pub fn run_timetree_estimation(
       confidence_intervals.as_deref(),
       dates.as_ref(),
       alignment,
-      args.tree.as_deref(),
+      Some(args.tree.as_path()),
       mutation_counts.as_ref(),
       path,
     )?;

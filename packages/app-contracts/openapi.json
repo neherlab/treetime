@@ -905,7 +905,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -1726,7 +1726,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -2085,7 +2085,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -2399,7 +2399,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -2926,7 +2926,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -3356,7 +3356,7 @@
               "string",
               "null"
             ],
-            "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+            "description": "Tree in Newick format.",
             "default": null,
             "x-path": "input",
             "x-cli-flag": "--tree"
@@ -8258,8 +8258,8 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
-            "more": "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)"
+            "help": "Tree in Newick format.",
+            "more": ""
           },
           {
             "key": "vcf_reference",
@@ -10557,8 +10557,8 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
-            "more": "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)"
+            "help": "Tree in Newick format.",
+            "more": ""
           },
           {
             "key": "alphabet",
@@ -11750,7 +11750,7 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
+            "help": "Tree in Newick format.",
             "more": ""
           },
           {
@@ -12577,8 +12577,8 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
-            "more": "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)"
+            "help": "Tree in Newick format.",
+            "more": ""
           },
           {
             "key": "alphabet",
@@ -13960,8 +13960,8 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
-            "more": "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)"
+            "help": "Tree in Newick format.",
+            "more": ""
           },
           {
             "key": "vcf_reference",
@@ -15416,8 +15416,8 @@
               "TREE"
             ],
             "conflicts": [],
-            "help": "Name of file containing the tree in newick, nexus, or phylip format.",
-            "more": "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)"
+            "help": "Tree in Newick format.",
+            "more": ""
           },
           {
             "key": "attribute",

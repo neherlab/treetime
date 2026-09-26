@@ -11,6 +11,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;
+use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -27,7 +28,7 @@ pub struct TreetimeClockArgs {
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
   )]
   pub(crate) alignment: AlignmentArgs,
-  pub(crate) tree: Option<PathBuf>,
+  pub(crate) tree: PathBuf,
   #[expect(
     dead_code,
     reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
@@ -102,12 +103,19 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeClockArgsRaw) -> Result<Self, Report> {
-    let metadata = raw
-      .metadata
-      .ok_or_else(|| missing_required_args::<TreetimeClockArgsRaw>(&["metadata"]))?;
+    let (tree, metadata) = match (raw.tree, raw.metadata) {
+      (Some(tree), Some(metadata)) => (tree, metadata),
+      (tree, metadata) => {
+        let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
+          .into_iter()
+          .filter_map(|(key, missing)| missing.then_some(key))
+          .collect_vec();
+        return Err(missing_required_args::<TreetimeClockArgsRaw>(&missing));
+      },
+    };
     Ok(Self {
       alignment: raw.alignment,
-      tree: raw.tree,
+      tree,
       vcf_reference: raw.vcf_reference,
       metadata,
       metadata_id: raw.metadata_id,
@@ -151,9 +159,7 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Name of file containing the tree in newick, nexus, or phylip format.
-  ///
-  /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+  /// Tree in Newick format.
   #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

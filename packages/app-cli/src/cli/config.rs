@@ -416,24 +416,37 @@ mod tests {
     }
 
     #[test]
-    fn test_config_required_clock_missing_metadata_errors() {
+    fn test_config_required_clock_missing_tree_and_metadata_lists_both() {
       assert_error!(
         TreetimeClockArgs::try_from(TreetimeClockArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_clock_missing_metadata_errors() {
+      let raw = TreetimeClockArgsRaw {
+        tree: Some("tree.nwk".into()),
+        ..Default::default()
+      };
+      assert_error!(
+        TreetimeClockArgs::try_from(raw),
         "the following required arguments were not provided:\n  --metadata <METADATA>"
       );
     }
 
     #[test]
-    fn test_config_required_mugration_missing_both_lists_both() {
+    fn test_config_required_mugration_missing_all_lists_all() {
       assert_error!(
         TreetimeMugrationArgs::try_from(TreetimeMugrationArgsRaw::default()),
-        "the following required arguments were not provided:\n  --metadata <METADATA>\n  --attribute <ATTRIBUTE>"
+        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>\n  --attribute <ATTRIBUTE>"
       );
     }
 
     #[test]
     fn test_config_required_mugration_only_attribute_missing_lists_attribute() {
       let raw = TreetimeMugrationArgsRaw {
+        tree: Some("tree.nwk".into()),
         metadata: Some("metadata.tsv".into()),
         ..Default::default()
       };
@@ -446,6 +459,7 @@ mod tests {
     #[test]
     fn test_config_required_mugration_only_metadata_missing_lists_metadata() {
       let raw = TreetimeMugrationArgsRaw {
+        tree: Some("tree.nwk".into()),
         attribute: Some("country".to_owned()),
         ..Default::default()
       };
@@ -464,8 +478,20 @@ mod tests {
     }
 
     #[test]
-    fn test_config_required_timetree_defaults_ok() {
-      TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()).unwrap();
+    fn test_config_required_timetree_missing_tree_errors() {
+      assert_error!(
+        TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_timetree_with_tree_ok() {
+      let raw = TreetimeTimetreeArgsRaw {
+        tree: Some("tree.nwk".into()),
+        ..Default::default()
+      };
+      TreetimeTimetreeArgs::try_from(raw).unwrap();
     }
   }
 

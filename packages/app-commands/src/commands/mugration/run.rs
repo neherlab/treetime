@@ -9,7 +9,6 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
-use treetime::make_report;
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
 use treetime::progress::ProgressSink;
 use treetime::progress_info;
@@ -26,11 +25,7 @@ pub fn run_mugration(
 ) -> Result<MugrationResult, Report> {
   cancel.check()?;
   progress.report("Reading input", 0.0, "");
-  let tree_path = mugration_args
-    .tree
-    .as_ref()
-    .ok_or_else(|| make_report!("Tree file is required"))?;
-  let parse = nwk_read_file(tree_path)?;
+  let parse = nwk_read_file(&mugration_args.tree)?;
   let confidences = parse.confidences();
   let names = parse.names();
   let graph: Graph = parse.graph;

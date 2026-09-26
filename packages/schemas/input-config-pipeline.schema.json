@@ -142,7 +142,7 @@
           "x-path": "input"
         },
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"
@@ -1330,7 +1330,7 @@
           "x-path": "input"
         },
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"
@@ -1894,7 +1894,7 @@
           "x-path": "input"
         },
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"
@@ -2199,7 +2199,7 @@
           "x-path": "input"
         },
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"
@@ -2746,7 +2746,7 @@
           "x-path": "input"
         },
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"
@@ -3404,7 +3404,7 @@
       "type": "object",
       "properties": {
         "tree": {
-          "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+          "description": "Tree in Newick format.",
           "type": [
             "string",
             "null"

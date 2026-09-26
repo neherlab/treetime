@@ -115,9 +115,7 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Name of file containing the tree in newick, nexus, or phylip format.
-  ///
-  /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+  /// Tree in Newick format.
   #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]

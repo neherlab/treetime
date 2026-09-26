@@ -109,9 +109,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
 * `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -395,9 +393,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -615,7 +611,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -760,9 +756,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -971,9 +965,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
 * `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -1180,9 +1172,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--config <CONFIG>`
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -1397,9 +1387,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
-
-   If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+* `-t`, `--tree <TREE>` — Tree in Newick format
 * `--attribute <ATTRIBUTE>` — Attribute to reconstruct, e.g. country
 * `-s`, `--metadata <METADATA>` [alias: `states`] — CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
 * `-w`, `--weights <WEIGHTS>` — CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...

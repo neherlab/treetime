@@ -15,7 +15,7 @@
       "x-cli-flag": "--alignment"
     },
     "tree": {
-      "description": "Name of file containing the tree in newick, nexus, or phylip format.",
+      "description": "Tree in Newick format.",
       "type": [
         "string",
         "null"

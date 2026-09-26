@@ -75,7 +75,7 @@ pub struct TreetimePruneArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Name of file containing the tree in newick, nexus, or phylip format.
+  /// Tree in Newick format.
   #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
