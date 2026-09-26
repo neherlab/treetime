@@ -596,14 +596,14 @@ mod tests {
     let doc = api_doc().unwrap();
     assert_eq!(
       (
-        json!("create-run"),
+        json!("runsCreate"),
         json!("#/components/schemas/CreateRunRequest"),
         json!("#/components/schemas/ErrorResponse"),
         json!("#/components/schemas/OperationRequest"),
         json!("#/components/schemas/RunEvent"),
       ),
       (
-        doc["paths"]["/api/runs"]["post"]["x-operation"].clone(),
+        doc["paths"]["/api/runs"]["post"]["operationId"].clone(),
         doc["paths"]["/api/runs"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
         doc["paths"]["/api/runs/{id}"]["get"]["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
           .clone(),

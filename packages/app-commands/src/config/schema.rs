@@ -11,7 +11,11 @@ pub fn command_schema<T: JsonSchema>() -> Schema {
 }
 
 pub fn draft2020_generator() -> SchemaGenerator {
-  SchemaSettings::draft2020_12().into_generator()
+  draft2020_settings().into_generator()
+}
+
+pub fn draft2020_settings() -> SchemaSettings {
+  SchemaSettings::draft2020_12()
 }
 
 fn allow_schema_ref(schema: &mut Schema) {

@@ -4,6 +4,2058 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+/**
+ * Liveness of the server.
+ */
+export type HealthStatus = {
+    /**
+     * Always `ok`.
+     */
+    status: string;
+    /**
+     * Version of TreeTime.
+     */
+    version: string;
+};
+
+export type VersionInfo = {
+    version: string;
+};
+
+/**
+ * Error of a back-end operation, as the web server and the desktop back end report it.
+ */
+export type ErrorResponse = {
+    /**
+     * Class of the error.
+     */
+    code: ErrorCode;
+    /**
+     * What failed.
+     */
+    message: string;
+    /**
+     * Underlying causes, outermost first.
+     */
+    causes: Array<string>;
+};
+
+/**
+ * Class of a back-end error. The web server answers each class with its own HTTP status.
+ */
+export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'internal_error';
+
+/**
+ * Example datasets and example command configurations found in the data directory.
+ */
+export type DatasetCatalog = {
+    /**
+     * Data directory as a run configuration names it: a path relative to the working directory of the process that
+     * runs the commands, as in the example configurations.
+     */
+    data_dir: string;
+    /**
+     * Directories that hold a `tree.nwk`, with their files.
+     */
+    datasets: Array<Dataset>;
+    /**
+     * Example configurations of the commands the application runs.
+     */
+    examples: Array<ExampleConfig>;
+};
+
+/**
+ * A directory of example input files.
+ */
+export type Dataset = {
+    /**
+     * Path of the directory relative to the data directory, with `/` separators.
+     */
+    name: string;
+    /**
+     * Names of the files in the directory, sorted.
+     */
+    files: Array<string>;
+    /**
+     * The files of the directory that fill command inputs, at most one per kind.
+     */
+    inputs: Array<DatasetInput>;
+};
+
+/**
+ * A file of an example dataset that fills a command input.
+ */
+export type DatasetInput = {
+    /**
+     * Input the file fills.
+     */
+    kind: InputKind;
+    /**
+     * Path of the file relative to the data directory, with `/` separators.
+     */
+    file: string;
+    /**
+     * Path of the file as a run configuration names it.
+     */
+    path: string;
+};
+
+/**
+ * Kind of input file.
+ */
+export type InputKind = 'tree' | 'metadata' | 'alignment';
+
+/**
+ * An example configuration file of one command.
+ */
+export type ExampleConfig = {
+    /**
+     * Path of the file relative to the data directory, with `/` separators.
+     */
+    path: string;
+    /**
+     * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
+     */
+    command: AppCommand;
+    /**
+     * Title of the example: the first comment line after the directive.
+     */
+    title: string;
+    /**
+     * Text of the file.
+     */
+    content: string;
+};
+
+/**
+ * Analysis command that every client can run.
+ */
+export type AppCommand = 'timetree' | 'optimize' | 'prune' | 'ancestral' | 'clock' | 'mugration';
+
+/**
+ * Request to check a configuration.
+ */
+export type CheckConfigRequest = {
+    /**
+     * Command the configuration is for, unless the text starts with the `yaml-language-server` schema directive of
+     * another command.
+     */
+    command: AppCommand;
+    /**
+     * Configuration as YAML or JSON text.
+     */
+    text: string;
+    /**
+     * Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
+     * into.
+     */
+    inputs?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Facts about the input files, from `check-inputs`, for the checks that depend on them.
+     */
+    input_facts?: InputFacts | null;
+};
+
+/**
+ * Facts about the input files of a run, read with the readers the commands use.
+ */
+export type InputFacts = {
+    /**
+     * Facts about the tree, when it could be read.
+     */
+    tree?: TreeFacts | null;
+    /**
+     * Facts about the alignment, when it could be read.
+     */
+    alignment?: AlignmentFacts | null;
+    /**
+     * Facts about the metadata table, when it could be read.
+     */
+    metadata?: MetadataFacts | null;
+    /**
+     * Tree tips without a metadata row; present when both the tree and the metadata could be read.
+     */
+    tips_without_metadata?: Array<string> | null;
+    /**
+     * Tree tips without a sequence; present when both the tree and the alignment could be read.
+     */
+    tips_without_sequence?: Array<string> | null;
+    /**
+     * Inputs that could not be read, with the reason.
+     */
+    problems: Array<InputProblem>;
+};
+
+/**
+ * Facts about a tree.
+ */
+export type TreeFacts = {
+    /**
+     * Number of tips.
+     */
+    tips: number;
+    /**
+     * Number of internal nodes, the root included.
+     */
+    internal_nodes: number;
+    /**
+     * Number of internal nodes with more than two children.
+     */
+    polytomies: number;
+    /**
+     * Number of tips without a name.
+     */
+    unnamed_tips: number;
+    /**
+     * Tip names that occur more than once.
+     */
+    duplicate_tip_names: Array<string>;
+};
+
+/**
+ * Facts about an alignment.
+ */
+export type AlignmentFacts = {
+    /**
+     * Number of sequences.
+     */
+    sequences: number;
+    /**
+     * Length of the shortest sequence.
+     */
+    min_length: number;
+    /**
+     * Length of the longest sequence; equal to `min_length` for an alignment.
+     */
+    max_length: number;
+    /**
+     * Sequence names that occur more than once.
+     */
+    duplicate_names: Array<string>;
+};
+
+/**
+ * Facts about a metadata table.
+ */
+export type MetadataFacts = {
+    /**
+     * Number of data rows.
+     */
+    rows: number;
+    /**
+     * Column names, in file order.
+     */
+    columns: Array<string>;
+    /**
+     * Column that holds the sample names.
+     */
+    id_column: string;
+    /**
+     * Column that holds the sampling dates, when one was found.
+     */
+    date_column?: string | null;
+    /**
+     * Facts about the sampling dates, when the date column could be read.
+     */
+    dates?: DateFacts | null;
+};
+
+/**
+ * Facts about the sampling dates of a metadata table.
+ */
+export type DateFacts = {
+    /**
+     * Samples with a date the date parser reads.
+     */
+    readable: number;
+    /**
+     * Samples whose date cannot be read, by name.
+     */
+    unreadable: Array<string>;
+    /**
+     * Samples whose date is a calendar day.
+     */
+    exact_days: number;
+    /**
+     * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
+     */
+    on_day_1_or_15: number;
+};
+
+/**
+ * An input that could not be read.
+ */
+export type InputProblem = {
+    /**
+     * Input the problem concerns.
+     */
+    input: InputKind;
+    /**
+     * The error, with its causes.
+     */
+    message: string;
+};
+
+/**
+ * Outcome of checking a configuration without running it.
+ */
+export type CheckConfigResponse = {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * The configuration with every default filled in.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+    /**
+     * The command line and the YAML config that reproduce the configuration.
+     */
+    code: ConfigCode;
+    /**
+     * Findings about the configuration and its input files.
+     */
+    checks: Array<RunCheck>;
+    status: 'valid';
+} | {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+    /**
+     * Problems found by parsing and by the schema check, empty for other errors.
+     */
+    problems: Array<ConfigProblem>;
+    /**
+     * The problems drawn against the configuration text, when the text could be parsed.
+     */
+    rendered?: string | null;
+    /**
+     * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
+     */
+    messages: Array<string>;
+    /**
+     * Findings about the configuration and its input files; the rejection is among them.
+     */
+    checks: Array<RunCheck>;
+    status: 'invalid';
+};
+
+/**
+ * A command line and a YAML config that reproduce a configuration.
+ */
+export type ConfigCode = {
+    /**
+     * The command line, one flag per line.
+     */
+    command_line: Array<CodeLine>;
+    /**
+     * The command line as a shell reads it, with a line continuation after every flag but the last.
+     */
+    command_line_text: string;
+    /**
+     * The YAML config, line by line.
+     */
+    yaml: Array<CodeLine>;
+    /**
+     * The YAML config as a file holds it.
+     */
+    yaml_text: string;
+    /**
+     * Name to save the YAML config under.
+     */
+    config_file: string;
+    /**
+     * The command line that runs the saved YAML config.
+     */
+    config_command: string;
+};
+
+/**
+ * One line of a command line or a YAML config.
+ */
+export type CodeLine = {
+    /**
+     * Text of the line.
+     */
+    text: string;
+    /**
+     * What the line sets.
+     */
+    kind: CodeLineKind;
+};
+
+/**
+ * What a line of a command line or a YAML config sets.
+ */
+export type CodeLineKind = 'command' | 'input' | 'changed' | 'output' | 'comment';
+
+/**
+ * A finding about a configuration and its input files, before a run.
+ */
+export type RunCheck = {
+    /**
+     * Identifier of the check, stable across calls for the same finding.
+     */
+    id: string;
+    /**
+     * How the finding affects the run.
+     */
+    level: CheckLevel;
+    /**
+     * The finding, as a sentence.
+     */
+    text: string;
+    /**
+     * Keys of the settings the finding concerns.
+     */
+    settings: Array<string>;
+    /**
+     * Change of settings that resolves the finding, when there is one.
+     */
+    fix?: CheckFix | null;
+};
+
+/**
+ * How a finding affects the run.
+ */
+export type CheckLevel = 'block' | 'warn' | 'advice';
+
+/**
+ * Change of settings that resolves a finding.
+ */
+export type CheckFix = {
+    /**
+     * Label of the action, for example `Use covariation`.
+     */
+    label: string;
+    /**
+     * Settings to set.
+     */
+    patch: Array<SettingPatch>;
+};
+
+/**
+ * New value of one setting.
+ */
+export type SettingPatch = {
+    /**
+     * Key path of the setting.
+     */
+    path: Array<string>;
+    /**
+     * The value to set.
+     */
+    value: unknown;
+};
+
+/**
+ * One problem found in a configuration.
+ */
+export type ConfigProblem = {
+    /**
+     * Stable diagnostic code, for example `config::unknown-field`.
+     */
+    code: string;
+    /**
+     * Human-readable description of the problem.
+     */
+    message: string;
+    /**
+     * Byte offset and length of the offending text in the config, when known.
+     */
+    span?: ConfigSpan | null;
+    /**
+     * Suggestion for fixing the problem.
+     */
+    help?: string | null;
+};
+
+/**
+ * Location of a problem in the configuration text.
+ */
+export type ConfigSpan = {
+    /**
+     * Byte offset of the first character.
+     */
+    offset: number;
+    /**
+     * Length in bytes.
+     */
+    length: number;
+};
+
+/**
+ * Request to resolve a configuration as a run resolves it, without running it.
+ */
+export type RunConfigRequest = {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the command, in the form `treetime <command> --config` reads.
+     */
+    config: unknown;
+};
+
+/**
+ * Outcome of resolving a configuration as a run resolves it.
+ */
+export type RunConfigResponse = {
+    /**
+     * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
+     * `output_all` set to `out`.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+    /**
+     * The command line and the YAML config that reproduce the run.
+     */
+    code: ConfigCode;
+    /**
+     * Hash that a run of this configuration records, to find finished runs with the same settings and input
+     * contents; absent when an input cannot be read.
+     */
+    config_hash?: string | null;
+    /**
+     * Why `config_hash` is absent.
+     */
+    config_hash_error?: string | null;
+    status: 'valid';
+} | {
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+    /**
+     * Problems found by parsing and by the schema check, empty for other errors.
+     */
+    problems: Array<ConfigProblem>;
+    status: 'invalid';
+};
+
+/**
+ * A command configuration whose input files to inspect before a run.
+ */
+export type CheckInputsRequest = {
+    /**
+     * Command the configuration is for.
+     */
+    command: AppCommand;
+    /**
+     * Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * Runs, newest first, and the number of runs computing now.
+ */
+export type RunList = {
+    /**
+     * Runs, newest first.
+     */
+    runs: Array<RunSummary>;
+    /**
+     * Number of runs whose computation is running now. Every run shares one pool of processing threads.
+     */
+    active_runs: number;
+};
+
+/**
+ * Entry of a run list.
+ */
+export type RunSummary = {
+    /**
+     * Identifier of the run.
+     */
+    id: JobId;
+    /**
+     * Title of the run.
+     */
+    title: string;
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * State of the run.
+     */
+    status: RunStatus;
+    /**
+     * Whether the run is pinned.
+     */
+    pinned: boolean;
+    /**
+     * Time the run was created.
+     */
+    created_at: string;
+    /**
+     * Time the run ended.
+     */
+    finished_at?: string | null;
+    /**
+     * Duration of the computation, in seconds.
+     */
+    duration_seconds?: number | null;
+    /**
+     * Hash that identifies runs with the same settings and input contents.
+     */
+    config_hash?: string | null;
+    /**
+     * Setting keys whose values differ from the command defaults.
+     */
+    changed_settings: Array<string>;
+    /**
+     * Key results of a finished run.
+     */
+    headline: RunHeadline;
+};
+
+/**
+ * Identifier of one command run, unique among the jobs of a process.
+ */
+export type JobId = string;
+
+/**
+ * State of a run.
+ */
+export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | 'interrupted';
+
+/**
+ * Key results of a finished run, for run lists; the same values the run's results show.
+ */
+export type RunHeadline = {
+    /**
+     * Date of the root of a time tree.
+     */
+    root_date?: YearDate | null;
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    clock_rate?: JsonFloat | null;
+    /**
+     * Coefficient of determination of the clock model.
+     */
+    r_squared?: JsonFloat | null;
+};
+
+/**
+ * A date as a decimal year and as a calendar day.
+ */
+export type YearDate = {
+    /**
+     * The date as a decimal year, for example `2015.47`.
+     */
+    year: number;
+    /**
+     * The calendar day of the date, as `YYYY-MM-DD`.
+     */
+    date: string;
+};
+
+/**
+ * A number; infinities and NaN are the strings "inf", "-inf" and "nan".
+ */
+export type JsonFloat = number | 'inf' | '-inf' | 'nan';
+
+/**
+ * Request to create a run.
+ */
+export type CreateRunRequest = {
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the command, in the form `treetime <command> --config` reads.
+     */
+    config: unknown;
+    /**
+     * Title of the run. Defaults to the command name.
+     */
+    title?: string | null;
+    /**
+     * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
+     */
+    defer_start?: boolean;
+};
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder.
+ */
+export type RunRecord = {
+    /**
+     * Identifier of the run, also the name of its folder.
+     */
+    id: JobId;
+    /**
+     * Title shown in run lists.
+     */
+    title: string;
+    /**
+     * Command the run executes.
+     */
+    command: AppCommand;
+    /**
+     * Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full
+     * resolved configuration, with every default filled in and the outputs the run layer adds.
+     */
+    config: {
+        [key: string]: unknown;
+    };
+    /**
+     * State of the run.
+     */
+    status: RunStatus;
+    /**
+     * Whether the run is pinned in run lists.
+     */
+    pinned: boolean;
+    /**
+     * Time the run was created.
+     */
+    created_at: string;
+    /**
+     * Time the computation started.
+     */
+    started_at?: string | null;
+    /**
+     * Time the run ended.
+     */
+    finished_at?: string | null;
+    /**
+     * Duration of the computation, in seconds.
+     */
+    duration_seconds?: number | null;
+    /**
+     * Version of TreeTime that ran the command.
+     */
+    treetime_version: string;
+    /**
+     * Input files the run read.
+     */
+    inputs: Array<RunInput>;
+    /**
+     * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+     * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+     */
+    config_hash?: string | null;
+    /**
+     * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+     */
+    changed_settings: Array<string>;
+    /**
+     * Key results of a finished run, for run lists.
+     */
+    headline: RunHeadline;
+    /**
+     * Files the run wrote, with paths relative to the run's `out/` folder.
+     */
+    output_files: Array<OutputFile>;
+    /**
+     * The error of a failed run.
+     */
+    error?: RunError | null;
+};
+
+/**
+ * One input file of a run.
+ */
+export type RunInput = {
+    /**
+     * Dot-separated key path of the setting that names the file.
+     */
+    setting: string;
+    /**
+     * Path of the file, as the run read it.
+     */
+    path: string;
+    /**
+     * Size of the file in bytes.
+     */
+    size: number;
+    /**
+     * SHA-256 of the file contents, as lowercase hexadecimal.
+     */
+    sha256: string;
+};
+
+/**
+ * One file a command wrote.
+ */
+export type OutputFile = {
+    /**
+     * Path of the file.
+     */
+    path: string;
+    /**
+     * Output selection that produced the file.
+     */
+    kind: OutputSelection;
+};
+
+/**
+ * Canonical lookup key for selectable outputs. Command adapters convert their
+ * selection enums into this type, and [`plan`] resolves each key to a path.
+ * Tree variants do not encode the separately selected Newick style.
+ */
+export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
+
+/**
+ * Error of a failed run.
+ */
+export type RunError = {
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+};
+
+/**
+ * Changes to the presentation of a run.
+ */
+export type UpdateRunRequest = {
+    /**
+     * New title.
+     */
+    title?: string | null;
+    /**
+     * New pinned state.
+     */
+    pinned?: boolean | null;
+};
+
+/**
+ * Request to start a created run.
+ */
+export type StartRunRequest = {
+    /**
+     * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
+     */
+    config?: unknown;
+};
+
+/**
+ * Answer to a cancellation request.
+ */
+export type CancelRunResponse = {
+    /**
+     * Whether cancellation was requested; the run ends with a `cancelled` terminal event.
+     */
+    cancelled: boolean;
+};
+
+/**
+ * One file in a run's `out/` folder.
+ */
+export type RunFile = {
+    /**
+     * Path relative to the run's `out/` folder, with `/` separators.
+     */
+    path: string;
+    /**
+     * Size in bytes.
+     */
+    size: number;
+    /**
+     * Output selection that produced the file; absent for files the output plan does not name.
+     */
+    kind?: OutputSelection | null;
+    /**
+     * What the file holds; empty for files the output plan does not name.
+     */
+    description: string;
+};
+
+/**
+ * Results of a finished run, read from its output files.
+ */
+export type RunResults = {
+    /**
+     * Tree of the run's Auspice file; absent when the run wrote none.
+     */
+    tree?: ResultTree | null;
+    /**
+     * Results specific to the command of the run.
+     */
+    results: CommandResults;
+    /**
+     * Paragraph describing the analysis, for a methods section.
+     */
+    methods?: string | null;
+    /**
+     * The publication to cite.
+     */
+    citation: Citation;
+    /**
+     * Output files that could not be read.
+     */
+    problems: Array<OutputProblem>;
+};
+
+/**
+ * A tree a run wrote, read from its Auspice file.
+ */
+export type ResultTree = {
+    /**
+     * Nodes in preorder; the root comes first and every parent precedes its children.
+     */
+    nodes: Array<ResultNode>;
+    /**
+     * Colorings the Auspice file offers.
+     */
+    colorings: Array<ResultColoring>;
+    /**
+     * Coloring the Auspice file selects by default.
+     */
+    default_color_by?: string | null;
+};
+
+/**
+ * One node of a result tree.
+ */
+export type ResultNode = {
+    /**
+     * Name of the node.
+     */
+    name: string;
+    /**
+     * Index of the parent node; absent for the root.
+     */
+    parent?: number | null;
+    /**
+     * Indices of the child nodes.
+     */
+    children: Array<number>;
+    /**
+     * Number of samples below the node, 1 for a sample.
+     */
+    tips: number;
+    /**
+     * Divergence from the root.
+     */
+    div?: number | null;
+    /**
+     * Date of the node.
+     */
+    date?: YearDate | null;
+    /**
+     * Confidence interval of the date; absent when the run computed none or the interval is empty.
+     */
+    date_interval?: DateInterval | null;
+    /**
+     * Whether the clock model left the sample out, because it had no usable date or was a clock outlier.
+     */
+    excluded?: boolean | null;
+    /**
+     * Nucleotide mutations on the branch above the node.
+     */
+    mutations: Array<string>;
+};
+
+/**
+ * Confidence interval of a date.
+ */
+export type DateInterval = {
+    /**
+     * Earliest date.
+     */
+    lower: YearDate;
+    /**
+     * Latest date.
+     */
+    upper: YearDate;
+    /**
+     * Width of the interval in days.
+     */
+    days: number;
+    /**
+     * Probability that the date lies inside the interval, for example `0.9`.
+     */
+    level: number;
+};
+
+/**
+ * A coloring of the Auspice tree.
+ */
+export type ResultColoring = {
+    /**
+     * Node attribute the coloring reads.
+     */
+    key: string;
+    /**
+     * Title of the coloring.
+     */
+    title: string;
+    /**
+     * Kind of scale, for example `categorical` or `continuous`.
+     */
+    kind: string;
+    /**
+     * Distinct states of a categorical coloring, sorted; empty for other kinds.
+     */
+    states: Array<string>;
+    /**
+     * Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
+     */
+    scale: Array<StateColor>;
+};
+
+/**
+ * Color of one state of a categorical coloring.
+ */
+export type StateColor = {
+    /**
+     * Value of the node attribute.
+     */
+    state: string;
+    /**
+     * CSS hex color.
+     */
+    color: string;
+};
+
+/**
+ * Results specific to the command of a run.
+ */
+export type CommandResults = {
+    command: 'timetree';
+    data: TimetreeResults;
+} | {
+    command: 'clock';
+    data: ClockResults;
+} | {
+    command: 'ancestral';
+    data: AncestralResults;
+} | {
+    command: 'mugration';
+    data: MugrationResults;
+} | {
+    command: 'optimize';
+    data: TreeSummary;
+} | {
+    command: 'prune';
+    data: TreeSummary;
+};
+
+/**
+ * Results of a `timetree` run.
+ */
+export type TimetreeResults = {
+    /**
+     * Estimates of the time tree; absent when the run wrote no Auspice tree.
+     */
+    estimates?: TimetreeEstimates | null;
+    /**
+     * Samples and line of the final clock model; absent when the run wrote no clock regression table.
+     */
+    root_to_tip?: RootToTip | null;
+    /**
+     * Convergence values of every iteration, from the tracelog.
+     */
+    iterations: Array<IterationRow>;
+    /**
+     * Segments of the coalescent time scale, from the coalescent table.
+     */
+    skyline: Array<SkylineSegment>;
+};
+
+/**
+ * Estimates of a `timetree` run.
+ */
+export type TimetreeEstimates = {
+    /**
+     * Date of the root.
+     */
+    root_date?: YearDate | null;
+    /**
+     * Confidence interval of the root date.
+     */
+    root_interval?: DateInterval | null;
+    /**
+     * Whether the root date lies within 5% of the interval width from a bound of its interval.
+     */
+    root_near_interval_edge: boolean;
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    clock_rate?: number | null;
+    /**
+     * Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
+     */
+    clock_rate_std?: number | null;
+    /**
+     * Whether the clock rate was fixed by the user instead of estimated.
+     */
+    clock_rate_fixed: boolean;
+    /**
+     * Correlation coefficient of the final clock model; absent for a fixed rate.
+     */
+    r?: number | null;
+    /**
+     * Coefficient of determination of the final clock model.
+     */
+    r_squared?: number | null;
+    /**
+     * Number of samples in the tree.
+     */
+    samples: number;
+    /**
+     * Number of samples the clock model left out: without a usable date or clock outliers.
+     */
+    excluded_samples: number;
+    /**
+     * Coalescent prior the run used.
+     */
+    coalescent_prior: CoalescentPrior;
+    /**
+     * Relaxed clock the run used.
+     */
+    relaxed_clock?: RelaxedClock | null;
+    /**
+     * Total log likelihood of the last iteration.
+     */
+    log_likelihood?: JsonFloat | null;
+    /**
+     * Number of iterations the tracelog records.
+     */
+    iterations: number;
+};
+
+/**
+ * Coalescent prior of a `timetree` run.
+ */
+export type CoalescentPrior = {
+    kind: 'none';
+} | {
+    /**
+     * Coalescent time scale in years.
+     */
+    tc: number;
+    kind: 'fixed';
+} | {
+    kind: 'optimized';
+} | {
+    /**
+     * Number of grid points.
+     */
+    points: number;
+    /**
+     * Stiffness of the skyline.
+     */
+    stiffness: number;
+    kind: 'skyline';
+};
+
+/**
+ * Parameters of a relaxed clock.
+ */
+export type RelaxedClock = {
+    /**
+     * Slack: how far the rate of a branch may vary.
+     */
+    slack: number;
+    /**
+     * Coupling: how strongly the rates of parent and child branches are tied.
+     */
+    coupling: number;
+};
+
+/**
+ * The points and line of a root-to-tip regression, as TreeTime fitted it.
+ */
+export type RootToTip = {
+    /**
+     * Samples as the regression saw them.
+     */
+    points: Array<RootToTipPoint>;
+    /**
+     * Line of the clock model; absent when the run wrote no clock model.
+     */
+    line?: ClockLine | null;
+};
+
+/**
+ * One sample of a root-to-tip regression.
+ */
+export type RootToTipPoint = {
+    /**
+     * Name of the sample.
+     */
+    name: string;
+    /**
+     * Date the regression used.
+     */
+    date?: YearDate | null;
+    /**
+     * Where the date came from; absent when the table does not say.
+     */
+    date_source?: ClockDateSource | null;
+    /**
+     * Root-to-tip divergence the regression used.
+     */
+    div: number;
+    /**
+     * Date the clock model predicts from the divergence.
+     */
+    predicted_date: YearDate;
+    /**
+     * Sampling date minus the predicted date, in days.
+     */
+    residual_days?: number | null;
+    /**
+     * Whether the clock filter flagged the sample as an outlier.
+     */
+    outlier: boolean;
+};
+
+/**
+ * Where the date a clock regression used for a sample came from.
+ */
+export type ClockDateSource = 'input' | 'inferred' | 'missing';
+
+/**
+ * Line of a clock model: divergence = rate * date + intercept.
+ */
+export type ClockLine = {
+    /**
+     * Clock rate in substitutions per site per year.
+     */
+    rate: number;
+    /**
+     * Divergence at year 0.
+     */
+    intercept: number;
+};
+
+/**
+ * Convergence values of one iteration.
+ */
+export type IterationRow = {
+    /**
+     * Iteration number, from 0.
+     */
+    iteration: number;
+    /**
+     * Largest change of a node time, in years.
+     */
+    max_time_change?: JsonFloat | null;
+    /**
+     * Root-mean-square change of the node times, in years.
+     */
+    rms_time_change?: JsonFloat | null;
+    /**
+     * Log likelihood of the sequences.
+     */
+    log_lh_seq?: JsonFloat | null;
+    /**
+     * Log likelihood of the node positions.
+     */
+    log_lh_pos?: JsonFloat | null;
+    /**
+     * Log likelihood of the coalescent prior.
+     */
+    log_lh_coal?: JsonFloat | null;
+    /**
+     * Total log likelihood.
+     */
+    log_lh_total?: JsonFloat | null;
+};
+
+/**
+ * One segment of the coalescent time scale.
+ */
+export type SkylineSegment = {
+    /**
+     * Start of the segment, as a decimal year.
+     */
+    start: number;
+    /**
+     * End of the segment, as a decimal year.
+     */
+    end: number;
+    /**
+     * Coalescent time scale in years.
+     */
+    tc: Band;
+    /**
+     * Effective population size.
+     */
+    ne: Band;
+};
+
+/**
+ * An estimate with an optional confidence band.
+ */
+export type Band = {
+    /**
+     * Point estimate.
+     */
+    value: number;
+    /**
+     * Lower bound of the band.
+     */
+    lower?: number | null;
+    /**
+     * Upper bound of the band.
+     */
+    upper?: number | null;
+};
+
+/**
+ * Results of a `clock` run.
+ */
+export type ClockResults = {
+    /**
+     * Estimates of the clock model.
+     */
+    estimates: ClockEstimates;
+    /**
+     * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
+     */
+    root_to_tip?: RootToTip | null;
+};
+
+/**
+ * Estimates of a `clock` run.
+ */
+export type ClockEstimates = {
+    /**
+     * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
+     */
+    clock_rate?: number | null;
+    /**
+     * Whether the clock rate was fixed by the user instead of estimated.
+     */
+    clock_rate_fixed: boolean;
+    /**
+     * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
+     */
+    r?: number | null;
+    /**
+     * Coefficient of determination of the root-to-tip regression.
+     */
+    r_squared?: number | null;
+    /**
+     * Number of samples with a date.
+     */
+    dated_samples: number;
+    /**
+     * Number of dated samples the clock filter flagged as outliers.
+     */
+    outliers: number;
+};
+
+/**
+ * Results of an `ancestral` run.
+ */
+export type AncestralResults = {
+    /**
+     * Number of nucleotide mutations on all branches.
+     */
+    mutations: number;
+    /**
+     * Branches with at least one mutation, most mutations first.
+     */
+    branches: Array<BranchMutations>;
+    /**
+     * Sequence positions that mutate on more than one branch, most branches first.
+     */
+    recurrent_sites: Array<RecurrentSite>;
+};
+
+/**
+ * Mutations on the branch above one node.
+ */
+export type BranchMutations = {
+    /**
+     * Name of the node below the branch.
+     */
+    name: string;
+    /**
+     * Number of samples below the branch.
+     */
+    tips: number;
+    /**
+     * Mutations on the branch.
+     */
+    mutations: Array<string>;
+};
+
+/**
+ * A sequence position that mutates on several branches.
+ */
+export type RecurrentSite = {
+    /**
+     * Position in the sequence, from 1.
+     */
+    position: number;
+    /**
+     * Number of branches with a mutation at the position.
+     */
+    branches: number;
+};
+
+/**
+ * Results of a `mugration` run.
+ */
+export type MugrationResults = {
+    /**
+     * The reconstructed attribute.
+     */
+    attribute: string;
+    /**
+     * Number of distinct states among the samples.
+     */
+    states: number;
+    /**
+     * Changes of state from parent to child, counted over branches, most frequent first.
+     */
+    state_changes: Array<StateChange>;
+    /**
+     * Number of branches whose state differs from the parent's.
+     */
+    changed_branches: number;
+    /**
+     * Probability below which an ancestor's most probable state counts as uncertain.
+     */
+    uncertain_below: number;
+    /**
+     * Ancestors whose most probable state is uncertain, least certain first.
+     */
+    uncertain_ancestors: Array<AncestorState>;
+    /**
+     * Most probable state of the root.
+     */
+    root?: AncestorState | null;
+};
+
+/**
+ * A change of state along branches.
+ */
+export type StateChange = {
+    /**
+     * State of the parent.
+     */
+    from: string;
+    /**
+     * State of the child.
+     */
+    to: string;
+    /**
+     * Number of branches with this change.
+     */
+    branches: number;
+};
+
+/**
+ * Most probable state of an ancestor.
+ */
+export type AncestorState = {
+    /**
+     * Name of the ancestor.
+     */
+    name: string;
+    /**
+     * Number of samples below the ancestor.
+     */
+    tips: number;
+    /**
+     * Most probable state.
+     */
+    state: string;
+    /**
+     * Probability of the state.
+     */
+    probability: number;
+};
+
+/**
+ * Summary of a tree an `optimize` or `prune` run wrote.
+ */
+export type TreeSummary = {
+    /**
+     * Number of samples.
+     */
+    samples: number;
+    /**
+     * Number of internal nodes.
+     */
+    internal_nodes: number;
+    /**
+     * Number of nucleotide mutations on all branches.
+     */
+    mutations: number;
+    /**
+     * Sum of the branch lengths in the node data file.
+     */
+    total_branch_length?: number | null;
+    /**
+     * Substitution model the run fitted.
+     */
+    substitution_model?: SubstitutionModel | null;
+};
+
+/**
+ * A fitted substitution model.
+ */
+export type SubstitutionModel = {
+    /**
+     * Name of the model.
+     */
+    name: string;
+    /**
+     * Overall substitution rate.
+     */
+    mu: number;
+};
+
+/**
+ * The publication to cite for TreeTime.
+ */
+export type Citation = {
+    /**
+     * Reference in text form.
+     */
+    text: string;
+    /**
+     * DOI of the publication, for example `10.1093/ve/vex042`.
+     */
+    doi: string;
+    /**
+     * Link to the publication.
+     */
+    url: string;
+};
+
+/**
+ * An output file of a run that could not be read.
+ */
+export type OutputProblem = {
+    /**
+     * Path of the file relative to the run's `out/` folder.
+     */
+    path: string;
+    /**
+     * Why the file could not be read.
+     */
+    message: string;
+};
+
+/**
+ * Auspice JSON of a run, with the color scales the app displays.
+ */
+export type AuspiceDocument = {
+    [key: string]: unknown;
+};
+
+/**
+ * Comparison of two runs: their settings and their results.
+ */
+export type RunComparison = {
+    /**
+     * Settings and inputs that differ; absent when the runs execute different commands.
+     */
+    settings?: SettingsComparison | null;
+    /**
+     * Estimates side by side; present when both runs are finished time-tree runs with a tree.
+     */
+    estimates?: EstimateComparison | null;
+    /**
+     * Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
+     */
+    ancestors?: AncestorComparison | null;
+};
+
+/**
+ * Settings and inputs that differ between two runs of the same command.
+ */
+export type SettingsComparison = {
+    /**
+     * Settings and inputs whose values differ.
+     */
+    differences: Array<SettingDifference>;
+    /**
+     * Number of settings and inputs compared.
+     */
+    compared: number;
+    /**
+     * Whether both runs have the same configuration hash: the same settings on the same input contents.
+     */
+    same_config_hash: boolean;
+};
+
+/**
+ * A setting whose value differs between two runs.
+ */
+export type SettingDifference = {
+    /**
+     * Key path of the setting joined with `.`.
+     */
+    key: string;
+    /**
+     * Value in the first run.
+     */
+    first: unknown;
+    /**
+     * Value in the second run.
+     */
+    second: unknown;
+    kind: 'setting';
+} | {
+    /**
+     * Key path of the setting that names the files.
+     */
+    key: string;
+    /**
+     * Paths of the files the first run read.
+     */
+    first: Array<string>;
+    /**
+     * Paths of the files the second run read.
+     */
+    second: Array<string>;
+    /**
+     * Whether the files of both runs have the same contents.
+     */
+    same_content: boolean;
+    kind: 'input';
+};
+
+/**
+ * Estimates of two time-tree runs and their differences, second minus first.
+ */
+export type EstimateComparison = {
+    /**
+     * Estimates of the first run.
+     */
+    first: TimetreeEstimates;
+    /**
+     * Estimates of the second run.
+     */
+    second: TimetreeEstimates;
+    /**
+     * Shift of the root date, in days.
+     */
+    root_shift_days?: number | null;
+    /**
+     * Change of the width of the root-date interval, in days.
+     */
+    root_interval_change_days?: number | null;
+    /**
+     * Change of the clock rate, in percent of the first rate.
+     */
+    clock_rate_change_percent?: number | null;
+    /**
+     * Change of the number of samples the clock model left out.
+     */
+    excluded_samples_change: number;
+    /**
+     * Change of the total log likelihood; absent when either value is missing or not finite.
+     */
+    log_likelihood_change?: number | null;
+};
+
+/**
+ * Date shifts of the ancestors two trees share, matched by their set of samples.
+ */
+export type AncestorComparison = {
+    /**
+     * Ancestors dated in both trees, with the shift of their date.
+     */
+    shifts: Array<AncestorShift>;
+    /**
+     * Number of ancestors in the first tree.
+     */
+    ancestors: number;
+    /**
+     * Mean absolute shift, in days.
+     */
+    mean_absolute_shift_days?: number | null;
+};
+
+/**
+ * Date shift of one ancestor between two trees.
+ */
+export type AncestorShift = {
+    /**
+     * Name of the ancestor in the first tree.
+     */
+    name: string;
+    /**
+     * Number of samples below the ancestor.
+     */
+    tips: number;
+    /**
+     * Date in the first tree.
+     */
+    date_first: YearDate;
+    /**
+     * Date in the second tree minus the date in the first, in days.
+     */
+    shift_days: number;
+};
+
+/**
+ * Request to find a clade of one run in the other time-tree runs.
+ */
+export type CladeRequest = {
+    /**
+     * Run whose tree holds the clade.
+     */
+    run: JobId;
+    /**
+     * Name of the node at the top of the clade.
+     */
+    node: string;
+};
+
+/**
+ * A clade of one run found in the other finished time-tree runs.
+ */
+export type CladeInRuns = {
+    /**
+     * Runs whose tree has a node with the same set of samples below it.
+     */
+    matches: Array<CladeMatch>;
+    /**
+     * Number of other finished time-tree runs searched.
+     */
+    searched_runs: number;
+    /**
+     * Runs whose tree could not be read, with the reason.
+     */
+    unreadable_runs: Array<UnreadableRun>;
+};
+
+/**
+ * The node of another run with the same set of samples below it.
+ */
+export type CladeMatch = {
+    /**
+     * Id of the run.
+     */
+    run: JobId;
+    /**
+     * Title of the run.
+     */
+    title: string;
+    /**
+     * Name of the node in that run.
+     */
+    node: string;
+    /**
+     * Date of the node.
+     */
+    date?: YearDate | null;
+    /**
+     * Confidence interval of the date.
+     */
+    date_interval?: DateInterval | null;
+};
+
+/**
+ * A run whose tree could not be read.
+ */
+export type UnreadableRun = {
+    /**
+     * Id of the run.
+     */
+    run: JobId;
+    /**
+     * Why the tree could not be read.
+     */
+    message: string;
+};
+
+export type RunEvent = ({
+    type: 'started';
+    data: JobStarted;
+} | {
+    type: 'progress';
+    data: ProgressEvent;
+} | {
+    type: 'log';
+    data: LogEvent;
+} | {
+    type: 'iteration';
+    data: IterationEvent;
+} | {
+    type: 'terminal';
+    data: TerminalEvent;
+}) & {
+    /**
+     * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+     */
+    seq: number;
+    /**
+     * Time the event was recorded.
+     */
+    time: string;
+};
+
+/**
+ * Identity of an accepted job.
+ */
+export type JobStarted = {
+    job_id: JobId;
+    command: AppCommand;
+};
+
+export type ProgressEvent = {
+    stage: string;
+    fraction: number;
+    message: string;
+};
+
+export type LogEvent = {
+    level: LogLevel;
+    message: string;
+};
+
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
+
+/**
+ * Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
+ * iteration used.
+ */
+export type IterationEvent = {
+    /**
+     * Iteration number, starting at 1.
+     */
+    iteration: number;
+    /**
+     * Number of ancestral sequence states that changed in this iteration.
+     */
+    n_diff: number;
+    /**
+     * Number of nodes added by polytomy resolution in this iteration.
+     */
+    n_resolved: number;
+    /**
+     * Largest change of a node time, in years.
+     */
+    max_time_change?: JsonFloat | null;
+    /**
+     * Root-mean-square change of the node times, in years.
+     */
+    rms_time_change?: JsonFloat | null;
+    /**
+     * Log likelihood of the sequences.
+     */
+    log_lh_seq?: JsonFloat | null;
+    /**
+     * Log likelihood of the node positions under the clock model.
+     */
+    log_lh_pos?: JsonFloat | null;
+    /**
+     * Log likelihood of the coalescent prior.
+     */
+    log_lh_coal?: JsonFloat | null;
+    /**
+     * Sum of the available log likelihoods.
+     */
+    log_lh_total?: JsonFloat | null;
+    /**
+     * Clock rate of the clock model the iteration used, in substitutions per site per year.
+     */
+    clock_rate: JsonFloat;
+    /**
+     * Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
+     */
+    r_squared?: JsonFloat | null;
+};
+
+/**
+ * How a job ended.
+ */
+export type TerminalEvent = {
+    job_id: JobId;
+    result: CommandOutcome;
+    status: 'ok';
+} | {
+    job_id: JobId;
+    /**
+     * The error, as the CLI prints it.
+     */
+    message: string;
+    /**
+     * The errors that caused `message`, outermost first.
+     */
+    causes: Array<string>;
+    status: 'error';
+} | {
+    job_id: JobId;
+    status: 'cancelled';
+} | {
+    job_id: JobId;
+    status: 'interrupted';
+};
+
+/**
+ * Result of a command that ran to completion.
+ */
+export type CommandOutcome = {
+    /**
+     * Command that ran.
+     */
+    command: AppCommand;
+    /**
+     * Files of the command's output plan that exist after the run, sorted by path.
+     */
+    output_files: Array<OutputFile>;
+};
+
+/**
+ * A file uploaded into a run's `inputs/` folder.
+ */
+export type UploadedInput = {
+    /**
+     * File name inside the run's `inputs/` folder.
+     */
+    name: string;
+    /**
+     * Path to use for the file in the run's configuration.
+     */
+    path: string;
+    /**
+     * Size in bytes.
+     */
+    size: number;
+    /**
+     * SHA-256 of the contents, as lowercase hexadecimal.
+     */
+    sha256: string;
+};
+
+/**
+ * Request of an operation of the app back end: the name of the operation and its arguments.
+ */
+export type OperationRequest = {
+    operation: 'version';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'datasets';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'check-config';
+    args: {
+        request: CheckConfigRequest;
+    };
+} | {
+    operation: 'run-config';
+    args: {
+        request: RunConfigRequest;
+    };
+} | {
+    operation: 'check-inputs';
+    args: {
+        request: CheckInputsRequest;
+    };
+} | {
+    operation: 'list-runs';
+    args: {
+        [key: string]: never;
+    };
+} | {
+    operation: 'create-run';
+    args: {
+        request: CreateRunRequest;
+    };
+} | {
+    operation: 'get-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'start-run';
+    args: {
+        id: JobId;
+        request: StartRunRequest;
+    };
+} | {
+    operation: 'update-run';
+    args: {
+        id: JobId;
+        request: UpdateRunRequest;
+    };
+} | {
+    operation: 'cancel-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'delete-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'restore-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'purge-run';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'run-files';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'run-results';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'run-auspice';
+    args: {
+        id: JobId;
+    };
+} | {
+    operation: 'compare-runs';
+    args: {
+        id: JobId;
+        other: JobId;
+    };
+} | {
+    operation: 'clade-in-runs';
+    args: {
+        request: CladeRequest;
+    };
+};
+
 export type BranchLengthMode = 'input' | 'marginal';
 
 export type TimeMarginalMode = 'never' | 'always' | 'only-final';
@@ -2024,579 +4076,6 @@ export type MugrationConfig = {
 };
 
 /**
- * Analysis command that every client can run.
- */
-export type AppCommand = 'timetree' | 'optimize' | 'prune' | 'ancestral' | 'clock' | 'mugration';
-
-/**
- * Facts about the input files of a run, read with the readers the commands use.
- */
-export type InputFacts = {
-    /**
-     * Facts about the tree, when it could be read.
-     */
-    tree?: TreeFacts | null;
-    /**
-     * Facts about the alignment, when it could be read.
-     */
-    alignment?: AlignmentFacts | null;
-    /**
-     * Facts about the metadata table, when it could be read.
-     */
-    metadata?: MetadataFacts | null;
-    /**
-     * Tree tips without a metadata row; present when both the tree and the metadata could be read.
-     */
-    tips_without_metadata?: Array<string> | null;
-    /**
-     * Tree tips without a sequence; present when both the tree and the alignment could be read.
-     */
-    tips_without_sequence?: Array<string> | null;
-    /**
-     * Inputs that could not be read, with the reason.
-     */
-    problems: Array<InputProblem>;
-};
-
-/**
- * Facts about a tree.
- */
-export type TreeFacts = {
-    /**
-     * Number of tips.
-     */
-    tips: number;
-    /**
-     * Number of internal nodes, the root included.
-     */
-    internal_nodes: number;
-    /**
-     * Number of internal nodes with more than two children.
-     */
-    polytomies: number;
-    /**
-     * Number of tips without a name.
-     */
-    unnamed_tips: number;
-    /**
-     * Tip names that occur more than once.
-     */
-    duplicate_tip_names: Array<string>;
-};
-
-/**
- * Facts about an alignment.
- */
-export type AlignmentFacts = {
-    /**
-     * Number of sequences.
-     */
-    sequences: number;
-    /**
-     * Length of the shortest sequence.
-     */
-    min_length: number;
-    /**
-     * Length of the longest sequence; equal to `min_length` for an alignment.
-     */
-    max_length: number;
-    /**
-     * Sequence names that occur more than once.
-     */
-    duplicate_names: Array<string>;
-};
-
-/**
- * Facts about a metadata table.
- */
-export type MetadataFacts = {
-    /**
-     * Number of data rows.
-     */
-    rows: number;
-    /**
-     * Column names, in file order.
-     */
-    columns: Array<string>;
-    /**
-     * Column that holds the sample names.
-     */
-    id_column: string;
-    /**
-     * Column that holds the sampling dates, when one was found.
-     */
-    date_column?: string | null;
-    /**
-     * Facts about the sampling dates, when the date column could be read.
-     */
-    dates?: DateFacts | null;
-};
-
-/**
- * Facts about the sampling dates of a metadata table.
- */
-export type DateFacts = {
-    /**
-     * Samples with a date the date parser reads.
-     */
-    readable: number;
-    /**
-     * Samples whose date cannot be read, by name.
-     */
-    unreadable: Array<string>;
-    /**
-     * Samples whose date is a calendar day.
-     */
-    exact_days: number;
-    /**
-     * Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
-     */
-    on_day_1_or_15: number;
-};
-
-/**
- * An input that could not be read.
- */
-export type InputProblem = {
-    /**
-     * Input the problem concerns.
-     */
-    input: InputKind;
-    /**
-     * The error, with its causes.
-     */
-    message: string;
-};
-
-/**
- * Kind of input file.
- */
-export type InputKind = 'tree' | 'metadata' | 'alignment';
-
-/**
- * Request to check a configuration.
- */
-export type CheckConfigRequest = {
-    /**
-     * Command the configuration is for, unless the text starts with the `yaml-language-server` schema directive of
-     * another command.
-     */
-    command: AppCommand;
-    /**
-     * Configuration as YAML or JSON text.
-     */
-    text: string;
-    /**
-     * Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
-     * into.
-     */
-    inputs?: {
-        [key: string]: unknown;
-    };
-    /**
-     * Facts about the input files, from `check-inputs`, for the checks that depend on them.
-     */
-    input_facts?: InputFacts | null;
-};
-
-/**
- * A command line and a YAML config that reproduce a configuration.
- */
-export type ConfigCode = {
-    /**
-     * The command line, one flag per line.
-     */
-    command_line: Array<CodeLine>;
-    /**
-     * The command line as a shell reads it, with a line continuation after every flag but the last.
-     */
-    command_line_text: string;
-    /**
-     * The YAML config, line by line.
-     */
-    yaml: Array<CodeLine>;
-    /**
-     * The YAML config as a file holds it.
-     */
-    yaml_text: string;
-    /**
-     * Name to save the YAML config under.
-     */
-    config_file: string;
-    /**
-     * The command line that runs the saved YAML config.
-     */
-    config_command: string;
-};
-
-/**
- * One line of a command line or a YAML config.
- */
-export type CodeLine = {
-    /**
-     * Text of the line.
-     */
-    text: string;
-    /**
-     * What the line sets.
-     */
-    kind: CodeLineKind;
-};
-
-/**
- * What a line of a command line or a YAML config sets.
- */
-export type CodeLineKind = 'command' | 'input' | 'changed' | 'output' | 'comment';
-
-/**
- * A finding about a configuration and its input files, before a run.
- */
-export type RunCheck = {
-    /**
-     * Identifier of the check, stable across calls for the same finding.
-     */
-    id: string;
-    /**
-     * How the finding affects the run.
-     */
-    level: CheckLevel;
-    /**
-     * The finding, as a sentence.
-     */
-    text: string;
-    /**
-     * Keys of the settings the finding concerns.
-     */
-    settings: Array<string>;
-    /**
-     * Change of settings that resolves the finding, when there is one.
-     */
-    fix?: CheckFix | null;
-};
-
-/**
- * How a finding affects the run.
- */
-export type CheckLevel = 'block' | 'warn' | 'advice';
-
-/**
- * Change of settings that resolves a finding.
- */
-export type CheckFix = {
-    /**
-     * Label of the action, for example `Use covariation`.
-     */
-    label: string;
-    /**
-     * Settings to set.
-     */
-    patch: Array<SettingPatch>;
-};
-
-/**
- * New value of one setting.
- */
-export type SettingPatch = {
-    /**
-     * Key path of the setting.
-     */
-    path: Array<string>;
-    /**
-     * The value to set.
-     */
-    value: unknown;
-};
-
-/**
- * One problem found in a configuration.
- */
-export type ConfigProblem = {
-    /**
-     * Stable diagnostic code, for example `config::unknown-field`.
-     */
-    code: string;
-    /**
-     * Human-readable description of the problem.
-     */
-    message: string;
-    /**
-     * Byte offset and length of the offending text in the config, when known.
-     */
-    span?: ConfigSpan | null;
-    /**
-     * Suggestion for fixing the problem.
-     */
-    help?: string | null;
-};
-
-/**
- * Location of a problem in the configuration text.
- */
-export type ConfigSpan = {
-    /**
-     * Byte offset of the first character.
-     */
-    offset: number;
-    /**
-     * Length in bytes.
-     */
-    length: number;
-};
-
-/**
- * Outcome of checking a configuration without running it.
- */
-export type CheckConfigResponse = {
-    /**
-     * Command the configuration is for.
-     */
-    command: AppCommand;
-    /**
-     * The configuration with every default filled in.
-     */
-    config: {
-        [key: string]: unknown;
-    };
-    /**
-     * The command line and the YAML config that reproduce the configuration.
-     */
-    code: ConfigCode;
-    /**
-     * Findings about the configuration and its input files.
-     */
-    checks: Array<RunCheck>;
-    status: 'valid';
-} | {
-    /**
-     * Command the configuration is for.
-     */
-    command: AppCommand;
-    /**
-     * The error, as the CLI prints it.
-     */
-    message: string;
-    /**
-     * The errors that caused `message`, outermost first.
-     */
-    causes: Array<string>;
-    /**
-     * Problems found by parsing and by the schema check, empty for other errors.
-     */
-    problems: Array<ConfigProblem>;
-    /**
-     * The problems drawn against the configuration text, when the text could be parsed.
-     */
-    rendered?: string | null;
-    /**
-     * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
-     */
-    messages: Array<string>;
-    /**
-     * Findings about the configuration and its input files; the rejection is among them.
-     */
-    checks: Array<RunCheck>;
-    status: 'invalid';
-};
-
-/**
- * Request to resolve a configuration as a run resolves it, without running it.
- */
-export type RunConfigRequest = {
-    /**
-     * Command the configuration is for.
-     */
-    command: AppCommand;
-    /**
-     * Configuration of the command, in the form `treetime <command> --config` reads.
-     */
-    config: unknown;
-};
-
-/**
- * Outcome of resolving a configuration as a run resolves it.
- */
-export type RunConfigResponse = {
-    /**
-     * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-     * `output_all` set to `out`.
-     */
-    config: {
-        [key: string]: unknown;
-    };
-    /**
-     * The command line and the YAML config that reproduce the run.
-     */
-    code: ConfigCode;
-    /**
-     * Hash that a run of this configuration records, to find finished runs with the same settings and input
-     * contents; absent when an input cannot be read.
-     */
-    config_hash?: string | null;
-    /**
-     * Why `config_hash` is absent.
-     */
-    config_hash_error?: string | null;
-    status: 'valid';
-} | {
-    /**
-     * The error, as the CLI prints it.
-     */
-    message: string;
-    /**
-     * The errors that caused `message`, outermost first.
-     */
-    causes: Array<string>;
-    /**
-     * Problems found by parsing and by the schema check, empty for other errors.
-     */
-    problems: Array<ConfigProblem>;
-    status: 'invalid';
-};
-
-/**
- * One file a command wrote.
- */
-export type OutputFile = {
-    /**
-     * Path of the file.
-     */
-    path: string;
-    /**
-     * Output selection that produced the file.
-     */
-    kind: OutputSelection;
-};
-
-/**
- * Canonical lookup key for selectable outputs. Command adapters convert their
- * selection enums into this type, and [`plan`] resolves each key to a path.
- * Tree variants do not encode the separately selected Newick style.
- */
-export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
-
-/**
- * Result of a command that ran to completion.
- */
-export type CommandOutcome = {
-    /**
-     * Command that ran.
-     */
-    command: AppCommand;
-    /**
-     * Files of the command's output plan that exist after the run, sorted by path.
-     */
-    output_files: Array<OutputFile>;
-};
-
-/**
- * Identity of an accepted job.
- */
-export type JobStarted = {
-    job_id: JobId;
-    command: AppCommand;
-};
-
-/**
- * Identifier of one command run, unique among the jobs of a process.
- */
-export type JobId = string;
-
-export type ProgressEvent = {
-    stage: string;
-    fraction: number;
-    message: string;
-};
-
-export type LogEvent = {
-    level: LogLevel;
-    message: string;
-};
-
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
-
-/**
- * Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
- * iteration used.
- */
-export type IterationEvent = {
-    /**
-     * Iteration number, starting at 1.
-     */
-    iteration: number;
-    /**
-     * Number of ancestral sequence states that changed in this iteration.
-     */
-    n_diff: number;
-    /**
-     * Number of nodes added by polytomy resolution in this iteration.
-     */
-    n_resolved: number;
-    /**
-     * Largest change of a node time, in years.
-     */
-    max_time_change?: JsonFloat | null;
-    /**
-     * Root-mean-square change of the node times, in years.
-     */
-    rms_time_change?: JsonFloat | null;
-    /**
-     * Log likelihood of the sequences.
-     */
-    log_lh_seq?: JsonFloat | null;
-    /**
-     * Log likelihood of the node positions under the clock model.
-     */
-    log_lh_pos?: JsonFloat | null;
-    /**
-     * Log likelihood of the coalescent prior.
-     */
-    log_lh_coal?: JsonFloat | null;
-    /**
-     * Sum of the available log likelihoods.
-     */
-    log_lh_total?: JsonFloat | null;
-    /**
-     * Clock rate of the clock model the iteration used, in substitutions per site per year.
-     */
-    clock_rate: JsonFloat;
-    /**
-     * Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
-     */
-    r_squared?: JsonFloat | null;
-};
-
-/**
- * A number; infinities and NaN are the strings "inf", "-inf" and "nan".
- */
-export type JsonFloat = number | 'inf' | '-inf' | 'nan';
-
-/**
- * How a job ended.
- */
-export type TerminalEvent = {
-    job_id: JobId;
-    result: CommandOutcome;
-    status: 'ok';
-} | {
-    job_id: JobId;
-    /**
-     * The error, as the CLI prints it.
-     */
-    message: string;
-    /**
-     * The errors that caused `message`, outermost first.
-     */
-    causes: Array<string>;
-    status: 'error';
-} | {
-    job_id: JobId;
-    status: 'cancelled';
-} | {
-    job_id: JobId;
-    status: 'interrupted';
-};
-
-/**
  * Event of a running job, in the order the job emits them.
  */
 export type JobEvent = {
@@ -2614,434 +4093,6 @@ export type JobEvent = {
 } | {
     type: 'terminal';
     data: TerminalEvent;
-};
-
-export type VersionInfo = {
-    version: string;
-};
-
-/**
- * A command configuration whose input files to inspect before a run.
- */
-export type CheckInputsRequest = {
-    /**
-     * Command the configuration is for.
-     */
-    command: AppCommand;
-    /**
-     * Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
-     */
-    config: {
-        [key: string]: unknown;
-    };
-};
-
-/**
- * A directory of example input files.
- */
-export type Dataset = {
-    /**
-     * Path of the directory relative to the data directory, with `/` separators.
-     */
-    name: string;
-    /**
-     * Names of the files in the directory, sorted.
-     */
-    files: Array<string>;
-    /**
-     * The files of the directory that fill command inputs, at most one per kind.
-     */
-    inputs: Array<DatasetInput>;
-};
-
-/**
- * A file of an example dataset that fills a command input.
- */
-export type DatasetInput = {
-    /**
-     * Input the file fills.
-     */
-    kind: InputKind;
-    /**
-     * Path of the file relative to the data directory, with `/` separators.
-     */
-    file: string;
-    /**
-     * Path of the file as a run configuration names it.
-     */
-    path: string;
-};
-
-/**
- * An example configuration file of one command.
- */
-export type ExampleConfig = {
-    /**
-     * Path of the file relative to the data directory, with `/` separators.
-     */
-    path: string;
-    /**
-     * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
-     */
-    command: AppCommand;
-    /**
-     * Title of the example: the first comment line after the directive.
-     */
-    title: string;
-    /**
-     * Text of the file.
-     */
-    content: string;
-};
-
-/**
- * Example datasets and example command configurations found in the data directory.
- */
-export type DatasetCatalog = {
-    /**
-     * Data directory as a run configuration names it: a path relative to the working directory of the process that
-     * runs the commands, as in the example configurations.
-     */
-    data_dir: string;
-    /**
-     * Directories that hold a `tree.nwk`, with their files.
-     */
-    datasets: Array<Dataset>;
-    /**
-     * Example configurations of the commands the application runs.
-     */
-    examples: Array<ExampleConfig>;
-};
-
-/**
- * Request to create a run.
- */
-export type CreateRunRequest = {
-    /**
-     * Command the run executes.
-     */
-    command: AppCommand;
-    /**
-     * Configuration of the command, in the form `treetime <command> --config` reads.
-     */
-    config: unknown;
-    /**
-     * Title of the run. Defaults to the command name.
-     */
-    title?: string | null;
-    /**
-     * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
-     */
-    defer_start?: boolean;
-};
-
-/**
- * Request to start a created run.
- */
-export type StartRunRequest = {
-    /**
-     * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
-     */
-    config?: unknown;
-};
-
-/**
- * Changes to the presentation of a run.
- */
-export type UpdateRunRequest = {
-    /**
-     * New title.
-     */
-    title?: string | null;
-    /**
-     * New pinned state.
-     */
-    pinned?: boolean | null;
-};
-
-/**
- * State of a run.
- */
-export type RunStatus = 'created' | 'running' | 'ok' | 'error' | 'cancelled' | 'interrupted';
-
-/**
- * One input file of a run.
- */
-export type RunInput = {
-    /**
-     * Dot-separated key path of the setting that names the file.
-     */
-    setting: string;
-    /**
-     * Path of the file, as the run read it.
-     */
-    path: string;
-    /**
-     * Size of the file in bytes.
-     */
-    size: number;
-    /**
-     * SHA-256 of the file contents, as lowercase hexadecimal.
-     */
-    sha256: string;
-};
-
-/**
- * Key results of a finished run, for run lists; the same values the run's results show.
- */
-export type RunHeadline = {
-    /**
-     * Date of the root of a time tree.
-     */
-    root_date?: YearDate | null;
-    /**
-     * Clock rate in substitutions per site per year.
-     */
-    clock_rate?: JsonFloat | null;
-    /**
-     * Coefficient of determination of the clock model.
-     */
-    r_squared?: JsonFloat | null;
-};
-
-/**
- * A date as a decimal year and as a calendar day.
- */
-export type YearDate = {
-    /**
-     * The date as a decimal year, for example `2015.47`.
-     */
-    year: number;
-    /**
-     * The calendar day of the date, as `YYYY-MM-DD`.
-     */
-    date: string;
-};
-
-/**
- * Error of a failed run.
- */
-export type RunError = {
-    /**
-     * The error, as the CLI prints it.
-     */
-    message: string;
-    /**
-     * The errors that caused `message`, outermost first.
-     */
-    causes: Array<string>;
-};
-
-/**
- * Durable record of one command run, stored as `run.json` in the run's folder.
- */
-export type RunRecord = {
-    /**
-     * Identifier of the run, also the name of its folder.
-     */
-    id: JobId;
-    /**
-     * Title shown in run lists.
-     */
-    title: string;
-    /**
-     * Command the run executes.
-     */
-    command: AppCommand;
-    /**
-     * Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full
-     * resolved configuration, with every default filled in and the outputs the run layer adds.
-     */
-    config: {
-        [key: string]: unknown;
-    };
-    /**
-     * State of the run.
-     */
-    status: RunStatus;
-    /**
-     * Whether the run is pinned in run lists.
-     */
-    pinned: boolean;
-    /**
-     * Time the run was created.
-     */
-    created_at: string;
-    /**
-     * Time the computation started.
-     */
-    started_at?: string | null;
-    /**
-     * Time the run ended.
-     */
-    finished_at?: string | null;
-    /**
-     * Duration of the computation, in seconds.
-     */
-    duration_seconds?: number | null;
-    /**
-     * Version of TreeTime that ran the command.
-     */
-    treetime_version: string;
-    /**
-     * Input files the run read.
-     */
-    inputs: Array<RunInput>;
-    /**
-     * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-     * paths removed. Two runs with equal hashes used the same settings on the same input contents.
-     */
-    config_hash?: string | null;
-    /**
-     * Setting keys whose values differ from the command defaults, as dot-separated key paths.
-     */
-    changed_settings: Array<string>;
-    /**
-     * Key results of a finished run, for run lists.
-     */
-    headline: RunHeadline;
-    /**
-     * Files the run wrote, with paths relative to the run's `out/` folder.
-     */
-    output_files: Array<OutputFile>;
-    /**
-     * The error of a failed run.
-     */
-    error?: RunError | null;
-};
-
-/**
- * Entry of a run list.
- */
-export type RunSummary = {
-    /**
-     * Identifier of the run.
-     */
-    id: JobId;
-    /**
-     * Title of the run.
-     */
-    title: string;
-    /**
-     * Command the run executes.
-     */
-    command: AppCommand;
-    /**
-     * State of the run.
-     */
-    status: RunStatus;
-    /**
-     * Whether the run is pinned.
-     */
-    pinned: boolean;
-    /**
-     * Time the run was created.
-     */
-    created_at: string;
-    /**
-     * Time the run ended.
-     */
-    finished_at?: string | null;
-    /**
-     * Duration of the computation, in seconds.
-     */
-    duration_seconds?: number | null;
-    /**
-     * Hash that identifies runs with the same settings and input contents.
-     */
-    config_hash?: string | null;
-    /**
-     * Setting keys whose values differ from the command defaults.
-     */
-    changed_settings: Array<string>;
-    /**
-     * Key results of a finished run.
-     */
-    headline: RunHeadline;
-};
-
-/**
- * Runs, newest first, and the number of runs computing now.
- */
-export type RunList = {
-    /**
-     * Runs, newest first.
-     */
-    runs: Array<RunSummary>;
-    /**
-     * Number of runs whose computation is running now. Every run shares one pool of processing threads.
-     */
-    active_runs: number;
-};
-
-export type RunEvent = ({
-    type: 'started';
-    data: JobStarted;
-} | {
-    type: 'progress';
-    data: ProgressEvent;
-} | {
-    type: 'log';
-    data: LogEvent;
-} | {
-    type: 'iteration';
-    data: IterationEvent;
-} | {
-    type: 'terminal';
-    data: TerminalEvent;
-}) & {
-    /**
-     * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
-     */
-    seq: number;
-    /**
-     * Time the event was recorded.
-     */
-    time: string;
-};
-
-/**
- * One file in a run's `out/` folder.
- */
-export type RunFile = {
-    /**
-     * Path relative to the run's `out/` folder, with `/` separators.
-     */
-    path: string;
-    /**
-     * Size in bytes.
-     */
-    size: number;
-    /**
-     * Output selection that produced the file; absent for files the output plan does not name.
-     */
-    kind?: OutputSelection | null;
-    /**
-     * What the file holds; empty for files the output plan does not name.
-     */
-    description: string;
-};
-
-/**
- * A file uploaded into a run's `inputs/` folder.
- */
-export type UploadedInput = {
-    /**
-     * File name inside the run's `inputs/` folder.
-     */
-    name: string;
-    /**
-     * Path to use for the file in the run's configuration.
-     */
-    path: string;
-    /**
-     * Size in bytes.
-     */
-    size: number;
-    /**
-     * SHA-256 of the contents, as lowercase hexadecimal.
-     */
-    sha256: string;
 };
 
 /**
@@ -3219,1165 +4270,50 @@ export type SettingCatalog = {
     commands: Array<CommandSettings>;
 };
 
-/**
- * A setting whose value differs between two runs.
- */
-export type SettingDifference = {
-    /**
-     * Key path of the setting joined with `.`.
-     */
-    key: string;
-    /**
-     * Value in the first run.
-     */
-    first: unknown;
-    /**
-     * Value in the second run.
-     */
-    second: unknown;
-    kind: 'setting';
-} | {
-    /**
-     * Key path of the setting that names the files.
-     */
-    key: string;
-    /**
-     * Paths of the files the first run read.
-     */
-    first: Array<string>;
-    /**
-     * Paths of the files the second run read.
-     */
-    second: Array<string>;
-    /**
-     * Whether the files of both runs have the same contents.
-     */
-    same_content: boolean;
-    kind: 'input';
-};
-
-/**
- * A tree a run wrote, read from its Auspice file.
- */
-export type ResultTree = {
-    /**
-     * Nodes in preorder; the root comes first and every parent precedes its children.
-     */
-    nodes: Array<ResultNode>;
-    /**
-     * Colorings the Auspice file offers.
-     */
-    colorings: Array<ResultColoring>;
-    /**
-     * Coloring the Auspice file selects by default.
-     */
-    default_color_by?: string | null;
-};
-
-/**
- * One node of a result tree.
- */
-export type ResultNode = {
-    /**
-     * Name of the node.
-     */
-    name: string;
-    /**
-     * Index of the parent node; absent for the root.
-     */
-    parent?: number | null;
-    /**
-     * Indices of the child nodes.
-     */
-    children: Array<number>;
-    /**
-     * Number of samples below the node, 1 for a sample.
-     */
-    tips: number;
-    /**
-     * Divergence from the root.
-     */
-    div?: number | null;
-    /**
-     * Date of the node.
-     */
-    date?: YearDate | null;
-    /**
-     * Confidence interval of the date; absent when the run computed none or the interval is empty.
-     */
-    date_interval?: DateInterval | null;
-    /**
-     * Whether the clock model left the sample out, because it had no usable date or was a clock outlier.
-     */
-    excluded?: boolean | null;
-    /**
-     * Nucleotide mutations on the branch above the node.
-     */
-    mutations: Array<string>;
-};
-
-/**
- * Confidence interval of a date.
- */
-export type DateInterval = {
-    /**
-     * Earliest date.
-     */
-    lower: YearDate;
-    /**
-     * Latest date.
-     */
-    upper: YearDate;
-    /**
-     * Width of the interval in days.
-     */
-    days: number;
-    /**
-     * Probability that the date lies inside the interval, for example `0.9`.
-     */
-    level: number;
-};
-
-/**
- * A coloring of the Auspice tree.
- */
-export type ResultColoring = {
-    /**
-     * Node attribute the coloring reads.
-     */
-    key: string;
-    /**
-     * Title of the coloring.
-     */
-    title: string;
-    /**
-     * Kind of scale, for example `categorical` or `continuous`.
-     */
-    kind: string;
-    /**
-     * Distinct states of a categorical coloring, sorted; empty for other kinds.
-     */
-    states: Array<string>;
-    /**
-     * Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
-     */
-    scale: Array<StateColor>;
-};
-
-/**
- * Color of one state of a categorical coloring.
- */
-export type StateColor = {
-    /**
-     * Value of the node attribute.
-     */
-    state: string;
-    /**
-     * CSS hex color.
-     */
-    color: string;
-};
-
-/**
- * Results specific to the command of a run.
- */
-export type CommandResults = {
-    command: 'timetree';
-    data: TimetreeResults;
-} | {
-    command: 'clock';
-    data: ClockResults;
-} | {
-    command: 'ancestral';
-    data: AncestralResults;
-} | {
-    command: 'mugration';
-    data: MugrationResults;
-} | {
-    command: 'optimize';
-    data: TreeSummary;
-} | {
-    command: 'prune';
-    data: TreeSummary;
-};
-
-/**
- * Results of a `timetree` run.
- */
-export type TimetreeResults = {
-    /**
-     * Estimates of the time tree; absent when the run wrote no Auspice tree.
-     */
-    estimates?: TimetreeEstimates | null;
-    /**
-     * Samples and line of the final clock model; absent when the run wrote no clock regression table.
-     */
-    root_to_tip?: RootToTip | null;
-    /**
-     * Convergence values of every iteration, from the tracelog.
-     */
-    iterations: Array<IterationRow>;
-    /**
-     * Segments of the coalescent time scale, from the coalescent table.
-     */
-    skyline: Array<SkylineSegment>;
-};
-
-/**
- * Estimates of a `timetree` run.
- */
-export type TimetreeEstimates = {
-    /**
-     * Date of the root.
-     */
-    root_date?: YearDate | null;
-    /**
-     * Confidence interval of the root date.
-     */
-    root_interval?: DateInterval | null;
-    /**
-     * Whether the root date lies within 5% of the interval width from a bound of its interval.
-     */
-    root_near_interval_edge: boolean;
-    /**
-     * Clock rate in substitutions per site per year.
-     */
-    clock_rate?: number | null;
-    /**
-     * Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
-     */
-    clock_rate_std?: number | null;
-    /**
-     * Whether the clock rate was fixed by the user instead of estimated.
-     */
-    clock_rate_fixed: boolean;
-    /**
-     * Correlation coefficient of the final clock model; absent for a fixed rate.
-     */
-    r?: number | null;
-    /**
-     * Coefficient of determination of the final clock model.
-     */
-    r_squared?: number | null;
-    /**
-     * Number of samples in the tree.
-     */
-    samples: number;
-    /**
-     * Number of samples the clock model left out: without a usable date or clock outliers.
-     */
-    excluded_samples: number;
-    /**
-     * Coalescent prior the run used.
-     */
-    coalescent_prior: CoalescentPrior;
-    /**
-     * Relaxed clock the run used.
-     */
-    relaxed_clock?: RelaxedClock | null;
-    /**
-     * Total log likelihood of the last iteration.
-     */
-    log_likelihood?: JsonFloat | null;
-    /**
-     * Number of iterations the tracelog records.
-     */
-    iterations: number;
-};
-
-/**
- * Coalescent prior of a `timetree` run.
- */
-export type CoalescentPrior = {
-    kind: 'none';
-} | {
-    /**
-     * Coalescent time scale in years.
-     */
-    tc: number;
-    kind: 'fixed';
-} | {
-    kind: 'optimized';
-} | {
-    /**
-     * Number of grid points.
-     */
-    points: number;
-    /**
-     * Stiffness of the skyline.
-     */
-    stiffness: number;
-    kind: 'skyline';
-};
-
-/**
- * Parameters of a relaxed clock.
- */
-export type RelaxedClock = {
-    /**
-     * Slack: how far the rate of a branch may vary.
-     */
-    slack: number;
-    /**
-     * Coupling: how strongly the rates of parent and child branches are tied.
-     */
-    coupling: number;
-};
-
-/**
- * The points and line of a root-to-tip regression, as TreeTime fitted it.
- */
-export type RootToTip = {
-    /**
-     * Samples as the regression saw them.
-     */
-    points: Array<RootToTipPoint>;
-    /**
-     * Line of the clock model; absent when the run wrote no clock model.
-     */
-    line?: ClockLine | null;
-};
-
-/**
- * One sample of a root-to-tip regression.
- */
-export type RootToTipPoint = {
-    /**
-     * Name of the sample.
-     */
-    name: string;
-    /**
-     * Date the regression used.
-     */
-    date?: YearDate | null;
-    /**
-     * Where the date came from; absent when the table does not say.
-     */
-    date_source?: ClockDateSource | null;
-    /**
-     * Root-to-tip divergence the regression used.
-     */
-    div: number;
-    /**
-     * Date the clock model predicts from the divergence.
-     */
-    predicted_date: YearDate;
-    /**
-     * Sampling date minus the predicted date, in days.
-     */
-    residual_days?: number | null;
-    /**
-     * Whether the clock filter flagged the sample as an outlier.
-     */
-    outlier: boolean;
-};
-
-/**
- * Where the date a clock regression used for a sample came from.
- */
-export type ClockDateSource = 'input' | 'inferred' | 'missing';
-
-/**
- * Line of a clock model: divergence = rate * date + intercept.
- */
-export type ClockLine = {
-    /**
-     * Clock rate in substitutions per site per year.
-     */
-    rate: number;
-    /**
-     * Divergence at year 0.
-     */
-    intercept: number;
-};
-
-/**
- * Convergence values of one iteration.
- */
-export type IterationRow = {
-    /**
-     * Iteration number, from 0.
-     */
-    iteration: number;
-    /**
-     * Largest change of a node time, in years.
-     */
-    max_time_change?: JsonFloat | null;
-    /**
-     * Root-mean-square change of the node times, in years.
-     */
-    rms_time_change?: JsonFloat | null;
-    /**
-     * Log likelihood of the sequences.
-     */
-    log_lh_seq?: JsonFloat | null;
-    /**
-     * Log likelihood of the node positions.
-     */
-    log_lh_pos?: JsonFloat | null;
-    /**
-     * Log likelihood of the coalescent prior.
-     */
-    log_lh_coal?: JsonFloat | null;
-    /**
-     * Total log likelihood.
-     */
-    log_lh_total?: JsonFloat | null;
-};
-
-/**
- * One segment of the coalescent time scale.
- */
-export type SkylineSegment = {
-    /**
-     * Start of the segment, as a decimal year.
-     */
-    start: number;
-    /**
-     * End of the segment, as a decimal year.
-     */
-    end: number;
-    /**
-     * Coalescent time scale in years.
-     */
-    tc: Band;
-    /**
-     * Effective population size.
-     */
-    ne: Band;
-};
-
-/**
- * An estimate with an optional confidence band.
- */
-export type Band = {
-    /**
-     * Point estimate.
-     */
-    value: number;
-    /**
-     * Lower bound of the band.
-     */
-    lower?: number | null;
-    /**
-     * Upper bound of the band.
-     */
-    upper?: number | null;
-};
-
-/**
- * Results of a `clock` run.
- */
-export type ClockResults = {
-    /**
-     * Estimates of the clock model.
-     */
-    estimates: ClockEstimates;
-    /**
-     * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
-     */
-    root_to_tip?: RootToTip | null;
-};
-
-/**
- * Estimates of a `clock` run.
- */
-export type ClockEstimates = {
-    /**
-     * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
-     */
-    clock_rate?: number | null;
-    /**
-     * Whether the clock rate was fixed by the user instead of estimated.
-     */
-    clock_rate_fixed: boolean;
-    /**
-     * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
-     */
-    r?: number | null;
-    /**
-     * Coefficient of determination of the root-to-tip regression.
-     */
-    r_squared?: number | null;
-    /**
-     * Number of samples with a date.
-     */
-    dated_samples: number;
-    /**
-     * Number of dated samples the clock filter flagged as outliers.
-     */
-    outliers: number;
-};
-
-/**
- * Results of an `ancestral` run.
- */
-export type AncestralResults = {
-    /**
-     * Number of nucleotide mutations on all branches.
-     */
-    mutations: number;
-    /**
-     * Branches with at least one mutation, most mutations first.
-     */
-    branches: Array<BranchMutations>;
-    /**
-     * Sequence positions that mutate on more than one branch, most branches first.
-     */
-    recurrent_sites: Array<RecurrentSite>;
-};
-
-/**
- * Mutations on the branch above one node.
- */
-export type BranchMutations = {
-    /**
-     * Name of the node below the branch.
-     */
-    name: string;
-    /**
-     * Number of samples below the branch.
-     */
-    tips: number;
-    /**
-     * Mutations on the branch.
-     */
-    mutations: Array<string>;
-};
-
-/**
- * A sequence position that mutates on several branches.
- */
-export type RecurrentSite = {
-    /**
-     * Position in the sequence, from 1.
-     */
-    position: number;
-    /**
-     * Number of branches with a mutation at the position.
-     */
-    branches: number;
-};
-
-/**
- * Results of a `mugration` run.
- */
-export type MugrationResults = {
-    /**
-     * The reconstructed attribute.
-     */
-    attribute: string;
-    /**
-     * Number of distinct states among the samples.
-     */
-    states: number;
-    /**
-     * Changes of state from parent to child, counted over branches, most frequent first.
-     */
-    state_changes: Array<StateChange>;
-    /**
-     * Number of branches whose state differs from the parent's.
-     */
-    changed_branches: number;
-    /**
-     * Probability below which an ancestor's most probable state counts as uncertain.
-     */
-    uncertain_below: number;
-    /**
-     * Ancestors whose most probable state is uncertain, least certain first.
-     */
-    uncertain_ancestors: Array<AncestorState>;
-    /**
-     * Most probable state of the root.
-     */
-    root?: AncestorState | null;
-};
-
-/**
- * A change of state along branches.
- */
-export type StateChange = {
-    /**
-     * State of the parent.
-     */
-    from: string;
-    /**
-     * State of the child.
-     */
-    to: string;
-    /**
-     * Number of branches with this change.
-     */
-    branches: number;
-};
-
-/**
- * Most probable state of an ancestor.
- */
-export type AncestorState = {
-    /**
-     * Name of the ancestor.
-     */
-    name: string;
-    /**
-     * Number of samples below the ancestor.
-     */
-    tips: number;
-    /**
-     * Most probable state.
-     */
-    state: string;
-    /**
-     * Probability of the state.
-     */
-    probability: number;
-};
-
-/**
- * Summary of a tree an `optimize` or `prune` run wrote.
- */
-export type TreeSummary = {
-    /**
-     * Number of samples.
-     */
-    samples: number;
-    /**
-     * Number of internal nodes.
-     */
-    internal_nodes: number;
-    /**
-     * Number of nucleotide mutations on all branches.
-     */
-    mutations: number;
-    /**
-     * Sum of the branch lengths in the node data file.
-     */
-    total_branch_length?: number | null;
-    /**
-     * Substitution model the run fitted.
-     */
-    substitution_model?: SubstitutionModel | null;
-};
-
-/**
- * A fitted substitution model.
- */
-export type SubstitutionModel = {
-    /**
-     * Name of the model.
-     */
-    name: string;
-    /**
-     * Overall substitution rate.
-     */
-    mu: number;
-};
-
-/**
- * The publication to cite for TreeTime.
- */
-export type Citation = {
-    /**
-     * Reference in text form.
-     */
-    text: string;
-    /**
-     * DOI of the publication, for example `10.1093/ve/vex042`.
-     */
-    doi: string;
-    /**
-     * Link to the publication.
-     */
-    url: string;
-};
-
-/**
- * An output file of a run that could not be read.
- */
-export type OutputProblem = {
-    /**
-     * Path of the file relative to the run's `out/` folder.
-     */
-    path: string;
-    /**
-     * Why the file could not be read.
-     */
-    message: string;
-};
-
-/**
- * Results of a finished run, read from its output files.
- */
-export type RunResults = {
-    /**
-     * Tree of the run's Auspice file; absent when the run wrote none.
-     */
-    tree?: ResultTree | null;
-    /**
-     * Results specific to the command of the run.
-     */
-    results: CommandResults;
-    /**
-     * Paragraph describing the analysis, for a methods section.
-     */
-    methods?: string | null;
-    /**
-     * The publication to cite.
-     */
-    citation: Citation;
-    /**
-     * Output files that could not be read.
-     */
-    problems: Array<OutputProblem>;
-};
-
-/**
- * Auspice JSON of a run, with the color scales the app displays.
- */
-export type AuspiceDocument = {
-    [key: string]: unknown;
-};
-
-/**
- * Settings and inputs that differ between two runs of the same command.
- */
-export type SettingsComparison = {
-    /**
-     * Settings and inputs whose values differ.
-     */
-    differences: Array<SettingDifference>;
-    /**
-     * Number of settings and inputs compared.
-     */
-    compared: number;
-    /**
-     * Whether both runs have the same configuration hash: the same settings on the same input contents.
-     */
-    same_config_hash: boolean;
-};
-
-/**
- * Estimates of two time-tree runs and their differences, second minus first.
- */
-export type EstimateComparison = {
-    /**
-     * Estimates of the first run.
-     */
-    first: TimetreeEstimates;
-    /**
-     * Estimates of the second run.
-     */
-    second: TimetreeEstimates;
-    /**
-     * Shift of the root date, in days.
-     */
-    root_shift_days?: number | null;
-    /**
-     * Change of the width of the root-date interval, in days.
-     */
-    root_interval_change_days?: number | null;
-    /**
-     * Change of the clock rate, in percent of the first rate.
-     */
-    clock_rate_change_percent?: number | null;
-    /**
-     * Change of the number of samples the clock model left out.
-     */
-    excluded_samples_change: number;
-    /**
-     * Change of the total log likelihood; absent when either value is missing or not finite.
-     */
-    log_likelihood_change?: number | null;
-};
-
-/**
- * Date shifts of the ancestors two trees share, matched by their set of samples.
- */
-export type AncestorComparison = {
-    /**
-     * Ancestors dated in both trees, with the shift of their date.
-     */
-    shifts: Array<AncestorShift>;
-    /**
-     * Number of ancestors in the first tree.
-     */
-    ancestors: number;
-    /**
-     * Mean absolute shift, in days.
-     */
-    mean_absolute_shift_days?: number | null;
-};
-
-/**
- * Date shift of one ancestor between two trees.
- */
-export type AncestorShift = {
-    /**
-     * Name of the ancestor in the first tree.
-     */
-    name: string;
-    /**
-     * Number of samples below the ancestor.
-     */
-    tips: number;
-    /**
-     * Date in the first tree.
-     */
-    date_first: YearDate;
-    /**
-     * Date in the second tree minus the date in the first, in days.
-     */
-    shift_days: number;
-};
-
-/**
- * Comparison of two runs: their settings and their results.
- */
-export type RunComparison = {
-    /**
-     * Settings and inputs that differ; absent when the runs execute different commands.
-     */
-    settings?: SettingsComparison | null;
-    /**
-     * Estimates side by side; present when both runs are finished time-tree runs with a tree.
-     */
-    estimates?: EstimateComparison | null;
-    /**
-     * Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
-     */
-    ancestors?: AncestorComparison | null;
-};
-
-/**
- * Request to find a clade of one run in the other time-tree runs.
- */
-export type CladeRequest = {
-    /**
-     * Run whose tree holds the clade.
-     */
-    run: JobId;
-    /**
-     * Name of the node at the top of the clade.
-     */
-    node: string;
-};
-
-/**
- * The node of another run with the same set of samples below it.
- */
-export type CladeMatch = {
-    /**
-     * Id of the run.
-     */
-    run: JobId;
-    /**
-     * Title of the run.
-     */
-    title: string;
-    /**
-     * Name of the node in that run.
-     */
-    node: string;
-    /**
-     * Date of the node.
-     */
-    date?: YearDate | null;
-    /**
-     * Confidence interval of the date.
-     */
-    date_interval?: DateInterval | null;
-};
-
-/**
- * A run whose tree could not be read.
- */
-export type UnreadableRun = {
-    /**
-     * Id of the run.
-     */
-    run: JobId;
-    /**
-     * Why the tree could not be read.
-     */
-    message: string;
-};
-
-/**
- * A clade of one run found in the other finished time-tree runs.
- */
-export type CladeInRuns = {
-    /**
-     * Runs whose tree has a node with the same set of samples below it.
-     */
-    matches: Array<CladeMatch>;
-    /**
-     * Number of other finished time-tree runs searched.
-     */
-    searched_runs: number;
-    /**
-     * Runs whose tree could not be read, with the reason.
-     */
-    unreadable_runs: Array<UnreadableRun>;
-};
-
-/**
- * Class of a back-end error. The web server answers each class with its own HTTP status.
- */
-export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'internal_error';
-
-/**
- * Error of a back-end operation, as the web server and the desktop back end report it.
- */
-export type ErrorResponse = {
-    /**
-     * Class of the error.
-     */
-    code: ErrorCode;
-    /**
-     * What failed.
-     */
-    message: string;
-    /**
-     * Underlying causes, outermost first.
-     */
-    causes: Array<string>;
-};
-
-/**
- * Answer to a cancellation request.
- */
-export type CancelRunResponse = {
-    /**
-     * Whether cancellation was requested; the run ends with a `cancelled` terminal event.
-     */
-    cancelled: boolean;
-};
-
-/**
- * Request of an operation of the app back end: the name of the operation and its arguments.
- */
-export type OperationRequest = {
-    operation: 'version';
-    args: {
-        [key: string]: never;
-    };
-} | {
-    operation: 'datasets';
-    args: {
-        [key: string]: never;
-    };
-} | {
-    operation: 'check-config';
-    args: {
-        request: CheckConfigRequest;
-    };
-} | {
-    operation: 'run-config';
-    args: {
-        request: RunConfigRequest;
-    };
-} | {
-    operation: 'check-inputs';
-    args: {
-        request: CheckInputsRequest;
-    };
-} | {
-    operation: 'list-runs';
-    args: {
-        [key: string]: never;
-    };
-} | {
-    operation: 'create-run';
-    args: {
-        request: CreateRunRequest;
-    };
-} | {
-    operation: 'get-run';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'start-run';
-    args: {
-        id: JobId;
-        request: StartRunRequest;
-    };
-} | {
-    operation: 'update-run';
-    args: {
-        id: JobId;
-        request: UpdateRunRequest;
-    };
-} | {
-    operation: 'cancel-run';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'delete-run';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'restore-run';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'purge-run';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'run-files';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'run-results';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'run-auspice';
-    args: {
-        id: JobId;
-    };
-} | {
-    operation: 'compare-runs';
-    args: {
-        id: JobId;
-        other: JobId;
-    };
-} | {
-    operation: 'clade-in-runs';
-    args: {
-        request: CladeRequest;
-    };
-};
-
-export type ArrayOfRunFile = Array<RunFile>;
-
-export type OperationsCallData = {
-    body: OperationRequest;
+export type HealthData = {
+    body?: never;
     path?: never;
     query?: never;
-    url: '/api/operations';
+    url: '/api/health';
 };
 
-export type OperationsCallResponses = {
+export type HealthErrors = {
     /**
-     * The JSON result of the operation the request names; `null` for an operation without result
+     * The error, with its causes
      */
+    default: ErrorResponse;
+};
+
+export type HealthError = HealthErrors[keyof HealthErrors];
+
+export type HealthResponses = {
+    /**
+     * Liveness of the server.
+     */
+    200: HealthStatus;
+};
+
+export type HealthResponse = HealthResponses[keyof HealthResponses];
+
+export type OpenapiData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/openapi.json';
+};
+
+export type OpenapiErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type OpenapiError = OpenapiErrors[keyof OpenapiErrors];
+
+export type OpenapiResponses = {
     200: unknown;
 };
-
-export type RunsArchiveData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/archive';
-};
-
-export type RunsArchiveResponses = {
-    /**
-     * Zip archive of the run's `out/` folder
-     */
-    200: Blob | File;
-};
-
-export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
-
-export type RunsEventsData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: {
-        /**
-         * Sequence number of the first event to send; the `Last-Event-ID` header of a reconnect resumes after that event
-         */
-        from?: number;
-    };
-    url: '/api/runs/{id}/events';
-};
-
-export type RunsEventsResponses = {
-    /**
-     * Stream of the run's events from `from`: `started`, `progress`, `log` and `iteration`, then one `terminal`
-     */
-    200: RunEvent;
-};
-
-export type RunsEventsResponse = RunsEventsResponses[keyof RunsEventsResponses];
-
-export type RunsFileData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query: {
-        /**
-         * Path of the file relative to the run's `out/` folder
-         */
-        path: string;
-    };
-    url: '/api/runs/{id}/file';
-};
-
-export type RunsFileResponses = {
-    /**
-     * Contents of the file
-     */
-    200: Blob | File;
-};
-
-export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
-
-export type RunsUploadInputData = {
-    body: Blob | File;
-    path: {
-        /**
-         * Id of a run that has not started
-         */
-        id: string;
-        /**
-         * File name inside the run's `inputs/` folder
-         */
-        name: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/inputs/{name}';
-};
-
-export type RunsUploadInputErrors = {
-    /**
-     * The inputs of the run exceed the upload limit of the server
-     */
-    413: ErrorResponse;
-};
-
-export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputErrors];
-
-export type RunsUploadInputResponses = {
-    /**
-     * The stored file and the path to use for it in the run's configuration
-     */
-    200: UploadedInput;
-};
-
-export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
 
 export type VersionData = {
     body?: never;
@@ -4396,9 +4332,6 @@ export type VersionErrors = {
 export type VersionError = VersionErrors[keyof VersionErrors];
 
 export type VersionResponses = {
-    /**
-     * Version of TreeTime.
-     */
     200: VersionInfo;
 };
 
@@ -4422,7 +4355,7 @@ export type DatasetsError = DatasetsErrors[keyof DatasetsErrors];
 
 export type DatasetsResponses = {
     /**
-     * Example datasets and example configurations in the data directory.
+     * Example datasets and example command configurations found in the data directory.
      */
     200: DatasetCatalog;
 };
@@ -4430,6 +4363,9 @@ export type DatasetsResponses = {
 export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
 
 export type ConfigCheckData = {
+    /**
+     * Request to check a configuration.
+     */
     body: CheckConfigRequest;
     path?: never;
     query?: never;
@@ -4447,7 +4383,7 @@ export type ConfigCheckError = ConfigCheckErrors[keyof ConfigCheckErrors];
 
 export type ConfigCheckResponses = {
     /**
-     * The configuration with every default filled in, or the problems found in it.
+     * Outcome of checking a configuration without running it.
      */
     200: CheckConfigResponse;
 };
@@ -4455,6 +4391,9 @@ export type ConfigCheckResponses = {
 export type ConfigCheckResponse = ConfigCheckResponses[keyof ConfigCheckResponses];
 
 export type RunConfigData = {
+    /**
+     * Request to resolve a configuration as a run resolves it, without running it.
+     */
     body: RunConfigRequest;
     path?: never;
     query?: never;
@@ -4472,7 +4411,7 @@ export type RunConfigError = RunConfigErrors[keyof RunConfigErrors];
 
 export type RunConfigResponses = {
     /**
-     * The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it.
+     * Outcome of resolving a configuration as a run resolves it.
      */
     200: RunConfigResponse;
 };
@@ -4480,6 +4419,9 @@ export type RunConfigResponses = {
 export type RunConfigResponse2 = RunConfigResponses[keyof RunConfigResponses];
 
 export type InputsCheckData = {
+    /**
+     * A command configuration whose input files to inspect before a run.
+     */
     body: CheckInputsRequest;
     path?: never;
     query?: never;
@@ -4497,7 +4439,7 @@ export type InputsCheckError = InputsCheckErrors[keyof InputsCheckErrors];
 
 export type InputsCheckResponses = {
     /**
-     * Facts about the input files, read with the readers the commands use.
+     * Facts about the input files of a run, read with the readers the commands use.
      */
     200: InputFacts;
 };
@@ -4530,6 +4472,9 @@ export type RunsListResponses = {
 export type RunsListResponse = RunsListResponses[keyof RunsListResponses];
 
 export type RunsCreateData = {
+    /**
+     * Request to create a run.
+     */
     body: CreateRunRequest;
     path?: never;
     query?: never;
@@ -4547,7 +4492,7 @@ export type RunsCreateError = RunsCreateErrors[keyof RunsCreateErrors];
 
 export type RunsCreateResponses = {
     /**
-     * Create a run; it starts at once unless `defer_start` is set.
+     * Durable record of one command run, stored as `run.json` in the run's folder.
      */
     200: RunRecord;
 };
@@ -4557,7 +4502,10 @@ export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
 export type RunsDeleteData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}';
@@ -4574,7 +4522,7 @@ export type RunsDeleteError = RunsDeleteErrors[keyof RunsDeleteErrors];
 
 export type RunsDeleteResponses = {
     /**
-     * Move a run to the trash; restore undoes it.
+     * no content
      */
     204: void;
 };
@@ -4584,7 +4532,10 @@ export type RunsDeleteResponse = RunsDeleteResponses[keyof RunsDeleteResponses];
 export type RunsGetData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}';
@@ -4601,7 +4552,7 @@ export type RunsGetError = RunsGetErrors[keyof RunsGetErrors];
 
 export type RunsGetResponses = {
     /**
-     * The record of a run.
+     * Durable record of one command run, stored as `run.json` in the run's folder.
      */
     200: RunRecord;
 };
@@ -4609,9 +4560,15 @@ export type RunsGetResponses = {
 export type RunsGetResponse = RunsGetResponses[keyof RunsGetResponses];
 
 export type RunsUpdateData = {
+    /**
+     * Changes to the presentation of a run.
+     */
     body: UpdateRunRequest;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}';
@@ -4628,7 +4585,7 @@ export type RunsUpdateError = RunsUpdateErrors[keyof RunsUpdateErrors];
 
 export type RunsUpdateResponses = {
     /**
-     * Change the title or pinned state of a run.
+     * Entry of a run list.
      */
     200: RunSummary;
 };
@@ -4636,9 +4593,15 @@ export type RunsUpdateResponses = {
 export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
 
 export type RunsStartData = {
+    /**
+     * Request to start a created run.
+     */
     body: StartRunRequest;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/start';
@@ -4655,7 +4618,7 @@ export type RunsStartError = RunsStartErrors[keyof RunsStartErrors];
 
 export type RunsStartResponses = {
     /**
-     * Start a created run.
+     * Durable record of one command run, stored as `run.json` in the run's folder.
      */
     200: RunRecord;
 };
@@ -4665,7 +4628,10 @@ export type RunsStartResponse = RunsStartResponses[keyof RunsStartResponses];
 export type RunsCancelData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/cancel';
@@ -4682,7 +4648,7 @@ export type RunsCancelError = RunsCancelErrors[keyof RunsCancelErrors];
 
 export type RunsCancelResponses = {
     /**
-     * Request cancellation of a run; the run ends with a `cancelled` terminal event.
+     * Answer to a cancellation request.
      */
     200: CancelRunResponse;
 };
@@ -4692,7 +4658,10 @@ export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
 export type RunsRestoreData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/restore';
@@ -4709,7 +4678,7 @@ export type RunsRestoreError = RunsRestoreErrors[keyof RunsRestoreErrors];
 
 export type RunsRestoreResponses = {
     /**
-     * Bring a run back from the trash.
+     * Entry of a run list.
      */
     200: RunSummary;
 };
@@ -4719,7 +4688,10 @@ export type RunsRestoreResponse = RunsRestoreResponses[keyof RunsRestoreResponse
 export type RunsPurgeData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/purge';
@@ -4736,7 +4708,7 @@ export type RunsPurgeError = RunsPurgeErrors[keyof RunsPurgeErrors];
 
 export type RunsPurgeResponses = {
     /**
-     * Remove a deleted run for good.
+     * no content
      */
     204: void;
 };
@@ -4746,7 +4718,10 @@ export type RunsPurgeResponse = RunsPurgeResponses[keyof RunsPurgeResponses];
 export type RunsFilesData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/files';
@@ -4762,10 +4737,7 @@ export type RunsFilesErrors = {
 export type RunsFilesError = RunsFilesErrors[keyof RunsFilesErrors];
 
 export type RunsFilesResponses = {
-    /**
-     * Files in the run's `out/` folder, with their sizes and kinds.
-     */
-    200: ArrayOfRunFile;
+    200: Array<RunFile>;
 };
 
 export type RunsFilesResponse = RunsFilesResponses[keyof RunsFilesResponses];
@@ -4773,7 +4745,10 @@ export type RunsFilesResponse = RunsFilesResponses[keyof RunsFilesResponses];
 export type RunsResultsData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/results';
@@ -4800,7 +4775,10 @@ export type RunsResultsResponse = RunsResultsResponses[keyof RunsResultsResponse
 export type RunsAuspiceData = {
     body?: never;
     path: {
-        id: string;
+        /**
+         * Id of the run.
+         */
+        id: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/auspice';
@@ -4817,7 +4795,7 @@ export type RunsAuspiceError = RunsAuspiceErrors[keyof RunsAuspiceErrors];
 
 export type RunsAuspiceResponses = {
     /**
-     * Auspice JSON of a finished run, with the color scales the app displays.
+     * Auspice JSON of a run, with the color scales the app displays.
      */
     200: AuspiceDocument;
 };
@@ -4827,8 +4805,14 @@ export type RunsAuspiceResponse = RunsAuspiceResponses[keyof RunsAuspiceResponse
 export type RunsCompareData = {
     body?: never;
     path: {
-        id: string;
-        other: string;
+        /**
+         * Id of the first run.
+         */
+        id: JobId;
+        /**
+         * Id of the run compared with the first.
+         */
+        other: JobId;
     };
     query?: never;
     url: '/api/runs/{id}/compare/{other}';
@@ -4845,7 +4829,7 @@ export type RunsCompareError = RunsCompareErrors[keyof RunsCompareErrors];
 
 export type RunsCompareResponses = {
     /**
-     * Differences of the second run's results from the first run's.
+     * Comparison of two runs: their settings and their results.
      */
     200: RunComparison;
 };
@@ -4853,6 +4837,9 @@ export type RunsCompareResponses = {
 export type RunsCompareResponse = RunsCompareResponses[keyof RunsCompareResponses];
 
 export type CladeInRunsData = {
+    /**
+     * Request to find a clade of one run in the other time-tree runs.
+     */
     body: CladeRequest;
     path?: never;
     query?: never;
@@ -4870,9 +4857,173 @@ export type CladeInRunsError = CladeInRunsErrors[keyof CladeInRunsErrors];
 
 export type CladeInRunsResponses = {
     /**
-     * Nodes of the other finished time-tree runs with the same set of samples below them.
+     * A clade of one run found in the other finished time-tree runs.
      */
     200: CladeInRuns;
 };
 
 export type CladeInRunsResponse = CladeInRunsResponses[keyof CladeInRunsResponses];
+
+export type RunsEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run.
+         */
+        id: JobId;
+    };
+    query?: {
+        /**
+         * Sequence number of the first event to send.
+         */
+        from?: number;
+    };
+    url: '/api/runs/{id}/events';
+};
+
+export type RunsEventsErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsEventsError = RunsEventsErrors[keyof RunsEventsErrors];
+
+export type RunsEventsResponses = {
+    /**
+     * Stream of server-sent events; the data of each event is one JSON item
+     */
+    200: RunEvent;
+};
+
+export type RunsEventsResponse = RunsEventsResponses[keyof RunsEventsResponses];
+
+export type RunsUploadInputData = {
+    body: Blob | File;
+    path: {
+        /**
+         * Id of a run that has not started.
+         */
+        id: JobId;
+        /**
+         * File name inside the run's `inputs/` folder.
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/inputs/{name}';
+};
+
+export type RunsUploadInputErrors = {
+    /**
+     * The inputs of the run exceed the upload limit of the server
+     */
+    413: ErrorResponse;
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputErrors];
+
+export type RunsUploadInputResponses = {
+    /**
+     * A file uploaded into a run's `inputs/` folder.
+     */
+    200: UploadedInput;
+};
+
+export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
+
+export type RunsFileData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run.
+         */
+        id: JobId;
+    };
+    query: {
+        /**
+         * Path of the file relative to the run's `out/` folder.
+         */
+        path: string;
+    };
+    url: '/api/runs/{id}/file';
+};
+
+export type RunsFileErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsFileError = RunsFileErrors[keyof RunsFileErrors];
+
+export type RunsFileResponses = {
+    /**
+     * Contents of the file
+     */
+    200: Blob | File;
+};
+
+export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
+
+export type RunsArchiveData = {
+    body?: never;
+    path: {
+        /**
+         * Id of the run.
+         */
+        id: JobId;
+    };
+    query?: never;
+    url: '/api/runs/{id}/archive';
+};
+
+export type RunsArchiveErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsArchiveError = RunsArchiveErrors[keyof RunsArchiveErrors];
+
+export type RunsArchiveResponses = {
+    /**
+     * Zip archive
+     */
+    200: Blob | File;
+};
+
+export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
+
+export type OperationsCallData = {
+    /**
+     * Request of an operation of the app back end: the name of the operation and its arguments.
+     */
+    body: OperationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/operations';
+};
+
+export type OperationsCallErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type OperationsCallError = OperationsCallErrors[keyof OperationsCallErrors];
+
+export type OperationsCallResponses = {
+    /**
+     * A JSON value
+     */
+    200: unknown;
+};

@@ -1,3 +1,4 @@
+use aide::openapi::{Components, OpenApi, SchemaObject};
 use app_commands::bridge::error::ErrorResponse;
 use app_commands::bridge::operations::OperationRequest;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
@@ -22,11 +23,11 @@ use app_commands::runs::record::{
 use app_commands::runs::setting_differences::SettingDifference;
 use eyre::Report;
 use schemars::{JsonSchema, Schema};
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 use strum::IntoEnumIterator;
 use treetime::progress::LogEvent;
 use treetime_schema::{ProgressEvent, VersionInfo};
-use treetime_utils::{make_error, make_report};
+use treetime_utils::make_error;
 
 const DEFS_PREFIX: &str = "#/$defs/";
 const COMPONENTS_PREFIX: &str = "#/components/schemas/";
@@ -42,7 +43,7 @@ pub(crate) fn config_component(command: AppCommand) -> String {
   format!("{capitalized}Config")
 }
 
-pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
+pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
   let mut components = Map::new();
   for command in AppCommand::iter() {
     add_root(
@@ -85,42 +86,35 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<CancelRunResponse>(&mut components)?;
   add_type::<OperationRequest>(&mut components)?;
 
-  let schemas = component_schemas(doc)?;
+  let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
   for (name, schema) in components {
-    insert_unique(schemas, &name, schema)?;
+    let schema = Schema::try_from(schema)?;
+    match schemas.get(&name) {
+      Some(existing) if existing.json_schema != schema => {
+        return make_error!("two different schemas are named `{name}`; rename one of the types");
+      },
+      Some(_) => {},
+      None => {
+        schemas.insert(
+          name,
+          SchemaObject {
+            json_schema: schema,
+            example: None,
+            external_docs: None,
+          },
+        );
+      },
+    }
   }
   Ok(())
 }
 
-pub(crate) fn add_component(doc: &mut Value, name: &str, schema: Schema) -> Result<(), Report> {
-  add_root(component_schemas(doc)?, name, schema)
-}
-
-fn component_schemas(doc: &mut Value) -> Result<&mut Map<String, Value>, Report> {
-  doc
-    .as_object_mut()
-    .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
-    .entry("components")
-    .or_insert_with(|| json!({}))
-    .as_object_mut()
-    .ok_or_else(|| make_report!("the OpenAPI components must be a JSON object"))?
-    .entry("schemas")
-    .or_insert_with(|| json!({}))
-    .as_object_mut()
-    .ok_or_else(|| make_report!("the OpenAPI component schemas must be a JSON object"))
-}
-
-pub(crate) fn add_setting_catalog(doc: &mut Value) -> Result<(), Report> {
-  let catalog = serde_json::to_value(setting_catalog()?)?;
-  doc
-    .as_object_mut()
-    .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
-    .insert(SETTING_CATALOG_KEY.to_owned(), catalog);
+pub(crate) fn add_setting_catalog(api: &mut OpenApi) -> Result<(), Report> {
+  api.extensions.insert(
+    SETTING_CATALOG_KEY.to_owned(),
+    serde_json::to_value(setting_catalog()?)?,
+  );
   Ok(())
-}
-
-pub(crate) fn schema_ref(component: &str) -> Value {
-  json!({ "$ref": format!("{COMPONENTS_PREFIX}{component}") })
 }
 
 fn add_type<T: JsonSchema>(components: &mut Map<String, Value>) -> Result<(), Report> {

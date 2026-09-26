@@ -113,6 +113,7 @@ flate2 = "=1.1.9"
 xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
+aide = { version = "=0.16.0-alpha.4", features = ["axum", "axum-json", "axum-query"] }
 approx = "=0.5.1"
 argmin = "=0.10.0"
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
@@ -198,8 +199,6 @@ tokio-stream = "=0.1.19"
 tokio-util = { version = "=0.7.19", features = ["io", "io-util"] }
 tower = { version = "=0.5.3", default-features = false, features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
-utoipa = { version = "=5.5.0", features = ["axum_extras", "yaml"] }
-utoipa-axum = "=0.2.0"
 zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }
 
 app-commands = { path = "packages/app-commands", default-features = false }

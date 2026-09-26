@@ -16,23 +16,21 @@ pub struct ServerConfig {
   pub max_upload_size: usize,
 }
 
+pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {
+  PathPolicy::new(&config.data_dir, &[])?;
+  let runs = RunManager::open(&config.runs_dir)?;
+  let policy = Arc::new(ServerInputs {
+    data_dir: config.data_dir.clone(),
+    runs: Arc::clone(&runs),
+  });
+  Ok(Arc::new(AppService::new(runs, config.data_dir.clone(), policy)))
+}
+
 pub(crate) struct AppState {
   pub config: ServerConfig,
   pub runs: Arc<RunManager>,
   pub service: Arc<AppService>,
-}
-
-impl AppState {
-  pub(crate) fn new(config: ServerConfig) -> Result<Self, Report> {
-    PathPolicy::new(&config.data_dir, &[])?;
-    let runs = RunManager::open(&config.runs_dir)?;
-    let policy = Arc::new(ServerInputs {
-      data_dir: config.data_dir.clone(),
-      runs: Arc::clone(&runs),
-    });
-    let service = Arc::new(AppService::new(Arc::clone(&runs), config.data_dir.clone(), policy));
-    Ok(Self { config, runs, service })
-  }
+  pub openapi: Value,
 }
 
 struct ServerInputs {

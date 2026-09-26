@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+mod api;
 mod confine;
 mod error;
 mod events;
@@ -8,16 +9,16 @@ mod openapi;
 pub mod routes;
 pub mod state;
 
-use crate::state::{AppState, ServerConfig};
+use crate::routes::api_router;
+use crate::state::{ServerConfig, server_service};
 use axum::Router;
 use eyre::Report;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 pub fn create_router(config: ServerConfig, static_dir: Option<PathBuf>) -> Result<Router, Report> {
-  let api = routes::api_routes(&Arc::new(AppState::new(config)?));
+  let (api, _) = api_router(server_service(&config)?, config)?;
 
   let router = match static_dir {
     Some(static_dir) => {

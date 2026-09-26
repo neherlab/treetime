@@ -138,13 +138,6 @@ renders = ["item", "fields", "variants"]
 skip_attrs = ["serde(skip)", "schemars(skip)"]
 
 [[no_comments.rendered]]
-name = "utoipa"
-derives = ["ToSchema", "IntoParams", "ToResponse"]
-attrs = ["utoipa::path"]
-renders = ["item", "fields", "variants"]
-skip_attrs = ["serde(skip)", "schema(ignore)", "param(ignore)"]
-
-[[no_comments.rendered]]
 name = "napi"
 attrs = ["napi"]
 renders = ["item", "fields", "variants"]
