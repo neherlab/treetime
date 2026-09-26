@@ -1,9 +1,9 @@
-import type { AppCommand, InputFactsResult, Parsed, SettingKey, zRunCheck } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { COMMAND_SETTINGS, type SettingSpec } from "../settings/catalog";
-import { MAIN_SETTING_KEYS } from "../settings/commands";
+import { MAIN_SETTING_KEYS, type SettingKey } from "../settings/commands";
 import { isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson, type JsonObject, type JsonValue } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
@@ -12,8 +12,6 @@ import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";
 import { SettingHelp } from "./SettingField";
-
-type RunCheck = Parsed<typeof zRunCheck>;
 
 type TimetreeKey = SettingKey<"timetree">;
 
@@ -91,7 +89,7 @@ export function MainSettings({
 }: {
   command: AppCommand;
   config: JsonObject;
-  facts: InputFactsResult | undefined;
+  facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
 }) {
   const { setValue } = useFormContext<FormConfig>();

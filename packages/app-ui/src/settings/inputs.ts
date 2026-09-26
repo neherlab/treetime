@@ -1,11 +1,4 @@
-import type {
-  AppCommand,
-  CheckInputsRequest,
-  Dataset,
-  InputFactsResult,
-  InputKind,
-  RunInput,
-} from "@neherlab/app-contracts";
+import type { AppCommand, CheckInputsRequest, Dataset, InputFacts, InputKind, RunInput } from "@neherlab/app-contracts";
 import * as z from "zod";
 
 import { COMMAND_SETTINGS } from "./catalog";
@@ -77,7 +70,7 @@ function stringOrNull(value: JsonValue | undefined): string | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function slotFactsText(slot: InputKind, facts: InputFactsResult | undefined, usesDates: boolean): string | null {
+export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, usesDates: boolean): string | null {
   if (slot === "tree") {
     const tree = facts?.tree;
 
@@ -117,6 +110,6 @@ export function slotFactsText(slot: InputKind, facts: InputFactsResult | undefin
   return `${metadata.rows} rows; ID column ${metadata.id_column}${dates}`;
 }
 
-export function slotProblem(slot: InputKind, facts: InputFactsResult | undefined): string | null {
+export function slotProblem(slot: InputKind, facts: InputFacts | undefined): string | null {
   return facts?.problems.find((problem) => problem.input === slot)?.message ?? null;
 }

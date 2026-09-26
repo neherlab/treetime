@@ -1,4 +1,4 @@
-import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import type { TreeSummary } from "../results/types";
@@ -12,8 +12,8 @@ export function TreeOnlyResults({
   data,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   data: TreeSummary;
   tree: TreeData | undefined;
 }) {

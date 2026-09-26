@@ -460,10 +460,9 @@ export default defineConfig({
     },
     {
       files: [
-        "packages/app-contracts/src/bridge.ts",
-        "packages/app-desktop/src/desktop-bridge.ts",
+        "packages/app-contracts/src/errors.ts",
+        "packages/app-desktop/src/desktop-shell.ts",
         "packages/app-desktop/src/main.ts",
-        "packages/app-web/src/bridge-web.ts",
       ],
       rules: {
         "anti-slop/no-runtime-typeof": "off",

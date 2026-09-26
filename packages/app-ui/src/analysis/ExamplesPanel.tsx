@@ -1,5 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand, Dataset, ExampleConfig, RunRecordResult } from "@neherlab/app-contracts";
+import type { AppCommand, Dataset, ExampleConfig, RunRecord } from "@neherlab/app-contracts";
 import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo, useState } from "react";
 
@@ -157,7 +157,7 @@ function EarlierRow({
   close,
 }: {
   command: AppCommand;
-  record: RunRecordResult;
+  record: RunRecord;
   inputs: readonly InputAssignment[];
   close: () => void;
 }) {

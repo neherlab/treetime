@@ -1,6 +1,6 @@
-import type { Parsed, zRunFile } from "@neherlab/app-contracts";
+import type { RunFile } from "@neherlab/app-contracts";
 
-export type RunFileEntry = Parsed<typeof zRunFile>;
+export type RunFileEntry = RunFile;
 
 export function totalSize(files: readonly RunFileEntry[]): number {
   return files.reduce((sum, file) => sum + file.size, 0);

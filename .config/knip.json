@@ -14,7 +14,7 @@
       "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts"]
     },
     "packages/app-contracts": {
-      "entry": ["src/bridge.ts!", "src/generated/index.ts"],
+      "entry": ["src/generated/index.ts"],
       "project": ["src/**/*.ts!"],
       "ignore": ["src/generated/**"]
     },
@@ -23,11 +23,11 @@
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"]
     },
     "packages/app-web": {
-      "entry": ["index.html!", "src/bridge-web.ts!"],
+      "entry": ["index.html!"],
       "project": ["src/**/*.{ts,tsx,css}!"]
     },
     "packages/app-desktop": {
-      "entry": ["src/backend.ts!", "src/desktop-bridge.ts!", "src/preload.ts!", "renderer/index.html!"],
+      "entry": ["src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],
       "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!", "build/**/*.ts"]
     },
     "packages/app-napi": {

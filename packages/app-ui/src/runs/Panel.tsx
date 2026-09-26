@@ -1,4 +1,4 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { CircleX, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -37,7 +37,7 @@ export interface SummaryEntry {
   tone?: "caution" | "fault" | undefined;
 }
 
-export function runTimeEntry(record: RunRecordResult): SummaryEntry {
+export function runTimeEntry(record: RunRecord): SummaryEntry {
   return {
     label: "Run time",
     value:

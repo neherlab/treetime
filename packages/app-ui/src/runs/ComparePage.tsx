@@ -1,4 +1,4 @@
-import type { RunComparisonResult, RunRecordResult } from "@neherlab/app-contracts";
+import type { RunComparison, RunRecord } from "@neherlab/app-contracts";
 import { runsCompare, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftRight } from "lucide-react";
@@ -38,7 +38,7 @@ export function ComparePage({ first, second }: { first: string; second: string }
   return <Comparison left={left.data} right={right.data} />;
 }
 
-function Comparison({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
+function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
   const navigate = useNavigate();
 
   const { data: comparison, error } = useApi(
@@ -79,15 +79,7 @@ function Comparison({ left, right }: { left: RunRecordResult; right: RunRecordRe
   );
 }
 
-function RunPicker({
-  current,
-  other,
-  side,
-}: {
-  current: RunRecordResult;
-  other: RunRecordResult;
-  side: "first" | "second";
-}) {
+function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: "first" | "second" }) {
   const { data } = useApi((context) => runsList(context));
   const navigate = useNavigate();
   const runs = useMemo(() => (data?.runs ?? []).filter((run) => run.id !== other.id), [data, other.id]);
@@ -123,8 +115,8 @@ function SettingsDifferences({
   right,
   settings,
 }: {
-  left: RunRecordResult;
-  right: RunRecordResult;
+  left: RunRecord;
+  right: RunRecord;
   settings: SettingsComparison | undefined;
 }) {
   const differences = settings?.differences ?? [];
@@ -166,7 +158,7 @@ function SettingsDifferences({
   );
 }
 
-function DifferenceRow({ record, difference }: { record: RunRecordResult; difference: SettingDifference }) {
+function DifferenceRow({ record, difference }: { record: RunRecord; difference: SettingDifference }) {
   const spec = COMMAND_SETTINGS[record.command].specs.find((candidate) => candidate.key === difference.key);
 
   return (
@@ -193,7 +185,7 @@ function DifferenceRow({ record, difference }: { record: RunRecordResult; differ
   );
 }
 
-function RunLink({ record }: { record: RunRecordResult }) {
+function RunLink({ record }: { record: RunRecord }) {
   return (
     <Link to="/runs/$id/results" params={{ id: record.id }} className="text-accent font-bold">
       {record.title}
@@ -206,9 +198,9 @@ function TimetreeEstimatesComparison({
   right,
   comparison,
 }: {
-  left: RunRecordResult;
-  right: RunRecordResult;
-  comparison: RunComparisonResult;
+  left: RunRecord;
+  right: RunRecord;
+  comparison: RunComparison;
 }) {
   const estimates = comparison.estimates ?? undefined;
   const ancestors = comparison.ancestors ?? undefined;

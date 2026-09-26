@@ -1,4 +1,4 @@
-import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
@@ -22,8 +22,8 @@ export function TimetreeResults({
   data,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   data: TimetreeData;
   tree: TreeData | undefined;
 }) {
@@ -43,8 +43,8 @@ function TimetreeView({
   estimates,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   data: TimetreeData;
   estimates: TimetreeEstimates;
   tree: TreeData;
@@ -71,7 +71,7 @@ function TimetreeAside({
   data,
   link,
 }: {
-  record: RunRecordResult;
+  record: RunRecord;
   tree: TreeData;
   data: TimetreeData;
   link: TreeLink;
@@ -111,7 +111,7 @@ function TimetreeAside({
   );
 }
 
-function timetreeSummary(record: RunRecordResult, estimates: TimetreeEstimates): SummaryEntry[] {
+function timetreeSummary(record: RunRecord, estimates: TimetreeEstimates): SummaryEntry[] {
   const relax = estimates.relaxed_clock;
   const r = estimates.r ?? undefined;
   const excluded = estimates.excluded_samples;
@@ -199,7 +199,7 @@ function rateEntry(estimates: TimetreeEstimates): SummaryEntry {
   return { label: "Clock rate", value: `${formatRate(rate)} /site/yr`, detail };
 }
 
-function likelihoodEntry(record: RunRecordResult, estimates: TimetreeEstimates): SummaryEntry {
+function likelihoodEntry(record: RunRecord, estimates: TimetreeEstimates): SummaryEntry {
   const written = estimates.log_likelihood;
 
   const runTime =

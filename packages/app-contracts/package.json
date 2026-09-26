@@ -2,7 +2,7 @@
   "name": "@neherlab/app-contracts",
   "version": "0.0.1",
   "private": true,
-  "description": "TypeScript types and schemas of the TreeTime bridge interface",
+  "description": "TypeScript types, schemas and client of the TreeTime API",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

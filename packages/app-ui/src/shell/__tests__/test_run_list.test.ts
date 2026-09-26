@@ -1,10 +1,10 @@
-import type { RunSummaryResult } from "@neherlab/app-contracts";
+import type { RunSummary } from "@neherlab/app-contracts";
 import { DateTime } from "luxon";
 import { describe, expect, test } from "vitest";
 
 import { changedFlags, groupRuns, listedRuns } from "../runList";
 
-function run(id: string, overrides: Partial<RunSummaryResult>): RunSummaryResult {
+function run(id: string, overrides: Partial<RunSummary>): RunSummary {
   return {
     id,
     title: id,

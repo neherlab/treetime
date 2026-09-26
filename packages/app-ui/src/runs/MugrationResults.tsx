@@ -1,4 +1,4 @@
-import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import type { AncestorState, MugrationData, StateChange } from "../results/types";
@@ -65,8 +65,8 @@ export function MugrationResults({
   data,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   data: MugrationData;
   tree: TreeData | undefined;
 }) {

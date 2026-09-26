@@ -1,4 +1,4 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
@@ -21,7 +21,7 @@ const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
   { value: "yaml", label: "YAML" },
 ];
 
-export function SettingsTab({ record }: { record: RunRecordResult }) {
+export function SettingsTab({ record }: { record: RunRecord }) {
   const settings = COMMAND_SETTINGS[record.command];
   const specs = settings.specs;
   const config = useMemo(() => zJsonObject.parse(record.config), [record.config]);

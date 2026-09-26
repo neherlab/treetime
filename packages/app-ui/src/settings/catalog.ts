@@ -2,19 +2,19 @@ import {
   openApiDocument,
   zSettingCatalog,
   type AppCommand,
-  type Parsed,
   type zCommandSettings,
   type zSettingSpec,
 } from "@neherlab/app-contracts";
+import type * as z from "zod";
 
 import { zJsonValue, type JsonValue } from "./json";
 
-export type SettingSpec = Omit<Parsed<typeof zSettingSpec>, "default_value" | "examples"> & {
+export type SettingSpec = Omit<z.infer<typeof zSettingSpec>, "default_value" | "examples"> & {
   default_value: JsonValue;
   examples: JsonValue[];
 };
 
-export type CommandSettings = Omit<Parsed<typeof zCommandSettings>, "settings"> & { specs: SettingSpec[] };
+export type CommandSettings = Omit<z.infer<typeof zCommandSettings>, "settings"> & { specs: SettingSpec[] };
 
 const SETTING_CATALOG_KEY = "x-setting-catalog";
 

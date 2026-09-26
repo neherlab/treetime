@@ -1,4 +1,4 @@
-import type { AppCommand, InputFactsResult, InputSlot } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
 import { useCallback, useState } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -12,7 +12,7 @@ import { ExamplesPanel } from "./ExamplesPanel";
 import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
 
-export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFactsResult | undefined }) {
+export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
   const [showExamples, setShowExamples] = useState(false);
   const localFiles = useLocalFiles();
   const toggleExamples = useCallback(() => setShowExamples((shown) => !shown), []);
@@ -45,7 +45,7 @@ function InputSlotRow({
 }: {
   command: AppCommand;
   slot: InputSlot;
-  facts: InputFactsResult | undefined;
+  facts: InputFacts | undefined;
 }) {
   const value = useWatch<FormConfig>({ name: slot.kind });
   const source = useDraftStore((state) => state.sources[slot.kind]);

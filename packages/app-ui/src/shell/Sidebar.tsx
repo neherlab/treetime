@@ -1,4 +1,4 @@
-import type { AppCommand, RunSummaryResult } from "@neherlab/app-contracts";
+import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
@@ -115,7 +115,7 @@ function CommandChip({ command }: { command: AppCommand | null }) {
   );
 }
 
-function RunRow({ run }: { run: RunSummaryResult }) {
+function RunRow({ run }: { run: RunSummary }) {
   const currentId = useCurrentRunId();
   const compareIds = useShellStore((state) => state.compareIds);
   const toggleCompare = useShellStore((state) => state.toggleCompare);

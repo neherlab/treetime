@@ -163,6 +163,29 @@ describe("zod_schemas tagged unions", () => {
     );
   });
 
+  test("an iteration event reads non-finite values", () => {
+    const event = {
+      seq: 7,
+      time: "2026-09-25T10:00:00Z",
+      type: "iteration",
+      data: {
+        iteration: 2,
+        n_diff: 0,
+        n_resolved: 0,
+        max_time_change: 0.1,
+        rms_time_change: 0.01,
+        log_lh_seq: null,
+        log_lh_pos: -12.5,
+        log_lh_coal: "inf",
+        log_lh_total: "inf",
+        clock_rate: 0.001,
+        r_squared: 0.8,
+      },
+    };
+
+    expect(zRunEvent.parse(event)).toStrictEqual(event);
+  });
+
   test("a variant needs the fields of its tag", () => {
     expect(zCoalescentPrior.safeParse({ kind: "fixed" }).success).toBe(false);
     expect(zCoalescentPrior.safeParse({ kind: "fixed", tc: 0.5 }).success).toBe(true);

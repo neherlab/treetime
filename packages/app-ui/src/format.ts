@@ -1,4 +1,4 @@
-import type { Parsed, zRunHeadline } from "@neherlab/app-contracts";
+import type { RunHeadline } from "@neherlab/app-contracts";
 import { DateTime } from "luxon";
 
 import { fromJsonFloat } from "./results/numbers";
@@ -47,7 +47,7 @@ export function dayLabel(timestamp: string, now: DateTime): string {
   return day.toFormat("d LLL yyyy");
 }
 
-export function headlineText(headline: Parsed<typeof zRunHeadline>): string {
+export function headlineText(headline: RunHeadline): string {
   const rootDate = headline.root_date;
 
   if (rootDate !== null && rootDate !== undefined) {

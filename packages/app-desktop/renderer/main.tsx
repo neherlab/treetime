@@ -6,9 +6,9 @@ import { createRoot } from "react-dom/client";
 import {
   createDesktopSaveActions,
   createLocalFiles,
-  windowBackendConnection,
+  windowFetchConnection,
   type DesktopShell,
-} from "../src/desktop-bridge";
+} from "../src/desktop-shell";
 import { createPortFetch } from "../src/port-fetch";
 
 import "./index.css";
@@ -21,7 +21,7 @@ declare global {
 
 const DESKTOP_ORIGIN = "http://treetime.desktop";
 
-const connection = windowBackendConnection(window, window.treetimeShell);
+const connection = windowFetchConnection(window, window.treetimeShell);
 
 const client = createApiClient({ baseUrl: DESKTOP_ORIGIN, fetch: createPortFetch(connection) });
 

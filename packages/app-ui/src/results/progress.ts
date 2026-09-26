@@ -1,13 +1,9 @@
-import type { Parsed, zIterationEvent, zLogLevel, zRunEvent, zTerminalEvent } from "@neherlab/app-contracts";
+import type { IterationEvent, LogLevel, RunEvent, TerminalEvent } from "@neherlab/app-contracts";
 import { DateTime } from "luxon";
 
 import { fromJsonFloat } from "./numbers";
 
-export type RunEvent = Parsed<typeof zRunEvent>;
-
-type TerminalEvent = Parsed<typeof zTerminalEvent>;
-
-type LogLevel = Parsed<typeof zLogLevel>;
+export type { RunEvent };
 
 export type LogFilter = "all" | "warnings" | "stages";
 
@@ -162,7 +158,7 @@ function stageMessage(name: string, message: string): string {
   return message === "" || message === name ? name : `${name}: ${message}`;
 }
 
-function iterationPoint(event: Parsed<typeof zIterationEvent>): IterationPoint {
+function iterationPoint(event: IterationEvent): IterationPoint {
   return {
     iteration: event.iteration,
     clockRate: fromJsonFloat(event.clock_rate),
@@ -173,6 +169,6 @@ function iterationPoint(event: Parsed<typeof zIterationEvent>): IterationPoint {
   };
 }
 
-function optionalFloat(value: Parsed<typeof zIterationEvent>["log_lh_total"]): number | undefined {
+function optionalFloat(value: IterationEvent["log_lh_total"]): number | undefined {
   return value === null || value === undefined ? undefined : fromJsonFloat(value);
 }

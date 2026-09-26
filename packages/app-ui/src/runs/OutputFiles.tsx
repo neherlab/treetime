@@ -1,5 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { runsFiles } from "@neherlab/app-contracts/client";
 import { Download } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -18,7 +18,7 @@ export function OutputFiles({
   methods,
   citation,
 }: {
-  record: RunRecordResult;
+  record: RunRecord;
   methods: string | undefined;
   citation: Citation;
 }) {

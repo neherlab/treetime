@@ -1,4 +1,4 @@
-import type { AppCommand, RunSummaryResult } from "@neherlab/app-contracts";
+import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import type { DateTime } from "luxon";
 
 import { dayLabel } from "../format";
@@ -9,14 +9,10 @@ import { wordMatcher } from "../text";
 
 interface RunGroup {
   label: string;
-  runs: RunSummaryResult[];
+  runs: RunSummary[];
 }
 
-export function listedRuns(
-  runs: readonly RunSummaryResult[],
-  filter: string,
-  command: AppCommand | null,
-): RunSummaryResult[] {
+export function listedRuns(runs: readonly RunSummary[], filter: string, command: AppCommand | null): RunSummary[] {
   const matches = wordMatcher(filter);
 
   return runs.filter(
@@ -27,7 +23,7 @@ export function listedRuns(
   );
 }
 
-export function groupRuns(runs: readonly RunSummaryResult[], now: DateTime): RunGroup[] {
+export function groupRuns(runs: readonly RunSummary[], now: DateTime): RunGroup[] {
   const groups: RunGroup[] = [];
   const pinned = runs.filter((run) => run.pinned);
 
@@ -53,6 +49,6 @@ export function groupRuns(runs: readonly RunSummaryResult[], now: DateTime): Run
   return groups;
 }
 
-export function changedFlags(run: RunSummaryResult): string[] {
+export function changedFlags(run: RunSummary): string[] {
   return settingFlags(COMMAND_SETTINGS[run.command].specs, run.changed_settings);
 }

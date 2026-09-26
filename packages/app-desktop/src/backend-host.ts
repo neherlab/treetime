@@ -1,14 +1,11 @@
 import { errorMessage, type ErrorCode } from "@neherlab/app-contracts";
-import type { Backend, PortExchange, PortRequest, Subscription } from "@neherlab/app-napi";
+import type { Backend, PortExchange, PortRequest } from "@neherlab/app-napi";
 
-import type { BackendRequest, ControlReply, FetchEndpoint, HostEndpoint, SaveRequest } from "./backend-protocol";
-
-type Unsubscribe = Pick<Subscription, "unsubscribe">;
+import type { ControlReply, FetchEndpoint, SaveRequest } from "./backend-protocol";
 
 type Abort = Pick<PortExchange, "abort">;
 
-export interface AddonBackend extends Pick<Backend, "call" | "saveRunFile" | "saveRunArchive"> {
-  subscribe(...args: Parameters<Backend["subscribe"]>): Unsubscribe;
+export interface AddonBackend extends Pick<Backend, "saveRunFile" | "saveRunArchive"> {
   fetch(...args: Parameters<Backend["fetch"]>): Abort;
 }
 
@@ -56,50 +53,6 @@ export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, 
     }
 
     exchanges.clear();
-  });
-}
-
-export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): void {
-  const subscriptions = new Map<number, Unsubscribe>();
-
-  const answer = async (request: BackendRequest): Promise<void> => {
-    switch (request.kind) {
-      case "call":
-        endpoint.post({ kind: "result", seq: request.seq, json: await backend.call(request.request) });
-        break;
-      case "subscribe":
-        subscriptions.set(
-          request.seq,
-          backend.subscribe(request.id, request.from, (err, json) => {
-            if (err === null) {
-              endpoint.post({ kind: "event", seq: request.seq, json });
-            }
-          }),
-        );
-        break;
-      case "unsubscribe":
-        subscriptions.get(request.seq)?.unsubscribe();
-        subscriptions.delete(request.seq);
-        break;
-    }
-  };
-
-  const answerOrReport = async (request: BackendRequest) => {
-    try {
-      await answer(request);
-    } catch (error: unknown) {
-      endpoint.post({ kind: "error", seq: request.seq, error: errorMessage(error) });
-    }
-  };
-
-  endpoint.listen((request) => void answerOrReport(request));
-
-  endpoint.onClose(() => {
-    for (const subscription of subscriptions.values()) {
-      subscription.unsubscribe();
-    }
-
-    subscriptions.clear();
   });
 }
 

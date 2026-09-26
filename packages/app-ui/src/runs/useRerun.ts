@@ -1,11 +1,11 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { rerunDraft } from "../settings/rerun";
 import { useDraftStore } from "../store/draft";
 
-export function useRerun(record: RunRecordResult): () => void {
+export function useRerun(record: RunRecord): () => void {
   const navigate = useNavigate();
 
   return useCallback(() => {

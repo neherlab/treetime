@@ -1,4 +1,4 @@
-import type { CheckLevel, Parsed, RunSummaryResult, zRunCheck } from "@neherlab/app-contracts";
+import type { CheckLevel, RunCheck, RunSummary } from "@neherlab/app-contracts";
 import { Link } from "@tanstack/react-router";
 import { CircleAlert, CircleCheck, Info, OctagonX } from "lucide-react";
 import { useCallback } from "react";
@@ -22,8 +22,8 @@ export function ChecksPanel({
   verb,
 }: {
   suggestedTitle: string;
-  checks: readonly Parsed<typeof zRunCheck>[] | undefined;
-  duplicate: RunSummaryResult | undefined;
+  checks: readonly RunCheck[] | undefined;
+  duplicate: RunSummary | undefined;
   verb: string;
 }) {
   const { isSubmitting, isValid, errors } = useFormState<FormConfig>();
@@ -104,7 +104,7 @@ export function ChecksPanel({
   );
 }
 
-export function CheckItem({ check }: { check: Parsed<typeof zRunCheck> }) {
+export function CheckItem({ check }: { check: RunCheck }) {
   const { setValue } = useFormContext<FormConfig>();
   const fix = check.fix ?? null;
 

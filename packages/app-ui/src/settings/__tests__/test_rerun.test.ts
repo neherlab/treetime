@@ -1,9 +1,9 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
 import { rerunDraft } from "../rerun";
 
-const RECORD: RunRecordResult = {
+const RECORD: RunRecord = {
   id: "r1",
   title: "Baseline",
   command: "clock",

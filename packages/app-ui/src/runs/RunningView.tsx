@@ -1,5 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 import { runsCancel } from "@neherlab/app-contracts/client";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -21,7 +21,7 @@ const LIVE_FILTERS: ReadonlyArray<{ value: LiveFilter; label: string }> = [
   { value: "warnings", label: "Warnings" },
 ];
 
-export function RunningView({ record, progress }: { record: RunRecordResult; progress: RunProgress }) {
+export function RunningView({ record, progress }: { record: RunRecord; progress: RunProgress }) {
   const [filter, setFilter] = useState<LiveFilter>("all");
   const entries = useMemo(() => filterLog(progress.entries, filter, ""), [filter, progress.entries]);
   const percent = Math.round(Math.min(1, Math.max(0, progress.fraction)) * 100);

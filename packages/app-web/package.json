@@ -12,7 +12,6 @@
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
-    "eventsource-parser": "4.1.1",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -25,7 +24,6 @@
     "portless": "0.15.6",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "zod": "catalog:"
+    "vite": "catalog:"
   }
 }

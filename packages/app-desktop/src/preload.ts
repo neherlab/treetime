@@ -9,11 +9,10 @@ import {
   SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
 } from "./channels";
-import type { DesktopShell } from "./desktop-bridge";
-import type { ShellMessage } from "./shell-protocol";
+import type { DesktopShell } from "./desktop-shell";
 
 interface MainWorld {
-  postMessage(message: ShellMessage, targetOrigin: string, transfer?: IpcRendererEvent["ports"]): void;
+  postMessage(message: { channel: string }, targetOrigin: string, transfer?: IpcRendererEvent["ports"]): void;
 }
 
 declare const window: MainWorld;
@@ -22,14 +21,14 @@ ipcRenderer.on(BACKEND_PORT_CHANNEL, (event) => {
   window.postMessage({ channel: BACKEND_PORT_CHANNEL }, "*", event.ports);
 });
 
-ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, reason: string, restarts: boolean) => {
-  const message: ShellMessage = { channel: BACKEND_STOPPED_CHANNEL, reason, restarts };
-  window.postMessage(message, "*");
-});
-
 const shell: DesktopShell = {
   connectBackend: () => {
     ipcRenderer.send(BACKEND_PORT_REQUEST_CHANNEL);
+  },
+  onBackendStopped: (listener) => {
+    ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, reason: string, restarts: boolean) => {
+      listener(reason, restarts);
+    });
   },
   pickFiles: (request) => ipcRenderer.invoke(PICK_FILES_CHANNEL, request),
   saveRunFile: (request) => ipcRenderer.invoke(SAVE_RUN_FILE_CHANNEL, request),

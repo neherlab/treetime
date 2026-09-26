@@ -1,5 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { DateTime } from "luxon";
@@ -80,7 +80,7 @@ export function RunPage({ id, tab }: { id: string; tab: RunTab }) {
   );
 }
 
-function ResultsTab({ record, progress }: { record: RunRecordResult; progress: RunProgress }) {
+function ResultsTab({ record, progress }: { record: RunRecord; progress: RunProgress }) {
   if (LIVE_STATUSES.has(record.status)) {
     return <RunningView record={record} progress={progress} />;
   }
@@ -92,7 +92,7 @@ function ResultsTab({ record, progress }: { record: RunRecordResult; progress: R
   return <FinishedResults record={record} />;
 }
 
-function FinishedResults({ record }: { record: RunRecordResult }) {
+function FinishedResults({ record }: { record: RunRecord }) {
   const { data: results, error } = useApi((context) => runsResults({ ...context, path: { id: record.id } }), {
     staleTime: Infinity,
   });
@@ -144,8 +144,8 @@ function CommandResults({
   results,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   tree: TreeData | undefined;
 }) {
   const view = results.results;
@@ -169,7 +169,7 @@ function CommandResults({
   return <TreeOnlyResults record={record} results={results} data={view.data} tree={tree} />;
 }
 
-function EndedRun({ record, progress }: { record: RunRecordResult; progress: RunProgress }) {
+function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgress }) {
   const rerun = useRerun(record);
   const error = record.error;
 
@@ -201,7 +201,7 @@ function EndedRun({ record, progress }: { record: RunRecordResult; progress: Run
   );
 }
 
-const ENDED_TITLES: Readonly<Record<RunRecordResult["status"], string>> = {
+const ENDED_TITLES: Readonly<Record<RunRecord["status"], string>> = {
   created: "The run has not started",
   running: "The run is still running",
   ok: "The run finished",
@@ -210,11 +210,11 @@ const ENDED_TITLES: Readonly<Record<RunRecordResult["status"], string>> = {
   interrupted: "The run was interrupted because the process that ran it stopped",
 };
 
-function endedTitle(record: RunRecordResult): string {
+function endedTitle(record: RunRecord): string {
   return ENDED_TITLES[record.status];
 }
 
-function RunHeader({ record }: { record: RunRecordResult }) {
+function RunHeader({ record }: { record: RunRecord }) {
   const navigate = useNavigate();
   const toasts = Toast.useToastManager();
   const rerun = useRerun(record);

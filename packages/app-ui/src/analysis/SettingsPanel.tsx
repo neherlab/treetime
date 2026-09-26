@@ -1,4 +1,4 @@
-import type { AppCommand, InputFactsResult, Parsed, zRunCheck } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
@@ -19,8 +19,8 @@ export function SettingsPanel({
 }: {
   command: AppCommand;
   config: JsonObject;
-  facts: InputFactsResult | undefined;
-  checks: readonly Parsed<typeof zRunCheck>[] | undefined;
+  facts: InputFacts | undefined;
+  checks: readonly RunCheck[] | undefined;
 }) {
   const view = useDraftStore((state) => state.view);
   const search = useDraftStore((state) => state.search);

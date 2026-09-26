@@ -1,4 +1,4 @@
-import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
@@ -56,8 +56,8 @@ export function ClockResults({
   data,
   tree,
 }: {
-  record: RunRecordResult;
-  results: RunResultsResult;
+  record: RunRecord;
+  results: RunResults;
   data: ClockData;
   tree: TreeData | undefined;
 }) {
@@ -133,7 +133,7 @@ function sampleRows(data: ClockData): SampleRow[] {
   );
 }
 
-function clockSummary(record: RunRecordResult, data: ClockData): SummaryEntry[] {
+function clockSummary(record: RunRecord, data: ClockData): SummaryEntry[] {
   const estimates = data.estimates;
   const rate = estimates.clock_rate ?? undefined;
   const r = estimates.r ?? undefined;

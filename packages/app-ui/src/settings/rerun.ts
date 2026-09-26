@@ -1,4 +1,4 @@
-import type { RunRecordResult } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
 
 import { COMMAND_SETTINGS } from "./catalog";
 import { normalizeConfig } from "./config";
@@ -11,7 +11,7 @@ interface RerunDraft {
   title: string;
 }
 
-export function rerunDraft(record: RunRecordResult): RerunDraft {
+export function rerunDraft(record: RunRecord): RerunDraft {
   const specs = COMMAND_SETTINGS[record.command].specs;
 
   return {
