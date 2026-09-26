@@ -4,11 +4,14 @@ import { ZodError } from "zod";
 import {
   ApiError,
   createApiClient,
+  events,
+  resumableStream,
   runsCreate,
   runsEvents,
   runsGet,
   runsUploadInput,
   SSE_MAX_RETRY_ATTEMPTS,
+  StreamEndedError,
   version,
 } from "../client";
 import type { RunEvent } from "../generated/types.gen";
@@ -366,5 +369,236 @@ describe("api_client event streams", () => {
 
     expect(await collect(stream)).toStrictEqual([]);
     expect(server.sent).toHaveLength(SSE_MAX_RETRY_ATTEMPTS);
+  });
+});
+
+describe("api_client resumable streams", () => {
+  test("a stream that keeps dropping after events stays alive beyond the retry limit and resumes after the last event", async () => {
+    const drops = SSE_MAX_RETRY_ATTEMPTS + 4;
+    const routes: Record<string, Route> = {};
+
+    for (let seq = 0; seq < drops; seq += 1) {
+      routes[`GET /api/runs/r1/events?from=${seq}`] = () =>
+        eventStream([logEvent(seq, `m${seq}`)], new TypeError("connection reset"));
+    }
+
+    routes[`GET /api/runs/r1/events?from=${drops}`] = () => eventStream([], new TypeError("connection reset"));
+
+    const server = new FakeServer(routes);
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+    const delays: number[] = [];
+
+    const stream = resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+      from: 0,
+      maxAttempts: SSE_MAX_RETRY_ATTEMPTS,
+      sleep: (ms) => {
+        delays.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const received: RunEvent[] = [];
+
+    await expect(
+      (async () => {
+        for await (const event of stream) {
+          received.push(event);
+        }
+      })(),
+    ).rejects.toBeInstanceOf(StreamEndedError);
+
+    expect(messages(received)).toStrictEqual(Array.from({ length: drops }, (_, seq) => `m${seq}`));
+    expect(server.sent.map((sent) => sent.key)).toStrictEqual([
+      ...Array.from({ length: drops }, (_, seq) => `GET /api/runs/r1/events?from=${seq}`),
+      ...Array.from({ length: SSE_MAX_RETRY_ATTEMPTS }, () => `GET /api/runs/r1/events?from=${drops}`),
+    ]);
+    expect(delays.slice(0, drops + 1)).toStrictEqual(Array.from({ length: drops + 1 }, () => 1000));
+    expect(server.sent.every((sent) => sent.headers.get("Last-Event-ID") === null)).toBe(true);
+  });
+
+  test("consecutive attempts without an event back off exponentially and stop at the attempt limit with the last error", async () => {
+    const server = new FakeServer({
+      "GET /api/runs/r1/events?from=0": () => eventStream([], new TypeError("connection reset")),
+    });
+
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+    const delays: number[] = [];
+
+    const stream = resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+      from: 0,
+      maxAttempts: 8,
+      sleep: (ms) => {
+        delays.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const error = await collect(stream).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(StreamEndedError);
+    expect(error).toMatchObject({
+      message: "the event stream ended 8 times in a row without sending an event",
+      cause: new TypeError("connection reset"),
+    });
+    expect(server.sent).toHaveLength(8);
+    expect(delays).toStrictEqual([1000, 2000, 4000, 8000, 16_000, 30_000, 30_000]);
+  });
+
+  test("a stream without an attempt limit keeps reconnecting after a clean end", async () => {
+    const appEvent = (seq: number) =>
+      `id: ${seq}\nevent: resync\ndata: ${JSON.stringify({ seq, time: "t", stale: ["/api/runs"], kind: "resync" })}\n\n`;
+
+    const server = new FakeServer({
+      "GET /api/events?from=0": () => eventStream([appEvent(4)]),
+      "GET /api/events?from=5": (_request, attempt) => (attempt < 20 ? eventStream([]) : eventStream([appEvent(5)])),
+    });
+
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const stream = resumableStream({
+      open: (request) => events({ ...request, client }),
+      from: 0,
+      sleep: () => Promise.resolve(),
+    });
+
+    const seqs: number[] = [];
+
+    for await (const event of stream) {
+      seqs.push(event.seq);
+
+      if (seqs.length === 2) {
+        break;
+      }
+    }
+
+    expect(seqs).toStrictEqual([4, 5]);
+    expect(server.sent).toHaveLength(22);
+  });
+
+  test("an invalid event rejects the resumable stream without reconnecting", async () => {
+    const invalid = `id: 1\nevent: log\ndata: ${JSON.stringify({ seq: 1, time: "t", type: "log", data: { level: "loud" } })}\n\n`;
+    const server = new FakeServer({ "GET /api/runs/r1/events": () => eventStream([invalid]) });
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const stream = resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+      sleep: () => Promise.resolve(),
+    });
+
+    await expect(collect(stream)).rejects.toBeInstanceOf(ZodError);
+    expect(server.sent).toHaveLength(1);
+  });
+
+  test("a client error answer rejects the resumable stream with the ApiError", async () => {
+    const server = new FakeServer({ "GET /api/runs/r9/events?from=0": () => json(NOT_FOUND, 404) });
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const stream = resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r9" } }),
+      from: 0,
+      sleep: () => Promise.resolve(),
+    });
+
+    await expect(collect(stream)).rejects.toMatchObject({ status: 404, response: NOT_FOUND });
+    expect(server.sent).toHaveLength(1);
+  });
+
+  test("aborting ends the resumable stream quietly and cancels the open request", async () => {
+    const controller = new AbortController();
+    let cancelled = false;
+    const encoder = new TextEncoder();
+
+    const server = new FakeServer({
+      "GET /api/runs/r1/events?from=0": () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(stream) {
+              stream.enqueue(encoder.encode(logEvent(0, "a")));
+            },
+            cancel() {
+              cancelled = true;
+            },
+          }),
+          { headers: { "Content-Type": "text/event-stream" } },
+        ),
+    });
+
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const stream = resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+      from: 0,
+      signal: controller.signal,
+    });
+
+    const received: RunEvent[] = [];
+
+    for await (const event of stream) {
+      received.push(event);
+      controller.abort();
+    }
+
+    expect(messages(received)).toStrictEqual(["a"]);
+    expect(cancelled).toBe(true);
+  });
+
+  test("aborting the stream during the retry wait ends it at once", async () => {
+    const server = new FakeServer({ "GET /api/runs/r1/events?from=0": () => eventStream([]) });
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+    const controller = new AbortController();
+
+    const aborted = collect(
+      resumableStream({
+        open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+        from: 0,
+        retryDelay: 3_600_000,
+        signal: controller.signal,
+      }),
+    );
+
+    await expect.poll(() => server.sent.length).toBe(1);
+    controller.abort();
+
+    await expect(aborted).resolves.toStrictEqual([]);
+    expect(server.sent).toHaveLength(1);
+  });
+
+  test("a consumer that stops early cancels the open request", async () => {
+    let cancelled = false;
+    const encoder = new TextEncoder();
+
+    const server = new FakeServer({
+      "GET /api/runs/r1/events?from=0": () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(stream) {
+              stream.enqueue(encoder.encode(logEvent(0, "a")));
+            },
+            cancel() {
+              cancelled = true;
+            },
+          }),
+          { headers: { "Content-Type": "text/event-stream" } },
+        ),
+    });
+
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const received: number[] = [];
+
+    for await (const event of resumableStream({
+      open: (request) => runsEvents({ ...request, client, path: { id: "r1" } }),
+      from: 0,
+    })) {
+      received.push(event.seq);
+      break;
+    }
+
+    expect(received).toStrictEqual([0]);
+    await expect.poll(() => cancelled).toBe(true);
   });
 });
