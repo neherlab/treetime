@@ -2,11 +2,12 @@ import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { createWebApiClient } from "./api-client";
 import { createWebBridge } from "./bridge-web";
 
 import "./index.css";
 
-const bridge = createWebBridge();
+const bridge = createWebBridge({ client: createWebApiClient() });
 
 const root = document.getElementById("root");
 

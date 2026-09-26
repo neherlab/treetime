@@ -7,9 +7,11 @@ import {
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
+import { type ApiClient, runsUploadInput } from "@neherlab/app-contracts/client";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
 interface WebBridgeDeps {
+  client: ApiClient;
   fetchFn?: typeof fetch;
   apiBase?: string;
   saveBlob?: (blob: Blob, name: string) => void;
@@ -17,7 +19,7 @@ interface WebBridgeDeps {
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
+export function createWebBridge(deps: WebBridgeDeps): TreeTimeBridge {
   const fetchFn = deps.fetchFn ?? globalThis.fetch.bind(globalThis);
   const apiBase = deps.apiBase ?? "/api";
   const saveBlob = deps.saveBlob ?? downloadBlob;
@@ -111,11 +113,12 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     saveRunFile: (id, path, name) => save(filePath(id, path), name),
     saveRunArchive: (id, name) => save(`${runPath(id)}/archive`, name),
     uploadInput: async (id, name, data) => {
-      const response = await send("PUT", `${runPath(id)}/inputs/${encodeURIComponent(name)}`, data, {
-        "Content-Type": "application/octet-stream",
+      const { data: uploaded } = await runsUploadInput({
+        client: deps.client,
+        path: { id, name },
+        body: data,
+        throwOnError: true,
       });
-
-      const uploaded: unknown = await response.json();
 
       return uploaded;
     },

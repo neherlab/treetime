@@ -1,4 +1,11 @@
-import { BridgeError, CancelledError, CommandError, zOperationRequest } from "@neherlab/app-contracts";
+import {
+  BridgeError,
+  CancelledError,
+  CommandError,
+  type TreeTimeBridge,
+  zOperationRequest,
+} from "@neherlab/app-contracts";
+import { ApiError, createApiClient } from "@neherlab/app-contracts/client";
 import { describe, expect, test } from "vitest";
 import { ZodError, z } from "zod";
 
@@ -11,6 +18,13 @@ interface Call {
 }
 
 type Route = (call: Call) => Response;
+
+interface TestBridgeDeps {
+  fetchFn: typeof fetch;
+  saveBlob?: (blob: Blob, name: string) => void;
+}
+
+const BASE_URL = "http://treetime.test";
 
 const RECORD = {
   id: "r1",
@@ -34,26 +48,34 @@ const RECORD = {
 
 const OUTCOME = { command: "clock", output_files: [{ path: "/runs/r1/out/clock.nwk", kind: "nwk" }] };
 
+function webBridge(deps: TestBridgeDeps): TreeTimeBridge {
+  return createWebBridge({ ...deps, client: createApiClient({ baseUrl: BASE_URL, fetch: deps.fetchFn }) });
+}
+
 function routes(table: Record<string, Route>, calls: Call[] = []): typeof fetch {
-  return (input, init) => {
-    const call = { method: init?.method ?? "GET", url: urlOf(input), body: init?.body };
+  return async (input, init) => {
+    const call =
+      input instanceof Request
+        ? { method: input.method, url: urlOf(input), body: await input.blob() }
+        : { method: init?.method ?? "GET", url: urlOf(input), body: init?.body };
+
     calls.push(call);
     const route = table[routeKey(call)];
 
     if (route === undefined) {
-      return Promise.resolve(new Response(JSON.stringify({ code: "x", message: "no route" }), { status: 404 }));
+      return new Response(JSON.stringify({ code: "x", message: "no route" }), { status: 404 });
     }
 
     if (init?.signal?.aborted === true) {
-      return Promise.reject(new DOMException("aborted", "AbortError"));
+      throw new DOMException("aborted", "AbortError");
     }
 
-    return Promise.resolve(route(call));
+    return route(call);
   };
 }
 
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
 function sse(events: Array<{ type: string; data: unknown }>): Response {
@@ -77,7 +99,9 @@ function routeKey(call: Call): string {
 
 function urlOf(input: RequestInfo | URL): string {
   if (input instanceof Request) {
-    return input.url;
+    const url = new URL(input.url);
+
+    return `${url.pathname}${url.search}`;
   }
 
   return input instanceof URL ? input.href : input;
@@ -85,13 +109,13 @@ function urlOf(input: RequestInfo | URL): string {
 
 describe("bridge_web queries and requests", () => {
   test("version fetches and validates the result", async () => {
-    const bridge = createWebBridge({ fetchFn: routes({ "call version": () => json({ version: "9.9.9" }) }) });
+    const bridge = webBridge({ fetchFn: routes({ "call version": () => json({ version: "9.9.9" }) }) });
     await expect(bridge.version()).resolves.toStrictEqual({ version: "9.9.9" });
   });
 
   test("a failed request rejects with the server's typed error, its causes and the status", async () => {
     const response = { code: "not_found", message: "When reading run `r9`", causes: ["no run with id `r9`"] };
-    const bridge = createWebBridge({ fetchFn: routes({ "call get-run": () => json(response, 404) }) });
+    const bridge = webBridge({ fetchFn: routes({ "call get-run": () => json(response, 404) }) });
 
     const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
 
@@ -103,7 +127,7 @@ describe("bridge_web queries and requests", () => {
   });
 
   test("a failed request without a typed error body rejects as an internal error with the body text", async () => {
-    const bridge = createWebBridge({
+    const bridge = webBridge({
       fetchFn: routes({ "call get-run": () => new Response("Bad Gateway", { status: 502 }) }),
     });
 
@@ -116,7 +140,7 @@ describe("bridge_web queries and requests", () => {
   });
 
   test("a malformed result rejects with a ZodError", async () => {
-    const bridge = createWebBridge({ fetchFn: routes({ "call version": () => json({ version: 1 }) }) });
+    const bridge = webBridge({ fetchFn: routes({ "call version": () => json({ version: 1 }) }) });
     await expect(bridge.version()).rejects.toBeInstanceOf(ZodError);
   });
 
@@ -144,7 +168,7 @@ describe("bridge_web queries and requests", () => {
       calls,
     );
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     await bridge.checkConfig({ command: "prune", text: "tree: t.nwk" });
     expect(calls).toStrictEqual([
       {
@@ -180,7 +204,7 @@ describe("bridge_web queries and requests", () => {
       calls,
     );
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     await bridge.runConfig({ command: "prune", config: { tree: "t.nwk" } });
     expect(calls).toStrictEqual([
       {
@@ -209,7 +233,7 @@ describe("bridge_web queries and requests", () => {
       calls,
     );
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     await bridge.updateRun("r1", { pinned: true });
     await expect(bridge.cancelRun("r1")).resolves.toBe(false);
     await bridge.deleteRun("r1");
@@ -231,17 +255,27 @@ describe("bridge_web queries and requests", () => {
     const calls: Call[] = [];
     const uploaded = { name: "a b.nwk", path: "/runs/r1/inputs/a b.nwk", size: 6, sha256: "x" };
     const fetchFn = routes({ "PUT /api/runs/r1/inputs/a%20b.nwk": () => json(uploaded) }, calls);
-    const bridge = createWebBridge({ fetchFn });
-    const blob = new Blob(["(A,B);"]);
-    await expect(bridge.uploadInput("r1", "a b.nwk", blob)).resolves.toStrictEqual(uploaded);
-    expect(calls[0]?.body).toBe(blob);
+    const bridge = webBridge({ fetchFn });
+    await expect(bridge.uploadInput("r1", "a b.nwk", new Blob(["(A,B);"]))).resolves.toStrictEqual(uploaded);
+    const body = calls[0]?.body;
+    expect(body).toBeInstanceOf(Blob);
+    expect(body instanceof Blob ? await body.text() : undefined).toBe("(A,B);");
+  });
+
+  test("a rejected upload rejects with the server's ApiError", async () => {
+    const response = { code: "upload_too_large", message: "The file is too large", causes: [] };
+    const fetchFn = routes({ "PUT /api/runs/r1/inputs/t.nwk": () => json(response, 413) });
+    const bridge = webBridge({ fetchFn });
+    const error = await bridge.uploadInput("r1", "t.nwk", new Blob(["(A,B);"])).catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 413, response });
   });
 
   test("saveRunFile hands the file to the browser download under the given name", async () => {
     const saved: Array<{ name: string; blob: Blob }> = [];
     const fetchFn = routes({ "GET /api/runs/r1/file?path=out%2Fclock.nwk": () => new Response("(A,B);") });
 
-    const bridge = createWebBridge({
+    const bridge = webBridge({
       fetchFn,
       saveBlob: (blob, name) => {
         saved.push({ name, blob });
@@ -257,7 +291,7 @@ describe("bridge_web queries and requests", () => {
     const names: string[] = [];
     const fetchFn = routes({ "GET /api/runs/r1/archive": () => new Response("PK") });
 
-    const bridge = createWebBridge({
+    const bridge = webBridge({
       fetchFn,
       saveBlob: (_blob, name) => {
         names.push(name);
@@ -275,7 +309,7 @@ describe("bridge_web queries and requests", () => {
       "GET /api/runs/r9/archive": () => json({ code: "not_found", message: "no run with id `r9`", causes: [] }, 404),
     });
 
-    const bridge = createWebBridge({
+    const bridge = webBridge({
       fetchFn,
       saveBlob: (_blob, name) => {
         names.push(name);
@@ -305,7 +339,7 @@ describe("bridge_web run events", () => {
       calls,
     );
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     const seen: string[] = [];
 
     const terminal = await bridge.followRun("r1", {
@@ -329,7 +363,7 @@ describe("bridge_web run events", () => {
         ]),
     });
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     const fractions: number[] = [];
     await expect(
       bridge.clock(
@@ -351,7 +385,7 @@ describe("bridge_web run events", () => {
         sse([{ type: "terminal", data: { status: "error", job_id: "r1", message: "bad", causes: [] } }]),
     });
 
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     await expect(bridge.clock({ tree: "t.nwk" })).rejects.toBeInstanceOf(CommandError);
   });
 
@@ -359,7 +393,7 @@ describe("bridge_web run events", () => {
     const controller = new AbortController();
     controller.abort();
     const fetchFn = routes({ "GET /api/runs/r1/events?from=2": () => sse([]) });
-    const bridge = createWebBridge({ fetchFn });
+    const bridge = webBridge({ fetchFn });
     await expect(bridge.followRun("r1", { from: 2, signal: controller.signal })).rejects.toBeInstanceOf(CancelledError);
   });
 });
