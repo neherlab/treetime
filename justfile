@@ -538,10 +538,10 @@ audit-ts: _js
 tools-outdated:
     mise outdated --bump
 
-# Lock .config/mise.lock for every supported host platform after a change to .config/mise.toml
+# Lock .config/mise.lock for every supported host platform after a change to .config/mise.toml; name the changed tools to lock only those
 [group("deps")]
-tools-lock:
-    mise lock --platform linux-x64,linux-arm64,macos-x64,macos-arm64
+tools-lock *tools:
+    mise lock --platform linux-x64,linux-arm64,macos-x64,macos-arm64 "$@"
 
 # Install the JavaScript dependencies from bun.lock
 _js:

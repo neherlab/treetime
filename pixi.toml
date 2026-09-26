@@ -1,0 +1,39 @@
+# Python environment of TreeTime v0 (packages/legacy/treetime), the golden-master
+# capture scripts, and the research scripts in test_scripts/. The same lock file
+# drives the host (`pixi run ...`) and the Python image (dev/docker/jupyter.dockerfile).
+# Every package release must be at least seven days old (`exclude-newer`).
+# After editing, run `pixi lock` and commit both pixi.toml and pixi.lock.
+
+[workspace]
+name = "treetime-python"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
+exclude-newer = "7d"
+
+# v0 runs from the checkout, and OpenBLAS matches the Rust build
+# (dev/docker/files/install-openblas): version 0.3.28, single-threaded.
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/packages/legacy/treetime"
+OPENBLAS_NUM_THREADS = "1"
+
+[tasks]
+treetime = "python -m treetime"
+
+[dependencies]
+libblas = { version = "*", build = "*openblas" }
+libopenblas = "==0.3.28"
+python = "==3.12.14"
+
+biopython = "==1.88"
+ipdb = "==0.13.13"
+ipython = "==9.17.1"
+jsonpickle = "==4.1.2"
+jupyter_client = "==8.10.0"
+jupyterlab = "==4.6.3"
+matplotlib-base = "==3.11.2"
+notebook = "==7.6.2"
+numpy = "==2.5.3"
+pandas = "==3.0.5"
+plotly = "==7.0.0"
+scipy = "==1.18.1"
+seaborn = "==0.13.2"

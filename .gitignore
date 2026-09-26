@@ -7,7 +7,7 @@
 /.env.local
 /.idea
 /.out
-/.venv
+/.pixi
 /.vscode
 /coverage
 /data_dev

@@ -1,2 +1,4 @@
 *
 !dev/docker/files/
+!pixi.lock
+!pixi.toml

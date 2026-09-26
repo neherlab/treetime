@@ -10,6 +10,7 @@ Cargo.lock linguist-generated=true
 dev/lints/*/Cargo.lock linguist-generated=true
 .config/mise.lock linguist-generated=true
 bun.lock linguist-generated=true
+pixi.lock linguist-generated=true
 
 # Generated sources (`just gen`): mark as generated and hide from diffs.
 packages/app-contracts/src/generated/** linguist-generated=true -diff

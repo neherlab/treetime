@@ -14,6 +14,7 @@ export default defineConfig({
     "packages/app-napi/index.d.ts",
     "packages/app-output/src/__tests__/schemas",
     "packages/legacy",
+    "pixi.lock",
     "packages/schemas",
     "test_scripts",
   ],

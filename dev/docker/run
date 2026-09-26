@@ -25,6 +25,8 @@
 #   CARGO_PROFILE_*, NEXTEST_*, PROPTEST_*, RUST_LOG, ...
 #                           Build, test, and runtime settings forwarded to the
 #                           container (full list in passthrough_env)
+#   MISE_GITHUB_TOKEN       GitHub token for mise, forwarded when set, to lift the
+#                           anonymous API rate limit of `just tools-lock`
 #
 # Examples:
 #   dev/docker/run just check
@@ -87,6 +89,7 @@ build_inputs=(
 )
 case "${kind}" in
 native) build_inputs+=(.config/mise.toml .config/mise.lock dev/lints/dylint-custom/rust-toolchain.toml dev/lints/dylint-mordant/rust-toolchain.toml dev/lints/dylint-trailofbits/rust-toolchain.toml) ;;
+jupyter) build_inputs+=(pixi.toml pixi.lock) ;;
 esac
 image_hash="$(cd "${root}" && hash_files "${build_inputs[@]}" "${build_args[@]+"${build_args[@]}"}" "${platform}")"
 image="${registry}:${kind}-${image_hash}"
@@ -174,8 +177,9 @@ passthrough_env() {
       TREETIME_BUILD_MODE | TREETIME_VERSION_SUFFIX | TREETIME_API_PORT | TREETIME_WEB_PORT | TREETIME_PORTLESS | \
       CARGO_PROFILE_* | CARGO_TERM_* | CARGO_BUILD_JOBS | CARGO_INCREMENTAL | NEXTEST_* | PROPTEST_* | \
       RUST_LOG | RUST_LOG_STYLE | RUST_BACKTRACE | RUST_LIB_BACKTRACE | RUST_SPANTRACE | RAYON_NUM_THREADS | \
-      OPENBLAS_NUM_THREADS | OPENBLAS_CORETYPE | OPENBLAS_VERBOSE | KACHE_DISABLED | KACHE_LOG | *_COMPRESSION)
-      run_flags+=(--env="${name}=${!name}")
+      OPENBLAS_NUM_THREADS | OPENBLAS_CORETYPE | OPENBLAS_VERBOSE | KACHE_DISABLED | KACHE_LOG | *_COMPRESSION | \
+      MISE_GITHUB_TOKEN)
+      run_flags+=(--env="${name}")
       ;;
     esac
   done

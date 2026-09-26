@@ -542,6 +542,35 @@ url = "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz"
 checksum = "sha256:1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097"
 url = "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-x64.tar.gz"
 
+[[tools.pixi]]
+version = "0.81.0"
+backend = "github:prefix-dev/pixi"
+specifiers = ["0.81.0"]
+
+[tools.pixi."platforms.linux-arm64"]
+checksum = "sha256:9f8d2113fe9dc01788a65f5c2acec34fa56b1193461a5c3e9a775d6d2d621bcb"
+url = "https://github.com/prefix-dev/pixi/releases/download/v0.81.0/pixi-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/prefix-dev/pixi/releases/assets/565929781"
+provenance = "github-attestations"
+
+[tools.pixi."platforms.linux-x64"]
+checksum = "sha256:7aa3ec39aecceff9062fa2ed4d42cbaa0bdc25ddea727d048e061cf188d434f6"
+url = "https://github.com/prefix-dev/pixi/releases/download/v0.81.0/pixi-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/prefix-dev/pixi/releases/assets/565929985"
+provenance = "github-attestations"
+
+[tools.pixi."platforms.macos-arm64"]
+checksum = "sha256:f4e32ea91970d4e11739488817979a5f2c6ebbb9cedb0d6dea74b2b790b272dc"
+url = "https://github.com/prefix-dev/pixi/releases/download/v0.81.0/pixi-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/prefix-dev/pixi/releases/assets/565929700"
+provenance = "github-attestations"
+
+[tools.pixi."platforms.macos-x64"]
+checksum = "sha256:9859588ba57f390b5c77d56b2654fab37bc00e10952da25e3efd6e3434557e5a"
+url = "https://github.com/prefix-dev/pixi/releases/download/v0.81.0/pixi-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/prefix-dev/pixi/releases/assets/565929859"
+provenance = "github-attestations"
+
 [[tools.protoc]]
 version = "28.3"
 backend = "aqua:protocolbuffers/protobuf/protoc"

@@ -6,6 +6,7 @@ exclude = [
   ".build/**",
   ".cache/**",
   ".out/**",
+  ".pixi/**",
   "target/**",
   "**/node_modules/**",
   ".repos/**",

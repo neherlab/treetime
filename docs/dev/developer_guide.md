@@ -156,22 +156,23 @@ The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI refer
 
 ### TreeTime v0 and Python scripts
 
-The Python image puts TreeTime v0 from `packages/legacy/treetime` of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work:
+TreeTime v0 (`packages/legacy/treetime`), the golden-master capture scripts, and the research scripts in `test_scripts/` share one Python environment, defined in `pixi.toml` and locked in `pixi.lock`. It pins every package and uses OpenBLAS 0.3.28 on a single thread, the same BLAS as the Rust build, so v0 and v1 run the same linear algebra kernels. The environment puts v0 of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work.
+
+In the Python image:
 
 ```bash
 ./dev/docker/python treetime ancestral --help
 ./dev/docker/python python3 test_scripts/fitch.py
 ```
 
-Without Docker, install v0 into a virtual environment. This provides the `treetime` command and `import treetime` together with the v0 dependencies; the research scripts in `test_scripts/` need further packages (matplotlib, seaborn, plotly, Jupyter), which the Python image lists in `dev/docker/jupyter.dockerfile`:
+On the host, [pixi](https://pixi.sh) comes with `mise install` and creates the environment in `.pixi/` on first use:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e packages/legacy/treetime
+pixi run treetime ancestral --help
+pixi run python3 test_scripts/fitch.py
 ```
 
-The environment provides a v0 `treetime` command, which shadows the v1 binary while the environment is active.
+After changing `pixi.toml`, run `pixi lock` and commit both files. Package releases must be at least seven days old; `exclude-newer` in `pixi.toml` enforces this.
 
 ## Build profiles
 
@@ -194,7 +195,9 @@ Every dependency release must be at least seven days old before the project adop
 
 - Bun refuses younger npm packages (`minimumReleaseAge` in `bunfig.toml`)
 - Cargo has the age check as an unstable feature until Rust 1.100. `just deps-update` and `just deps-upgrade` enable it for their resolution, and `just deps-age` fails on a lockfile entry younger than seven days
+- Python packages: `exclude-newer` in `pixi.toml` makes `pixi lock` skip younger releases
 - Tools in `.config/mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
+- After changing a tool in `.config/mise.toml`, `just tools-lock <tool>` locks only that tool. Locking calls the GitHub API, which allows 60 anonymous requests per hour. With `MISE_GITHUB_TOKEN` set, mise authenticates instead, on the host and in the container alike (`dev/docker/run` forwards it), for example `MISE_GITHUB_TOKEN="$(gh auth token)" ./dev/docker/run just tools-lock <tool>`
 
 Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 18.x, because Auspice runs in-process and requires it; `just lint-ts` enforces this.
 
