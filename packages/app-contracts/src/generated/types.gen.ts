@@ -1801,6 +1801,25 @@ export type AppEvent = ({
 } & AppEventResync);
 
 /**
+ * REST path whose answers a change made stale.
+ */
+export type StalePath = {
+  /**
+   * Path of the API, without query string.
+   */
+  path: string;
+  /**
+   * Which answers of `path` are stale.
+   */
+  scope: StaleScope;
+};
+
+/**
+ * Which answers a stale path covers.
+ */
+export type StaleScope = 'exact' | 'subtree';
+
+/**
  * A file uploaded into a run's `inputs/` folder.
  */
 export type UploadedInput = {
@@ -4428,10 +4447,9 @@ export type AppEventRunCreated = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   /**
    * The new run.
    */
@@ -4454,10 +4472,9 @@ export type AppEventRunUpdated = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   /**
    * The run after the change.
    */
@@ -4480,10 +4497,9 @@ export type AppEventRunDeleted = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   /**
    * Id of the run.
    */
@@ -4506,10 +4522,9 @@ export type AppEventRunRestored = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   /**
    * The restored run.
    */
@@ -4532,10 +4547,9 @@ export type AppEventRunPurged = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   /**
    * Id of the run.
    */
@@ -4560,10 +4574,9 @@ export type AppEventResync = {
    */
   time: string;
   /**
-   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-   * `/api/runs/abc/results`.
+   * REST paths whose answers the change made stale.
    */
-  stale: Array<string>;
+  stale: Array<StalePath>;
   kind: 'resync';
 };
 

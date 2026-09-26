@@ -11,16 +11,16 @@ pub const RUNS_PATH: &str = "/api/runs";
 
 pub const CLADE_IN_RUNS_PATH: &str = "/api/clade-in-runs";
 
-pub fn run_stale_paths(id: &JobId) -> Vec<String> {
+pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
   vec![
-    RUNS_PATH.to_owned(),
-    format!("{RUNS_PATH}/{}", id.as_str()),
-    CLADE_IN_RUNS_PATH.to_owned(),
+    StalePath::exact(RUNS_PATH),
+    StalePath::subtree(format!("{RUNS_PATH}/{}", id.as_str())),
+    StalePath::exact(CLADE_IN_RUNS_PATH),
   ]
 }
 
-pub fn resync_stale_paths() -> Vec<String> {
-  vec![RUNS_PATH.to_owned(), CLADE_IN_RUNS_PATH.to_owned()]
+pub fn resync_stale_paths() -> Vec<StalePath> {
+  vec![StalePath::subtree(RUNS_PATH), StalePath::exact(CLADE_IN_RUNS_PATH)]
 }
 
 /// Change of the app's runs, sent on the app-wide event stream.
@@ -33,11 +33,46 @@ pub struct AppEvent {
   /// Time the event was recorded.
   #[schemars(with = "String")]
   pub time: DateTime<Utc>,
-  /// REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
-  /// `/api/runs/abc/results`.
-  pub stale: Vec<String>,
+  /// REST paths whose answers the change made stale.
+  pub stale: Vec<StalePath>,
   #[serde(flatten)]
   pub change: AppChange,
+}
+
+/// REST path whose answers a change made stale.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct StalePath {
+  /// Path of the API, without query string.
+  pub path: String,
+  /// Which answers of `path` are stale.
+  pub scope: StaleScope,
+}
+
+impl StalePath {
+  pub fn exact(path: impl Into<String>) -> Self {
+    Self {
+      path: path.into(),
+      scope: StaleScope::Exact,
+    }
+  }
+
+  pub fn subtree(path: impl Into<String>) -> Self {
+    Self {
+      path: path.into(),
+      scope: StaleScope::Subtree,
+    }
+  }
+}
+
+/// Which answers a stale path covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum StaleScope {
+  /// The answers of the path itself, for every query string and request body, and none below it: `/api/runs` covers
+  /// the run list but not `/api/runs/abc`.
+  Exact,
+  /// The answers of the path and of every path below it: `/api/runs/abc` covers `/api/runs/abc/results`.
+  Subtree,
 }
 
 /// What changed.
@@ -101,7 +136,7 @@ impl AppEventLog {
     }
   }
 
-  pub fn append(&self, change: AppChange, stale: Vec<String>) -> AppEvent {
+  pub fn append(&self, change: AppChange, stale: Vec<StalePath>) -> AppEvent {
     let mut state = self.state.lock();
     let event = AppEvent {
       seq: state.next_seq,

@@ -1,4 +1,6 @@
+import type { StalePath } from "@neherlab/app-contracts";
 import {
+  cladeInRuns,
   runsEvents,
   runsFiles,
   runsGet,
@@ -34,7 +36,18 @@ const RUN_EVENTS: RunEvent[] = [
   },
 ];
 
-function appEvent(seq: number, kind: "resync" | "run-deleted", stale: string[]) {
+const RUN_ABC_STALE: StalePath[] = [
+  { path: "/api/runs", scope: "exact" },
+  { path: "/api/runs/abc", scope: "subtree" },
+  { path: "/api/clade-in-runs", scope: "exact" },
+];
+
+const RESYNC_STALE: StalePath[] = [
+  { path: "/api/runs", scope: "subtree" },
+  { path: "/api/clade-in-runs", scope: "exact" },
+];
+
+function appEvent(seq: number, kind: "resync" | "run-deleted", stale: StalePath[]) {
   return kind === "resync"
     ? { seq, time: "2026-09-25T10:00:00Z", stale, kind }
     : { seq, time: "2026-09-25T10:00:00Z", stale, kind, id: "abc" };
@@ -62,33 +75,57 @@ function invalidated(queryClient: QueryClient): string[] {
 describe("api events invalidation", () => {
   const client = new FakeServer({}).client();
 
-  const keys = [
-    requestKey(client, runsList),
-    requestKey(client, (context) => runsGet({ ...context, path: { id: "abc" } })),
-    requestKey(client, (context) => runsResults({ ...context, path: { id: "abc" } })),
-    requestKey(client, (context) => runsFiles({ ...context, path: { id: "abc" } })),
-    requestKey(client, (context) => runsGet({ ...context, path: { id: "abcd" } })),
-    requestKey(client, (context) => runsResults({ ...context, path: { id: "xyz" } })),
-    requestKey(client, version),
-  ];
+  const runList = requestKey(client, runsList);
+  const runListWithQuery = requestKey(client, ({ client }) => client.get({ url: "/api/runs", query: { page: 2 } }));
+  const abc = requestKey(client, (context) => runsGet({ ...context, path: { id: "abc" } }));
+  const abcResults = requestKey(client, (context) => runsResults({ ...context, path: { id: "abc" } }));
+  const abcFiles = requestKey(client, (context) => runsFiles({ ...context, path: { id: "abc" } }));
+  const abcd = requestKey(client, (context) => runsGet({ ...context, path: { id: "abcd" } }));
+  const xyzResults = requestKey(client, (context) => runsResults({ ...context, path: { id: "xyz" } }));
+  const clade = requestKey(client, (context) => cladeInRuns({ ...context, body: { run: "xyz", node: "NODE_1" } }));
+  const versionKey = requestKey(client, version);
 
-  test("a stale run path invalidates the run and its outputs and nothing else", async () => {
+  const keys = [runList, runListWithQuery, abc, abcResults, abcFiles, abcd, xyzResults, clade, versionKey];
+
+  test("a change of one run invalidates the run list, that run and its outputs, and the clade computation", async () => {
     const queryClient = seeded(keys);
 
-    await invalidateStale(queryClient, ["/api/runs/abc"]);
+    await invalidateStale(queryClient, RUN_ABC_STALE);
 
     expect(invalidated(queryClient)).toStrictEqual(
-      ['["api","runs","abc"]', '["api","runs","abc","files"]', '["api","runs","abc","results"]'].toSorted(),
+      [runList, runListWithQuery, abc, abcResults, abcFiles, clade].map((key) => JSON.stringify(key)).toSorted(),
     );
   });
 
-  test("the stale collection path invalidates everything below it", async () => {
+  test("a change of one run leaves the outputs of other runs valid", async () => {
     const queryClient = seeded(keys);
 
-    await invalidateStale(queryClient, ["/api/runs"]);
+    await invalidateStale(queryClient, RUN_ABC_STALE);
+
+    expect([xyzResults, abcd, versionKey].map((key) => queryClient.getQueryState(key)?.isInvalidated)).toStrictEqual([
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  test("a stale run subtree invalidates the run and its outputs and nothing else", async () => {
+    const queryClient = seeded(keys);
+
+    await invalidateStale(queryClient, [{ path: "/api/runs/abc", scope: "subtree" }]);
 
     expect(invalidated(queryClient)).toStrictEqual(
-      keys.flatMap((key) => (key[1] === "runs" ? [JSON.stringify(key)] : [])).toSorted(),
+      [abc, abcResults, abcFiles].map((key) => JSON.stringify(key)).toSorted(),
+    );
+  });
+
+  test("a resync invalidates every run query and the clade computation", async () => {
+    const queryClient = seeded(keys);
+
+    await invalidateStale(queryClient, RESYNC_STALE);
+
+    expect(invalidated(queryClient)).toStrictEqual(
+      keys.flatMap((key) => (key === versionKey ? [] : [JSON.stringify(key)])).toSorted(),
     );
   });
 
@@ -104,37 +141,48 @@ describe("api events invalidation", () => {
 describe("api events app stream", () => {
   test("the app stream starts from the beginning, invalidates the stale paths of each event, and resumes after a drop", async () => {
     const controller = new AbortController();
+    const xyz: StalePath[] = [{ path: "/api/runs/xyz", scope: "subtree" }];
 
     const server = new FakeServer({
       "GET /api/events?from=0": () =>
         eventStream(
-          [appEvent(7, "resync", ["/api/runs", "/api/clade-in-runs"]), appEvent(8, "run-deleted", ["/api/runs/abc"])],
+          [appEvent(7, "resync", RESYNC_STALE), appEvent(8, "run-deleted", RUN_ABC_STALE)],
           new TypeError("connection reset"),
         ),
-      "GET /api/events?from=9": () => eventStream([appEvent(9, "run-deleted", ["/api/runs/xyz"])]),
+      "GET /api/events?from=9": () => eventStream([appEvent(9, "run-deleted", xyz)]),
     });
 
-    const queryClient = new QueryClient();
-    const stale: unknown[] = [];
+    const client = server.client();
+    const runList = requestKey(client, runsList);
+    const abcResults = requestKey(client, (context) => runsResults({ ...context, path: { id: "abc" } }));
+    const xyzResults = requestKey(client, (context) => runsResults({ ...context, path: { id: "xyz" } }));
+    const keys = [runList, abcResults, xyzResults];
+    const queryClient = seeded(keys);
+    const invalidate = queryClient.invalidateQueries.bind(queryClient);
+    const rounds: string[][] = [];
 
     queryClient.invalidateQueries = (filters) => {
-      stale.push(filters?.queryKey);
+      const done = invalidate(filters);
+      rounds.push(invalidated(queryClient));
 
-      if (stale.length === 4) {
+      for (const key of keys) {
+        queryClient.setQueryData(key, { cached: key });
+      }
+
+      if (rounds.length === 3) {
         controller.abort();
       }
 
-      return Promise.resolve();
+      return done;
     };
 
-    await followAppEvents({ client: server.client(), queryClient, signal: controller.signal, sleep: noDelay });
+    await followAppEvents({ client, queryClient, signal: controller.signal, sleep: noDelay });
 
     expect(server.keys()).toStrictEqual(["GET /api/events?from=0", "GET /api/events?from=9"]);
-    expect(stale).toStrictEqual([
-      ["api", "runs"],
-      ["api", "clade-in-runs"],
-      ["api", "runs", "abc"],
-      ["api", "runs", "xyz"],
+    expect(rounds).toStrictEqual([
+      [runList, abcResults, xyzResults].map((key) => JSON.stringify(key)).toSorted(),
+      [runList, abcResults].map((key) => JSON.stringify(key)).toSorted(),
+      [JSON.stringify(xyzResults)],
     ]);
   });
 
@@ -256,7 +304,7 @@ describe("api events run stream", () => {
     const unsubscribe = observer.subscribe(() => undefined);
 
     await expect.poll(() => observer.getCurrentResult().data?.terminal).toBeDefined();
-    await invalidateStale(queryClient, ["/api/runs/r1"]);
+    await invalidateStale(queryClient, [{ path: "/api/runs/r1", scope: "subtree" }]);
     unsubscribe();
 
     expect(server.keys()).toStrictEqual(["GET /api/runs/r1/events?from=0"]);

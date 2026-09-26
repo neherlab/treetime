@@ -243,7 +243,8 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       get_with(events, |op| {
         op.id("events").description(
           "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and \
-           `run-purged`, each with the REST paths it made stale. Without `from` the stream sends the changes from now \
+           `run-purged`, each with the REST paths it made stale, either the path alone (`exact`) or the path and \
+           every path below it (`subtree`). Without `from` the stream sends the changes from now \
            on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server \
            no longer keeps that event or the event is from a previous server, the stream starts with a `resync` \
            event instead.",

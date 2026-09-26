@@ -1,4 +1,4 @@
-import type { RunRecord } from "@neherlab/app-contracts";
+import type { RunRecord, StalePath } from "@neherlab/app-contracts";
 import {
   cladeInRuns,
   configCheck,
@@ -12,11 +12,11 @@ import {
   version,
   type ApiClient,
 } from "@neherlab/app-contracts/client";
-import { QueryClient, partialMatchKey } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { apiKey, apiQueryOptions } from "../api/hooks";
-import { pathKey, requestKey, type ApiRequest } from "../api/keys";
+import { requestKey, staleCoversKey, type ApiRequest } from "../api/keys";
 import { FakeServer, json, RECORD } from "./api_server";
 
 const CLIENT = new FakeServer({}).client();
@@ -111,30 +111,86 @@ describe("api keys", () => {
     ).toThrow("the request sent 2 requests to its client instead of one");
   });
 
-  test("a stale path is the key prefix of every request below it and of nothing else", () => {
-    const prefix = pathKey("/api/runs/abc");
-
-    expect(prefix).toStrictEqual(key((context) => runsGet({ ...context, path: { id: "abc" } })));
-    expect(
-      partialMatchKey(
-        key((context) => runsResults({ ...context, path: { id: "abc" } })),
-        prefix,
-      ),
-    ).toBe(true);
-    expect(
-      partialMatchKey(
-        key((context) => runsCompare({ ...context, path: { id: "abc", other: "x" } })),
-        prefix,
-      ),
-    ).toBe(true);
-    expect(
-      partialMatchKey(
-        key((context) => runsGet({ ...context, path: { id: "abcd" } })),
-        prefix,
-      ),
-    ).toBe(false);
-    expect(partialMatchKey(key(runsList), prefix)).toBe(false);
-  });
+  test.each([
+    { name: "the run list", scope: "exact", path: "/api/runs", request: runsList, expected: true },
+    {
+      name: "the run list with a query",
+      scope: "exact",
+      path: "/api/runs",
+      request: ({ client }) => client.get({ url: "/api/runs", query: { page: 2 } }),
+      expected: true,
+    },
+    {
+      name: "a run",
+      scope: "exact",
+      path: "/api/runs",
+      request: (context) => runsGet({ ...context, path: { id: "abc" } }),
+      expected: false,
+    },
+    {
+      name: "a clade computation with a body",
+      scope: "exact",
+      path: "/api/clade-in-runs",
+      request: (context) => cladeInRuns({ ...context, body: { run: "abc", node: "NODE_1" } }),
+      expected: true,
+    },
+    {
+      name: "a run's results",
+      scope: "exact",
+      path: "/api/runs/abc",
+      request: (context) => runsResults({ ...context, path: { id: "abc" } }),
+      expected: false,
+    },
+    {
+      name: "a run file with a query",
+      scope: "exact",
+      path: "/api/runs/abc/file",
+      request: (context) => runsFile({ ...context, path: { id: "abc" }, query: { path: "out/a.nwk" } }),
+      expected: true,
+    },
+    {
+      name: "the run",
+      scope: "subtree",
+      path: "/api/runs/abc",
+      request: (context) => runsGet({ ...context, path: { id: "abc" } }),
+      expected: true,
+    },
+    {
+      name: "the run's results",
+      scope: "subtree",
+      path: "/api/runs/abc",
+      request: (context) => runsResults({ ...context, path: { id: "abc" } }),
+      expected: true,
+    },
+    {
+      name: "a comparison of the run",
+      scope: "subtree",
+      path: "/api/runs/abc",
+      request: (context) => runsCompare({ ...context, path: { id: "abc", other: "x" } }),
+      expected: true,
+    },
+    {
+      name: "a run whose id extends the run's id",
+      scope: "subtree",
+      path: "/api/runs/abc",
+      request: (context) => runsGet({ ...context, path: { id: "abcd" } }),
+      expected: false,
+    },
+    { name: "the run list", scope: "subtree", path: "/api/runs/abc", request: runsList, expected: false },
+    {
+      name: "another run's results",
+      scope: "subtree",
+      path: "/api/runs",
+      request: (context) => runsResults({ ...context, path: { id: "xyz" } }),
+      expected: true,
+    },
+    { name: "the version", scope: "subtree", path: "/api/runs", request: version, expected: false },
+  ] satisfies Array<StalePath & { name: string; request: ApiRequest; expected: boolean }>)(
+    "the $scope stale path $path covers $name: $expected",
+    ({ scope, path, request, expected }) => {
+      expect(staleCoversKey({ path, scope }, key(request))).toBe(expected);
+    },
+  );
 
   test("a query result is typed and cached under the key of its request", async () => {
     const server = new FakeServer({ "GET /api/runs/r1": () => json(RECORD) });

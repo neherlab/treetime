@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::runs::app_events::{AppChange, AppEventLog};
+  use crate::runs::app_events::{AppChange, AppEventLog, StalePath};
   use crate::runs::manager::{RunManager, unconfined};
   use crate::runs::record::UpdateRunRequest;
   use helpers::{Change, changes, collect, create, recorded, seqs, summarize};
@@ -56,13 +56,20 @@ mod tests {
   fn test_app_events_resume_from_an_event_older_than_the_log_starts_with_a_resync() {
     let log = AppEventLog::new(3, 1);
     for id in ["a", "b", "c", "d", "e"] {
-      log.append(AppChange::Resync, vec![format!("/api/runs/{id}")]);
+      log.append(AppChange::Resync, vec![StalePath::subtree(format!("/api/runs/{id}"))]);
     }
     let received = collect(&log, Some(2));
     log.append(AppChange::Resync, vec![]);
     assert_eq!(
       vec![
-        (5, json!("resync"), json!(["/api/runs", "/api/clade-in-runs"])),
+        (
+          5,
+          json!("resync"),
+          json!([
+            { "path": "/api/runs", "scope": "subtree" },
+            { "path": "/api/clade-in-runs", "scope": "exact" },
+          ])
+        ),
         (6, json!("resync"), json!([])),
       ],
       summarize(&received)
@@ -77,7 +84,13 @@ mod tests {
     let received = collect(&log, Some(10));
     log.append(AppChange::Resync, vec![]);
     assert_eq!(vec![2, 3], seqs(&received));
-    assert_eq!(json!(["/api/runs", "/api/clade-in-runs"]), summarize(&received)[0].2);
+    assert_eq!(
+      json!([
+        { "path": "/api/runs", "scope": "subtree" },
+        { "path": "/api/clade-in-runs", "scope": "exact" },
+      ]),
+      summarize(&received)[0].2
+    );
   }
 
   #[test]
@@ -136,7 +149,13 @@ mod tests {
     runs.delete(&second.id).unwrap();
     runs.purge(&second.id).unwrap();
 
-    let stale = |id: &str| vec![o!("/api/runs"), format!("/api/runs/{id}"), o!("/api/clade-in-runs")];
+    let stale = |id: &str| {
+      vec![
+        StalePath::exact("/api/runs"),
+        StalePath::subtree(format!("/api/runs/{id}")),
+        StalePath::exact("/api/clade-in-runs"),
+      ]
+    };
     let (a, b) = (first.id.as_str(), second.id.as_str());
     assert_eq!(
       vec![
@@ -209,7 +228,7 @@ mod tests {
 
   mod helpers {
     use crate::command::AppCommand;
-    use crate::runs::app_events::{AppEvent, AppEventLog};
+    use crate::runs::app_events::{AppEvent, AppEventLog, StalePath};
     use crate::runs::manager::RunManager;
     use crate::runs::record::{CreateRunRequest, RunRecord};
     use parking_lot::Mutex;
@@ -225,11 +244,17 @@ mod tests {
       pub id: String,
       pub title: Option<String>,
       pub status: Option<String>,
-      pub stale: Vec<String>,
+      pub stale: Vec<StalePath>,
     }
 
     impl Change {
-      pub(super) fn new(kind: &str, id: &str, title: Option<&str>, status: Option<&str>, stale: Vec<String>) -> Self {
+      pub(super) fn new(
+        kind: &str,
+        id: &str,
+        title: Option<&str>,
+        status: Option<&str>,
+        stale: Vec<StalePath>,
+      ) -> Self {
         Self {
           kind: kind.to_owned(),
           id: id.to_owned(),

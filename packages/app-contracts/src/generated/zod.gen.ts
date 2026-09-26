@@ -815,6 +815,22 @@ export const zCommandOutcome = z.object({
 });
 
 /**
+ * Which answers a stale path covers.
+ */
+export const zStaleScope = z.union([
+  z.literal('exact'),
+  z.literal('subtree')
+]);
+
+/**
+ * REST path whose answers a change made stale.
+ */
+export const zStalePath = z.object({
+  path: z.string(),
+  scope: zStaleScope
+});
+
+/**
  * A file uploaded into a run's `inputs/` folder.
  */
 export const zUploadedInput = z.object({
@@ -1916,7 +1932,7 @@ export const zRunEvent = z.discriminatedUnion('type', [
 export const zAppEventRunCreated = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   run: zRunSummary,
   kind: z.literal('run-created')
 });
@@ -1927,7 +1943,7 @@ export const zAppEventRunCreated = z.object({
 export const zAppEventRunUpdated = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   run: zRunSummary,
   kind: z.literal('run-updated')
 });
@@ -1938,7 +1954,7 @@ export const zAppEventRunUpdated = z.object({
 export const zAppEventRunDeleted = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   id: zJobId,
   kind: z.literal('run-deleted')
 });
@@ -1949,7 +1965,7 @@ export const zAppEventRunDeleted = z.object({
 export const zAppEventRunRestored = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   run: zRunSummary,
   kind: z.literal('run-restored')
 });
@@ -1960,7 +1976,7 @@ export const zAppEventRunRestored = z.object({
 export const zAppEventRunPurged = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   id: zJobId,
   kind: z.literal('run-purged')
 });
@@ -1973,7 +1989,7 @@ export const zAppEventRunPurged = z.object({
 export const zAppEventResync = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  stale: z.array(z.string()),
+  stale: z.array(zStalePath),
   kind: z.literal('resync')
 });
 

@@ -2,8 +2,8 @@
 mod tests {
   use crate::routes::api_doc;
   use helpers::{
-    TestApp, app, app_with_upload_limit, create_deferred, events_of, is_documented_prefix, next_event, open_app_events,
-    read_events, request, take_events, timetree_config, wait_for_status,
+    TestApp, app, app_with_upload_limit, create_deferred, events_of, is_documented_path, is_documented_prefix,
+    next_event, open_app_events, read_events, request, take_events, timetree_config, wait_for_status,
   };
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
@@ -669,7 +669,11 @@ mod tests {
     request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
 
     let events = take_events(&mut stream, 3).await;
-    let stale = json!(["/api/runs", format!("/api/runs/{id}"), "/api/clade-in-runs"]);
+    let stale = json!([
+      { "path": "/api/runs", "scope": "exact" },
+      { "path": format!("/api/runs/{id}"), "scope": "subtree" },
+      { "path": "/api/clade-in-runs", "scope": "exact" },
+    ]);
     assert_eq!(
       vec![
         ("run-created", json!("run-created"), json!(id), stale.clone()),
@@ -754,7 +758,10 @@ mod tests {
           "resync",
           Some(head.to_string()),
           json!(head),
-          json!(["/api/runs", "/api/clade-in-runs"])
+          json!([
+            { "path": "/api/runs", "scope": "subtree" },
+            { "path": "/api/clade-in-runs", "scope": "exact" },
+          ])
         ),
         (
           resync.name.as_str(),
@@ -776,7 +783,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_app_event_stale_paths_are_paths_of_the_api() {
+  async fn test_routes_app_event_stale_paths_are_paths_or_path_prefixes_of_the_api() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
     let id = create_deferred(&test, "a").await;
@@ -796,10 +803,15 @@ mod tests {
     let doc = api_doc().unwrap();
     let undocumented = stale
       .iter()
-      .map(|path| path.as_str().unwrap())
-      .filter(|path| !is_documented_prefix(&doc, path))
+      .filter(|entry| {
+        let path = entry["path"].as_str().unwrap();
+        match entry["scope"].as_str().unwrap() {
+          "exact" => !is_documented_path(&doc, path),
+          _ => !is_documented_prefix(&doc, path),
+        }
+      })
       .collect::<Vec<_>>();
-    assert_eq!((false, Vec::<&str>::new()), (stale.is_empty(), undocumented));
+    assert_eq!((false, Vec::<&Value>::new()), (stale.is_empty(), undocumented));
   }
 
   #[test]
@@ -1079,11 +1091,19 @@ mod tests {
       record["id"].as_str().unwrap().to_owned()
     }
 
+    pub(super) fn is_documented_path(doc: &Value, path: &str) -> bool {
+      is_documented(doc, path, |template, segments| template == segments)
+    }
+
     pub(super) fn is_documented_prefix(doc: &Value, path: &str) -> bool {
+      is_documented(doc, path, |template, segments| template >= segments)
+    }
+
+    fn is_documented(doc: &Value, path: &str, lengths_match: impl Fn(usize, usize) -> bool) -> bool {
       let segments = path.split('/').collect::<Vec<_>>();
       doc["paths"].as_object().unwrap().keys().any(|template| {
         let template = template.split('/').collect::<Vec<_>>();
-        template.len() >= segments.len()
+        lengths_match(template.len(), segments.len())
           && segments
             .iter()
             .zip(&template)

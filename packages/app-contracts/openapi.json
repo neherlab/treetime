@@ -868,7 +868,7 @@
     },
     "/api/events": {
       "get": {
-        "description": "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and `run-purged`, each with the REST paths it made stale. Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.",
+        "description": "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and `run-purged`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.",
         "operationId": "events",
         "parameters": [
           {
@@ -4225,6 +4225,39 @@
             "resync": "#/components/schemas/AppEventResync"
           }
         }
+      },
+      "StalePath": {
+        "description": "REST path whose answers a change made stale.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the API, without query string.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Which answers of `path` are stale.",
+            "$ref": "#/components/schemas/StaleScope"
+          }
+        },
+        "required": [
+          "path",
+          "scope"
+        ]
+      },
+      "StaleScope": {
+        "description": "Which answers a stale path covers.",
+        "oneOf": [
+          {
+            "description": "The answers of the path itself, for every query string and request body, and none below it: `/api/runs` covers\nthe run list but not `/api/runs/abc`.",
+            "type": "string",
+            "const": "exact"
+          },
+          {
+            "description": "The answers of the path and of every path below it: `/api/runs/abc` covers `/api/runs/abc/results`.",
+            "type": "string",
+            "const": "subtree"
+          }
+        ]
       },
       "UploadedInput": {
         "description": "A file uploaded into a run's `inputs/` folder.",
@@ -8288,10 +8321,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "run": {
@@ -8326,10 +8359,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "run": {
@@ -8364,10 +8397,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "id": {
@@ -8402,10 +8435,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "run": {
@@ -8440,10 +8473,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "id": {
@@ -8478,10 +8511,10 @@
             "type": "string"
           },
           "stale": {
-            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "description": "REST paths whose answers the change made stale.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StalePath"
             }
           },
           "kind": {

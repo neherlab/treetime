@@ -1,3 +1,4 @@
+import type { StalePath, StaleScope } from "@neherlab/app-contracts";
 import type { ApiClient, ApiRequestOptions } from "@neherlab/app-contracts/client";
 
 export interface ApiCallContext {
@@ -14,11 +15,18 @@ type CapturedRequest = Pick<ApiRequestOptions, "url" | "path" | "query" | "body"
 
 type RequestQuery = CapturedRequest["query"];
 
-export function pathKey(path: string): string[] {
-  return path
-    .split("/")
-    .filter((segment) => segment !== "")
-    .map((segment) => decodeURIComponent(segment));
+const SCOPE_COVERS_LENGTH: Record<StaleScope, (keyPathLength: number, stalePathLength: number) => boolean> = {
+  exact: (keyPathLength, stalePathLength) => keyPathLength === stalePathLength,
+  subtree: (keyPathLength, stalePathLength) => keyPathLength >= stalePathLength,
+};
+
+export function staleCoversKey(stale: StalePath, key: readonly unknown[]): boolean {
+  const stalePath = pathKey(stale.path);
+
+  return (
+    SCOPE_COVERS_LENGTH[stale.scope](pathLengthOfKey(key), stalePath.length) &&
+    stalePath.every((segment, index) => key[index] === segment)
+  );
 }
 
 export function requestKey(client: ApiClient, request: ApiRequest): ApiKey {
@@ -31,6 +39,23 @@ export function requestKey(client: ApiClient, request: ApiRequest): ApiKey {
     ...(query === undefined ? [] : [query]),
     ...(captured.body === undefined ? [] : [captured.body]),
   ];
+}
+
+function pathKey(path: string): string[] {
+  return path
+    .split("/")
+    .filter((segment) => segment !== "")
+    .map((segment) => decodeURIComponent(segment));
+}
+
+function pathLengthOfKey(key: readonly unknown[]): number {
+  const end = key.findIndex((part) => !isPathSegment(part));
+
+  return end === -1 ? key.length : end;
+}
+
+function isPathSegment(part: unknown): part is string {
+  return typeof part === "string";
 }
 
 function captureRequest(client: ApiClient, request: ApiRequest): CapturedRequest {

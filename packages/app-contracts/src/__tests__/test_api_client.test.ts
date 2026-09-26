@@ -450,7 +450,7 @@ describe("api_client resumable streams", () => {
 
   test("a stream without an attempt limit keeps reconnecting after a clean end", async () => {
     const appEvent = (seq: number) =>
-      `id: ${seq}\nevent: resync\ndata: ${JSON.stringify({ seq, time: "t", stale: ["/api/runs"], kind: "resync" })}\n\n`;
+      `id: ${seq}\nevent: resync\ndata: ${JSON.stringify({ seq, time: "t", stale: [{ path: "/api/runs", scope: "subtree" }], kind: "resync" })}\n\n`;
 
     const server = new FakeServer({
       "GET /api/events?from=0": () => eventStream([appEvent(4)]),

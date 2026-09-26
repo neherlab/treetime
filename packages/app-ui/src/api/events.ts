@@ -1,3 +1,4 @@
+import type { StalePath } from "@neherlab/app-contracts";
 import {
   events,
   resumableStream,
@@ -18,7 +19,7 @@ import { useEffect, useState } from "react";
 
 import { EMPTY_PROGRESS, foldRunEvents, type RunEvent, type RunProgress } from "../results/progress";
 import { useApiContext } from "./context";
-import { pathKey, requestKey } from "./keys";
+import { requestKey, staleCoversKey } from "./keys";
 
 type StreamTiming = Pick<ResumableStreamOptions<{ seq: number }>, "retryDelay" | "maxRetryDelay" | "sleep">;
 
@@ -74,8 +75,10 @@ export async function followAppEvents({
   }
 }
 
-export async function invalidateStale(queryClient: QueryClient, stale: readonly string[]): Promise<void> {
-  await Promise.all(stale.map((path) => queryClient.invalidateQueries({ queryKey: pathKey(path) })));
+export async function invalidateStale(queryClient: QueryClient, stale: readonly StalePath[]): Promise<void> {
+  await queryClient.invalidateQueries({
+    predicate: (query) => stale.some((path) => staleCoversKey(path, query.queryKey)),
+  });
 }
 
 export function useRunEvents(id: string): UseQueryResult<RunProgress> {
