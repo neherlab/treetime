@@ -49,10 +49,6 @@ pub fn parse_request<T: DeserializeOwned>(value: Value) -> Result<T, Report> {
   serde_json::from_value(value).map_err(|err| invalid(err.to_string()))
 }
 
-pub fn parse_request_text<T: DeserializeOwned>(text: &str) -> Result<T, Report> {
-  serde_json::from_str(text).map_err(|err| invalid(err.to_string()))
-}
-
 pub fn invalid(message: impl Into<String>) -> Report {
   Report::new(InvalidRunRequest {
     message: message.into(),

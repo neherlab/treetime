@@ -1,7 +1,5 @@
 export declare class Backend {
   constructor(runsDir: string)
-  call(requestJson: string): Promise<string>
-  subscribe(id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void): Subscription
   fetch(request: PortRequest, onReply: ((arg: PortReply) => void)): PortExchange
   saveRunFile(request: SaveRunFileRequest): Promise<void>
   saveRunArchive(request: SaveRunArchiveRequest): Promise<void>
@@ -9,10 +7,6 @@ export declare class Backend {
 
 export declare class PortExchange {
   abort(): void
-}
-
-export declare class Subscription {
-  unsubscribe(): void
 }
 
 export interface PortError {

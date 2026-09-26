@@ -56,10 +56,6 @@ impl DesktopService {
     Ok(Self { app, router, runtime })
   }
 
-  pub fn app(&self) -> &AppService {
-    &self.app
-  }
-
   pub fn fetch(&self, request: PortRequest, send: impl Fn(PortReply) -> bool + Send + Sync + 'static) -> AbortHandle {
     let seq = request.seq;
     let send = Arc::new(send);

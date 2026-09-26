@@ -5,7 +5,6 @@ pub mod backend;
 pub mod exports;
 mod guard;
 pub mod port;
-mod subscription;
 
 #[cfg(test)]
 mod tests {

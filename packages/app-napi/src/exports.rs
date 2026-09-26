@@ -1,10 +1,7 @@
 use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
-use crate::subscription::EventForwarder;
-use app_commands::bridge::operations::OperationRequest;
 use app_commands::job::JobId;
-use app_commands::runs::errors::parse_request_text;
 use eyre::Report;
 use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
@@ -14,10 +11,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::task::AbortHandle;
 use treetime_utils::make_report;
-
-type EventCallback = Arc<ThreadsafeFunction<String, ()>>;
-
-type EventSink = Box<dyn Fn(String) -> bool + Send>;
 
 #[napi]
 pub struct Backend {
@@ -36,31 +29,6 @@ impl Backend {
     Ok(Self {
       service: Arc::new(service),
     })
-  }
-
-  #[napi(ts_return_type = "Promise<string>")]
-  pub fn call(&self, request_json: String) -> AsyncTask<BlockingTask<String>> {
-    let service = Arc::clone(&self.service);
-    BlockingTask::spawn(move || {
-      let request: OperationRequest = parse_request_text(&request_json)?;
-      request.handle(service.app())
-    })
-  }
-
-  #[napi(ts_args_type = "id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void")]
-  pub fn subscribe(&self, id: String, from: u32, on_event: EventCallback) -> napi::Result<Subscription> {
-    let send: EventSink =
-      Box::new(move |json: String| on_event.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok);
-    let forwarder = EventForwarder::new(send);
-    guarded(|| {
-      self
-        .service
-        .app()
-        .runs()
-        .subscribe(&JobId::parse(&id)?, usize::try_from(from)?, forwarder.subscriber())
-    })
-    .map_err(|err| to_napi(&err))?;
-    Ok(Subscription { forwarder })
   }
 
   #[napi]
@@ -117,19 +85,6 @@ impl PortExchange {
   #[napi]
   pub fn abort(&self) {
     self.abort.abort();
-  }
-}
-
-#[napi]
-pub struct Subscription {
-  forwarder: EventForwarder<EventSink>,
-}
-
-#[napi]
-impl Subscription {
-  #[napi]
-  pub fn unsubscribe(&self) {
-    self.forwarder.close();
   }
 }
 
