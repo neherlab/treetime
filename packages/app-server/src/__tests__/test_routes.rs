@@ -591,6 +591,93 @@ mod tests {
     );
   }
 
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_malformed_json_body_is_a_bad_request() {
+    let test = app();
+    let response = test
+      .send(
+        axum::http::Request::post("/api/runs")
+          .header("content-type", "application/json")
+          .body(axum::body::Body::from("{\"command\":"))
+          .unwrap(),
+      )
+      .await;
+    assert_eq!(
+      (
+        400,
+        json!({
+          "code": "invalid_request",
+          "message": "Failed to parse the request body as JSON: command: EOF while parsing a value at line 1 column 11",
+          "causes": [],
+        })
+      ),
+      helpers::body_json(response).await
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_malformed_query_parameter_is_a_bad_request() {
+    let test = app();
+    let (status, body) = request(&test, "GET", "/api/runs/abc/events?from=x", None).await;
+    assert_eq!(
+      (
+        400,
+        json!({
+          "code": "invalid_request",
+          "message": "Failed to deserialize query string: from: invalid digit found in string",
+          "causes": [],
+        })
+      ),
+      (status, body)
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_delete_run_answers_no_content() {
+    let test = app();
+    let (_, record) = request(
+      &test,
+      "POST",
+      "/api/runs",
+      Some(json!({ "command": "clock", "config": {}, "defer_start": true })),
+    )
+    .await;
+    let id = record["id"].as_str().unwrap().to_owned();
+    let response = test
+      .send(
+        axum::http::Request::delete(format!("/api/runs/{id}"))
+          .body(axum::body::Body::empty())
+          .unwrap(),
+      )
+      .await;
+    assert_eq!((204, Value::Null), helpers::body_json(response).await);
+  }
+
+  #[test]
+  fn test_routes_openapi_operations_have_ids_descriptions_and_error_responses() {
+    let doc = api_doc().unwrap();
+    let incomplete = doc["paths"]
+      .as_object()
+      .unwrap()
+      .iter()
+      .flat_map(|(path, item)| {
+        item
+          .as_object()
+          .unwrap()
+          .iter()
+          .map(move |(method, operation)| (format!("{method} {path}"), operation))
+      })
+      .filter(|(_, operation)| {
+        !operation["operationId"].is_string()
+          || operation["description"].as_str().is_none_or(str::is_empty)
+          || operation["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
+            != json!("#/components/schemas/ErrorResponse")
+      })
+      .map(|(operation, _)| operation)
+      .collect::<Vec<_>>();
+    assert_eq!(Vec::<String>::new(), incomplete);
+  }
+
   #[test]
   fn test_routes_openapi_describes_operations_and_their_bodies() {
     let doc = api_doc().unwrap();
