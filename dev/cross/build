@@ -65,6 +65,15 @@ export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_flags}"
 export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_flags}"
 export "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_flags}"
 
+# The optional kache compiler cache (KACHE_STORE in .env.example), one store per
+# kache version and target, next to the stores of the justfile.
+if [[ -n "${KACHE_STORE:-}" ]]; then
+  kache_version="$(kache --version)"
+  export RUSTC_WRAPPER="kache"
+  export KACHE_CACHE_DIR="${KACHE_STORE}/${kache_version##* }/docker-cross-${target}"
+  export KACHE_MAX_SIZE="${KACHE_MAX_SIZE:-100GiB}"
+fi
+
 target_dir="${root}/.build/cross/${target}"
 cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
 

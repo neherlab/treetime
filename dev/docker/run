@@ -90,6 +90,7 @@ build_inputs=(
 case "${kind}" in
 native) build_inputs+=(.config/mise.toml .config/mise.lock dev/lints/dylint-custom/rust-toolchain.toml dev/lints/dylint-mordant/rust-toolchain.toml dev/lints/dylint-trailofbits/rust-toolchain.toml) ;;
 jupyter) build_inputs+=(pixi.toml pixi.lock) ;;
+*) build_inputs+=(.config/mise.toml .config/mise.lock) ;;
 esac
 image_hash="$(cd "${root}" && hash_files "${build_inputs[@]}" "${build_args[@]+"${build_args[@]}"}" "${platform}")"
 image="${registry}:${kind}-${image_hash}"

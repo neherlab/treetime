@@ -25,6 +25,7 @@ defaults:
     shell: bash -euo pipefail {0}
 
 env:
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
   TREETIME_BUILD_MODE: ${{ inputs.build_mode }}
   TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
 
