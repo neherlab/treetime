@@ -12,6 +12,7 @@ import {
   type DesktopShell,
   type WindowLike,
 } from "../desktop-bridge";
+import type { FetchPort } from "../port-fetch";
 
 const RECORD = {
   id: "r1",
@@ -391,6 +392,45 @@ describe("desktop_bridge window connection", () => {
     expect([shell.connections, endpoints.length]).toStrictEqual([1, 1]);
   });
 
+  test("the second port of the preload message serves the fetch transport, also to listeners added later", () => {
+    const target = fakeWindow();
+    const shell = fakeShell({ picked: [] });
+    const connection = windowBackendConnection(target, shell);
+    const bridgePort = fakePort();
+    const fetchPort = fakeFetchPort();
+    const received: FetchPort[] = [];
+
+    connection.onPort((port) => {
+      received.push(port);
+    });
+    target.emit({ source: target, data: { channel: BACKEND_PORT_CHANNEL }, ports: [bridgePort, fetchPort] });
+    connection.onPort((port) => {
+      received.push(port);
+    });
+    connection.onEndpoint(() => undefined);
+
+    expect([shell.connections, received]).toStrictEqual([1, [fetchPort, fetchPort]]);
+  });
+
+  test("a stopped back end drops its ports until the preload posts new ones", () => {
+    const target = fakeWindow();
+    const shell = fakeShell({ picked: [] });
+    const connection = windowBackendConnection(target, shell);
+    const received: FetchPort[] = [];
+
+    target.emit({ source: target, data: { channel: BACKEND_PORT_CHANNEL }, ports: [fakePort(), fakeFetchPort()] });
+    target.emit({
+      source: target,
+      data: { channel: BACKEND_STOPPED_CHANNEL, reason: "crashed", restarts: true },
+      ports: [],
+    });
+    connection.onPort((port) => {
+      received.push(port);
+    });
+
+    expect([shell.connections, received]).toStrictEqual([1, []]);
+  });
+
   test("messages from another source or without a port are ignored", () => {
     const target = fakeWindow();
     const connection = windowBackendConnection(target, fakeShell({ picked: [] }));
@@ -531,6 +571,10 @@ function fakeWindow() {
 }
 
 function fakePort(): PortLike {
+  return { postMessage: () => undefined, addEventListener: () => undefined, start: () => undefined };
+}
+
+function fakeFetchPort(): FetchPort {
   return { postMessage: () => undefined, addEventListener: () => undefined, start: () => undefined };
 }
 

@@ -1,3 +1,4 @@
+import type { PortMessage, PortReply } from "@neherlab/app-napi";
 import * as z from "zod";
 
 const zSeq = z.int().nonnegative();
@@ -44,6 +45,8 @@ interface MessageEndpoint<Incoming, Outgoing> {
 export type HostEndpoint = MessageEndpoint<BackendRequest, BackendReply>;
 
 export type ClientEndpoint = MessageEndpoint<BackendReply, BackendRequest>;
+
+export type FetchEndpoint = MessageEndpoint<PortMessage, PortReply>;
 
 export interface PortLike {
   postMessage(message: BackendRequest | BackendReply): void;

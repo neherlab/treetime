@@ -84,9 +84,10 @@ class BackendProcess {
       return;
     }
 
-    const { port1, port2 } = new MessageChannelMain();
-    this.child.postMessage({ kind: "port" }, [port1]);
-    contents.postMessage(BACKEND_PORT_CHANNEL, null, [port2]);
+    const bridge = new MessageChannelMain();
+    const fetch = new MessageChannelMain();
+    this.child.postMessage({ kind: "port" }, [bridge.port1, fetch.port1]);
+    contents.postMessage(BACKEND_PORT_CHANNEL, null, [bridge.port2, fetch.port2]);
   }
 
   save(request: (seq: number) => SaveRequest): Promise<ControlReply> {

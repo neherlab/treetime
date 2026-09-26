@@ -1,8 +1,14 @@
-import { Backend } from "@neherlab/app-napi";
+import { Backend, type PortMessage, type PortReply } from "@neherlab/app-napi";
 import type { MessagePortMain } from "electron";
 
-import { saveRunFiles, serveBackend } from "./backend-host";
-import { zBackendRequest, zControlRequest, type HostEndpoint, type SaveRequest } from "./backend-protocol";
+import { saveRunFiles, serveBackend, serveFetch } from "./backend-host";
+import {
+  zBackendRequest,
+  zControlRequest,
+  type FetchEndpoint,
+  type HostEndpoint,
+  type SaveRequest,
+} from "./backend-protocol";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 
 const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV];
@@ -29,10 +35,14 @@ process.parentPort.on("message", (message) => {
   }
 
   if (control.data.kind === "port") {
-    const [port] = message.ports;
+    const [port, fetchPort] = message.ports;
 
     if (port !== undefined) {
       serveBackend(portEndpoint(port), backend);
+    }
+
+    if (fetchPort !== undefined) {
+      serveFetch(fetchEndpoint(fetchPort), backend);
     }
 
     return;
@@ -61,6 +71,23 @@ function portEndpoint(port: MessagePortMain): HostEndpoint {
         } else {
           console.warn("[TreeTime back end] ignored a malformed request", request.error.message);
         }
+      });
+      port.start();
+    },
+    onClose: (listener) => {
+      port.on("close", listener);
+    },
+  };
+}
+
+function fetchEndpoint(port: MessagePortMain): FetchEndpoint {
+  return {
+    post: (reply: PortReply) => {
+      port.postMessage(reply);
+    },
+    listen: (listener) => {
+      port.on("message", (event: { data: PortMessage }) => {
+        listener(event.data);
       });
       port.start();
     },

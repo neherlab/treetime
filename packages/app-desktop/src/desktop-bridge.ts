@@ -20,6 +20,7 @@ import {
   type PortLike,
 } from "./backend-protocol";
 import { BACKEND_STOPPED_CHANNEL } from "./channels";
+import type { FetchConnection, FetchPort } from "./port-fetch";
 import {
   zSaveReply,
   zShellMessage,
@@ -36,7 +37,7 @@ export interface BackendConnection {
 interface WindowMessage {
   source: unknown;
   data: unknown;
-  ports: readonly PortLike[];
+  ports: readonly [PortLike?, FetchPort?];
 }
 
 export interface WindowLike {
@@ -71,13 +72,24 @@ export function createLocalFiles(shell: DesktopShell): LocalFiles {
   };
 }
 
-export function windowBackendConnection(target: WindowLike, shell: DesktopShell): BackendConnection {
+export function windowBackendConnection(target: WindowLike, shell: DesktopShell): BackendConnection & FetchConnection {
   const endpointListeners: Array<(endpoint: ClientEndpoint) => void> = [];
+  const fetchPortListeners: Array<(port: FetchPort) => void> = [];
   const stoppedListeners: Array<(reason: string, restarts: boolean) => void> = [];
+  let endpoint: ClientEndpoint | undefined;
+  let fetchPort: FetchPort | undefined;
+  let requested = false;
+
+  const request = () => {
+    if (!requested) {
+      requested = true;
+      shell.connectBackend();
+    }
+  };
 
   target.addEventListener("message", (event) => {
     const message = zShellMessage.safeParse(event.data);
-    const [port] = event.ports;
+    const [port, nextFetchPort] = event.ports;
 
     if (event.source !== target || !message.success) {
       return;
@@ -85,13 +97,27 @@ export function windowBackendConnection(target: WindowLike, shell: DesktopShell)
 
     if (message.data.channel === BACKEND_STOPPED_CHANNEL) {
       const { reason, restarts } = message.data;
+      endpoint = undefined;
+      fetchPort = undefined;
       stoppedListeners.forEach((listener) => {
         listener(reason, restarts);
       });
-    } else if (port !== undefined) {
-      const endpoint = portEndpoint<BackendReply, BackendRequest>(port, zBackendReply);
+
+      return;
+    }
+
+    if (port !== undefined) {
+      const next = portEndpoint<BackendReply, BackendRequest>(port, zBackendReply);
+      endpoint = next;
       endpointListeners.forEach((listener) => {
-        listener(endpoint);
+        listener(next);
+      });
+    }
+
+    if (nextFetchPort !== undefined) {
+      fetchPort = nextFetchPort;
+      fetchPortListeners.forEach((listener) => {
+        listener(nextFetchPort);
       });
     }
   });
@@ -99,7 +125,21 @@ export function windowBackendConnection(target: WindowLike, shell: DesktopShell)
   return {
     onEndpoint(listener) {
       endpointListeners.push(listener);
-      shell.connectBackend();
+
+      if (endpoint === undefined) {
+        request();
+      } else {
+        listener(endpoint);
+      }
+    },
+    onPort(listener) {
+      fetchPortListeners.push(listener);
+
+      if (fetchPort === undefined) {
+        request();
+      } else {
+        listener(fetchPort);
+      }
     },
     onStopped(listener) {
       stoppedListeners.push(listener);

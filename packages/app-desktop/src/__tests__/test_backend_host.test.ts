@@ -1,14 +1,15 @@
 import { BridgeError } from "@neherlab/app-contracts";
-import type { Subscription } from "@neherlab/app-napi";
+import type { PortMessage, PortReply, PortRequest, Subscription } from "@neherlab/app-napi";
 import { describe, expect, test } from "vitest";
 
-import { saveRunFiles, serveBackend, type AddonBackend } from "../backend-host";
+import { saveRunFiles, serveBackend, serveFetch, type AddonBackend } from "../backend-host";
 import {
   portEndpoint,
   zBackendReply,
   zBackendRequest,
   type BackendReply,
   type BackendRequest,
+  type FetchEndpoint,
   type HostEndpoint,
   type PortLike,
 } from "../backend-protocol";
@@ -90,6 +91,110 @@ describe("backend_host requests", () => {
   });
 });
 
+describe("backend_host fetch relay", () => {
+  test("a request goes to the addon and every reply of the addon goes back to the port", () => {
+    const received: PortRequest[] = [];
+
+    const host = fetchHostWith((request, onReply) => {
+      received.push(request);
+      onReply({
+        kind: "head",
+        seq: request.seq,
+        status: 200,
+        headers: [{ name: "content-type", value: "text/plain" }],
+      });
+      onReply({ kind: "chunk", seq: request.seq, data: new Uint8Array([104, 105]) });
+      onReply({ kind: "end", seq: request.seq });
+
+      return { abort: () => undefined };
+    });
+
+    host.send({ kind: "request", request: REQUEST });
+
+    expect([received, host.replies]).toStrictEqual([
+      [REQUEST],
+      [
+        { kind: "head", seq: 3, status: 200, headers: [{ name: "content-type", value: "text/plain" }] },
+        { kind: "chunk", seq: 3, data: new Uint8Array([104, 105]) },
+        { kind: "end", seq: 3 },
+      ],
+    ]);
+  });
+
+  test("an abort message aborts the open exchange of its sequence number only", () => {
+    const aborted: number[] = [];
+
+    const host = fetchHostWith((request) => ({
+      abort: () => {
+        aborted.push(request.seq);
+      },
+    }));
+
+    host.send({ kind: "request", request: { ...REQUEST, seq: 1 } });
+    host.send({ kind: "request", request: { ...REQUEST, seq: 2 } });
+    host.send({ kind: "abort", seq: 2 });
+    host.send({ kind: "abort", seq: 2 });
+
+    expect(aborted).toStrictEqual([2]);
+  });
+
+  test("an ended exchange is not aborted by a late abort message or by closing the port", () => {
+    const aborted: number[] = [];
+
+    const host = fetchHostWith((request, onReply) => {
+      onReply({ kind: "end", seq: request.seq });
+
+      return {
+        abort: () => {
+          aborted.push(request.seq);
+        },
+      };
+    });
+
+    host.send({ kind: "request", request: REQUEST });
+    host.send({ kind: "abort", seq: REQUEST.seq });
+    host.close();
+
+    expect(aborted).toStrictEqual([]);
+  });
+
+  test("closing the port aborts every open exchange", () => {
+    const aborted: number[] = [];
+
+    const host = fetchHostWith((request) => ({
+      abort: () => {
+        aborted.push(request.seq);
+      },
+    }));
+
+    host.send({ kind: "request", request: { ...REQUEST, seq: 1 } });
+    host.send({ kind: "request", request: { ...REQUEST, seq: 2 } });
+    host.close();
+
+    expect(aborted).toStrictEqual([1, 2]);
+  });
+
+  test("a request the addon refuses answers with an invalid request error", () => {
+    const host = fetchHostWith(() => {
+      throw new Error("Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url");
+    });
+
+    host.send({ kind: "request", request: REQUEST });
+
+    expect(host.replies).toStrictEqual([
+      {
+        kind: "error",
+        seq: 3,
+        error: {
+          code: "invalid_request",
+          message: "Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url",
+          causes: [],
+        },
+      },
+    ]);
+  });
+});
+
 describe("backend_host saves", () => {
   test("a file save writes through the addon and reports it", async () => {
     const saves: string[][] = [];
@@ -130,6 +235,7 @@ describe("backend_host with the renderer bridge over a message channel", () => {
       subscribe: () => subscription(() => undefined),
       saveRunFile: () => Promise.resolve("null"),
       saveRunArchive: () => Promise.resolve("null"),
+      fetch: () => ({ abort: () => undefined }),
     };
 
     const hostPort = nodePort(channel.port1);
@@ -153,6 +259,42 @@ describe("backend_host with the renderer bridge over a message channel", () => {
     }
   });
 });
+
+const REQUEST: PortRequest = { seq: 3, method: "GET", url: "/api/version", headers: [] };
+
+function fetchHostWith(fetch: AddonBackend["fetch"]) {
+  const listeners: Array<(message: PortMessage) => void> = [];
+  const closeListeners: Array<() => void> = [];
+  const replies: PortReply[] = [];
+
+  const endpoint: FetchEndpoint = {
+    post(reply) {
+      replies.push(reply);
+    },
+    listen(listener) {
+      listeners.push(listener);
+    },
+    onClose(listener) {
+      closeListeners.push(listener);
+    },
+  };
+
+  serveFetch(endpoint, { fetch });
+
+  return {
+    replies,
+    send(message: PortMessage) {
+      listeners.forEach((listener) => {
+        listener(message);
+      });
+    },
+    close() {
+      closeListeners.forEach((listener) => {
+        listener();
+      });
+    },
+  };
+}
 
 function hostWith(overrides: Partial<AddonBackend>) {
   const listeners: Array<(request: BackendRequest) => void> = [];
@@ -208,6 +350,9 @@ function addonWith(overrides: Partial<AddonBackend>): AddonBackend {
     },
     saveRunFile: () => Promise.reject(new Error("saveRunFile is not part of this test")),
     saveRunArchive: () => Promise.reject(new Error("saveRunArchive is not part of this test")),
+    fetch: () => {
+      throw new Error("fetch is not part of this test");
+    },
     ...overrides,
   };
 }
