@@ -204,32 +204,26 @@ impl CommandArgs {
     }
   }
 
+  pub fn execute(&self, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<(), Report> {
+    match self {
+      Self::Timetree(args) => run_timetree_estimation(args, cancel, progress).map(|_| ()),
+      Self::Optimize(args) => run_optimize(args, cancel, progress).map(|_| ()),
+      Self::Prune(args) => run_prune(args, cancel, progress).map(|_| ()),
+      Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, progress).map(|_| ()),
+      Self::Clock(args) => run_clock(args, cancel, progress).map(|_| ()),
+      Self::Mugration(args) => run_mugration(args, cancel, progress).map(|_| ()),
+    }
+  }
+
   pub fn run(&self, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<CommandOutcome, Report> {
+    self.execute(cancel, progress)?;
     let outputs = match self {
-      Self::Timetree(args) => {
-        run_timetree_estimation(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
-      Self::Optimize(args) => {
-        run_optimize(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
-      Self::Prune(args) => {
-        run_prune(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
-      Self::Ancestral(args) => {
-        run_ancestral_reconstruction(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
-      Self::Clock(args) => {
-        run_clock(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
-      Self::Mugration(args) => {
-        run_mugration(args, cancel, progress)?;
-        args.resolve_outputs()?
-      },
+      Self::Timetree(args) => args.resolve_outputs()?,
+      Self::Optimize(args) => args.resolve_outputs()?,
+      Self::Prune(args) => args.resolve_outputs()?,
+      Self::Ancestral(args) => args.resolve_outputs()?,
+      Self::Clock(args) => args.resolve_outputs()?,
+      Self::Mugration(args) => args.resolve_outputs()?,
     };
     Ok(CommandOutcome {
       command: self.command(),
@@ -276,6 +270,14 @@ macro_rules! impl_raw_config {
       fn set_run_outputs(&mut self, out_dir: &Path) {
         self.output.output_all = Some(out_dir.to_path_buf());
         self.output_selection = run_output_selection(CommandKind::$kind, &self.output_selection, &[$($required),*]);
+      }
+    }
+
+    impl TryFrom<$raw> for CommandArgs {
+      type Error = Report;
+
+      fn try_from(raw: $raw) -> Result<Self, Report> {
+        Ok(<$raw as RawConfig>::wrap(<$args>::try_from(raw)?))
       }
     }
   };

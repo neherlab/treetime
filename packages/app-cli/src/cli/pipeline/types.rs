@@ -1,4 +1,4 @@
-use app_commands::command::AppCommand;
+use app_commands::command::{AppCommand, CommandArgs};
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
@@ -69,6 +69,17 @@ pub(crate) enum PipelineStepCommand {
 }
 
 impl PipelineStepCommand {
+  pub(crate) fn args(&self) -> Result<CommandArgs, Report> {
+    match self {
+      Self::Timetree(args) => CommandArgs::try_from((**args).clone()),
+      Self::Optimize(args) => CommandArgs::try_from(args.clone()),
+      Self::Prune(args) => CommandArgs::try_from(args.clone()),
+      Self::Ancestral(args) => CommandArgs::try_from(args.clone()),
+      Self::Clock(args) => CommandArgs::try_from(args.clone()),
+      Self::Mugration(args) => CommandArgs::try_from(args.clone()),
+    }
+  }
+
   pub(crate) fn tag(&self) -> &'static str {
     match self {
       Self::Timetree(_) => "timetree",

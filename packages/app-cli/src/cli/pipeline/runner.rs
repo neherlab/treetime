@@ -2,20 +2,7 @@ use crate::cli::diagnostics::entry::check_pipeline;
 use crate::cli::pipeline::check::print_pipeline_plan;
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
 use crate::cli::pipeline::safety::validate_plan;
-use crate::cli::pipeline::types::PipelineStepCommand;
 use crate::cli::treetime_cli::TreetimePipelineArgs;
-use app_commands::commands::ancestral::args::TreetimeAncestralArgs;
-use app_commands::commands::ancestral::run::run_ancestral_reconstruction;
-use app_commands::commands::clock::args::TreetimeClockArgs;
-use app_commands::commands::clock::run::run_clock;
-use app_commands::commands::mugration::args::TreetimeMugrationArgs;
-use app_commands::commands::mugration::run::run_mugration;
-use app_commands::commands::optimize::args::TreetimeOptimizeArgs;
-use app_commands::commands::optimize::run::run_optimize;
-use app_commands::commands::prune::args::TreetimePruneArgs;
-use app_commands::commands::prune::run::run_prune;
-use app_commands::commands::timetree::args::TreetimeTimetreeArgs;
-use app_commands::commands::timetree::run::run_timetree_estimation;
 use app_commands::config::source::{ConfigSource, parse_config_document};
 use app_commands::config::suggest::suggestion_suffix;
 use eyre::Report;
@@ -105,32 +92,7 @@ pub(crate) fn select_steps<'a>(
 }
 
 fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Report> {
-  match &step.command {
-    PipelineStepCommand::Timetree(args) => {
-      let args = TreetimeTimetreeArgs::try_from((**args).clone())?;
-      run_timetree_estimation(&args, &NoopCancel, progress).map(|_| ())
-    },
-    PipelineStepCommand::Optimize(args) => {
-      let args = TreetimeOptimizeArgs::try_from(args.clone())?;
-      run_optimize(&args, &NoopCancel, progress).map(|_| ())
-    },
-    PipelineStepCommand::Prune(args) => {
-      let args = TreetimePruneArgs::try_from(args.clone())?;
-      run_prune(&args, &NoopCancel, progress).map(|_| ())
-    },
-    PipelineStepCommand::Ancestral(args) => {
-      let args = TreetimeAncestralArgs::try_from(args.clone())?;
-      run_ancestral_reconstruction(&args, &NoopCancel, progress).map(|_| ())
-    },
-    PipelineStepCommand::Mugration(args) => {
-      let args = TreetimeMugrationArgs::try_from(args.clone())?;
-      run_mugration(&args, &NoopCancel, progress).map(|_| ())
-    },
-    PipelineStepCommand::Clock(args) => {
-      let args = TreetimeClockArgs::try_from(args.clone())?;
-      run_clock(&args, &NoopCancel, progress).map(|_| ())
-    },
-  }
+  step.command.args()?.execute(&NoopCancel, progress)
 }
 
 fn failure_report(failed: &ResolvedStep, completed: &[&ResolvedStep], remaining: &str) -> String {
