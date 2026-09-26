@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::bridge::error::{ErrorCode, ErrorResponse};
-  use crate::runs::errors::{UploadTooLarge, conflict, invalid, not_found};
+  use crate::runs::errors::{UploadTooLarge, conflict, invalid, not_found, parse_request};
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
   use std::panic::catch_unwind;
   use treetime_utils::{make_report, o, vec_of_owned};
 
@@ -14,7 +15,8 @@ mod tests {
   #[case::conflict( conflict("run `a` has already started"),                   ErrorCode::Conflict)]
   #[case::invalid(  invalid("bad title"),                                      ErrorCode::InvalidRequest)]
   #[case::upload(   Report::new(UploadTooLarge { limit: o!("1 B"), name: o!("x") }), ErrorCode::UploadTooLarge)]
-  #[case::serde(    Report::new(serde_json::from_str::<u8>("x").unwrap_err()), ErrorCode::InvalidRequest)]
+  #[case::request(  parse_request::<u8>(json!("x")).unwrap_err(),              ErrorCode::InvalidRequest)]
+  #[case::file(     Report::new(serde_json::from_str::<u8>("x").unwrap_err()), ErrorCode::InternalError)]
   #[case::internal( make_report!("disk full"),                                 ErrorCode::InternalError)]
   #[trace]
   fn test_error_code_classifies_the_error_types_of_the_run_layer(#[case] report: Report, #[case] expected: ErrorCode) {

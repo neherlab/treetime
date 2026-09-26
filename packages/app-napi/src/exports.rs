@@ -3,6 +3,7 @@ use crate::guard::{guarded, to_napi};
 use crate::subscription::EventForwarder;
 use app_commands::bridge::operations::DesktopRequest;
 use app_commands::job::JobId;
+use app_commands::runs::errors::parse_request_text;
 use eyre::Report;
 use napi::bindgen_prelude::AsyncTask;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
@@ -39,7 +40,7 @@ impl Backend {
   pub fn call(&self, request_json: String) -> AsyncTask<JsonTask> {
     let service = Arc::clone(&self.service);
     JsonTask::spawn(move || {
-      let request: DesktopRequest = serde_json::from_str(&request_json)?;
+      let request: DesktopRequest = parse_request_text(&request_json)?;
       request.handle(service.as_ref())
     })
   }

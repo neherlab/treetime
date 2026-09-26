@@ -11,7 +11,7 @@ use app_commands::results::clades::{CladeRequest, clade_in_runs};
 use app_commands::results::compare::compare_runs;
 use app_commands::results::run_results::run_results;
 use app_commands::run_config::{RunConfigRequest, run_config};
-use app_commands::runs::errors::invalid;
+use app_commands::runs::errors::{invalid, parse_request};
 use app_commands::runs::record::{CancelRunResponse, CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
 use axum::body::Body;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
@@ -384,7 +384,7 @@ async fn handle_datasets(State(state): State<Arc<AppState>>) -> Result<Json<Valu
   responses((status = 200, description = "The configuration with every default filled in, or the problems found in it"))
 )]
 async fn handle_check_config(Json(body): Json<Value>) -> Result<Json<Value>, AppError> {
-  let request: CheckConfigRequest = serde_json::from_value(body)?;
+  let request: CheckConfigRequest = parse_request(body)?;
   Ok(Json(serde_json::to_value(check_config(&request))?))
 }
 
@@ -398,7 +398,7 @@ async fn handle_run_config(
   State(state): State<Arc<AppState>>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let request: RunConfigRequest = serde_json::from_value(body)?;
+  let request: RunConfigRequest = parse_request(body)?;
   let confine = state.confine_hook(request.command)?;
   let response = tokio::task::spawn_blocking(move || run_config(&request, confine)).await?;
   Ok(Json(serde_json::to_value(response)?))
@@ -414,7 +414,7 @@ async fn handle_check_inputs(
   State(state): State<Arc<AppState>>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let request: CheckInputsRequest = serde_json::from_value(body)?;
+  let request: CheckInputsRequest = parse_request(body)?;
   let mut config = Value::Object(request.config);
   state
     .path_policy()?
@@ -451,7 +451,7 @@ async fn handle_create_run(
   State(state): State<Arc<AppState>>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let request: CreateRunRequest = serde_json::from_value(body)?;
+  let request: CreateRunRequest = parse_request(body)?;
   let defer_start = request.defer_start;
   let record = state.runs.create(request)?;
   let record = if defer_start {
@@ -485,7 +485,7 @@ async fn handle_update_run(
   Path(id): Path<String>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let request: UpdateRunRequest = serde_json::from_value(body)?;
+  let request: UpdateRunRequest = parse_request(body)?;
   Ok(Json(serde_json::to_value(state.runs.update(&run_id(&id)?, request)?)?))
 }
 
@@ -514,7 +514,7 @@ async fn handle_start_run(
   body: Option<Json<Value>>,
 ) -> Result<Json<Value>, AppError> {
   let request: StartRunRequest = match body {
-    Some(Json(body)) => serde_json::from_value(body)?,
+    Some(Json(body)) => parse_request(body)?,
     None => StartRunRequest::default(),
   };
   let record = start_run(&state, &run_id(&id)?, request.config)?;
@@ -773,7 +773,7 @@ async fn handle_clade_in_runs(
   State(state): State<Arc<AppState>>,
   Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-  let request: CladeRequest = serde_json::from_value(body)?;
+  let request: CladeRequest = parse_request(body)?;
   let runs = Arc::clone(&state.runs);
   let found = tokio::task::spawn_blocking(move || clade_in_runs(&runs, &request)).await??;
   Ok(Json(serde_json::to_value(found)?))

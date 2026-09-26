@@ -60,9 +60,7 @@ impl ErrorCode {
       Self::UploadTooLarge
     } else if report.downcast_ref::<RunConflict>().is_some() {
       Self::Conflict
-    } else if report.downcast_ref::<InvalidRunRequest>().is_some()
-      || report.downcast_ref::<serde_json::Error>().is_some()
-    {
+    } else if report.downcast_ref::<InvalidRunRequest>().is_some() {
       Self::InvalidRequest
     } else {
       Self::InternalError
