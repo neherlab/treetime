@@ -5,7 +5,8 @@
   "description": "TypeScript types and schemas of the TreeTime bridge interface",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "generate": "openapi-ts",
