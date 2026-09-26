@@ -3,6 +3,7 @@ import {
   createBridge,
   bridgeErrorFromText,
   type BridgeTransport,
+  type OperationRequestInput,
   type TransportEventOptions,
   type TreeTimeBridge,
 } from "@neherlab/app-contracts";
@@ -23,8 +24,14 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
 
   const debug = readDebugFlag();
 
-  async function send(method: Method, path: string, body?: BodyInit, headers: HeadersInit = {}): Promise<Response> {
-    if (debug) console.debug("[TreeTime]", method, path);
+  async function send(
+    method: Method,
+    path: string,
+    body?: BodyInit,
+    headers: HeadersInit = {},
+    context = `${method} ${path}`,
+  ): Promise<Response> {
+    if (debug) console.debug("[TreeTime]", context);
 
     const init: RequestInit = { method, headers };
 
@@ -35,21 +42,24 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
     const response = await fetchFn(`${apiBase}/${path}`, init);
 
     if (!response.ok) {
-      throw await responseError(response, `${method} ${path}: ${response.status}`);
+      throw await responseError(response, `${context}: ${response.status}`);
     }
 
     return response;
   }
 
-  async function json(method: Method, path: string, body?: unknown): Promise<unknown> {
-    const response =
-      body === undefined
-        ? await send(method, path)
-        : await send(method, path, JSON.stringify(body), { "Content-Type": "application/json" });
+  async function call(request: OperationRequestInput): Promise<unknown> {
+    const response = await send(
+      "POST",
+      "operations",
+      JSON.stringify(request),
+      { "Content-Type": "application/json" },
+      request.operation,
+    );
 
     const data: unknown = await response.json();
 
-    if (debug) console.debug("[TreeTime]", method, path, JSON.stringify(data));
+    if (debug) console.debug("[TreeTime]", request.operation, JSON.stringify(data));
 
     return data;
   }
@@ -96,26 +106,8 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
   }
 
   const transport: BridgeTransport = {
-    version: () => json("GET", "version"),
-    datasets: () => json("GET", "datasets"),
-    checkConfig: (request) => json("POST", "check-config", request),
-    runConfig: (request) => json("POST", "run-config", request),
-    checkInputs: (request) => json("POST", "check-inputs", request),
-    listRuns: () => json("GET", "runs"),
-    createRun: (request) => json("POST", "runs", request),
-    getRun: (id) => json("GET", runPath(id)),
-    startRun: (id, request) => json("POST", `${runPath(id)}/start`, request),
-    updateRun: (id, request) => json("PATCH", runPath(id), request),
-    cancelRun: (id) => json("POST", `${runPath(id)}/cancel`),
-    deleteRun: async (id) => {
-      await send("DELETE", runPath(id));
-    },
-    restoreRun: (id) => json("POST", `${runPath(id)}/restore`),
-    purgeRun: async (id) => {
-      await send("POST", `${runPath(id)}/purge`);
-    },
+    call,
     runEvents,
-    runFiles: (id) => json("GET", `${runPath(id)}/files`),
     saveRunFile: (id, path, name) => save(filePath(id, path), name),
     saveRunArchive: (id, name) => save(`${runPath(id)}/archive`, name),
     uploadInput: async (id, name, data) => {
@@ -127,10 +119,6 @@ export function createWebBridge(deps: WebBridgeDeps = {}): TreeTimeBridge {
 
       return uploaded;
     },
-    runResults: (id) => json("GET", `${runPath(id)}/results`),
-    runAuspice: (id) => json("GET", `${runPath(id)}/auspice`),
-    compareRuns: (id, other) => json("GET", `${runPath(id)}/compare/${encodeURIComponent(other)}`),
-    cladeInRuns: (request) => json("POST", "clade-in-runs", request),
   };
 
   return createBridge(transport);

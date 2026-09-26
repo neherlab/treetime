@@ -4,8 +4,8 @@ import {
   createBridge,
   zPickedFiles,
   type BridgeTransport,
-  type DesktopRequestInput,
   type LocalFiles,
+  type OperationRequestInput,
   type PickFilesRequest,
   type TransportEventOptions,
   type TreeTimeBridge,
@@ -189,7 +189,7 @@ class BackendClient {
 }
 
 function createPortTransport(client: BackendClient, shell: DesktopShell): BridgeTransport {
-  function call(request: DesktopRequestInput): Promise<unknown> {
+  function call(request: OperationRequestInput): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const seq = client.open({
         reply(reply) {
@@ -266,33 +266,11 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
   }
 
   return {
-    version: () => call({ operation: "version", args: {} }),
-    datasets: () => call({ operation: "datasets", args: {} }),
-    checkConfig: (request) => call({ operation: "check-config", args: { request } }),
-    runConfig: (request) => call({ operation: "run-config", args: { request } }),
-    checkInputs: (request) => call({ operation: "check-inputs", args: { request } }),
-    listRuns: () => call({ operation: "list-runs", args: {} }),
-    createRun: (request) => call({ operation: "create-run", args: { request } }),
-    getRun: (id) => call({ operation: "get-run", args: { id } }),
-    startRun: (id, request) => call({ operation: "start-run", args: { id, request } }),
-    updateRun: (id, request) => call({ operation: "update-run", args: { id, request } }),
-    cancelRun: (id) => call({ operation: "cancel-run", args: { id } }),
-    deleteRun: async (id) => {
-      await call({ operation: "delete-run", args: { id } });
-    },
-    restoreRun: (id) => call({ operation: "restore-run", args: { id } }),
-    purgeRun: async (id) => {
-      await call({ operation: "purge-run", args: { id } });
-    },
+    call,
     runEvents,
-    runFiles: (id) => call({ operation: "run-files", args: { id } }),
     saveRunFile: async (id, path, name) => saved(zSaveReply.parse(await shell.saveRunFile({ id, path, name }))),
     saveRunArchive: async (id, name) => saved(zSaveReply.parse(await shell.saveRunArchive({ id, name }))),
     uploadInput: () => Promise.reject(new LocalInputsError()),
-    runResults: (id) => call({ operation: "run-results", args: { id } }),
-    runAuspice: (id) => call({ operation: "run-auspice", args: { id } }),
-    compareRuns: (id, other) => call({ operation: "compare-runs", args: { id, other } }),
-    cladeInRuns: (request) => call({ operation: "clade-in-runs", args: { request } }),
   };
 }
 

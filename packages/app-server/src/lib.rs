@@ -17,7 +17,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 pub fn create_router(config: ServerConfig, static_dir: Option<PathBuf>) -> Result<Router, Report> {
-  let api = routes::api_routes(Arc::new(AppState::new(config)?));
+  let api = routes::api_routes(&Arc::new(AppState::new(config)?));
 
   let router = match static_dir {
     Some(static_dir) => {

@@ -1,7 +1,7 @@
 use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
 use crate::subscription::EventForwarder;
-use app_commands::bridge::operations::DesktopRequest;
+use app_commands::bridge::operations::OperationRequest;
 use app_commands::job::JobId;
 use app_commands::runs::errors::parse_request_text;
 use eyre::Report;
@@ -40,8 +40,8 @@ impl Backend {
   pub fn call(&self, request_json: String) -> AsyncTask<JsonTask> {
     let service = Arc::clone(&self.service);
     JsonTask::spawn(move || {
-      let request: DesktopRequest = parse_request_text(&request_json)?;
-      request.handle(service.as_ref())
+      let request: OperationRequest = parse_request_text(&request_json)?;
+      request.handle(service.app())
     })
   }
 
@@ -53,6 +53,7 @@ impl Backend {
     guarded(|| {
       self
         .service
+        .app()
         .runs()
         .subscribe(&JobId::parse(&id)?, usize::try_from(from)?, forwarder.subscriber())
     })

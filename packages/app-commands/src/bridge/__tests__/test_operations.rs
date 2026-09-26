@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::bridge::operations::DesktopRequest;
+  use crate::bridge::operations::OperationRequest;
   use eyre::Report;
   use helpers::FakeBackend;
   use pretty_assertions::assert_eq;
@@ -10,7 +10,7 @@ mod tests {
 
   #[test]
   fn test_operations_request_names_the_operation_and_its_arguments() {
-    let request: DesktopRequest = serde_json::from_str(r#"{"operation":"get-run","args":{"id":"r1"}}"#).unwrap();
+    let request: OperationRequest = serde_json::from_str(r#"{"operation":"get-run","args":{"id":"r1"}}"#).unwrap();
     assert_eq!(
       ("get-run", json!({ "operation": "get-run", "args": { "id": "r1" } })),
       (request.name(), serde_json::to_value(&request).unwrap())
@@ -19,20 +19,20 @@ mod tests {
 
   #[test]
   fn test_operations_handle_answers_with_the_backend_result_as_json() {
-    let request: DesktopRequest = serde_json::from_str(r#"{"operation":"cancel-run","args":{"id":"r1"}}"#).unwrap();
+    let request: OperationRequest = serde_json::from_str(r#"{"operation":"cancel-run","args":{"id":"r1"}}"#).unwrap();
     let answer: Value = serde_json::from_str(&request.handle(&FakeBackend).unwrap()).unwrap();
     assert_eq!(json!({ "cancelled": true }), answer);
   }
 
   #[test]
   fn test_operations_handle_answers_an_operation_without_result_with_null() {
-    let request: DesktopRequest = serde_json::from_str(r#"{"operation":"delete-run","args":{"id":"r1"}}"#).unwrap();
+    let request: OperationRequest = serde_json::from_str(r#"{"operation":"delete-run","args":{"id":"r1"}}"#).unwrap();
     assert_eq!("null", request.handle(&FakeBackend).unwrap());
   }
 
   #[test]
   fn test_operations_handle_passes_backend_errors_through() {
-    let request: DesktopRequest = serde_json::from_str(r#"{"operation":"get-run","args":{"id":"r9"}}"#).unwrap();
+    let request: OperationRequest = serde_json::from_str(r#"{"operation":"get-run","args":{"id":"r9"}}"#).unwrap();
     assert_error!(request.handle(&FakeBackend), "no run with id `r9`");
   }
 
@@ -44,11 +44,11 @@ mod tests {
   #[case::missing_argument( r#"{"operation":"get-run","args":{}}"#,                     "missing field `id` at line 1 column 32")]
   #[trace]
   fn test_operations_request_rejects_malformed_requests(#[case] json: &str, #[case] expected: &str) {
-    assert_error!(serde_json::from_str::<DesktopRequest>(json).map_err(Report::new), expected);
+    assert_error!(serde_json::from_str::<OperationRequest>(json).map_err(Report::new), expected);
   }
 
   mod helpers {
-    use crate::bridge::operations::DesktopBackend;
+    use crate::bridge::operations::Operations;
     use crate::check_config::{CheckConfigRequest, CheckConfigResponse};
     use crate::check_inputs::{CheckInputsRequest, InputFacts};
     use crate::datasets::DatasetCatalog;
@@ -69,7 +69,7 @@ mod tests {
 
     pub(super) struct FakeBackend;
 
-    impl DesktopBackend for FakeBackend {
+    impl Operations for FakeBackend {
       fn version(&self) -> Result<VersionInfo, Report> {
         Ok(version_info())
       }

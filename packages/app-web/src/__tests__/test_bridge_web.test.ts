@@ -1,6 +1,6 @@
-import { BridgeError, CancelledError, CommandError } from "@neherlab/app-contracts";
+import { BridgeError, CancelledError, CommandError, zOperationRequest } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 
 import { createWebBridge } from "../bridge-web";
 
@@ -38,7 +38,7 @@ function routes(table: Record<string, Route>, calls: Call[] = []): typeof fetch 
   return (input, init) => {
     const call = { method: init?.method ?? "GET", url: urlOf(input), body: init?.body };
     calls.push(call);
-    const route = table[`${call.method} ${call.url}`];
+    const route = table[routeKey(call)];
 
     if (route === undefined) {
       return Promise.resolve(new Response(JSON.stringify({ code: "x", message: "no route" }), { status: 404 }));
@@ -67,6 +67,14 @@ function sse(events: Array<{ type: string; data: unknown }>): Response {
   return new Response(text, { headers: { "Content-Type": "text/event-stream" } });
 }
 
+function routeKey(call: Call): string {
+  if (call.url === "/api/operations") {
+    return `call ${zOperationRequest.parse(JSON.parse(z.string().parse(call.body))).operation}`;
+  }
+
+  return `${call.method} ${call.url}`;
+}
+
 function urlOf(input: RequestInfo | URL): string {
   if (input instanceof Request) {
     return input.url;
@@ -77,47 +85,47 @@ function urlOf(input: RequestInfo | URL): string {
 
 describe("bridge_web queries and requests", () => {
   test("version fetches and validates the result", async () => {
-    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/version": () => json({ version: "9.9.9" }) }) });
+    const bridge = createWebBridge({ fetchFn: routes({ "call version": () => json({ version: "9.9.9" }) }) });
     await expect(bridge.version()).resolves.toStrictEqual({ version: "9.9.9" });
   });
 
   test("a failed request rejects with the server's typed error, its causes and the status", async () => {
     const response = { code: "not_found", message: "When reading run `r9`", causes: ["no run with id `r9`"] };
-    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/runs/r9": () => json(response, 404) }) });
+    const bridge = createWebBridge({ fetchFn: routes({ "call get-run": () => json(response, 404) }) });
 
     const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
 
     expect(error).toBeInstanceOf(BridgeError);
     expect(error).toMatchObject({
-      message: "GET runs/r9: 404: When reading run `r9`: no run with id `r9`",
+      message: "get-run: 404: When reading run `r9`: no run with id `r9`",
       response,
     });
   });
 
   test("a failed request without a typed error body rejects as an internal error with the body text", async () => {
     const bridge = createWebBridge({
-      fetchFn: routes({ "GET /api/runs/r9": () => new Response("Bad Gateway", { status: 502 }) }),
+      fetchFn: routes({ "call get-run": () => new Response("Bad Gateway", { status: 502 }) }),
     });
 
     const error = await bridge.getRun("r9").catch((failure: unknown) => failure);
 
     expect(error).toMatchObject({
-      message: "GET runs/r9: 502: Bad Gateway",
+      message: "get-run: 502: Bad Gateway",
       response: { code: "internal_error", message: "Bad Gateway", causes: [] },
     });
   });
 
   test("a malformed result rejects with a ZodError", async () => {
-    const bridge = createWebBridge({ fetchFn: routes({ "GET /api/version": () => json({ version: 1 }) }) });
+    const bridge = createWebBridge({ fetchFn: routes({ "call version": () => json({ version: 1 }) }) });
     await expect(bridge.version()).rejects.toBeInstanceOf(ZodError);
   });
 
-  test("checkConfig posts the request body", async () => {
+  test("checkConfig posts the check-config operation request", async () => {
     const calls: Call[] = [];
 
     const fetchFn = routes(
       {
-        "POST /api/check-config": () =>
+        "call check-config": () =>
           json({
             status: "valid",
             command: "prune",
@@ -139,16 +147,23 @@ describe("bridge_web queries and requests", () => {
     const bridge = createWebBridge({ fetchFn });
     await bridge.checkConfig({ command: "prune", text: "tree: t.nwk" });
     expect(calls).toStrictEqual([
-      { method: "POST", url: "/api/check-config", body: JSON.stringify({ command: "prune", text: "tree: t.nwk" }) },
+      {
+        method: "POST",
+        url: "/api/operations",
+        body: JSON.stringify({
+          operation: "check-config",
+          args: { request: { command: "prune", text: "tree: t.nwk" } },
+        }),
+      },
     ]);
   });
 
-  test("runConfig posts the request body", async () => {
+  test("runConfig posts the run-config operation request", async () => {
     const calls: Call[] = [];
 
     const fetchFn = routes(
       {
-        "POST /api/run-config": () =>
+        "call run-config": () =>
           json({
             status: "valid",
             config: { tree: "t.nwk" },
@@ -168,21 +183,28 @@ describe("bridge_web queries and requests", () => {
     const bridge = createWebBridge({ fetchFn });
     await bridge.runConfig({ command: "prune", config: { tree: "t.nwk" } });
     expect(calls).toStrictEqual([
-      { method: "POST", url: "/api/run-config", body: JSON.stringify({ command: "prune", config: { tree: "t.nwk" } }) },
+      {
+        method: "POST",
+        url: "/api/operations",
+        body: JSON.stringify({
+          operation: "run-config",
+          args: { request: { command: "prune", config: { tree: "t.nwk" } } },
+        }),
+      },
     ]);
   });
 
-  test("run operations use their routes", async () => {
+  test("run operations send their operation requests", async () => {
     const calls: Call[] = [];
     const summary = { ...RECORD, status: "ok" };
 
     const fetchFn = routes(
       {
-        "PATCH /api/runs/r1": () => json(summary),
-        "POST /api/runs/r1/cancel": () => json({ cancelled: false }),
-        "DELETE /api/runs/r1": () => new Response(null, { status: 204 }),
-        "POST /api/runs/r1/restore": () => json(summary),
-        "POST /api/runs/r1/start": () => json(RECORD),
+        "call update-run": () => json(summary),
+        "call cancel-run": () => json({ cancelled: false }),
+        "call delete-run": () => json(null),
+        "call restore-run": () => json(summary),
+        "call start-run": () => json(RECORD),
       },
       calls,
     );
@@ -193,12 +215,15 @@ describe("bridge_web queries and requests", () => {
     await bridge.deleteRun("r1");
     await bridge.restoreRun("r1");
     await bridge.startRun("r1", { config: { tree: "/runs/r1/inputs/t.nwk" } });
-    expect(calls.map((call) => `${call.method} ${call.url}`)).toStrictEqual([
-      "PATCH /api/runs/r1",
-      "POST /api/runs/r1/cancel",
-      "DELETE /api/runs/r1",
-      "POST /api/runs/r1/restore",
-      "POST /api/runs/r1/start",
+    expect(calls.map((call) => call.body)).toStrictEqual([
+      JSON.stringify({ operation: "update-run", args: { id: "r1", request: { pinned: true } } }),
+      JSON.stringify({ operation: "cancel-run", args: { id: "r1" } }),
+      JSON.stringify({ operation: "delete-run", args: { id: "r1" } }),
+      JSON.stringify({ operation: "restore-run", args: { id: "r1" } }),
+      JSON.stringify({
+        operation: "start-run",
+        args: { id: "r1", request: { config: { tree: "/runs/r1/inputs/t.nwk" } } },
+      }),
     ]);
   });
 
@@ -295,7 +320,7 @@ describe("bridge_web run events", () => {
 
   test("a command creates a run and resolves with the outcome of its terminal event", async () => {
     const fetchFn = routes({
-      "POST /api/runs": () => json(RECORD),
+      "call create-run": () => json(RECORD),
       "GET /api/runs/r1/events?from=0": () =>
         sse([
           { type: "started", data: { job_id: "r1", command: "clock" } },
@@ -321,7 +346,7 @@ describe("bridge_web run events", () => {
 
   test("an error terminal event rejects with a CommandError", async () => {
     const fetchFn = routes({
-      "POST /api/runs": () => json(RECORD),
+      "call create-run": () => json(RECORD),
       "GET /api/runs/r1/events?from=0": () =>
         sse([{ type: "terminal", data: { status: "error", job_id: "r1", message: "bad", causes: [] } }]),
     });

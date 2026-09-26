@@ -13,264 +13,29 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/check-config": {
+    "/api/operations": {
       "post": {
-        "operationId": "configCheck",
+        "operationId": "operationsCall",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CheckConfigRequest"
+                "$ref": "#/components/schemas/OperationRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "The configuration with every default filled in, or the problems found in it",
+            "description": "The JSON result of the operation the request names; `null` for an operation without result",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckConfigResponse"
-                }
+                "schema": {}
               }
             }
           }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/check-inputs": {
-      "post": {
-        "operationId": "inputsCheck",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CheckInputsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Facts about the input files, read with the readers the commands use",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InputFacts"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/clade-in-runs": {
-      "post": {
-        "operationId": "cladeInRuns",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CladeRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Nodes of the other finished time-tree runs with the same set of samples below them",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CladeInRuns"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/datasets": {
-      "get": {
-        "operationId": "datasets",
-        "responses": {
-          "200": {
-            "description": "Example datasets and example configurations in the data directory",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatasetCatalog"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
-      }
-    },
-    "/api/run-config": {
-      "post": {
-        "operationId": "runConfig",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RunConfigRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunConfigResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/runs": {
-      "get": {
-        "operationId": "runsList",
-        "responses": {
-          "200": {
-            "description": "Runs, newest first, and the number of runs computing now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunList"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
-      },
-      "post": {
-        "operationId": "runsCreate",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRunRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The created run; it starts at once unless `defer_start` is set",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunRecord"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/runs/{id}": {
-      "get": {
-        "operationId": "runsGet",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The record of the run",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunRecord"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
-      },
-      "delete": {
-        "operationId": "runsDelete",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The run moved to the trash; restore undoes it"
-          }
-        },
-        "x-bridge-type": "request"
-      },
-      "patch": {
-        "operationId": "runsUpdate",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRunRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The run with its new title or pinned state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunSummary"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
+        }
       }
     },
     "/api/runs/{id}/archive": {
@@ -299,124 +64,7 @@
               }
             }
           }
-        },
-        "x-bridge-type": "file"
-      }
-    },
-    "/api/runs/{id}/auspice": {
-      "get": {
-        "operationId": "runsAuspice",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of a finished run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Auspice JSON of the run, with the color scales the app displays",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuspiceDocument"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The run wrote no Auspice file",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The run has not finished successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
-      }
-    },
-    "/api/runs/{id}/cancel": {
-      "post": {
-        "operationId": "runsCancel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Whether cancellation was requested; the run ends with a `cancelled` terminal event",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CancelRunResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/runs/{id}/compare/{other}": {
-      "get": {
-        "operationId": "runsCompare",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the first run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "other",
-            "in": "path",
-            "description": "Id of the second run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Differences of the second run's results from the first run's",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunComparison"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
+        }
       }
     },
     "/api/runs/{id}/events": {
@@ -454,8 +102,7 @@
               }
             }
           }
-        },
-        "x-bridge-type": "stream"
+        }
       }
     },
     "/api/runs/{id}/file": {
@@ -493,40 +140,7 @@
               }
             }
           }
-        },
-        "x-bridge-type": "file"
-      }
-    },
-    "/api/runs/{id}/files": {
-      "get": {
-        "operationId": "runsFiles",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of the run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Files in the run's `out/` folder, with their sizes and kinds",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RunFile"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "query"
+        }
       }
     },
     "/api/runs/{id}/inputs/{name}": {
@@ -574,7 +188,6 @@
             }
           }
         },
-        "x-bridge-type": "upload",
         "requestBody": {
           "required": true,
           "content": {
@@ -588,84 +201,85 @@
         }
       }
     },
-    "/api/runs/{id}/purge": {
-      "post": {
-        "operationId": "runsPurge",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of a deleted run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The deleted run is removed for good"
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/runs/{id}/restore": {
-      "post": {
-        "operationId": "runsRestore",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of a deleted run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The run, back from the trash",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunSummary"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
-      }
-    },
-    "/api/runs/{id}/results": {
+    "/api/version": {
       "get": {
-        "operationId": "runsResults",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Id of a finished run",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "version",
+        "description": "Version of TreeTime.",
+        "x-operation": "version",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "Results of the run, read from its output files",
+            "description": "Version of TreeTime.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RunResults"
+                  "$ref": "#/components/schemas/VersionInfo"
                 }
               }
             }
           },
-          "409": {
-            "description": "The run has not finished successfully",
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datasets": {
+      "get": {
+        "operationId": "datasets",
+        "description": "Example datasets and example configurations in the data directory.",
+        "x-operation": "datasets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Example datasets and example configurations in the data directory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetCatalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/check-config": {
+      "post": {
+        "operationId": "configCheck",
+        "description": "The configuration with every default filled in, or the problems found in it.",
+        "x-operation": "check-config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The configuration with every default filled in, or the problems found in it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckConfigResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
             "content": {
               "application/json": {
                 "schema": {
@@ -675,23 +289,319 @@
             }
           }
         },
-        "x-bridge-type": "query"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckConfigRequest"
+              }
+            }
+          }
+        }
       }
     },
-    "/api/runs/{id}/start": {
+    "/api/run-config": {
       "post": {
-        "operationId": "runsStart",
+        "operationId": "runConfig",
+        "description": "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it.",
+        "x-operation": "run-config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunConfigResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunConfigRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/check-inputs": {
+      "post": {
+        "operationId": "inputsCheck",
+        "description": "Facts about the input files, read with the readers the commands use.",
+        "x-operation": "check-inputs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Facts about the input files, read with the readers the commands use.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputFacts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckInputsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "operationId": "runsList",
+        "description": "Runs, newest first, and the number of runs computing now.",
+        "x-operation": "list-runs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Runs, newest first, and the number of runs computing now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "runsCreate",
+        "description": "Create a run; it starts at once unless `defer_start` is set.",
+        "x-operation": "create-run",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Create a run; it starts at once unless `defer_start` is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}": {
+      "get": {
+        "operationId": "runsGet",
+        "description": "The record of a run.",
+        "x-operation": "get-run",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Id of the run",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "The record of a run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "runsUpdate",
+        "description": "Change the title or pinned state of a run.",
+        "x-operation": "update-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change the title or pinned state of a run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "runsDelete",
+        "description": "Move a run to the trash; restore undoes it.",
+        "x-operation": "delete-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Move a run to the trash; restore undoes it."
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/start": {
+      "post": {
+        "operationId": "runsStart",
+        "description": "Start a created run.",
+        "x-operation": "start-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Start a created run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -701,38 +611,321 @@
               }
             }
           }
-        },
-        "responses": {
-          "200": {
-            "description": "The started run",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunRecord"
-                }
-              }
-            }
-          }
-        },
-        "x-bridge-type": "request"
+        }
       }
     },
-    "/api/version": {
-      "get": {
-        "operationId": "version",
+    "/api/runs/{id}/cancel": {
+      "post": {
+        "operationId": "runsCancel",
+        "description": "Request cancellation of a run; the run ends with a `cancelled` terminal event.",
+        "x-operation": "cancel-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Version information",
+            "description": "Request cancellation of a run; the run ends with a `cancelled` terminal event.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VersionInfo"
+                  "$ref": "#/components/schemas/CancelRunResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/restore": {
+      "post": {
+        "operationId": "runsRestore",
+        "description": "Bring a run back from the trash.",
+        "x-operation": "restore-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bring a run back from the trash.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/purge": {
+      "post": {
+        "operationId": "runsPurge",
+        "description": "Remove a deleted run for good.",
+        "x-operation": "purge-run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Remove a deleted run for good."
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/files": {
+      "get": {
+        "operationId": "runsFiles",
+        "description": "Files in the run's `out/` folder, with their sizes and kinds.",
+        "x-operation": "run-files",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files in the run's `out/` folder, with their sizes and kinds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Array_of_RunFile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/results": {
+      "get": {
+        "operationId": "runsResults",
+        "description": "Results of a finished run, read from its output files.",
+        "x-operation": "run-results",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Results of a finished run, read from its output files.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResults"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/auspice": {
+      "get": {
+        "operationId": "runsAuspice",
+        "description": "Auspice JSON of a finished run, with the color scales the app displays.",
+        "x-operation": "run-auspice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auspice JSON of a finished run, with the color scales the app displays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuspiceDocument"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/compare/{other}": {
+      "get": {
+        "operationId": "runsCompare",
+        "description": "Differences of the second run's results from the first run's.",
+        "x-operation": "compare-runs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "other",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Differences of the second run's results from the first run's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunComparison"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clade-in-runs": {
+      "post": {
+        "operationId": "cladeInRuns",
+        "description": "Nodes of the other finished time-tree runs with the same set of samples below them.",
+        "x-operation": "clade-in-runs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Nodes of the other finished time-tree runs with the same set of samples below them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CladeInRuns"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "x-bridge-type": "query"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CladeRequest"
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -7639,7 +7832,7 @@
         ],
         "description": "Answer to a cancellation request."
       },
-      "DesktopRequest": {
+      "OperationRequest": {
         "oneOf": [
           {
             "type": "object",
@@ -7677,7 +7870,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Example datasets and example configurations."
+            "description": "Example datasets and example configurations in the data directory."
           },
           {
             "type": "object",
@@ -7731,7 +7924,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "The configuration as a run resolves it."
+            "description": "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the\nproblems found in it."
           },
           {
             "type": "object",
@@ -7758,7 +7951,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Facts about input files, read with the readers the commands use."
+            "description": "Facts about the input files, read with the readers the commands use."
           },
           {
             "type": "object",
@@ -7777,7 +7970,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Runs, newest first."
+            "description": "Runs, newest first, and the number of runs computing now."
           },
           {
             "type": "object",
@@ -7920,7 +8113,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Request cancellation of a run."
+            "description": "Request cancellation of a run; the run ends with a `cancelled` terminal event."
           },
           {
             "type": "object",
@@ -7947,7 +8140,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Move a run to the trash."
+            "description": "Move a run to the trash; restore undoes it."
           },
           {
             "type": "object",
@@ -8028,7 +8221,7 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Files in the run's `out/` folder."
+            "description": "Files in the run's `out/` folder, with their sizes and kinds."
           },
           {
             "type": "object",
@@ -8140,10 +8333,16 @@
               "args"
             ],
             "additionalProperties": false,
-            "description": "Nodes of other finished time-tree runs with the same samples below them."
+            "description": "Nodes of the other finished time-tree runs with the same set of samples below them."
           }
         ],
-        "description": "Request to the desktop back end: the name of an operation and its arguments."
+        "description": "Request of an operation of the app back end: the name of the operation and its arguments."
+      },
+      "Array_of_RunFile": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RunFile"
+        }
       }
     }
   },

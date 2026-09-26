@@ -543,27 +543,74 @@ mod tests {
     assert_eq!(400, status);
   }
 
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_operations_answers_the_operation_the_request_names() {
+    let test = app();
+    let (_, datasets) = request(&test, "GET", "/api/datasets", None).await;
+    let (status, answer) = request(
+      &test,
+      "POST",
+      "/api/operations",
+      Some(json!({ "operation": "datasets", "args": {} })),
+    )
+    .await;
+    assert_eq!((200, datasets), (status, answer));
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_operations_confines_inputs_and_reports_typed_errors() {
+    let test = app();
+    let (outside, outside_error) = request(
+      &test,
+      "POST",
+      "/api/operations",
+      Some(json!({ "operation": "check-inputs", "args": { "request": { "command": "prune", "config": { "tree": "../Cargo.toml" } } } })),
+    )
+    .await;
+    let (missing, missing_error) = request(
+      &test,
+      "POST",
+      "/api/operations",
+      Some(json!({ "operation": "get-run", "args": { "id": "r9" } })),
+    )
+    .await;
+    let (unknown, _) = request(
+      &test,
+      "POST",
+      "/api/operations",
+      Some(json!({ "operation": "format-disk", "args": {} })),
+    )
+    .await;
+    assert_eq!(
+      ((400, json!("invalid_request")), (404, json!("not_found")), 400),
+      (
+        (outside, outside_error["code"].clone()),
+        (missing, missing_error["code"].clone()),
+        unknown
+      )
+    );
+  }
+
   #[test]
-  fn test_routes_openapi_describes_run_bodies_and_bridge_types() {
+  fn test_routes_openapi_describes_operations_and_their_bodies() {
     let doc = api_doc().unwrap();
     assert_eq!(
       (
-        json!("request"),
+        json!("create-run"),
         json!("#/components/schemas/CreateRunRequest"),
-        json!("stream"),
+        json!("#/components/schemas/ErrorResponse"),
+        json!("#/components/schemas/OperationRequest"),
         json!("#/components/schemas/RunEvent"),
-        json!("upload"),
-        json!("query"),
       ),
       (
-        doc["paths"]["/api/runs"]["post"]["x-bridge-type"].clone(),
+        doc["paths"]["/api/runs"]["post"]["x-operation"].clone(),
         doc["paths"]["/api/runs"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
-        doc["paths"]["/api/runs/{id}/events"]["get"]["x-bridge-type"].clone(),
+        doc["paths"]["/api/runs/{id}"]["get"]["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
+          .clone(),
+        doc["paths"]["/api/operations"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
         doc["paths"]["/api/runs/{id}/events"]["get"]["responses"]["200"]["content"]["text/event-stream"]["schema"]
           ["$ref"]
           .clone(),
-        doc["paths"]["/api/runs/{id}/inputs/{name}"]["put"]["x-bridge-type"].clone(),
-        doc["paths"]["/api/version"]["get"]["x-bridge-type"].clone(),
       )
     );
     let config = &doc["components"]["schemas"]["ClockConfig"];

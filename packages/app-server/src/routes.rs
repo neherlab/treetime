@@ -1,26 +1,20 @@
 use crate::error::AppError;
 use crate::events::run_events_sse;
-use crate::openapi::{add_components, add_setting_catalog, schema_ref};
+use crate::openapi::{add_component, add_components, add_setting_catalog, schema_ref};
 use crate::state::AppState;
-use app_commands::check_config::{CheckConfigRequest, check_config};
-use app_commands::check_inputs::{CheckInputsRequest, check_inputs};
-use app_commands::datasets::dataset_catalog;
+use app_commands::bridge::operations::{HttpMethod, HttpOperation, OperationRequest, REQUEST_ARG, http_operations};
+use app_commands::config::source::escape_pointer;
 use app_commands::job::JobId;
-use app_commands::results::auspice::run_auspice;
-use app_commands::results::clades::{CladeRequest, clade_in_runs};
-use app_commands::results::compare::compare_runs;
-use app_commands::results::run_results::run_results;
-use app_commands::run_config::{RunConfigRequest, run_config};
 use app_commands::runs::errors::{invalid, parse_request};
-use app_commands::runs::record::{CancelRunResponse, CreateRunRequest, RunRecord, StartRunRequest, UpdateRunRequest};
-use axum::body::Body;
-use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::Json;
+use axum::Router;
+use axum::body::{Body, Bytes};
+use axum::extract::{DefaultBodyLimit, Path, Query, RawPathParams, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::routing::{MethodFilter, MethodRouter, get, on};
 use eyre::{Report, WrapErr};
-use log::{error, info};
+use itertools::Itertools;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::io;
@@ -28,12 +22,18 @@ use std::sync::Arc;
 use tokio_stream::StreamExt as _;
 use tokio_util::io::{StreamReader, SyncIoBridge};
 use treetime_schema::version_info;
-use treetime_utils::make_report;
+use treetime_utils::{make_error, make_report};
 use utoipa::openapi::{ContactBuilder, LicenseBuilder};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 const LAST_EVENT_ID: &str = "last-event-id";
+
+const JSON_CONTENT_TYPE: &str = "application/json";
+
+const ERROR_RESPONSES: &str = "default";
+
+const OPERATION_KEY: &str = "x-operation";
 
 const CONTENT_TYPES: &[(&str, &str)] = &[
   ("json", "application/json"),
@@ -49,8 +49,12 @@ const CONTENT_TYPES: &[(&str, &str)] = &[
   ("jsonl", "application/jsonl"),
 ];
 
-pub(crate) fn api_routes(state: Arc<AppState>) -> Router {
-  let (router, _api) = api_router().with_state(state).split_for_parts();
+pub(crate) fn api_routes(state: &Arc<AppState>) -> Router {
+  let (router, _api) = api_router().with_state(Arc::clone(state)).split_for_parts();
+  let router = http_operations().into_iter().fold(router, |router, operation| {
+    let path = operation.path;
+    router.route(path, route_operation(operation, Arc::clone(state)))
+  });
   router
     .route("/api/health", get(handle_health))
     .route("/api/openapi.json", get(handle_openapi))
@@ -83,8 +87,11 @@ pub fn api_doc() -> Result<Value, Report> {
   let mut doc = serde_json::to_value(api)?;
   add_components(&mut doc)?;
   add_setting_catalog(&mut doc)?;
-  for operation in operations() {
-    describe_operation(&mut doc, &operation)?;
+  for operation in http_operations() {
+    add_operation(&mut doc, &operation)?;
+  }
+  for transfer in transfers() {
+    describe_transfer(&mut doc, &transfer)?;
   }
   Ok(doc)
 }
@@ -94,242 +101,201 @@ fn api_router() -> OpenApiRouter<Arc<AppState>> {
     .routes(routes!(handle_upload_input))
     .layer(DefaultBodyLimit::disable());
   OpenApiRouter::new()
-    .routes(routes!(handle_version))
-    .routes(routes!(handle_datasets))
-    .routes(routes!(handle_check_config))
-    .routes(routes!(handle_run_config))
-    .routes(routes!(handle_check_inputs))
-    .routes(routes!(handle_list_runs, handle_create_run))
-    .routes(routes!(handle_get_run, handle_update_run, handle_delete_run))
-    .routes(routes!(handle_start_run))
-    .routes(routes!(handle_cancel_run))
-    .routes(routes!(handle_restore_run))
-    .routes(routes!(handle_purge_run))
+    .routes(routes!(handle_operation))
     .routes(routes!(handle_run_events))
-    .routes(routes!(handle_run_files))
     .routes(routes!(handle_run_file))
     .routes(routes!(handle_run_archive))
-    .routes(routes!(handle_run_results))
-    .routes(routes!(handle_run_auspice))
-    .routes(routes!(handle_compare_runs))
-    .routes(routes!(handle_clade_in_runs))
     .merge(uploads)
 }
 
-struct Operation {
+fn route_operation(operation: HttpOperation, state: Arc<AppState>) -> MethodRouter {
+  let filter = match operation.method {
+    HttpMethod::Get => MethodFilter::GET,
+    HttpMethod::Post => MethodFilter::POST,
+    HttpMethod::Patch => MethodFilter::PATCH,
+    HttpMethod::Delete => MethodFilter::DELETE,
+  };
+  let operation = Arc::new(operation);
+  on(filter, move |params: RawPathParams, body: Bytes| {
+    let operation = Arc::clone(&operation);
+    let state = Arc::clone(&state);
+    async move { call_operation(&operation, state, &params, &body).await }
+  })
+}
+
+async fn call_operation(
+  operation: &HttpOperation,
+  state: Arc<AppState>,
+  params: &RawPathParams,
+  body: &[u8],
+) -> Result<Response, AppError> {
+  let mut args: Map<String, Value> = params
+    .iter()
+    .map(|(name, value)| (name.to_owned(), Value::String(value.to_owned())))
+    .collect();
+  if operation.body().is_some() {
+    let request = if body.is_empty() {
+      json!({})
+    } else {
+      serde_json::from_slice(body).map_err(|err| invalid(err.to_string()))?
+    };
+    args.insert(REQUEST_ARG.to_owned(), request);
+  }
+  let request: OperationRequest = parse_request(json!({ "operation": operation.name, "args": args }))?;
+  let answer = answer(&state, request).await?;
+  Ok(if (operation.response)().is_unit() {
+    StatusCode::NO_CONTENT.into_response()
+  } else {
+    json_response(answer)
+  })
+}
+
+async fn answer(state: &Arc<AppState>, request: OperationRequest) -> Result<String, Report> {
+  let service = Arc::clone(&state.service);
+  tokio::task::spawn_blocking(move || request.handle(service.as_ref())).await?
+}
+
+#[utoipa::path(
+  post,
+  path = "/api/operations",
+  operation_id = "operationsCall",
+  request_body(content = String, content_type = "application/json"),
+  responses((status = 200, description = "The JSON result of the operation the request names; `null` for an operation without result"))
+)]
+async fn handle_operation(State(state): State<Arc<AppState>>, body: Bytes) -> Result<Response, AppError> {
+  let request: OperationRequest = serde_json::from_slice(&body).map_err(|err| invalid(err.to_string()))?;
+  Ok(json_response(answer(&state, request).await?))
+}
+
+fn json_response(json: String) -> Response {
+  (
+    [(header::CONTENT_TYPE, HeaderValue::from_static(JSON_CONTENT_TYPE))],
+    json,
+  )
+    .into_response()
+}
+
+fn add_operation(doc: &mut Value, operation: &HttpOperation) -> Result<(), Report> {
+  let parameters = operation
+    .path_args()
+    .map(|arg| json!({ "name": arg.name, "in": "path", "required": true, "schema": { "type": "string" } }))
+    .collect_vec();
+  let response = (operation.response)();
+  let success = if response.is_unit() {
+    json!({ "204": { "description": operation.description } })
+  } else {
+    add_component(doc, response.name.as_str(), response.schema.clone())?;
+    json!({ "200": {
+      "description": operation.description,
+      "content": { JSON_CONTENT_TYPE: { "schema": schema_ref(&response.name) } },
+    }})
+  };
+  let mut responses = success;
+  responses[ERROR_RESPONSES] = json!({
+    "description": "The error, with its causes",
+    "content": { JSON_CONTENT_TYPE: { "schema": schema_ref("ErrorResponse") } },
+  });
+  let mut entry = json!({
+    "operationId": operation.operation_id,
+    "description": operation.description,
+    OPERATION_KEY: operation.name,
+    "parameters": parameters,
+    "responses": responses,
+  });
+  if let Some(body) = operation.body() {
+    let body = (body.schema)();
+    add_component(doc, body.name.as_str(), body.schema.clone())?;
+    entry["requestBody"] = json!({
+      "required": true,
+      "content": { JSON_CONTENT_TYPE: { "schema": schema_ref(&body.name) } },
+    });
+  }
+  let method: &'static str = operation.method.into();
+  let path_item = doc
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
+    .entry("paths")
+    .or_insert_with(|| json!({}))
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI paths must be a JSON object"))?
+    .entry(operation.path)
+    .or_insert_with(|| json!({}))
+    .as_object_mut()
+    .ok_or_else(|| make_report!("the OpenAPI path `{}` must be a JSON object", operation.path))?;
+  if path_item.insert(method.to_owned(), entry).is_some() {
+    return make_error!("the OpenAPI document has two `{method} {}` operations", operation.path);
+  }
+  Ok(())
+}
+
+struct Transfer {
   path: &'static str,
   method: &'static str,
-  bridge_type: &'static str,
   request: Option<(&'static str, Value)>,
   response: Option<(&'static str, Value)>,
 }
 
-fn operations() -> Vec<Operation> {
-  let json_body = |component: &str| Some(("application/json", schema_ref(component)));
+fn transfers() -> Vec<Transfer> {
+  let binary = || json!({ "type": "string", "format": "binary" });
   vec![
-    Operation {
-      path: "/api/version",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("VersionInfo"),
-    },
-    Operation {
-      path: "/api/datasets",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("DatasetCatalog"),
-    },
-    Operation {
-      path: "/api/check-config",
+    Transfer {
+      path: "/api/operations",
       method: "post",
-      bridge_type: "request",
-      request: json_body("CheckConfigRequest"),
-      response: json_body("CheckConfigResponse"),
+      request: Some((JSON_CONTENT_TYPE, schema_ref("OperationRequest"))),
+      response: Some((JSON_CONTENT_TYPE, json!({}))),
     },
-    Operation {
-      path: "/api/run-config",
-      method: "post",
-      bridge_type: "request",
-      request: json_body("RunConfigRequest"),
-      response: json_body("RunConfigResponse"),
-    },
-    Operation {
-      path: "/api/check-inputs",
-      method: "post",
-      bridge_type: "request",
-      request: json_body("CheckInputsRequest"),
-      response: json_body("InputFacts"),
-    },
-    Operation {
-      path: "/api/runs",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("RunList"),
-    },
-    Operation {
-      path: "/api/runs",
-      method: "post",
-      bridge_type: "request",
-      request: json_body("CreateRunRequest"),
-      response: json_body("RunRecord"),
-    },
-    Operation {
-      path: "/api/runs/{id}",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("RunRecord"),
-    },
-    Operation {
-      path: "/api/runs/{id}",
-      method: "patch",
-      bridge_type: "request",
-      request: json_body("UpdateRunRequest"),
-      response: json_body("RunSummary"),
-    },
-    Operation {
-      path: "/api/runs/{id}",
-      method: "delete",
-      bridge_type: "request",
-      request: None,
-      response: None,
-    },
-    Operation {
-      path: "/api/runs/{id}/start",
-      method: "post",
-      bridge_type: "request",
-      request: json_body("StartRunRequest"),
-      response: json_body("RunRecord"),
-    },
-    Operation {
-      path: "/api/runs/{id}/cancel",
-      method: "post",
-      bridge_type: "request",
-      request: None,
-      response: json_body("CancelRunResponse"),
-    },
-    Operation {
-      path: "/api/runs/{id}/restore",
-      method: "post",
-      bridge_type: "request",
-      request: None,
-      response: json_body("RunSummary"),
-    },
-    Operation {
-      path: "/api/runs/{id}/purge",
-      method: "post",
-      bridge_type: "request",
-      request: None,
-      response: None,
-    },
-    Operation {
+    Transfer {
       path: "/api/runs/{id}/events",
       method: "get",
-      bridge_type: "stream",
       request: None,
       response: Some(("text/event-stream", schema_ref("RunEvent"))),
     },
-    Operation {
+    Transfer {
       path: "/api/runs/{id}/inputs/{name}",
       method: "put",
-      bridge_type: "upload",
-      request: Some((
-        "application/octet-stream",
-        json!({ "type": "string", "format": "binary" }),
-      )),
-      response: json_body("UploadedInput"),
+      request: Some(("application/octet-stream", binary())),
+      response: Some((JSON_CONTENT_TYPE, schema_ref("UploadedInput"))),
     },
-    Operation {
-      path: "/api/runs/{id}/files",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: Some((
-        "application/json",
-        json!({ "type": "array", "items": schema_ref("RunFile") }),
-      )),
-    },
-    Operation {
+    Transfer {
       path: "/api/runs/{id}/file",
       method: "get",
-      bridge_type: "file",
       request: None,
-      response: Some((
-        "application/octet-stream",
-        json!({ "type": "string", "format": "binary" }),
-      )),
+      response: Some(("application/octet-stream", binary())),
     },
-    Operation {
+    Transfer {
       path: "/api/runs/{id}/archive",
       method: "get",
-      bridge_type: "file",
       request: None,
-      response: Some(("application/zip", json!({ "type": "string", "format": "binary" }))),
-    },
-    Operation {
-      path: "/api/runs/{id}/results",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("RunResults"),
-    },
-    Operation {
-      path: "/api/runs/{id}/auspice",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("AuspiceDocument"),
-    },
-    Operation {
-      path: "/api/runs/{id}/compare/{other}",
-      method: "get",
-      bridge_type: "query",
-      request: None,
-      response: json_body("RunComparison"),
-    },
-    Operation {
-      path: "/api/clade-in-runs",
-      method: "post",
-      bridge_type: "request",
-      request: json_body("CladeRequest"),
-      response: json_body("CladeInRuns"),
+      response: Some(("application/zip", binary())),
     },
   ]
 }
 
-fn describe_operation(doc: &mut Value, operation: &Operation) -> Result<(), Report> {
-  let pointer = format!(
-    "/paths/{}/{}",
-    operation.path.replace('~', "~0").replace('/', "~1"),
-    operation.method
-  );
+fn describe_transfer(doc: &mut Value, transfer: &Transfer) -> Result<(), Report> {
+  let pointer = format!("/paths/{}/{}", escape_pointer(transfer.path), transfer.method);
   let entry = doc
     .pointer_mut(&pointer)
     .and_then(Value::as_object_mut)
     .ok_or_else(|| {
       make_report!(
         "the OpenAPI document has no operation `{} {}`",
-        operation.method,
-        operation.path
+        transfer.method,
+        transfer.path
       )
     })?;
-  entry.insert("x-bridge-type".to_owned(), json!(operation.bridge_type));
   if let Some(responses) = entry.get_mut("responses").and_then(Value::as_object_mut) {
     for (status, response) in responses.iter_mut() {
       if status.starts_with('4') || status.starts_with('5') {
         if let Some(response) = response.as_object_mut() {
           response.insert(
             "content".to_owned(),
-            json!({ "application/json": { "schema": schema_ref("ErrorResponse") } }),
+            json!({ JSON_CONTENT_TYPE: { "schema": schema_ref("ErrorResponse") } }),
           );
         }
       }
     }
   }
-  if let Some((content_type, schema)) = &operation.request {
+  if let Some((content_type, schema)) = &transfer.request {
     let mut content = Map::new();
     content.insert((*content_type).to_owned(), json!({ "schema": schema }));
     entry.insert(
@@ -337,7 +303,7 @@ fn describe_operation(doc: &mut Value, operation: &Operation) -> Result<(), Repo
       json!({ "required": true, "content": Value::Object(content) }),
     );
   }
-  if let Some((content_type, schema)) = &operation.response {
+  if let Some((content_type, schema)) = &transfer.response {
     let response = entry
       .get_mut("responses")
       .and_then(|responses| responses.get_mut("200"))
@@ -345,8 +311,8 @@ fn describe_operation(doc: &mut Value, operation: &Operation) -> Result<(), Repo
       .ok_or_else(|| {
         make_report!(
           "operation `{} {}` has no success response",
-          operation.method,
-          operation.path
+          transfer.method,
+          transfer.path
         )
       })?;
     let mut content = Map::new();
@@ -354,212 +320,6 @@ fn describe_operation(doc: &mut Value, operation: &Operation) -> Result<(), Repo
     response.insert("content".to_owned(), Value::Object(content));
   }
   Ok(())
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/version",
-  operation_id = "version",
-  responses((status = 200, description = "Version information"))
-)]
-async fn handle_version() -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(version_info())?))
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/datasets",
-  operation_id = "datasets",
-  responses((status = 200, description = "Example datasets and example configurations in the data directory"))
-)]
-async fn handle_datasets(State(state): State<Arc<AppState>>) -> Result<Json<Value>, AppError> {
-  let catalog = dataset_catalog(&state.config.data_dir)?;
-  Ok(Json(serde_json::to_value(catalog)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/check-config",
-  operation_id = "configCheck",
-  responses((status = 200, description = "The configuration with every default filled in, or the problems found in it"))
-)]
-async fn handle_check_config(Json(body): Json<Value>) -> Result<Json<Value>, AppError> {
-  let request: CheckConfigRequest = parse_request(body)?;
-  Ok(Json(serde_json::to_value(check_config(&request))?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/run-config",
-  operation_id = "runConfig",
-  responses((status = 200, description = "The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it"))
-)]
-async fn handle_run_config(
-  State(state): State<Arc<AppState>>,
-  Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-  let request: RunConfigRequest = parse_request(body)?;
-  let confine = state.confine_hook(request.command)?;
-  let response = tokio::task::spawn_blocking(move || run_config(&request, confine)).await?;
-  Ok(Json(serde_json::to_value(response)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/check-inputs",
-  operation_id = "inputsCheck",
-  responses((status = 200, description = "Facts about the input files, read with the readers the commands use"))
-)]
-async fn handle_check_inputs(
-  State(state): State<Arc<AppState>>,
-  Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-  let request: CheckInputsRequest = parse_request(body)?;
-  let mut config = Value::Object(request.config);
-  state
-    .path_policy()?
-    .confine(request.command, &mut config)
-    .map_err(|err| invalid(format!("{err:#}")))?;
-  let Value::Object(config) = config else {
-    return Err(invalid("a command configuration must be a mapping of settings").into());
-  };
-  let request = CheckInputsRequest {
-    command: request.command,
-    config,
-  };
-  let facts = tokio::task::spawn_blocking(move || check_inputs(&request)).await??;
-  Ok(Json(serde_json::to_value(facts)?))
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/runs",
-  operation_id = "runsList",
-  responses((status = 200, description = "Runs, newest first, and the number of runs computing now"))
-)]
-async fn handle_list_runs(State(state): State<Arc<AppState>>) -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(state.runs.list()?)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/runs",
-  operation_id = "runsCreate",
-  responses((status = 200, description = "The created run; it starts at once unless `defer_start` is set"))
-)]
-async fn handle_create_run(
-  State(state): State<Arc<AppState>>,
-  Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-  let request: CreateRunRequest = parse_request(body)?;
-  let defer_start = request.defer_start;
-  let record = state.runs.create(request)?;
-  let record = if defer_start {
-    record
-  } else {
-    start_run(&state, &record.id, None)?
-  };
-  Ok(Json(serde_json::to_value(record)?))
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/runs/{id}",
-  operation_id = "runsGet",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "The record of the run"))
-)]
-async fn handle_get_run(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(state.runs.get(&run_id(&id)?)?)?))
-}
-
-#[utoipa::path(
-  patch,
-  path = "/api/runs/{id}",
-  operation_id = "runsUpdate",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "The run with its new title or pinned state"))
-)]
-async fn handle_update_run(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-  Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-  let request: UpdateRunRequest = parse_request(body)?;
-  Ok(Json(serde_json::to_value(state.runs.update(&run_id(&id)?, request)?)?))
-}
-
-#[utoipa::path(
-  delete,
-  path = "/api/runs/{id}",
-  operation_id = "runsDelete",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 204, description = "The run moved to the trash; restore undoes it"))
-)]
-async fn handle_delete_run(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Result<StatusCode, AppError> {
-  state.runs.delete(&run_id(&id)?)?;
-  Ok(StatusCode::NO_CONTENT)
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/runs/{id}/start",
-  operation_id = "runsStart",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "The started run"))
-)]
-async fn handle_start_run(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-  body: Option<Json<Value>>,
-) -> Result<Json<Value>, AppError> {
-  let request: StartRunRequest = match body {
-    Some(Json(body)) => parse_request(body)?,
-    None => StartRunRequest::default(),
-  };
-  let record = start_run(&state, &run_id(&id)?, request.config)?;
-  Ok(Json(serde_json::to_value(record)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/runs/{id}/cancel",
-  operation_id = "runsCancel",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "Whether cancellation was requested; the run ends with a `cancelled` terminal event"))
-)]
-async fn handle_cancel_run(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-) -> Result<Json<CancelRunResponse>, AppError> {
-  let cancelled = state.runs.cancel(&run_id(&id)?)?;
-  Ok(Json(CancelRunResponse { cancelled }))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/runs/{id}/restore",
-  operation_id = "runsRestore",
-  params(("id" = String, Path, description = "Id of a deleted run")),
-  responses((status = 200, description = "The run, back from the trash"))
-)]
-async fn handle_restore_run(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-) -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(state.runs.restore(&run_id(&id)?)?)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/runs/{id}/purge",
-  operation_id = "runsPurge",
-  params(("id" = String, Path, description = "Id of a deleted run")),
-  responses((status = 204, description = "The deleted run is removed for good"))
-)]
-async fn handle_purge_run(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Result<StatusCode, AppError> {
-  state.runs.purge(&run_id(&id)?)?;
-  Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]
@@ -619,17 +379,6 @@ async fn handle_upload_input(
   Ok(Json(serde_json::to_value(uploaded)?))
 }
 
-#[utoipa::path(
-  get,
-  path = "/api/runs/{id}/files",
-  operation_id = "runsFiles",
-  params(("id" = String, Path, description = "Id of the run")),
-  responses((status = 200, description = "Files in the run's `out/` folder, with their sizes and kinds"))
-)]
-async fn handle_run_files(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Result<Json<Value>, AppError> {
-  Ok(Json(serde_json::to_value(state.runs.files(&run_id(&id)?)?)?))
-}
-
 #[derive(Deserialize)]
 struct FileQuery {
   path: String,
@@ -681,102 +430,6 @@ async fn handle_run_archive(State(state): State<Arc<AppState>>, Path(id): Path<S
     )
       .into_response(),
   )
-}
-
-fn start_run(state: &Arc<AppState>, id: &JobId, config: Option<Value>) -> Result<RunRecord, AppError> {
-  let command = state.runs.get(id)?.command;
-  let started = state.runs.start(id, config, state.confine_hook(command)?)?;
-  let record = started.record().clone();
-  let run_id = id.clone();
-  drop(tokio::task::spawn_blocking(move || {
-    let terminal = started.run();
-    match serde_json::to_value(&terminal) {
-      Ok(terminal) => info!("Run {} ended: {terminal}", run_id.as_str()),
-      Err(err) => error!(
-        "Run {} ended; its terminal event cannot be shown: {err}",
-        run_id.as_str()
-      ),
-    }
-  }));
-  Ok(record)
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/runs/{id}/results",
-  operation_id = "runsResults",
-  params(("id" = String, Path, description = "Id of a finished run")),
-  responses(
-    (status = 200, description = "Results of the run, read from its output files"),
-    (status = 409, description = "The run has not finished successfully"),
-  )
-)]
-async fn handle_run_results(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-) -> Result<Json<Value>, AppError> {
-  let id = run_id(&id)?;
-  let runs = Arc::clone(&state.runs);
-  let results = tokio::task::spawn_blocking(move || run_results(&runs, &id)).await??;
-  Ok(Json(serde_json::to_value(results)?))
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/runs/{id}/auspice",
-  operation_id = "runsAuspice",
-  params(("id" = String, Path, description = "Id of a finished run")),
-  responses(
-    (status = 200, description = "Auspice JSON of the run, with the color scales the app displays"),
-    (status = 404, description = "The run wrote no Auspice file"),
-    (status = 409, description = "The run has not finished successfully"),
-  )
-)]
-async fn handle_run_auspice(
-  State(state): State<Arc<AppState>>,
-  Path(id): Path<String>,
-) -> Result<Json<Value>, AppError> {
-  let id = run_id(&id)?;
-  let runs = Arc::clone(&state.runs);
-  let document = tokio::task::spawn_blocking(move || run_auspice(&runs, &id)).await??;
-  Ok(Json(serde_json::to_value(document)?))
-}
-
-#[utoipa::path(
-  get,
-  path = "/api/runs/{id}/compare/{other}",
-  operation_id = "runsCompare",
-  params(
-    ("id" = String, Path, description = "Id of the first run"),
-    ("other" = String, Path, description = "Id of the second run"),
-  ),
-  responses((status = 200, description = "Differences of the second run's results from the first run's"))
-)]
-async fn handle_compare_runs(
-  State(state): State<Arc<AppState>>,
-  Path((id, other)): Path<(String, String)>,
-) -> Result<Json<Value>, AppError> {
-  let first = run_id(&id)?;
-  let second = run_id(&other)?;
-  let runs = Arc::clone(&state.runs);
-  let comparison = tokio::task::spawn_blocking(move || compare_runs(&runs, &first, &second)).await??;
-  Ok(Json(serde_json::to_value(comparison)?))
-}
-
-#[utoipa::path(
-  post,
-  path = "/api/clade-in-runs",
-  operation_id = "cladeInRuns",
-  responses((status = 200, description = "Nodes of the other finished time-tree runs with the same set of samples below them"))
-)]
-async fn handle_clade_in_runs(
-  State(state): State<Arc<AppState>>,
-  Json(body): Json<Value>,
-) -> Result<Json<Value>, AppError> {
-  let request: CladeRequest = parse_request(body)?;
-  let runs = Arc::clone(&state.runs);
-  let found = tokio::task::spawn_blocking(move || clade_in_runs(&runs, &request)).await??;
-  Ok(Json(serde_json::to_value(found)?))
 }
 
 fn run_id(id: &str) -> Result<JobId, Report> {

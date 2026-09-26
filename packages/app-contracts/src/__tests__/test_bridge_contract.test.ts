@@ -10,6 +10,7 @@ import {
   type BridgeTransport,
   type CommandOutcome,
   type LogEvent,
+  type OperationRequestInput,
   type ProgressEvent,
   type TransportEventOptions,
 } from "../index";
@@ -41,34 +42,20 @@ const RECORD = {
   error: null,
 };
 
-function stubTransport(overrides: Partial<BridgeTransport>): BridgeTransport {
+type OperationName = OperationRequestInput["operation"];
+
+type StubOperations = Partial<Record<OperationName, (request: OperationRequestInput) => Promise<unknown>>>;
+
+function stubTransport(stubs: StubOperations & Partial<BridgeTransport>): BridgeTransport {
   const missing = (name: string) => () => Promise.reject(new Error(`${name} not stubbed`));
 
   return {
-    version: missing("version"),
-    datasets: missing("datasets"),
-    checkConfig: missing("checkConfig"),
-    runConfig: missing("runConfig"),
-    checkInputs: missing("checkInputs"),
-    listRuns: missing("listRuns"),
-    createRun: missing("createRun"),
-    getRun: missing("getRun"),
-    startRun: missing("startRun"),
-    updateRun: missing("updateRun"),
-    cancelRun: missing("cancelRun"),
-    deleteRun: missing("deleteRun"),
-    restoreRun: missing("restoreRun"),
-    purgeRun: missing("purgeRun"),
+    call: (request) => (stubs[request.operation] ?? missing(request.operation))(request),
     runEvents: missing("runEvents"),
-    runFiles: missing("runFiles"),
     saveRunFile: missing("saveRunFile"),
     saveRunArchive: missing("saveRunArchive"),
     uploadInput: missing("uploadInput"),
-    runResults: missing("runResults"),
-    runAuspice: missing("runAuspice"),
-    compareRuns: missing("compareRuns"),
-    cladeInRuns: missing("cladeInRuns"),
-    ...overrides,
+    ...stubs,
   };
 }
 
@@ -136,7 +123,7 @@ describe("bridge result validation", () => {
 
     const bridge = createBridge(
       stubTransport({
-        checkConfig: (request) => {
+        "check-config": (request) => {
           captured = request;
 
           return Promise.resolve(response);
@@ -145,7 +132,10 @@ describe("bridge result validation", () => {
     );
 
     await expect(bridge.checkConfig({ command: "timetree", text: "tree: t.nwk\n" })).resolves.toStrictEqual(response);
-    expect(captured).toStrictEqual({ command: "timetree", text: "tree: t.nwk\n" });
+    expect(captured).toStrictEqual({
+      operation: "check-config",
+      args: { request: { command: "timetree", text: "tree: t.nwk\n" } },
+    });
   });
 
   test("runConfig passes the request through and validates the response", async () => {
@@ -168,7 +158,7 @@ describe("bridge result validation", () => {
 
     const bridge = createBridge(
       stubTransport({
-        runConfig: (request) => {
+        "run-config": (request) => {
           captured = request;
 
           return Promise.resolve(response);
@@ -177,7 +167,10 @@ describe("bridge result validation", () => {
     );
 
     await expect(bridge.runConfig({ command: "prune", config: { tree: "t.nwk" } })).resolves.toStrictEqual(response);
-    expect(captured).toStrictEqual({ command: "prune", config: { tree: "t.nwk" } });
+    expect(captured).toStrictEqual({
+      operation: "run-config",
+      args: { request: { command: "prune", config: { tree: "t.nwk" } } },
+    });
   });
 
   test("checkInputs validates the facts", async () => {
@@ -190,13 +183,13 @@ describe("bridge result validation", () => {
       problems: [{ input: "metadata", message: "cannot read" }],
     };
 
-    const bridge = createBridge(stubTransport({ checkInputs: () => Promise.resolve(facts) }));
+    const bridge = createBridge(stubTransport({ "check-inputs": () => Promise.resolve(facts) }));
     await expect(bridge.checkInputs({ command: "prune", config: { tree: "t.nwk" } })).resolves.toStrictEqual(facts);
   });
 
   test("listRuns validates the run list", async () => {
     const list = { runs: [], active_runs: 2 };
-    const bridge = createBridge(stubTransport({ listRuns: () => Promise.resolve(list) }));
+    const bridge = createBridge(stubTransport({ "list-runs": () => Promise.resolve(list) }));
     await expect(bridge.listRuns()).resolves.toStrictEqual(list);
   });
 
@@ -209,7 +202,7 @@ describe("bridge result validation", () => {
       problems: [],
     };
 
-    const bridge = createBridge(stubTransport({ runResults: () => Promise.resolve(results) }));
+    const bridge = createBridge(stubTransport({ "run-results": () => Promise.resolve(results) }));
     await expect(bridge.runResults("r1")).rejects.toThrow("expected number");
   });
 
@@ -220,12 +213,12 @@ describe("bridge result validation", () => {
       tree: { name: "root", node_attrs: { region: { value: "asia" } } },
     };
 
-    const bridge = createBridge(stubTransport({ runAuspice: () => Promise.resolve(structuredClone(document)) }));
+    const bridge = createBridge(stubTransport({ "run-auspice": () => Promise.resolve(structuredClone(document)) }));
     await expect(bridge.runAuspice("r1")).resolves.toStrictEqual(document);
   });
 
   test("runAuspice rejects a document that is not a JSON object", async () => {
-    const bridge = createBridge(stubTransport({ runAuspice: () => Promise.resolve([]) }));
+    const bridge = createBridge(stubTransport({ "run-auspice": () => Promise.resolve([]) }));
     await expect(bridge.runAuspice("r1")).rejects.toThrow("expected record");
   });
 
@@ -244,12 +237,12 @@ describe("bridge result validation", () => {
       unreadable_runs: [],
     };
 
-    const bridge = createBridge(stubTransport({ cladeInRuns: () => Promise.resolve(found) }));
+    const bridge = createBridge(stubTransport({ "clade-in-runs": () => Promise.resolve(found) }));
     await expect(bridge.cladeInRuns({ run: "r1", node: "NODE_1" })).resolves.toStrictEqual(found);
   });
 
   test("cancelRun returns whether cancellation was requested", async () => {
-    const bridge = createBridge(stubTransport({ cancelRun: () => Promise.resolve({ cancelled: true }) }));
+    const bridge = createBridge(stubTransport({ "cancel-run": () => Promise.resolve({ cancelled: true }) }));
     await expect(bridge.cancelRun("r1")).resolves.toBe(true);
   });
 });
@@ -377,7 +370,7 @@ describe("bridge commands", () => {
 
     const bridge = createBridge(
       stubTransport({
-        createRun: (request) => {
+        "create-run": (request) => {
           created = request;
 
           return Promise.resolve(RECORD);
@@ -407,10 +400,8 @@ describe("bridge commands", () => {
 
     expect(outcome).toStrictEqual(OUTCOME);
     expect(created).toStrictEqual({
-      command: "ancestral",
-      config: { tree: "t.nwk" },
-      defer_start: false,
-      title: "zika",
+      operation: "create-run",
+      args: { request: { command: "ancestral", config: { tree: "t.nwk" }, defer_start: false, title: "zika" } },
     });
     expect(started).toStrictEqual(["r1"]);
     expect(progress).toStrictEqual([{ stage: "read", fraction: 0.25, message: "reading" }]);
@@ -424,7 +415,10 @@ describe("bridge commands", () => {
       data: { status: "error", job_id: "r1", message: "When reading dates", causes: ["file not found"] },
     });
 
-    const bridge = createBridge(stubTransport({ createRun: () => Promise.resolve(RECORD), runEvents: replay(stream) }));
+    const bridge = createBridge(
+      stubTransport({ "create-run": () => Promise.resolve(RECORD), runEvents: replay(stream) }),
+    );
+
     const error: unknown = await bridge.clock({ tree: "t.nwk" }).catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(CommandError);
@@ -433,25 +427,33 @@ describe("bridge commands", () => {
 
   test("a cancelled terminal event rejects with a CancelledError", async () => {
     const stream = events({ type: "terminal", data: { status: "cancelled", job_id: "r1" } });
-    const bridge = createBridge(stubTransport({ createRun: () => Promise.resolve(RECORD), runEvents: replay(stream) }));
+
+    const bridge = createBridge(
+      stubTransport({ "create-run": () => Promise.resolve(RECORD), runEvents: replay(stream) }),
+    );
+
     await expect(bridge.timetree({})).rejects.toBeInstanceOf(CancelledError);
   });
 
   test("an interrupted terminal event rejects with a CommandError", async () => {
     const stream = events({ type: "terminal", data: { status: "interrupted", job_id: "r1" } });
-    const bridge = createBridge(stubTransport({ createRun: () => Promise.resolve(RECORD), runEvents: replay(stream) }));
+
+    const bridge = createBridge(
+      stubTransport({ "create-run": () => Promise.resolve(RECORD), runEvents: replay(stream) }),
+    );
+
     await expect(bridge.prune({ tree: "t.nwk" })).rejects.toBeInstanceOf(CommandError);
   });
 
   test("aborting the signal requests cancellation of the run", async () => {
     const controller = new AbortController();
-    const cancelled: string[] = [];
+    const cancelled: OperationRequestInput[] = [];
 
     const bridge = createBridge(
       stubTransport({
-        createRun: () => Promise.resolve(RECORD),
-        cancelRun: (id) => {
-          cancelled.push(id);
+        "create-run": () => Promise.resolve(RECORD),
+        "cancel-run": (request) => {
+          cancelled.push(request);
 
           return Promise.resolve({ cancelled: true });
         },
@@ -468,7 +470,7 @@ describe("bridge commands", () => {
     await expect(bridge.optimize({ tree: "t.nwk" }, { signal: controller.signal })).rejects.toBeInstanceOf(
       CancelledError,
     );
-    expect(cancelled).toStrictEqual(["r1"]);
+    expect(cancelled).toStrictEqual([{ operation: "cancel-run", args: { id: "r1" } }]);
   });
 
   test("an already aborted signal rejects before creating a run", async () => {

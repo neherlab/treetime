@@ -14,8 +14,8 @@ export {
 
 export type {
   BridgeTransport,
-  DesktopRequestInput,
   InputFactsResult,
+  OperationRequestInput,
   Parsed,
   RunComparisonResult,
   RunRecordResult,

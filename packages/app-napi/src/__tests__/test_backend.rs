@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::backend::DesktopService;
-  use app_commands::bridge::operations::DesktopRequest;
+  use app_commands::bridge::operations::OperationRequest;
   use app_commands::runs::record::{RunRecord, RunStatus};
   use app_output::output_plan::OutputSelection;
   use helpers::{ancestral_request, call, wait_for_terminal};
@@ -71,10 +71,10 @@ mod tests {
       &service,
       &json!({ "operation": "create-run", "args": { "request": ancestral_request(false) } }),
     );
-    let request: DesktopRequest =
+    let request: OperationRequest =
       serde_json::from_value(json!({ "operation": "start-run", "args": { "id": record.id, "request": {} } })).unwrap();
     assert_error!(
-      request.handle(&service),
+      request.handle(service.app()),
       format!("run `{}` has already started", record.id.as_str())
     );
     wait_for_terminal(&service, &record);
@@ -96,9 +96,12 @@ mod tests {
     service.save_run_file(&record.id, "ancestral.nwk", &file).unwrap();
     service.save_run_archive(&record.id, &archive).unwrap();
 
-    let source = service.runs().file_path(&record.id, "ancestral.nwk").unwrap();
+    let source = service.app().runs().file_path(&record.id, "ancestral.nwk").unwrap();
     assert_eq!(
-      (fs::read(&source).unwrap(), service.runs().zip(&record.id).unwrap()),
+      (
+        fs::read(&source).unwrap(),
+        service.app().runs().zip(&record.id).unwrap()
+      ),
       (fs::read(&file).unwrap(), fs::read(&archive).unwrap())
     );
   }
@@ -121,7 +124,7 @@ mod tests {
 
   mod helpers {
     use crate::backend::DesktopService;
-    use app_commands::bridge::operations::DesktopRequest;
+    use app_commands::bridge::operations::OperationRequest;
     use app_commands::runs::record::RunRecord;
     use serde::de::DeserializeOwned;
     use serde_json::{Value, json};
@@ -129,13 +132,14 @@ mod tests {
     use std::sync::mpsc;
 
     pub(super) fn call<T: DeserializeOwned>(service: &DesktopService, request: &Value) -> T {
-      let request: DesktopRequest = serde_json::from_value(request.clone()).unwrap();
-      serde_json::from_str(&request.handle(service).unwrap()).unwrap()
+      let request: OperationRequest = serde_json::from_value(request.clone()).unwrap();
+      serde_json::from_str(&request.handle(service.app()).unwrap()).unwrap()
     }
 
     pub(super) fn wait_for_terminal(service: &DesktopService, record: &RunRecord) -> Value {
       let (send, receive) = mpsc::sync_channel(1024);
       service
+        .app()
         .runs()
         .subscribe(
           &record.id,

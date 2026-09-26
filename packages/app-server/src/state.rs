@@ -1,6 +1,7 @@
 use crate::confine::PathPolicy;
+use app_commands::bridge::service::{AppService, InputPolicy};
 use app_commands::command::AppCommand;
-use app_commands::runs::manager::{ConfigHook, RunManager};
+use app_commands::runs::manager::RunManager;
 use eyre::Report;
 use serde_json::Value;
 use std::path::PathBuf;
@@ -18,21 +19,29 @@ pub struct ServerConfig {
 pub(crate) struct AppState {
   pub config: ServerConfig,
   pub runs: Arc<RunManager>,
+  pub service: Arc<AppService>,
 }
 
 impl AppState {
   pub(crate) fn new(config: ServerConfig) -> Result<Self, Report> {
     PathPolicy::new(&config.data_dir, &[])?;
     let runs = RunManager::open(&config.runs_dir)?;
-    Ok(Self { config, runs })
+    let policy = Arc::new(ServerInputs {
+      data_dir: config.data_dir.clone(),
+      runs: Arc::clone(&runs),
+    });
+    let service = Arc::new(AppService::new(Arc::clone(&runs), config.data_dir.clone(), policy));
+    Ok(Self { config, runs, service })
   }
+}
 
-  pub(crate) fn path_policy(&self) -> Result<PathPolicy, Report> {
-    PathPolicy::new(&self.config.data_dir, &self.runs.input_dirs()?)
-  }
+struct ServerInputs {
+  data_dir: PathBuf,
+  runs: Arc<RunManager>,
+}
 
-  pub(crate) fn confine_hook(&self, command: AppCommand) -> Result<ConfigHook, Report> {
-    let policy = self.path_policy()?;
-    Ok(Box::new(move |config: &mut Value| policy.confine(command, config)))
+impl InputPolicy for ServerInputs {
+  fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
+    PathPolicy::new(&self.data_dir, &self.runs.input_dirs()?)?.confine(command, config)
   }
 }

@@ -1,5 +1,5 @@
 use app_commands::bridge::error::ErrorResponse;
-use app_commands::bridge::operations::DesktopRequest;
+use app_commands::bridge::operations::OperationRequest;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CommandOutcome};
@@ -83,9 +83,21 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
   add_type::<CladeInRuns>(&mut components)?;
   add_type::<ErrorResponse>(&mut components)?;
   add_type::<CancelRunResponse>(&mut components)?;
-  add_type::<DesktopRequest>(&mut components)?;
+  add_type::<OperationRequest>(&mut components)?;
 
-  let schemas = doc
+  let schemas = component_schemas(doc)?;
+  for (name, schema) in components {
+    insert_unique(schemas, &name, schema)?;
+  }
+  Ok(())
+}
+
+pub(crate) fn add_component(doc: &mut Value, name: &str, schema: Schema) -> Result<(), Report> {
+  add_root(component_schemas(doc)?, name, schema)
+}
+
+fn component_schemas(doc: &mut Value) -> Result<&mut Map<String, Value>, Report> {
+  doc
     .as_object_mut()
     .ok_or_else(|| make_report!("the OpenAPI document must be a JSON object"))?
     .entry("components")
@@ -95,11 +107,7 @@ pub(crate) fn add_components(doc: &mut Value) -> Result<(), Report> {
     .entry("schemas")
     .or_insert_with(|| json!({}))
     .as_object_mut()
-    .ok_or_else(|| make_report!("the OpenAPI component schemas must be a JSON object"))?;
-  for (name, schema) in components {
-    insert_unique(schemas, &name, schema)?;
-  }
-  Ok(())
+    .ok_or_else(|| make_report!("the OpenAPI component schemas must be a JSON object"))
 }
 
 pub(crate) fn add_setting_catalog(doc: &mut Value) -> Result<(), Report> {

@@ -29,10 +29,10 @@ import {
   zCladeInRuns,
   zCommandOutcome,
   zDatasetCatalog,
-  zDesktopRequest,
   zErrorResponse,
   zInputFacts,
   zIterationEvent,
+  zOperationRequest,
   zRunConfigResponse,
   zRunEvent,
   zRunFile,
@@ -69,7 +69,7 @@ export type RunRecordResult = Parsed<typeof zRunRecord>;
 
 export type InputFactsResult = Parsed<typeof zInputFacts>;
 
-export type DesktopRequestInput = z.input<typeof zDesktopRequest>;
+export type OperationRequestInput = z.input<typeof zOperationRequest>;
 
 export type CheckConfigInput = z.input<typeof zCheckConfigRequest>;
 
@@ -164,29 +164,11 @@ export class RunEndedError extends Error {
 }
 
 export interface BridgeTransport {
-  version(): Promise<unknown>;
-  datasets(): Promise<unknown>;
-  checkConfig(request: CheckConfigInput): Promise<unknown>;
-  runConfig(request: RunConfigRequest): Promise<unknown>;
-  checkInputs(request: CheckInputsRequest): Promise<unknown>;
-  listRuns(): Promise<unknown>;
-  createRun(request: CreateRunRequest): Promise<unknown>;
-  getRun(id: string): Promise<unknown>;
-  startRun(id: string, request: StartRunRequest): Promise<unknown>;
-  updateRun(id: string, request: UpdateRunRequest): Promise<unknown>;
-  cancelRun(id: string): Promise<unknown>;
-  deleteRun(id: string): Promise<void>;
-  restoreRun(id: string): Promise<unknown>;
-  purgeRun(id: string): Promise<void>;
+  call(request: OperationRequestInput): Promise<unknown>;
   runEvents(id: string, options: TransportEventOptions): Promise<void>;
-  runFiles(id: string): Promise<unknown>;
   saveRunFile(id: string, path: string, name: string): Promise<boolean>;
   saveRunArchive(id: string, name: string): Promise<boolean>;
   uploadInput(id: string, name: string, data: Blob): Promise<unknown>;
-  runResults(id: string): Promise<unknown>;
-  runAuspice(id: string): Promise<unknown>;
-  compareRuns(id: string, other: string): Promise<unknown>;
-  cladeInRuns(request: CladeRequest): Promise<unknown>;
 }
 
 export interface TreeTimeBridge {
@@ -275,10 +257,10 @@ export function createBridge(transport: BridgeTransport, logger: RunLogger = con
       request.title = options.title;
     }
 
-    const record = zRunRecord.parse(await transport.createRun(request));
+    const record = zRunRecord.parse(await transport.call({ operation: "create-run", args: { request } }));
 
     const cancel = () => {
-      void transport.cancelRun(record.id).catch((error: unknown) => {
+      void transport.call({ operation: "cancel-run", args: { id: record.id } }).catch((error: unknown) => {
         console.warn("[TreeTime] cancellation request failed", error);
       });
     };
@@ -301,46 +283,50 @@ export function createBridge(transport: BridgeTransport, logger: RunLogger = con
 
   return {
     async version() {
-      return zVersionInfo.parse(await transport.version());
+      return zVersionInfo.parse(await transport.call({ operation: "version", args: {} }));
     },
     async datasets() {
-      return zDatasetCatalog.parse(await transport.datasets());
+      return zDatasetCatalog.parse(await transport.call({ operation: "datasets", args: {} }));
     },
     async checkConfig(request) {
-      return zCheckConfigResponse.parse(await transport.checkConfig(request));
+      return zCheckConfigResponse.parse(await transport.call({ operation: "check-config", args: { request } }));
     },
     async runConfig(request) {
-      return zRunConfigResponse.parse(await transport.runConfig(request));
+      return zRunConfigResponse.parse(await transport.call({ operation: "run-config", args: { request } }));
     },
     async checkInputs(request) {
-      return zInputFacts.parse(await transport.checkInputs(request));
+      return zInputFacts.parse(await transport.call({ operation: "check-inputs", args: { request } }));
     },
     async listRuns() {
-      return zRunList.parse(await transport.listRuns());
+      return zRunList.parse(await transport.call({ operation: "list-runs", args: {} }));
     },
     async createRun(request) {
-      return zRunRecord.parse(await transport.createRun(request));
+      return zRunRecord.parse(await transport.call({ operation: "create-run", args: { request } }));
     },
     async getRun(id) {
-      return zRunRecord.parse(await transport.getRun(id));
+      return zRunRecord.parse(await transport.call({ operation: "get-run", args: { id } }));
     },
     async startRun(id, request = {}) {
-      return zRunRecord.parse(await transport.startRun(id, request));
+      return zRunRecord.parse(await transport.call({ operation: "start-run", args: { id, request } }));
     },
     async updateRun(id, request) {
-      return zRunSummary.parse(await transport.updateRun(id, request));
+      return zRunSummary.parse(await transport.call({ operation: "update-run", args: { id, request } }));
     },
     async cancelRun(id) {
-      return zCancelRunResponse.parse(await transport.cancelRun(id)).cancelled;
+      return zCancelRunResponse.parse(await transport.call({ operation: "cancel-run", args: { id } })).cancelled;
     },
-    deleteRun: (id) => transport.deleteRun(id),
+    async deleteRun(id) {
+      await transport.call({ operation: "delete-run", args: { id } });
+    },
     async restoreRun(id) {
-      return zRunSummary.parse(await transport.restoreRun(id));
+      return zRunSummary.parse(await transport.call({ operation: "restore-run", args: { id } }));
     },
-    purgeRun: (id) => transport.purgeRun(id),
+    async purgeRun(id) {
+      await transport.call({ operation: "purge-run", args: { id } });
+    },
     followRun,
     async runFiles(id) {
-      return z.array(zRunFile).parse(await transport.runFiles(id));
+      return z.array(zRunFile).parse(await transport.call({ operation: "run-files", args: { id } }));
     },
     saveRunFile: (id, path, name) => transport.saveRunFile(id, path, name),
     saveRunArchive: (id, name) => transport.saveRunArchive(id, name),
@@ -348,16 +334,16 @@ export function createBridge(transport: BridgeTransport, logger: RunLogger = con
       return zUploadedInput.parse(await transport.uploadInput(id, name, data));
     },
     async runResults(id) {
-      return zRunResults.parse(await transport.runResults(id));
+      return zRunResults.parse(await transport.call({ operation: "run-results", args: { id } }));
     },
     async runAuspice(id) {
-      return zAuspiceDocument.parse(await transport.runAuspice(id));
+      return zAuspiceDocument.parse(await transport.call({ operation: "run-auspice", args: { id } }));
     },
     async compareRuns(id, other) {
-      return zRunComparison.parse(await transport.compareRuns(id, other));
+      return zRunComparison.parse(await transport.call({ operation: "compare-runs", args: { id, other } }));
     },
     async cladeInRuns(request) {
-      return zCladeInRuns.parse(await transport.cladeInRuns(request));
+      return zCladeInRuns.parse(await transport.call({ operation: "clade-in-runs", args: { request } }));
     },
     timetree: (config, options) => run("timetree", config, options),
     optimize: (config, options) => run("optimize", config, options),

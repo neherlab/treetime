@@ -1812,9 +1812,9 @@ export const zCancelRunResponse = z.object({
 });
 
 /**
- * Request to the desktop back end: the name of an operation and its arguments.
+ * Request of an operation of the app back end: the name of the operation and its arguments.
  */
-export const zDesktopRequest = z.union([
+export const zOperationRequest = z.union([
     z.object({
         operation: z.literal('version'),
         args: z.record(z.string(), z.never())
@@ -1927,3 +1927,5 @@ export const zDesktopRequest = z.union([
         })
     })
 ]);
+
+export const zArrayOfRunFile = z.array(zRunFile);

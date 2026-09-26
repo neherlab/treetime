@@ -4154,9 +4154,9 @@ export type CancelRunResponse = {
 };
 
 /**
- * Request to the desktop back end: the name of an operation and its arguments.
+ * Request of an operation of the app back end: the name of the operation and its arguments.
  */
-export type DesktopRequest = {
+export type OperationRequest = {
     operation: 'version';
     args: {
         [key: string]: never;
@@ -4256,180 +4256,21 @@ export type DesktopRequest = {
     };
 };
 
-export type ConfigCheckData = {
-    body: CheckConfigRequest;
+export type ArrayOfRunFile = Array<RunFile>;
+
+export type OperationsCallData = {
+    body: OperationRequest;
     path?: never;
     query?: never;
-    url: '/api/check-config';
+    url: '/api/operations';
 };
 
-export type ConfigCheckResponses = {
+export type OperationsCallResponses = {
     /**
-     * The configuration with every default filled in, or the problems found in it
+     * The JSON result of the operation the request names; `null` for an operation without result
      */
-    200: CheckConfigResponse;
+    200: unknown;
 };
-
-export type ConfigCheckResponse = ConfigCheckResponses[keyof ConfigCheckResponses];
-
-export type InputsCheckData = {
-    body: CheckInputsRequest;
-    path?: never;
-    query?: never;
-    url: '/api/check-inputs';
-};
-
-export type InputsCheckResponses = {
-    /**
-     * Facts about the input files, read with the readers the commands use
-     */
-    200: InputFacts;
-};
-
-export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
-
-export type CladeInRunsData = {
-    body: CladeRequest;
-    path?: never;
-    query?: never;
-    url: '/api/clade-in-runs';
-};
-
-export type CladeInRunsResponses = {
-    /**
-     * Nodes of the other finished time-tree runs with the same set of samples below them
-     */
-    200: CladeInRuns;
-};
-
-export type CladeInRunsResponse = CladeInRunsResponses[keyof CladeInRunsResponses];
-
-export type DatasetsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/datasets';
-};
-
-export type DatasetsResponses = {
-    /**
-     * Example datasets and example configurations in the data directory
-     */
-    200: DatasetCatalog;
-};
-
-export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
-
-export type RunConfigData = {
-    body: RunConfigRequest;
-    path?: never;
-    query?: never;
-    url: '/api/run-config';
-};
-
-export type RunConfigResponses = {
-    /**
-     * The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it
-     */
-    200: RunConfigResponse;
-};
-
-export type RunConfigResponse2 = RunConfigResponses[keyof RunConfigResponses];
-
-export type RunsListData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/runs';
-};
-
-export type RunsListResponses = {
-    /**
-     * Runs, newest first, and the number of runs computing now
-     */
-    200: RunList;
-};
-
-export type RunsListResponse = RunsListResponses[keyof RunsListResponses];
-
-export type RunsCreateData = {
-    body: CreateRunRequest;
-    path?: never;
-    query?: never;
-    url: '/api/runs';
-};
-
-export type RunsCreateResponses = {
-    /**
-     * The created run; it starts at once unless `defer_start` is set
-     */
-    200: RunRecord;
-};
-
-export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
-
-export type RunsDeleteData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}';
-};
-
-export type RunsDeleteResponses = {
-    /**
-     * The run moved to the trash; restore undoes it
-     */
-    204: void;
-};
-
-export type RunsDeleteResponse = RunsDeleteResponses[keyof RunsDeleteResponses];
-
-export type RunsGetData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}';
-};
-
-export type RunsGetResponses = {
-    /**
-     * The record of the run
-     */
-    200: RunRecord;
-};
-
-export type RunsGetResponse = RunsGetResponses[keyof RunsGetResponses];
-
-export type RunsUpdateData = {
-    body: UpdateRunRequest;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}';
-};
-
-export type RunsUpdateResponses = {
-    /**
-     * The run with its new title or pinned state
-     */
-    200: RunSummary;
-};
-
-export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
 
 export type RunsArchiveData = {
     body?: never;
@@ -4451,86 +4292,6 @@ export type RunsArchiveResponses = {
 };
 
 export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
-
-export type RunsAuspiceData = {
-    body?: never;
-    path: {
-        /**
-         * Id of a finished run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/auspice';
-};
-
-export type RunsAuspiceErrors = {
-    /**
-     * The run wrote no Auspice file
-     */
-    404: ErrorResponse;
-    /**
-     * The run has not finished successfully
-     */
-    409: ErrorResponse;
-};
-
-export type RunsAuspiceError = RunsAuspiceErrors[keyof RunsAuspiceErrors];
-
-export type RunsAuspiceResponses = {
-    /**
-     * Auspice JSON of the run, with the color scales the app displays
-     */
-    200: AuspiceDocument;
-};
-
-export type RunsAuspiceResponse = RunsAuspiceResponses[keyof RunsAuspiceResponses];
-
-export type RunsCancelData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/cancel';
-};
-
-export type RunsCancelResponses = {
-    /**
-     * Whether cancellation was requested; the run ends with a `cancelled` terminal event
-     */
-    200: CancelRunResponse;
-};
-
-export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
-
-export type RunsCompareData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the first run
-         */
-        id: string;
-        /**
-         * Id of the second run
-         */
-        other: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/compare/{other}';
-};
-
-export type RunsCompareResponses = {
-    /**
-     * Differences of the second run's results from the first run's
-     */
-    200: RunComparison;
-};
-
-export type RunsCompareResponse = RunsCompareResponses[keyof RunsCompareResponses];
 
 export type RunsEventsData = {
     body?: never;
@@ -4584,27 +4345,6 @@ export type RunsFileResponses = {
 
 export type RunsFileResponse = RunsFileResponses[keyof RunsFileResponses];
 
-export type RunsFilesData = {
-    body?: never;
-    path: {
-        /**
-         * Id of the run
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/runs/{id}/files';
-};
-
-export type RunsFilesResponses = {
-    /**
-     * Files in the run's `out/` folder, with their sizes and kinds
-     */
-    200: Array<RunFile>;
-};
-
-export type RunsFilesResponse = RunsFilesResponses[keyof RunsFilesResponses];
-
 export type RunsUploadInputData = {
     body: Blob | File;
     path: {
@@ -4639,54 +4379,400 @@ export type RunsUploadInputResponses = {
 
 export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
 
-export type RunsPurgeData = {
+export type VersionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/version';
+};
+
+export type VersionErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type VersionError = VersionErrors[keyof VersionErrors];
+
+export type VersionResponses = {
+    /**
+     * Version of TreeTime.
+     */
+    200: VersionInfo;
+};
+
+export type VersionResponse = VersionResponses[keyof VersionResponses];
+
+export type DatasetsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/datasets';
+};
+
+export type DatasetsErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type DatasetsError = DatasetsErrors[keyof DatasetsErrors];
+
+export type DatasetsResponses = {
+    /**
+     * Example datasets and example configurations in the data directory.
+     */
+    200: DatasetCatalog;
+};
+
+export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
+
+export type ConfigCheckData = {
+    body: CheckConfigRequest;
+    path?: never;
+    query?: never;
+    url: '/api/check-config';
+};
+
+export type ConfigCheckErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type ConfigCheckError = ConfigCheckErrors[keyof ConfigCheckErrors];
+
+export type ConfigCheckResponses = {
+    /**
+     * The configuration with every default filled in, or the problems found in it.
+     */
+    200: CheckConfigResponse;
+};
+
+export type ConfigCheckResponse = ConfigCheckResponses[keyof ConfigCheckResponses];
+
+export type RunConfigData = {
+    body: RunConfigRequest;
+    path?: never;
+    query?: never;
+    url: '/api/run-config';
+};
+
+export type RunConfigErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunConfigError = RunConfigErrors[keyof RunConfigErrors];
+
+export type RunConfigResponses = {
+    /**
+     * The configuration as a run resolves it, with the outputs the run layer adds and the hash the run records, or the problems found in it.
+     */
+    200: RunConfigResponse;
+};
+
+export type RunConfigResponse2 = RunConfigResponses[keyof RunConfigResponses];
+
+export type InputsCheckData = {
+    body: CheckInputsRequest;
+    path?: never;
+    query?: never;
+    url: '/api/check-inputs';
+};
+
+export type InputsCheckErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type InputsCheckError = InputsCheckErrors[keyof InputsCheckErrors];
+
+export type InputsCheckResponses = {
+    /**
+     * Facts about the input files, read with the readers the commands use.
+     */
+    200: InputFacts;
+};
+
+export type InputsCheckResponse = InputsCheckResponses[keyof InputsCheckResponses];
+
+export type RunsListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/runs';
+};
+
+export type RunsListErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsListError = RunsListErrors[keyof RunsListErrors];
+
+export type RunsListResponses = {
+    /**
+     * Runs, newest first, and the number of runs computing now.
+     */
+    200: RunList;
+};
+
+export type RunsListResponse = RunsListResponses[keyof RunsListResponses];
+
+export type RunsCreateData = {
+    body: CreateRunRequest;
+    path?: never;
+    query?: never;
+    url: '/api/runs';
+};
+
+export type RunsCreateErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsCreateError = RunsCreateErrors[keyof RunsCreateErrors];
+
+export type RunsCreateResponses = {
+    /**
+     * Create a run; it starts at once unless `defer_start` is set.
+     */
+    200: RunRecord;
+};
+
+export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
+
+export type RunsDeleteData = {
     body?: never;
     path: {
-        /**
-         * Id of a deleted run
-         */
         id: string;
     };
     query?: never;
-    url: '/api/runs/{id}/purge';
+    url: '/api/runs/{id}';
 };
 
-export type RunsPurgeResponses = {
+export type RunsDeleteErrors = {
     /**
-     * The deleted run is removed for good
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsDeleteError = RunsDeleteErrors[keyof RunsDeleteErrors];
+
+export type RunsDeleteResponses = {
+    /**
+     * Move a run to the trash; restore undoes it.
      */
     204: void;
 };
 
-export type RunsPurgeResponse = RunsPurgeResponses[keyof RunsPurgeResponses];
+export type RunsDeleteResponse = RunsDeleteResponses[keyof RunsDeleteResponses];
+
+export type RunsGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}';
+};
+
+export type RunsGetErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsGetError = RunsGetErrors[keyof RunsGetErrors];
+
+export type RunsGetResponses = {
+    /**
+     * The record of a run.
+     */
+    200: RunRecord;
+};
+
+export type RunsGetResponse = RunsGetResponses[keyof RunsGetResponses];
+
+export type RunsUpdateData = {
+    body: UpdateRunRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}';
+};
+
+export type RunsUpdateErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsUpdateError = RunsUpdateErrors[keyof RunsUpdateErrors];
+
+export type RunsUpdateResponses = {
+    /**
+     * Change the title or pinned state of a run.
+     */
+    200: RunSummary;
+};
+
+export type RunsUpdateResponse = RunsUpdateResponses[keyof RunsUpdateResponses];
+
+export type RunsStartData = {
+    body: StartRunRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/start';
+};
+
+export type RunsStartErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsStartError = RunsStartErrors[keyof RunsStartErrors];
+
+export type RunsStartResponses = {
+    /**
+     * Start a created run.
+     */
+    200: RunRecord;
+};
+
+export type RunsStartResponse = RunsStartResponses[keyof RunsStartResponses];
+
+export type RunsCancelData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/cancel';
+};
+
+export type RunsCancelErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsCancelError = RunsCancelErrors[keyof RunsCancelErrors];
+
+export type RunsCancelResponses = {
+    /**
+     * Request cancellation of a run; the run ends with a `cancelled` terminal event.
+     */
+    200: CancelRunResponse;
+};
+
+export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
 
 export type RunsRestoreData = {
     body?: never;
     path: {
-        /**
-         * Id of a deleted run
-         */
         id: string;
     };
     query?: never;
     url: '/api/runs/{id}/restore';
 };
 
+export type RunsRestoreErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsRestoreError = RunsRestoreErrors[keyof RunsRestoreErrors];
+
 export type RunsRestoreResponses = {
     /**
-     * The run, back from the trash
+     * Bring a run back from the trash.
      */
     200: RunSummary;
 };
 
 export type RunsRestoreResponse = RunsRestoreResponses[keyof RunsRestoreResponses];
 
+export type RunsPurgeData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/purge';
+};
+
+export type RunsPurgeErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsPurgeError = RunsPurgeErrors[keyof RunsPurgeErrors];
+
+export type RunsPurgeResponses = {
+    /**
+     * Remove a deleted run for good.
+     */
+    204: void;
+};
+
+export type RunsPurgeResponse = RunsPurgeResponses[keyof RunsPurgeResponses];
+
+export type RunsFilesData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/files';
+};
+
+export type RunsFilesErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsFilesError = RunsFilesErrors[keyof RunsFilesErrors];
+
+export type RunsFilesResponses = {
+    /**
+     * Files in the run's `out/` folder, with their sizes and kinds.
+     */
+    200: ArrayOfRunFile;
+};
+
+export type RunsFilesResponse = RunsFilesResponses[keyof RunsFilesResponses];
+
 export type RunsResultsData = {
     body?: never;
     path: {
-        /**
-         * Id of a finished run
-         */
         id: string;
     };
     query?: never;
@@ -4695,55 +4781,98 @@ export type RunsResultsData = {
 
 export type RunsResultsErrors = {
     /**
-     * The run has not finished successfully
+     * The error, with its causes
      */
-    409: ErrorResponse;
+    default: ErrorResponse;
 };
 
 export type RunsResultsError = RunsResultsErrors[keyof RunsResultsErrors];
 
 export type RunsResultsResponses = {
     /**
-     * Results of the run, read from its output files
+     * Results of a finished run, read from its output files.
      */
     200: RunResults;
 };
 
 export type RunsResultsResponse = RunsResultsResponses[keyof RunsResultsResponses];
 
-export type RunsStartData = {
-    body: StartRunRequest;
+export type RunsAuspiceData = {
+    body?: never;
     path: {
-        /**
-         * Id of the run
-         */
         id: string;
     };
     query?: never;
-    url: '/api/runs/{id}/start';
+    url: '/api/runs/{id}/auspice';
 };
 
-export type RunsStartResponses = {
+export type RunsAuspiceErrors = {
     /**
-     * The started run
+     * The error, with its causes
      */
-    200: RunRecord;
+    default: ErrorResponse;
 };
 
-export type RunsStartResponse = RunsStartResponses[keyof RunsStartResponses];
+export type RunsAuspiceError = RunsAuspiceErrors[keyof RunsAuspiceErrors];
 
-export type VersionData = {
+export type RunsAuspiceResponses = {
+    /**
+     * Auspice JSON of a finished run, with the color scales the app displays.
+     */
+    200: AuspiceDocument;
+};
+
+export type RunsAuspiceResponse = RunsAuspiceResponses[keyof RunsAuspiceResponses];
+
+export type RunsCompareData = {
     body?: never;
+    path: {
+        id: string;
+        other: string;
+    };
+    query?: never;
+    url: '/api/runs/{id}/compare/{other}';
+};
+
+export type RunsCompareErrors = {
+    /**
+     * The error, with its causes
+     */
+    default: ErrorResponse;
+};
+
+export type RunsCompareError = RunsCompareErrors[keyof RunsCompareErrors];
+
+export type RunsCompareResponses = {
+    /**
+     * Differences of the second run's results from the first run's.
+     */
+    200: RunComparison;
+};
+
+export type RunsCompareResponse = RunsCompareResponses[keyof RunsCompareResponses];
+
+export type CladeInRunsData = {
+    body: CladeRequest;
     path?: never;
     query?: never;
-    url: '/api/version';
+    url: '/api/clade-in-runs';
 };
 
-export type VersionResponses = {
+export type CladeInRunsErrors = {
     /**
-     * Version information
+     * The error, with its causes
      */
-    200: VersionInfo;
+    default: ErrorResponse;
 };
 
-export type VersionResponse = VersionResponses[keyof VersionResponses];
+export type CladeInRunsError = CladeInRunsErrors[keyof CladeInRunsErrors];
+
+export type CladeInRunsResponses = {
+    /**
+     * Nodes of the other finished time-tree runs with the same set of samples below them.
+     */
+    200: CladeInRuns;
+};
+
+export type CladeInRunsResponse = CladeInRunsResponses[keyof CladeInRunsResponses];
