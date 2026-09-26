@@ -2,7 +2,9 @@
 mod tests {
   use crate::openapi::add_discriminators;
   use crate::routes::api_doc;
-  use helpers::{discriminated, schemas_after, tagged_unions_without_discriminator};
+  use helpers::{
+    discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
+  };
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use treetime_utils::assert_error;
@@ -62,6 +64,40 @@ mod tests {
             .map(|key| json!(key))
             .collect()
         ),
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_response_schemas_carry_no_defaults() {
+    let doc = api_doc().unwrap();
+    let components = response_components(&doc);
+    let with_defaults = components
+      .iter()
+      .flat_map(|name| keyword_locations(&doc["components"]["schemas"][name.as_str()], "default", name))
+      .collect::<Vec<_>>();
+    assert_eq!(
+      (true, true, Vec::<String>::new()),
+      (
+        components.contains("RunRecord"),
+        components.contains("RunEventTerminal"),
+        with_defaults
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_request_schemas_carry_defaults() {
+    let doc = api_doc().unwrap();
+    assert_eq!(
+      vec![
+        "CreateRunRequest/properties/title/default",
+        "CreateRunRequest/properties/defer_start/default"
+      ],
+      keyword_locations(
+        &doc["components"]["schemas"]["CreateRunRequest"],
+        "default",
+        "CreateRunRequest"
       )
     );
   }
@@ -328,6 +364,7 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use serde_json::{Map, Value, json};
+    use std::collections::BTreeSet;
 
     const COMPONENTS_PREFIX: &str = "#/components/schemas/";
 
@@ -351,6 +388,61 @@ mod tests {
         .filter_map(|(name, schema)| Some((name.as_str(), schema["discriminator"]["propertyName"].as_str()?)))
         .sorted()
         .collect()
+    }
+
+    pub(super) fn response_components(doc: &Value) -> BTreeSet<String> {
+      let mut pending = doc["paths"]
+        .as_object()
+        .unwrap()
+        .values()
+        .flat_map(|item| item.as_object().unwrap().values())
+        .flat_map(|operation| operation["responses"].as_object().into_iter().flatten())
+        .flat_map(|(_, response)| references(response))
+        .collect_vec();
+      let mut seen = BTreeSet::new();
+      while let Some(name) = pending.pop() {
+        if seen.insert(name.clone()) {
+          pending.extend(references(&doc["components"]["schemas"][name.as_str()]));
+        }
+      }
+      seen
+    }
+
+    pub(super) fn keyword_locations(schema: &Value, keyword: &str, pointer: &str) -> Vec<String> {
+      match schema {
+        Value::Object(object) => object
+          .iter()
+          .flat_map(|(key, child)| {
+            let location = format!("{pointer}/{key}");
+            let here = (key == keyword && !pointer.ends_with("/properties")).then(|| location.clone());
+            here.into_iter().chain(keyword_locations(child, keyword, &location))
+          })
+          .collect(),
+        Value::Array(items) => items
+          .iter()
+          .enumerate()
+          .flat_map(|(index, child)| keyword_locations(child, keyword, &format!("{pointer}/{index}")))
+          .collect(),
+        _ => vec![],
+      }
+    }
+
+    fn references(value: &Value) -> Vec<String> {
+      match value {
+        Value::Object(object) => object
+          .iter()
+          .flat_map(|(key, child)| match (key.as_str(), child.as_str()) {
+            ("$ref", Some(reference)) => reference
+              .strip_prefix(COMPONENTS_PREFIX)
+              .map(ToOwned::to_owned)
+              .into_iter()
+              .collect(),
+            _ => references(child),
+          })
+          .collect(),
+        Value::Array(items) => items.iter().flat_map(references).collect(),
+        _ => vec![],
+      }
     }
 
     pub(super) fn tagged_unions_without_discriminator(doc: &Value) -> Vec<String> {
