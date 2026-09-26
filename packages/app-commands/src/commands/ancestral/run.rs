@@ -184,8 +184,13 @@ pub fn run_ancestral_reconstruction(
         aa_annotations,
         path,
       )?;
+      progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
+    } else {
+      progress_warn!(
+        progress,
+        "Skipping augur node data: the run reconstructed no sequences to annotate"
+      );
     }
-    progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {

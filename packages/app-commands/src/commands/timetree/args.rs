@@ -20,6 +20,7 @@ use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
+use treetime_utils::make_error;
 
 #[cfg(feature = "clap")]
 fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
@@ -59,8 +60,6 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) skyline_stiffness: f64,
   pub(crate) coalescent_confidence: f64,
   pub(crate) n_branches_posterior: Option<usize>,
-  pub(crate) plot_tree: Option<PathBuf>,
-  pub(crate) plot_rtt: Option<PathBuf>,
   #[expect(
     dead_code,
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
@@ -140,6 +139,12 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
+    if raw.plot_rtt.is_some() {
+      return make_error!("--plot-rtt is not yet implemented");
+    }
+    if raw.plot_tree.is_some() {
+      return make_error!("--plot-tree is not yet implemented");
+    }
     let tree = raw
       .tree
       .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
@@ -167,8 +172,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       skyline_stiffness: raw.skyline_stiffness,
       coalescent_confidence: raw.coalescent_confidence,
       n_branches_posterior: raw.n_branches_posterior,
-      plot_tree: raw.plot_tree,
-      plot_rtt: raw.plot_rtt,
       tip_labels: raw.tip_labels,
       no_tip_labels: raw.no_tip_labels,
       clock_filter: raw.clock_filter,

@@ -12,12 +12,12 @@ use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
-use treetime::make_error;
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress::ProgressSink;
 use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::MutationTrack;
+use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -137,12 +137,12 @@ pub fn run_prune(
       },
       None if args.output_gtr.is_some() => {
         return make_error!(
-          "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --alignment."
+          "GTR output requested but no GTR model was fitted. Prune fits the model from the alignment only for --prune-empty or --merge-shared-mutations."
         );
       },
       None => progress_warn!(
         progress,
-        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --alignment)"
+        "Skipping GTR output: no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)"
       ),
     }
   }
@@ -205,10 +205,6 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn parse_node_names(
   prune_nodes_list: Option<&str>,
   prune_nodes_list_delimiter: char,
@@ -218,15 +214,23 @@ fn parse_node_names(
   let mut node_names = btreeset! {};
 
   if let Some(prune_nodes_list) = prune_nodes_list {
-    let names: Vec<String> = parse_delimited_str(prune_nodes_list, prune_nodes_list_delimiter as u8).try_collect()?;
+    let names: Vec<String> =
+      parse_delimited_str(prune_nodes_list, ascii_delimiter(prune_nodes_list_delimiter)?).try_collect()?;
     node_names.extend(names);
   }
 
   if let Some(prune_nodes_list_file) = prune_nodes_list_file {
     let names: Vec<String> =
-      parse_delimited_file(prune_nodes_list_file, prune_nodes_list_file_delimiter as u8)?.try_collect()?;
+      parse_delimited_file(prune_nodes_list_file, ascii_delimiter(prune_nodes_list_file_delimiter)?)?.try_collect()?;
     node_names.extend(names);
   }
 
   Ok(node_names)
+}
+
+fn ascii_delimiter(delimiter: char) -> Result<u8, Report> {
+  u8::try_from(delimiter)
+    .ok()
+    .filter(u8::is_ascii)
+    .ok_or_else(|| make_report!("the delimiter must be an ASCII character, got '{delimiter}'"))
 }

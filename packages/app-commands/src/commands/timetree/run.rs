@@ -331,14 +331,6 @@ pub fn run_timetree_estimation(
     progress_info!(progress, "Wrote augur node data JSON to {path}", path = path.display());
   }
 
-  if args.plot_rtt.is_some() {
-    return make_error!("--plot-rtt is not yet implemented");
-  }
-
-  if args.plot_tree.is_some() {
-    return make_error!("--plot-tree is not yet implemented");
-  }
-
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult { graph, nodes, edges })
 }

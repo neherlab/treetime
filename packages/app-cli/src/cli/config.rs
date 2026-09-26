@@ -486,6 +486,16 @@ mod tests {
     }
 
     #[test]
+    fn test_config_required_timetree_rejects_plots_before_running() {
+      let raw = TreetimeTimetreeArgsRaw {
+        tree: Some("tree.nwk".into()),
+        plot_rtt: Some("rtt.png".into()),
+        ..Default::default()
+      };
+      assert_error!(TreetimeTimetreeArgs::try_from(raw), "--plot-rtt is not yet implemented");
+    }
+
+    #[test]
     fn test_config_required_timetree_with_tree_ok() {
       let raw = TreetimeTimetreeArgsRaw {
         tree: Some("tree.nwk".into()),
