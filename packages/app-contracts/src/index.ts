@@ -2,7 +2,7 @@ export type * from "./generated/types.gen";
 
 export * from "./generated/zod.gen";
 
-export { CancelledError, CommandError, RunEndedError, errorMessage } from "./errors";
+export { errorMessage } from "./errors";
 
 export { zPickedFiles, zPickFilesRequest, type LocalFiles, type PickFilesRequest } from "./files";
 

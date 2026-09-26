@@ -42,7 +42,6 @@ The HTTP server and the desktop back end accept, for each of the six app command
 - **Hooks**: `useApi(call, options)` reads, `useApiMutation(call, options)` changes; `call` is a closure over an SDK function, and the result type comes from it. A mutation that returns the changed resource can seed the cache entry of that resource
 - **Invalidation**: `useAppEvents`, mounted once by `ApiProvider`, follows `GET /api/events` and invalidates every cached query whose key a stale path covers. There is no polling of the run list
 - **Run events**: `useRunEvents(id)` is a TanStack `experimental_streamedQuery` over the run's event stream, keyed by the stream's path, with a reducer that derives the progress state. The stream ends with the terminal event
-- **Workflows**: `runCommand` creates a run, follows its events to the terminal event and turns `error`, `cancelled` and `interrupted` into thrown errors; aborting its signal cancels the run. It is a plain function over the SDK
 - **Save actions**: `ApiProvider` also supplies the save actions for a run file or the run archive: a download on the web, a native save dialog on the desktop
 
 ## Desktop transport
@@ -78,4 +77,4 @@ The HTTP server and the desktop back end accept, for each of the six app command
 - `packages/app-desktop/src/main.ts`, `packages/app-desktop/src/backend.ts`, `packages/app-desktop/src/backend-host.ts`, `packages/app-desktop/src/preload.ts`: the main process, the utility process, the relay and the preload script
 - `packages/app-desktop/src/port-fetch.ts`: the `fetch` of the desktop client
 - `packages/app-contracts/src/client.ts`, `packages/app-contracts/src/generated/`: the client factory, `ApiError`, resumable streams, and the generated SDK, types and zod schemas
-- `packages/app-ui/src/api/`: keys, hooks, event handling, workflows and the API context of the UI
+- `packages/app-ui/src/api/`: keys, hooks, event handling and the API context of the UI

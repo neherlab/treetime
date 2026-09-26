@@ -19,7 +19,7 @@
       "ignore": ["src/generated/**"]
     },
     "packages/app-ui": {
-      "entry": ["src/App.tsx!", "src/api/workflows.ts!"],
+      "entry": ["src/App.tsx!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"]
     },
     "packages/app-web": {

@@ -94,10 +94,6 @@ export function eventStream(events: ReadonlyArray<{ seq: number }>, failure?: Er
   return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
 }
 
-export function runEvent(seq: number, type: "started" | "progress" | "log" | "terminal", data: unknown) {
-  return { seq, time: "2026-09-25T10:00:01Z", type, data };
-}
-
 export async function noDelay(): Promise<void> {
   await Promise.resolve();
 }
