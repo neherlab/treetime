@@ -84,8 +84,8 @@ export function OutputFiles({
       <div className="border-line text-ink-muted grid gap-2 border-t px-3.5 py-3 text-xs">
         <p className="m-0">
           Please cite: {citation.text}{" "}
-          <a href={citation.doi} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
-            doi:10.1093/ve/vex042
+          <a href={citation.url} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
+            doi:{citation.doi}
           </a>
         </p>
         {methods !== undefined && (

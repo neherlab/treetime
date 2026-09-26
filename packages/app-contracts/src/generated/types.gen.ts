@@ -3882,9 +3882,13 @@ export type Citation = {
      */
     text: string;
     /**
-     * Link to the publication.
+     * DOI of the publication, for example `10.1093/ve/vex042`.
      */
     doi: string;
+    /**
+     * Link to the publication.
+     */
+    url: string;
 };
 
 /**

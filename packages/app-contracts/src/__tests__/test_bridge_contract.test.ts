@@ -205,7 +205,7 @@ describe("bridge result validation", () => {
       tree: null,
       results: { command: "clock", data: { branches: [], mutations: 0, recurrent_sites: [] } },
       methods: null,
-      citation: { text: "TreeTime", doi: "https://doi.org/10.1093/ve/vex042" },
+      citation: { text: "TreeTime", doi: "10.1093/ve/vex042", url: "https://doi.org/10.1093/ve/vex042" },
       problems: [],
     };
 

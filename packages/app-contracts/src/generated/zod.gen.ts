@@ -1670,7 +1670,8 @@ export const zCommandResults = z.union([
  */
 export const zCitation = z.object({
     text: z.string(),
-    doi: z.string()
+    doi: z.string(),
+    url: z.string()
 });
 
 /**

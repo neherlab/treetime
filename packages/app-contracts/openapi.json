@@ -7191,12 +7191,17 @@
           },
           "doi": {
             "type": "string",
+            "description": "DOI of the publication, for example `10.1093/ve/vex042`."
+          },
+          "url": {
+            "type": "string",
             "description": "Link to the publication."
           }
         },
         "required": [
           "text",
-          "doi"
+          "doi",
+          "url"
         ],
         "description": "The publication to cite for TreeTime."
       },
