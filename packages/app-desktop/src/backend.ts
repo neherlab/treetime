@@ -4,7 +4,7 @@ import type { MessagePortMain } from "electron";
 import { saveRunFiles, serveBackend, serveFetch } from "./backend-host";
 import {
   zBackendRequest,
-  zControlRequest,
+  type ControlRequest,
   type FetchEndpoint,
   type HostEndpoint,
   type SaveRequest,
@@ -25,16 +25,10 @@ if (runsDir === undefined) {
 
 const backend = new Backend(runsDir);
 
-process.parentPort.on("message", (message) => {
-  const control = zControlRequest.safeParse(message.data);
+process.parentPort.on("message", (message: { data: ControlRequest; ports: MessagePortMain[] }) => {
+  const control = message.data;
 
-  if (!control.success) {
-    console.warn("[TreeTime back end] ignored a malformed control message", control.error.message);
-
-    return;
-  }
-
-  if (control.data.kind === "port") {
+  if (control.kind === "port") {
     const [port, fetchPort] = message.ports;
 
     if (port !== undefined) {
@@ -48,7 +42,7 @@ process.parentPort.on("message", (message) => {
     return;
   }
 
-  void save(control.data);
+  void save(control);
 });
 
 async function save(request: SaveRequest): Promise<void> {

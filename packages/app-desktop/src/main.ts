@@ -20,7 +20,7 @@ import {
 } from "electron";
 
 import { shouldRestart } from "./backend-process";
-import { zControlReply, type ControlReply, type SaveRequest } from "./backend-protocol";
+import type { ControlReply, SaveRequest } from "./backend-protocol";
 import {
   BACKEND_PORT_CHANNEL,
   BACKEND_PORT_REQUEST_CHANNEL,
@@ -32,7 +32,7 @@ import {
 } from "./channels";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
-import { zSaveRunArchiveRequest, zSaveRunFileRequest, type SaveReply } from "./shell-protocol";
+import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
 
 const diagnosticDir =
   process.env[DIAGNOSTIC_DIR_ENV] ??
@@ -112,13 +112,9 @@ class BackendProcess {
       env: { ...process.env, [DIAGNOSTIC_DIR_ENV]: diagnosticDir },
     });
 
-    child.on("message", (message) => {
-      const reply = zControlReply.safeParse(message);
-
-      if (reply.success) {
-        this.saves.get(reply.data.seq)?.(reply.data);
-        this.saves.delete(reply.data.seq);
-      }
+    child.on("message", (reply: ControlReply) => {
+      this.saves.get(reply.seq)?.(reply);
+      this.saves.delete(reply.seq);
     });
     child.once("exit", (code) => {
       this.exited(code);
@@ -166,20 +162,16 @@ class BackendProcess {
 
 function registerIpcHandlers(backend: BackendProcess): void {
   handle(PICK_FILES_CHANNEL, (event, request) => pickFiles(event, request));
-  handle(SAVE_RUN_FILE_CHANNEL, async (event, data) => {
-    const request = zSaveRunFileRequest.parse(data);
-
-    return saveTo(event, request.name, (destination) =>
-      backend.save((seq) => ({ kind: "save-file", seq, id: request.id, path: request.path, destination })),
-    );
-  });
-  handle(SAVE_RUN_ARCHIVE_CHANNEL, async (event, data) => {
-    const request = zSaveRunArchiveRequest.parse(data);
-
-    return saveTo(event, request.name, (destination) =>
-      backend.save((seq) => ({ kind: "save-archive", seq, id: request.id, destination })),
-    );
-  });
+  handle(SAVE_RUN_FILE_CHANNEL, async (event, { id, path, name }: SaveRunFileDialog) =>
+    saveTo(event, name, (destination) =>
+      backend.save((seq) => ({ kind: "save-file", seq, request: { id, path, destination } })),
+    ),
+  );
+  handle(SAVE_RUN_ARCHIVE_CHANNEL, async (event, { id, name }: SaveRunArchiveDialog) =>
+    saveTo(event, name, (destination) =>
+      backend.save((seq) => ({ kind: "save-archive", seq, request: { id, destination } })),
+    ),
+  );
   listen(BACKEND_PORT_REQUEST_CHANNEL, (event) => {
     backend.connect(event.sender);
   });
@@ -190,8 +182,12 @@ function registerIpcHandlers(backend: BackendProcess): void {
   });
 }
 
-function handle(channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
-  ipcMain.handle(channel, (event, ...args: unknown[]) => {
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Args types the arguments of each handler, which Electron passes untyped
+function handle<Args extends unknown[]>(
+  channel: string,
+  handler: (event: IpcMainInvokeEvent, ...args: Args) => unknown,
+): void {
+  ipcMain.handle(channel, (event, ...args: Args) => {
     if (!isTrustedSender(event.senderFrame, appUrl)) {
       throw new Error(`${channel} refused a message from a frame outside the application`);
     }

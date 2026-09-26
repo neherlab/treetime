@@ -3,8 +3,8 @@ export declare class Backend {
   call(requestJson: string): Promise<string>
   subscribe(id: string, from: number, onEvent: (err: Error | null, eventJson: string) => void): Subscription
   fetch(request: PortRequest, onReply: ((arg: PortReply) => void)): PortExchange
-  saveRunFile(id: string, path: string, destination: string): Promise<string>
-  saveRunArchive(id: string, destination: string): Promise<string>
+  saveRunFile(request: SaveRunFileRequest): Promise<void>
+  saveRunArchive(request: SaveRunArchiveRequest): Promise<void>
 }
 
 export declare class PortExchange {
@@ -42,4 +42,15 @@ export interface PortRequest {
   url: string
   headers: Array<PortHeader>
   body?: string
+}
+
+export interface SaveRunArchiveRequest {
+  id: string
+  destination: string
+}
+
+export interface SaveRunFileRequest {
+  id: string
+  path: string
+  destination: string
 }

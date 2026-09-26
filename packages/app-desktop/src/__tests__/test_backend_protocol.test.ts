@@ -4,8 +4,6 @@ import {
   portEndpoint,
   zBackendReply,
   zBackendRequest,
-  zControlReply,
-  zControlRequest,
   type BackendReply,
   type BackendRequest,
   type PortLike,
@@ -76,26 +74,5 @@ describe("backend_protocol port endpoints", () => {
     });
 
     expect(received).toStrictEqual([{ kind: "result", seq: 3, json: "{}" }]);
-  });
-});
-
-describe("backend_protocol control messages", () => {
-  test.each([
-    [{ kind: "port" }],
-    [{ kind: "save-file", seq: 1, id: "r1", path: "a.nwk", destination: "/home/user/a.nwk" }],
-    [{ kind: "save-archive", seq: 2, id: "r1", destination: "/home/user/r1.zip" }],
-  ])("%j is a control request", (request) => {
-    expect(zControlRequest.parse(request)).toStrictEqual(request);
-  });
-
-  test.each([[{ kind: "saved", seq: 1 }], [{ kind: "error", seq: 1, error: "disk full" }]])(
-    "%j is a control reply",
-    (reply) => {
-      expect(zControlReply.parse(reply)).toStrictEqual(reply);
-    },
-  );
-
-  test("a save without its destination is not a control request", () => {
-    expect(zControlRequest.safeParse({ kind: "save-archive", seq: 2, id: "r1" }).success).toBe(false);
   });
 });

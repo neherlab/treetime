@@ -6,7 +6,7 @@ use app_commands::bridge::operations::OperationRequest;
 use app_commands::job::JobId;
 use app_commands::runs::errors::parse_request_text;
 use eyre::Report;
-use napi::bindgen_prelude::AsyncTask;
+use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Env, Status, Task};
 use napi_derive::napi;
@@ -39,9 +39,9 @@ impl Backend {
   }
 
   #[napi(ts_return_type = "Promise<string>")]
-  pub fn call(&self, request_json: String) -> AsyncTask<JsonTask> {
+  pub fn call(&self, request_json: String) -> AsyncTask<BlockingTask<String>> {
     let service = Arc::clone(&self.service);
-    JsonTask::spawn(move || {
+    BlockingTask::spawn(move || {
       let request: OperationRequest = parse_request_text(&request_json)?;
       request.handle(service.app())
     })
@@ -75,23 +75,36 @@ impl Backend {
     PortExchange { abort }
   }
 
-  #[napi(ts_return_type = "Promise<string>")]
-  pub fn save_run_file(&self, id: String, path: String, destination: String) -> AsyncTask<JsonTask> {
+  #[napi(ts_return_type = "Promise<void>")]
+  pub fn save_run_file(&self, request: SaveRunFileRequest) -> AsyncTask<BlockingTask<()>> {
     let service = Arc::clone(&self.service);
-    JsonTask::spawn(move || {
-      service.save_run_file(&JobId::parse(&id)?, &path, Path::new(&destination))?;
-      Ok(serde_json::to_string(&())?)
+    BlockingTask::spawn(move || {
+      let SaveRunFileRequest { id, path, destination } = request;
+      service.save_run_file(&JobId::parse(&id)?, &path, Path::new(&destination))
     })
   }
 
-  #[napi(ts_return_type = "Promise<string>")]
-  pub fn save_run_archive(&self, id: String, destination: String) -> AsyncTask<JsonTask> {
+  #[napi(ts_return_type = "Promise<void>")]
+  pub fn save_run_archive(&self, request: SaveRunArchiveRequest) -> AsyncTask<BlockingTask<()>> {
     let service = Arc::clone(&self.service);
-    JsonTask::spawn(move || {
-      service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))?;
-      Ok(serde_json::to_string(&())?)
+    BlockingTask::spawn(move || {
+      let SaveRunArchiveRequest { id, destination } = request;
+      service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))
     })
   }
+}
+
+#[napi(object)]
+pub struct SaveRunFileRequest {
+  pub id: String,
+  pub path: String,
+  pub destination: String,
+}
+
+#[napi(object)]
+pub struct SaveRunArchiveRequest {
+  pub id: String,
+  pub destination: String,
 }
 
 #[napi]
@@ -120,23 +133,23 @@ impl Subscription {
   }
 }
 
-type Job = Box<dyn FnOnce() -> Result<String, Report> + Send>;
+type Job<T> = Box<dyn FnOnce() -> Result<T, Report> + Send>;
 
-pub struct JsonTask {
-  job: Option<Job>,
+pub struct BlockingTask<T> {
+  job: Option<Job<T>>,
 }
 
-impl JsonTask {
-  fn spawn(job: impl FnOnce() -> Result<String, Report> + Send + 'static) -> AsyncTask<Self> {
+impl<T: ToNapiValue + TypeName + Send + 'static> BlockingTask<T> {
+  fn spawn(job: impl FnOnce() -> Result<T, Report> + Send + 'static) -> AsyncTask<Self> {
     AsyncTask::new(Self {
       job: Some(Box::new(job)),
     })
   }
 }
 
-impl Task for JsonTask {
-  type Output = String;
-  type JsValue = String;
+impl<T: ToNapiValue + TypeName + Send + 'static> Task for BlockingTask<T> {
+  type Output = T;
+  type JsValue = T;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
     let job = self.job.take();
@@ -144,7 +157,7 @@ impl Task for JsonTask {
       .map_err(|err| to_napi(&err))
   }
 
-  fn resolve(&mut self, _env: Env, output: String) -> napi::Result<String> {
+  fn resolve(&mut self, _env: Env, output: T) -> napi::Result<T> {
     Ok(output)
   }
 }

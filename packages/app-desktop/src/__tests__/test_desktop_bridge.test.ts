@@ -13,6 +13,7 @@ import {
   type WindowLike,
 } from "../desktop-bridge";
 import type { FetchPort } from "../port-fetch";
+import type { SaveReply } from "../shell-protocol";
 
 const RECORD = {
   id: "r1",
@@ -529,7 +530,7 @@ interface FakeShell extends DesktopShell {
   saves: unknown[];
 }
 
-function fakeShell({ picked, saved = null }: { picked: unknown; saved?: unknown }): FakeShell {
+function fakeShell({ picked, saved = { saved: false } }: { picked: unknown; saved?: SaveReply }): FakeShell {
   const shell: FakeShell = {
     connections: 0,
     saves: [],
@@ -538,12 +539,12 @@ function fakeShell({ picked, saved = null }: { picked: unknown; saved?: unknown 
     },
     pickFiles: () => Promise.resolve(picked),
     pathForFile: () => "",
-    saveRunFile: (request: unknown) => {
+    saveRunFile: (request) => {
       shell.saves.push(request);
 
       return Promise.resolve(saved);
     },
-    saveRunArchive: (request: unknown) => {
+    saveRunArchive: (request) => {
       shell.saves.push(request);
 
       return Promise.resolve(saved);

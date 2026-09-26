@@ -106,8 +106,8 @@ export function serveBackend(endpoint: HostEndpoint, backend: AddonBackend): voi
 export async function saveRunFiles(backend: AddonBackend, request: SaveRequest): Promise<ControlReply> {
   try {
     await (request.kind === "save-file"
-      ? backend.saveRunFile(request.id, request.path, request.destination)
-      : backend.saveRunArchive(request.id, request.destination));
+      ? backend.saveRunFile(request.request)
+      : backend.saveRunArchive(request.request));
 
     return { kind: "saved", seq: request.seq };
   } catch (error: unknown) {

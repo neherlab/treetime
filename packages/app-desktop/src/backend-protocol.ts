@@ -1,4 +1,4 @@
-import type { PortMessage, PortReply } from "@neherlab/app-napi";
+import type { PortMessage, PortReply, SaveRunArchiveRequest, SaveRunFileRequest } from "@neherlab/app-napi";
 import * as z from "zod";
 
 const zSeq = z.int().nonnegative();
@@ -15,26 +15,17 @@ export const zBackendReply = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("event"), seq: zSeq, json: z.string() }),
 ]);
 
-export const zControlRequest = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("port") }),
-  z.object({ kind: z.literal("save-file"), seq: zSeq, id: z.string(), path: z.string(), destination: z.string() }),
-  z.object({ kind: z.literal("save-archive"), seq: zSeq, id: z.string(), destination: z.string() }),
-]);
-
-export const zControlReply = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("saved"), seq: zSeq }),
-  z.object({ kind: z.literal("error"), seq: zSeq, error: z.string() }),
-]);
-
 export type BackendRequest = z.infer<typeof zBackendRequest>;
 
 export type BackendReply = z.infer<typeof zBackendReply>;
 
-type ControlRequest = z.infer<typeof zControlRequest>;
+export type SaveRequest =
+  | { kind: "save-file"; seq: number; request: SaveRunFileRequest }
+  | { kind: "save-archive"; seq: number; request: SaveRunArchiveRequest };
 
-export type SaveRequest = Exclude<ControlRequest, { kind: "port" }>;
+export type ControlRequest = { kind: "port" } | SaveRequest;
 
-export type ControlReply = z.infer<typeof zControlReply>;
+export type ControlReply = { kind: "saved"; seq: number } | { kind: "error"; seq: number; error: string };
 
 interface MessageEndpoint<Incoming, Outgoing> {
   post(message: Outgoing): void;

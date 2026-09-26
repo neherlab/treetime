@@ -201,13 +201,13 @@ describe("backend_host saves", () => {
 
     const reply = await saveRunFiles(
       addonWith({
-        saveRunFile: (id, path, destination) => {
+        saveRunFile: ({ id, path, destination }) => {
           saves.push([id, path, destination]);
 
-          return Promise.resolve("null");
+          return Promise.resolve();
         },
       }),
-      { kind: "save-file", seq: 3, id: "r1", path: "a.nwk", destination: "/home/user/a.nwk" },
+      { kind: "save-file", seq: 3, request: { id: "r1", path: "a.nwk", destination: "/home/user/a.nwk" } },
     );
 
     expect([reply, saves]).toStrictEqual([{ kind: "saved", seq: 3 }, [["r1", "a.nwk", "/home/user/a.nwk"]]]);
@@ -216,7 +216,7 @@ describe("backend_host saves", () => {
   test("an archive save that fails reports the error of the addon", async () => {
     const reply = await saveRunFiles(
       addonWith({ saveRunArchive: () => Promise.reject(new Error("When saving '/ro/r1.zip': permission denied")) }),
-      { kind: "save-archive", seq: 4, id: "r1", destination: "/ro/r1.zip" },
+      { kind: "save-archive", seq: 4, request: { id: "r1", destination: "/ro/r1.zip" } },
     );
 
     expect(reply).toStrictEqual({ kind: "error", seq: 4, error: "When saving '/ro/r1.zip': permission denied" });
@@ -233,8 +233,8 @@ describe("backend_host with the renderer bridge over a message channel", () => {
           ? Promise.resolve('{"version":"2.0.0"}')
           : Promise.reject(new Error('{"code":"not_found","message":"no run `r9`","causes":[]}')),
       subscribe: () => subscription(() => undefined),
-      saveRunFile: () => Promise.resolve("null"),
-      saveRunArchive: () => Promise.resolve("null"),
+      saveRunFile: () => Promise.resolve(),
+      saveRunArchive: () => Promise.resolve(),
       fetch: () => ({ abort: () => undefined }),
     };
 

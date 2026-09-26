@@ -21,13 +21,7 @@ import {
 } from "./backend-protocol";
 import { BACKEND_STOPPED_CHANNEL } from "./channels";
 import type { FetchConnection, FetchPort } from "./port-fetch";
-import {
-  zSaveReply,
-  zShellMessage,
-  type SaveReply,
-  type SaveRunArchiveRequest,
-  type SaveRunFileRequest,
-} from "./shell-protocol";
+import { zShellMessage, type SaveReply, type SaveRunArchiveDialog, type SaveRunFileDialog } from "./shell-protocol";
 
 export interface BackendConnection {
   onEndpoint(listener: (endpoint: ClientEndpoint) => void): void;
@@ -48,8 +42,8 @@ export interface DesktopShell {
   connectBackend(): void;
   pickFiles(request: PickFilesRequest): Promise<unknown>;
   pathForFile(file: File): string;
-  saveRunFile(request: SaveRunFileRequest): Promise<unknown>;
-  saveRunArchive(request: SaveRunArchiveRequest): Promise<unknown>;
+  saveRunFile(request: SaveRunFileDialog): Promise<SaveReply>;
+  saveRunArchive(request: SaveRunArchiveDialog): Promise<SaveReply>;
 }
 
 class LocalInputsError extends Error {
@@ -308,8 +302,8 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
   return {
     call,
     runEvents,
-    saveRunFile: async (id, path, name) => saved(zSaveReply.parse(await shell.saveRunFile({ id, path, name }))),
-    saveRunArchive: async (id, name) => saved(zSaveReply.parse(await shell.saveRunArchive({ id, name }))),
+    saveRunFile: async (id, path, name) => saved(await shell.saveRunFile({ id, path, name })),
+    saveRunArchive: async (id, name) => saved(await shell.saveRunArchive({ id, name })),
     uploadInput: () => Promise.reject(new LocalInputsError()),
   };
 }
