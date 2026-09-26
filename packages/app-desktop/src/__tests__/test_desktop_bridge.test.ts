@@ -221,6 +221,19 @@ describe("desktop_bridge run events", () => {
     ]);
   });
 
+  test("a back end that stops for good rejects the followed run and every later call", async () => {
+    const backend = fakeBackend(() => undefined);
+    const bridge = createDesktopBridge(backend.connection, fakeShell({ picked: [] }));
+    const following = bridge.followRun("r1");
+    await Promise.resolve();
+
+    backend.stop("the back end does not restart", false);
+    const failure = { response: { code: "internal_error", message: "the back end does not restart", causes: [] } };
+
+    await expect(following).rejects.toMatchObject(failure);
+    await expect(bridge.version()).rejects.toMatchObject(failure);
+  });
+
   test("a restarted back end resumes the run events after the last event received", async () => {
     let attempt = 0;
 
@@ -396,14 +409,18 @@ describe("desktop_bridge window connection", () => {
   test("the stop message of the preload carries the reason", () => {
     const target = fakeWindow();
     const connection = windowBackendConnection(target, fakeShell({ picked: [] }));
-    const reasons: string[] = [];
+    const stops: Array<[string, boolean]> = [];
 
-    connection.onStopped((reason) => {
-      reasons.push(reason);
+    connection.onStopped((reason, restarts) => {
+      stops.push([reason, restarts]);
     });
-    target.emit({ source: target, data: { channel: BACKEND_STOPPED_CHANNEL, reason: "crashed" }, ports: [] });
+    target.emit({
+      source: target,
+      data: { channel: BACKEND_STOPPED_CHANNEL, reason: "crashed", restarts: false },
+      ports: [],
+    });
 
-    expect(reasons).toStrictEqual(["crashed"]);
+    expect(stops).toStrictEqual([["crashed", false]]);
   });
 });
 
@@ -414,12 +431,12 @@ interface FakeBackend {
   requests: BackendRequest[];
   calls(): unknown[];
   connect(): void;
-  stop(reason: string): void;
+  stop(reason: string, restarts?: boolean): void;
 }
 
 function fakeBackend(respond: Responder, { connected = true } = {}): FakeBackend {
   const endpointListeners: Array<(endpoint: ClientEndpoint) => void> = [];
-  const stoppedListeners: Array<(reason: string) => void> = [];
+  const stoppedListeners: Array<(reason: string, restarts: boolean) => void> = [];
   let deliver: (reply: BackendReply) => void = () => undefined;
 
   const endpoint: ClientEndpoint = {
@@ -457,9 +474,9 @@ function fakeBackend(respond: Responder, { connected = true } = {}): FakeBackend
         listener(endpoint);
       });
     },
-    stop(reason) {
+    stop(reason, restarts = true) {
       stoppedListeners.forEach((listener) => {
-        listener(reason);
+        listener(reason, restarts);
       });
     },
   };

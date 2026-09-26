@@ -22,8 +22,9 @@ ipcRenderer.on(BACKEND_PORT_CHANNEL, (event) => {
   window.postMessage({ channel: BACKEND_PORT_CHANNEL }, "*", event.ports);
 });
 
-ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, reason: string) => {
-  window.postMessage({ channel: BACKEND_STOPPED_CHANNEL, reason }, "*");
+ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, reason: string, restarts: boolean) => {
+  const message: ShellMessage = { channel: BACKEND_STOPPED_CHANNEL, reason, restarts };
+  window.postMessage(message, "*");
 });
 
 const shell: DesktopShell = {

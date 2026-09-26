@@ -66,6 +66,7 @@ class BackendProcess {
   private readonly exitTimes: number[] = [];
   private readonly saves = new Map<number, (reply: ControlReply) => void>();
   private nextSave = 0;
+  private failure: string | undefined;
 
   constructor(runsDir: string) {
     this.runsDir = runsDir;
@@ -73,6 +74,12 @@ class BackendProcess {
   }
 
   connect(contents: WebContents): void {
+    if (this.failure !== undefined) {
+      contents.send(BACKEND_STOPPED_CHANNEL, this.failure, false);
+
+      return;
+    }
+
     const { port1, port2 } = new MessageChannelMain();
     this.child.postMessage({ kind: "port" }, [port1]);
     contents.postMessage(BACKEND_PORT_CHANNEL, null, [port2]);
@@ -81,6 +88,10 @@ class BackendProcess {
   save(request: (seq: number) => SaveRequest): Promise<ControlReply> {
     const seq = this.nextSave;
     this.nextSave += 1;
+
+    if (this.failure !== undefined) {
+      return Promise.resolve({ kind: "error", seq, error: this.failure });
+    }
 
     return new Promise((resolve) => {
       this.saves.set(seq, resolve);
@@ -128,7 +139,11 @@ class BackendProcess {
     this.saves.clear();
 
     for (const contents of appContents()) {
-      contents.send(BACKEND_STOPPED_CHANNEL, reason);
+      contents.send(BACKEND_STOPPED_CHANNEL, reason, restart);
+    }
+
+    if (!restart) {
+      this.failure = reason;
     }
 
     if (restart) {

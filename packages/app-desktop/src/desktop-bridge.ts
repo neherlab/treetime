@@ -30,7 +30,7 @@ import {
 
 export interface BackendConnection {
   onEndpoint(listener: (endpoint: ClientEndpoint) => void): void;
-  onStopped(listener: (reason: string) => void): void;
+  onStopped(listener: (reason: string, restarts: boolean) => void): void;
 }
 
 interface WindowMessage {
@@ -73,7 +73,7 @@ export function createLocalFiles(shell: DesktopShell): LocalFiles {
 
 export function windowBackendConnection(target: WindowLike, shell: DesktopShell): BackendConnection {
   const endpointListeners: Array<(endpoint: ClientEndpoint) => void> = [];
-  const stoppedListeners: Array<(reason: string) => void> = [];
+  const stoppedListeners: Array<(reason: string, restarts: boolean) => void> = [];
 
   target.addEventListener("message", (event) => {
     const message = zShellMessage.safeParse(event.data);
@@ -84,9 +84,9 @@ export function windowBackendConnection(target: WindowLike, shell: DesktopShell)
     }
 
     if (message.data.channel === BACKEND_STOPPED_CHANNEL) {
-      const { reason } = message.data;
+      const { reason, restarts } = message.data;
       stoppedListeners.forEach((listener) => {
-        listener(reason);
+        listener(reason, restarts);
       });
     } else if (port !== undefined) {
       const endpoint = portEndpoint<BackendReply, BackendRequest>(port, zBackendReply);
@@ -118,13 +118,14 @@ class BackendClient {
   private readonly waiting: BackendRequest[] = [];
   private readonly handlers = new Map<number, Handler>();
   private nextSeq = 0;
+  private failure: BridgeError | undefined;
 
   constructor(connection: BackendConnection) {
     connection.onEndpoint((endpoint) => {
       this.connect(endpoint);
     });
-    connection.onStopped((reason) => {
-      this.stop(reason);
+    connection.onStopped((reason, restarts) => {
+      this.stop(reason, restarts);
     });
   }
 
@@ -141,7 +142,11 @@ class BackendClient {
   }
 
   send(request: BackendRequest): void {
-    if (this.endpoint === undefined) {
+    if (this.failure !== undefined) {
+      const handler = this.handlers.get(request.seq);
+      this.handlers.delete(request.seq);
+      handler?.stopped(this.failure);
+    } else if (this.endpoint === undefined) {
       this.waiting.push(request);
     } else {
       this.endpoint.post(request);
@@ -165,12 +170,17 @@ class BackendClient {
     }
   }
 
-  private stop(reason: string): void {
+  private stop(reason: string, restarts: boolean): void {
     this.endpoint = undefined;
     const error = new BridgeError({ code: "internal_error", message: reason, causes: [] });
 
+    if (!restarts) {
+      this.failure = error;
+      this.waiting.splice(0);
+    }
+
     for (const [seq, handler] of this.handlers) {
-      if (handler.resume === undefined) {
+      if (!restarts || handler.resume === undefined) {
         this.handlers.delete(seq);
         handler.stopped(error);
       }
