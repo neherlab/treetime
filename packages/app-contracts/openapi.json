@@ -866,6 +866,48 @@
         }
       }
     },
+    "/api/events": {
+      "get": {
+        "description": "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and `run-purged`, each with the REST paths it made stale. Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.",
+        "operationId": "events",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "description": "Sequence number of the first event to send.",
+            "schema": {
+              "description": "Sequence number of the first event to send.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Stream of server-sent events; the data of each event is one JSON item",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppEvent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{id}/inputs/{name}": {
       "put": {
         "description": "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.",
@@ -4149,6 +4191,40 @@
           "command",
           "output_files"
         ]
+      },
+      "AppEvent": {
+        "description": "Change of the app's runs, sent on the app-wide event stream.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AppEventRunCreated"
+          },
+          {
+            "$ref": "#/components/schemas/AppEventRunUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/AppEventRunDeleted"
+          },
+          {
+            "$ref": "#/components/schemas/AppEventRunRestored"
+          },
+          {
+            "$ref": "#/components/schemas/AppEventRunPurged"
+          },
+          {
+            "$ref": "#/components/schemas/AppEventResync"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "run-created": "#/components/schemas/AppEventRunCreated",
+            "run-updated": "#/components/schemas/AppEventRunUpdated",
+            "run-deleted": "#/components/schemas/AppEventRunDeleted",
+            "run-restored": "#/components/schemas/AppEventRunRestored",
+            "run-purged": "#/components/schemas/AppEventRunPurged",
+            "resync": "#/components/schemas/AppEventResync"
+          }
+        }
       },
       "UploadedInput": {
         "description": "A file uploaded into a run's `inputs/` folder.",
@@ -8195,6 +8271,229 @@
         "required": [
           "status",
           "job_id"
+        ]
+      },
+      "AppEventRunCreated": {
+        "description": "A run was created.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "run": {
+            "description": "The new run.",
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-created"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "run"
+        ]
+      },
+      "AppEventRunUpdated": {
+        "description": "A run changed: it started, ended, or got a new title or pinned state.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "run": {
+            "description": "The run after the change.",
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-updated"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "run"
+        ]
+      },
+      "AppEventRunDeleted": {
+        "description": "A run moved to the trash.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "description": "Id of the run.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-deleted"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "id"
+        ]
+      },
+      "AppEventRunRestored": {
+        "description": "A run came back from the trash.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "run": {
+            "description": "The restored run.",
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-restored"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "run"
+        ]
+      },
+      "AppEventRunPurged": {
+        "description": "A deleted run was removed for good.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "description": "Id of the run.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "kind": {
+            "type": "string",
+            "const": "run-purged"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "id"
+        ]
+      },
+      "AppEventResync": {
+        "description": "The stream cannot continue after the requested event, because the server no longer keeps that event or the\nevent belongs to a previous server. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers\n`/api/runs/abc/results`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "const": "resync"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind"
         ]
       },
       "OperationRequestVersion": {

@@ -1784,6 +1784,23 @@ export type CommandOutcome = {
 };
 
 /**
+ * Change of the app's runs, sent on the app-wide event stream.
+ */
+export type AppEvent = ({
+  kind: 'run-created';
+} & AppEventRunCreated) | ({
+  kind: 'run-updated';
+} & AppEventRunUpdated) | ({
+  kind: 'run-deleted';
+} & AppEventRunDeleted) | ({
+  kind: 'run-restored';
+} & AppEventRunRestored) | ({
+  kind: 'run-purged';
+} & AppEventRunPurged) | ({
+  kind: 'resync';
+} & AppEventResync);
+
+/**
  * A file uploaded into a run's `inputs/` folder.
  */
 export type UploadedInput = {
@@ -4396,6 +4413,160 @@ export type TerminalEventInterrupted = {
   status: 'interrupted';
 };
 
+/**
+ * A run was created.
+ */
+export type AppEventRunCreated = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  /**
+   * The new run.
+   */
+  run: RunSummary;
+  kind: 'run-created';
+};
+
+/**
+ * A run changed: it started, ended, or got a new title or pinned state.
+ */
+export type AppEventRunUpdated = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  /**
+   * The run after the change.
+   */
+  run: RunSummary;
+  kind: 'run-updated';
+};
+
+/**
+ * A run moved to the trash.
+ */
+export type AppEventRunDeleted = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  /**
+   * Id of the run.
+   */
+  id: JobId;
+  kind: 'run-deleted';
+};
+
+/**
+ * A run came back from the trash.
+ */
+export type AppEventRunRestored = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  /**
+   * The restored run.
+   */
+  run: RunSummary;
+  kind: 'run-restored';
+};
+
+/**
+ * A deleted run was removed for good.
+ */
+export type AppEventRunPurged = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  /**
+   * Id of the run.
+   */
+  id: JobId;
+  kind: 'run-purged';
+};
+
+/**
+ * The stream cannot continue after the requested event, because the server no longer keeps that event or the
+ * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+ * events after this one.
+ */
+export type AppEventResync = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale. A path covers every path below it: `/api/runs/abc` covers
+   * `/api/runs/abc/results`.
+   */
+  stale: Array<string>;
+  kind: 'resync';
+};
+
 export type OperationRequestVersion = {
   operation: 'version';
   args: {
@@ -5200,6 +5371,36 @@ export type RunsEventsResponses = {
 };
 
 export type RunsEventsResponse = RunsEventsResponses[keyof RunsEventsResponses];
+
+export type EventsData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Sequence number of the first event to send.
+     */
+    from?: number;
+  };
+  url: '/api/events';
+};
+
+export type EventsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type EventsError = EventsErrors[keyof EventsErrors];
+
+export type EventsResponses = {
+  /**
+   * Stream of server-sent events; the data of each event is one JSON item
+   */
+  200: AppEvent;
+};
+
+export type EventsResponse = EventsResponses[keyof EventsResponses];
 
 export type RunsUploadInputData = {
   body: Blob | File;

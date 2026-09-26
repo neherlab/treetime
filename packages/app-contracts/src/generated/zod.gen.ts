@@ -1910,6 +1910,85 @@ export const zRunEvent = z.discriminatedUnion('type', [
   zRunEventTerminal
 ]);
 
+/**
+ * A run was created.
+ */
+export const zAppEventRunCreated = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  run: zRunSummary,
+  kind: z.literal('run-created')
+});
+
+/**
+ * A run changed: it started, ended, or got a new title or pinned state.
+ */
+export const zAppEventRunUpdated = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  run: zRunSummary,
+  kind: z.literal('run-updated')
+});
+
+/**
+ * A run moved to the trash.
+ */
+export const zAppEventRunDeleted = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  id: zJobId,
+  kind: z.literal('run-deleted')
+});
+
+/**
+ * A run came back from the trash.
+ */
+export const zAppEventRunRestored = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  run: zRunSummary,
+  kind: z.literal('run-restored')
+});
+
+/**
+ * A deleted run was removed for good.
+ */
+export const zAppEventRunPurged = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  id: zJobId,
+  kind: z.literal('run-purged')
+});
+
+/**
+ * The stream cannot continue after the requested event, because the server no longer keeps that event or the
+ * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
+ * events after this one.
+ */
+export const zAppEventResync = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(z.string()),
+  kind: z.literal('resync')
+});
+
+/**
+ * Change of the app's runs, sent on the app-wide event stream.
+ */
+export const zAppEvent = z.discriminatedUnion('kind', [
+  zAppEventRunCreated,
+  zAppEventRunUpdated,
+  zAppEventRunDeleted,
+  zAppEventRunRestored,
+  zAppEventRunPurged,
+  zAppEventResync
+]);
+
 export const zOperationRequestVersion = z.strictObject({
   operation: z.literal('version'),
   args: z.record(z.string(), z.never())
@@ -2302,6 +2381,15 @@ export const zRunsEventsQuery = z.object({
  * Stream of server-sent events; the data of each event is one JSON item
  */
 export const zRunsEventsResponse = zRunEvent;
+
+export const zEventsQuery = z.object({
+  from: z.int().gte(0).optional()
+});
+
+/**
+ * Stream of server-sent events; the data of each event is one JSON item
+ */
+export const zEventsResponse = zAppEvent;
 
 export const zRunsUploadInputBody = z.instanceof(Blob);
 
