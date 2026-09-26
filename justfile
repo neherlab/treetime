@@ -37,14 +37,21 @@ hawk_target_dir := build_dir / "hawk"
 # names the store directory. kache turns incremental compilation off, so it
 # serves only builds without incremental state: every build in CI, where each
 # run starts cold, and the dist, profiling, and bench builds (kache_env). Local
-# dev, test, release, and clippy builds stay incremental. Builds and clippy each
-# have their own store. Dylint and hawk always compile without kache, because a
-# cache hit skips the lint passes.
+# dev, test, release, and clippy builds stay incremental. Dylint and hawk always
+# compile without kache, because a cache hit skips the lint passes.
+#
+# Each store is <KACHE_STORE>/<kache version>/<host|docker>-<pass>: kache does
+# not check its store format, so two versions never share a store; host and
+# container builds use different toolchains; and builds and clippy run different
+# compiler drivers. KACHE_MAX_SIZE in .env caps each store; unset, kache allows
+# 5% of the disk, between 5 and 100 GiB.
 kache_store := env("KACHE_STORE", "")
+kache_version := if kache_store != "" { `kache --version | cut -d ' ' -f 2` } else { "" }
+kache_prefix := kache_store / kache_version / if env("TREETIME_CONTAINER", "") != "" { "docker" } else { "host" }
 kache_env := if kache_store != "" { "RUSTC_WRAPPER=kache" } else { "" }
 export RUSTC_WRAPPER := if env("CI", "") == "" { env("RUSTC_WRAPPER", "") } else if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
-export KACHE_CACHE_DIR := if kache_store != "" { kache_store / "build" } else { env("KACHE_CACHE_DIR", "") }
-lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_store / "lint") } else { "" }
+export KACHE_CACHE_DIR := if kache_store != "" { kache_prefix + "-build" } else { env("KACHE_CACHE_DIR", "") }
+lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
 uncached_env := "RUSTC_WRAPPER= CARGO_INCREMENTAL=0"
 
 # The dylint driver, shared by the check, fix, and baseline recipes. The
