@@ -1,6 +1,6 @@
 import { createApiClient, type ApiClient } from "@neherlab/app-contracts/client";
 
-export const BASE_URL = "http://treetime.test";
+const BASE_URL = "http://treetime.test";
 
 export const RECORD = {
   id: "r1",
@@ -67,7 +67,7 @@ export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-export function sseEvent(event: { seq: number }): string {
+function sseEvent(event: { seq: number }): string {
   return `id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 

@@ -18,8 +18,8 @@
       "ignore": ["src/generated/**"]
     },
     "packages/app-ui": {
-      "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}!"]
+      "entry": ["src/App.tsx!", "src/api/events.ts!", "src/api/hooks.ts!", "src/api/workflows.ts!"],
+      "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"]
     },
     "packages/app-web": {
       "entry": ["index.html!", "src/bridge-web.ts!"],
