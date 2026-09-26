@@ -149,11 +149,13 @@ import threading
 import time
 import tomllib
 from collections import Counter, defaultdict, deque
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
+from typing import TextIO
 
 
 BASE_BRANCH = "rust"
@@ -643,7 +645,7 @@ def tree_of(commit: str) -> str:
 
 
 @contextlib.contextmanager
-def snapshot_lock(snapshot_id: str, *, shared: bool = False, wait: bool = True):
+def snapshot_lock(snapshot_id: str, *, shared: bool = False, wait: bool = True) -> Iterator[bool]:
   """Hold the lock of a snapshot: exclusive to build and run it, shared to read its results. Yield whether it is held.
 
   The lock is an flock on a file in the store, so the system releases it when the holder exits, also on a crash. The
@@ -672,7 +674,7 @@ def snapshot_lock(snapshot_id: str, *, shared: bool = False, wait: bool = True):
       write_lock_holder(handle, "")
 
 
-def write_lock_holder(handle, text: str) -> None:
+def write_lock_holder(handle: TextIO, text: str) -> None:
   handle.truncate(0)
   handle.write(text)
   handle.flush()
