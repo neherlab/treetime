@@ -10,6 +10,8 @@ import {
 import { type ApiClient, runsUploadInput } from "@neherlab/app-contracts/client";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
+import { downloadBlob } from "./save-web";
+
 interface WebBridgeDeps {
   client: ApiClient;
   fetchFn?: typeof fetch;
@@ -133,18 +135,6 @@ function filePath(id: string, path: string): string {
 
 function runPath(id: string): string {
   return `runs/${encodeURIComponent(id)}`;
-}
-
-function downloadBlob(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-
-  anchor.href = url;
-  anchor.download = name;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
 }
 
 async function responseError(response: Response, context: string): Promise<Error> {

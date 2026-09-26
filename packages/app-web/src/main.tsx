@@ -1,13 +1,18 @@
-import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import { ApiProvider, App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { createWebApiClient } from "./api-client";
 import { createWebBridge } from "./bridge-web";
+import { createWebSaveActions } from "./save-web";
 
 import "./index.css";
 
-const bridge = createWebBridge({ client: createWebApiClient() });
+const client = createWebApiClient();
+
+const bridge = createWebBridge({ client });
+
+const save = createWebSaveActions(client);
 
 const root = document.getElementById("root");
 
@@ -18,7 +23,9 @@ if (root) {
         <ErrorBoundary>
           <BridgeProvider bridge={bridge}>
             <QueryProvider>
-              <App />
+              <ApiProvider client={client} save={save}>
+                <App />
+              </ApiProvider>
             </QueryProvider>
           </BridgeProvider>
         </ErrorBoundary>
