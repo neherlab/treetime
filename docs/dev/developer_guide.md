@@ -45,7 +45,7 @@ Host builds go to `.build/host/`. The dylint and IQ-TREE tools are available on 
 Optional settings go into the gitignored `.env` in the checkout; `.env.example` lists them:
 
 - `KACHE_STORE`: directory of the [kache](https://github.com/kunobi-ninja/kache) compiler cache store. The `dist`, `profiling`, and `bench` builds and every CI build then compile through kache, which shares compiled crates across the worktrees of this project. The directory holds one store per kache version, environment (`host` or `docker`), and pass (`build` or `clippy`). Local incremental builds (`dev`, tests, `release`, clippy) compile without it, because kache turns incremental compilation off
-- `KACHE_MAX_SIZE`: size limit of each kache store; kache defaults to 5% of the disk, between 5 and 100 GiB
+- `KACHE_MAX_SIZE`: size limit of each kache store, 100 GiB when unset
 - `TREETIME_PORTLESS`: use of the [portless](https://github.com/vercel-labs/portless) proxy by the web dev server (see [Web app](#web-app))
 
 ## Everyday commands

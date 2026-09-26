@@ -43,12 +43,12 @@ hawk_target_dir := build_dir / "hawk"
 # Each store is <KACHE_STORE>/<kache version>/<host|docker>-<pass>: kache does
 # not check its store format, so two versions never share a store; host and
 # container builds use different toolchains; and builds and clippy run different
-# compiler drivers. KACHE_MAX_SIZE in .env caps each store; unset, kache allows
-# 5% of the disk, between 5 and 100 GiB.
+# compiler drivers. KACHE_MAX_SIZE in .env caps each store, 100 GiB by default.
 kache_store := env("KACHE_STORE", "")
 kache_version := if kache_store != "" { `kache --version | cut -d ' ' -f 2` } else { "" }
 kache_prefix := kache_store / kache_version / if env("TREETIME_CONTAINER", "") != "" { "docker" } else { "host" }
 kache_env := if kache_store != "" { "RUSTC_WRAPPER=kache" } else { "" }
+export KACHE_MAX_SIZE := env("KACHE_MAX_SIZE", "100GiB")
 export RUSTC_WRAPPER := if env("CI", "") == "" { env("RUSTC_WRAPPER", "") } else if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
 export KACHE_CACHE_DIR := if kache_store != "" { kache_prefix + "-build" } else { env("KACHE_CACHE_DIR", "") }
 lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
