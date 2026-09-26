@@ -21,7 +21,11 @@ mod tests {
     let work = tempdir().unwrap();
 
     let server = run_server(command, &config, &work.path().join("server")).await;
-    let napi_dir = run_napi(command, &config, &work.path().join("napi"));
+    let napi_runs = work.path().join("napi");
+    let napi_config = config.clone();
+    let napi_dir = tokio::task::spawn_blocking(move || run_napi(command, &napi_config, &napi_runs))
+      .await
+      .unwrap();
     let cli_dir = work.path().join("cli");
     run_cli(command, &server.config, work.path(), &cli_dir);
 
@@ -34,10 +38,9 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
-    use app_commands::bridge::operations::OperationRequest;
     use app_commands::command::AppCommand;
-    use app_commands::runs::record::RunRecord;
     use app_napi::backend::DesktopService;
+    use app_napi::port::{PortHeader, PortReply, PortRequest};
     use app_server::create_router;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use axum::body::Body;
@@ -46,6 +49,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
+    use std::sync::mpsc;
+    use std::time::Duration;
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
 
@@ -153,20 +158,45 @@ mod tests {
 
     pub(super) fn run_napi(command: AppCommand, config: &Value, runs_dir: &Path) -> PathBuf {
       let service = DesktopService::open(runs_dir).unwrap();
-      let request: OperationRequest = serde_json::from_value(json!({
-        "operation": "create-run",
-        "args": { "request": { "command": command, "config": config, "defer_start": true } },
-      }))
-      .unwrap();
-      let record: RunRecord = serde_json::from_str(&request.handle(service.app()).unwrap()).unwrap();
-      let started = service
-        .app()
-        .runs()
-        .start(&record.id, None, Box::new(|_config| Ok(())))
-        .unwrap();
-      let terminal = serde_json::to_value(started.run()).unwrap();
-      assert_eq!(Some("ok"), terminal["status"].as_str(), "N-API run failed: {terminal}");
-      service.app().runs().store().out_dir(&record.id)
+      let (status, record) = napi_fetch(
+        &service,
+        "POST",
+        "/api/runs",
+        Some(json!({ "command": command, "config": config }).to_string()),
+      );
+      assert_eq!(200, status, "N-API run was not created: {record}");
+      let id = serde_json::from_str::<Value>(&record).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+      let (_, events) = napi_fetch(&service, "GET", &format!("/api/runs/{id}/events"), None);
+      assert!(events.contains("\"status\":\"ok\""), "N-API run failed: {events}");
+      runs_dir.join(&id).join("out")
+    }
+
+    fn napi_fetch(service: &DesktopService, method: &str, url: &str, body: Option<String>) -> (u16, String) {
+      let (send, replies) = mpsc::sync_channel(1024);
+      let request = PortRequest {
+        seq: 0,
+        method: method.to_owned(),
+        url: url.to_owned(),
+        headers: vec![PortHeader {
+          name: "content-type".to_owned(),
+          value: "application/json".to_owned(),
+        }],
+        body,
+      };
+      let _exchange = service.fetch(request, move |reply| send.send(reply).is_ok());
+      let mut status = 0;
+      let mut body = vec![];
+      loop {
+        match replies.recv_timeout(Duration::from_secs(600)).unwrap() {
+          PortReply::Head { status: head, .. } => status = head,
+          PortReply::Chunk { data, .. } => body.extend_from_slice(&data),
+          PortReply::End { .. } => return (status, String::from_utf8(body).unwrap()),
+          PortReply::Error { error, .. } => panic!("the N-API exchange failed: {}", error.message),
+        }
+      }
     }
 
     async fn response_json(response: axum::response::Response) -> Value {

@@ -261,6 +261,8 @@ version = "1.0.0"
 dependencies = [
  "app-commands",
  "app-output",
+ "app-server",
+ "axum",
  "ctor",
  "eyre",
  "log",
@@ -274,6 +276,9 @@ dependencies = [
  "serde_json",
  "strum 0.27.2",
  "tempfile",
+ "tokio",
+ "tokio-stream",
+ "tower",
  "treetime-schema",
  "treetime-utils",
 ]

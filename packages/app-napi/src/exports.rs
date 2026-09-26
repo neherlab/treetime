@@ -1,5 +1,6 @@
 use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
+use crate::port::{PortReply, PortRequest};
 use crate::subscription::EventForwarder;
 use app_commands::bridge::operations::OperationRequest;
 use app_commands::job::JobId;
@@ -11,6 +12,7 @@ use napi::{Env, Status, Task};
 use napi_derive::napi;
 use std::path::Path;
 use std::sync::Arc;
+use tokio::task::AbortHandle;
 use treetime_utils::make_report;
 
 type EventCallback = Arc<ThreadsafeFunction<String, ()>>;
@@ -61,6 +63,18 @@ impl Backend {
     Ok(Subscription { forwarder })
   }
 
+  #[napi]
+  pub fn fetch(
+    &self,
+    request: PortRequest,
+    on_reply: ThreadsafeFunction<PortReply, (), PortReply, Status, false>,
+  ) -> PortExchange {
+    let abort = self.service.fetch(request, move |reply| {
+      on_reply.call(reply, ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok
+    });
+    PortExchange { abort }
+  }
+
   #[napi(ts_return_type = "Promise<string>")]
   pub fn save_run_file(&self, id: String, path: String, destination: String) -> AsyncTask<JsonTask> {
     let service = Arc::clone(&self.service);
@@ -77,6 +91,19 @@ impl Backend {
       service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))?;
       Ok(serde_json::to_string(&())?)
     })
+  }
+}
+
+#[napi]
+pub struct PortExchange {
+  abort: AbortHandle,
+}
+
+#[napi]
+impl PortExchange {
+  #[napi]
+  pub fn abort(&self) {
+    self.abort.abort();
   }
 }
 
