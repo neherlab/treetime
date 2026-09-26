@@ -145,6 +145,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import tomllib
@@ -1262,7 +1263,7 @@ def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
     detail = r.detail.replace("\t", " ").replace("\n", " ")
     fields = [r.case.id, r.label, r.case.command, r.case.dataset or "", f"{r.wall_s:.2f}", base_wall, detail]
     rows.append("\t".join(fields))
-  (report_dir / "report.tsv").write_text("\n".join(rows) + "\n")
+  write_text_atomic(report_dir / "report.tsv", "\n".join(rows) + "\n")
 
   counts = Counter(r.label for r in reports)
   md = [f"# Smoke run of `{current.id}`" + (f" against `{baseline.id}`" if baseline else ""), ""]
@@ -1290,7 +1291,7 @@ def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
       if diff.lines:
         md += ["", "  ```", *[f"  {line}" for line in diff.lines], "  ```", ""]
     md.append("")
-  (report_dir / "report.md").write_text("\n".join(md))
+  write_text_atomic(report_dir / "report.md", "\n".join(md))
 
 
 def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapshot | None, report_dir: Path,
@@ -1389,9 +1390,15 @@ def sha256_file(path: Path) -> str:
 
 
 def write_json(path: Path, data) -> None:
+  write_text_atomic(path, json.dumps(data, indent=2) + "\n")
+
+
+def write_text_atomic(path: Path, text: str) -> None:
+  """Replace a file in one step through a temporary file of its own, so concurrent writers never see partial content."""
   path.parent.mkdir(parents=True, exist_ok=True)
-  temporary = path.with_name(f".{path.name}.tmp")
-  temporary.write_text(json.dumps(data, indent=2) + "\n")
+  descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+  with os.fdopen(descriptor, "w") as handle:
+    handle.write(text)
   os.replace(temporary, path)
 
 
