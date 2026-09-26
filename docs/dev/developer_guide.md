@@ -127,6 +127,12 @@ The TypeScript apps (`app-ui`, `app-web`, `app-desktop`) are a user interface ar
 
 When the portless proxy runs on the machine, the web server also registers `https://treetime.localhost` in the main checkout and `https://<branch>.treetime.localhost` in a linked worktree.
 
+#### Event streams and HTTP/2
+
+The web app follows changes through server-sent event streams: `GET /api/events` for changes to any run, and `GET /api/runs/{id}/events` for each run it follows. Every open stream holds one connection. Over HTTP/1.1, browsers allow at most 6 connections per host, shared by all tabs, so more open streams stall every further request to the server. Over HTTP/2, all requests share one connection.
+
+The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TLS. A deployment therefore puts a reverse proxy in front of the server that terminates TLS and serves HTTP/2 to the browser, for example nginx with `listen 443 ssl; http2 on;`. In development, the portless proxy (`https://treetime.localhost`) does this by default. Without such a proxy, at most 6 streams stay open per host across all tabs.
+
 ### Desktop app
 
 `just desktop` starts the Electron app in development mode. In the container it needs the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
