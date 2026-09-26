@@ -232,7 +232,7 @@ fn timetree_estimates(
     },
     clock_rate_fixed: fixed,
     r,
-    r_squared: r.map(|r| r * r),
+    r_squared: outputs.clock_model.and_then(ClockModel::r_squared),
     samples: tree.tips().count(),
     excluded_samples: tree.tips().filter(|tip| tip.excluded == Some(true)).count(),
     coalescent_prior: coalescent_prior(config),

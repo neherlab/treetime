@@ -86,7 +86,7 @@ pub fn clock_results(
       clock_rate: model.map(ClockModel::clock_rate),
       clock_rate_fixed: model.is_some_and(is_fixed),
       r: model.and_then(ClockModel::r_val),
-      r_squared: model.and_then(ClockModel::r_val).map(|r| r * r),
+      r_squared: model.and_then(ClockModel::r_squared),
       dated_samples: dated.len(),
       outliers: dated.iter().filter(|point| point.outlier).count(),
     },

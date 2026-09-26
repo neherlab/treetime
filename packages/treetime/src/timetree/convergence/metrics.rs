@@ -28,14 +28,14 @@ impl ConvergenceMetrics {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IterationClock {
   pub clock_rate: f64,
-  pub r_val: Option<f64>,
+  pub r_squared: Option<f64>,
 }
 
 impl IterationClock {
   pub(crate) fn of(clock_model: &ClockModel) -> Self {
     Self {
       clock_rate: clock_model.clock_rate(),
-      r_val: clock_model.r_val(),
+      r_squared: clock_model.r_squared(),
     }
   }
 }

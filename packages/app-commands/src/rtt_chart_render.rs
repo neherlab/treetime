@@ -108,11 +108,11 @@ where
       float_to_significant_digits(clock_model.intercept(), 4)
     ),
   )?;
-  if let Some(r_val) = clock_model.r_val() {
+  if let Some((r_val, r_squared)) = clock_model.r_val().zip(clock_model.r_squared()) {
     add_legend(&mut chart, format!("R: {:}", float_to_significant_digits(r_val, 4)))?;
     add_legend(
       &mut chart,
-      format!("R²: {:}", float_to_significant_digits(r_val.powf(2.0), 4)),
+      format!("R²: {:}", float_to_significant_digits(r_squared, 4)),
     )?;
   }
   if let Some(chisq) = clock_model.chisq() {

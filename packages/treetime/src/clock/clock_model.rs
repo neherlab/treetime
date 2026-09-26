@@ -117,6 +117,10 @@ impl ClockModel {
     self.get_regression_stat(|s| s.r_val)
   }
 
+  pub fn r_squared(&self) -> Option<f64> {
+    self.r_val().map(r_squared)
+  }
+
   pub fn cov(&self) -> Option<&Array2<f64>> {
     match &self.stats {
       ClockModelStats::Estimated(stats) => Some(&stats.cov),
@@ -245,8 +249,8 @@ impl ClockRegression {
     self.chisq
   }
 
-  pub(crate) fn r_val(&self) -> f64 {
-    self.r_val
+  pub(crate) fn r_squared(&self) -> f64 {
+    r_squared(self.r_val)
   }
 
   pub(crate) fn hessian(&self) -> &Array2<f64> {
@@ -269,4 +273,8 @@ pub struct RegressionStats {
   pub(crate) hessian: Array2<f64>,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub(crate) cov: Array2<f64>,
+}
+
+fn r_squared(r_val: f64) -> f64 {
+  r_val * r_val
 }

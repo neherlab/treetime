@@ -109,7 +109,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   progress_info!(progress, "**Clock rate:** {rate:.6e}");
   progress_info!(progress, "**Intercept:** {intercept:.4}");
   if let Some(reg) = &regression {
-    progress_info!(progress, "**R²:** {:.4}", reg.r_val() * reg.r_val());
+    progress_info!(progress, "**R²:** {:.4}", reg.r_squared());
     progress_info!(progress, "**χ²:** {:.4}", reg.chisq());
     progress_info!(progress, "**Hessian:**\n{}", reg.hessian());
   }

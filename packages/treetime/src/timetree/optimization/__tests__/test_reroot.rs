@@ -164,8 +164,7 @@ mod tests {
       "Node count should not decrease after reroot"
     );
 
-    let r_val = clock_model.r_val().expect("Clock model should have r_val");
-    let r_squared = r_val * r_val;
+    let r_squared = clock_model.r_squared().expect("Clock model should have r_squared");
     assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
 
     let chisq = clock_model.chisq().expect("Clock model should have chisq");
@@ -528,7 +527,7 @@ mod tests {
       "Leaf count should be unchanged after first reroot"
     );
 
-    let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
+    let r_squared_1 = clock_model_1.r_squared();
 
     let names_tt_1 = names;
     let (
@@ -558,7 +557,7 @@ mod tests {
       "Leaf count should be unchanged after second reroot"
     );
 
-    if let (Some(r2_1), Some(r2_2)) = (r_squared_1, clock_model_2.r_val().map(|r| r * r)) {
+    if let (Some(r2_1), Some(r2_2)) = (r_squared_1, clock_model_2.r_squared()) {
       assert!(
         r2_2 >= r2_1 - 1e-6,
         "Second reroot R² ({r2_2}) should be >= first R² ({r2_1})"

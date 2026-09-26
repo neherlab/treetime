@@ -267,7 +267,7 @@ mod tests {
       None,
       IterationClock {
         clock_rate: 2e-3,
-        r_val: Some(0.5),
+        r_squared: Some(0.25),
       },
       &BTreeMap::new(),
       &NoopProgress,
@@ -307,7 +307,7 @@ mod tests {
           1,
           IterationClock {
             clock_rate: 2e-3,
-            r_val: Some(0.5)
+            r_squared: Some(0.25)
           }
         ),
         (2, 0, 0, helpers::fixed_clock()),
@@ -338,7 +338,7 @@ mod tests {
     pub(super) const fn fixed_clock() -> IterationClock {
       IterationClock {
         clock_rate: 1e-3,
-        r_val: None,
+        r_squared: None,
       }
     }
 

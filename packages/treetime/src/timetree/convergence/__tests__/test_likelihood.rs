@@ -153,7 +153,7 @@ mod tests {
     pub(super) const fn fixed_clock() -> IterationClock {
       IterationClock {
         clock_rate: 1e-3,
-        r_val: None,
+        r_squared: None,
       }
     }
 

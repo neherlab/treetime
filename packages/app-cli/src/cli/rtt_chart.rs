@@ -55,9 +55,9 @@ pub(crate) fn write_clock_regression_chart_text(
   table.add_row([o!("tMRCA"), format!("{:.1}", clock_model.t_mrca())]);
   table.add_row([o!("Rate"), format!("{:.6}", clock_model.clock_rate())]);
   table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
-  if let Some(r_val) = clock_model.r_val() {
+  if let Some((r_val, r_squared)) = clock_model.r_val().zip(clock_model.r_squared()) {
     table.add_row([o!("R"), format!("{r_val:.4}")]);
-    table.add_row([o!("R²"), format!("{:.4}", r_val.powf(2.0))]);
+    table.add_row([o!("R²"), format!("{r_squared:.4}")]);
   }
   if let Some(chisq) = clock_model.chisq() {
     table.add_row([o!("χ²"), format!("{chisq:.3e}")]);

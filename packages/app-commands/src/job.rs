@@ -109,7 +109,7 @@ impl From<&IterationRecord> for IterationEvent {
       log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
       log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
       clock_rate: JsonFloat(record.clock.clock_rate),
-      r_squared: record.clock.r_val.map(|r| JsonFloat(r * r)),
+      r_squared: record.clock.r_squared.map(JsonFloat),
     }
   }
 }
