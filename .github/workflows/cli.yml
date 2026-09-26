@@ -19,6 +19,9 @@ defaults:
     shell: bash -euo pipefail {0}
 
 env:
+  # Every run starts without incremental state, so incremental compiles only add
+  # overhead, and kache caches only compiles without it.
+  CARGO_INCREMENTAL: "0"
   KACHE_STORE: ${{ github.workspace }}/.cache/kache
   FORCE_COLOR: "1"
 

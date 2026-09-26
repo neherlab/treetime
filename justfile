@@ -34,11 +34,13 @@ dylint_target_dir := build_dir / "dylint"
 hawk_target_dir := build_dir / "hawk"
 
 # The kache compiler cache is optional. KACHE_STORE, in .env or the environment,
-# names the store directory. kache turns incremental compilation off, so it
-# serves only builds without incremental state: every build in CI, where each
-# run starts cold, and the dist, profiling, and bench builds (kache_env). Local
-# dev, test, release, and clippy builds stay incremental. Dylint and hawk always
-# compile without kache, because a cache hit skips the lint passes.
+# names the store directory; every build and clippy pass then compiles through
+# kache. KACHE_PRESERVE_INCREMENTAL keeps incremental compiles out of the cache:
+# the workspace crates of dev, test, release, and clippy builds keep their
+# incremental state, so an edit rebuilds as fast as without kache, while kache
+# serves the dependencies and every build without incremental state (CI, dist,
+# profiling, bench, and cross builds). Dylint, hawk, and coverage always compile
+# without kache, because a cache hit skips their analysis passes.
 #
 # Each store is <KACHE_STORE>/<kache version>/<host|docker>-<pass>: kache does
 # not check its store format, so two versions never share a store; host and
@@ -47,9 +49,9 @@ hawk_target_dir := build_dir / "hawk"
 kache_store := env("KACHE_STORE", "")
 kache_version := if kache_store != "" { `kache --version | cut -d ' ' -f 2` } else { "" }
 kache_prefix := kache_store / kache_version / if env("TREETIME_CONTAINER", "") != "" { "docker" } else { "host" }
-kache_env := if kache_store != "" { "RUSTC_WRAPPER=kache" } else { "" }
 export KACHE_MAX_SIZE := env("KACHE_MAX_SIZE", "100GiB")
-export RUSTC_WRAPPER := if env("CI", "") == "" { env("RUSTC_WRAPPER", "") } else if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
+export KACHE_PRESERVE_INCREMENTAL := "1"
+export RUSTC_WRAPPER := if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
 export KACHE_CACHE_DIR := if kache_store != "" { kache_prefix + "-build" } else { env("KACHE_CACHE_DIR", "") }
 lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
 uncached_env := "RUSTC_WRAPPER= CARGO_INCREMENTAL=0"
@@ -147,13 +149,13 @@ build-release bin="treetime" *args:
 # Build a binary as shipped (dist profile: fat LTO) and copy it to .out/: just build-dist treetime
 [group("build")]
 build-dist bin="treetime" *args:
-    {{ kache_env }} cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
+    cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
     mkdir -p .out && cp {{ quote(CARGO_TARGET_DIR / "dist" / bin) }} .out/
 
 # Build a binary (profiling profile: dist with full debug info)
 [group("build")]
 build-profiling bin="treetime" *args:
-    {{ kache_env }} cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
+    cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
@@ -488,7 +490,7 @@ build-desktop: _js
 # Run all benchmarks (bench profile: the shipped dist settings)
 [group("bench")]
 bench *args:
-    {{ kache_env }} cargo bench --locked --workspace --benches "$@"
+    cargo bench --locked --workspace --benches "$@"
 
 # Sample a profile of a binary (host only, needs Docker and perf or samply): just profile treetime -- <args>
 [group("bench")]
