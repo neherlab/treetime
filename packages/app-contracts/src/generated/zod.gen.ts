@@ -250,54 +250,12 @@ export const zConfigProblem = z.object({
 });
 
 /**
- * Outcome of checking a configuration without running it.
- */
-export const zCheckConfigResponse = z.union([
-  z.object({
-    command: zAppCommand,
-    config: z.record(z.string(), z.unknown()),
-    code: zConfigCode,
-    checks: z.array(zRunCheck),
-    status: z.literal('valid')
-  }),
-  z.object({
-    command: zAppCommand,
-    message: z.string(),
-    causes: z.array(z.string()),
-    problems: z.array(zConfigProblem),
-    rendered: z.string().nullish(),
-    messages: z.array(z.string()),
-    checks: z.array(zRunCheck),
-    status: z.literal('invalid')
-  })
-]);
-
-/**
  * Request to resolve a configuration as a run resolves it, without running it.
  */
 export const zRunConfigRequest = z.strictObject({
   command: zAppCommand,
   config: z.unknown()
 });
-
-/**
- * Outcome of resolving a configuration as a run resolves it.
- */
-export const zRunConfigResponse = z.union([
-  z.object({
-    config: z.record(z.string(), z.unknown()),
-    code: zConfigCode,
-    config_hash: z.string().nullish(),
-    config_hash_error: z.string().nullish(),
-    status: z.literal('valid')
-  }),
-  z.object({
-    message: z.string(),
-    causes: z.array(z.string()),
-    problems: z.array(zConfigProblem),
-    status: z.literal('invalid')
-  })
-]);
 
 /**
  * A command configuration whose input files to inspect before a run.
@@ -552,52 +510,11 @@ export const zResultTree = z.object({
 });
 
 /**
- * Coalescent prior of a `timetree` run.
- */
-export const zCoalescentPrior = z.union([
-  z.object({
-    kind: z.literal('none')
-  }),
-  z.object({
-    tc: z.number(),
-    kind: z.literal('fixed')
-  }),
-  z.object({
-    kind: z.literal('optimized')
-  }),
-  z.object({
-    points: z.int().gte(0),
-    stiffness: z.number(),
-    kind: z.literal('skyline')
-  })
-]);
-
-/**
  * Parameters of a relaxed clock.
  */
 export const zRelaxedClock = z.object({
   slack: z.number(),
   coupling: z.number()
-});
-
-/**
- * Estimates of a `timetree` run.
- */
-export const zTimetreeEstimates = z.object({
-  root_date: zYearDate.nullish(),
-  root_interval: zDateInterval.nullish(),
-  root_near_interval_edge: z.boolean(),
-  clock_rate: z.number().nullish(),
-  clock_rate_std: z.number().nullish(),
-  clock_rate_fixed: z.boolean(),
-  r: z.number().nullish(),
-  r_squared: z.number().nullish(),
-  samples: z.int().gte(0),
-  excluded_samples: z.int().gte(0),
-  coalescent_prior: zCoalescentPrior,
-  relaxed_clock: zRelaxedClock.nullish(),
-  log_likelihood: zJsonFloat.nullish(),
-  iterations: z.int().gte(0)
 });
 
 /**
@@ -668,16 +585,6 @@ export const zSkylineSegment = z.object({
   end: z.number(),
   tc: zBand,
   ne: zBand
-});
-
-/**
- * Results of a `timetree` run.
- */
-export const zTimetreeResults = z.object({
-  estimates: zTimetreeEstimates.nullish(),
-  root_to_tip: zRootToTip.nullish(),
-  iterations: z.array(zIterationRow),
-  skyline: z.array(zSkylineSegment)
 });
 
 /**
@@ -778,36 +685,6 @@ export const zTreeSummary = z.object({
 });
 
 /**
- * Results specific to the command of a run.
- */
-export const zCommandResults = z.union([
-  z.object({
-    command: z.literal('timetree'),
-    data: zTimetreeResults
-  }),
-  z.object({
-    command: z.literal('clock'),
-    data: zClockResults
-  }),
-  z.object({
-    command: z.literal('ancestral'),
-    data: zAncestralResults
-  }),
-  z.object({
-    command: z.literal('mugration'),
-    data: zMugrationResults
-  }),
-  z.object({
-    command: z.literal('optimize'),
-    data: zTreeSummary
-  }),
-  z.object({
-    command: z.literal('prune'),
-    data: zTreeSummary
-  })
-]);
-
-/**
  * The publication to cite for TreeTime.
  */
 export const zCitation = z.object({
@@ -825,61 +702,9 @@ export const zOutputProblem = z.object({
 });
 
 /**
- * Results of a finished run, read from its output files.
- */
-export const zRunResults = z.object({
-  tree: zResultTree.nullish(),
-  results: zCommandResults,
-  methods: z.string().nullish(),
-  citation: zCitation,
-  problems: z.array(zOutputProblem)
-});
-
-/**
  * Auspice JSON of a run, with the color scales the app displays.
  */
 export const zAuspiceDocument = z.record(z.string(), z.unknown());
-
-/**
- * A setting whose value differs between two runs.
- */
-export const zSettingDifference = z.union([
-  z.object({
-    key: z.string(),
-    first: z.unknown(),
-    second: z.unknown(),
-    kind: z.literal('setting')
-  }),
-  z.object({
-    key: z.string(),
-    first: z.array(z.string()),
-    second: z.array(z.string()),
-    same_content: z.boolean(),
-    kind: z.literal('input')
-  })
-]);
-
-/**
- * Settings and inputs that differ between two runs of the same command.
- */
-export const zSettingsComparison = z.object({
-  differences: z.array(zSettingDifference),
-  compared: z.int().gte(0),
-  same_config_hash: z.boolean()
-});
-
-/**
- * Estimates of two time-tree runs and their differences, second minus first.
- */
-export const zEstimateComparison = z.object({
-  first: zTimetreeEstimates,
-  second: zTimetreeEstimates,
-  root_shift_days: z.number().nullish(),
-  root_interval_change_days: z.number().nullish(),
-  clock_rate_change_percent: z.number().nullish(),
-  excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
-  log_likelihood_change: z.number().nullish()
-});
 
 /**
  * Date shift of one ancestor between two trees.
@@ -898,15 +723,6 @@ export const zAncestorComparison = z.object({
   shifts: z.array(zAncestorShift),
   ancestors: z.int().gte(0),
   mean_absolute_shift_days: z.number().nullish()
-});
-
-/**
- * Comparison of two runs: their settings and their results.
- */
-export const zRunComparison = z.object({
-  settings: zSettingsComparison.nullish(),
-  estimates: zEstimateComparison.nullish(),
-  ancestors: zAncestorComparison.nullish()
 });
 
 /**
@@ -999,57 +815,6 @@ export const zCommandOutcome = z.object({
 });
 
 /**
- * How a job ended.
- */
-export const zTerminalEvent = z.union([
-  z.object({
-    job_id: zJobId,
-    result: zCommandOutcome,
-    status: z.literal('ok')
-  }),
-  z.object({
-    job_id: zJobId,
-    message: z.string(),
-    causes: z.array(z.string()),
-    status: z.literal('error')
-  }),
-  z.object({
-    job_id: zJobId,
-    status: z.literal('cancelled')
-  }),
-  z.object({
-    job_id: zJobId,
-    status: z.literal('interrupted')
-  })
-]);
-
-export const zRunEvent = z.intersection(z.union([
-  z.object({
-    type: z.literal('started'),
-    data: zJobStarted
-  }),
-  z.object({
-    type: z.literal('progress'),
-    data: zProgressEvent
-  }),
-  z.object({
-    type: z.literal('log'),
-    data: zLogEvent
-  }),
-  z.object({
-    type: z.literal('iteration'),
-    data: zIterationEvent
-  }),
-  z.object({
-    type: z.literal('terminal'),
-    data: zTerminalEvent
-  })
-]), z.object({
-  seq: z.int().gte(0),
-  time: z.string()
-}));
-
-/**
  * A file uploaded into a run's `inputs/` folder.
  */
 export const zUploadedInput = z.object({
@@ -1058,123 +823,6 @@ export const zUploadedInput = z.object({
   size: z.int().gte(0),
   sha256: z.string()
 });
-
-/**
- * Request of an operation of the app back end: the name of the operation and its arguments.
- */
-export const zOperationRequest = z.union([
-  z.strictObject({
-    operation: z.literal('version'),
-    args: z.record(z.string(), z.never())
-  }),
-  z.strictObject({
-    operation: z.literal('datasets'),
-    args: z.record(z.string(), z.never())
-  }),
-  z.strictObject({
-    operation: z.literal('check-config'),
-    args: z.strictObject({
-      request: zCheckConfigRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('run-config'),
-    args: z.strictObject({
-      request: zRunConfigRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('check-inputs'),
-    args: z.strictObject({
-      request: zCheckInputsRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('list-runs'),
-    args: z.record(z.string(), z.never())
-  }),
-  z.strictObject({
-    operation: z.literal('create-run'),
-    args: z.strictObject({
-      request: zCreateRunRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('get-run'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('start-run'),
-    args: z.strictObject({
-      id: zJobId,
-      request: zStartRunRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('update-run'),
-    args: z.strictObject({
-      id: zJobId,
-      request: zUpdateRunRequest
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('cancel-run'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('delete-run'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('restore-run'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('purge-run'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('run-files'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('run-results'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('run-auspice'),
-    args: z.strictObject({
-      id: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('compare-runs'),
-    args: z.strictObject({
-      id: zJobId,
-      other: zJobId
-    })
-  }),
-  z.strictObject({
-    operation: z.literal('clade-in-runs'),
-    args: z.strictObject({
-      request: zCladeRequest
-    })
-  })
-]);
 
 export const zBranchLengthMode = z.enum(['input', 'marginal']);
 
@@ -1808,32 +1456,6 @@ export const zMugrationConfig = z.strictObject({
 });
 
 /**
- * Event of a running job, in the order the job emits them.
- */
-export const zJobEvent = z.union([
-  z.object({
-    type: z.literal('started'),
-    data: zJobStarted
-  }),
-  z.object({
-    type: z.literal('progress'),
-    data: zProgressEvent
-  }),
-  z.object({
-    type: z.literal('log'),
-    data: zLogEvent
-  }),
-  z.object({
-    type: z.literal('iteration'),
-    data: zIterationEvent
-  }),
-  z.object({
-    type: z.literal('terminal'),
-    data: zTerminalEvent
-  })
-]);
-
-/**
  * How much a run of the app needs an input file.
  */
 export const zInputNeed = z.union([
@@ -1935,6 +1557,564 @@ export const zCommandSettings = z.object({
 export const zSettingCatalog = z.object({
   commands: z.array(zCommandSettings)
 });
+
+/**
+ * The configuration is accepted.
+ */
+export const zCheckConfigResponseValid = z.object({
+  command: zAppCommand,
+  config: z.record(z.string(), z.unknown()),
+  code: zConfigCode,
+  checks: z.array(zRunCheck),
+  status: z.literal('valid')
+});
+
+/**
+ * The configuration is rejected.
+ */
+export const zCheckConfigResponseInvalid = z.object({
+  command: zAppCommand,
+  message: z.string(),
+  causes: z.array(z.string()),
+  problems: z.array(zConfigProblem),
+  rendered: z.string().nullish(),
+  messages: z.array(z.string()),
+  checks: z.array(zRunCheck),
+  status: z.literal('invalid')
+});
+
+/**
+ * Outcome of checking a configuration without running it.
+ */
+export const zCheckConfigResponse = z.discriminatedUnion('status', [
+  zCheckConfigResponseValid,
+  zCheckConfigResponseInvalid
+]);
+
+/**
+ * The configuration is accepted.
+ */
+export const zRunConfigResponseValid = z.object({
+  config: z.record(z.string(), z.unknown()),
+  code: zConfigCode,
+  config_hash: z.string().nullish(),
+  config_hash_error: z.string().nullish(),
+  status: z.literal('valid')
+});
+
+/**
+ * The configuration is rejected.
+ */
+export const zRunConfigResponseInvalid = z.object({
+  message: z.string(),
+  causes: z.array(z.string()),
+  problems: z.array(zConfigProblem),
+  status: z.literal('invalid')
+});
+
+/**
+ * Outcome of resolving a configuration as a run resolves it.
+ */
+export const zRunConfigResponse = z.discriminatedUnion('status', [
+  zRunConfigResponseValid,
+  zRunConfigResponseInvalid
+]);
+
+export const zCommandResultsClock = z.object({
+  command: z.literal('clock'),
+  data: zClockResults
+});
+
+export const zCommandResultsAncestral = z.object({
+  command: z.literal('ancestral'),
+  data: zAncestralResults
+});
+
+export const zCommandResultsMugration = z.object({
+  command: z.literal('mugration'),
+  data: zMugrationResults
+});
+
+export const zCommandResultsOptimize = z.object({
+  command: z.literal('optimize'),
+  data: zTreeSummary
+});
+
+export const zCommandResultsPrune = z.object({
+  command: z.literal('prune'),
+  data: zTreeSummary
+});
+
+/**
+ * No coalescent prior.
+ */
+export const zCoalescentPriorNone = z.object({
+  kind: z.literal('none')
+});
+
+/**
+ * Constant population size with a fixed time scale.
+ */
+export const zCoalescentPriorFixed = z.object({
+  tc: z.number(),
+  kind: z.literal('fixed')
+});
+
+/**
+ * Constant population size with an optimized time scale.
+ */
+export const zCoalescentPriorOptimized = z.object({
+  kind: z.literal('optimized')
+});
+
+/**
+ * Piecewise-constant population size.
+ */
+export const zCoalescentPriorSkyline = z.object({
+  points: z.int().gte(0),
+  stiffness: z.number(),
+  kind: z.literal('skyline')
+});
+
+/**
+ * Coalescent prior of a `timetree` run.
+ */
+export const zCoalescentPrior = z.discriminatedUnion('kind', [
+  zCoalescentPriorNone,
+  zCoalescentPriorFixed,
+  zCoalescentPriorOptimized,
+  zCoalescentPriorSkyline
+]);
+
+/**
+ * Estimates of a `timetree` run.
+ */
+export const zTimetreeEstimates = z.object({
+  root_date: zYearDate.nullish(),
+  root_interval: zDateInterval.nullish(),
+  root_near_interval_edge: z.boolean(),
+  clock_rate: z.number().nullish(),
+  clock_rate_std: z.number().nullish(),
+  clock_rate_fixed: z.boolean(),
+  r: z.number().nullish(),
+  r_squared: z.number().nullish(),
+  samples: z.int().gte(0),
+  excluded_samples: z.int().gte(0),
+  coalescent_prior: zCoalescentPrior,
+  relaxed_clock: zRelaxedClock.nullish(),
+  log_likelihood: zJsonFloat.nullish(),
+  iterations: z.int().gte(0)
+});
+
+/**
+ * Results of a `timetree` run.
+ */
+export const zTimetreeResults = z.object({
+  estimates: zTimetreeEstimates.nullish(),
+  root_to_tip: zRootToTip.nullish(),
+  iterations: z.array(zIterationRow),
+  skyline: z.array(zSkylineSegment)
+});
+
+/**
+ * Estimates of two time-tree runs and their differences, second minus first.
+ */
+export const zEstimateComparison = z.object({
+  first: zTimetreeEstimates,
+  second: zTimetreeEstimates,
+  root_shift_days: z.number().nullish(),
+  root_interval_change_days: z.number().nullish(),
+  clock_rate_change_percent: z.number().nullish(),
+  excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
+  log_likelihood_change: z.number().nullish()
+});
+
+export const zCommandResultsTimetree = z.object({
+  command: z.literal('timetree'),
+  data: zTimetreeResults
+});
+
+/**
+ * Results specific to the command of a run.
+ */
+export const zCommandResults = z.discriminatedUnion('command', [
+  zCommandResultsTimetree,
+  zCommandResultsClock,
+  zCommandResultsAncestral,
+  zCommandResultsMugration,
+  zCommandResultsOptimize,
+  zCommandResultsPrune
+]);
+
+/**
+ * Results of a finished run, read from its output files.
+ */
+export const zRunResults = z.object({
+  tree: zResultTree.nullish(),
+  results: zCommandResults,
+  methods: z.string().nullish(),
+  citation: zCitation,
+  problems: z.array(zOutputProblem)
+});
+
+/**
+ * A value that controls the analysis.
+ */
+export const zSettingDifferenceSetting = z.object({
+  key: z.string(),
+  first: z.unknown(),
+  second: z.unknown(),
+  kind: z.literal('setting')
+});
+
+/**
+ * Input files, which differ in their paths, their contents, or both.
+ */
+export const zSettingDifferenceInput = z.object({
+  key: z.string(),
+  first: z.array(z.string()),
+  second: z.array(z.string()),
+  same_content: z.boolean(),
+  kind: z.literal('input')
+});
+
+/**
+ * A setting whose value differs between two runs.
+ */
+export const zSettingDifference = z.discriminatedUnion('kind', [
+  zSettingDifferenceSetting,
+  zSettingDifferenceInput
+]);
+
+/**
+ * Settings and inputs that differ between two runs of the same command.
+ */
+export const zSettingsComparison = z.object({
+  differences: z.array(zSettingDifference),
+  compared: z.int().gte(0),
+  same_config_hash: z.boolean()
+});
+
+/**
+ * Comparison of two runs: their settings and their results.
+ */
+export const zRunComparison = z.object({
+  settings: zSettingsComparison.nullish(),
+  estimates: zEstimateComparison.nullish(),
+  ancestors: zAncestorComparison.nullish()
+});
+
+/**
+ * The job was accepted; always the first event.
+ */
+export const zRunEventStarted = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  type: z.literal('started'),
+  data: zJobStarted
+});
+
+/**
+ * A stage of the computation began or advanced.
+ */
+export const zRunEventProgress = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  type: z.literal('progress'),
+  data: zProgressEvent
+});
+
+/**
+ * A diagnostic message of the computation.
+ */
+export const zRunEventLog = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  type: z.literal('log'),
+  data: zLogEvent
+});
+
+/**
+ * Convergence values of one timetree optimization iteration.
+ */
+export const zRunEventIteration = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  type: z.literal('iteration'),
+  data: zIterationEvent
+});
+
+/**
+ * The command ran to completion.
+ */
+export const zTerminalEventOk = z.object({
+  job_id: zJobId,
+  result: zCommandOutcome,
+  status: z.literal('ok')
+});
+
+/**
+ * The command failed, or its configuration was rejected.
+ */
+export const zTerminalEventError = z.object({
+  job_id: zJobId,
+  message: z.string(),
+  causes: z.array(z.string()),
+  status: z.literal('error')
+});
+
+/**
+ * The job stopped because cancellation was requested.
+ */
+export const zTerminalEventCancelled = z.object({
+  job_id: zJobId,
+  status: z.literal('cancelled')
+});
+
+/**
+ * The job stopped because the process that ran it stopped.
+ */
+export const zTerminalEventInterrupted = z.object({
+  job_id: zJobId,
+  status: z.literal('interrupted')
+});
+
+/**
+ * How a job ended.
+ */
+export const zTerminalEvent = z.discriminatedUnion('status', [
+  zTerminalEventOk,
+  zTerminalEventError,
+  zTerminalEventCancelled,
+  zTerminalEventInterrupted
+]);
+
+/**
+ * The job ended; always the last event, exactly once per job.
+ */
+export const zRunEventTerminal = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  type: z.literal('terminal'),
+  data: zTerminalEvent
+});
+
+/**
+ * Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
+ */
+export const zRunEvent = z.discriminatedUnion('type', [
+  zRunEventStarted,
+  zRunEventProgress,
+  zRunEventLog,
+  zRunEventIteration,
+  zRunEventTerminal
+]);
+
+export const zOperationRequestVersion = z.strictObject({
+  operation: z.literal('version'),
+  args: z.record(z.string(), z.never())
+});
+
+export const zOperationRequestDatasets = z.strictObject({
+  operation: z.literal('datasets'),
+  args: z.record(z.string(), z.never())
+});
+
+export const zOperationRequestCheckConfig = z.strictObject({
+  operation: z.literal('check-config'),
+  args: z.strictObject({
+    request: zCheckConfigRequest
+  })
+});
+
+export const zOperationRequestRunConfig = z.strictObject({
+  operation: z.literal('run-config'),
+  args: z.strictObject({
+    request: zRunConfigRequest
+  })
+});
+
+export const zOperationRequestCheckInputs = z.strictObject({
+  operation: z.literal('check-inputs'),
+  args: z.strictObject({
+    request: zCheckInputsRequest
+  })
+});
+
+export const zOperationRequestListRuns = z.strictObject({
+  operation: z.literal('list-runs'),
+  args: z.record(z.string(), z.never())
+});
+
+export const zOperationRequestCreateRun = z.strictObject({
+  operation: z.literal('create-run'),
+  args: z.strictObject({
+    request: zCreateRunRequest
+  })
+});
+
+export const zOperationRequestGetRun = z.strictObject({
+  operation: z.literal('get-run'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestStartRun = z.strictObject({
+  operation: z.literal('start-run'),
+  args: z.strictObject({
+    id: zJobId,
+    request: zStartRunRequest
+  })
+});
+
+export const zOperationRequestUpdateRun = z.strictObject({
+  operation: z.literal('update-run'),
+  args: z.strictObject({
+    id: zJobId,
+    request: zUpdateRunRequest
+  })
+});
+
+export const zOperationRequestCancelRun = z.strictObject({
+  operation: z.literal('cancel-run'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestDeleteRun = z.strictObject({
+  operation: z.literal('delete-run'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestRestoreRun = z.strictObject({
+  operation: z.literal('restore-run'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestPurgeRun = z.strictObject({
+  operation: z.literal('purge-run'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestRunFiles = z.strictObject({
+  operation: z.literal('run-files'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestRunResults = z.strictObject({
+  operation: z.literal('run-results'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestRunAuspice = z.strictObject({
+  operation: z.literal('run-auspice'),
+  args: z.strictObject({
+    id: zJobId
+  })
+});
+
+export const zOperationRequestCompareRuns = z.strictObject({
+  operation: z.literal('compare-runs'),
+  args: z.strictObject({
+    id: zJobId,
+    other: zJobId
+  })
+});
+
+export const zOperationRequestCladeInRuns = z.strictObject({
+  operation: z.literal('clade-in-runs'),
+  args: z.strictObject({
+    request: zCladeRequest
+  })
+});
+
+/**
+ * Request of an operation of the app back end: the name of the operation and its arguments.
+ */
+export const zOperationRequest = z.discriminatedUnion('operation', [
+  zOperationRequestVersion,
+  zOperationRequestDatasets,
+  zOperationRequestCheckConfig,
+  zOperationRequestRunConfig,
+  zOperationRequestCheckInputs,
+  zOperationRequestListRuns,
+  zOperationRequestCreateRun,
+  zOperationRequestGetRun,
+  zOperationRequestStartRun,
+  zOperationRequestUpdateRun,
+  zOperationRequestCancelRun,
+  zOperationRequestDeleteRun,
+  zOperationRequestRestoreRun,
+  zOperationRequestPurgeRun,
+  zOperationRequestRunFiles,
+  zOperationRequestRunResults,
+  zOperationRequestRunAuspice,
+  zOperationRequestCompareRuns,
+  zOperationRequestCladeInRuns
+]);
+
+/**
+ * The job was accepted; always the first event.
+ */
+export const zJobEventStarted = z.object({
+  type: z.literal('started'),
+  data: zJobStarted
+});
+
+/**
+ * A stage of the computation began or advanced.
+ */
+export const zJobEventProgress = z.object({
+  type: z.literal('progress'),
+  data: zProgressEvent
+});
+
+/**
+ * A diagnostic message of the computation.
+ */
+export const zJobEventLog = z.object({
+  type: z.literal('log'),
+  data: zLogEvent
+});
+
+/**
+ * Convergence values of one timetree optimization iteration.
+ */
+export const zJobEventIteration = z.object({
+  type: z.literal('iteration'),
+  data: zIterationEvent
+});
+
+/**
+ * The job ended; always the last event, exactly once per job.
+ */
+export const zJobEventTerminal = z.object({
+  type: z.literal('terminal'),
+  data: zTerminalEvent
+});
+
+/**
+ * Event of a running job, in the order the job emits them.
+ */
+export const zJobEvent = z.discriminatedUnion('type', [
+  zJobEventStarted,
+  zJobEventProgress,
+  zJobEventLog,
+  zJobEventIteration,
+  zJobEventTerminal
+]);
 
 /**
  * Liveness of the server.

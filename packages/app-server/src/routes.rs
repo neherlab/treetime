@@ -3,7 +3,7 @@ use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, JsonText, TypedSse, ZipAttachment};
 use crate::error::AppError;
 use crate::events::run_events_sse;
-use crate::openapi::{add_components, add_setting_catalog};
+use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
@@ -95,6 +95,7 @@ fn build_api() -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
   let router =
     with_project_schemas(|| api_routes().finish_api_with(&mut api, |api| api.default_response::<AppError>()))?;
   add_components(&mut api)?;
+  add_discriminators(&mut api)?;
   add_setting_catalog(&mut api)?;
   Ok((router, api))
 }

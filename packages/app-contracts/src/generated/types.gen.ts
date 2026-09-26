@@ -301,57 +301,11 @@ export type InputProblem = {
 /**
  * Outcome of checking a configuration without running it.
  */
-export type CheckConfigResponse = {
-  /**
-   * Command the configuration is for.
-   */
-  command: AppCommand;
-  /**
-   * The configuration with every default filled in.
-   */
-  config: {
-    [key: string]: unknown;
-  };
-  /**
-   * The command line and the YAML config that reproduce the configuration.
-   */
-  code: ConfigCode;
-  /**
-   * Findings about the configuration and its input files.
-   */
-  checks: Array<RunCheck>;
+export type CheckConfigResponse = ({
   status: 'valid';
-} | {
-  /**
-   * Command the configuration is for.
-   */
-  command: AppCommand;
-  /**
-   * The error, as the CLI prints it.
-   */
-  message: string;
-  /**
-   * The errors that caused `message`, outermost first.
-   */
-  causes: Array<string>;
-  /**
-   * Problems found by parsing and by the schema check, empty for other errors.
-   */
-  problems: Array<ConfigProblem>;
-  /**
-   * The problems drawn against the configuration text, when the text could be parsed.
-   */
-  rendered?: string | null;
-  /**
-   * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
-   */
-  messages: Array<string>;
-  /**
-   * Findings about the configuration and its input files; the rejection is among them.
-   */
-  checks: Array<RunCheck>;
+} & CheckConfigResponseValid) | ({
   status: 'invalid';
-};
+} & CheckConfigResponseInvalid);
 
 /**
  * A command line and a YAML config that reproduce a configuration.
@@ -514,43 +468,11 @@ export type RunConfigRequest = {
 /**
  * Outcome of resolving a configuration as a run resolves it.
  */
-export type RunConfigResponse = {
-  /**
-   * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
-   * `output_all` set to `out`.
-   */
-  config: {
-    [key: string]: unknown;
-  };
-  /**
-   * The command line and the YAML config that reproduce the run.
-   */
-  code: ConfigCode;
-  /**
-   * Hash that a run of this configuration records, to find finished runs with the same settings and input
-   * contents; absent when an input cannot be read.
-   */
-  config_hash?: string | null;
-  /**
-   * Why `config_hash` is absent.
-   */
-  config_hash_error?: string | null;
+export type RunConfigResponse = ({
   status: 'valid';
-} | {
-  /**
-   * The error, as the CLI prints it.
-   */
-  message: string;
-  /**
-   * The errors that caused `message`, outermost first.
-   */
-  causes: Array<string>;
-  /**
-   * Problems found by parsing and by the schema check, empty for other errors.
-   */
-  problems: Array<ConfigProblem>;
+} & RunConfigResponseValid) | ({
   status: 'invalid';
-};
+} & RunConfigResponseInvalid);
 
 /**
  * A command configuration whose input files to inspect before a run.
@@ -1043,25 +965,19 @@ export type StateColor = {
 /**
  * Results specific to the command of a run.
  */
-export type CommandResults = {
+export type CommandResults = ({
   command: 'timetree';
-  data: TimetreeResults;
-} | {
+} & CommandResultsTimetree) | ({
   command: 'clock';
-  data: ClockResults;
-} | {
+} & CommandResultsClock) | ({
   command: 'ancestral';
-  data: AncestralResults;
-} | {
+} & CommandResultsAncestral) | ({
   command: 'mugration';
-  data: MugrationResults;
-} | {
+} & CommandResultsMugration) | ({
   command: 'optimize';
-  data: TreeSummary;
-} | {
+} & CommandResultsOptimize) | ({
   command: 'prune';
-  data: TreeSummary;
-};
+} & CommandResultsPrune);
 
 /**
  * Results of a `timetree` run.
@@ -1150,27 +1066,15 @@ export type TimetreeEstimates = {
 /**
  * Coalescent prior of a `timetree` run.
  */
-export type CoalescentPrior = {
+export type CoalescentPrior = ({
   kind: 'none';
-} | {
-  /**
-   * Coalescent time scale in years.
-   */
-  tc: number;
+} & CoalescentPriorNone) | ({
   kind: 'fixed';
-} | {
+} & CoalescentPriorFixed) | ({
   kind: 'optimized';
-} | {
-  /**
-   * Number of grid points.
-   */
-  points: number;
-  /**
-   * Stiffness of the skyline.
-   */
-  stiffness: number;
+} & CoalescentPriorOptimized) | ({
   kind: 'skyline';
-};
+} & CoalescentPriorSkyline);
 
 /**
  * Parameters of a relaxed clock.
@@ -1613,39 +1517,11 @@ export type SettingsComparison = {
 /**
  * A setting whose value differs between two runs.
  */
-export type SettingDifference = {
-  /**
-   * Key path of the setting joined with `.`.
-   */
-  key: string;
-  /**
-   * Value in the first run.
-   */
-  first: unknown;
-  /**
-   * Value in the second run.
-   */
-  second: unknown;
+export type SettingDifference = ({
   kind: 'setting';
-} | {
-  /**
-   * Key path of the setting that names the files.
-   */
-  key: string;
-  /**
-   * Paths of the files the first run read.
-   */
-  first: Array<string>;
-  /**
-   * Paths of the files the second run read.
-   */
-  second: Array<string>;
-  /**
-   * Whether the files of both runs have the same contents.
-   */
-  same_content: boolean;
+} & SettingDifferenceSetting) | ({
   kind: 'input';
-};
+} & SettingDifferenceInput);
 
 /**
  * Estimates of two time-tree runs and their differences, second minus first.
@@ -1793,31 +1669,20 @@ export type UnreadableRun = {
   message: string;
 };
 
+/**
+ * Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
+ */
 export type RunEvent = ({
   type: 'started';
-  data: JobStarted;
-} | {
+} & RunEventStarted) | ({
   type: 'progress';
-  data: ProgressEvent;
-} | {
+} & RunEventProgress) | ({
   type: 'log';
-  data: LogEvent;
-} | {
+} & RunEventLog) | ({
   type: 'iteration';
-  data: IterationEvent;
-} | {
+} & RunEventIteration) | ({
   type: 'terminal';
-  data: TerminalEvent;
-}) & {
-  /**
-   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
-   */
-  seq: number;
-  /**
-   * Time the event was recorded.
-   */
-  time: string;
-};
+} & RunEventTerminal);
 
 /**
  * Identity of an accepted job.
@@ -1894,28 +1759,15 @@ export type IterationEvent = {
 /**
  * How a job ended.
  */
-export type TerminalEvent = {
-  job_id: JobId;
-  result: CommandOutcome;
+export type TerminalEvent = ({
   status: 'ok';
-} | {
-  job_id: JobId;
-  /**
-   * The error, as the CLI prints it.
-   */
-  message: string;
-  /**
-   * The errors that caused `message`, outermost first.
-   */
-  causes: Array<string>;
+} & TerminalEventOk) | ({
   status: 'error';
-} | {
-  job_id: JobId;
+} & TerminalEventError) | ({
   status: 'cancelled';
-} | {
-  job_id: JobId;
+} & TerminalEventCancelled) | ({
   status: 'interrupted';
-};
+} & TerminalEventInterrupted);
 
 /**
  * Result of a command that ran to completion.
@@ -1956,105 +1808,45 @@ export type UploadedInput = {
 /**
  * Request of an operation of the app back end: the name of the operation and its arguments.
  */
-export type OperationRequest = {
+export type OperationRequest = ({
   operation: 'version';
-  args: {
-    [key: string]: never;
-  };
-} | {
+} & OperationRequestVersion) | ({
   operation: 'datasets';
-  args: {
-    [key: string]: never;
-  };
-} | {
+} & OperationRequestDatasets) | ({
   operation: 'check-config';
-  args: {
-    request: CheckConfigRequest;
-  };
-} | {
+} & OperationRequestCheckConfig) | ({
   operation: 'run-config';
-  args: {
-    request: RunConfigRequest;
-  };
-} | {
+} & OperationRequestRunConfig) | ({
   operation: 'check-inputs';
-  args: {
-    request: CheckInputsRequest;
-  };
-} | {
+} & OperationRequestCheckInputs) | ({
   operation: 'list-runs';
-  args: {
-    [key: string]: never;
-  };
-} | {
+} & OperationRequestListRuns) | ({
   operation: 'create-run';
-  args: {
-    request: CreateRunRequest;
-  };
-} | {
+} & OperationRequestCreateRun) | ({
   operation: 'get-run';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestGetRun) | ({
   operation: 'start-run';
-  args: {
-    id: JobId;
-    request: StartRunRequest;
-  };
-} | {
+} & OperationRequestStartRun) | ({
   operation: 'update-run';
-  args: {
-    id: JobId;
-    request: UpdateRunRequest;
-  };
-} | {
+} & OperationRequestUpdateRun) | ({
   operation: 'cancel-run';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestCancelRun) | ({
   operation: 'delete-run';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestDeleteRun) | ({
   operation: 'restore-run';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestRestoreRun) | ({
   operation: 'purge-run';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestPurgeRun) | ({
   operation: 'run-files';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestRunFiles) | ({
   operation: 'run-results';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestRunResults) | ({
   operation: 'run-auspice';
-  args: {
-    id: JobId;
-  };
-} | {
+} & OperationRequestRunAuspice) | ({
   operation: 'compare-runs';
-  args: {
-    id: JobId;
-    other: JobId;
-  };
-} | {
+} & OperationRequestCompareRuns) | ({
   operation: 'clade-in-runs';
-  args: {
-    request: CladeRequest;
-  };
-};
+} & OperationRequestCladeInRuns);
 
 export type BranchLengthMode = 'input' | 'marginal';
 
@@ -4078,22 +3870,17 @@ export type MugrationConfig = {
 /**
  * Event of a running job, in the order the job emits them.
  */
-export type JobEvent = {
+export type JobEvent = ({
   type: 'started';
-  data: JobStarted;
-} | {
+} & JobEventStarted) | ({
   type: 'progress';
-  data: ProgressEvent;
-} | {
+} & JobEventProgress) | ({
   type: 'log';
-  data: LogEvent;
-} | {
+} & JobEventLog) | ({
   type: 'iteration';
-  data: IterationEvent;
-} | {
+} & JobEventIteration) | ({
   type: 'terminal';
-  data: TerminalEvent;
-};
+} & JobEventTerminal);
 
 /**
  * Settings of one command.
@@ -4268,6 +4055,521 @@ export type SettingCatalog = {
    * Settings of each command.
    */
   commands: Array<CommandSettings>;
+};
+
+/**
+ * The configuration is accepted.
+ */
+export type CheckConfigResponseValid = {
+  /**
+   * Command the configuration is for.
+   */
+  command: AppCommand;
+  /**
+   * The configuration with every default filled in.
+   */
+  config: {
+    [key: string]: unknown;
+  };
+  /**
+   * The command line and the YAML config that reproduce the configuration.
+   */
+  code: ConfigCode;
+  /**
+   * Findings about the configuration and its input files.
+   */
+  checks: Array<RunCheck>;
+  status: 'valid';
+};
+
+/**
+ * The configuration is rejected.
+ */
+export type CheckConfigResponseInvalid = {
+  /**
+   * Command the configuration is for.
+   */
+  command: AppCommand;
+  /**
+   * The error, as the CLI prints it.
+   */
+  message: string;
+  /**
+   * The errors that caused `message`, outermost first.
+   */
+  causes: Array<string>;
+  /**
+   * Problems found by parsing and by the schema check, empty for other errors.
+   */
+  problems: Array<ConfigProblem>;
+  /**
+   * The problems drawn against the configuration text, when the text could be parsed.
+   */
+  rendered?: string | null;
+  /**
+   * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
+   */
+  messages: Array<string>;
+  /**
+   * Findings about the configuration and its input files; the rejection is among them.
+   */
+  checks: Array<RunCheck>;
+  status: 'invalid';
+};
+
+/**
+ * The configuration is accepted.
+ */
+export type RunConfigResponseValid = {
+  /**
+   * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
+   * `output_all` set to `out`.
+   */
+  config: {
+    [key: string]: unknown;
+  };
+  /**
+   * The command line and the YAML config that reproduce the run.
+   */
+  code: ConfigCode;
+  /**
+   * Hash that a run of this configuration records, to find finished runs with the same settings and input
+   * contents; absent when an input cannot be read.
+   */
+  config_hash?: string | null;
+  /**
+   * Why `config_hash` is absent.
+   */
+  config_hash_error?: string | null;
+  status: 'valid';
+};
+
+/**
+ * The configuration is rejected.
+ */
+export type RunConfigResponseInvalid = {
+  /**
+   * The error, as the CLI prints it.
+   */
+  message: string;
+  /**
+   * The errors that caused `message`, outermost first.
+   */
+  causes: Array<string>;
+  /**
+   * Problems found by parsing and by the schema check, empty for other errors.
+   */
+  problems: Array<ConfigProblem>;
+  status: 'invalid';
+};
+
+export type CommandResultsTimetree = {
+  command: 'timetree';
+  data: TimetreeResults;
+};
+
+export type CommandResultsClock = {
+  command: 'clock';
+  data: ClockResults;
+};
+
+export type CommandResultsAncestral = {
+  command: 'ancestral';
+  data: AncestralResults;
+};
+
+export type CommandResultsMugration = {
+  command: 'mugration';
+  data: MugrationResults;
+};
+
+export type CommandResultsOptimize = {
+  command: 'optimize';
+  data: TreeSummary;
+};
+
+export type CommandResultsPrune = {
+  command: 'prune';
+  data: TreeSummary;
+};
+
+/**
+ * No coalescent prior.
+ */
+export type CoalescentPriorNone = {
+  kind: 'none';
+};
+
+/**
+ * Constant population size with a fixed time scale.
+ */
+export type CoalescentPriorFixed = {
+  /**
+   * Coalescent time scale in years.
+   */
+  tc: number;
+  kind: 'fixed';
+};
+
+/**
+ * Constant population size with an optimized time scale.
+ */
+export type CoalescentPriorOptimized = {
+  kind: 'optimized';
+};
+
+/**
+ * Piecewise-constant population size.
+ */
+export type CoalescentPriorSkyline = {
+  /**
+   * Number of grid points.
+   */
+  points: number;
+  /**
+   * Stiffness of the skyline.
+   */
+  stiffness: number;
+  kind: 'skyline';
+};
+
+/**
+ * A value that controls the analysis.
+ */
+export type SettingDifferenceSetting = {
+  /**
+   * Key path of the setting joined with `.`.
+   */
+  key: string;
+  /**
+   * Value in the first run.
+   */
+  first: unknown;
+  /**
+   * Value in the second run.
+   */
+  second: unknown;
+  kind: 'setting';
+};
+
+/**
+ * Input files, which differ in their paths, their contents, or both.
+ */
+export type SettingDifferenceInput = {
+  /**
+   * Key path of the setting that names the files.
+   */
+  key: string;
+  /**
+   * Paths of the files the first run read.
+   */
+  first: Array<string>;
+  /**
+   * Paths of the files the second run read.
+   */
+  second: Array<string>;
+  /**
+   * Whether the files of both runs have the same contents.
+   */
+  same_content: boolean;
+  kind: 'input';
+};
+
+/**
+ * The job was accepted; always the first event.
+ */
+export type RunEventStarted = {
+  /**
+   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  type: 'started';
+  data: JobStarted;
+};
+
+/**
+ * A stage of the computation began or advanced.
+ */
+export type RunEventProgress = {
+  /**
+   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  type: 'progress';
+  data: ProgressEvent;
+};
+
+/**
+ * A diagnostic message of the computation.
+ */
+export type RunEventLog = {
+  /**
+   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  type: 'log';
+  data: LogEvent;
+};
+
+/**
+ * Convergence values of one timetree optimization iteration.
+ */
+export type RunEventIteration = {
+  /**
+   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  type: 'iteration';
+  data: IterationEvent;
+};
+
+/**
+ * The job ended; always the last event, exactly once per job.
+ */
+export type RunEventTerminal = {
+  /**
+   * Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  type: 'terminal';
+  data: TerminalEvent;
+};
+
+/**
+ * The command ran to completion.
+ */
+export type TerminalEventOk = {
+  job_id: JobId;
+  result: CommandOutcome;
+  status: 'ok';
+};
+
+/**
+ * The command failed, or its configuration was rejected.
+ */
+export type TerminalEventError = {
+  job_id: JobId;
+  /**
+   * The error, as the CLI prints it.
+   */
+  message: string;
+  /**
+   * The errors that caused `message`, outermost first.
+   */
+  causes: Array<string>;
+  status: 'error';
+};
+
+/**
+ * The job stopped because cancellation was requested.
+ */
+export type TerminalEventCancelled = {
+  job_id: JobId;
+  status: 'cancelled';
+};
+
+/**
+ * The job stopped because the process that ran it stopped.
+ */
+export type TerminalEventInterrupted = {
+  job_id: JobId;
+  status: 'interrupted';
+};
+
+export type OperationRequestVersion = {
+  operation: 'version';
+  args: {
+    [key: string]: never;
+  };
+};
+
+export type OperationRequestDatasets = {
+  operation: 'datasets';
+  args: {
+    [key: string]: never;
+  };
+};
+
+export type OperationRequestCheckConfig = {
+  operation: 'check-config';
+  args: {
+    request: CheckConfigRequest;
+  };
+};
+
+export type OperationRequestRunConfig = {
+  operation: 'run-config';
+  args: {
+    request: RunConfigRequest;
+  };
+};
+
+export type OperationRequestCheckInputs = {
+  operation: 'check-inputs';
+  args: {
+    request: CheckInputsRequest;
+  };
+};
+
+export type OperationRequestListRuns = {
+  operation: 'list-runs';
+  args: {
+    [key: string]: never;
+  };
+};
+
+export type OperationRequestCreateRun = {
+  operation: 'create-run';
+  args: {
+    request: CreateRunRequest;
+  };
+};
+
+export type OperationRequestGetRun = {
+  operation: 'get-run';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestStartRun = {
+  operation: 'start-run';
+  args: {
+    id: JobId;
+    request: StartRunRequest;
+  };
+};
+
+export type OperationRequestUpdateRun = {
+  operation: 'update-run';
+  args: {
+    id: JobId;
+    request: UpdateRunRequest;
+  };
+};
+
+export type OperationRequestCancelRun = {
+  operation: 'cancel-run';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestDeleteRun = {
+  operation: 'delete-run';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestRestoreRun = {
+  operation: 'restore-run';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestPurgeRun = {
+  operation: 'purge-run';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestRunFiles = {
+  operation: 'run-files';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestRunResults = {
+  operation: 'run-results';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestRunAuspice = {
+  operation: 'run-auspice';
+  args: {
+    id: JobId;
+  };
+};
+
+export type OperationRequestCompareRuns = {
+  operation: 'compare-runs';
+  args: {
+    id: JobId;
+    other: JobId;
+  };
+};
+
+export type OperationRequestCladeInRuns = {
+  operation: 'clade-in-runs';
+  args: {
+    request: CladeRequest;
+  };
+};
+
+/**
+ * The job was accepted; always the first event.
+ */
+export type JobEventStarted = {
+  type: 'started';
+  data: JobStarted;
+};
+
+/**
+ * A stage of the computation began or advanced.
+ */
+export type JobEventProgress = {
+  type: 'progress';
+  data: ProgressEvent;
+};
+
+/**
+ * A diagnostic message of the computation.
+ */
+export type JobEventLog = {
+  type: 'log';
+  data: LogEvent;
+};
+
+/**
+ * Convergence values of one timetree optimization iteration.
+ */
+export type JobEventIteration = {
+  type: 'iteration';
+  data: IterationEvent;
+};
+
+/**
+ * The job ended; always the last event, exactly once per job.
+ */
+export type JobEventTerminal = {
+  type: 'terminal';
+  data: TerminalEvent;
 };
 
 export type HealthData = {

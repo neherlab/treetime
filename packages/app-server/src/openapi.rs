@@ -22,8 +22,9 @@ use app_commands::runs::record::{
 };
 use app_commands::runs::setting_differences::SettingDifference;
 use eyre::Report;
+use itertools::{Itertools, izip};
 use schemars::{JsonSchema, Schema};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use strum::IntoEnumIterator;
 use treetime::progress::LogEvent;
 use treetime_schema::{ProgressEvent, VersionInfo};
@@ -33,14 +34,11 @@ const DEFS_PREFIX: &str = "#/$defs/";
 const COMPONENTS_PREFIX: &str = "#/components/schemas/";
 const SETTING_CATALOG_KEY: &str = "x-setting-catalog";
 
+const UNION_ROOT_KEYS: &[&str] = &["description", "oneOf", "type", "properties", "required"];
+
 pub(crate) fn config_component(command: AppCommand) -> String {
   let name: &str = command.into();
-  let mut chars = name.chars();
-  let capitalized = chars
-    .next()
-    .map(|first| first.to_uppercase().chain(chars).collect::<String>())
-    .unwrap_or_default();
-  format!("{capitalized}Config")
+  format!("{}Config", capitalize(name))
 }
 
 pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
@@ -115,6 +113,205 @@ pub(crate) fn add_setting_catalog(api: &mut OpenApi) -> Result<(), Report> {
     serde_json::to_value(setting_catalog()?)?,
   );
   Ok(())
+}
+
+pub(crate) fn add_discriminators(api: &mut OpenApi) -> Result<(), Report> {
+  let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
+  let unions = schemas
+    .iter()
+    .filter_map(|(name, schema)| tagged_union(name, &schema.json_schema).transpose())
+    .collect::<Result<Vec<_>, _>>()?;
+  for union in unions {
+    for (variant_name, variant) in union.variants {
+      if schemas.contains_key(&variant_name) {
+        return make_error!(
+          "the variant `{variant_name}` of the tagged union `{}` has the name of another schema; rename one of the types",
+          union.name
+        );
+      }
+      schemas.insert(
+        variant_name,
+        SchemaObject {
+          json_schema: variant,
+          example: None,
+          external_docs: None,
+        },
+      );
+    }
+    schemas[&union.name].json_schema = union.schema;
+  }
+  Ok(())
+}
+
+struct TaggedUnion {
+  name: String,
+  schema: Schema,
+  variants: Vec<(String, Schema)>,
+}
+
+fn tagged_union(name: &str, schema: &Schema) -> Result<Option<TaggedUnion>, Report> {
+  let Some(root) = schema.as_object() else {
+    return Ok(None);
+  };
+  let Some(Value::Array(one_of)) = root.get("oneOf") else {
+    return Ok(None);
+  };
+  let Some(variants) = one_of
+    .iter()
+    .map(|variant| {
+      variant
+        .as_object()
+        .filter(|variant| variant.get("type") == Some(&json!("object")))
+    })
+    .collect::<Option<Vec<_>>>()
+  else {
+    return Ok(None);
+  };
+  let Some((tag, values)) = tag_property(name, &variants)? else {
+    return Ok(None);
+  };
+  if let Some((key, _)) = root.iter().find(|(key, value)| {
+    !UNION_ROOT_KEYS.contains(&key.as_str()) || (key.as_str() == "type" && *value != &json!("object"))
+  }) {
+    return make_error!(
+      "the tagged union `{name}` has the keyword `{key}` next to `oneOf`, which its variants cannot take over"
+    );
+  }
+  let empty = Map::new();
+  let shared_properties = root.get("properties").and_then(Value::as_object).unwrap_or(&empty);
+  let shared_required = root
+    .get("required")
+    .and_then(Value::as_array)
+    .map_or(&[][..], Vec::as_slice);
+
+  let mut refs = vec![];
+  let mut mapping = Map::new();
+  let mut named_variants = vec![];
+  for (variant, value) in izip!(variants, values) {
+    let variant_name = format!("{name}{}", pascal_case(value));
+    let reference = format!("{COMPONENTS_PREFIX}{variant_name}");
+    refs.push(json!({ "$ref": reference }));
+    mapping.insert(value.to_owned(), json!(reference));
+    let variant = with_shared_fields(name, variant, shared_properties, shared_required)?;
+    named_variants.push((variant_name, Schema::try_from(Value::Object(variant))?));
+  }
+
+  let mut union = Map::new();
+  if let Some(description) = root.get("description") {
+    union.insert("description".to_owned(), description.clone());
+  }
+  union.insert("oneOf".to_owned(), Value::Array(refs));
+  union.insert(
+    "discriminator".to_owned(),
+    json!({ "propertyName": tag, "mapping": mapping }),
+  );
+  Ok(Some(TaggedUnion {
+    name: name.to_owned(),
+    schema: Schema::try_from(Value::Object(union))?,
+    variants: named_variants,
+  }))
+}
+
+fn tag_property<'a>(name: &str, variants: &[&'a Map<String, Value>]) -> Result<Option<(String, Vec<&'a str>)>, Report> {
+  let Some(first) = variants
+    .first()
+    .and_then(|variant| variant.get("properties"))
+    .and_then(Value::as_object)
+  else {
+    return Ok(None);
+  };
+  let tags = first
+    .keys()
+    .filter(|property| {
+      variants.iter().all(|variant| {
+        tag_value(variant, property).is_some()
+          && variant
+            .get("required")
+            .and_then(Value::as_array)
+            .is_some_and(|required| required.contains(&json!(property)))
+      })
+    })
+    .collect_vec();
+  match tags.as_slice() {
+    [] => Ok(None),
+    [tag] => {
+      let values = variants
+        .iter()
+        .filter_map(|variant| tag_value(variant, tag))
+        .collect_vec();
+      if values.iter().all_unique() {
+        Ok(Some(((*tag).clone(), values)))
+      } else {
+        make_error!("the tagged union `{name}` has two variants with the same `{tag}`")
+      }
+    },
+    _ => make_error!(
+      "the union `{name}` can be told apart by each of {}; the discriminator needs exactly one tag property",
+      tags.iter().map(|tag| format!("`{tag}`")).join(", ")
+    ),
+  }
+}
+
+fn tag_value<'a>(variant: &'a Map<String, Value>, tag: &str) -> Option<&'a str> {
+  variant.get("properties")?.get(tag)?.get("const")?.as_str()
+}
+
+fn with_shared_fields(
+  name: &str,
+  variant: &Map<String, Value>,
+  shared_properties: &Map<String, Value>,
+  shared_required: &[Value],
+) -> Result<Map<String, Value>, Report> {
+  let mut variant = variant.clone();
+  if shared_properties.is_empty() && shared_required.is_empty() {
+    return Ok(variant);
+  }
+  if variant.get("additionalProperties") == Some(&Value::Bool(false)) {
+    return make_error!("the tagged union `{name}` has fields next to a variant that allows no other fields");
+  }
+  let mut properties = shared_properties.clone();
+  if let Some(own) = variant.get("properties").and_then(Value::as_object) {
+    for (property, schema) in own {
+      match properties.get(property) {
+        Some(shared) if shared != schema => {
+          return make_error!("the tagged union `{name}` describes the field `{property}` twice, differently");
+        },
+        _ => {
+          properties.insert(property.clone(), schema.clone());
+        },
+      }
+    }
+  }
+  let own_required = variant
+    .get("required")
+    .and_then(Value::as_array)
+    .cloned()
+    .unwrap_or_default();
+  let required = shared_required
+    .iter()
+    .chain(&own_required)
+    .filter_map(Value::as_str)
+    .unique()
+    .map(|property| json!(property))
+    .collect_vec();
+  variant.insert("properties".to_owned(), Value::Object(properties));
+  variant.insert("required".to_owned(), Value::Array(required));
+  Ok(variant)
+}
+
+fn pascal_case(value: &str) -> String {
+  value
+    .split(|c: char| !c.is_ascii_alphanumeric())
+    .map(capitalize)
+    .collect()
+}
+
+fn capitalize(word: &str) -> String {
+  let mut chars = word.chars();
+  chars
+    .next()
+    .map(|first| first.to_uppercase().chain(chars).collect())
+    .unwrap_or_default()
 }
 
 fn add_type<T: JsonSchema>(components: &mut Map<String, Value>) -> Result<(), Report> {

@@ -1581,105 +1581,19 @@
         "description": "Outcome of checking a configuration without running it.",
         "oneOf": [
           {
-            "description": "The configuration is accepted.",
-            "type": "object",
-            "properties": {
-              "command": {
-                "description": "Command the configuration is for.",
-                "$ref": "#/components/schemas/AppCommand"
-              },
-              "config": {
-                "description": "The configuration with every default filled in.",
-                "type": "object",
-                "additionalProperties": true
-              },
-              "code": {
-                "description": "The command line and the YAML config that reproduce the configuration.",
-                "$ref": "#/components/schemas/ConfigCode"
-              },
-              "checks": {
-                "description": "Findings about the configuration and its input files.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/RunCheck"
-                }
-              },
-              "status": {
-                "type": "string",
-                "const": "valid"
-              }
-            },
-            "required": [
-              "status",
-              "command",
-              "config",
-              "code",
-              "checks"
-            ]
+            "$ref": "#/components/schemas/CheckConfigResponseValid"
           },
           {
-            "description": "The configuration is rejected.",
-            "type": "object",
-            "properties": {
-              "command": {
-                "description": "Command the configuration is for.",
-                "$ref": "#/components/schemas/AppCommand"
-              },
-              "message": {
-                "description": "The error, as the CLI prints it.",
-                "type": "string"
-              },
-              "causes": {
-                "description": "The errors that caused `message`, outermost first.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "problems": {
-                "description": "Problems found by parsing and by the schema check, empty for other errors.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ConfigProblem"
-                }
-              },
-              "rendered": {
-                "description": "The problems drawn against the configuration text, when the text could be parsed.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "messages": {
-                "description": "The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "checks": {
-                "description": "Findings about the configuration and its input files; the rejection is among them.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/RunCheck"
-                }
-              },
-              "status": {
-                "type": "string",
-                "const": "invalid"
-              }
-            },
-            "required": [
-              "status",
-              "command",
-              "message",
-              "causes",
-              "problems",
-              "messages",
-              "checks"
-            ]
+            "$ref": "#/components/schemas/CheckConfigResponseInvalid"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "valid": "#/components/schemas/CheckConfigResponseValid",
+            "invalid": "#/components/schemas/CheckConfigResponseInvalid"
+          }
+        }
       },
       "ConfigCode": {
         "description": "A command line and a YAML config that reproduce a configuration.",
@@ -1956,78 +1870,19 @@
         "description": "Outcome of resolving a configuration as a run resolves it.",
         "oneOf": [
           {
-            "description": "The configuration is accepted.",
-            "type": "object",
-            "properties": {
-              "config": {
-                "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds, and\n`output_all` set to `out`.",
-                "type": "object",
-                "additionalProperties": true
-              },
-              "code": {
-                "description": "The command line and the YAML config that reproduce the run.",
-                "$ref": "#/components/schemas/ConfigCode"
-              },
-              "config_hash": {
-                "description": "Hash that a run of this configuration records, to find finished runs with the same settings and input\ncontents; absent when an input cannot be read.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "config_hash_error": {
-                "description": "Why `config_hash` is absent.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "status": {
-                "type": "string",
-                "const": "valid"
-              }
-            },
-            "required": [
-              "status",
-              "config",
-              "code"
-            ]
+            "$ref": "#/components/schemas/RunConfigResponseValid"
           },
           {
-            "description": "The configuration is rejected.",
-            "type": "object",
-            "properties": {
-              "message": {
-                "description": "The error, as the CLI prints it.",
-                "type": "string"
-              },
-              "causes": {
-                "description": "The errors that caused `message`, outermost first.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "problems": {
-                "description": "Problems found by parsing and by the schema check, empty for other errors.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ConfigProblem"
-                }
-              },
-              "status": {
-                "type": "string",
-                "const": "invalid"
-              }
-            },
-            "required": [
-              "status",
-              "message",
-              "causes",
-              "problems"
-            ]
+            "$ref": "#/components/schemas/RunConfigResponseInvalid"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "valid": "#/components/schemas/RunConfigResponseValid",
+            "invalid": "#/components/schemas/RunConfigResponseInvalid"
+          }
+        }
       },
       "CheckInputsRequest": {
         "description": "A command configuration whose input files to inspect before a run.",
@@ -2836,102 +2691,35 @@
         "description": "Results specific to the command of a run.",
         "oneOf": [
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "timetree"
-              },
-              "data": {
-                "$ref": "#/components/schemas/TimetreeResults"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsTimetree"
           },
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "clock"
-              },
-              "data": {
-                "$ref": "#/components/schemas/ClockResults"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsClock"
           },
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "ancestral"
-              },
-              "data": {
-                "$ref": "#/components/schemas/AncestralResults"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsAncestral"
           },
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "mugration"
-              },
-              "data": {
-                "$ref": "#/components/schemas/MugrationResults"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsMugration"
           },
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "optimize"
-              },
-              "data": {
-                "$ref": "#/components/schemas/TreeSummary"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsOptimize"
           },
           {
-            "type": "object",
-            "properties": {
-              "command": {
-                "type": "string",
-                "const": "prune"
-              },
-              "data": {
-                "$ref": "#/components/schemas/TreeSummary"
-              }
-            },
-            "required": [
-              "command",
-              "data"
-            ]
+            "$ref": "#/components/schemas/CommandResultsPrune"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "command",
+          "mapping": {
+            "timetree": "#/components/schemas/CommandResultsTimetree",
+            "clock": "#/components/schemas/CommandResultsClock",
+            "ancestral": "#/components/schemas/CommandResultsAncestral",
+            "mugration": "#/components/schemas/CommandResultsMugration",
+            "optimize": "#/components/schemas/CommandResultsOptimize",
+            "prune": "#/components/schemas/CommandResultsPrune"
+          }
+        }
       },
       "TimetreeResults": {
         "description": "Results of a `timetree` run.",
@@ -3103,77 +2891,27 @@
         "description": "Coalescent prior of a `timetree` run.",
         "oneOf": [
           {
-            "description": "No coalescent prior.",
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "const": "none"
-              }
-            },
-            "required": [
-              "kind"
-            ]
+            "$ref": "#/components/schemas/CoalescentPriorNone"
           },
           {
-            "description": "Constant population size with a fixed time scale.",
-            "type": "object",
-            "properties": {
-              "tc": {
-                "description": "Coalescent time scale in years.",
-                "type": "number",
-                "format": "double"
-              },
-              "kind": {
-                "type": "string",
-                "const": "fixed"
-              }
-            },
-            "required": [
-              "kind",
-              "tc"
-            ]
+            "$ref": "#/components/schemas/CoalescentPriorFixed"
           },
           {
-            "description": "Constant population size with an optimized time scale.",
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "const": "optimized"
-              }
-            },
-            "required": [
-              "kind"
-            ]
+            "$ref": "#/components/schemas/CoalescentPriorOptimized"
           },
           {
-            "description": "Piecewise-constant population size.",
-            "type": "object",
-            "properties": {
-              "points": {
-                "description": "Number of grid points.",
-                "type": "integer",
-                "format": "uint",
-                "minimum": 0
-              },
-              "stiffness": {
-                "description": "Stiffness of the skyline.",
-                "type": "number",
-                "format": "double"
-              },
-              "kind": {
-                "type": "string",
-                "const": "skyline"
-              }
-            },
-            "required": [
-              "kind",
-              "points",
-              "stiffness"
-            ]
+            "$ref": "#/components/schemas/CoalescentPriorSkyline"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "none": "#/components/schemas/CoalescentPriorNone",
+            "fixed": "#/components/schemas/CoalescentPriorFixed",
+            "optimized": "#/components/schemas/CoalescentPriorOptimized",
+            "skyline": "#/components/schemas/CoalescentPriorSkyline"
+          }
+        }
       },
       "RelaxedClock": {
         "description": "Parameters of a relaxed clock.",
@@ -3918,71 +3656,19 @@
         "description": "A setting whose value differs between two runs.",
         "oneOf": [
           {
-            "description": "A value that controls the analysis.",
-            "type": "object",
-            "properties": {
-              "key": {
-                "description": "Key path of the setting joined with `.`.",
-                "type": "string"
-              },
-              "first": {
-                "description": "Value in the first run."
-              },
-              "second": {
-                "description": "Value in the second run."
-              },
-              "kind": {
-                "type": "string",
-                "const": "setting"
-              }
-            },
-            "required": [
-              "kind",
-              "key",
-              "first",
-              "second"
-            ]
+            "$ref": "#/components/schemas/SettingDifferenceSetting"
           },
           {
-            "description": "Input files, which differ in their paths, their contents, or both.",
-            "type": "object",
-            "properties": {
-              "key": {
-                "description": "Key path of the setting that names the files.",
-                "type": "string"
-              },
-              "first": {
-                "description": "Paths of the files the first run read.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "second": {
-                "description": "Paths of the files the second run read.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "same_content": {
-                "description": "Whether the files of both runs have the same contents.",
-                "type": "boolean"
-              },
-              "kind": {
-                "type": "string",
-                "const": "input"
-              }
-            },
-            "required": [
-              "kind",
-              "key",
-              "first",
-              "second",
-              "same_content"
-            ]
+            "$ref": "#/components/schemas/SettingDifferenceInput"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "setting": "#/components/schemas/SettingDifferenceSetting",
+            "input": "#/components/schemas/SettingDifferenceInput"
+          }
+        }
       },
       "EstimateComparison": {
         "description": "Estimates of two time-tree runs and their differences, second minus first.",
@@ -4217,110 +3903,33 @@
       },
       "RunEvent": {
         "description": "Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.",
-        "type": "object",
-        "properties": {
-          "seq": {
-            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
-          "time": {
-            "description": "Time the event was recorded.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "seq",
-          "time"
-        ],
         "oneOf": [
           {
-            "description": "The job was accepted; always the first event.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "started"
-              },
-              "data": {
-                "$ref": "#/components/schemas/JobStarted"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/RunEventStarted"
           },
           {
-            "description": "A stage of the computation began or advanced.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "progress"
-              },
-              "data": {
-                "$ref": "#/components/schemas/ProgressEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/RunEventProgress"
           },
           {
-            "description": "A diagnostic message of the computation.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "log"
-              },
-              "data": {
-                "$ref": "#/components/schemas/LogEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/RunEventLog"
           },
           {
-            "description": "Convergence values of one timetree optimization iteration.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "iteration"
-              },
-              "data": {
-                "$ref": "#/components/schemas/IterationEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/RunEventIteration"
           },
           {
-            "description": "The job ended; always the last event, exactly once per job.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "terminal"
-              },
-              "data": {
-                "$ref": "#/components/schemas/TerminalEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/RunEventTerminal"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "started": "#/components/schemas/RunEventStarted",
+            "progress": "#/components/schemas/RunEventProgress",
+            "log": "#/components/schemas/RunEventLog",
+            "iteration": "#/components/schemas/RunEventIteration",
+            "terminal": "#/components/schemas/RunEventTerminal"
+          }
+        }
       },
       "JobStarted": {
         "description": "Identity of an accepted job.",
@@ -4498,91 +4107,27 @@
         "description": "How a job ended.",
         "oneOf": [
           {
-            "description": "The command ran to completion.",
-            "type": "object",
-            "properties": {
-              "job_id": {
-                "$ref": "#/components/schemas/JobId"
-              },
-              "result": {
-                "$ref": "#/components/schemas/CommandOutcome"
-              },
-              "status": {
-                "type": "string",
-                "const": "ok"
-              }
-            },
-            "required": [
-              "status",
-              "job_id",
-              "result"
-            ]
+            "$ref": "#/components/schemas/TerminalEventOk"
           },
           {
-            "description": "The command failed, or its configuration was rejected.",
-            "type": "object",
-            "properties": {
-              "job_id": {
-                "$ref": "#/components/schemas/JobId"
-              },
-              "message": {
-                "description": "The error, as the CLI prints it.",
-                "type": "string"
-              },
-              "causes": {
-                "description": "The errors that caused `message`, outermost first.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "status": {
-                "type": "string",
-                "const": "error"
-              }
-            },
-            "required": [
-              "status",
-              "job_id",
-              "message",
-              "causes"
-            ]
+            "$ref": "#/components/schemas/TerminalEventError"
           },
           {
-            "description": "The job stopped because cancellation was requested.",
-            "type": "object",
-            "properties": {
-              "job_id": {
-                "$ref": "#/components/schemas/JobId"
-              },
-              "status": {
-                "type": "string",
-                "const": "cancelled"
-              }
-            },
-            "required": [
-              "status",
-              "job_id"
-            ]
+            "$ref": "#/components/schemas/TerminalEventCancelled"
           },
           {
-            "description": "The job stopped because the process that ran it stopped.",
-            "type": "object",
-            "properties": {
-              "job_id": {
-                "$ref": "#/components/schemas/JobId"
-              },
-              "status": {
-                "type": "string",
-                "const": "interrupted"
-              }
-            },
-            "required": [
-              "status",
-              "job_id"
-            ]
+            "$ref": "#/components/schemas/TerminalEventInterrupted"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "ok": "#/components/schemas/TerminalEventOk",
+            "error": "#/components/schemas/TerminalEventError",
+            "cancelled": "#/components/schemas/TerminalEventCancelled",
+            "interrupted": "#/components/schemas/TerminalEventInterrupted"
+          }
+        }
       },
       "CommandOutcome": {
         "description": "Result of a command that ran to completion.",
@@ -4639,488 +4184,87 @@
         "description": "Request of an operation of the app back end: the name of the operation and its arguments.",
         "oneOf": [
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "version"
-              },
-              "args": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestVersion"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "datasets"
-              },
-              "args": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestDatasets"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "check-config"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/CheckConfigRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCheckConfig"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "run-config"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/RunConfigRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestRunConfig"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "check-inputs"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/CheckInputsRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCheckInputs"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "list-runs"
-              },
-              "args": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestListRuns"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "create-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/CreateRunRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCreateRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "get-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestGetRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "start-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  },
-                  "request": {
-                    "$ref": "#/components/schemas/StartRunRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestStartRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "update-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  },
-                  "request": {
-                    "$ref": "#/components/schemas/UpdateRunRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestUpdateRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "cancel-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCancelRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "delete-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestDeleteRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "restore-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestRestoreRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "purge-run"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestPurgeRun"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "run-files"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestRunFiles"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "run-results"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestRunResults"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "run-auspice"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestRunAuspice"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "compare-runs"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "$ref": "#/components/schemas/JobId"
-                  },
-                  "other": {
-                    "$ref": "#/components/schemas/JobId"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "other"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCompareRuns"
           },
           {
-            "type": "object",
-            "properties": {
-              "operation": {
-                "type": "string",
-                "const": "clade-in-runs"
-              },
-              "args": {
-                "type": "object",
-                "properties": {
-                  "request": {
-                    "$ref": "#/components/schemas/CladeRequest"
-                  }
-                },
-                "additionalProperties": false,
-                "required": [
-                  "request"
-                ]
-              }
-            },
-            "required": [
-              "operation",
-              "args"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/OperationRequestCladeInRuns"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "operation",
+          "mapping": {
+            "version": "#/components/schemas/OperationRequestVersion",
+            "datasets": "#/components/schemas/OperationRequestDatasets",
+            "check-config": "#/components/schemas/OperationRequestCheckConfig",
+            "run-config": "#/components/schemas/OperationRequestRunConfig",
+            "check-inputs": "#/components/schemas/OperationRequestCheckInputs",
+            "list-runs": "#/components/schemas/OperationRequestListRuns",
+            "create-run": "#/components/schemas/OperationRequestCreateRun",
+            "get-run": "#/components/schemas/OperationRequestGetRun",
+            "start-run": "#/components/schemas/OperationRequestStartRun",
+            "update-run": "#/components/schemas/OperationRequestUpdateRun",
+            "cancel-run": "#/components/schemas/OperationRequestCancelRun",
+            "delete-run": "#/components/schemas/OperationRequestDeleteRun",
+            "restore-run": "#/components/schemas/OperationRequestRestoreRun",
+            "purge-run": "#/components/schemas/OperationRequestPurgeRun",
+            "run-files": "#/components/schemas/OperationRequestRunFiles",
+            "run-results": "#/components/schemas/OperationRequestRunResults",
+            "run-auspice": "#/components/schemas/OperationRequestRunAuspice",
+            "compare-runs": "#/components/schemas/OperationRequestCompareRuns",
+            "clade-in-runs": "#/components/schemas/OperationRequestCladeInRuns"
+          }
+        }
       },
       "BranchLengthMode": {
         "type": "string",
@@ -8070,91 +7214,31 @@
         "description": "Event of a running job, in the order the job emits them.",
         "oneOf": [
           {
-            "description": "The job was accepted; always the first event.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "started"
-              },
-              "data": {
-                "$ref": "#/components/schemas/JobStarted"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/JobEventStarted"
           },
           {
-            "description": "A stage of the computation began or advanced.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "progress"
-              },
-              "data": {
-                "$ref": "#/components/schemas/ProgressEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/JobEventProgress"
           },
           {
-            "description": "A diagnostic message of the computation.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "log"
-              },
-              "data": {
-                "$ref": "#/components/schemas/LogEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/JobEventLog"
           },
           {
-            "description": "Convergence values of one timetree optimization iteration.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "iteration"
-              },
-              "data": {
-                "$ref": "#/components/schemas/IterationEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/JobEventIteration"
           },
           {
-            "description": "The job ended; always the last event, exactly once per job.",
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "terminal"
-              },
-              "data": {
-                "$ref": "#/components/schemas/TerminalEvent"
-              }
-            },
-            "required": [
-              "type",
-              "data"
-            ]
+            "$ref": "#/components/schemas/JobEventTerminal"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "started": "#/components/schemas/JobEventStarted",
+            "progress": "#/components/schemas/JobEventProgress",
+            "log": "#/components/schemas/JobEventLog",
+            "iteration": "#/components/schemas/JobEventIteration",
+            "terminal": "#/components/schemas/JobEventTerminal"
+          }
+        }
       },
       "CommandSettings": {
         "description": "Settings of one command.",
@@ -8478,6 +7562,1206 @@
         },
         "required": [
           "commands"
+        ]
+      },
+      "CheckConfigResponseValid": {
+        "description": "The configuration is accepted.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "Command the configuration is for.",
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "config": {
+            "description": "The configuration with every default filled in.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "code": {
+            "description": "The command line and the YAML config that reproduce the configuration.",
+            "$ref": "#/components/schemas/ConfigCode"
+          },
+          "checks": {
+            "description": "Findings about the configuration and its input files.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunCheck"
+            }
+          },
+          "status": {
+            "type": "string",
+            "const": "valid"
+          }
+        },
+        "required": [
+          "status",
+          "command",
+          "config",
+          "code",
+          "checks"
+        ]
+      },
+      "CheckConfigResponseInvalid": {
+        "description": "The configuration is rejected.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "Command the configuration is for.",
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "message": {
+            "description": "The error, as the CLI prints it.",
+            "type": "string"
+          },
+          "causes": {
+            "description": "The errors that caused `message`, outermost first.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "problems": {
+            "description": "Problems found by parsing and by the schema check, empty for other errors.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigProblem"
+            }
+          },
+          "rendered": {
+            "description": "The problems drawn against the configuration text, when the text could be parsed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messages": {
+            "description": "The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checks": {
+            "description": "Findings about the configuration and its input files; the rejection is among them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunCheck"
+            }
+          },
+          "status": {
+            "type": "string",
+            "const": "invalid"
+          }
+        },
+        "required": [
+          "status",
+          "command",
+          "message",
+          "causes",
+          "problems",
+          "messages",
+          "checks"
+        ]
+      },
+      "RunConfigResponseValid": {
+        "description": "The configuration is accepted.",
+        "type": "object",
+        "properties": {
+          "config": {
+            "description": "The configuration as the run records it, with every default filled in, the outputs the run layer adds, and\n`output_all` set to `out`.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "code": {
+            "description": "The command line and the YAML config that reproduce the run.",
+            "$ref": "#/components/schemas/ConfigCode"
+          },
+          "config_hash": {
+            "description": "Hash that a run of this configuration records, to find finished runs with the same settings and input\ncontents; absent when an input cannot be read.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "config_hash_error": {
+            "description": "Why `config_hash` is absent.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "const": "valid"
+          }
+        },
+        "required": [
+          "status",
+          "config",
+          "code"
+        ]
+      },
+      "RunConfigResponseInvalid": {
+        "description": "The configuration is rejected.",
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "The error, as the CLI prints it.",
+            "type": "string"
+          },
+          "causes": {
+            "description": "The errors that caused `message`, outermost first.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "problems": {
+            "description": "Problems found by parsing and by the schema check, empty for other errors.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigProblem"
+            }
+          },
+          "status": {
+            "type": "string",
+            "const": "invalid"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "causes",
+          "problems"
+        ]
+      },
+      "CommandResultsTimetree": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "timetree"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TimetreeResults"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsClock": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "clock"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ClockResults"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsAncestral": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "ancestral"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AncestralResults"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsMugration": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "mugration"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MugrationResults"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsOptimize": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "optimize"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TreeSummary"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsPrune": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "prune"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TreeSummary"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CoalescentPriorNone": {
+        "description": "No coalescent prior.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "none"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "CoalescentPriorFixed": {
+        "description": "Constant population size with a fixed time scale.",
+        "type": "object",
+        "properties": {
+          "tc": {
+            "description": "Coalescent time scale in years.",
+            "type": "number",
+            "format": "double"
+          },
+          "kind": {
+            "type": "string",
+            "const": "fixed"
+          }
+        },
+        "required": [
+          "kind",
+          "tc"
+        ]
+      },
+      "CoalescentPriorOptimized": {
+        "description": "Constant population size with an optimized time scale.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "optimized"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "CoalescentPriorSkyline": {
+        "description": "Piecewise-constant population size.",
+        "type": "object",
+        "properties": {
+          "points": {
+            "description": "Number of grid points.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "stiffness": {
+            "description": "Stiffness of the skyline.",
+            "type": "number",
+            "format": "double"
+          },
+          "kind": {
+            "type": "string",
+            "const": "skyline"
+          }
+        },
+        "required": [
+          "kind",
+          "points",
+          "stiffness"
+        ]
+      },
+      "SettingDifferenceSetting": {
+        "description": "A value that controls the analysis.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting joined with `.`.",
+            "type": "string"
+          },
+          "first": {
+            "description": "Value in the first run."
+          },
+          "second": {
+            "description": "Value in the second run."
+          },
+          "kind": {
+            "type": "string",
+            "const": "setting"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "first",
+          "second"
+        ]
+      },
+      "SettingDifferenceInput": {
+        "description": "Input files, which differ in their paths, their contents, or both.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key path of the setting that names the files.",
+            "type": "string"
+          },
+          "first": {
+            "description": "Paths of the files the first run read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "second": {
+            "description": "Paths of the files the second run read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "same_content": {
+            "description": "Whether the files of both runs have the same contents.",
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "const": "input"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "first",
+          "second",
+          "same_content"
+        ]
+      },
+      "RunEventStarted": {
+        "description": "The job was accepted; always the first event.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "started"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JobStarted"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "type",
+          "data"
+        ]
+      },
+      "RunEventProgress": {
+        "description": "A stage of the computation began or advanced.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "progress"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProgressEvent"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "type",
+          "data"
+        ]
+      },
+      "RunEventLog": {
+        "description": "A diagnostic message of the computation.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "log"
+          },
+          "data": {
+            "$ref": "#/components/schemas/LogEvent"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "type",
+          "data"
+        ]
+      },
+      "RunEventIteration": {
+        "description": "Convergence values of one timetree optimization iteration.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "iteration"
+          },
+          "data": {
+            "$ref": "#/components/schemas/IterationEvent"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "type",
+          "data"
+        ]
+      },
+      "RunEventTerminal": {
+        "description": "The job ended; always the last event, exactly once per job.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "terminal"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TerminalEvent"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "type",
+          "data"
+        ]
+      },
+      "TerminalEventOk": {
+        "description": "The command ran to completion.",
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "$ref": "#/components/schemas/JobId"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CommandOutcome"
+          },
+          "status": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status",
+          "job_id",
+          "result"
+        ]
+      },
+      "TerminalEventError": {
+        "description": "The command failed, or its configuration was rejected.",
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "$ref": "#/components/schemas/JobId"
+          },
+          "message": {
+            "description": "The error, as the CLI prints it.",
+            "type": "string"
+          },
+          "causes": {
+            "description": "The errors that caused `message`, outermost first.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "const": "error"
+          }
+        },
+        "required": [
+          "status",
+          "job_id",
+          "message",
+          "causes"
+        ]
+      },
+      "TerminalEventCancelled": {
+        "description": "The job stopped because cancellation was requested.",
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "$ref": "#/components/schemas/JobId"
+          },
+          "status": {
+            "type": "string",
+            "const": "cancelled"
+          }
+        },
+        "required": [
+          "status",
+          "job_id"
+        ]
+      },
+      "TerminalEventInterrupted": {
+        "description": "The job stopped because the process that ran it stopped.",
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "$ref": "#/components/schemas/JobId"
+          },
+          "status": {
+            "type": "string",
+            "const": "interrupted"
+          }
+        },
+        "required": [
+          "status",
+          "job_id"
+        ]
+      },
+      "OperationRequestVersion": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "version"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestDatasets": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "datasets"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCheckConfig": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "check-config"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/CheckConfigRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestRunConfig": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "run-config"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/RunConfigRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCheckInputs": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "check-inputs"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/CheckInputsRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestListRuns": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "list-runs"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCreateRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "create-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestGetRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "get-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestStartRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "start-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              },
+              "request": {
+                "$ref": "#/components/schemas/StartRunRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestUpdateRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "update-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              },
+              "request": {
+                "$ref": "#/components/schemas/UpdateRunRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCancelRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "cancel-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestDeleteRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "delete-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestRestoreRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "restore-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestPurgeRun": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "purge-run"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestRunFiles": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "run-files"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestRunResults": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "run-results"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestRunAuspice": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "run-auspice"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCompareRuns": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "compare-runs"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/JobId"
+              },
+              "other": {
+                "$ref": "#/components/schemas/JobId"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "other"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequestCladeInRuns": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "clade-in-runs"
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/CladeRequest"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "request"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "JobEventStarted": {
+        "description": "The job was accepted; always the first event.",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "started"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JobStarted"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      },
+      "JobEventProgress": {
+        "description": "A stage of the computation began or advanced.",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "progress"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProgressEvent"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      },
+      "JobEventLog": {
+        "description": "A diagnostic message of the computation.",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "log"
+          },
+          "data": {
+            "$ref": "#/components/schemas/LogEvent"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      },
+      "JobEventIteration": {
+        "description": "Convergence values of one timetree optimization iteration.",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "iteration"
+          },
+          "data": {
+            "$ref": "#/components/schemas/IterationEvent"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      },
+      "JobEventTerminal": {
+        "description": "The job ended; always the last event, exactly once per job.",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "terminal"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TerminalEvent"
+          }
+        },
+        "required": [
+          "type",
+          "data"
         ]
       }
     }

@@ -203,7 +203,9 @@ describe("bridge result validation", () => {
     };
 
     const bridge = createBridge(stubTransport({ "run-results": () => Promise.resolve(results) }));
-    await expect(bridge.runResults("r1")).rejects.toThrow("expected number");
+    await expect(bridge.runResults("r1")).rejects.toMatchObject({
+      issues: [{ code: "invalid_type", path: ["results", "data", "estimates"] }],
+    });
   });
 
   test("runAuspice returns the served Auspice document unchanged", async () => {
