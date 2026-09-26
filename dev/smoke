@@ -4,10 +4,10 @@
 Smoke-test the treetime CLI and compare its outputs with a baseline snapshot.
 
 dev/smoke runs the treetime CLI over a matrix of commands, datasets and flag variants. The outputs of
-each run go into a snapshot directory named after the git state that built the binary. The current
-snapshot is then compared with a baseline snapshot, by default the one of the `rust` branch. The
-script reports crashes, timeouts, missing outputs and changed outputs, with the command, stderr and
-the changed values of each case.
+each run go into a snapshot directory named after the content of the source tree that built the
+binary. The current snapshot is then compared with a baseline snapshot, by default the one of the tip
+of the base branch `rust`. The script reports crashes, timeouts, missing outputs and changed outputs,
+with the command, stderr and the changed values of each case.
 
 The cases are defined in dev/smoke.toml: one row per command variant, with its flags, the datasets it
 runs on and its expected failures. The header of that file documents every field. `--overview` prints
@@ -18,7 +18,7 @@ treetime`, and the cases run inside the container.
 
 Usage:
 
-    ./dev/smoke                           quick tier, compared with `rust`
+    ./dev/smoke                           quick tier, compared with the base branch `rust`
     ./dev/smoke --tier full               every case
     ./dev/smoke --against <ref-or-id>     compare with another commit, branch or snapshot
     ./dev/smoke --no-compare              statuses only, no baseline build
@@ -32,10 +32,11 @@ Options:
                             larger timetree cases. full: every case
     --only REGEX            select the cases whose id matches REGEX (re.search)
     --rerun-failed          select the cases that did not pass in the last run of the current snapshot,
-                            or, when it has no run yet, in the most recent run of any snapshot
+                            or, when it has no run yet, in the most recent run of this checkout
     --list                  print the selected case ids and exit
     --overview              print the selected cases per command and variant, with their datasets, and exit
-    --against REF_OR_ID     baseline: an existing snapshot id, or a git ref (default: rust)
+    --against REF_OR_ID     baseline: an existing snapshot id, or a git ref, resolved to the tree of its
+                            commit (default: the base branch rust)
     --no-compare            run the current snapshot only and report statuses
     --jobs N                number of cases that run at the same time (default: CPU count)
     --timeout-scale X       multiply every case timeout by X
@@ -45,18 +46,28 @@ Options:
                             case without a completed run runs alone. Every treetime process is limited to the
                             budget, so a case that needs more fails with an allocation error
     --rerun                 run the selected cases again even when stored results are reusable
-    --no-build              use the existing .out/treetime for the current snapshot
+    --no-build              use the existing .out/treetime for the current snapshot instead of the stored
+                            binary or a new build
     --check-determinism     run each selected case a second time with `treetime --jobs=1` and mark
                             the case nondeterministic when the outputs differ
-    --prune                 delete the dirty snapshots other than the current one, then exit
+    --prune                 delete the dirty snapshots of this checkout other than the current one, and
+                            the snapshots of committed trees older than 7 days whose tree is not the tip
+                            of a local branch, then exit. Snapshots in use by another run are kept
 
-Snapshots (git-ignored, at the repository root):
+Snapshot store:
 
-    snapshots/<id>/                 <id> = short commit, or <short-commit>+dirty-<hash> for a
-                                    working tree with uncommitted or untracked changes
-      snapshot.json                 commit, dirty hash, ref, binary SHA-256, creation time
+    With SMOKE_STORE unset, each checkout keeps its own store: snapshots/ at the repository root
+    (git-ignored), with the baseline worktrees and the locks under tmp/smoke/. With SMOKE_STORE set to
+    an absolute directory, every checkout on the machine shares the store in that directory:
+    $SMOKE_STORE/snapshots/, $SMOKE_STORE/worktrees/ and $SMOKE_STORE/locks/. A snapshot is then built
+    and run at most once per machine, and every checkout reuses its binary and case results.
+
+    snapshots/<id>/                 <id> = first 10 hex digits of the git tree id of the commit, or
+                                    <tree>+dirty-<hash> for a working tree with uncommitted or untracked
+                                    changes. Commits with the same tree share one snapshot
+      snapshot.json                 commit, tree, dirty hash, ref, checkout, binary SHA-256, creation time
       bin/treetime                  the binary that produced the snapshot
-      last-run.json                 statuses of the last run (for --rerun-failed)
+      last-run.json                 statuses of the last run and its checkout (for --rerun-failed)
       cases/<case-id>/
         out/                        raw outputs, never modified
         stdout.txt, stderr.txt
@@ -68,8 +79,14 @@ Snapshots (git-ignored, at the repository root):
 
 A stored case is reused when its case key (argv, expectation, declared outputs, working directory and
 the SHA-256 of every input file) is unchanged and its result is consistent with the requested timeout.
-A snapshot whose binary changed loses its stored cases. Clean-commit snapshots stay until deleted by
-hand; the git ref baseline is built in a temporary worktree under tmp/smoke/worktrees/.
+A snapshot whose binary changed loses its stored cases. The current binary is built in the checkout
+unless its snapshot already has one. A git ref baseline is built in a temporary worktree in the store,
+with a copy of the checkout's .env, so the build uses the same compiler cache.
+
+Each run holds an exclusive lock on a snapshot while it builds and runs it, and a shared lock while it
+reads the results for its report. A run that needs a locked snapshot logs the pid and checkout of the
+holder and waits; runs on different snapshots never wait for each other. The system releases a lock
+when its holder exits, also on a crash, and an interrupted build leaves no binary behind.
 
 Case statuses:
 
@@ -103,6 +120,8 @@ Exit codes:
 
 Environment:
 
+    SMOKE_STORE         absolute directory of a snapshot store shared by all checkouts; read from the
+                        environment, else from .env of the checkout
     SMOKE_WRAPPER       container wrapper command (default: ./dev/docker/run); empty runs in place
 """
 
@@ -112,6 +131,7 @@ import argparse
 import contextlib
 import dataclasses
 import difflib
+import fcntl
 import hashlib
 import itertools
 import json
@@ -136,14 +156,38 @@ from enum import Enum
 from pathlib import Path
 
 
+BASE_BRANCH = "rust"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SELF = "dev/smoke"
 DATA_DIR = "data"
-SNAPSHOTS_DIR = PROJECT_ROOT / "snapshots"
-WORKTREES_DIR = PROJECT_ROOT / "tmp" / "smoke" / "worktrees"
-DEFAULT_AGAINST = "rust"
 CASES_FILE = Path("dev/smoke.toml")
 WRAPPER = shlex.split(os.environ.get("SMOKE_WRAPPER", "./dev/docker/run"))
+ENV_FILE = PROJECT_ROOT / ".env"
+TREE_ID_LENGTH = 10
+OLD_SNAPSHOT_DAYS = 7
+
+
+def env_setting(name: str) -> str | None:
+  """A setting from the environment, else from .env of the checkout, as load_env_file in dev/lib/env.sh reads it."""
+  if name in os.environ:
+    return os.environ[name]
+  if not ENV_FILE.is_file():
+    return None
+  for line in ENV_FILE.read_text().splitlines():
+    key, separator, value = line.lstrip().removeprefix("export ").partition("=")
+    if key != name or not separator:
+      continue
+    quote = value[:1]
+    if quote in ("\"", "'") and quote in value[1:]:
+      return value[1:].split(quote, 1)[0]
+    return re.split(r"\s#", value, maxsplit=1)[0].rstrip()
+  return None
+
+
+SMOKE_STORE = env_setting("SMOKE_STORE") or None
+SNAPSHOTS_DIR = Path(SMOKE_STORE) / "snapshots" if SMOKE_STORE else PROJECT_ROOT / "snapshots"
+WORKTREES_DIR = Path(SMOKE_STORE) / "worktrees" if SMOKE_STORE else PROJECT_ROOT / "tmp" / "smoke" / "worktrees"
+LOCKS_DIR = Path(SMOKE_STORE) / "locks" if SMOKE_STORE else PROJECT_ROOT / "tmp" / "smoke" / "locks"
 
 
 # Output fields that change for reasons unrelated to behavior, keyed by file-name suffix:
@@ -241,7 +285,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--rerun-failed", action="store_true")
   parser.add_argument("--list", action="store_true")
   parser.add_argument("--overview", action="store_true")
-  parser.add_argument("--against", metavar="REF_OR_ID", default=DEFAULT_AGAINST)
+  parser.add_argument("--against", metavar="REF_OR_ID", default=BASE_BRANCH)
   parser.add_argument("--no-compare", action="store_true")
   parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
   parser.add_argument("--timeout-scale", type=float, default=1.0)
@@ -266,6 +310,8 @@ def parse_args() -> argparse.Namespace:
 
 def host_mode(args: argparse.Namespace) -> int:
   start = time.perf_counter()
+  if SMOKE_STORE and not Path(SMOKE_STORE).is_absolute():
+    raise SmokeError(f"SMOKE_STORE must be an absolute path: {SMOKE_STORE}")
   current = working_tree_snapshot()
   if args.prune:
     prune_snapshots(current)
@@ -285,19 +331,25 @@ def host_mode(args: argparse.Namespace) -> int:
   if not selected:
     raise SmokeError("No case matches the selection")
 
+  baseline = None if args.no_compare else resolve_against(args.against)
   hasher = InputHasher()
-  ensure_current_binary(current, args.no_build)
-  current_results = run_snapshot(current, selected, args, hasher, args.check_determinism)
-  baseline = baseline_results = None
-  if not args.no_compare:
-    baseline = resolve_against(args.against)
-    ensure_baseline_binary(baseline)
-    baseline_results = run_snapshot(baseline, selected, args, hasher, check_determinism=False)
+  with snapshot_lock(current.id):
+    ensure_current_binary(current, args.no_build)
+    run_snapshot(current, selected, args, hasher, args.check_determinism)
+  if baseline is not None:
+    with snapshot_lock(baseline.id):
+      ensure_baseline_binary(baseline)
+      run_snapshot(baseline, selected, args, hasher, check_determinism=False)
 
-  reports = build_reports(selected, current, current_results, baseline, baseline_results)
-  report_dir = current.dir / "compare" / baseline.id if baseline else current.dir
-  write_reports(reports, current, baseline, report_dir)
-  write_last_run(current, reports, baseline)
+  with contextlib.ExitStack() as locks:
+    for snapshot_id in sorted({current.id, *([baseline.id] if baseline else [])}):
+      locks.enter_context(snapshot_lock(snapshot_id, shared=True))
+    current_results = read_results(current, selected)
+    baseline_results = read_results(baseline, selected) if baseline else None
+    reports = build_reports(selected, current, current_results, baseline, baseline_results)
+    report_dir = current.dir / "compare" / baseline.id if baseline else current.dir
+    write_reports(reports, current, baseline, report_dir)
+    write_last_run(current, reports, baseline)
   print_summary(reports, current, baseline, report_dir, time.perf_counter() - start)
   if len(reports) != len(selected):
     raise SmokeError(f"{len(selected)} cases selected, but {len(reports)} have results")
@@ -549,46 +601,118 @@ def format_overview(cases: list[Case]) -> str:
 def last_failed_ids(current: Snapshot) -> set[str]:
   path = current.dir / "last-run.json"
   if not path.exists():
-    runs = [json.loads(p.read_text()) for p in SNAPSHOTS_DIR.glob("*/last-run.json")]
+    runs = [run for p in SNAPSHOTS_DIR.glob("*/last-run.json") if is_own(run := json.loads(p.read_text()))]
     if not runs:
-      raise SmokeError("--rerun-failed: no snapshot has a recorded run yet")
+      raise SmokeError("--rerun-failed: no snapshot has a recorded run of this checkout yet")
     return set(max(runs, key=lambda run: run["finished_at"])["failed"])
   return set(json.loads(path.read_text())["failed"])
 
 
+def is_own(record: dict | None) -> bool:
+  """Whether a snapshot or run record was written by this checkout; records of a per-checkout store always are."""
+  return (record or {}).get("checkout", str(PROJECT_ROOT)) == str(PROJECT_ROOT)
+
+
 def working_tree_snapshot() -> Snapshot:
   commit = git("rev-parse", "HEAD").decode().strip()
-  short = short_commit(commit)
+  tree = tree_of(commit)
   if not git("status", "--porcelain").strip():
-    return Snapshot(short, commit, None, None)
+    return Snapshot(tree[:TREE_ID_LENGTH], commit, tree, None, None)
   digest = hashlib.sha256(git("diff", "HEAD", "--binary"))
   untracked = git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
   for path in sorted(p for p in untracked if p):
     file = PROJECT_ROOT / os.fsdecode(path)
     content = os.fsencode(os.readlink(file)) if file.is_symlink() else file.read_bytes() if file.is_file() else b""
     digest.update(path + b"\0" + content)
-  dirty = digest.hexdigest()[:10]
-  return Snapshot(f"{short}+dirty-{dirty}", commit, dirty, None)
+  dirty = digest.hexdigest()[:TREE_ID_LENGTH]
+  return Snapshot(f"{tree[:TREE_ID_LENGTH]}+dirty-{dirty}", commit, tree, dirty, None)
 
 
 def resolve_against(against: str) -> Snapshot:
-  if (SNAPSHOTS_DIR / against).is_dir():
+  """Baseline snapshot of an existing snapshot id, or of the tree of a git ref."""
+  if (SNAPSHOTS_DIR / against / "snapshot.json").is_file():
     meta = json.loads((SNAPSHOTS_DIR / against / "snapshot.json").read_text())
-    return Snapshot(against, meta["commit"], meta.get("dirty_hash"), meta.get("ref"))
+    return Snapshot(against, meta["commit"], meta.get("tree"), meta.get("dirty_hash"), meta.get("ref"))
   commit = git("rev-parse", "--verify", f"{against}^{{commit}}").decode().strip()
-  return Snapshot(short_commit(commit), commit, None, against)
+  tree = tree_of(commit)
+  return Snapshot(tree[:TREE_ID_LENGTH], commit, tree, None, against)
+
+
+def tree_of(commit: str) -> str:
+  return git("rev-parse", f"{commit}^{{tree}}").decode().strip()
+
+
+@contextlib.contextmanager
+def snapshot_lock(snapshot_id: str, *, shared: bool = False, wait: bool = True):
+  """Hold the lock of a snapshot: exclusive to build and run it, shared to read its results. Yield whether it is held.
+
+  The lock is an flock on a file in the store, so the system releases it when the holder exits, also on a crash. The
+  exclusive holder writes its pid and checkout into the file, and a run that has to wait names them.
+  """
+  LOCKS_DIR.mkdir(parents=True, exist_ok=True)
+  mode = fcntl.LOCK_SH if shared else fcntl.LOCK_EX
+  with (LOCKS_DIR / f"{snapshot_id}.lock").open("a+") as handle:
+    try:
+      fcntl.flock(handle, mode | fcntl.LOCK_NB)
+    except BlockingIOError:
+      if not wait:
+        yield False
+        return
+      handle.seek(0)
+      holder = handle.read().strip() or "a smoke run that reads its results"
+      log.info("Snapshot %s is in use by %s: waiting", snapshot_id, holder)
+      fcntl.flock(handle, mode)
+    if shared:
+      yield True
+      return
+    write_lock_holder(handle, f"pid {os.getpid()} in {PROJECT_ROOT}\n")
+    try:
+      yield True
+    finally:
+      write_lock_holder(handle, "")
+
+
+def write_lock_holder(handle, text: str) -> None:
+  handle.truncate(0)
+  handle.write(text)
+  handle.flush()
 
 
 def prune_snapshots(current: Snapshot) -> None:
+  """Delete this checkout's dirty snapshots other than the current one, and old snapshots of no branch tip.
+
+  A snapshot that another run holds is skipped.
+  """
   if not SNAPSHOTS_DIR.is_dir():
     return
+  tips = {tree[:TREE_ID_LENGTH] for tree in git("for-each-ref", "--format=%(tree)", "refs/heads").decode().split()}
+  cutoff = datetime.now(timezone.utc).timestamp() - OLD_SNAPSHOT_DAYS * 24 * 3600
   for directory in sorted(SNAPSHOTS_DIR.iterdir()):
-    if directory.is_dir() and "+dirty-" in directory.name and directory.name != current.id:
+    if not directory.is_dir() or directory.name.startswith(".") or directory.name == current.id:
+      continue
+    meta_path = directory / "snapshot.json"
+    meta = json.loads(meta_path.read_text()) if meta_path.is_file() else None
+    if "+dirty-" in directory.name:
+      prune = is_own(meta)
+    else:
+      created = datetime.fromisoformat(meta["created_at"]).timestamp() if meta else 0.0
+      prune = created < cutoff and directory.name not in tips
+    if not prune:
+      continue
+    with snapshot_lock(directory.name, wait=False) as held:
+      if not held:
+        log.info("Snapshot %s is in use: not deleted", directory.name)
+        continue
       shutil.rmtree(directory)
-      print(directory.relative_to(PROJECT_ROOT))
+    print(display_path(directory))
 
 
 def ensure_current_binary(snapshot: Snapshot, no_build: bool) -> None:
+  """Install the current binary into its snapshot; a snapshot of the same content from any checkout keeps its binary."""
+  if not no_build and snapshot.binary.is_file():
+    log.info("Snapshot %s has a binary: reusing it", snapshot.id)
+    prepare_snapshot(snapshot, snapshot.binary)
+    return
   if not no_build:
     log.info("Building the current binary for snapshot %s", snapshot.id)
     build_in_checkout(PROJECT_ROOT)
@@ -620,6 +744,8 @@ def build_baseline_binary(snapshot: Snapshot) -> Path:
   checkout.parent.mkdir(parents=True, exist_ok=True)
   git("worktree", "add", "--detach", "--force", str(checkout), snapshot.commit)
   try:
+    if ENV_FILE.is_file():
+      shutil.copy2(ENV_FILE, checkout / ".env")
     staged = SNAPSHOTS_DIR / f".{snapshot.id}.treetime"
     shutil.copy2(build_in_checkout(checkout), staged)
     return staged
@@ -643,24 +769,30 @@ def release_build_cmd(checkout: Path) -> list[str]:
 
 
 def prepare_snapshot(snapshot: Snapshot, binary: Path) -> None:
-  """Install the binary into the snapshot and drop stored cases produced by a different binary."""
+  """Install the binary into the snapshot and drop stored cases produced by a different binary.
+
+  The binary is installed last and atomically, so an interrupted run leaves either no binary or a complete one.
+  """
   binary_sha = sha256_file(binary)
   meta = snapshot.read_meta()
   if meta is not None and meta.get("binary_sha256") != binary_sha:
     log.info("Binary of snapshot %s changed: deleting its stored cases", snapshot.id)
     shutil.rmtree(snapshot.dir / "cases", ignore_errors=True)
-  snapshot.binary.parent.mkdir(parents=True, exist_ok=True)
-  if binary.resolve() != snapshot.binary.resolve():
-    shutil.copy2(binary, snapshot.binary)
   write_json(snapshot.dir / "snapshot.json", {
-    "commit": snapshot.commit, "dirty_hash": snapshot.dirty_hash, "ref": snapshot.ref, "binary_sha256": binary_sha,
+    "commit": snapshot.commit, "tree": snapshot.tree, "dirty_hash": snapshot.dirty_hash, "ref": snapshot.ref,
+    "checkout": str(PROJECT_ROOT), "binary_sha256": binary_sha,
     "created_at": (meta or {}).get("created_at") or now_iso(),
   })
+  if binary.resolve() != snapshot.binary.resolve():
+    snapshot.binary.parent.mkdir(parents=True, exist_ok=True)
+    staged = snapshot.binary.with_name(f".{snapshot.binary.name}.tmp")
+    shutil.copy2(binary, staged)
+    os.replace(staged, snapshot.binary)
 
 
 def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace, hasher: InputHasher,
-                 check_determinism: bool) -> dict[str, dict]:
-  """Run every selected case of a snapshot whose stored result is not reusable, and return all results."""
+                 check_determinism: bool) -> None:
+  """Run every selected case of a snapshot whose stored result is not reusable."""
   pending = []
   for case in cases:
     key = case_key(case, hasher)
@@ -685,6 +817,9 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
       run_checked(command)
     finally:
       cases_file.unlink(missing_ok=True)
+
+
+def read_results(snapshot: Snapshot, cases: list[Case]) -> dict[str, dict]:
   results = {case.id: read_result(snapshot, case.id) for case in cases}
   missing = sorted(case_id for case_id, result in results.items() if result is None)
   if missing:
@@ -1144,7 +1279,7 @@ def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
   if failing:
     md += ["## Cases", ""]
   for r in failing:
-    case_dir = current.case_dir(r.case.id).relative_to(PROJECT_ROOT)
+    case_dir = display_path(current.case_dir(r.case.id))
     md += [f"### `{r.case.id}`: {r.label}", "", f"- Detail: {r.detail}", f"- Command: `{case_dir}/cmd.sh`"]
     if r.stderr_line:
       md.append(f"- stderr: `{r.stderr_line}`")
@@ -1186,10 +1321,10 @@ def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
     if report.baseline_wall_s is not None and report.baseline_wall_s >= 1.0:
       change = f" ({(report.wall_s - report.baseline_wall_s) / report.baseline_wall_s * 100:+.0f}% vs baseline)"
     print(f"  {report.wall_s:7.1f}s{change}  {report.case.id}")
-  print(f"\nCurrent snapshot:  {current.dir.relative_to(PROJECT_ROOT)}")
+  print(f"\nCurrent snapshot:  {display_path(current.dir)}")
   if baseline:
-    print(f"Baseline snapshot: {baseline.dir.relative_to(PROJECT_ROOT)}")
-  print(f"Report:            {(report_dir / 'report.md').relative_to(PROJECT_ROOT)}")
+    print(f"Baseline snapshot: {display_path(baseline.dir)}")
+  print(f"Report:            {display_path(report_dir / 'report.md')}")
 
 
 def cause_groups(reports: list[CaseReport]) -> list[tuple[tuple[str, ...], list[CaseReport]]]:
@@ -1219,7 +1354,7 @@ def format_signature(sig: tuple[str, ...]) -> str:
 
 def write_last_run(snapshot: Snapshot, reports: list[CaseReport], baseline: Snapshot | None) -> None:
   write_json(snapshot.dir / "last-run.json", {
-    "finished_at": now_iso(), "against": baseline.id if baseline else None,
+    "finished_at": now_iso(), "checkout": str(PROJECT_ROOT), "against": baseline.id if baseline else None,
     "failed": sorted(r.case.id for r in reports if not r.passed),
   })
 
@@ -1231,8 +1366,9 @@ def git(*args: str, cwd: Path = PROJECT_ROOT) -> bytes:
   return result.stdout
 
 
-def short_commit(rev: str) -> str:
-  return git("rev-parse", "--short=10", rev).decode().strip()
+def display_path(path: Path) -> Path:
+  """A path relative to the checkout when it is inside it, else absolute, as with a store outside the checkout."""
+  return path.relative_to(PROJECT_ROOT) if path.is_relative_to(PROJECT_ROOT) else path
 
 
 def run_checked(command: list[str], cwd: Path = PROJECT_ROOT) -> None:
@@ -1375,6 +1511,7 @@ class Dataset:
 class Snapshot:
   id: str
   commit: str
+  tree: str | None
   dirty_hash: str | None
   ref: str | None
 

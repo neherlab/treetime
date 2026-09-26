@@ -20,6 +20,9 @@
 #                           registry (CI on the base branch only)
 #   KACHE_STORE             Host directory of the optional kache compiler cache;
 #                           mounted at the same path when set (see .env.example)
+#   SMOKE_STORE             Host directory of the optional smoke snapshot store
+#                           shared by all checkouts; mounted at the same path when
+#                           set, because dev/smoke runs its cases in the container
 #   PORTLESS_STATE_DIR      State directory of the optional portless proxy
 #                           (default ~/.portless); mounted when it exists
 #   CARGO_PROFILE_*, NEXTEST_*, PROPTEST_*, RUST_LOG, ...
@@ -212,6 +215,10 @@ jupyter)
   if [[ -n "${KACHE_STORE:-}" ]]; then
     mkdir -p "${KACHE_STORE}"
     run_flags+=(--env="KACHE_STORE=${KACHE_STORE}" --volume="${KACHE_STORE}:${KACHE_STORE}")
+  fi
+  if [[ -n "${SMOKE_STORE:-}" ]]; then
+    mkdir -p "${SMOKE_STORE}"
+    run_flags+=(--env="SMOKE_STORE=${SMOKE_STORE}" --volume="${SMOKE_STORE}:${SMOKE_STORE}")
   fi
   portless_dir="${PORTLESS_STATE_DIR:-${HOME}/.portless}"
   if [[ -d "${portless_dir}" ]]; then

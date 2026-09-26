@@ -250,7 +250,7 @@ smoke-run *args:
 smoke-failed *args:
     dev/smoke --rerun-failed "$@"
 
-# Delete the smoke snapshots of dirty working trees other than the current one
+# Delete the smoke snapshots of dirty working trees of this checkout other than the current one, and old snapshots of no branch tip
 [group("test")]
 smoke-prune:
     dev/smoke --prune
