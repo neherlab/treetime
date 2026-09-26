@@ -1,14 +1,23 @@
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 
 import {
   zAncestralConfig,
+  zCheckConfigResponse,
   zClockConfig,
+  zCoalescentPrior,
+  zCommandResults,
   zErrorResponse,
+  zJobEvent,
   zLogEvent,
   zLogLevel,
   zMugrationConfig,
+  zOperationRequest,
   zOptimizeConfig,
   zPruneConfig,
+  zRunConfigResponse,
+  zRunEvent,
+  zSettingDifference,
   zTerminalEvent,
   zTimetreeConfig,
   zVersionInfo,
@@ -114,6 +123,54 @@ describe("zod_schemas terminal events", () => {
 
   test("a terminal event rejects an unknown status", () => {
     expect(zTerminalEvent.safeParse({ status: "done", job_id: "j" }).success).toBe(false);
+  });
+});
+
+describe("zod_schemas tagged unions", () => {
+  test.each([
+    { name: "CheckConfigResponse", schema: zCheckConfigResponse, tag: "status" },
+    { name: "CoalescentPrior", schema: zCoalescentPrior, tag: "kind" },
+    { name: "CommandResults", schema: zCommandResults, tag: "command" },
+    { name: "JobEvent", schema: zJobEvent, tag: "type" },
+    { name: "OperationRequest", schema: zOperationRequest, tag: "operation" },
+    { name: "RunConfigResponse", schema: zRunConfigResponse, tag: "status" },
+    { name: "RunEvent", schema: zRunEvent, tag: "type" },
+    { name: "SettingDifference", schema: zSettingDifference, tag: "kind" },
+    { name: "TerminalEvent", schema: zTerminalEvent, tag: "status" },
+  ])("$name is a discriminated union on `$tag`", ({ schema, tag }) => {
+    expect(schema).toBeInstanceOf(z.ZodDiscriminatedUnion);
+    expect(schema.def.discriminator).toBe(tag);
+  });
+
+  test("an unknown tag is reported at the tag with the known values", () => {
+    expect(zTerminalEvent.safeParse({ status: "done", job_id: "j" }).error?.issues).toMatchObject([
+      { code: "invalid_union", path: ["status"], options: ["ok", "error", "cancelled", "interrupted"] },
+    ]);
+  });
+
+  test("a run event is checked against the variant its type names", () => {
+    const event = { seq: 0, time: "t", type: "terminal", data: { level: "info", message: "x" } };
+
+    expect(zRunEvent.safeParse(event).error?.issues).toMatchObject([{ path: ["data", "status"] }]);
+  });
+
+  test("a run event variant carries the sequence number and time of the event", () => {
+    expect(zRunEvent.safeParse({ type: "log", data: { level: "info", message: "x" } }).success).toBe(false);
+    expect(zRunEvent.safeParse({ seq: 0, time: "t", type: "log", data: { level: "info", message: "x" } }).success).toBe(
+      true,
+    );
+  });
+
+  test("a variant needs the fields of its tag", () => {
+    expect(zCoalescentPrior.safeParse({ kind: "fixed" }).success).toBe(false);
+    expect(zCoalescentPrior.safeParse({ kind: "fixed", tc: 0.5 }).success).toBe(true);
+  });
+
+  test("an unknown field in a closed variant is rejected", () => {
+    expect(zOperationRequest.safeParse({ operation: "version", args: {} }).success).toBe(true);
+    expect(zOperationRequest.safeParse({ operation: "version", args: {}, extra: 1 }).error?.issues).toMatchObject([
+      { code: "unrecognized_keys", keys: ["extra"] },
+    ]);
   });
 });
 

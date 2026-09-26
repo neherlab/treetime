@@ -12,7 +12,7 @@ import {
   version,
 } from "../client";
 import type { RunEvent } from "../generated/types.gen";
-import { zRunsUploadInputBody } from "../generated/zod.gen";
+import { zRunEvent, zRunRecord, zRunsUploadInputBody } from "../generated/zod.gen";
 
 const BASE_URL = "http://treetime.test";
 
@@ -37,6 +37,38 @@ const RECORD = {
   output_files: [],
   error: null,
 };
+
+const FINISHED_RECORD = {
+  ...RECORD,
+  id: "r2",
+  status: "error",
+  pinned: true,
+  started_at: "2026-09-25T10:00:01Z",
+  finished_at: "2026-09-25T10:00:09Z",
+  duration_seconds: 8.25,
+  inputs: [{ setting: "tree", path: "inputs/t.nwk", size: 6, sha256: "ab" }],
+  config_hash: "c0ffee",
+  changed_settings: ["clock_rate"],
+  headline: { root_date: { year: 2014.5, date: "2014-07-02" }, clock_rate: 0.0008, r_squared: "nan" },
+  output_files: [{ path: "out/clock.nwk", kind: "nwk" }],
+  error: { message: "When running clock", causes: ["no dates"] },
+};
+
+const TERMINAL_EVENTS = [
+  {
+    seq: 3,
+    time: "t",
+    type: "terminal",
+    data: {
+      status: "ok",
+      job_id: "r1",
+      result: { command: "clock", output_files: [{ path: "out/a.nwk", kind: "nwk" }] },
+    },
+  },
+  { seq: 3, time: "t", type: "terminal", data: { status: "error", job_id: "r1", message: "failed", causes: ["x"] } },
+  { seq: 3, time: "t", type: "terminal", data: { status: "cancelled", job_id: "r1" } },
+  { seq: 3, time: "t", type: "terminal", data: { status: "interrupted", job_id: "r1" } },
+];
 
 interface Sent {
   key: string;
@@ -227,6 +259,36 @@ describe("api_client requests", () => {
     expect(zRunsUploadInputBody.safeParse(new Blob(["(A,B);"])).success).toBe(true);
     expect(zRunsUploadInputBody.safeParse("(A,B);").success).toBe(false);
   });
+});
+
+describe("api_client responses are the JSON the server sent", () => {
+  test.each([
+    { name: "a new record", record: RECORD },
+    { name: "a finished record", record: FINISHED_RECORD },
+  ])("runsGet returns $name exactly as its schema parses it", async ({ record }) => {
+    const server = new FakeServer({ [`GET /api/runs/${record.id}`]: () => json(record) });
+    const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+    const { data } = await runsGet({ client, path: { id: record.id }, throwOnError: true });
+
+    expect(data).toStrictEqual(record);
+    expect(data).toStrictEqual(zRunRecord.parse(record));
+  });
+
+  test.each(TERMINAL_EVENTS.map((event) => ({ status: event.data.status, event })))(
+    "runsEvents yields a $status terminal event exactly as its schema parses it",
+    async ({ event }) => {
+      const chunk = `id: ${event.seq}\nevent: terminal\ndata: ${JSON.stringify(event)}\n\n`;
+      const server = new FakeServer({ "GET /api/runs/r1/events": () => eventStream([chunk]) });
+      const client = createApiClient({ baseUrl: BASE_URL, fetch: server.fetch });
+
+      const { stream } = await runsEvents({ client, path: { id: "r1" }, sseDefaultRetryDelay: 0 });
+      const events = await collect(stream);
+
+      expect(events).toStrictEqual([event]);
+      expect(events).toStrictEqual([zRunEvent.parse(event)]);
+    },
+  );
 });
 
 describe("api_client event streams", () => {
