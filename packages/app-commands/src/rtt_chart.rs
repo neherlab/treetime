@@ -8,6 +8,7 @@ use treetime::clock::rtt::ClockRegressionResult;
 use treetime::progress::ProgressSink;
 #[cfg(not(feature = "png"))]
 use treetime::progress_warn;
+use treetime_utils::make_error;
 
 #[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
@@ -72,12 +73,9 @@ fn write_clock_regression_chart_bitmap(
 
 #[allow(
   clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+  reason = "count/index numeric cast is exact for the domain range"
 )]
 pub fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<PointsResult, Report> {
-  assert!(!results.is_empty());
-
   let (outliers, norms): (Vec<_>, Vec<_>) = results.iter().partition(|result| result.is_outlier);
 
   let norm_points = norms
@@ -92,7 +90,9 @@ pub fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel
 
   let points = chain!(&norm_points, &outlier_points).copied().collect_vec();
 
-  let (x_min, x_max) = points.iter().map(|(x, _)| *x).minmax().into_option().unwrap();
+  let Some((x_min, x_max)) = points.iter().map(|(x, _)| *x).minmax().into_option() else {
+    return make_error!("the root-to-tip chart needs at least one sample with a date");
+  };
 
   let line_y1 = clock_model.div(x_min as f64) as f32;
   let line_y2 = clock_model.div(x_max as f64) as f32;
@@ -104,7 +104,7 @@ pub fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel
     .chain([line_y1, line_y2])
     .minmax()
     .into_option()
-    .unwrap();
+    .unwrap_or((line_y1, line_y2));
 
   Ok(PointsResult {
     norm_points,

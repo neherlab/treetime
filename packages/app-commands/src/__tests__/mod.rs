@@ -8,6 +8,7 @@ mod test_job;
 mod test_json_float;
 mod test_prepare_run;
 mod test_progress;
+mod test_rtt_chart;
 mod test_run_checks;
 mod test_run_config;
 mod test_schema_annotations;
