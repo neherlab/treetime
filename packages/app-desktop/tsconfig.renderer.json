@@ -9,5 +9,6 @@
       "auspice/src/*": ["../app-ui/src/auspice/types/*"]
     }
   },
-  "include": ["renderer"]
+  "include": ["renderer"],
+  "references": [{ "path": "../app-contracts/tsconfig.generated.json" }]
 }

@@ -57,6 +57,13 @@ export function createDesktopBridge(connection: BackendConnection, shell: Deskto
   return createBridge(createPortTransport(new BackendClient(connection), shell));
 }
 
+export function createDesktopSaveActions(shell: DesktopShell) {
+  return {
+    saveRunFile: async (id: string, path: string, name: string) => saved(await shell.saveRunFile({ id, path, name })),
+    saveRunArchive: async (id: string, name: string) => saved(await shell.saveRunArchive({ id, name })),
+  };
+}
+
 export function createLocalFiles(shell: DesktopShell): LocalFiles {
   return {
     async pickFiles(request) {
@@ -302,8 +309,7 @@ function createPortTransport(client: BackendClient, shell: DesktopShell): Bridge
   return {
     call,
     runEvents,
-    saveRunFile: async (id, path, name) => saved(await shell.saveRunFile({ id, path, name })),
-    saveRunArchive: async (id, name) => saved(await shell.saveRunArchive({ id, name })),
+    ...createDesktopSaveActions(shell),
     uploadInput: () => Promise.reject(new LocalInputsError()),
   };
 }

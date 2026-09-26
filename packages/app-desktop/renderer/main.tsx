@@ -1,13 +1,16 @@
-import { App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import { createApiClient } from "@neherlab/app-contracts/client";
+import { ApiProvider, App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
   createDesktopBridge,
+  createDesktopSaveActions,
   createLocalFiles,
   windowBackendConnection,
   type DesktopShell,
 } from "../src/desktop-bridge";
+import { createPortFetch } from "../src/port-fetch";
 
 import "./index.css";
 
@@ -17,7 +20,15 @@ declare global {
   }
 }
 
-const bridge = createDesktopBridge(windowBackendConnection(window, window.treetimeShell), window.treetimeShell);
+const DESKTOP_ORIGIN = "http://treetime.desktop";
+
+const connection = windowBackendConnection(window, window.treetimeShell);
+
+const bridge = createDesktopBridge(connection, window.treetimeShell);
+
+const client = createApiClient({ baseUrl: DESKTOP_ORIGIN, fetch: createPortFetch(connection) });
+
+const save = createDesktopSaveActions(window.treetimeShell);
 
 const localFiles = createLocalFiles(window.treetimeShell);
 
@@ -30,7 +41,9 @@ if (root) {
         <ErrorBoundary>
           <BridgeProvider bridge={bridge}>
             <QueryProvider>
-              <App localFiles={localFiles} />
+              <ApiProvider client={client} save={save}>
+                <App localFiles={localFiles} />
+              </ApiProvider>
             </QueryProvider>
           </BridgeProvider>
         </ErrorBoundary>
