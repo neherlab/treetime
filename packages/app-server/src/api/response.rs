@@ -73,26 +73,6 @@ impl<T: JsonSchema> OperationOutput for TypedSse<T> {
   }
 }
 
-pub(crate) struct JsonText(pub String);
-
-impl IntoResponse for JsonText {
-  fn into_response(self) -> Response {
-    ([(header::CONTENT_TYPE, HeaderValue::from_static(JSON))], self.0).into_response()
-  }
-}
-
-impl OperationOutput for JsonText {
-  type Inner = Self;
-
-  fn operation_response(_ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
-    Some(content_response("A JSON value", JSON, json_schema!({})))
-  }
-
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<StatusCode>, ApiResponse)> {
-    success(Self::operation_response(ctx, operation))
-  }
-}
-
 pub(crate) struct FileContent {
   pub content_type: HeaderValue,
   pub bytes: Vec<u8>,

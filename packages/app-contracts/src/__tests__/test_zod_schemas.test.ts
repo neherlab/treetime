@@ -8,12 +8,12 @@ import {
   zClockConfig,
   zCoalescentPrior,
   zCommandResults,
+  zCreateRunRequest,
   zErrorResponse,
   zJobEvent,
   zLogEvent,
   zLogLevel,
   zMugrationConfig,
-  zOperationRequest,
   zOptimizeConfig,
   zPruneConfig,
   zRunConfigResponse,
@@ -134,7 +134,6 @@ describe("zod_schemas tagged unions", () => {
     { name: "CoalescentPrior", schema: zCoalescentPrior, tag: "kind" },
     { name: "CommandResults", schema: zCommandResults, tag: "command" },
     { name: "JobEvent", schema: zJobEvent, tag: "type" },
-    { name: "OperationRequest", schema: zOperationRequest, tag: "operation" },
     { name: "RunConfigResponse", schema: zRunConfigResponse, tag: "status" },
     { name: "RunEvent", schema: zRunEvent, tag: "type" },
     { name: "SettingDifference", schema: zSettingDifference, tag: "kind" },
@@ -191,9 +190,9 @@ describe("zod_schemas tagged unions", () => {
     expect(zCoalescentPrior.safeParse({ kind: "fixed", tc: 0.5 }).success).toBe(true);
   });
 
-  test("an unknown field in a closed variant is rejected", () => {
-    expect(zOperationRequest.safeParse({ operation: "version", args: {} }).success).toBe(true);
-    expect(zOperationRequest.safeParse({ operation: "version", args: {}, extra: 1 }).error?.issues).toMatchObject([
+  test("an unknown field in a closed request object is rejected", () => {
+    expect(zCreateRunRequest.safeParse({ command: "clock", config: {} }).success).toBe(true);
+    expect(zCreateRunRequest.safeParse({ command: "clock", config: {}, extra: 1 }).error?.issues).toMatchObject([
       { code: "unrecognized_keys", keys: ["extra"] },
     ]);
   });

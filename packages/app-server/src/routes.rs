@@ -1,6 +1,6 @@
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
-use crate::api::response::{FileContent, JsonText, TypedSse, ZipAttachment};
+use crate::api::response::{FileContent, TypedSse, ZipAttachment};
 use crate::error::AppError;
 use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
@@ -8,7 +8,6 @@ use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
 use aide::openapi::{Contact, Info, License, OpenApi};
-use app_commands::bridge::operations::OperationRequest;
 use app_commands::bridge::service::AppService;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
@@ -277,15 +276,6 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       get_with(runs_archive, |op| {
         op.id("runsArchive")
           .description("Zip archive of the run's `out/` folder.")
-      }),
-    )
-    .api_route(
-      "/api/operations",
-      post_with(operations_call, |op| {
-        op.id("operationsCall").description(
-          "Run the operation the request names; the answer is its JSON result, `null` for an operation without \
-           result.",
-        )
       }),
     )
 }
@@ -560,13 +550,6 @@ async fn runs_archive(
   let bytes = tokio::task::spawn_blocking(move || runs.zip(&archive_id)).await??;
   let disposition = HeaderValue::from_str(&format!("attachment; filename=\"treetime-{}.zip\"", id.as_str()))?;
   Ok(ZipAttachment { disposition, bytes })
-}
-
-async fn operations_call(
-  State(state): State<Arc<AppState>>,
-  ApiJson(request): ApiJson<OperationRequest>,
-) -> Result<JsonText, AppError> {
-  call(&state, move |service| request.handle(service)).await.map(JsonText)
 }
 
 async fn call<T, F>(state: &AppState, operation: F) -> Result<T, AppError>

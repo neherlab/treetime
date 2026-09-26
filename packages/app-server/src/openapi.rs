@@ -1,6 +1,5 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
 use app_commands::bridge::error::ErrorResponse;
-use app_commands::bridge::operations::OperationRequest;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
 use app_commands::command::{AppCommand, CommandOutcome};
@@ -83,7 +82,6 @@ pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
   add_type::<CladeInRuns>(&mut components)?;
   add_type::<ErrorResponse>(&mut components)?;
   add_type::<CancelRunResponse>(&mut components)?;
-  add_type::<OperationRequest>(&mut components)?;
 
   let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
   for (name, schema) in components {

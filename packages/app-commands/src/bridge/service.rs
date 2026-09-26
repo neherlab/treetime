@@ -1,4 +1,3 @@
-use crate::bridge::operations::Operations;
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
 use crate::command::AppCommand;
@@ -42,10 +41,6 @@ pub struct AppService {
   policy: Arc<dyn InputPolicy>,
 }
 
-#[allow(
-  clippy::same_name_method,
-  reason = "the `Operations` implementation that dispatches an `OperationRequest` delegates to these methods"
-)]
 impl AppService {
   pub fn new(runs: Arc<RunManager>, data_dir: PathBuf, policy: Arc<dyn InputPolicy>) -> Self {
     Self { runs, data_dir, policy }
@@ -175,83 +170,5 @@ impl AppService {
       })
       .wrap_err_with(|| format!("When starting a thread for run `{}`", id.as_str()))?;
     Ok(record)
-  }
-}
-
-impl Operations for AppService {
-  fn version(&self) -> Result<VersionInfo, Report> {
-    Self::version(self)
-  }
-
-  fn datasets(&self) -> Result<DatasetCatalog, Report> {
-    Self::datasets(self)
-  }
-
-  fn check_config(&self, request: CheckConfigRequest) -> Result<CheckConfigResponse, Report> {
-    Self::check_config(self, &request)
-  }
-
-  fn run_config(&self, request: RunConfigRequest) -> Result<RunConfigResponse, Report> {
-    Self::run_config(self, &request)
-  }
-
-  fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
-    Self::check_inputs(self, request)
-  }
-
-  fn list_runs(&self) -> Result<RunList, Report> {
-    Self::list_runs(self)
-  }
-
-  fn create_run(&self, request: CreateRunRequest) -> Result<RunRecord, Report> {
-    Self::create_run(self, request)
-  }
-
-  fn get_run(&self, id: JobId) -> Result<RunRecord, Report> {
-    Self::get_run(self, &id)
-  }
-
-  fn start_run(&self, id: JobId, request: StartRunRequest) -> Result<RunRecord, Report> {
-    Self::start_run(self, &id, request)
-  }
-
-  fn update_run(&self, id: JobId, request: UpdateRunRequest) -> Result<RunSummary, Report> {
-    Self::update_run(self, &id, request)
-  }
-
-  fn cancel_run(&self, id: JobId) -> Result<CancelRunResponse, Report> {
-    Self::cancel_run(self, &id)
-  }
-
-  fn delete_run(&self, id: JobId) -> Result<(), Report> {
-    Self::delete_run(self, &id)
-  }
-
-  fn restore_run(&self, id: JobId) -> Result<RunSummary, Report> {
-    Self::restore_run(self, &id)
-  }
-
-  fn purge_run(&self, id: JobId) -> Result<(), Report> {
-    Self::purge_run(self, &id)
-  }
-
-  fn run_files(&self, id: JobId) -> Result<Vec<RunFile>, Report> {
-    Self::run_files(self, &id)
-  }
-
-  fn run_results(&self, id: JobId) -> Result<RunResults, Report> {
-    Self::run_results(self, &id)
-  }
-
-  fn run_auspice(&self, id: JobId) -> Result<AuspiceDocument, Report> {
-    Self::run_auspice(self, &id)
-  }
-
-  fn compare_runs(&self, id: JobId, other: JobId) -> Result<RunComparison, Report> {
-    Self::compare_runs(self, &id, &other)
-  }
-
-  fn clade_in_runs(&self, request: CladeRequest) -> Result<CladeInRuns, Report> {
-    Self::clade_in_runs(self, &request)
   }
 }

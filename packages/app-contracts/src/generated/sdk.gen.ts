@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, OperationsCallData, OperationsCallErrors, OperationsCallResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPurgeData, RunsPurgeErrors, RunsPurgeResponses, RunsRestoreData, RunsRestoreErrors, RunsRestoreResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses } from './types.gen';
-import { zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zOperationsCallBody, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsDeleteResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsPurgePath, zRunsPurgeResponse, zRunsRestorePath, zRunsRestoreResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse } from './zod.gen';
+import type { CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPurgeData, RunsPurgeErrors, RunsPurgeResponses, RunsRestoreData, RunsRestoreErrors, RunsRestoreResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses } from './types.gen';
+import { zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsDeleteResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsPurgePath, zRunsPurgeResponse, zRunsRestorePath, zRunsRestoreResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -415,21 +415,4 @@ export const runsArchive = <ThrowOnError extends boolean = false>(options: Optio
   responseValidator: async (data) => await zRunsArchiveResponse.parseAsync(data),
   url: '/api/runs/{id}/archive',
   ...options
-});
-
-/**
- * Run the operation the request names; the answer is its JSON result, `null` for an operation without result.
- */
-export const operationsCall = <ThrowOnError extends boolean = false>(options: Options<OperationsCallData, ThrowOnError>): RequestResult<OperationsCallResponses, OperationsCallErrors, ThrowOnError> => (options.client ?? client).post<OperationsCallResponses, OperationsCallErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: zOperationsCallBody,
-    path: z.never().optional(),
-    query: z.never().optional()
-  }).parseAsync(data),
-  url: '/api/operations',
-  ...options,
-  headers: {
-    'Content-Type': 'application/json',
-    ...options.headers
-  }
 });

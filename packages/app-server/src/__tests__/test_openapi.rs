@@ -25,7 +25,6 @@ mod tests {
         ("CoalescentPrior", "kind"),
         ("CommandResults", "command"),
         ("JobEvent", "type"),
-        ("OperationRequest", "operation"),
         ("RunConfigResponse", "status"),
         ("RunEvent", "type"),
         ("SettingDifference", "kind"),

@@ -545,54 +545,6 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_operations_answers_the_operation_the_request_names() {
-    let test = app();
-    let (_, datasets) = request(&test, "GET", "/api/datasets", None).await;
-    let (status, answer) = request(
-      &test,
-      "POST",
-      "/api/operations",
-      Some(json!({ "operation": "datasets", "args": {} })),
-    )
-    .await;
-    assert_eq!((200, datasets), (status, answer));
-  }
-
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_operations_confines_inputs_and_reports_typed_errors() {
-    let test = app();
-    let (outside, outside_error) = request(
-      &test,
-      "POST",
-      "/api/operations",
-      Some(json!({ "operation": "check-inputs", "args": { "request": { "command": "prune", "config": { "tree": "../Cargo.toml" } } } })),
-    )
-    .await;
-    let (missing, missing_error) = request(
-      &test,
-      "POST",
-      "/api/operations",
-      Some(json!({ "operation": "get-run", "args": { "id": "r9" } })),
-    )
-    .await;
-    let (unknown, _) = request(
-      &test,
-      "POST",
-      "/api/operations",
-      Some(json!({ "operation": "format-disk", "args": {} })),
-    )
-    .await;
-    assert_eq!(
-      ((400, json!("invalid_request")), (404, json!("not_found")), 400),
-      (
-        (outside, outside_error["code"].clone()),
-        (missing, missing_error["code"].clone()),
-        unknown
-      )
-    );
-  }
-
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_malformed_json_body_is_a_bad_request() {
     let test = app();
     let response = test
@@ -874,7 +826,6 @@ mod tests {
         json!("runsCreate"),
         json!("#/components/schemas/CreateRunRequest"),
         json!("#/components/schemas/ErrorResponse"),
-        json!("#/components/schemas/OperationRequest"),
         json!("#/components/schemas/RunEvent"),
       ),
       (
@@ -882,7 +833,6 @@ mod tests {
         doc["paths"]["/api/runs"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
         doc["paths"]["/api/runs/{id}"]["get"]["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
           .clone(),
-        doc["paths"]["/api/operations"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
         doc["paths"]["/api/runs/{id}/events"]["get"]["responses"]["200"]["content"]["text/event-stream"]["schema"]
           ["$ref"]
           .clone(),
