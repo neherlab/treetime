@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": [],
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src/generated",
+    "outDir": "node_modules/.cache/tsc-generated",
+    "tsBuildInfoFile": "node_modules/.cache/tsc-generated/tsconfig.generated.tsbuildinfo",
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src/generated"]
+}

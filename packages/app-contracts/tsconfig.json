@@ -5,5 +5,7 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/generated"],
+  "references": [{ "path": "./tsconfig.generated.json" }]
 }

@@ -2,6 +2,8 @@ import { defineConfig } from "@hey-api/openapi-ts";
 
 const LONG_INTEGER_FORMATS = new Set(["int64", "uint64"]);
 
+const BINARY_FORMAT = "binary";
+
 const SAFE_INTEGER_LIMITS = {
   int64: {
     minValue: Number.MIN_SAFE_INTEGER,
@@ -21,12 +23,12 @@ export default defineConfig({
   input: "./openapi.json",
   output: "./src/generated",
   plugins: [
+    { name: "@hey-api/client-fetch" },
     { name: "@hey-api/typescript" },
+    { name: "@hey-api/sdk", validator: { request: "zod", response: "zod" } },
     {
       name: "zod",
       compatibilityVersion: 4,
-      requests: false,
-      responses: false,
       $resolvers: {
         number: (ctx) => {
           const format = ctx.schema.format;
@@ -51,6 +53,15 @@ export default defineConfig({
               ctx.chain.current = chain;
             }
           }
+
+          return ctx.chain.current;
+        },
+        string: (ctx) => {
+          if (ctx.schema.format !== BINARY_FORMAT) {
+            return undefined;
+          }
+
+          ctx.chain.current = ctx.chain.current.attr("instanceof").call(ctx.$("Blob"));
 
           return ctx.chain.current;
         },
