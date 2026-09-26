@@ -1,5 +1,6 @@
 use crate::command::{CommandOutcome, OutputFile};
 use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job};
+use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
@@ -28,6 +29,8 @@ use treetime_utils::fmt::float::float_to_significant_digits;
 
 const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
+const APP_EVENT_CAPACITY: usize = 1024;
+
 pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
 
 pub fn unconfined() -> ConfigHook {
@@ -38,6 +41,7 @@ pub struct RunManager {
   store: RunStore,
   active: Mutex<BTreeMap<JobId, Arc<ActiveRun>>>,
   records: Mutex<()>,
+  app_events: AppEventLog,
 }
 
 impl RunManager {
@@ -46,11 +50,18 @@ impl RunManager {
     store
       .recover_interrupted()
       .wrap_err("When marking the runs of a previous process as interrupted")?;
+    let first_app_seq = usize::try_from(Utc::now().timestamp_micros())
+      .wrap_err("When numbering the app events from the current time")?;
     Ok(Arc::new(Self {
       store,
       active: Mutex::new(BTreeMap::new()),
       records: Mutex::new(()),
+      app_events: AppEventLog::new(APP_EVENT_CAPACITY, first_app_seq),
     }))
+  }
+
+  pub fn app_events(&self) -> &AppEventLog {
+    &self.app_events
   }
 
   pub fn store(&self) -> &RunStore {
@@ -73,7 +84,12 @@ impl RunManager {
   }
 
   pub fn create(&self, request: CreateRunRequest) -> Result<RunRecord, Report> {
-    self.store.create(request.command, request.config, request.title)
+    let record = self.store.create(request.command, request.config, request.title)?;
+    self.app_events.append(
+      AppChange::RunCreated { run: record.summary() },
+      run_stale_paths(&record.id),
+    );
+    Ok(record)
   }
 
   pub fn start(self: &Arc<Self>, id: &JobId, config: Option<Value>, hook: ConfigHook) -> Result<StartedRun, Report> {
@@ -182,17 +198,28 @@ impl RunManager {
     }
     active.remove(id);
     let _records = self.records.lock();
-    self.store.trash(id)
+    self.store.trash(id)?;
+    self
+      .app_events
+      .append(AppChange::RunDeleted { id: id.clone() }, run_stale_paths(id));
+    Ok(())
   }
 
   pub fn restore(&self, id: &JobId) -> Result<RunSummary, Report> {
     let _records = self.records.lock();
-    Ok(self.store.restore(id)?.summary())
+    let summary = self.store.restore(id)?.summary();
+    self.app_events.append(
+      AppChange::RunRestored { run: summary.clone() },
+      run_stale_paths(id),
+    );
+    Ok(summary)
   }
 
   pub fn purge(&self, id: &JobId) -> Result<(), Report> {
     let _records = self.records.lock();
-    self.store.purge(id)
+    self.store.purge(id)?;
+    self.app_events.append(AppChange::RunPurged { id: id.clone() }, vec![]);
+    Ok(())
   }
 
   pub fn input_dirs(&self) -> Result<Vec<PathBuf>, Report> {
@@ -283,6 +310,10 @@ impl RunManager {
     let mut record = self.store.read(id)?;
     change(&mut record)?;
     self.store.write(&record)?;
+    self.app_events.append(
+      AppChange::RunUpdated { run: record.summary() },
+      run_stale_paths(id),
+    );
     Ok(record)
   }
 

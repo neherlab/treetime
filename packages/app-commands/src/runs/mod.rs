@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod app_events;
 pub mod errors;
 pub mod events;
 pub mod files;
