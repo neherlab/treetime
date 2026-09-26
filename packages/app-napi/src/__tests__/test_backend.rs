@@ -208,6 +208,39 @@ mod tests {
   }
 
   #[test]
+  fn test_backend_fetch_streams_app_events_of_run_changes() {
+    let root = tempdir().unwrap();
+    let service = DesktopService::open(root.path()).unwrap();
+    let (abort, replies) = open_fetch(&service, "GET", "/api/events", vec![], None);
+    let head = replies.recv_timeout(Duration::from_secs(60)).unwrap();
+    let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
+
+    let mut body = vec![];
+    while !String::from_utf8_lossy(&body).contains("\n\n") {
+      match replies.recv_timeout(Duration::from_secs(60)).unwrap() {
+        PortReply::Chunk { data, .. } => body.extend_from_slice(&data),
+        _ => panic!("the app event stream ended"),
+      }
+    }
+    abort.abort();
+    let text = String::from_utf8(body).unwrap();
+    let data = text
+      .lines()
+      .find_map(|line| line.strip_prefix("data: "))
+      .map(|data| serde_json::from_str::<Value>(data).unwrap())
+      .unwrap();
+    assert_eq!(
+      (true, true, json!("run-created"), record["id"].clone()),
+      (
+        matches!(head, PortReply::Head { status: 200, .. }),
+        text.contains("event: run-created"),
+        data["kind"].clone(),
+        data["run"]["id"].clone()
+      )
+    );
+  }
+
+  #[test]
   fn test_backend_fetch_answers_a_missing_run_with_a_typed_error_body() {
     let root = tempdir().unwrap();
     let service = DesktopService::open(root.path()).unwrap();

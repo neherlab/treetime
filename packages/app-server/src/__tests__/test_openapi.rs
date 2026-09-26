@@ -20,6 +20,7 @@ mod tests {
     let doc = api_doc().unwrap();
     assert_eq!(
       vec![
+        ("AppEvent", "kind"),
         ("CheckConfigResponse", "status"),
         ("CoalescentPrior", "kind"),
         ("CommandResults", "command"),

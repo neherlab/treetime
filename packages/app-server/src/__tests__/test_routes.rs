@@ -2,7 +2,8 @@
 mod tests {
   use crate::routes::api_doc;
   use helpers::{
-    TestApp, app, app_with_upload_limit, events_of, next_event, read_events, request, timetree_config, wait_for_status,
+    TestApp, app, app_with_upload_limit, create_deferred, events_of, is_documented_prefix, next_event, open_app_events,
+    read_events, request, take_events, timetree_config, wait_for_status,
   };
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
@@ -653,6 +654,168 @@ mod tests {
     assert_eq!((204, Value::Null), helpers::body_json(response).await);
   }
 
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_app_events_report_run_changes_with_their_stale_paths() {
+    let test = app();
+    let mut stream = open_app_events(&test, "", None).await;
+    let id = create_deferred(&test, "first").await;
+    request(
+      &test,
+      "PATCH",
+      &format!("/api/runs/{id}"),
+      Some(json!({ "title": "renamed" })),
+    )
+    .await;
+    request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
+
+    let events = take_events(&mut stream, 3).await;
+    let stale = json!(["/api/runs", format!("/api/runs/{id}"), "/api/clade-in-runs"]);
+    assert_eq!(
+      vec![
+        ("run-created", json!("run-created"), json!(id), stale.clone()),
+        ("run-updated", json!("run-updated"), json!(id), stale.clone()),
+        ("run-deleted", json!("run-deleted"), json!(id), stale.clone()),
+      ],
+      events
+        .iter()
+        .map(|event| (
+          event.name.as_str(),
+          event.data["kind"].clone(),
+          event.data["run"]["id"].as_str().map_or(event.data["id"].clone(), |id| json!(id)),
+          event.data["stale"].clone(),
+        ))
+        .collect::<Vec<_>>()
+    );
+    assert_eq!(json!("renamed"), events[1].data["run"]["title"]);
+    let seqs = events.iter().map(|event| event.data["seq"].as_u64().unwrap()).collect::<Vec<_>>();
+    assert_eq!(
+      (
+        vec![seqs[0], seqs[0] + 1, seqs[0] + 2],
+        seqs.iter().map(u64::to_string).collect::<Vec<_>>()
+      ),
+      (
+        seqs.clone(),
+        events.iter().map(|event| event.id.clone().unwrap()).collect::<Vec<_>>()
+      ),
+      "consecutive numbers, sent as the SSE event id"
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_app_events_resume_from_an_event_by_query_or_last_event_id() {
+    let test = app();
+    let mut live = open_app_events(&test, "", None).await;
+    for title in ["a", "b", "c"] {
+      create_deferred(&test, title).await;
+    }
+    let seqs = |events: &[helpers::SseEvent]| events.iter().map(|event| event.data["seq"].clone()).collect::<Vec<_>>();
+    let all = take_events(&mut live, 3).await;
+    let first = all[0].data["seq"].as_u64().unwrap();
+
+    let mut from = open_app_events(&test, &format!("?from={}", first + 1), None).await;
+    let mut last_event_id = open_app_events(&test, "", Some(&first.to_string())).await;
+    assert_eq!(
+      (seqs(&all[1..]), seqs(&all[1..])),
+      (
+        seqs(&take_events(&mut from, 2).await),
+        seqs(&take_events(&mut last_event_id, 2).await)
+      )
+    );
+
+    create_deferred(&test, "d").await;
+    let next = json!(first + 3);
+    assert_eq!(
+      (vec![next.clone()], vec![next]),
+      (
+        seqs(&take_events(&mut from, 1).await),
+        seqs(&take_events(&mut last_event_id, 1).await)
+      ),
+      "a resumed stream follows new changes"
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_app_events_resync_when_the_event_is_not_in_the_log() {
+    let test = app();
+    let mut live = open_app_events(&test, "", None).await;
+    create_deferred(&test, "a").await;
+    let mut head = take_events(&mut live, 1).await[0].data["seq"].as_u64().unwrap();
+
+    for query in ["?from=1".to_owned(), format!("?from={}", head + 1000)] {
+      let mut stream = open_app_events(&test, &query, None).await;
+      let resync = &take_events(&mut stream, 1).await[0];
+      assert_eq!(
+        (
+          "resync",
+          Some(head.to_string()),
+          json!(head),
+          json!(["/api/runs", "/api/clade-in-runs"])
+        ),
+        (
+          resync.name.as_str(),
+          resync.id.clone(),
+          resync.data["seq"].clone(),
+          resync.data["stale"].clone()
+        ),
+        "{query}"
+      );
+      create_deferred(&test, "next").await;
+      let next = &take_events(&mut stream, 1).await[0];
+      let expected = take_events(&mut live, 1).await[0].data["seq"].clone();
+      assert_eq!((json!("run-created"), expected.clone()), (next.data["kind"].clone(), next.data["seq"].clone()));
+      head = expected.as_u64().unwrap();
+    }
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_app_event_stale_paths_are_paths_of_the_api() {
+    let test = app();
+    let mut stream = open_app_events(&test, "", None).await;
+    let id = create_deferred(&test, "a").await;
+    request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
+    let mut stale = take_events(&mut stream, 2)
+      .await
+      .iter()
+      .flat_map(|event| event.data["stale"].as_array().unwrap().clone())
+      .collect::<Vec<_>>();
+    let mut resync = open_app_events(&test, "?from=1", None).await;
+    stale.extend(take_events(&mut resync, 1).await[0].data["stale"].as_array().unwrap().clone());
+    let doc = api_doc().unwrap();
+    let undocumented = stale
+      .iter()
+      .map(|path| path.as_str().unwrap())
+      .filter(|path| !is_documented_prefix(&doc, path))
+      .collect::<Vec<_>>();
+    assert_eq!((false, Vec::<&str>::new()), (stale.is_empty(), undocumented));
+  }
+
+  #[test]
+  fn test_routes_openapi_documents_the_app_event_stream() {
+    let doc = api_doc().unwrap();
+    let operation = &doc["paths"]["/api/events"]["get"];
+    assert_eq!(
+      (
+        json!("events"),
+        json!("#/components/schemas/AppEvent"),
+        json!(["from"]),
+        json!("kind"),
+      ),
+      (
+        operation["operationId"].clone(),
+        operation["responses"]["200"]["content"]["text/event-stream"]["schema"]["$ref"].clone(),
+        json!(
+          operation["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|parameter| parameter["name"].clone())
+            .collect::<Vec<_>>()
+        ),
+        doc["components"]["schemas"]["AppEvent"]["discriminator"]["propertyName"].clone(),
+      )
+    );
+  }
+
   #[test]
   fn test_routes_openapi_operations_have_ids_descriptions_and_error_responses() {
     let doc = api_doc().unwrap();
@@ -765,6 +928,7 @@ mod tests {
     use tower::ServiceExt;
 
     pub(super) struct SseEvent {
+      pub id: Option<String>,
       pub name: String,
       pub data: Value,
     }
@@ -858,6 +1022,62 @@ mod tests {
       read_events(response).await
     }
 
+    pub(super) async fn open_app_events(test: &TestApp, query: &str, last_event_id: Option<&str>) -> BodyDataStream {
+      let request = Request::get(format!("/api/events{query}"));
+      let request = match last_event_id {
+        Some(id) => request.header("last-event-id", id),
+        None => request,
+      };
+      let response = test.send(request.body(Body::empty()).unwrap()).await;
+      assert_eq!(
+        (200, Some("text/event-stream")),
+        (
+          response.status().as_u16(),
+          response
+            .headers()
+            .get("content-type")
+            .and_then(|value| value.to_str().ok())
+        )
+      );
+      response.into_body().into_data_stream()
+    }
+
+    pub(super) async fn take_events(stream: &mut BodyDataStream, count: usize) -> Vec<SseEvent> {
+      let mut buffer = String::new();
+      let mut events = vec![];
+      while events.len() < count {
+        let event = tokio::time::timeout(Duration::from_secs(10), next_event(stream, &mut buffer))
+          .await
+          .expect("an app event within 10 s")
+          .expect("an open app event stream");
+        events.push(event);
+      }
+      events
+    }
+
+    pub(super) async fn create_deferred(test: &TestApp, title: &str) -> String {
+      let (_, record) = request(
+        test,
+        "POST",
+        "/api/runs",
+        Some(json!({ "command": "clock", "config": {}, "title": title, "defer_start": true })),
+      )
+      .await;
+      record["id"].as_str().unwrap().to_owned()
+    }
+
+    pub(super) fn is_documented_prefix(doc: &Value, path: &str) -> bool {
+      let segments = path.split('/').collect::<Vec<_>>();
+      doc["paths"].as_object().unwrap().keys().any(|template| {
+        let template = template.split('/').collect::<Vec<_>>();
+        template.len() >= segments.len()
+          && segments
+            .iter()
+            .zip(&template)
+            .all(|(segment, pattern)| segment == pattern || pattern.starts_with('{'))
+      })
+    }
+
     pub(super) async fn wait_for_status(test: &TestApp, id: &str, status: &str) -> Value {
       for _ in 0..600 {
         let (_, record) = request(test, "GET", &format!("/api/runs/{id}"), None).await;
@@ -894,16 +1114,20 @@ mod tests {
     }
 
     fn parse_event(block: &str) -> Option<SseEvent> {
+      let mut id = None;
       let mut name = None;
       let mut data = String::new();
       for line in block.lines() {
-        if let Some(value) = line.strip_prefix("event: ") {
+        if let Some(value) = line.strip_prefix("id: ") {
+          id = Some(value.to_owned());
+        } else if let Some(value) = line.strip_prefix("event: ") {
           name = Some(value.to_owned());
         } else if let Some(value) = line.strip_prefix("data: ") {
           data.push_str(value);
         }
       }
       Some(SseEvent {
+        id,
         name: name?,
         data: serde_json::from_str(&data).unwrap(),
       })
