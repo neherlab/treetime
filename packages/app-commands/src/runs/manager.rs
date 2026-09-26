@@ -50,8 +50,8 @@ impl RunManager {
     store
       .recover_interrupted()
       .wrap_err("When marking the runs of a previous process as interrupted")?;
-    let first_app_seq = usize::try_from(Utc::now().timestamp_micros())
-      .wrap_err("When numbering the app events from the current time")?;
+    let first_app_seq =
+      usize::try_from(Utc::now().timestamp_micros()).wrap_err("When numbering the app events from the current time")?;
     Ok(Arc::new(Self {
       store,
       active: Mutex::new(BTreeMap::new()),
@@ -208,10 +208,9 @@ impl RunManager {
   pub fn restore(&self, id: &JobId) -> Result<RunSummary, Report> {
     let _records = self.records.lock();
     let summary = self.store.restore(id)?.summary();
-    self.app_events.append(
-      AppChange::RunRestored { run: summary.clone() },
-      run_stale_paths(id),
-    );
+    self
+      .app_events
+      .append(AppChange::RunRestored { run: summary.clone() }, run_stale_paths(id));
     Ok(summary)
   }
 
@@ -310,10 +309,9 @@ impl RunManager {
     let mut record = self.store.read(id)?;
     change(&mut record)?;
     self.store.write(&record)?;
-    self.app_events.append(
-      AppChange::RunUpdated { run: record.summary() },
-      run_stale_paths(id),
-    );
+    self
+      .app_events
+      .append(AppChange::RunUpdated { run: record.summary() }, run_stale_paths(id));
     Ok(record)
   }
 

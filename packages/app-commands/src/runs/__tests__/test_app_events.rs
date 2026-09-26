@@ -193,8 +193,18 @@ mod tests {
 
     let after = RunManager::open(root.path()).unwrap();
     let resumed = collect(after.app_events(), Some(last + 1));
-    assert_eq!(vec![json!("resync")], summarize(&resumed).into_iter().map(|(_, kind, _)| kind).collect::<Vec<_>>());
-    assert!(after.app_events().head() >= last, "{} < {last}", after.app_events().head());
+    assert_eq!(
+      vec![json!("resync")],
+      summarize(&resumed)
+        .into_iter()
+        .map(|(_, kind, _)| kind)
+        .collect::<Vec<_>>()
+    );
+    assert!(
+      after.app_events().head() >= last,
+      "{} < {last}",
+      after.app_events().head()
+    );
   }
 
   mod helpers {

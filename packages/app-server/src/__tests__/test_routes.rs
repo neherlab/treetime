@@ -674,20 +674,25 @@ mod tests {
       vec![
         ("run-created", json!("run-created"), json!(id), stale.clone()),
         ("run-updated", json!("run-updated"), json!(id), stale.clone()),
-        ("run-deleted", json!("run-deleted"), json!(id), stale.clone()),
+        ("run-deleted", json!("run-deleted"), json!(id), stale),
       ],
       events
         .iter()
         .map(|event| (
           event.name.as_str(),
           event.data["kind"].clone(),
-          event.data["run"]["id"].as_str().map_or(event.data["id"].clone(), |id| json!(id)),
+          event.data["run"]["id"]
+            .as_str()
+            .map_or_else(|| event.data["id"].clone(), |id| json!(id)),
           event.data["stale"].clone(),
         ))
         .collect::<Vec<_>>()
     );
     assert_eq!(json!("renamed"), events[1].data["run"]["title"]);
-    let seqs = events.iter().map(|event| event.data["seq"].as_u64().unwrap()).collect::<Vec<_>>();
+    let seqs = events
+      .iter()
+      .map(|event| event.data["seq"].as_u64().unwrap())
+      .collect::<Vec<_>>();
     assert_eq!(
       (
         vec![seqs[0], seqs[0] + 1, seqs[0] + 2],
@@ -762,7 +767,10 @@ mod tests {
       create_deferred(&test, "next").await;
       let next = &take_events(&mut stream, 1).await[0];
       let expected = take_events(&mut live, 1).await[0].data["seq"].clone();
-      assert_eq!((json!("run-created"), expected.clone()), (next.data["kind"].clone(), next.data["seq"].clone()));
+      assert_eq!(
+        (json!("run-created"), expected.clone()),
+        (next.data["kind"].clone(), next.data["seq"].clone())
+      );
       head = expected.as_u64().unwrap();
     }
   }
@@ -779,7 +787,12 @@ mod tests {
       .flat_map(|event| event.data["stale"].as_array().unwrap().clone())
       .collect::<Vec<_>>();
     let mut resync = open_app_events(&test, "?from=1", None).await;
-    stale.extend(take_events(&mut resync, 1).await[0].data["stale"].as_array().unwrap().clone());
+    stale.extend(
+      take_events(&mut resync, 1).await[0].data["stale"]
+        .as_array()
+        .unwrap()
+        .clone(),
+    );
     let doc = api_doc().unwrap();
     let undocumented = stale
       .iter()

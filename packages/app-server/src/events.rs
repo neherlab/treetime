@@ -29,10 +29,10 @@ pub(crate) fn run_events_sse(state: &AppState, id: &JobId, from: usize) -> Resul
 )]
 pub(crate) fn app_events_sse(state: &AppState, from: Option<usize>) -> TypedSse<AppEvent> {
   let (tx, rx) = mpsc::unbounded_channel::<AppEvent>();
-  state.runs.app_events().subscribe(
-    from,
-    Box::new(move |event: &AppEvent| tx.send(event.clone()).is_ok()),
-  );
+  state
+    .runs
+    .app_events()
+    .subscribe(from, Box::new(move |event: &AppEvent| tx.send(event.clone()).is_ok()));
   TypedSse::new(UnboundedReceiverStream::new(rx), app_sse_event)
 }
 
