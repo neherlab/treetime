@@ -18,7 +18,7 @@ uses substitution branch lengths from Newick, so we override them.
 v1 multiplicity formula (correct Kingman):
   m = parent_node.outbound().len()  (parent's child count at merger)
 
-v0 errata (fixed m=2): docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md
+v0 errata (fixed m=2): kb/v0-errata/coalescent-total-lh-fixed-multiplicity.md
 """
 import random
 import json
