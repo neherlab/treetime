@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-export const zPickFilesRequest = z.object({
+export const zPickFilesRequest = z.strictObject({
   title: z.string(),
   extensions: z.array(z.string()),
   multiple: z.boolean(),
