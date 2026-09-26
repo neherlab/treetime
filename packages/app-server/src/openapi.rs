@@ -22,6 +22,7 @@ use app_commands::runs::record::{
 };
 use app_commands::runs::setting_differences::SettingDifference;
 use eyre::Report;
+use heck::ToUpperCamelCase;
 use itertools::{Itertools, izip};
 use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value, json};
@@ -38,7 +39,7 @@ const UNION_ROOT_KEYS: &[&str] = &["description", "oneOf", "type", "properties",
 
 pub(crate) fn config_component(command: AppCommand) -> String {
   let name: &str = command.into();
-  format!("{}Config", capitalize(name))
+  format!("{}Config", name.to_upper_camel_case())
 }
 
 pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
@@ -188,7 +189,7 @@ fn tagged_union(name: &str, schema: &Schema) -> Result<Option<TaggedUnion>, Repo
   let mut mapping = Map::new();
   let mut named_variants = vec![];
   for (variant, value) in izip!(variants, values) {
-    let variant_name = format!("{name}{}", pascal_case(value));
+    let variant_name = format!("{name}{}", value.to_upper_camel_case());
     let reference = format!("{COMPONENTS_PREFIX}{variant_name}");
     refs.push(json!({ "$ref": reference }));
     mapping.insert(value.to_owned(), json!(reference));
@@ -297,21 +298,6 @@ fn with_shared_fields(
   variant.insert("properties".to_owned(), Value::Object(properties));
   variant.insert("required".to_owned(), Value::Array(required));
   Ok(variant)
-}
-
-fn pascal_case(value: &str) -> String {
-  value
-    .split(|c: char| !c.is_ascii_alphanumeric())
-    .map(capitalize)
-    .collect()
-}
-
-fn capitalize(word: &str) -> String {
-  let mut chars = word.chars();
-  chars
-    .next()
-    .map(|first| first.to_uppercase().chain(chars).collect())
-    .unwrap_or_default()
 }
 
 fn add_type<T: JsonSchema>(components: &mut Map<String, Value>) -> Result<(), Report> {

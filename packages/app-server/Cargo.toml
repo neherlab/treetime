@@ -26,6 +26,7 @@ axum = { workspace = true }
 clap = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
+heck = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }

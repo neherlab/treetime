@@ -324,6 +324,7 @@ dependencies = [
  "clap",
  "ctor",
  "eyre",
+ "heck",
  "indexmap",
  "itertools",
  "log",

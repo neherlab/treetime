@@ -141,6 +141,7 @@ env_logger = "=0.11.11"
 eyre = "=0.6.14"
 gcollections = "=1.6.0"
 getset = "=0.1.7"
+heck = "=0.5.0"
 image = { version = "=0.25.10", default-features = false, features = ["png"] }
 indexmap = { version = "=2.14.2", features = ["rayon", "serde"] }
 indicatif = "=0.18.6"
