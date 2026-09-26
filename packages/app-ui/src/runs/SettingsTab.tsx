@@ -1,10 +1,12 @@
 import type { RunRecordResult } from "@neherlab/app-contracts";
+import { configCheck } from "@neherlab/app-contracts/client";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { Fragment, useCallback, useMemo, useState } from "react";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
 import { defaultText } from "../analysis/SettingField";
-import { useConfigCheck } from "../queries";
+import { useApi } from "../api/hooks";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { outputFreeConfig, settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
@@ -43,7 +45,16 @@ export function SettingsTab({ record }: { record: RunRecordResult }) {
 
   const changedCount = changedKeys.size;
   const reproducible = useMemo(() => outputFreeConfig(specs, config), [config, specs]);
-  const { data: check } = useConfigCheck(record.command, reproducible, null);
+
+  const { data: check } = useApi(
+    (context) =>
+      configCheck({
+        ...context,
+        body: { command: record.command, text: JSON.stringify(reproducible), input_facts: null },
+      }),
+    { placeholderData: keepPreviousData, staleTime: Infinity },
+  );
+
   const code = check?.status === "valid" ? check.code : null;
   const lines = code === null ? [] : format === "cli" ? code.command_line : code.yaml;
   const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;

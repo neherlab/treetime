@@ -1,8 +1,9 @@
+import { version as getVersion } from "@neherlab/app-contracts/client";
 import { Monitor, Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback } from "react";
 
-import { useVersion } from "../queries";
+import { useApi } from "../api/hooks";
 import { useShellStore } from "../store/shell";
 import { Button, Tooltip } from "../ui";
 
@@ -23,7 +24,7 @@ export function nextTheme(theme: string | undefined): ThemeChoice {
 }
 
 export function TopBar() {
-  const { data: version } = useVersion();
+  const { data: version } = useApi((context) => getVersion(context), { staleTime: Infinity });
   const { theme, setTheme } = useTheme();
   const setPaletteOpen = useShellStore((state) => state.setPaletteOpen);
   const choice = THEME_CYCLE.find((candidate) => candidate === theme) ?? "system";

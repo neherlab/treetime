@@ -1,8 +1,9 @@
 import type { AppCommand } from "@neherlab/app-contracts";
+import { runsCreate, runsUploadInput } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { useBridge } from "../BridgeContext";
+import { useApiContext } from "../api/context";
 import { useLocalFiles } from "../platform";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import type { JsonValue } from "../settings/json";
@@ -23,7 +24,7 @@ interface InputActions {
 }
 
 export function useInputActions(command: AppCommand): InputActions {
-  const bridge = useBridge();
+  const { client } = useApiContext();
   const localFiles = useLocalFiles();
   const { setValue } = useFormContext<FormConfig>();
   const setSource = useDraftStore((state) => state.setSource);
@@ -54,17 +55,22 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   const uploadRun = useCallback(async (): Promise<string> => {
-    const existing = await pendingUploadRun(bridge, useDraftStore.getState().uploadRunId);
+    const existing = await pendingUploadRun(client, useDraftStore.getState().uploadRunId);
 
     if (existing !== undefined) {
       return existing.id;
     }
 
-    const record = await bridge.createRun({ command, config: {}, title: UPLOAD_RUN_TITLE, defer_start: true });
+    const { data: record } = await runsCreate({
+      client,
+      body: { command, config: {}, title: UPLOAD_RUN_TITLE, defer_start: true },
+      throwOnError: true,
+    });
+
     useDraftStore.getState().update({ uploadRunId: record.id });
 
     return record.id;
-  }, [bridge, command]);
+  }, [client, command]);
 
   const addFile = useCallback(
     async (key: string, file: File, list: boolean) => {
@@ -75,10 +81,16 @@ export function useInputActions(command: AppCommand): InputActions {
         return;
       }
 
-      const uploaded = await bridge.uploadInput(await uploadRun(), file.name, file);
+      const { data: uploaded } = await runsUploadInput({
+        client,
+        path: { id: await uploadRun(), name: file.name },
+        body: file,
+        throwOnError: true,
+      });
+
       assign(key, list ? [uploaded.path] : uploaded.path, file.name, "upload", uploaded.size);
     },
-    [assign, bridge, localFiles, uploadRun],
+    [assign, client, localFiles, uploadRun],
   );
 
   const pick = useCallback(

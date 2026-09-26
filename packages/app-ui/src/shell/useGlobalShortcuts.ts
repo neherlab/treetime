@@ -1,7 +1,8 @@
+import { runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { useRunList } from "../queries";
+import { useApi } from "../api/hooks";
 import { useShellStore } from "../store/shell";
 import { listedRuns } from "./runList";
 import { RUN_FILTER_ID } from "./Sidebar";
@@ -12,7 +13,7 @@ const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
   const currentId = useCurrentRunId();
-  const { data } = useRunList();
+  const { data } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);
   const setPaletteOpen = useShellStore((state) => state.setPaletteOpen);

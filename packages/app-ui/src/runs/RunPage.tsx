@@ -1,14 +1,14 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult, RunResultsResult } from "@neherlab/app-contracts";
-import { useQueryClient } from "@tanstack/react-query";
+import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
 
-import { useBridge } from "../BridgeContext";
+import { useRunEvents } from "../api/events";
+import { useApi, useApiMutation } from "../api/hooks";
 import { formatDuration } from "../format";
-import { RUNS_KEY, useRunAuspice, useRunList, useRunRecord, useRunResults } from "../queries";
-import { countWarnings, type RunProgress } from "../results/progress";
+import { countWarnings, EMPTY_PROGRESS, type RunProgress } from "../results/progress";
 import { COMMAND_INFO } from "../settings/commands";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { Button, Toast } from "../ui";
@@ -22,7 +22,6 @@ import { TimetreeResults } from "./TimetreeResults";
 import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
-import { useRunProgress } from "./useRunProgress";
 
 type RunTab = "results" | "settings" | "log";
 
@@ -39,8 +38,9 @@ const TABS: ReadonlyArray<{
 const LIVE_STATUSES = new Set(["created", "running"]);
 
 export function RunPage({ id, tab }: { id: string; tab: RunTab }) {
-  const { data: record, error } = useRunRecord(id);
-  const { progress, failure } = useRunProgress(id);
+  const { data: record, error } = useApi((context) => runsGet({ ...context, path: { id } }));
+  const { data: progress = EMPTY_PROGRESS, error: eventsError } = useRunEvents(id);
+  const failure = eventsError === null ? undefined : errorMessage(eventsError);
 
   if (error !== null) {
     return <p className="text-signal-danger p-10 text-center">The run cannot be loaded: {error.message}</p>;
@@ -93,9 +93,16 @@ function ResultsTab({ record, progress }: { record: RunRecordResult; progress: R
 }
 
 function FinishedResults({ record }: { record: RunRecordResult }) {
-  const { data: results, error } = useRunResults(record.id, true);
+  const { data: results, error } = useApi((context) => runsResults({ ...context, path: { id: record.id } }), {
+    staleTime: Infinity,
+  });
+
   const hasTree = results?.tree !== null && results?.tree !== undefined;
-  const { data: document, error: treeError } = useRunAuspice(record.id, hasTree);
+
+  const { data: document, error: treeError } = useApi(
+    (context) => runsAuspice({ ...context, path: { id: record.id } }),
+    { enabled: hasTree, staleTime: Infinity },
+  );
 
   const tree = useMemo<TreeData | undefined>(
     () =>
@@ -208,12 +215,15 @@ function endedTitle(record: RunRecordResult): string {
 }
 
 function RunHeader({ record }: { record: RunRecordResult }) {
-  const bridge = useBridge();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const toasts = Toast.useToastManager();
   const rerun = useRerun(record);
-  const { data: list } = useRunList();
+  const { data: list } = useApi((context) => runsList(context));
+
+  const { mutateAsync: updateRun } = useApiMutation((context, pinned: boolean) =>
+    runsUpdate({ ...context, path: { id: record.id }, body: { pinned } }),
+  );
+
   const created = DateTime.fromISO(record.created_at);
 
   const comparable = useMemo(
@@ -223,12 +233,11 @@ function RunHeader({ record }: { record: RunRecordResult }) {
 
   const togglePin = useCallback(async () => {
     try {
-      await bridge.updateRun(record.id, { pinned: !record.pinned });
-      await queryClient.invalidateQueries({ queryKey: RUNS_KEY });
+      await updateRun(!record.pinned);
     } catch (error: unknown) {
       toasts.add({ title: "The run cannot be pinned", description: errorMessage(error) });
     }
-  }, [bridge, queryClient, record.id, record.pinned, toasts]);
+  }, [record.pinned, toasts, updateRun]);
 
   const onTogglePin = useCallback(() => void togglePin(), [togglePin]);
 

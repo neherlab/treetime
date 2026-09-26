@@ -1,19 +1,17 @@
-import { BridgeError, type RunRecordResult, type TreeTimeBridge } from "@neherlab/app-contracts";
+import type { RunRecord } from "@neherlab/app-contracts";
+import { ApiError, runsGet, type ApiClient } from "@neherlab/app-contracts/client";
 
-export async function pendingUploadRun(
-  bridge: Pick<TreeTimeBridge, "getRun">,
-  id: string | null,
-): Promise<RunRecordResult | undefined> {
+export async function pendingUploadRun(client: ApiClient, id: string | null): Promise<RunRecord | undefined> {
   if (id === null) {
     return undefined;
   }
 
   try {
-    const record = await bridge.getRun(id);
+    const { data: record } = await runsGet({ client, path: { id }, throwOnError: true });
 
     return record.status === "created" ? record : undefined;
   } catch (error: unknown) {
-    if (error instanceof BridgeError && error.response.code === "not_found") {
+    if (error instanceof ApiError && error.response.code === "not_found") {
       return undefined;
     }
 

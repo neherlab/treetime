@@ -1,9 +1,11 @@
 import type { AppCommand } from "@neherlab/app-contracts";
+import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 
-import { useConfigCheck, useInputFacts, useRunConfig, useRunList } from "../queries";
+import { useApi } from "../api/hooks";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig, outputFreeConfig } from "../settings/config";
@@ -43,10 +45,25 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const [settled] = useDebounce(config, CHECK_DEBOUNCE_MS);
   const request = useMemo(() => outputFreeConfig(specs, settled), [settled, specs]);
-  const { data: facts } = useInputFacts(useMemo(() => inputFactsRequest(command, settled), [command, settled]));
-  const { data: configCheck } = useConfigCheck(command, request, facts);
-  const { data: runConfig } = useRunConfig(command, request);
-  const { data: runList } = useRunList();
+  const factsRequest = useMemo(() => inputFactsRequest(command, settled), [command, settled]);
+
+  const { data: facts } = useApi(
+    (context) => inputsCheck({ ...context, body: factsRequest ?? { command, config: {} } }),
+    { enabled: factsRequest !== null, placeholderData: keepPreviousData, staleTime: 30_000 },
+  );
+
+  const { data: check } = useApi(
+    (context) =>
+      configCheck({ ...context, body: { command, text: JSON.stringify(request), input_facts: facts ?? null } }),
+    { placeholderData: keepPreviousData, staleTime: Infinity },
+  );
+
+  const { data: runConfig } = useApi(
+    (context) => resolveRunConfig({ ...context, body: { command, config: request } }),
+    { placeholderData: keepPreviousData, staleTime: 10_000 },
+  );
+
+  const { data: runList } = useApi((context) => runsList(context));
   const startRun = useStartRun(command);
 
   useEffect(
@@ -64,7 +81,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
     [form, setConfig],
   );
 
-  const checks = configCheck?.checks;
+  const checks = check?.checks;
   const code = runConfig?.status === "valid" ? runConfig.code : null;
 
   const configHash = runConfig?.status === "valid" ? (runConfig.config_hash ?? null) : null;
@@ -147,7 +164,7 @@ function PageHeader() {
   const fromRunId = useDraftStore((state) => state.fromRunId);
   const command = useDraftStore((state) => state.command);
   const reset = useDraftStore((state) => state.reset);
-  const { data: runList } = useRunList();
+  const { data: runList } = useApi((context) => runsList(context));
   const fromTitle = runList?.runs.find((run) => run.id === fromRunId)?.title ?? fromRunId;
   const resetForm = useCallback(() => reset(command), [command, reset]);
 

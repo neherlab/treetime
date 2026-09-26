@@ -1,11 +1,12 @@
 import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
+import { datasets, runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
-import { useDatasetCatalog, useRunList } from "../queries";
+import { useApi } from "../api/hooks";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
@@ -157,8 +158,8 @@ function PaletteEntry({
 
 function usePaletteItems(): PaletteItem[] {
   const navigate = useNavigate();
-  const { data: runList } = useRunList();
-  const { data: catalog } = useDatasetCatalog();
+  const { data: runList } = useApi((context) => runsList(context));
+  const { data: catalog } = useApi((context) => datasets(context), { staleTime: Infinity });
   const command = useDraftStore((state) => state.command);
   const compareIds = useShellStore((state) => state.compareIds);
   const { theme, setTheme } = useTheme();

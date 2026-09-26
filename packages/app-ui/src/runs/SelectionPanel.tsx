@@ -1,8 +1,10 @@
+import { cladeInRuns } from "@neherlab/app-contracts/client";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
+import { useApi } from "../api/hooks";
 import { formatLevel } from "../format";
-import { useCladeInRuns } from "../queries";
 import type { ResultTree } from "../results/types";
 import { Button } from "../ui";
 import { DateIntervals, type DateRow } from "./DateIntervals";
@@ -23,7 +25,12 @@ export function SelectionPanel({
   const root = tree.nodes[0];
   const node = link.focus ?? root;
   const navigate = useNavigate();
-  const { data: found } = useCladeInRuns(runId, node?.name ?? "");
+
+  const { data: found } = useApi(
+    (context) => cladeInRuns({ ...context, body: { run: runId, node: node?.name ?? "" } }),
+    { placeholderData: keepPreviousData, staleTime: 30_000 },
+  );
+
   const open = useCallback((id: string) => void navigate({ to: "/runs/$id/results", params: { id } }), [navigate]);
 
   const rows = useMemo(() => {

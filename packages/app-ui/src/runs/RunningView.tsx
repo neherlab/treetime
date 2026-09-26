@@ -1,12 +1,11 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult } from "@neherlab/app-contracts";
-import { useQueryClient } from "@tanstack/react-query";
+import { runsCancel } from "@neherlab/app-contracts/client";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { useBridge } from "../BridgeContext";
+import { useApiMutation } from "../api/hooks";
 import { formatRate } from "../format";
-import { RUNS_KEY } from "../queries";
 import { nonFiniteLabel } from "../results/numbers";
 import { filterLog, type IterationPoint, type RunProgress } from "../results/progress";
 import { Button, Segmented, Toast, cn } from "../ui";
@@ -116,8 +115,10 @@ function NumberCell({ value, format }: { value: number | undefined; format: (val
 }
 
 function CancelButton({ id }: { id: string }) {
-  const bridge = useBridge();
-  const queryClient = useQueryClient();
+  const { mutateAsync: cancelRun } = useApiMutation((context, run: string) =>
+    runsCancel({ ...context, path: { id: run } }),
+  );
+
   const toasts = Toast.useToastManager();
   const [busy, setBusy] = useState(false);
 
@@ -125,14 +126,13 @@ function CancelButton({ id }: { id: string }) {
     setBusy(true);
 
     try {
-      await bridge.cancelRun(id);
-      await queryClient.invalidateQueries({ queryKey: RUNS_KEY });
+      await cancelRun(id);
     } catch (error: unknown) {
       toasts.add({ title: "The run cannot be cancelled", description: errorMessage(error) });
     } finally {
       setBusy(false);
     }
-  }, [bridge, id, queryClient, toasts]);
+  }, [cancelRun, id, toasts]);
 
   const onCancel = useCallback(() => void cancel(), [cancel]);
 

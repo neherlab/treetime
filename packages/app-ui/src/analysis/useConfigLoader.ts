@@ -1,8 +1,9 @@
 import type { AppCommand } from "@neherlab/app-contracts";
+import { configCheck } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
-import { useBridge } from "../BridgeContext";
+import { useApiContext } from "../api/context";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
@@ -13,7 +14,7 @@ import type { InputSource } from "../store/draftSchema";
 type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
 
 export function useConfigLoader() {
-  const bridge = useBridge();
+  const { client } = useApiContext();
   const navigate = useNavigate();
 
   return useCallback(
@@ -25,7 +26,12 @@ export function useConfigLoader() {
     ): Promise<ConfigLoadResult> => {
       const draft = useDraftStore.getState();
       const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
-      const result = await bridge.checkConfig({ command: fallbackCommand, text, inputs });
+
+      const { data: result } = await configCheck({
+        client,
+        body: { command: fallbackCommand, text, inputs },
+        throwOnError: true,
+      });
 
       if (result.status === "invalid") {
         return { loaded: false, messages: result.messages };
@@ -60,7 +66,7 @@ export function useConfigLoader() {
 
       return { loaded: true, command };
     },
-    [bridge, navigate],
+    [client, navigate],
   );
 }
 

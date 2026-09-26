@@ -1,11 +1,12 @@
 import type { AppCommand, RunSummaryResult } from "@neherlab/app-contracts";
+import { runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
 
+import { useApi } from "../api/hooks";
 import { headlineText } from "../format";
-import { useRunList } from "../queries";
 import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { useShellStore } from "../store/shell";
 import { truncate } from "../text";
@@ -21,7 +22,7 @@ const CHIPS_SHOWN = 2;
 const CHIP_LENGTH = 26;
 
 export function Sidebar() {
-  const { data, error } = useRunList();
+  const { data, error } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
   const setRunFilter = useShellStore((state) => state.setRunFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);

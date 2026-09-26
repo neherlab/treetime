@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6.36.0/schema.json",
+  "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"]
   },
@@ -18,7 +19,7 @@
       "ignore": ["src/generated/**"]
     },
     "packages/app-ui": {
-      "entry": ["src/App.tsx!", "src/api/events.ts!", "src/api/hooks.ts!", "src/api/workflows.ts!"],
+      "entry": ["src/App.tsx!", "src/api/workflows.ts!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"]
     },
     "packages/app-web": {
@@ -26,7 +27,7 @@
       "project": ["src/**/*.{ts,tsx,css}!"]
     },
     "packages/app-desktop": {
-      "entry": ["src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],
+      "entry": ["src/backend.ts!", "src/desktop-bridge.ts!", "src/preload.ts!", "renderer/index.html!"],
       "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!", "build/**/*.ts"]
     },
     "packages/app-napi": {

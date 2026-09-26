@@ -1,11 +1,12 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecordResult } from "@neherlab/app-contracts";
+import { runsFiles } from "@neherlab/app-contracts/client";
 import { Download } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { useBridge } from "../BridgeContext";
+import { useApiContext } from "../api/context";
+import { useApi } from "../api/hooks";
 import { formatBytes } from "../format";
-import { useRunFiles } from "../queries";
 import { downloadName, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
 import { Button, Toast } from "../ui";
@@ -21,17 +22,21 @@ export function OutputFiles({
   methods: string | undefined;
   citation: Citation;
 }) {
-  const bridge = useBridge();
+  const { save } = useApiContext();
   const toasts = Toast.useToastManager();
   const copy = useCopy();
-  const { data: files, error } = useRunFiles(record.id, true);
+
+  const { data: files, error } = useApi((context) => runsFiles({ ...context, path: { id: record.id } }), {
+    staleTime: Infinity,
+  });
+
   const [busy, setBusy] = useState(false);
 
   const downloadArchive = useCallback(async () => {
     setBusy(true);
 
     try {
-      await bridge.saveRunArchive(record.id, downloadName(record.title, ".zip"));
+      await save.saveRunArchive(record.id, downloadName(record.title, ".zip"));
     } catch (failure: unknown) {
       toasts.add({
         title: "The archive cannot be downloaded",
@@ -40,7 +45,7 @@ export function OutputFiles({
     } finally {
       setBusy(false);
     }
-  }, [bridge, record.id, record.title, toasts]);
+  }, [record.id, record.title, save, toasts]);
 
   const onArchive = useCallback(() => void downloadArchive(), [downloadArchive]);
 
@@ -104,19 +109,19 @@ export function OutputFiles({
 }
 
 function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
-  const bridge = useBridge();
+  const { save } = useApiContext();
   const toasts = Toast.useToastManager();
 
   const download = useCallback(async () => {
     try {
-      await bridge.saveRunFile(runId, file.path, file.path.split("/").at(-1) ?? file.path);
+      await save.saveRunFile(runId, file.path, file.path.split("/").at(-1) ?? file.path);
     } catch (failure: unknown) {
       toasts.add({
         title: "The file cannot be downloaded",
         description: errorMessage(failure),
       });
     }
-  }, [bridge, file.path, runId, toasts]);
+  }, [file.path, runId, save, toasts]);
 
   const onDownload = useCallback(() => void download(), [download]);
 

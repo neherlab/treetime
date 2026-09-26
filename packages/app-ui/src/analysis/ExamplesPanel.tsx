@@ -1,8 +1,10 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, Dataset, ExampleConfig, RunRecordResult } from "@neherlab/app-contracts";
+import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo, useState } from "react";
 
-import { useDatasetCatalog, useRunList, useRunRecords } from "../queries";
+import { useApi, useApiQueries } from "../api/hooks";
+import type { ApiCallContext } from "../api/keys";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
 import { Button, Toast } from "../ui";
@@ -12,7 +14,7 @@ import { useInputActions } from "./useInputActions";
 const EARLIER_RUNS_SHOWN = 8;
 
 export function ExamplesPanel({ command, close }: { command: AppCommand; close: () => void }) {
-  const { data: catalog, error } = useDatasetCatalog();
+  const { data: catalog, error } = useApi((context) => datasets(context), { staleTime: Infinity });
 
   return (
     <div className="border-line bg-surface-1 rounded-lg border">
@@ -108,14 +110,14 @@ function ExampleRow({ example }: { example: ExampleConfig }) {
 }
 
 function EarlierInputs({ command, close }: { command: AppCommand; close: () => void }) {
-  const { data: runList } = useRunList();
+  const { data: runList } = useApi((context) => runsList(context));
 
   const ids = (runList?.runs ?? [])
     .filter((run) => run.status === "ok")
     .slice(0, EARLIER_RUNS_SHOWN)
     .map((run) => run.id);
 
-  const records = useRunRecords(ids);
+  const records = useApiQueries(ids.map((id) => (context: ApiCallContext) => runsGet({ ...context, path: { id } })));
   const slots = new Set<string>(COMMAND_SETTINGS[command].inputs.map((input) => input.kind));
 
   const rows = records.flatMap((query) => {

@@ -1,10 +1,9 @@
 import { createApiClient } from "@neherlab/app-contracts/client";
-import { ApiProvider, App, BridgeProvider, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import { ApiProvider, App, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
-  createDesktopBridge,
   createDesktopSaveActions,
   createLocalFiles,
   windowBackendConnection,
@@ -24,8 +23,6 @@ const DESKTOP_ORIGIN = "http://treetime.desktop";
 
 const connection = windowBackendConnection(window, window.treetimeShell);
 
-const bridge = createDesktopBridge(connection, window.treetimeShell);
-
 const client = createApiClient({ baseUrl: DESKTOP_ORIGIN, fetch: createPortFetch(connection) });
 
 const save = createDesktopSaveActions(window.treetimeShell);
@@ -39,13 +36,11 @@ if (root) {
     <StrictMode>
       <ThemeProvider>
         <ErrorBoundary>
-          <BridgeProvider bridge={bridge}>
-            <QueryProvider>
-              <ApiProvider client={client} save={save}>
-                <App localFiles={localFiles} />
-              </ApiProvider>
-            </QueryProvider>
-          </BridgeProvider>
+          <QueryProvider>
+            <ApiProvider client={client} save={save}>
+              <App localFiles={localFiles} />
+            </ApiProvider>
+          </QueryProvider>
         </ErrorBoundary>
       </ThemeProvider>
     </StrictMode>,

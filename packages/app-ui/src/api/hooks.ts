@@ -2,6 +2,7 @@ import type { ApiClient } from "@neherlab/app-contracts/client";
 import {
   queryOptions,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type MutationOptions,
@@ -34,6 +35,15 @@ export function useApi<TResult>(
   const { client } = useApiContext();
 
   return useQuery(apiQueryOptions(client, call, options));
+}
+
+export function useApiQueries<TResult>(
+  calls: ReadonlyArray<ApiCall<TResult>>,
+  options: ApiQueryOptions<TResult> = {},
+): Array<UseQueryResult<TResult>> {
+  const { client } = useApiContext();
+
+  return useQueries({ queries: calls.map((call) => apiQueryOptions(client, call, options)) });
 }
 
 export function useApiMutation<TVariables, TResult>(

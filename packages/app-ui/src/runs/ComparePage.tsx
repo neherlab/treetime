@@ -1,11 +1,13 @@
 import type { RunComparisonResult, RunRecordResult } from "@neherlab/app-contracts";
+import { runsCompare, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftRight } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import { defaultText } from "../analysis/SettingField";
+import { useApi, useApiQueries } from "../api/hooks";
+import type { ApiCallContext } from "../api/keys";
 import { formatLevel, formatRate, formatSignedDays } from "../format";
-import { useRunComparison, useRunList, useRunRecords } from "../queries";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { SettingDifference, SettingsComparison, TimetreeEstimates, YearDate } from "../results/types";
 import { COMMAND_SETTINGS } from "../settings/catalog";
@@ -19,7 +21,9 @@ import { Plate } from "./Plate";
 import { ShiftPlot } from "./ShiftPlot";
 
 export function ComparePage({ first, second }: { first: string; second: string }) {
-  const [left, right] = useRunRecords([first, second]);
+  const [left, right] = useApiQueries(
+    [first, second].map((id) => (context: ApiCallContext) => runsGet({ ...context, path: { id } })),
+  );
 
   if (left?.data === undefined || right?.data === undefined) {
     const error = left?.error ?? right?.error ?? null;
@@ -36,7 +40,11 @@ export function ComparePage({ first, second }: { first: string; second: string }
 
 function Comparison({ left, right }: { left: RunRecordResult; right: RunRecordResult }) {
   const navigate = useNavigate();
-  const { data: comparison, error } = useRunComparison(left.id, right.id, true);
+
+  const { data: comparison, error } = useApi(
+    (context) => runsCompare({ ...context, path: { id: left.id, other: right.id } }),
+    { staleTime: Infinity },
+  );
 
   const timetrees =
     left.command === "timetree" && right.command === "timetree" && left.status === "ok" && right.status === "ok";
@@ -80,7 +88,7 @@ function RunPicker({
   other: RunRecordResult;
   side: "first" | "second";
 }) {
-  const { data } = useRunList();
+  const { data } = useApi((context) => runsList(context));
   const navigate = useNavigate();
   const runs = useMemo(() => (data?.runs ?? []).filter((run) => run.id !== other.id), [data, other.id]);
 
