@@ -26,7 +26,8 @@ export function ChecksPanel({
   duplicate: RunSummaryResult | undefined;
   verb: string;
 }) {
-  const { isSubmitting, isValid } = useFormState<FormConfig>();
+  const { isSubmitting, isValid, errors } = useFormState<FormConfig>();
+  const formError = errors.root?.message;
   const title = useDraftStore((state) => state.title);
   const update = useDraftStore((state) => state.update);
   const checking = checks === undefined;
@@ -52,6 +53,12 @@ export function ChecksPanel({
       </div>
       <div className="grid gap-2.5 px-3.5 py-3">
         <ul className="grid gap-1.5">
+          {formError !== undefined && (
+            <li className="grid grid-cols-[1.125rem_1fr] items-start gap-1.5">
+              <span className="mt-0.5">{LEVEL_ICON.block}</span>
+              <span>{formError}</span>
+            </li>
+          )}
           {(checks ?? []).map((check) => (
             <CheckItem key={check.id} check={check} />
           ))}

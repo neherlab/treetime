@@ -9,6 +9,7 @@ import type { JsonValue } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import type { InputOrigin } from "../store/draftSchema";
 import { toFormValue, type FormConfig } from "./formValues";
+import { pendingUploadRun } from "./pendingUpload";
 
 const UPLOAD_RUN_TITLE = "Uploaded inputs";
 
@@ -53,14 +54,10 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   const uploadRun = useCallback(async (): Promise<string> => {
-    const existing = useDraftStore.getState().uploadRunId;
+    const existing = await pendingUploadRun(bridge, useDraftStore.getState().uploadRunId);
 
-    if (existing !== null) {
-      const record = await bridge.getRun(existing).catch(() => null);
-
-      if (record?.status === "created") {
-        return existing;
-      }
+    if (existing !== undefined) {
+      return existing.id;
     }
 
     const record = await bridge.createRun({ command, config: {}, title: UPLOAD_RUN_TITLE, defer_start: true });

@@ -9,6 +9,7 @@ import { RUNS_KEY } from "../queries";
 import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import { Toast } from "../ui";
+import { pendingUploadRun } from "./pendingUpload";
 
 export function useStartRun(command: AppCommand) {
   const bridge = useBridge();
@@ -23,10 +24,10 @@ export function useStartRun(command: AppCommand) {
       const title = draft.title.trim() === "" ? fallbackTitle : draft.title.trim();
 
       try {
-        const upload = draft.uploadRunId === null ? null : await bridge.getRun(draft.uploadRunId).catch(() => null);
+        const upload = await pendingUploadRun(bridge, draft.uploadRunId);
         let id: string;
 
-        if (upload !== null && upload.status === "created" && upload.command === command) {
+        if (upload !== undefined && upload.command === command) {
           await bridge.updateRun(upload.id, { title });
           id = (await bridge.startRun(upload.id, { config })).id;
         } else {

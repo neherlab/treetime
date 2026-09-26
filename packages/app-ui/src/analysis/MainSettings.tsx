@@ -544,7 +544,9 @@ function NumberPairInput({
 
   const onInput = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      onChange(pair.map((current, position) => (position === index ? Number(event.target.value) : current))),
+      onChange(
+        pair.map((current, position) => (position === index ? numberOrNull(event.target.valueAsNumber) : current)),
+      ),
     [index, onChange, pair],
   );
 
@@ -558,6 +560,10 @@ function NumberPairInput({
       className="border-line-strong bg-surface-1 w-24 rounded-md border px-2 py-1"
     />
   );
+}
+
+function numberOrNull(value: number): number | null {
+  return Number.isNaN(value) ? null : value;
 }
 
 function valueNameLabel(name: string): string {

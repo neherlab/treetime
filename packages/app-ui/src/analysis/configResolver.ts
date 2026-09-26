@@ -12,6 +12,8 @@ import type { FieldError, Resolver } from "react-hook-form";
 
 import type { FormConfig } from "./formValues";
 
+const ROOT_ERROR = "root";
+
 const CONFIG_SCHEMAS = {
   timetree: zTimetreeConfig,
   optimize: zOptimizeConfig,
@@ -34,7 +36,7 @@ export function configResolver(command: AppCommand): Resolver<FormConfig> {
     const errors: Record<string, FieldError> = {};
 
     for (const issue of result.error.issues) {
-      const path = issue.path.map(String).join(".");
+      const path = issue.path.length === 0 ? ROOT_ERROR : issue.path.map(String).join(".");
 
       errors[path] ??= { type: issue.code, message: issue.message };
     }
