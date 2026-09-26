@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   zAncestralConfig,
+  zAppEvent,
   zCheckConfigResponse,
   zClockConfig,
   zCoalescentPrior,
@@ -128,6 +129,7 @@ describe("zod_schemas terminal events", () => {
 
 describe("zod_schemas tagged unions", () => {
   test.each([
+    { name: "AppEvent", schema: zAppEvent, tag: "kind" },
     { name: "CheckConfigResponse", schema: zCheckConfigResponse, tag: "status" },
     { name: "CoalescentPrior", schema: zCoalescentPrior, tag: "kind" },
     { name: "CommandResults", schema: zCommandResults, tag: "command" },
