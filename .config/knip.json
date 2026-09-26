@@ -14,7 +14,8 @@
     },
     "packages/app-contracts": {
       "entry": ["src/bridge.ts!", "src/generated/index.ts"],
-      "project": ["src/**/*.ts!"]
+      "project": ["src/**/*.ts!"],
+      "ignore": ["src/generated/**"]
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
