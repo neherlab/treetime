@@ -2,7 +2,7 @@ use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, JsonText, TypedSse, ZipAttachment};
 use crate::error::AppError;
-use crate::events::run_events_sse;
+use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
@@ -19,6 +19,7 @@ use app_commands::results::clades::{CladeInRuns, CladeRequest};
 use app_commands::results::compare::RunComparison;
 use app_commands::results::run_results::RunResults;
 use app_commands::run_config::{RunConfigRequest, RunConfigResponse};
+use app_commands::runs::app_events::AppEvent;
 use app_commands::runs::events::RunEvent;
 use app_commands::runs::files::RunFile;
 use app_commands::runs::manager::UploadedInput;
@@ -234,6 +235,18 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("runsEvents").description(
           "Stream of the run's events from `from`: `started`, `progress`, `log` and `iteration`, then one \
            `terminal`. The `Last-Event-ID` header of a reconnect resumes after that event.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/events",
+      get_with(events, |op| {
+        op.id("events").description(
+          "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and \
+           `run-purged`, each with the REST paths it made stale. Without `from` the stream sends the changes from now \
+           on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server \
+           no longer keeps that event or the event is from a previous server, the stream starts with a `resync` \
+           event instead.",
         )
       }),
     )
@@ -488,13 +501,24 @@ async fn runs_events(
   ApiQuery(query): ApiQuery<EventsQuery>,
   headers: HeaderMap,
 ) -> Result<TypedSse<RunEvent>, AppError> {
-  let resume = headers
+  run_events_sse(&state, &id, resume_from(&headers, &query).unwrap_or(0))
+}
+
+async fn events(
+  State(state): State<Arc<AppState>>,
+  ApiQuery(query): ApiQuery<EventsQuery>,
+  headers: HeaderMap,
+) -> TypedSse<AppEvent> {
+  app_events_sse(&state, resume_from(&headers, &query))
+}
+
+fn resume_from(headers: &HeaderMap, query: &EventsQuery) -> Option<usize> {
+  headers
     .get(LAST_EVENT_ID)
     .and_then(|value| value.to_str().ok())
     .and_then(|value| value.parse::<usize>().ok())
-    .map(|seq| seq + 1);
-  let from = resume.or(query.from).unwrap_or(0);
-  run_events_sse(&state, &id, from)
+    .map(|seq| seq + 1)
+    .or(query.from)
 }
 
 async fn runs_upload_input(
