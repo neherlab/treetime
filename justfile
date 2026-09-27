@@ -310,13 +310,13 @@ lint-rs *args:
 lint-fix-rs:
     {{ lint_env }} cargo clippy --locked --workspace --all-targets --fix --allow-staged
 
-# TypeScript lints (oxlint) and the React 18 pin, keep-going
+# TypeScript lints (oxlint) and the React 19 pin, keep-going
 [group("lint")]
 [script]
 lint-ts: _js
     status=0
     bun run --silent lint || status=1
-    jq -e '.workspaces.catalog.react | startswith("18.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 18.x: Auspice runs in-process and requires React 18\n' >&2; status=1; }
+    jq -e '.workspaces.catalog.react | startswith("19.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 19.x: Auspice runs in-process and is verified only on React 19\n' >&2; status=1; }
     exit "${status}"
 
 # Apply oxlint's automatic fixes

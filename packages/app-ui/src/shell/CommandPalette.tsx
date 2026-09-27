@@ -45,7 +45,7 @@ export function CommandPalette() {
   );
 }
 
-function PaletteBody({ input, close }: { input: React.RefObject<HTMLInputElement>; close: () => void }) {
+function PaletteBody({ input, close }: { input: React.RefObject<HTMLInputElement | null>; close: () => void }) {
   const items = usePaletteItems();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);

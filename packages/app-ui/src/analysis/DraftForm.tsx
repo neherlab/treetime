@@ -110,7 +110,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
     [form, specs, startRun, title],
   );
 
-  const onSubmit = useCallback((event: React.FormEvent) => void submit(event), [submit]);
+  const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
