@@ -70,8 +70,8 @@ export function auspice(): Plugin {
     config() {
       return {
         define: {
-          "process.env.EXTENSION_DATA": "undefined",
-          "process.env.SKIP_REDUX_CHECKS": "undefined",
+          "process.env.EXTENSION_DATA": JSON.stringify(""),
+          "process.env.SKIP_REDUX_CHECKS": JSON.stringify(""),
           "process.env.ENABLE_SERVICE_WORKER": "false",
         },
         resolve: { dedupe: SHARED_PACKAGES },
