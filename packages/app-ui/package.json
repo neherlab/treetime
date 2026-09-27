@@ -9,7 +9,7 @@
     "./build/auspice-vite": "./build/auspice-vite.ts"
   },
   "scripts": {
-    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit"
+    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
