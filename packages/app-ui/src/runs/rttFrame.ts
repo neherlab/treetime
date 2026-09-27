@@ -1,4 +1,4 @@
-import { type AxisFrame, niceAxis } from "./palette";
+import { type AxisFrame, clamp, niceAxis } from "./palette";
 import type { RttPoint } from "./RootToTipPlot";
 
 export function plotFrame(points: readonly RttPoint[], fitToModel: boolean): PlotFrame {
@@ -12,8 +12,8 @@ export function plotFrame(points: readonly RttPoint[], fitToModel: boolean): Plo
 
 export function placePoints(points: readonly RttPoint[], frame: PlotFrame): PlacedPoint[] {
   return points.map((point) => {
-    const x = clamp(point.date, frame.x.domain);
-    const y = clamp(point.div, frame.y.domain);
+    const x = clamp(point.date, ...frame.x.domain);
+    const y = clamp(point.div, ...frame.y.domain);
 
     return { ...point, x, y, offAxes: x !== point.date || y !== point.div };
   });
@@ -28,8 +28,4 @@ export interface PlacedPoint extends RttPoint {
   x: number;
   y: number;
   offAxes: boolean;
-}
-
-function clamp(value: number, [low, high]: readonly [number, number]): number {
-  return Math.min(high, Math.max(low, value));
 }

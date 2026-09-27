@@ -13,11 +13,12 @@ import { publications } from "auspice/src/components/download/downloadModal";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
 import { calcUsableWidth } from "auspice/src/util/computeResponsive";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
+import { useElementWidth } from "../hooks/useElementWidth";
 import { Button } from "../ui";
 import { AUSPICE_I18N } from "./i18n";
 import type { AuspiceStore } from "./store";
@@ -104,24 +105,4 @@ function SizedTree({ tips }: { tips: number }) {
       {width >= MIN_TREE_WIDTH && <Tree width={width} height={height} />}
     </div>
   );
-}
-
-function useElementWidth(element: HTMLElement | null): number {
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      if (element === null) {
-        return () => undefined;
-      }
-
-      const observer = new ResizeObserver(notify);
-      observer.observe(element);
-
-      return () => observer.disconnect();
-    },
-    [element],
-  );
-
-  const read = useCallback(() => Math.floor(element?.clientWidth ?? 0), [element]);
-
-  return useSyncExternalStore(subscribe, read, read);
 }

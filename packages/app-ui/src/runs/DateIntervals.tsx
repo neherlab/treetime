@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { useElementWidth } from "../hooks/useElementWidth";
 import type { DateInterval, YearDate } from "../results/types";
 import { cn } from "../ui/cn";
-import { CHART, niceAxis, yearTick } from "./palette";
+import { CHART, clamp, niceAxis, yearTick } from "./palette";
 
 export interface DateRow {
   id: string;
@@ -16,7 +17,11 @@ const TRACK_HEIGHT = 22;
 
 const AXIS_HEIGHT = 20;
 
-const TICK_COUNT = 5;
+const PX_PER_TICK = 80;
+
+const MIN_TICKS = 2;
+
+const MAX_TICKS = 6;
 
 const MIN_SPAN_YEARS = 0.05;
 
@@ -27,31 +32,35 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const scale = dateScale(rows);
+  const [axis, setAxis] = useState<HTMLDivElement | null>(null);
+  const tickCount = clamp(Math.floor(useElementWidth(axis) / PX_PER_TICK), MIN_TICKS, MAX_TICKS);
+  const scale = useMemo(() => dateScale(rows, tickCount), [rows, tickCount]);
 
   return (
-    <div className="grid grid-cols-[minmax(0,14rem)_auto_minmax(0,1fr)] items-center gap-x-3 text-xs">
+    <div className="grid grid-cols-[minmax(0,12rem)_auto_minmax(0,1fr)] items-center gap-x-3 text-xs">
       {rows.map((row) => (
         <IntervalRow key={row.id} row={row} scale={scale} onOpen={row.current ? undefined : onOpen} />
       ))}
       <span className="col-span-2" />
-      <svg width="100%" height={AXIS_HEIGHT} className="overflow-visible" aria-hidden>
-        <line x1="0%" x2="100%" y1={0.5} y2={0.5} stroke={CHART.faint} />
-        {scale.ticks.map((tick, index) => (
-          <g key={tick}>
-            <line x1={scale.at(tick)} x2={scale.at(tick)} y1={0} y2={4} stroke={CHART.faint} />
-            <text
-              x={scale.at(tick)}
-              y={AXIS_HEIGHT - 3}
-              fontSize={10}
-              fill={CHART.muted}
-              textAnchor={tickAnchor(index, scale.ticks.length)}
-            >
-              {yearTick(tick)}
-            </text>
-          </g>
-        ))}
-      </svg>
+      <div ref={setAxis}>
+        <svg width="100%" height={AXIS_HEIGHT} className="overflow-visible" aria-hidden>
+          <line x1="0%" x2="100%" y1={0.5} y2={0.5} stroke={CHART.faint} />
+          {scale.ticks.map((tick, index) => (
+            <g key={tick}>
+              <line x1={scale.at(tick)} x2={scale.at(tick)} y1={0} y2={4} stroke={CHART.faint} />
+              <text
+                x={scale.at(tick)}
+                y={AXIS_HEIGHT - 3}
+                fontSize={10}
+                fill={CHART.muted}
+                textAnchor={tickAnchor(index, scale.ticks.length)}
+              >
+                {yearTick(tick)}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
     </div>
   );
 }
@@ -112,7 +121,7 @@ function IntervalRow({
   );
 }
 
-function dateScale(rows: readonly DateRow[]): DateScale {
+function dateScale(rows: readonly DateRow[], tickCount: number): DateScale {
   const ends = rows.flatMap((row) => [
     row.interval?.lower.year ?? row.date.year,
     row.interval?.upper.year ?? row.date.year,
@@ -125,7 +134,7 @@ function dateScale(rows: readonly DateRow[]): DateScale {
   const {
     domain: [from, to],
     ticks,
-  } = niceAxis([low - pad, high + pad], TICK_COUNT);
+  } = niceAxis([low - pad, high + pad], tickCount);
 
   return { ticks, at: (year: number) => `${((year - from) / (to - from)) * 100}%` };
 }
