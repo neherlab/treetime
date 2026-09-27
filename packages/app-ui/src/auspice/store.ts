@@ -1,3 +1,5 @@
+import { performanceFlags } from "auspice/src/middleware/performanceFlags";
+import { keepScatterplotStateInSync } from "auspice/src/middleware/scatterplot";
 import browserDimensions from "auspice/src/reducers/browserDimensions";
 import controls from "auspice/src/reducers/controls";
 import entropy from "auspice/src/reducers/entropy";
@@ -43,6 +45,10 @@ export function createAuspiceStore(): AuspiceStore {
 
   return legacy_createStore(
     reducer,
-    applyMiddleware<ThunkDispatch<AuspiceState, undefined, AnyAction>, AuspiceState>(thunk),
+    applyMiddleware<ThunkDispatch<AuspiceState, undefined, AnyAction>, AuspiceState>(
+      thunk,
+      keepScatterplotStateInSync,
+      performanceFlags,
+    ),
   );
 }

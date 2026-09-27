@@ -22,6 +22,8 @@ const AUSPICE_ENTRIES = [
   "auspice/src/components/download/downloadModal",
   "auspice/src/components/info/filtersSummary",
   "auspice/src/components/tree",
+  "auspice/src/middleware/performanceFlags",
+  "auspice/src/middleware/scatterplot",
   "auspice/src/reducers/browserDimensions",
   "auspice/src/reducers/controls",
   "auspice/src/reducers/entropy",

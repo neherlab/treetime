@@ -30,6 +30,7 @@ export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
   selectedNode: AuspiceSelectedNode | null;
+  performanceFlags: ReadonlyMap<string, boolean>;
 }
 
 interface AuspiceSelectedNode {
