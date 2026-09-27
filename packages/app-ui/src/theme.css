@@ -62,6 +62,11 @@
     background-color: var(--color-surface-0);
     color: var(--color-ink);
   }
+
+  /* Recharts makes its charts and their layers focusable for keyboard navigation; a mouse click should not outline them */
+  .recharts-wrapper :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Auspice has no dark theme: its panels keep the light colors inside a dark page */
