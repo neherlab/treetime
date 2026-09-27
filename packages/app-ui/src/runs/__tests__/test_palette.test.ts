@@ -16,6 +16,13 @@ describe("chart axes", () => {
     expect(axis.ticks.every(Number.isInteger)).toBe(true);
   });
 
+  test("a nice axis extends only to the next round step beyond the values", () => {
+    expect(niceAxis([2000.1, 2013.4])).toStrictEqual({
+      domain: [2000, 2014],
+      ticks: [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014],
+    });
+  });
+
   test("the domain of a nice axis covers values beyond the last round tick", () => {
     const axis = niceAxis([0, 1e-4, 3.2e-4]);
 

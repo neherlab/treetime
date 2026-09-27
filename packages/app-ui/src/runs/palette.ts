@@ -1,4 +1,4 @@
-import { getNiceTickValues } from "recharts";
+import { scaleLinear } from "d3-scale";
 
 export const CHART = {
   ink: "var(--color-ink)",
@@ -22,11 +22,12 @@ export function yearTick(value: number): string {
 }
 
 export function niceAxis(values: readonly number[], tickCount: number = TICK_COUNT): AxisFrame {
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  const ticks = getNiceTickValues([low, high], tickCount, true);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const scale = scaleLinear().domain([min, max]).nice(tickCount);
+  const [low = min, high = max] = scale.domain();
 
-  return { domain: [Math.min(ticks.at(0) ?? low, low), Math.max(ticks.at(-1) ?? high, high)], ticks };
+  return { domain: [low, high], ticks: scale.ticks(tickCount) };
 }
 
 export interface AxisFrame {

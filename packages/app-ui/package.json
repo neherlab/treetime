@@ -22,6 +22,7 @@
     "auspice": "3.0.0",
     "class-variance-authority": "0.7.1",
     "cn": "0.3.0",
+    "d3-scale": "4.0.2",
     "i18next": "19.9.2",
     "lucide-react": "1.47.0",
     "luxon": "3.7.2",
@@ -41,6 +42,7 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@types/d3-scale": "4.0.9",
     "@types/luxon": "3.7.5",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
