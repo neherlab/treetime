@@ -30,11 +30,13 @@ export function TreeWorkspace({
   const tips = useMemo(() => data.tree.nodes.filter((node) => node.children.length === 0).length, [data.tree]);
 
   return (
-    <div className="grid min-w-0 gap-3.5 2xl:grid-cols-[minmax(0,1fr)_28rem]">
-      <ErrorBoundary FallbackComponent={TreeFailure}>
-        <AuspiceTree store={store} tips={tips} />
-      </ErrorBoundary>
-      {aside !== undefined && <LinkedAside store={store} tree={data.tree} aside={aside} />}
+    <div className="@container min-w-0">
+      <div className="grid min-w-0 grid-cols-1 gap-3.5 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
+        <ErrorBoundary FallbackComponent={TreeFailure}>
+          <AuspiceTree store={store} tips={tips} />
+        </ErrorBoundary>
+        {aside !== undefined && <LinkedAside store={store} tree={data.tree} aside={aside} />}
+      </div>
     </div>
   );
 }
