@@ -1,10 +1,15 @@
 import { describe, expect, test } from "vitest";
 
-import { niceAxis, yearTick } from "../palette";
+import { niceAxis, tickCountFor, yearTick } from "../palette";
 
 describe("chart axes", () => {
-  test("year ticks drop trailing zeros", () => {
-    expect([2016, 2016.5, 2013.25, 2017.8].map(yearTick)).toStrictEqual(["2016", "2016.5", "2013.25", "2017.8"]);
+  test.each([
+    [2016, "2016"],
+    [2016.5, "2016.5"],
+    [2013.25, "2013.25"],
+    [2017.8, "2017.8"],
+  ])("the year tick %d reads %s, without trailing zeros", (year, text) => {
+    expect(yearTick(year)).toBe(text);
   });
 
   test("a nice axis covers the values with round ticks at both ends", () => {
@@ -16,11 +21,20 @@ describe("chart axes", () => {
     expect(axis.ticks.every(Number.isInteger)).toBe(true);
   });
 
-  test("a nice axis extends only to the next round step beyond the values", () => {
+  test("a 13.3-year span over 6 ticks takes the 1-2-5 step of 2 years and extends only to the next multiple of it", () => {
     expect(niceAxis([2000.1, 2013.4])).toStrictEqual({
       domain: [2000, 2014],
       ticks: [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014],
     });
+  });
+
+  test.each([
+    [1100, 11],
+    [0, 2],
+    [99, 2],
+    [5000, 12],
+  ])("an axis %d px wide at 100 px per tick gets %d ticks, between 2 and 12", (width, count) => {
+    expect(tickCountFor(width, 100)).toBe(count);
   });
 
   test("the domain of a nice axis covers values beyond the last round tick", () => {

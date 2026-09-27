@@ -14,9 +14,10 @@ import {
 } from "recharts";
 import * as z from "zod";
 
+import { useElementWidth } from "../hooks/useElementWidth";
 import { Switch } from "../ui";
 import { ChartTooltip } from "./ChartTooltip";
-import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { CHART, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
 
 export interface RttPoint {
@@ -35,6 +36,8 @@ export interface RttLine {
 }
 
 const HEIGHT = 300;
+
+const X_PX_PER_TICK = 100;
 
 const FADED_OPACITY = 0.18;
 
@@ -77,15 +80,22 @@ export function RootToTipPlot({
   onSelect: ((name: string) => void) | undefined;
 }) {
   const [fitToModel, setFitToModel] = useState(true);
+  const [chart, setChart] = useState<HTMLDivElement | null>(null);
   const fitId = useId();
+  const xTickCount = tickCountFor(useElementWidth(chart), X_PX_PER_TICK);
   const hasOutliers = useMemo(() => points.some((point) => point.excluded), [points]);
-  const frame = useMemo(() => plotFrame(points, fitToModel && hasOutliers), [fitToModel, hasOutliers, points]);
+
+  const frame = useMemo(
+    () => plotFrame(points, fitToModel && hasOutliers, xTickCount),
+    [fitToModel, hasOutliers, points, xTickCount],
+  );
+
   const placed = useMemo(() => placePoints(points, frame), [frame, points]);
   const series = useMemo(() => pointSeries(placed, selected, inView), [inView, placed, selected]);
   const segment = useMemo(() => lineSegment(frame, line), [frame, line]);
 
   return (
-    <div>
+    <div ref={setChart}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 pb-1 text-xs">
         {line === undefined ? (
           <span />

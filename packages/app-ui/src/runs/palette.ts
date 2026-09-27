@@ -17,6 +17,10 @@ export const PLOT_MARGIN = { top: 8, right: 16, bottom: 24, left: 16 } as const;
 
 const TICK_COUNT = 6;
 
+const MIN_TICKS = 2;
+
+const MAX_TICKS = 12;
+
 export function yearTick(value: number): string {
   return String(Number(value.toFixed(2)));
 }
@@ -37,4 +41,8 @@ export interface AxisFrame {
 
 export function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
+}
+
+export function tickCountFor(width: number, pxPerTick: number): number {
+  return clamp(Math.floor(width / pxPerTick), MIN_TICKS, MAX_TICKS);
 }

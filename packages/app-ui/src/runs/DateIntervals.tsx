@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useElementWidth } from "../hooks/useElementWidth";
 import type { DateInterval, YearDate } from "../results/types";
 import { cn } from "../ui/cn";
-import { CHART, clamp, niceAxis, yearTick } from "./palette";
+import { CHART, niceAxis, tickCountFor, yearTick } from "./palette";
 
 export interface DateRow {
   id: string;
@@ -19,10 +19,6 @@ const AXIS_HEIGHT = 20;
 
 const PX_PER_TICK = 80;
 
-const MIN_TICKS = 2;
-
-const MAX_TICKS = 6;
-
 const MIN_SPAN_YEARS = 0.05;
 
 export function DateIntervals({
@@ -33,7 +29,7 @@ export function DateIntervals({
   onOpen?: ((id: string) => void) | undefined;
 }) {
   const [axis, setAxis] = useState<HTMLDivElement | null>(null);
-  const tickCount = clamp(Math.floor(useElementWidth(axis) / PX_PER_TICK), MIN_TICKS, MAX_TICKS);
+  const tickCount = tickCountFor(useElementWidth(axis), PX_PER_TICK);
   const scale = useMemo(() => dateScale(rows, tickCount), [rows, tickCount]);
 
   return (
