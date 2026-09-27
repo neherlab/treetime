@@ -128,6 +128,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "auspice@3.0.0": "patches/auspice@3.0.0.patch",
+  },
   "overrides": {
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
