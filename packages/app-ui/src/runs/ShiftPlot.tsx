@@ -39,7 +39,6 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
           dataKey="x"
           domain={xAxis.domain}
           ticks={xAxis.ticks}
-          allowDataOverflow
           tick={TICK_STYLE}
           tickFormatter={yearTick}
         >

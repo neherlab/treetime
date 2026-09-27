@@ -29,7 +29,6 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
           dataKey="t"
           domain={xAxis.domain}
           ticks={xAxis.ticks}
-          allowDataOverflow
           tick={TICK_STYLE}
           tickFormatter={yearTick}
         >

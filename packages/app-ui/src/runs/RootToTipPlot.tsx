@@ -110,7 +110,6 @@ export function RootToTipPlot({
             dataKey="x"
             domain={frame.x.domain}
             ticks={frame.x.ticks}
-            allowDataOverflow
             tick={TICK_STYLE}
             tickFormatter={yearTick}
             stroke={CHART.faint}
@@ -122,7 +121,6 @@ export function RootToTipPlot({
             dataKey="y"
             domain={frame.y.domain}
             ticks={frame.y.ticks}
-            allowDataOverflow
             tick={TICK_STYLE}
             tickFormatter={divergenceTick}
             stroke={CHART.faint}
@@ -190,7 +188,8 @@ function OffAxesScatter({
     <Scatter
       data={points}
       zAxisId="tip"
-      fill="none"
+      fill={CHART.fault}
+      fillOpacity={0}
       stroke={CHART.fault}
       strokeOpacity={OFF_AXES_OPACITY}
       strokeWidth={1.5}
