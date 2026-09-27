@@ -12,6 +12,7 @@ import { DownloadButtons } from "auspice/src/components/download/downloadButtons
 import { publications } from "auspice/src/components/download/downloadModal";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
+import { calcUsableWidth } from "auspice/src/util/computeResponsive";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
@@ -95,11 +96,11 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
 
 function SizedTree({ tips }: { tips: number }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const width = useElementWidth(container);
+  const width = Math.floor(calcUsableWidth(useElementWidth(container), 1));
   const height = Math.min(MAX_TREE_HEIGHT, Math.max(MIN_TREE_HEIGHT, tips * TREE_ROW_PX));
 
   return (
-    <div ref={setContainer} className="relative min-w-0 px-1 pb-2">
+    <div ref={setContainer} className="relative min-w-0 pb-2">
       {width >= MIN_TREE_WIDTH && <Tree width={width} height={height} />}
     </div>
   );

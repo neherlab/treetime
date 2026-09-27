@@ -34,6 +34,7 @@ const AUSPICE_ENTRIES = [
   "auspice/src/reducers/notifications",
   "auspice/src/reducers/tree",
   "auspice/src/reducers/tree/treeToo",
+  "auspice/src/util/computeResponsive",
   "auspice/src/util/globals",
 ];
 
