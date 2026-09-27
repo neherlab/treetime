@@ -31,6 +31,22 @@ export interface AuspiceControlsState {
   distanceMeasure: string;
   selectedNode: AuspiceSelectedNode | null;
   performanceFlags: ReadonlyMap<string, boolean>;
+  scatterVariables: AuspiceScatterVariables;
+}
+
+interface AuspiceScatterVariables {
+  showBranches?: boolean;
+  showRegression?: boolean;
+  x?: string;
+  xLabel?: string;
+  xContinuous?: boolean;
+  xDomain?: readonly (string | number)[];
+  xTemporal?: boolean;
+  y?: string;
+  yLabel?: string;
+  yContinuous?: boolean;
+  yDomain?: readonly (string | number)[];
+  yTemporal?: boolean;
 }
 
 interface AuspiceSelectedNode {
