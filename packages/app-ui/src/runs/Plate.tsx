@@ -7,7 +7,7 @@ export function Plate({ title, caption, children }: { title: string; caption?: R
         <span className="font-bold">{title}</span>
         {caption !== undefined && <span className="text-ink-faint text-xs">{caption}</span>}
       </figcaption>
-      <div className="plate px-2 py-2">{children}</div>
+      <div className="px-2 py-2">{children}</div>
     </figure>
   );
 }

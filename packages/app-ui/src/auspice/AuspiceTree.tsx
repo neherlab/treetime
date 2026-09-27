@@ -23,13 +23,13 @@ import { AUSPICE_I18N } from "./i18n";
 import type { AuspiceStore } from "./store";
 
 const SIDEBAR_THEME = {
-  background: "#f4f7f6",
-  color: "#16302b",
+  background: "var(--color-surface-2)",
+  color: "var(--color-ink)",
   "font-family": "Lato, Helvetica Neue, Helvetica, sans-serif",
   sidebarBoxShadow: "rgba(0, 0, 0, 0.15)",
-  selectedColor: "#17695a",
-  unselectedColor: "#4b5f5a",
-  alternateBackground: "#bfcbc7",
+  selectedColor: "var(--color-accent)",
+  unselectedColor: "var(--color-ink-muted)",
+  alternateBackground: "var(--color-line-strong)",
 };
 
 const RELEVANT_PUBLICATIONS = [publications.treetime];
@@ -50,8 +50,8 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
     <I18nextProvider i18n={AUSPICE_I18N}>
       <ThemeProvider theme={SIDEBAR_THEME}>
         <Provider store={store}>
-          <div className="plate grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border border-[#d3dcd9] lg:grid-cols-[15rem_minmax(0,1fr)]">
-            <aside aria-label="Tree controls" className="border-b border-[#d3dcd9] lg:border-r lg:border-b-0">
+          <div className="light-scope border-line grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border lg:grid-cols-[260px_minmax(0,1fr)]">
+            <aside aria-label="Tree controls" className="border-line border-b lg:border-r lg:border-b-0">
               <ControlsContainer>
                 <ControlHeader title="Color By" tooltip={ColorByInfo} />
                 <ColorBy />

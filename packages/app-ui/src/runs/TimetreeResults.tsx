@@ -88,7 +88,7 @@ function TimetreeAside({
         caption="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
       >
         {points.length === 0 ? (
-          <p className="text-plate-muted m-0 px-2 py-3 text-sm">This run wrote no clock regression table.</p>
+          <p className="text-ink-muted m-0 px-2 py-3 text-sm">This run wrote no clock regression table.</p>
         ) : (
           <RootToTipPlot
             points={points}

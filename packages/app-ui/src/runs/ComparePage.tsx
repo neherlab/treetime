@@ -315,7 +315,7 @@ function TimetreeEstimatesComparison({
         caption={shiftCaption(shifts.length, ancestors.ancestors, ancestors.mean_absolute_shift_days ?? undefined)}
       >
         {shifts.length === 0 ? (
-          <p className="text-plate-muted m-0 px-2 py-3 text-sm">
+          <p className="text-ink-muted m-0 px-2 py-3 text-sm">
             The trees share no ancestor with the same set of samples.
           </p>
         ) : (

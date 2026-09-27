@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Area, CartesianGrid, ComposedChart, Label, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { SkylineSegment } from "../results/types";
-import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 const HEIGHT = 220;
 
@@ -23,7 +23,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
   return (
     <ResponsiveContainer width="100%" height={HEIGHT}>
       <ComposedChart data={data} margin={PLOT_MARGIN}>
-        <CartesianGrid stroke={PLATE.grid} />
+        <CartesianGrid stroke={CHART.grid} />
         <XAxis type="number" dataKey="t" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
           <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
         </XAxis>
@@ -35,7 +35,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
           dataKey="band"
           type="linear"
           stroke="none"
-          fill={PLATE.accent}
+          fill={CHART.accent}
           fillOpacity={0.15}
           isAnimationActive={false}
           name="Interval"
@@ -43,7 +43,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
         <Line
           dataKey="ne"
           type="linear"
-          stroke={PLATE.accent}
+          stroke={CHART.accent}
           strokeWidth={1.8}
           dot={false}
           isAnimationActive={false}

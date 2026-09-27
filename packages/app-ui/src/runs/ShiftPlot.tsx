@@ -16,7 +16,7 @@ import {
 import { formatSignedDays } from "../format";
 import type { AncestorShift } from "../results/types";
 import { ChartTooltip } from "./ChartTooltip";
-import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 const HEIGHT = 300;
 
@@ -33,7 +33,7 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
   return (
     <ResponsiveContainer width="100%" height={HEIGHT}>
       <ScatterChart margin={PLOT_MARGIN}>
-        <CartesianGrid stroke={PLATE.grid} />
+        <CartesianGrid stroke={CHART.grid} />
         <XAxis type="number" dataKey="x" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
           <Label value={`Date in ${firstLabel}`} position="bottom" offset={4} {...TICK_STYLE} />
         </XAxis>
@@ -41,9 +41,9 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
           <Label value="Shift in days" angle={-90} position="insideLeft" {...TICK_STYLE} />
         </YAxis>
         <ZAxis type="number" dataKey="z" range={CLADE_SIZE} />
-        <ReferenceLine y={0} stroke={PLATE.muted} strokeDasharray="3 3" />
+        <ReferenceLine y={0} stroke={CHART.muted} strokeDasharray="3 3" />
         <Tooltip content={<ShiftTooltip />} isAnimationActive={false} />
-        <Scatter data={data} fill={PLATE.accent} fillOpacity={0.65} isAnimationActive={false} />
+        <Scatter data={data} fill={CHART.accent} fillOpacity={0.65} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
   );

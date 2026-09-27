@@ -76,7 +76,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
       <RateTrace iterations={iterations} />
       <table className="mt-1.5 w-full border-collapse text-right text-xs tabular-nums">
         <thead>
-          <tr className="text-plate-muted">
+          <tr className="text-ink-muted">
             <th className="px-1.5 py-1 text-left font-normal">Iteration</th>
             <th className="px-1.5 py-1 font-normal">Rate</th>
             <th className="px-1.5 py-1 font-normal">max Δt</th>
@@ -86,7 +86,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
         </thead>
         <tbody>
           {iterations.map((point) => (
-            <tr key={point.iteration} className="border-plate-grid border-t">
+            <tr key={point.iteration} className="border-line border-t">
               <td className="px-1.5 py-0.5 text-left">{point.iteration}</td>
               <NumberCell value={point.clockRate} format={formatRate} />
               <NumberCell value={point.maxTimeChange} format={fixed4} />
@@ -102,13 +102,13 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
 
 function NumberCell({ value, format }: { value: number | undefined; format: (value: number) => string }) {
   if (value === undefined) {
-    return <td className="text-plate-faint px-1.5 py-0.5">-</td>;
+    return <td className="text-ink-faint px-1.5 py-0.5">-</td>;
   }
 
   return Number.isFinite(value) ? (
     <td className="px-1.5 py-0.5">{format(value)}</td>
   ) : (
-    <td className="text-plate-fault px-1.5 py-0.5 font-bold" title="Not a finite number">
+    <td className="text-signal-danger px-1.5 py-0.5 font-bold" title="Not a finite number">
       {nonFiniteLabel(value)}
     </td>
   );

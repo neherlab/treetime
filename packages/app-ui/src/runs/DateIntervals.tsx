@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import type { DateInterval, YearDate } from "../results/types";
 import { truncate } from "../text";
-import { PLATE } from "./palette";
+import { CHART } from "./palette";
 
 export interface DateRow {
   id: string;
@@ -53,10 +53,10 @@ export function DateIntervals({
           onOpen={row.current ? undefined : onOpen}
         />
       ))}
-      <text x={LABEL_WIDTH} y={height - 6} fontSize={10} fill={PLATE.muted}>
+      <text x={LABEL_WIDTH} y={height - 6} fontSize={10} fill={CHART.muted}>
         {first?.date}
       </text>
-      <text x={WIDTH - 12} y={height - 6} fontSize={10} fill={PLATE.muted} textAnchor="end">
+      <text x={WIDTH - 12} y={height - 6} fontSize={10} fill={CHART.muted} textAnchor="end">
         {last?.date}
       </text>
     </svg>
@@ -88,7 +88,7 @@ function IntervalRow({
         y={y + 4}
         textAnchor="end"
         fontSize={11}
-        fill={row.current ? PLATE.ink : PLATE.muted}
+        fill={row.current ? CHART.ink : CHART.muted}
         fontWeight={row.current ? 700 : 400}
       >
         {truncate(row.label, LABEL_LENGTH)}
@@ -99,12 +99,12 @@ function IntervalRow({
           x2={Math.max(x(row.interval.upper.year), x(row.interval.lower.year) + 0.5)}
           y1={y}
           y2={y}
-          stroke={PLATE.accent}
+          stroke={CHART.accent}
           strokeWidth={3}
           strokeOpacity={0.35}
         />
       )}
-      <circle cx={x(row.date.year)} cy={y} r={3.5} fill={row.current ? PLATE.selection : PLATE.accent} />
+      <circle cx={x(row.date.year)} cy={y} r={3.5} fill={row.current ? CHART.selection : CHART.accent} />
     </g>
   );
 }

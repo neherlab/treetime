@@ -15,7 +15,7 @@ import {
 import * as z from "zod";
 
 import { ChartTooltip } from "./ChartTooltip";
-import { PLATE, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 export interface RttPoint {
   name: string;
@@ -42,15 +42,13 @@ const TIP_SIZE: [number, number] = [36, 36];
 
 const RING_SIZE: [number, number] = [220, 220];
 
-const TIP_COLOR = "#27477f";
-
 const SERIES_LOOK: readonly SeriesLook[] = [
-  { key: "inferredFaded", fill: PLATE.faint, opacity: FADED_OPACITY },
-  { key: "tipsFaded", fill: TIP_COLOR, opacity: FADED_OPACITY },
-  { key: "excludedFaded", fill: PLATE.fault, opacity: FADED_OPACITY },
-  { key: "inferred", fill: PLATE.faint, opacity: 1 },
-  { key: "tips", fill: TIP_COLOR, opacity: 1 },
-  { key: "excluded", fill: PLATE.fault, opacity: 1 },
+  { key: "inferredFaded", fill: CHART.faint, opacity: FADED_OPACITY },
+  { key: "tipsFaded", fill: CHART.tip, opacity: FADED_OPACITY },
+  { key: "excludedFaded", fill: CHART.fault, opacity: FADED_OPACITY },
+  { key: "inferred", fill: CHART.faint, opacity: 1 },
+  { key: "tips", fill: CHART.tip, opacity: 1 },
+  { key: "excluded", fill: CHART.fault, opacity: 1 },
 ];
 
 const zPointPayload = z.object({
@@ -81,14 +79,14 @@ export function RootToTipPlot({
   return (
     <div>
       {line !== undefined && (
-        <p className="text-plate-muted m-0 px-2 pb-1 text-xs">
-          <span className="bg-plate-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
+        <p className="text-ink-muted m-0 px-2 pb-1 text-xs">
+          <span className="bg-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
           {line.label}
         </p>
       )}
       <ResponsiveContainer width="100%" height={HEIGHT}>
         <ScatterChart margin={PLOT_MARGIN}>
-          <CartesianGrid stroke={PLATE.grid} />
+          <CartesianGrid stroke={CHART.grid} />
           <XAxis type="number" dataKey="date" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
             <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
           </XAxis>
@@ -99,7 +97,7 @@ export function RootToTipPlot({
           <ZAxis zAxisId="ring" range={RING_SIZE} />
           <Tooltip content={<PointTooltip />} isAnimationActive={false} />
           {segment !== undefined && (
-            <ReferenceLine segment={segment} stroke={PLATE.accent} strokeWidth={1.5} ifOverflow="extendDomain" />
+            <ReferenceLine segment={segment} stroke={CHART.accent} strokeWidth={1.5} ifOverflow="extendDomain" />
           )}
           {SERIES_LOOK.map((look) => (
             <SeriesScatter key={look.key} look={look} points={series[look.key]} onSelect={onSelect} />
@@ -108,7 +106,7 @@ export function RootToTipPlot({
             data={series.selected}
             zAxisId="ring"
             fill="none"
-            stroke={PLATE.selection}
+            stroke={CHART.selection}
             strokeWidth={2}
             isAnimationActive={false}
           />
@@ -202,7 +200,7 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
-      {point.data.excluded && <div className="text-plate-fault">Excluded from the clock model</div>}
+      {point.data.excluded && <div className="text-signal-danger">Excluded from the clock model</div>}
     </ChartTooltip>
   );
 }

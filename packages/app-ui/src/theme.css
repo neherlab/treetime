@@ -9,35 +9,32 @@
   --radius-md: 0.3125rem;
   --radius-lg: 0.5rem;
 
-  --color-surface-0: #e9eeec;
-  --color-surface-1: #ffffff;
-  --color-surface-2: #f4f7f6;
-  --color-surface-3: #e3e9e7;
-  --color-line: #d3dcd9;
-  --color-line-strong: #bfcbc7;
+  /* Each color resolves by the color-scheme of the element that uses it: light-dark(<light>, <dark>) */
+  --color-surface-0: light-dark(#e9eeec, #0e1615);
+  --color-surface-1: light-dark(#ffffff, #15201e);
+  --color-surface-2: light-dark(#f4f7f6, #1a2725);
+  --color-surface-3: light-dark(#e3e9e7, #22322f);
+  --color-line: light-dark(#d3dcd9, #2a3b38);
+  --color-line-strong: light-dark(#bfcbc7, #3a4f4b);
 
-  --color-ink: #16302b;
-  --color-ink-muted: #4b5f5a;
-  --color-ink-faint: #72847f;
+  --color-ink: light-dark(#16302b, #e0e9e6);
+  --color-ink-muted: light-dark(#4b5f5a, #a6b7b2);
+  --color-ink-faint: light-dark(#72847f, #8a9b96);
 
-  --color-accent: #17695a;
-  --color-accent-hover: #115549;
-  --color-accent-fg: #ffffff;
-  --color-accent-subtle: #d8ece6;
+  --color-accent: light-dark(#17695a, #5cc3a5);
+  --color-accent-hover: light-dark(#115549, #7dd3b9);
+  --color-accent-fg: light-dark(#ffffff, #0e1615);
+  --color-accent-subtle: light-dark(#d8ece6, #173a33);
 
-  --color-signal-ok: #2c7a4b;
-  --color-signal-warn: #9a6200;
-  --color-signal-warn-subtle: #fbf0d4;
-  --color-signal-danger: #b42318;
-  --color-signal-danger-subtle: #fbe4e1;
+  --color-signal-ok: light-dark(#2c7a4b, #6fcf97);
+  --color-signal-warn: light-dark(#9a6200, #e3ad4c);
+  --color-signal-warn-subtle: light-dark(#fbf0d4, #3a2f16);
+  --color-signal-danger: light-dark(#b42318, #f0877c);
+  --color-signal-danger-subtle: light-dark(#fbe4e1, #3d1f1c);
 
-  --color-plate-ink: #16302b;
-  --color-plate-muted: #4b5f5a;
-  --color-plate-faint: #8a9a95;
-  --color-plate-grid: #e3e9e7;
-  --color-plate-border: #bfcbc7;
-  --color-plate-accent: #17695a;
-  --color-plate-fault: #b42318;
+  --color-chart-grid: light-dark(#e3e9e7, #263633);
+  --color-chart-tip: light-dark(#27477f, #8fb0ec);
+  --color-chart-selection: light-dark(#882255, #e889b8);
 }
 
 @variant dark (&:where(.dark, .dark *));
@@ -45,30 +42,6 @@
 @layer base {
   :root {
     color-scheme: light dark;
-  }
-
-  .dark {
-    --color-surface-0: #0e1615;
-    --color-surface-1: #15201e;
-    --color-surface-2: #1a2725;
-    --color-surface-3: #22322f;
-    --color-line: #2a3b38;
-    --color-line-strong: #3a4f4b;
-
-    --color-ink: #e0e9e6;
-    --color-ink-muted: #a6b7b2;
-    --color-ink-faint: #8a9b96;
-
-    --color-accent: #5cc3a5;
-    --color-accent-hover: #7dd3b9;
-    --color-accent-fg: #0e1615;
-    --color-accent-subtle: #173a33;
-
-    --color-signal-ok: #6fcf97;
-    --color-signal-warn: #e3ad4c;
-    --color-signal-warn-subtle: #3a2f16;
-    --color-signal-danger: #f0877c;
-    --color-signal-danger-subtle: #3d1f1c;
   }
 
   html {
@@ -91,10 +64,11 @@
   }
 }
 
-@utility plate {
-  background-color: #ffffff;
-  color: #16302b;
+/* Auspice has no dark theme: its panels keep the light colors inside a dark page */
+@utility light-scope {
   color-scheme: light;
+  background-color: var(--color-surface-1);
+  color: var(--color-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

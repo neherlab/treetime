@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { IterationPoint } from "../results/progress";
-import { PLATE, TICK_STYLE } from "./palette";
+import { CHART, TICK_STYLE } from "./palette";
 
 const HEIGHT = 110;
 
@@ -24,7 +24,7 @@ export function RateTrace({ iterations }: { iterations: readonly IterationPoint[
         <Line
           dataKey="clockRate"
           name="Clock rate"
-          stroke={PLATE.accent}
+          stroke={CHART.accent}
           strokeWidth={1.6}
           dot={DOT}
           isAnimationActive={false}

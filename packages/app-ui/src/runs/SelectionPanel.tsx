@@ -110,7 +110,7 @@ export function SelectionPanel({
           <p className="mb-1.5 text-sm font-bold">
             Same {isTip ? "sample" : "clade"} in {rows.length} {rows.length === 1 ? "run" : "runs"}
           </p>
-          <div className="plate rounded-md p-1.5">
+          <div className="rounded-md p-1.5">
             <DateIntervals rows={rows} onOpen={open} />
           </div>
           {missing > 0 && (
