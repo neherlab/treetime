@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Label,
@@ -14,8 +14,10 @@ import {
 } from "recharts";
 import * as z from "zod";
 
+import { Switch } from "../ui";
 import { ChartTooltip } from "./ChartTooltip";
 import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
 
 export interface RttPoint {
   name: string;
@@ -36,7 +38,7 @@ const HEIGHT = 300;
 
 const FADED_OPACITY = 0.18;
 
-const DATA_EXTENT = ["dataMin", "dataMax"];
+const OFF_AXES_OPACITY = 0.45;
 
 const TIP_SIZE: [number, number] = [36, 36];
 
@@ -58,6 +60,7 @@ const zPointPayload = z.object({
   div: z.number(),
   excluded: z.boolean(),
   inferred: z.boolean(),
+  offAxes: z.boolean(),
 });
 
 export function RootToTipPlot({
@@ -73,35 +76,70 @@ export function RootToTipPlot({
   inView: ReadonlySet<string> | undefined;
   onSelect: ((name: string) => void) | undefined;
 }) {
-  const series = useMemo(() => pointSeries(points, selected, inView), [inView, points, selected]);
-  const segment = useMemo(() => lineSegment(points, line), [line, points]);
+  const [fitToModel, setFitToModel] = useState(true);
+  const fitId = useId();
+  const hasOutliers = useMemo(() => points.some((point) => point.excluded), [points]);
+  const frame = useMemo(() => plotFrame(points, fitToModel && hasOutliers), [fitToModel, hasOutliers, points]);
+  const placed = useMemo(() => placePoints(points, frame), [frame, points]);
+  const series = useMemo(() => pointSeries(placed, selected, inView), [inView, placed, selected]);
+  const segment = useMemo(() => lineSegment(frame, line), [frame, line]);
 
   return (
     <div>
-      {line !== undefined && (
-        <p className="text-ink-muted m-0 px-2 pb-1 text-xs">
-          <span className="bg-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
-          {line.label}
-        </p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 pb-1 text-xs">
+        {line === undefined ? (
+          <span />
+        ) : (
+          <p className="text-ink-muted m-0">
+            <span className="bg-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
+            {line.label}
+          </p>
+        )}
+        {hasOutliers && (
+          <label htmlFor={fitId} className="text-ink-muted flex cursor-pointer items-center gap-2">
+            <Switch id={fitId} checked={fitToModel} onCheckedChange={setFitToModel} />
+            Fit axes to the samples in the clock model
+          </label>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={HEIGHT}>
         <ScatterChart margin={PLOT_MARGIN}>
           <CartesianGrid stroke={CHART.grid} />
-          <XAxis type="number" dataKey="date" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
+          <XAxis
+            type="number"
+            dataKey="x"
+            domain={frame.x.domain}
+            ticks={frame.x.ticks}
+            allowDataOverflow
+            tick={TICK_STYLE}
+            tickFormatter={yearTick}
+            stroke={CHART.faint}
+          >
             <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
           </XAxis>
-          <YAxis type="number" dataKey="div" tick={TICK_STYLE} tickFormatter={divergenceTick} width={56}>
+          <YAxis
+            type="number"
+            dataKey="y"
+            domain={frame.y.domain}
+            ticks={frame.y.ticks}
+            allowDataOverflow
+            tick={TICK_STYLE}
+            tickFormatter={divergenceTick}
+            stroke={CHART.faint}
+            width={56}
+          >
             <Label value="Divergence from the root" angle={-90} position="insideLeft" {...TICK_STYLE} />
           </YAxis>
           <ZAxis zAxisId="tip" range={TIP_SIZE} />
           <ZAxis zAxisId="ring" range={RING_SIZE} />
           <Tooltip content={<PointTooltip />} isAnimationActive={false} />
           {segment !== undefined && (
-            <ReferenceLine segment={segment} stroke={CHART.accent} strokeWidth={1.5} ifOverflow="extendDomain" />
+            <ReferenceLine segment={segment} stroke={CHART.accent} strokeWidth={1.5} ifOverflow="hidden" />
           )}
           {SERIES_LOOK.map((look) => (
             <SeriesScatter key={look.key} look={look} points={series[look.key]} onSelect={onSelect} />
           ))}
+          <OffAxesScatter points={series.offAxes} onSelect={onSelect} />
           <Scatter
             data={series.selected}
             zAxisId="ring"
@@ -122,19 +160,10 @@ function SeriesScatter({
   onSelect,
 }: {
   look: SeriesLook;
-  points: readonly RttPoint[];
+  points: readonly PlacedPoint[];
   onSelect: ((name: string) => void) | undefined;
 }) {
-  const select = useCallback(
-    (_item: ScatterPointItem, index: number) => {
-      const point = points[index];
-
-      if (point !== undefined) {
-        onSelect?.(point.name);
-      }
-    },
-    [onSelect, points],
-  );
+  const select = useSelect(points, onSelect);
 
   return (
     <Scatter
@@ -148,15 +177,52 @@ function SeriesScatter({
   );
 }
 
+function OffAxesScatter({
+  points,
+  onSelect,
+}: {
+  points: readonly PlacedPoint[];
+  onSelect: ((name: string) => void) | undefined;
+}) {
+  const select = useSelect(points, onSelect);
+
+  return (
+    <Scatter
+      data={points}
+      zAxisId="tip"
+      fill="none"
+      stroke={CHART.fault}
+      strokeOpacity={OFF_AXES_OPACITY}
+      strokeWidth={1.5}
+      isAnimationActive={false}
+      onClick={select}
+    />
+  );
+}
+
+function useSelect(points: readonly PlacedPoint[], onSelect: ((name: string) => void) | undefined) {
+  return useCallback(
+    (_item: ScatterPointItem, index: number) => {
+      const point = points[index];
+
+      if (point !== undefined) {
+        onSelect?.(point.name);
+      }
+    },
+    [onSelect, points],
+  );
+}
+
 function pointSeries(
-  points: readonly RttPoint[],
+  points: readonly PlacedPoint[],
   selected: string | undefined,
   inView: ReadonlySet<string> | undefined,
 ) {
-  const visible = (point: RttPoint) => inView === undefined || inView.has(point.name);
+  const visible = (point: PlacedPoint) => inView === undefined || inView.has(point.name);
+  const onAxes = points.filter((point) => !point.offAxes);
 
   const of = (kind: PointRole, shown: boolean) =>
-    points.filter((point) => pointRole(point) === kind && visible(point) === shown);
+    onAxes.filter((point) => pointRole(point) === kind && visible(point) === shown);
 
   return {
     inferred: of("inferred", true),
@@ -165,6 +231,7 @@ function pointSeries(
     tipsFaded: of("tip", false),
     excluded: of("excluded", true),
     excludedFaded: of("excluded", false),
+    offAxes: points.filter((point) => point.offAxes),
     selected: points.filter((point) => point.name === selected),
   };
 }
@@ -201,18 +268,17 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
       {point.data.excluded && <div className="text-signal-danger">Excluded from the clock model</div>}
+      {point.data.offAxes && <div className="text-ink-muted">Outside the axes; drawn at their edge</div>}
     </ChartTooltip>
   );
 }
 
-function lineSegment(points: readonly RttPoint[], line: RttLine | undefined) {
-  if (line === undefined || points.length === 0) {
+function lineSegment(frame: PlotFrame, line: RttLine | undefined) {
+  if (line === undefined) {
     return undefined;
   }
 
-  const dates = points.map((point) => point.date);
-  const from = Math.min(...dates);
-  const to = Math.max(...dates);
+  const [from, to] = frame.x.domain;
 
   return [
     { x: from, y: line.slope * from + line.intercept },
