@@ -11,3 +11,27 @@ index ab17e1a750ff08575d477a5f7e042fa2134f5d3d..5d7f781cc7037fa66c8b71ae8b3ab59a
    const levels = {
      CENTURY: {t: 100, max: undefined},
      DECADE: {t: 10, max: 5}, // i.e. spacing of 50 years is ok, but 60 jumps up to 100y spacing
+diff --git a/src/components/tree/tree.tsx b/src/components/tree/tree.tsx
+index 5020928b7f4eb2edb11b6eadd3ba61ffda6ce9bb..3e62a518a3fcbd3a96a6cd7a4953f5ab39c5f908 100644
+--- a/src/components/tree/tree.tsx
++++ b/src/components/tree/tree.tsx
+@@ -1,4 +1,5 @@
+ import React from "react";
++import { select } from "d3-selection";
+ import { withTranslation } from "react-i18next";
+ import { updateVisibleTipsAndBranchThicknesses } from "../../actions/tree";
+ import { SelectedNode } from "../../reducers/controls";
+@@ -77,6 +78,13 @@ export class TreeComponent extends React.Component<TreeComponentProps, TreeCompo
+     }
+   }
+ 
++  override componentWillUnmount(): void {
++    /* remove what componentDidMount drew, so a later mount on the same DOM (e.g. React StrictMode) starts from an empty SVG */
++    for (const ref of [this.domRefs.mainTree, this.domRefs.secondTree]) {
++      if (ref) select(ref).selectAll("*").remove();
++    }
++  }
++
+   override componentDidUpdate(prevProps: TreeComponentProps): void {
+     let newState: Partial<TreeComponentState> = {};
+     let rightTreeUpdated = false;
