@@ -16,11 +16,9 @@ import {
 import { formatSignedDays } from "../format";
 import type { AncestorShift } from "../results/types";
 import { ChartTooltip } from "./ChartTooltip";
-import { CHART, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
+import { CHART, niceAxis, PLOT_MARGIN, TICK_STYLE, yearTick } from "./palette";
 
 const HEIGHT = 300;
-
-const DATA_EXTENT = ["dataMin", "dataMax"];
 
 const CLADE_SIZE: [number, number] = [16, 160];
 
@@ -30,11 +28,21 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
     [shifts],
   );
 
+  const xAxis = useMemo(() => niceAxis(data.map((point) => point.x)), [data]);
+
   return (
     <ResponsiveContainer width="100%" height={HEIGHT}>
       <ScatterChart margin={PLOT_MARGIN}>
         <CartesianGrid stroke={CHART.grid} />
-        <XAxis type="number" dataKey="x" domain={DATA_EXTENT} tick={TICK_STYLE} tickFormatter={yearTick}>
+        <XAxis
+          type="number"
+          dataKey="x"
+          domain={xAxis.domain}
+          ticks={xAxis.ticks}
+          allowDataOverflow
+          tick={TICK_STYLE}
+          tickFormatter={yearTick}
+        >
           <Label value={`Date in ${firstLabel}`} position="bottom" offset={4} {...TICK_STYLE} />
         </XAxis>
         <YAxis type="number" dataKey="y" tick={TICK_STYLE} width={56}>
