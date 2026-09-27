@@ -30,11 +30,11 @@ export function DateIntervals({
   const scale = dateScale(rows);
 
   return (
-    <div className="grid grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-center gap-x-3 text-xs">
+    <div className="grid grid-cols-[minmax(0,14rem)_auto_minmax(0,1fr)] items-center gap-x-3 text-xs">
       {rows.map((row) => (
         <IntervalRow key={row.id} row={row} scale={scale} onOpen={row.current ? undefined : onOpen} />
       ))}
-      <span />
+      <span className="col-span-2" />
       <svg width="100%" height={AXIS_HEIGHT} className="overflow-visible" aria-hidden>
         <line x1="0%" x2="100%" y1={0.5} y2={0.5} stroke={CHART.faint} />
         {scale.ticks.map((tick, index) => (
@@ -85,6 +85,7 @@ function IntervalRow({
           {row.label}
         </button>
       )}
+      <span className={cn("tabular-nums", row.current ? "text-ink font-bold" : "text-ink-muted")}>{row.date.date}</span>
       <svg width="100%" height={TRACK_HEIGHT} className="overflow-visible" aria-hidden>
         <title>{title}</title>
         <line x1="0%" x2="100%" y1={TRACK_HEIGHT / 2} y2={TRACK_HEIGHT / 2} stroke={CHART.grid} />
