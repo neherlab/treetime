@@ -1,6 +1,7 @@
 import { transformWithOxc, type Plugin } from "vite";
 
-const AUSPICE_SOURCE = /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?auspice[\\/]src[\\/].+\.js$/u;
+const AUSPICE_SOURCE =
+  /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?auspice[\\/]src[\\/][^?]+\.js(?:\?.*)?$/u;
 
 const AUSPICE_ENTRIES = [
   "auspice/src/actions/colors",
@@ -12,9 +13,11 @@ const AUSPICE_ENTRIES = [
   "auspice/src/components/controls/choose-metric",
   "auspice/src/components/controls/choose-tip-label",
   "auspice/src/components/controls/color-by",
+  "auspice/src/components/controls/controlHeader",
   "auspice/src/components/controls/filter",
   "auspice/src/components/controls/miscInfoText",
   "auspice/src/components/controls/styles",
+  "auspice/src/components/controls/toggle-focus",
   "auspice/src/components/download/downloadButtons",
   "auspice/src/components/download/downloadModal",
   "auspice/src/components/info/filtersSummary",
@@ -31,6 +34,8 @@ const AUSPICE_ENTRIES = [
   "auspice/src/reducers/tree/treeToo",
   "auspice/src/util/globals",
 ];
+
+const APP_UI_PACKAGE = "@neherlab/app-ui";
 
 const SHARED_PACKAGES = ["react", "react-dom"];
 
@@ -61,7 +66,8 @@ export function auspice(): Plugin {
         },
         resolve: { dedupe: SHARED_PACKAGES },
         optimizeDeps: {
-          include: AUSPICE_ENTRIES,
+          extensions: [".tsx"],
+          include: AUSPICE_ENTRIES.map((entry) => `${APP_UI_PACKAGE} > ${entry}`),
           rolldownOptions: { plugins: [{ name: "treetime-auspice-source", transform: AUSPICE_TRANSFORM }] },
         },
       };
