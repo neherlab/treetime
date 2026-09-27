@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import type { DateInterval, YearDate } from "../results/types";
-import { truncate } from "../text";
-import { CHART } from "./palette";
+import { cn } from "../ui/cn";
+import { CHART, niceAxis, yearTick } from "./palette";
 
 export interface DateRow {
   id: string;
@@ -12,15 +12,13 @@ export interface DateRow {
   current: boolean;
 }
 
-const ROW_HEIGHT = 22;
+const TRACK_HEIGHT = 22;
 
-const LABEL_WIDTH = 170;
+const AXIS_HEIGHT = 20;
 
-const WIDTH = 420;
+const TICK_COUNT = 5;
 
-const AXIS_HEIGHT = 22;
-
-const LABEL_LENGTH = 26;
+const MIN_SPAN_YEARS = 0.05;
 
 export function DateIntervals({
   rows,
@@ -29,84 +27,119 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const ends = rows
-    .flatMap((row) => [row.interval?.lower ?? row.date, row.interval?.upper ?? row.date])
-    .toSorted((a, b) => a.year - b.year);
-
-  const first = ends.at(0);
-  const last = ends.at(-1);
-  const low = first?.year ?? 0;
-  const high = last?.year ?? 0;
-  const pad = (high - low) * 0.05 || 0.05;
-  const scale = { low: low - pad, span: high - low + 2 * pad };
-  const height = rows.length * ROW_HEIGHT + AXIS_HEIGHT;
+  const scale = dateScale(rows);
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${height}`} width="100%" aria-label="Date in each run">
-      <title>Date in each run</title>
-      {rows.map((row, index) => (
-        <IntervalRow
-          key={row.id}
-          row={row}
-          y={index * ROW_HEIGHT + ROW_HEIGHT / 2}
-          scale={scale}
-          onOpen={row.current ? undefined : onOpen}
-        />
+    <div className="grid grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-center gap-x-3 text-xs">
+      {rows.map((row) => (
+        <IntervalRow key={row.id} row={row} scale={scale} onOpen={row.current ? undefined : onOpen} />
       ))}
-      <text x={LABEL_WIDTH} y={height - 6} fontSize={10} fill={CHART.muted}>
-        {first?.date}
-      </text>
-      <text x={WIDTH - 12} y={height - 6} fontSize={10} fill={CHART.muted} textAnchor="end">
-        {last?.date}
-      </text>
-    </svg>
+      <span />
+      <svg width="100%" height={AXIS_HEIGHT} className="overflow-visible" aria-hidden>
+        <line x1="0%" x2="100%" y1={0.5} y2={0.5} stroke={CHART.faint} />
+        {scale.ticks.map((tick, index) => (
+          <g key={tick}>
+            <line x1={scale.at(tick)} x2={scale.at(tick)} y1={0} y2={4} stroke={CHART.faint} />
+            <text
+              x={scale.at(tick)}
+              y={AXIS_HEIGHT - 3}
+              fontSize={10}
+              fill={CHART.muted}
+              textAnchor={tickAnchor(index, scale.ticks.length)}
+            >
+              {yearTick(tick)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }
 
 function IntervalRow({
   row,
-  y,
   scale,
   onOpen,
 }: {
   row: DateRow;
-  y: number;
-  scale: { low: number; span: number };
+  scale: DateScale;
   onOpen: ((id: string) => void) | undefined;
 }) {
   const open = useCallback(() => onOpen?.(row.id), [onOpen, row.id]);
-  const x = (value: number) => LABEL_WIDTH + ((value - scale.low) / scale.span) * (WIDTH - LABEL_WIDTH - 12);
+  const title = rowTitle(row);
+  const labelClass = cn("truncate text-left", row.current ? "text-ink font-bold" : "text-ink-muted");
 
   return (
-    <g
-      onClick={onOpen === undefined ? undefined : open}
-      className={onOpen === undefined ? undefined : "cursor-pointer"}
-    >
-      <title>{rowTitle(row)}</title>
-      <text
-        x={LABEL_WIDTH - 8}
-        y={y + 4}
-        textAnchor="end"
-        fontSize={11}
-        fill={row.current ? CHART.ink : CHART.muted}
-        fontWeight={row.current ? 700 : 400}
-      >
-        {truncate(row.label, LABEL_LENGTH)}
-      </text>
-      {row.interval !== undefined && (
-        <line
-          x1={x(row.interval.lower.year)}
-          x2={Math.max(x(row.interval.upper.year), x(row.interval.lower.year) + 0.5)}
-          y1={y}
-          y2={y}
-          stroke={CHART.accent}
-          strokeWidth={3}
-          strokeOpacity={0.35}
-        />
+    <>
+      {onOpen === undefined ? (
+        <span className={labelClass} title={title}>
+          {row.label}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className={cn(labelClass, "hover:text-accent cursor-pointer underline-offset-2 hover:underline")}
+          title={`${title}. Open this run`}
+          onClick={open}
+        >
+          {row.label}
+        </button>
       )}
-      <circle cx={x(row.date.year)} cy={y} r={3.5} fill={row.current ? CHART.selection : CHART.accent} />
-    </g>
+      <svg width="100%" height={TRACK_HEIGHT} className="overflow-visible" aria-hidden>
+        <title>{title}</title>
+        <line x1="0%" x2="100%" y1={TRACK_HEIGHT / 2} y2={TRACK_HEIGHT / 2} stroke={CHART.grid} />
+        {row.interval !== undefined && (
+          <line
+            x1={scale.at(row.interval.lower.year)}
+            x2={scale.at(row.interval.upper.year)}
+            y1={TRACK_HEIGHT / 2}
+            y2={TRACK_HEIGHT / 2}
+            stroke={CHART.accent}
+            strokeWidth={4}
+            strokeOpacity={0.35}
+            strokeLinecap="round"
+          />
+        )}
+        <circle
+          cx={scale.at(row.date.year)}
+          cy={TRACK_HEIGHT / 2}
+          r={4}
+          fill={row.current ? CHART.selection : CHART.accent}
+        />
+      </svg>
+    </>
   );
+}
+
+function dateScale(rows: readonly DateRow[]): DateScale {
+  const ends = rows.flatMap((row) => [
+    row.interval?.lower.year ?? row.date.year,
+    row.interval?.upper.year ?? row.date.year,
+  ]);
+
+  const low = Math.min(...ends);
+  const high = Math.max(...ends);
+  const pad = Math.max((high - low) * 0.05, MIN_SPAN_YEARS / 2);
+
+  const {
+    domain: [from, to],
+    ticks,
+  } = niceAxis([low - pad, high + pad], TICK_COUNT);
+
+  return { ticks, at: (year: number) => `${((year - from) / (to - from)) * 100}%` };
+}
+
+function tickAnchor(index: number, count: number): "start" | "middle" | "end" {
+  if (index === 0) {
+    return "start";
+  }
+
+  return index === count - 1 ? "end" : "middle";
+}
+
+interface DateScale {
+  ticks: number[];
+  at: (year: number) => string;
 }
 
 function rowTitle(row: DateRow): string {

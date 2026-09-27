@@ -7,6 +7,7 @@ import { useApi } from "../api/hooks";
 import { formatLevel } from "../format";
 import type { ResultTree } from "../results/types";
 import { Button } from "../ui";
+import { cn } from "../ui/cn";
 import { DateIntervals, type DateRow } from "./DateIntervals";
 import { Panel } from "./Panel";
 import type { TreeLink } from "./TreeWorkspace";
@@ -61,7 +62,9 @@ export function SelectionPanel({
     return null;
   }
 
-  const missing = (found?.searched_runs ?? 0) - (found?.matches.length ?? 0);
+  const searched = found?.searched_runs ?? 0;
+  const matched = rows.filter((row) => !row.current).length;
+  const missing = searched - (found?.matches.length ?? 0);
   const interval = node.date_interval ?? undefined;
   const isTip = node.children.length === 0;
 
@@ -105,22 +108,36 @@ export function SelectionPanel({
           {node.mutations.length === 0 ? "none on this branch" : node.mutations.join(" ")}
         </dd>
       </dl>
-      {rows.length > 0 && (
+      {searched > 0 && (
         <div className="border-line border-t px-3.5 py-3">
-          <p className="mb-1.5 text-sm font-bold">
-            Same {isTip ? "sample" : "clade"} in {rows.length} {rows.length === 1 ? "run" : "runs"}
-          </p>
-          <div className="rounded-md p-1.5">
-            <DateIntervals rows={rows} onOpen={open} />
-          </div>
+          {matched > 0 && (
+            <>
+              <p className="m-0 text-sm font-bold">
+                Date of this {isTip ? "sample" : "clade"} in {matched} other time tree {matched === 1 ? "run" : "runs"}
+              </p>
+              <p className="text-ink-faint mt-0.5 mb-2 text-xs">
+                Runs whose tree has a node with the same set of samples below it. Click a run to open it.
+              </p>
+              <DateIntervals rows={rows} onOpen={open} />
+            </>
+          )}
           {missing > 0 && (
-            <p className="text-ink-faint mt-1.5 text-xs">
-              Not present in {missing} other time tree {missing === 1 ? "run" : "runs"}, whose trees lack this set of
-              samples.
+            <p className={cn("text-ink-faint m-0 text-xs", matched > 0 && "mt-2")}>
+              {absentText(missing, searched, isTip)}
             </p>
           )}
         </div>
       )}
     </Panel>
   );
+}
+
+function absentText(missing: number, searched: number, isTip: boolean): string {
+  const what = isTip ? "this sample" : "a node with this set of samples below it";
+
+  if (missing === searched) {
+    return `No other time tree run has ${what} (${searched} searched).`;
+  }
+
+  return `${missing} other time tree ${missing === 1 ? "run lacks" : "runs lack"} ${what}.`;
 }
