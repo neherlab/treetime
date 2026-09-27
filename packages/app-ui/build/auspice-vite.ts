@@ -39,19 +39,29 @@ const APP_UI_PACKAGE = "@neherlab/app-ui";
 
 const SHARED_PACKAGES = ["react", "react-dom"];
 
+const AUSPICE_TIMERS = /[\\/]auspice[\\/]src[\\/]util[\\/]perf\.js(?:\?.*)?$/u;
+
+const AUSPICE_TIMERS_STUB = "export const timerStart = () => {};\nexport const timerEnd = () => {};\n";
+
 const AUSPICE_TRANSFORM = {
   filter: { id: AUSPICE_SOURCE },
-  async handler(code: string, id: string) {
-    const result = await transformWithOxc(code, id, {
-      lang: "jsx",
-      jsx: { runtime: "automatic" },
-      decorator: { legacy: true },
-      sourcemap: true,
-    });
-
-    return { code: result.code, map: result.map ?? null };
-  },
+  handler: transformAuspiceSource,
 } satisfies Plugin["transform"];
+
+export async function transformAuspiceSource(code: string, id: string) {
+  if (AUSPICE_TIMERS.test(id)) {
+    return { code: AUSPICE_TIMERS_STUB, map: null };
+  }
+
+  const result = await transformWithOxc(code, id, {
+    lang: "jsx",
+    jsx: { runtime: "automatic" },
+    decorator: { legacy: true },
+    sourcemap: true,
+  });
+
+  return { code: result.code, map: result.map ?? null };
+}
 
 export function auspice(): Plugin {
   return {
