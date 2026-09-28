@@ -34,16 +34,6 @@ import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
 import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
 
-const diagnosticDir =
-  process.env[DIAGNOSTIC_DIR_ENV] ??
-  (app.isPackaged ? path.join(app.getPath("logs"), "diagnostics") : path.resolve(process.cwd(), "tmp/diagnostics"));
-
-initDiagnostics("treetime-desktop", diagnosticDir);
-
-if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
-  app.commandLine.appendSwitch("no-sandbox");
-}
-
 const projectRoot = process.env["TREETIME_PROJECT_ROOT"];
 
 if (projectRoot !== undefined && projectRoot !== "") {
@@ -52,14 +42,27 @@ if (projectRoot !== undefined && projectRoot !== "") {
 
 const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 
-const appUrl =
-  devServerUrl !== undefined && devServerUrl !== ""
-    ? devServerUrl
-    : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
+const devServer = devServerUrl !== undefined && devServerUrl !== "";
+
+const checkoutDataDir = path.resolve(process.cwd(), devServer ? "tmp/app/desktop-dev" : "tmp/app/desktop-prod");
+
+const diagnosticDir =
+  process.env[DIAGNOSTIC_DIR_ENV] ??
+  (app.isPackaged ? path.join(app.getPath("logs"), "diagnostics") : path.join(checkoutDataDir, "diagnostics"));
+
+const runsDir = app.isPackaged ? path.join(app.getPath("userData"), "runs") : path.join(checkoutDataDir, "runs");
+
+initDiagnostics("treetime-desktop", diagnosticDir);
+
+if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
+  app.commandLine.appendSwitch("no-sandbox");
+}
+
+const appUrl = devServer ? devServerUrl : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
 
 async function main(): Promise<void> {
   await app.whenReady();
-  const backend = new BackendProcess(path.join(app.getPath("userData"), "runs"));
+  const backend = new BackendProcess(runsDir);
   registerIpcHandlers(backend);
   await createWindow();
 }

@@ -1,17 +1,27 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|health|status>
+# Usage: $0 <up|serve|health|status>
 #
-# Development servers of the web app: the API server (treetime-server) and the
-# Vite dev server, which proxies /api to it.
+# Servers of the web app: the API server (treetime-server), and in development
+# the Vite dev server, which proxies /api to it.
 #
-#   up       Start both servers in the foreground until Ctrl-C
-#   health   Probe both servers; exit 1 when one is absent, not answering, or
-#            started from another commit than the checkout HEAD
+#   up       Start both development servers in the foreground until Ctrl-C
+#   serve    Build the web app and the API server for production and serve both
+#            from one port in the foreground until Ctrl-C
+#   health   Probe both development servers; exit 1 when one is absent, not
+#            answering, or started from another commit than the checkout HEAD
 #   status   Print the resolved ports and URLs and what each server was started from
 #
-# Each checkout resolves its own port pair from its path, so worktrees run side
-# by side. TREETIME_API_PORT and TREETIME_WEB_PORT override the resolved ports.
+# Each checkout resolves its own ports from its path, so worktrees run side by
+# side. TREETIME_API_PORT, TREETIME_WEB_PORT and TREETIME_SERVE_PORT override the
+# resolved ports.
+#
+# Each mode keeps its runs in its own directory of the checkout:
+#
+#   tmp/app/web-dev/runs    runs of the development servers (up)
+#   tmp/app/web-prod/runs   runs of the production server (serve)
+#
+# The example datasets in data/ are the server data directory in both modes.
 #
 # When the portless proxy (https://github.com/vercel-labs/portless) is set up on
 # the machine, the web server also registers https://<name>.localhost:<proxy-port>,
@@ -26,10 +36,14 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "${root}"
 
-state_dir="${root}/tmp/app"
+data_dir="data"
+web_dev_dir="tmp/app/web-dev"
+web_prod_dir="tmp/app/web-prod"
+state_dir="${root}/${web_dev_dir}/servers"
 
 api_base_port=3100
 web_base_port=5173
+serve_base_port=4100
 
 resolve() {
   local toplevel offset branch
@@ -37,6 +51,7 @@ resolve() {
   offset="$(($(printf '%s' "${toplevel}" | cksum | cut -d' ' -f1) % 512))"
   export TREETIME_API_PORT="${TREETIME_API_PORT:-$((api_base_port + offset))}"
   export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$((web_base_port + offset))}"
+  export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$((serve_base_port + offset))}"
 
   if [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]; then
     TREETIME_HOSTNAME="treetime"
@@ -112,7 +127,7 @@ up() {
   trap 'exit 143' TERM
 
   printf 'Starting the API server on http://127.0.0.1:%s\n' "${TREETIME_API_PORT}" >&2
-  PORT="${TREETIME_API_PORT}" cargo run --locked --bin treetime-server -- --data-dir=data --runs-dir=tmp/web/runs \
+  PORT="${TREETIME_API_PORT}" cargo run --locked --bin treetime-server -- --data-dir="${data_dir}" --runs-dir="${web_dev_dir}/runs" \
     > >(prefix api) 2>&1 &
   pids+=("$!")
   wait_ready "${api_url}" 900 "${pids[0]}" || {
@@ -132,6 +147,22 @@ up() {
 
   printf 'Ready: %s (Ctrl-C to stop)\n' "${web_url}" >&2
   wait -n "${pids[@]}"
+}
+
+serve() {
+  resolve
+  local url="http://127.0.0.1:${TREETIME_SERVE_PORT}"
+  if probe "${url}/api/version" 2>/dev/null; then
+    printf 'A server already answers at %s; stop it before starting another\n' "${url}" >&2
+    return 1
+  fi
+
+  bun run --silent build:web
+  cargo build --locked --release --bin treetime-server
+
+  printf 'Serving the production web app on %s (Ctrl-C to stop)\n' "${url}" >&2
+  STATIC_DIR=packages/app-web/dist PORT="${TREETIME_SERVE_PORT}" exec cargo run --locked --release --bin treetime-server -- \
+    --data-dir="${data_dir}" --runs-dir="${web_prod_dir}/runs"
 }
 
 health() {
@@ -160,8 +191,9 @@ health() {
 
 status() {
   resolve
-  printf 'api  port %s\n' "${TREETIME_API_PORT}"
-  printf 'web  port %s\n' "${TREETIME_WEB_PORT}"
+  printf 'api   port %s\n' "${TREETIME_API_PORT}"
+  printf 'web   port %s\n' "${TREETIME_WEB_PORT}"
+  printf 'serve port %s\n' "${TREETIME_SERVE_PORT}"
   printf 'portless name %s.localhost (TREETIME_PORTLESS=%s)\n' "${TREETIME_HOSTNAME}" "${TREETIME_PORTLESS:-allowed}"
   printf 'checkout HEAD %s\n' "$(commit)"
   local svc
@@ -175,7 +207,7 @@ status() {
 }
 
 case "${1:-}" in
-up | health | status) "${1}" ;;
+up | serve | health | status) "${1}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
   exit 1

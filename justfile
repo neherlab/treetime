@@ -462,6 +462,11 @@ fixtures-check:
 up: _js
     dev/app up
 
+# Build the web app and the API server for production and serve both from one port until Ctrl-C
+[group("app")]
+serve: _js
+    dev/app serve
+
 # Probe the dev servers; exits non-zero when one is absent or built from another commit
 [group("app")]
 health:
@@ -476,6 +481,12 @@ status:
 [group("app")]
 desktop: _js
     bun run --silent dev:desktop
+
+# Build the desktop app for production and start it from the checkout (in the container: TREETIME_DOCKER_X11=1)
+[group("app")]
+desktop-prod: build-desktop
+    TREETIME_PROJECT_ROOT="${PWD}" LD_PRELOAD="${PWD}/packages/app-napi/app-napi.linux-x64-gnu.node${LD_PRELOAD:+:${LD_PRELOAD}}" \
+      node packages/app-desktop/node_modules/electron/cli.js packages/app-desktop --enable-logging
 
 # Production build of the web app
 [group("app")]

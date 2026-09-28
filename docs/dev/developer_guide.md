@@ -123,7 +123,25 @@ The TypeScript apps (`app-ui`, `app-web`, `app-desktop`) are a user interface ar
 
 ### Web app
 
-`just up` starts the API server and the Vite dev server in the foreground until Ctrl-C. `just health` and `just status` report whether they run and which commit they were started from. Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_API_PORT` and `TREETIME_WEB_PORT` override them.
+`just up` starts the API server and the Vite dev server in the foreground until Ctrl-C. `just health` and `just status` report whether they run and which commit they were started from.
+
+`just serve` builds the web app and the API server for production and runs the server in the foreground until Ctrl-C. The server serves the built web app (`packages/app-web/dist`, through the `STATIC_DIR` environment variable) and the API from one port.
+
+Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_API_PORT`, `TREETIME_WEB_PORT`, and `TREETIME_SERVE_PORT` override them.
+
+#### Storage
+
+The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps only the unfinished form, in `localStorage`. The server reads example datasets from `--data-dir`.
+
+Each app mode keeps its runs in its own directory:
+
+- `tmp/app/web-dev/runs`: development servers (`just up`)
+- `tmp/app/web-prod/runs`: production server (`just serve`)
+- `tmp/app/desktop-dev/runs`: desktop app in development mode (`just desktop`), with its diagnostics in `tmp/app/desktop-dev/diagnostics`
+- `tmp/app/desktop-prod/runs`: production build of the desktop app started from the checkout (`just desktop-prod`), with its diagnostics in `tmp/app/desktop-prod/diagnostics`
+- `<userData>/runs`: installed desktop app, in the Electron user data directory of the platform
+
+A deployment passes `--data-dir` and `--runs-dir` to `treetime-server` itself.
 
 When the portless proxy runs on the machine, the web server also registers `https://treetime.localhost` in the main checkout and `https://<branch>.treetime.localhost` in a linked worktree.
 
@@ -135,7 +153,7 @@ The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TL
 
 ### Desktop app
 
-`just desktop` starts the Electron app in development mode. In the container it needs the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
+`just desktop` starts the Electron app in development mode. `just desktop-prod` builds the desktop app for production (the release Node addon and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
 
 ## Generated files
 
