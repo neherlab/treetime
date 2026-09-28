@@ -100,15 +100,15 @@ export function stageSections(progress: RunProgress): StageSection[] {
   return spans.map((span, index) => {
     const next = spans.at(index + 1)?.seq ?? Number.POSITIVE_INFINITY;
     const isLast = index === spans.length - 1;
-    const entries = logs.filter((entry) => entry.seq > span.seq && entry.seq < next);
+    const state = span.endSeconds === undefined ? "running" : isLast ? ended : "done";
 
     return {
       key: String(span.seq),
       name: span.name,
-      state: span.endSeconds === undefined ? "running" : isLast ? ended : "done",
+      state,
       seconds: (span.endSeconds ?? span.startSeconds) - span.startSeconds,
-      entries,
-      defaultOpen: progress.terminal === undefined ? isLast : entries.length > 0,
+      entries: logs.filter((entry) => entry.seq > span.seq && entry.seq < next),
+      defaultOpen: state === "running",
     };
   });
 }

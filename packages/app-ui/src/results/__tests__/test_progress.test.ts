@@ -205,7 +205,7 @@ describe("stage sections", () => {
     expect(sections.map((section) => section.state)).toStrictEqual(["done", "done", "done", "done"]);
   });
 
-  test("the stages of an ended run that hold log lines are open by default", () => {
+  test("no stage of an ended run is open by default", () => {
     const sections = stageSections(
       foldRunEvents(EMPTY_PROGRESS, [
         ...LIVE,
@@ -213,7 +213,7 @@ describe("stage sections", () => {
       ]),
     );
 
-    expect(openSections(sections, new Map())).toStrictEqual(["-1", "2", "5"]);
+    expect(openSections(sections, new Map())).toStrictEqual([]);
   });
 
   test("lines before any stage form a running start section", () => {
@@ -261,6 +261,19 @@ describe("stage sections", () => {
       );
 
       expect(openSections(next, overrides)).toStrictEqual(["2", "7"]);
+    });
+
+    test("a stage the user opened stays open after the run ends, and the current stage closes", () => {
+      const overrides = sectionOverrides(sections, ["2", "5"]);
+
+      const ended = stageSections(
+        foldRunEvents(EMPTY_PROGRESS, [
+          ...LIVE,
+          { seq: 7, time: "2026-09-25T10:00:06.000Z", type: "terminal", data: { job_id: "run", status: "cancelled" } },
+        ]),
+      );
+
+      expect(openSections(ended, overrides)).toStrictEqual(["2"]);
     });
 
     test("the default open state needs no overrides", () => {
