@@ -19,6 +19,7 @@ export interface RunProgress {
 }
 
 interface StageSpan {
+  seq: number;
   name: string;
   startSeconds: number;
   endSeconds: number | undefined;
@@ -40,6 +41,18 @@ export interface LogEntry {
   level: LogLevel;
   message: string;
 }
+
+export type StageState = "running" | "done" | "stopped";
+
+export interface StageSection {
+  key: string;
+  name: string;
+  state: StageState;
+  seconds: number;
+  entries: readonly LogEntry[];
+}
+
+const PRELUDE_SEQ = -1;
 
 export const EMPTY_PROGRESS: RunProgress = {
   startedAt: undefined,
@@ -67,6 +80,54 @@ export function filterLog(entries: readonly LogEntry[], filter: LogFilter, query
         (filter === "warnings" && WARNING_LEVELS.has(entry.level)) ||
         (filter === "stages" && entry.kind === "stage")) &&
       (needle === "" || entry.message.toLowerCase().includes(needle)),
+  );
+}
+
+export function stageSections(progress: RunProgress): StageSection[] {
+  const logs = progress.entries.filter((entry) => entry.kind === "log");
+  const first = progress.stages.at(0);
+  const hasPrelude = logs.some((entry) => first === undefined || entry.seq < first.seq);
+
+  const prelude: StageSpan = {
+    seq: PRELUDE_SEQ,
+    name: "Start",
+    startSeconds: 0,
+    endSeconds: first?.startSeconds ?? (progress.terminal === undefined ? undefined : (logs.at(-1)?.seconds ?? 0)),
+  };
+
+  const spans = hasPrelude ? [prelude, ...progress.stages] : progress.stages;
+  const ended = stageEndState(progress.terminal);
+
+  return spans.map((span, index) => {
+    const next = spans.at(index + 1)?.seq ?? Number.POSITIVE_INFINITY;
+    const isLast = index === spans.length - 1;
+
+    return {
+      key: String(span.seq),
+      name: span.name,
+      state: span.endSeconds === undefined ? "running" : isLast ? ended : "done",
+      seconds: (span.endSeconds ?? span.startSeconds) - span.startSeconds,
+      entries: logs.filter((entry) => entry.seq > span.seq && entry.seq < next),
+    };
+  });
+}
+
+export function openSections(sections: readonly StageSection[], overrides: ReadonlyMap<string, boolean>): string[] {
+  const current = sections.at(-1)?.key;
+
+  return sections.flatMap(({ key }) => ((overrides.get(key) ?? key === current) ? [key] : []));
+}
+
+export function sectionOverrides(sections: readonly StageSection[], open: readonly string[]): Map<string, boolean> {
+  const current = sections.at(-1)?.key;
+  const opened = new Set(open);
+
+  return new Map(
+    sections.flatMap((section): Array<[string, boolean]> => {
+      const isOpen = opened.has(section.key);
+
+      return isOpen === (section.key === current) ? [] : [[section.key, isOpen]];
+    }),
   );
 }
 
@@ -138,7 +199,7 @@ function foldStage(
 
   return {
     ...updated,
-    stages: [...closeLastStage(progress.stages, seconds), { name, startSeconds: seconds, endSeconds: undefined }],
+    stages: [...closeLastStage(progress.stages, seconds), { seq, name, startSeconds: seconds, endSeconds: undefined }],
     entries: [
       ...progress.entries,
       { seq, seconds, kind: "stage", level: "info", message: stageMessage(name, message) },
@@ -151,7 +212,11 @@ function closeLastStage(stages: readonly StageSpan[], seconds: number): StageSpa
 
   return last === undefined || last.endSeconds !== undefined
     ? [...stages]
-    : [...stages.slice(0, -1), { name: last.name, startSeconds: last.startSeconds, endSeconds: seconds }];
+    : [...stages.slice(0, -1), { ...last, endSeconds: seconds }];
+}
+
+function stageEndState(terminal: TerminalEvent | undefined): StageState {
+  return terminal === undefined || terminal.status === "ok" ? "done" : "stopped";
 }
 
 function stageMessage(name: string, message: string): string {
