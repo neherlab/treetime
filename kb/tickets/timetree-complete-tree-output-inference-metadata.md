@@ -3,13 +3,13 @@
 Produce internally consistent TreeTime Auspice metadata.
 
 > [!NOTE]
-> This ticket predates the tree-output refactor, which removed the `tree_ir` layer and now writes formats directly from the graph in `packages/treetime/src/commands/shared/tree_output.rs` (reader in `packages/treetime-io/src/auspice.rs`). Its parent issue's current status is unconfirmed; re-derive the steps and code locations against the current code before executing.
+> This ticket predates the tree-output refactor, which removed the `tree_ir` layer and now writes formats directly from the graph in `packages/app-output/src/tree_output.rs` (reader in `packages/treetime-io/src/auspice.rs`). Its parent issue's current status is unconfirmed; re-derive the steps and code locations against the current code before executing.
 
 ## Required changes
 
 1. Consume the canonical typed nucleotide mutation projection for Auspice output.
 2. Compute branch support as $c=1-e^{-m}$, where $m$ is the number of canonical nucleotide substitutions; set leaf confidence to $1$.
-3. Emit `node_attrs.confidence`, `meta.colorings.confidence`, `meta.genome_annotations.nuc`, and the corresponding panel metadata. The nucleotide annotation must use schema-valid strand `"+"`, not v0's malformed `"+:"` value.
+3. Emit `node_attrs.confidence` and `meta.colorings.confidence`. `meta.genome_annotations.nuc` and the `entropy` panel are already written from the root sequence by `fn auspice_data()` in `packages/app-output/src/tree_output.rs`.
 4. Pass alignment length and annotation data through the command projection rather than recovering them in the writer.
 5. Keep confidence, annotations, panels, and mutation output mutually consistent when an optional source is absent.
 
