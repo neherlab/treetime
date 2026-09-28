@@ -5,10 +5,10 @@ import type { ChartConfig } from "../ui/chart";
 export const CHART = {
   ink: "var(--foreground)",
   muted: "var(--muted-foreground)",
-  grid: "var(--border)",
+  grid: "var(--chart-grid)",
   accent: "var(--chart-1)",
   fault: "var(--destructive)",
-  tip: "var(--chart-4)",
+  tip: "var(--chart-3)",
   selection: "var(--chart-2)",
 } as const;
 

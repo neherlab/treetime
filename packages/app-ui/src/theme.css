@@ -1,7 +1,7 @@
 /*
- * TreeTime instrument-panel theme on shadcn/ui tokens (https://ui.shadcn.com/docs/theming).
- * Cool blue-grey neutrals, petrol primary, amber for warnings, crimson for faults, a tight radius.
- * Chart colors are categorical: petrol fit, amber selection, crimson faults, slate blue tips, olive extra series.
+ * TreeTime forest theme on shadcn/ui tokens (https://ui.shadcn.com/docs/theming).
+ * Green-grey surfaces, a deep teal accent, a light panel on a tinted page, Lato for text.
+ * Chart colors: teal fit, wine selection, indigo tips, red faults.
  */
 @import "../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "./ui/shadcn.css";
@@ -10,80 +10,78 @@
 
 :root,
 .light-scope {
-  --background: oklch(0.985 0.003 220);
-  --foreground: oklch(0.22 0.02 235);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.02 235);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.02 235);
-  --primary: oklch(0.47 0.085 205);
-  --primary-foreground: oklch(0.985 0.005 205);
-  --secondary: oklch(0.95 0.008 220);
-  --secondary-foreground: oklch(0.28 0.02 235);
-  --muted: oklch(0.955 0.006 220);
-  --muted-foreground: oklch(0.5 0.02 235);
-  --accent: oklch(0.94 0.02 205);
-  --accent-foreground: oklch(0.3 0.05 210);
-  --destructive: oklch(0.55 0.2 25);
-  --warning: oklch(0.53 0.12 60);
-  --success: oklch(0.5 0.11 150);
-  --border: oklch(0.9 0.008 220);
-  --input: oklch(0.86 0.01 220);
-  --ring: oklch(0.6 0.08 205);
-  --chart-1: oklch(0.52 0.09 205);
-  --chart-2: oklch(0.72 0.15 70);
-  --chart-3: oklch(0.57 0.19 22);
-  --chart-4: oklch(0.5 0.11 255);
-  --chart-5: oklch(0.6 0.13 130);
-  --radius: 0.375rem;
-  --sidebar: oklch(0.97 0.005 220);
-  --sidebar-foreground: oklch(0.22 0.02 235);
-  --sidebar-primary: oklch(0.47 0.085 205);
-  --sidebar-primary-foreground: oklch(0.985 0.005 205);
-  --sidebar-accent: oklch(0.93 0.015 210);
-  --sidebar-accent-foreground: oklch(0.22 0.03 225);
-  --sidebar-border: oklch(0.9 0.008 220);
-  --sidebar-ring: oklch(0.6 0.08 205);
+  --background: #e9eeec;
+  --foreground: #16302b;
+  --card: #ffffff;
+  --card-foreground: #16302b;
+  --popover: #ffffff;
+  --popover-foreground: #16302b;
+  --primary: #17695a;
+  --primary-foreground: #ffffff;
+  --secondary: #e3e9e7;
+  --secondary-foreground: #16302b;
+  --muted: #f4f7f6;
+  --muted-foreground: #4b5f5a;
+  --accent: #d8ece6;
+  --accent-foreground: #16302b;
+  --destructive: #b42318;
+  --warning: #9a6200;
+  --success: #2c7a4b;
+  --border: #d3dcd9;
+  --input: #bfcbc7;
+  --ring: #17695a;
+  --chart-1: #17695a;
+  --chart-2: #882255;
+  --chart-3: #27477f;
+  --chart-grid: #e3e9e7;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #16302b;
+  --sidebar-primary: #17695a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d8ece6;
+  --sidebar-accent-foreground: #16302b;
+  --sidebar-border: #d3dcd9;
+  --sidebar-ring: #17695a;
 }
 
 .dark {
-  --background: oklch(0.17 0.012 235);
-  --foreground: oklch(0.93 0.008 220);
-  --card: oklch(0.2 0.013 235);
-  --card-foreground: oklch(0.93 0.008 220);
-  --popover: oklch(0.21 0.013 235);
-  --popover-foreground: oklch(0.93 0.008 220);
-  --primary: oklch(0.74 0.1 200);
-  --primary-foreground: oklch(0.18 0.02 225);
-  --secondary: oklch(0.26 0.014 235);
-  --secondary-foreground: oklch(0.93 0.008 220);
-  --muted: oklch(0.24 0.012 235);
-  --muted-foreground: oklch(0.7 0.015 225);
-  --accent: oklch(0.29 0.035 210);
-  --accent-foreground: oklch(0.93 0.02 205);
-  --destructive: oklch(0.68 0.17 22);
-  --warning: oklch(0.8 0.13 75);
-  --success: oklch(0.74 0.13 150);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.6 0.08 200);
-  --chart-1: oklch(0.74 0.1 200);
-  --chart-2: oklch(0.8 0.14 75);
-  --chart-3: oklch(0.7 0.17 22);
-  --chart-4: oklch(0.72 0.1 255);
-  --chart-5: oklch(0.76 0.13 130);
-  --sidebar: oklch(0.19 0.012 235);
-  --sidebar-foreground: oklch(0.93 0.008 220);
-  --sidebar-primary: oklch(0.74 0.1 200);
-  --sidebar-primary-foreground: oklch(0.18 0.02 225);
-  --sidebar-accent: oklch(0.27 0.03 215);
-  --sidebar-accent-foreground: oklch(0.95 0.01 210);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.6 0.08 200);
+  --background: #0e1615;
+  --foreground: #e0e9e6;
+  --card: #15201e;
+  --card-foreground: #e0e9e6;
+  --popover: #15201e;
+  --popover-foreground: #e0e9e6;
+  --primary: #5cc3a5;
+  --primary-foreground: #0e1615;
+  --secondary: #22322f;
+  --secondary-foreground: #e0e9e6;
+  --muted: #1a2725;
+  --muted-foreground: #a6b7b2;
+  --accent: #173a33;
+  --accent-foreground: #e0e9e6;
+  --destructive: #f0877c;
+  --warning: #e3ad4c;
+  --success: #6fcf97;
+  --border: #2a3b38;
+  --input: #3a4f4b;
+  --ring: #5cc3a5;
+  --chart-1: #5cc3a5;
+  --chart-2: #e889b8;
+  --chart-3: #8fb0ec;
+  --chart-grid: #263633;
+  --sidebar: #15201e;
+  --sidebar-foreground: #e0e9e6;
+  --sidebar-primary: #5cc3a5;
+  --sidebar-primary-foreground: #0e1615;
+  --sidebar-accent: #173a33;
+  --sidebar-accent-foreground: #e0e9e6;
+  --sidebar-border: #2a3b38;
+  --sidebar-ring: #5cc3a5;
 }
 
 @theme inline {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+  --font-sans: "Lato", ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-background: var(--background);
@@ -109,8 +107,7 @@
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-chart-grid: var(--chart-grid);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -119,8 +116,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.375);
+  --radius-md: calc(var(--radius) * 0.625);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
@@ -142,7 +139,18 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans tabular-nums antialiased;
+    @apply bg-background text-foreground font-sans tabular-nums lining-nums antialiased;
+  }
+
+  code,
+  kbd,
+  pre {
+    font-variant-ligatures: none;
+  }
+
+  /* Recharts makes its charts and their layers focusable for keyboard navigation; a mouse click should not outline them */
+  .recharts-wrapper :focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
