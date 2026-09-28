@@ -1,9 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::runs::store::default_title;
+  use crate::command::AppCommand;
+  use crate::runs::store::{RunStore, default_title};
   use chrono::{FixedOffset, TimeZone};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
+  use std::fs;
+  use tempfile::tempdir;
 
   #[rustfmt::skip]
   #[rstest]
@@ -19,5 +23,21 @@ mod tests {
     let zone = FixedOffset::east_opt(offset_seconds).unwrap();
     let created_at = zone.with_ymd_and_hms(year, month, day, hour, minute, second).unwrap();
     assert_eq!(expected, default_title(&created_at));
+  }
+
+  #[test]
+  fn test_store_create_recreates_a_removed_runs_directory() {
+    let root = tempdir().unwrap();
+    let runs_dir = root.path().join("app").join("runs");
+    let store = RunStore::open(&runs_dir).unwrap();
+    fs::remove_dir_all(root.path().join("app")).unwrap();
+
+    let record = store.create(AppCommand::Prune, json!({ "tree": "t.nwk" })).unwrap();
+
+    assert!(store.run_dir(&record.id).join("inputs").is_dir());
+    assert_eq!(
+      vec![record.id],
+      store.list().unwrap().into_iter().map(|run| run.id).collect::<Vec<_>>()
+    );
   }
 }

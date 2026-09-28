@@ -65,6 +65,8 @@ impl RunStore {
       return Err(invalid("a command configuration must be a mapping of settings"));
     };
     let id = JobId::random();
+    fs::create_dir_all(&self.root)
+      .wrap_err_with(|| format!("When creating the runs directory '{}'", self.root.display()))?;
     let dir = self.run_dir(&id);
     create_new_dir(&dir).wrap_err_with(|| format!("When creating the run directory '{}'", dir.display()))?;
     for sub in [INPUTS_DIR, OUT_DIR] {
