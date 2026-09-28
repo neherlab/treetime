@@ -52,7 +52,7 @@ export function LogTab({ progress, failure }: { progress: RunProgress; failure: 
         {failure !== undefined && <p className="text-signal-danger mb-2">The log cannot be followed: {failure}</p>}
         <LogLines
           entries={entries}
-          className="max-h-[70vh]"
+          scroller="page"
           empty={progress.entries.length === 0 ? "No log lines yet." : "No matching lines."}
         />
       </div>

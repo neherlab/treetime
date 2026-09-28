@@ -1,46 +1,65 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { formatSeconds, type LogEntry } from "../results/progress";
 import { cn } from "../ui";
+import { isScrolledToEnd } from "./logFollow";
 
-const STICK_THRESHOLD_PX = 8;
+export type LogScroller = "box" | "page";
+
+const SCROLLERS: Record<LogScroller, Scroller> = {
+  box: { className: "overflow-auto", element: (box) => box, followsFirstLines: () => true },
+  page: { className: undefined, element: () => document.scrollingElement, followsFirstLines: isScrolledToEnd },
+};
 
 export function LogLines({
   entries,
+  scroller,
   className,
   empty,
 }: {
   entries: readonly LogEntry[];
+  scroller: LogScroller;
   className?: string;
   empty: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const following = useRef(true);
+  const renderedHeight = useRef<number | undefined>(undefined);
+  const { className: scrollerClassName, element, followsFirstLines } = SCROLLERS[scroller];
 
-  const onScroll = useCallback(() => {
-    const element = box.current;
+  useLayoutEffect(() => {
+    const node = box.current;
+    const scrolled = node === null ? null : element(node);
 
-    if (element !== null) {
-      following.current = element.scrollTop + element.clientHeight >= element.scrollHeight - STICK_THRESHOLD_PX;
+    if (scrolled === null || entries.length === 0) {
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    const element = box.current;
+    const previousHeight = renderedHeight.current;
 
-    if (element !== null && following.current && entries.length > 0) {
-      element.scrollTop = element.scrollHeight;
+    const follows =
+      previousHeight === undefined
+        ? followsFirstLines(scrolled)
+        : isScrolledToEnd({
+            scrollTop: scrolled.scrollTop,
+            clientHeight: scrolled.clientHeight,
+            scrollHeight: previousHeight,
+          });
+
+    if (follows) {
+      scrolled.scrollTop = scrolled.scrollHeight;
     }
-  }, [entries]);
+
+    renderedHeight.current = scrolled.scrollHeight;
+  }, [element, entries, followsFirstLines]);
 
   return (
     <div
       ref={box}
-      onScroll={onScroll}
       role="log"
       aria-live="off"
       className={cn(
-        "border-line bg-surface-2 overflow-auto rounded-md border px-2.5 py-2 font-mono text-[0.71875rem] leading-relaxed whitespace-pre-wrap",
+        "border-line bg-surface-2 rounded-md border px-2.5 py-2 font-mono text-[0.71875rem] leading-relaxed wrap-anywhere whitespace-pre-wrap",
+        scrollerClassName,
         className,
       )}
     >
@@ -63,4 +82,10 @@ export function LogLines({
       ))}
     </div>
   );
+}
+
+interface Scroller {
+  className: string | undefined;
+  element: (box: HTMLDivElement) => Element | null;
+  followsFirstLines: (scrolled: Element) => boolean;
 }

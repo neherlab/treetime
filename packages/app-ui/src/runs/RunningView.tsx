@@ -34,7 +34,7 @@ export function RunningView({ record, progress }: { record: RunRecord; progress:
         actions={<Segmented label="Log filter" value={filter} onChange={setFilter} options={LIVE_FILTERS} />}
       >
         <div className="p-2.5">
-          <LogLines entries={entries} className="h-[32rem]" empty="No log lines yet." />
+          <LogLines entries={entries} scroller="box" className="h-[32rem]" empty="No log lines yet." />
         </div>
       </Panel>
       <div className="grid content-start gap-3.5">
