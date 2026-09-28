@@ -1,12 +1,11 @@
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { SummaryStrip, type SummaryEntry } from "../components/Panel";
+import { Panel, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Plate } from "./Plate";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { SelectionPanel } from "./SelectionPanel";
@@ -83,9 +82,10 @@ function TimetreeAside({
   return (
     <>
       <SelectionPanel runId={record.id} title={record.title} tree={tree.tree} link={link} />
-      <Plate
+      <Panel
+        figure
         title="Root-to-tip regression"
-        caption="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
+        hint="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
       >
         {points.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">This run wrote no clock regression table.</p>
@@ -98,14 +98,15 @@ function TimetreeAside({
             onSelect={link.select}
           />
         )}
-      </Plate>
+      </Panel>
       {data.skyline.length > 0 && (
-        <Plate
+        <Panel
+          figure
           title="Effective population size"
-          caption="Skyline estimate with its interval, from the coalescent table"
+          hint="Skyline estimate with its interval, from the coalescent table"
         >
           <SkylinePlot segments={data.skyline} />
-        </Plate>
+        </Panel>
       )}
     </>
   );

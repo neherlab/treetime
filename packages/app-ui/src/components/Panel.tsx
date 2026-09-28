@@ -10,25 +10,40 @@ export function Panel({
   title,
   hint,
   actions,
+  figure = false,
   children,
   className,
 }: {
   title: ReactNode;
   hint?: ReactNode;
   actions?: ReactNode;
+  figure?: boolean;
   children: ReactNode;
   className?: string;
 }) {
+  const header = (
+    <CardHeader className="border-b py-2.5">
+      <CardTitle>{title}</CardTitle>
+      {hint !== undefined && <CardDescription className="text-xs">{hint}</CardDescription>}
+      {actions !== undefined && (
+        <CardAction className="flex flex-wrap items-center justify-end gap-1.5">{actions}</CardAction>
+      )}
+    </CardHeader>
+  );
+
   return (
-    <Card size="sm" className={cn("min-w-0 gap-0 py-0 shadow-none", className)}>
-      <CardHeader className="border-b py-2.5">
-        <CardTitle>{title}</CardTitle>
-        {hint !== undefined && <CardDescription className="text-xs">{hint}</CardDescription>}
-        {actions !== undefined && (
-          <CardAction className="flex flex-wrap items-center justify-end gap-1.5">{actions}</CardAction>
-        )}
-      </CardHeader>
-      {children}
+    <Card size="sm" className={cn("min-w-0 gap-0 py-0", className)}>
+      {figure ? (
+        <figure>
+          <figcaption>{header}</figcaption>
+          <div className="p-2">{children}</div>
+        </figure>
+      ) : (
+        <>
+          {header}
+          {children}
+        </>
+      )}
     </Card>
   );
 }

@@ -21,7 +21,6 @@ import { Button } from "../ui/button";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { DateIntervals } from "./DateIntervals";
-import { Plate } from "./Plate";
 import { ShiftPlot } from "./ShiftPlot";
 
 export function ComparePage({ first, second }: { first: string; second: string }) {
@@ -326,14 +325,15 @@ function TimetreeEstimatesComparison({
           </Table>
         </Panel>
         {rootRows !== undefined && (
-          <Plate title="Root date" caption={`With the ${intervalName.toLowerCase()} of each run`}>
+          <Panel figure title="Root date" hint={`With the ${intervalName.toLowerCase()} of each run`}>
             <DateIntervals rows={rootRows} />
-          </Plate>
+          </Panel>
         )}
       </div>
-      <Plate
+      <Panel
+        figure
         title="How far each shared ancestor moves"
-        caption={shiftCaption(shifts.length, ancestors.ancestors, ancestors.mean_absolute_shift_days ?? undefined)}
+        hint={shiftCaption(shifts.length, ancestors.ancestors, ancestors.mean_absolute_shift_days ?? undefined)}
       >
         {shifts.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">
@@ -342,7 +342,7 @@ function TimetreeEstimatesComparison({
         ) : (
           <ShiftPlot shifts={shifts} firstLabel={left.title} />
         )}
-      </Plate>
+      </Panel>
     </>
   );
 }

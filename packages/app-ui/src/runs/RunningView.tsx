@@ -17,7 +17,6 @@ import { Spinner } from "../ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useToastManager } from "../ui/toast";
 import { LogLines } from "./LogLines";
-import { Plate } from "./Plate";
 import { RateTrace } from "./RateTrace";
 
 type LiveFilter = "all" | "warnings";
@@ -76,7 +75,7 @@ export function RunningView({ record, progress }: { record: RunRecord; progress:
 
 function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] }) {
   return (
-    <Plate title="Clock rate by iteration" caption={latestCaption(iterations.at(-1))}>
+    <Panel figure title="Clock rate by iteration" hint={latestCaption(iterations.at(-1))}>
       <RateTrace iterations={iterations} />
       <Table className="text-xs">
         <TableHeader>
@@ -100,7 +99,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
           ))}
         </TableBody>
       </Table>
-    </Plate>
+    </Panel>
   );
 }
 

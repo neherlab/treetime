@@ -6,7 +6,6 @@ import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../compone
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
 import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Plate } from "./Plate";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -68,7 +67,7 @@ export function ClockResults({
 
   const aside = useCallback(
     (link: TreeLink) => (
-      <Plate title="Root-to-tip regression" caption="Dated samples; red points are clock-filter outliers">
+      <Panel figure title="Root-to-tip regression" hint="Dated samples; red points are clock-filter outliers">
         <RootToTipPlot
           points={points}
           line={line}
@@ -76,7 +75,7 @@ export function ClockResults({
           inView={undefined}
           onSelect={link.select}
         />
-      </Plate>
+      </Panel>
     ),
     [line, points],
   );
