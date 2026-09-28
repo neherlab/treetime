@@ -62,7 +62,7 @@ export function Sidebar() {
         />
         {commands.length > 1 && <CommandFilter commands={commands} />}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-1.5 pb-3">
+      <div className="relative min-h-0 flex-1 overflow-auto px-1.5 pb-3">
         {error !== null && <p className="text-signal-danger p-3 text-xs">The runs cannot be listed: {error.message}</p>}
         {groups.map((group) => (
           <section key={group.label} aria-label={group.label}>
