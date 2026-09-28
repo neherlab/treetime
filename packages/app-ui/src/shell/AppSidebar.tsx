@@ -10,7 +10,6 @@ import { toggledChoice } from "../components/toggleChoice";
 import { headlineText } from "../format";
 import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { useShellStore } from "../store/shell";
-import { truncate } from "../text";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -34,8 +33,6 @@ import { useCurrentRunId } from "./useCurrentRunId";
 import { RUN_FILTER_ID } from "./useGlobalShortcuts";
 
 const FLAGS_SHOWN = 2;
-
-const FLAG_LENGTH = 26;
 
 const ALL_COMMANDS = "all";
 
@@ -195,8 +192,13 @@ function RunItem({ run }: { run: RunSummary }) {
           <span className="text-muted-foreground flex items-center gap-1 overflow-hidden text-xs">
             <span className="text-primary font-medium">{run.command}</span>
             {flags.slice(0, FLAGS_SHOWN).map((flag) => (
-              <Badge key={flag} variant="secondary" className="h-4 px-1 font-mono font-normal">
-                {truncate(flag, FLAG_LENGTH)}
+              <Badge
+                key={flag}
+                variant="secondary"
+                title={flag}
+                className="text-muted-foreground h-4 max-w-[26ch] rounded-sm px-1 font-mono font-normal"
+              >
+                <span className="min-w-0 truncate">{flag}</span>
               </Badge>
             ))}
             {flags.length > FLAGS_SHOWN && <span>+{flags.length - FLAGS_SHOWN}</span>}

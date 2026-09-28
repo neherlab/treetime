@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { truncate, wordMatcher } from "../text";
+import { wordMatcher } from "../text";
 
 describe("text", () => {
   test("a query matches text holding every word, in any order and case", () => {
@@ -11,9 +11,5 @@ describe("text", () => {
       false,
       true,
     ]);
-  });
-
-  test("text longer than the limit ends in an ellipsis within the limit", () => {
-    expect([truncate("abcdefghij", 10), truncate("abcdefghijk", 10)]).toStrictEqual(["abcdefghij", "abcdefg..."]);
   });
 });
