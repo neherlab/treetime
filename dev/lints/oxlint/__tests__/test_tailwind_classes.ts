@@ -10,11 +10,17 @@ tester.run("web/tailwind-classes", tailwindClassesRule, {
     'const node = <input className="text-black placeholder:text-white" />',
     'const node = <progress className="bg-white [&::-moz-progress-bar]:bg-black" />',
     'const node = <div className="border-white data-[invalid]:border-black" />',
+    'const node = <div className="group/card peer flex" />',
+    'const node = <div className="group peer/label" />',
   ],
   invalid: [
     {
       code: 'const node = <div className="totally-not-a-tailwind-class-xyz" />',
       errors: [{ messageId: "unknown", data: { token: "totally-not-a-tailwind-class-xyz" } }],
+    },
+    {
+      code: 'const node = <div className="group/card grouped" />',
+      errors: [{ messageId: "unknown", data: { token: "grouped" } }],
     },
     {
       code: 'const node = <div className="flex flex" />',

@@ -30,6 +30,8 @@ const designSystem = await loadDesignSystem();
 
 const classKeyCache = new Map<string, string | null>();
 
+const MARKER_CLASS = /^(?:group|peer)(?:\/[\w-]+)?$/u;
+
 export const tailwindClassesRule = defineRule({
   meta: {
     type: "problem",
@@ -55,6 +57,11 @@ export const tailwindClassesRule = defineRule({
         }
 
         seen.add(token);
+
+        if (MARKER_CLASS.test(token)) {
+          continue;
+        }
+
         const key = classRuleKey(token);
 
         if (key === null) {
