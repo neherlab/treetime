@@ -21,10 +21,10 @@ export function LogLines({
   const jumpToEnd = useCallback(() => void scrollToBottom(), [scrollToBottom]);
 
   return (
-    <div className={cn("relative min-h-0", className)}>
+    <div className={cn("relative flex min-h-0 flex-col", className)}>
       <div
         ref={scrollRef}
-        className="bg-muted/50 size-full overflow-auto overscroll-contain rounded-md border font-mono text-xs leading-relaxed"
+        className="bg-muted/50 min-h-0 flex-auto overflow-auto overscroll-contain rounded-md border font-mono text-xs leading-relaxed"
       >
         <div ref={contentRef} role="log" aria-live="off" className="px-3 py-2 wrap-anywhere whitespace-pre-wrap">
           {entries.length === 0 && <p className="text-muted-foreground">{empty}</p>}
