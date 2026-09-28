@@ -1,12 +1,14 @@
 import { version as getVersion } from "@neherlab/app-contracts/client";
+import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { Monitor, Moon, Search, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback } from "react";
 
 import { useApi } from "../api/hooks";
+import { PALETTE_HOTKEY } from "../hotkeys";
 import { useShellStore } from "../store/shell";
 import { Button } from "../ui/button";
-import { Kbd, KbdGroup } from "../ui/kbd";
+import { Kbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
@@ -43,10 +45,7 @@ export function SiteHeader() {
       <Button variant="outline" onClick={openPalette} className="text-muted-foreground ml-auto justify-start sm:w-72">
         <Search aria-hidden />
         <span className="hidden flex-1 text-left sm:inline">Search runs, settings, examples</span>
-        <KbdGroup className="hidden sm:inline-flex">
-          <Kbd>Ctrl</Kbd>
-          <Kbd>K</Kbd>
-        </KbdGroup>
+        <Kbd className="hidden sm:inline-flex">{formatForDisplay(PALETTE_HOTKEY)}</Kbd>
       </Button>
       <ThemeButton />
     </header>

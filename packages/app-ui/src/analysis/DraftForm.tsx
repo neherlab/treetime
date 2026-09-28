@@ -9,6 +9,7 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useApi } from "../api/hooks";
 import { PageHeading, PageShell } from "../components/PageShell";
+import { RUN_HOTKEY } from "../hotkeys";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig } from "../settings/config";
@@ -105,7 +106,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
 
-  useHotkey("Mod+Enter", () => void submit());
+  useHotkey(RUN_HOTKEY, () => void submit());
 
   return (
     <PageShell className="max-w-[92.5rem]">

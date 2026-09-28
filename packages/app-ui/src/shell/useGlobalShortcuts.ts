@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
+import { PALETTE_HOTKEY } from "../hotkeys";
 import { useShellStore } from "../store/shell";
 import { listedRuns } from "./runList";
 import { useCurrentRunId } from "./useCurrentRunId";
@@ -31,7 +32,7 @@ export function useGlobalShortcuts() {
     [currentId, navigate, runs],
   );
 
-  useHotkey("Mod+K", () => setPaletteOpen(true));
+  useHotkey(PALETTE_HOTKEY, () => setPaletteOpen(true));
   useHotkey("N", () => void navigate({ to: "/new" }));
   useHotkey("/", () => document.getElementById(RUN_FILTER_ID)?.focus());
   useHotkey("[", () => step(-1));

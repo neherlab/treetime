@@ -1,14 +1,16 @@
 import type { CheckLevel, RunCheck, RunSummary } from "@neherlab/app-contracts";
+import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { Link } from "@tanstack/react-router";
 import { CircleAlert, CircleCheck, Copy, Info, OctagonX, Play } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
 import { Panel } from "../components/Panel";
+import { RUN_HOTKEY } from "../hotkeys";
 import { zJsonValue } from "../settings/json";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
-import { Kbd, KbdGroup } from "../ui/kbd";
+import { Kbd } from "../ui/kbd";
 import { Spinner } from "../ui/spinner";
 import { toFormValue, type FormConfig } from "./formValues";
 
@@ -37,7 +39,7 @@ export function ChecksPanel({
     : blocking
       ? "Resolve the blocking checks first"
       : isValid
-        ? "Run with Ctrl Enter"
+        ? `Run with ${formatForDisplay(RUN_HOTKEY)}`
         : "Correct the settings marked as invalid first";
 
   return (
@@ -87,10 +89,7 @@ export function ChecksPanel({
         >
           {isSubmitting ? <Spinner /> : <Play aria-hidden />}
           {duplicate === undefined ? verb : `${verb} again`}
-          <KbdGroup className="ml-auto">
-            <Kbd className="bg-primary-foreground/15 text-primary-foreground">Ctrl</Kbd>
-            <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd>
-          </KbdGroup>
+          <Kbd className="bg-primary-foreground/15 text-primary-foreground ml-auto">{formatForDisplay(RUN_HOTKEY)}</Kbd>
         </Button>
         {(checking || blocking || !isValid) && <p className="text-muted-foreground text-center text-xs">{reason}</p>}
       </div>
