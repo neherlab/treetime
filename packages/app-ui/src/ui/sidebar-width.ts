@@ -1,0 +1,30 @@
+export const SIDEBAR_WIDTH_DEFAULT = 340;
+
+export const SIDEBAR_WIDTH_MIN = 240;
+
+export const SIDEBAR_WIDTH_MAX = 640;
+
+export const SIDEBAR_WIDTH_STEP = 10;
+
+const KEY_WIDTHS = new Map([
+  ["ArrowLeft", (width: number) => width - SIDEBAR_WIDTH_STEP],
+  ["ArrowRight", (width: number) => width + SIDEBAR_WIDTH_STEP],
+  ["Home", () => SIDEBAR_WIDTH_MIN],
+  ["End", () => SIDEBAR_WIDTH_MAX],
+]);
+
+export function clampSidebarWidth(width: number): number {
+  return Math.round(Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX));
+}
+
+export function parseSidebarWidth(stored: string | undefined): number {
+  const width = Number(stored);
+
+  return Number.isFinite(width) ? clampSidebarWidth(width) : SIDEBAR_WIDTH_DEFAULT;
+}
+
+export function sidebarWidthForKey(width: number, key: string): number | undefined {
+  const next = KEY_WIDTHS.get(key);
+
+  return next === undefined ? undefined : clampSidebarWidth(next(width));
+}

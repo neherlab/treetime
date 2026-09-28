@@ -1,6 +1,6 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { useMediaQuery } from "@mantine/hooks";
+import { useLocalStorage, useMediaQuery } from "@mantine/hooks";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
@@ -8,17 +8,41 @@ import * as React from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./sheet";
+import {
+  clampSidebarWidth,
+  parseSidebarWidth,
+  SIDEBAR_WIDTH_DEFAULT,
+  SIDEBAR_WIDTH_MAX,
+  SIDEBAR_WIDTH_MIN,
+  sidebarWidthForKey,
+} from "./sidebar-width";
 
 const MOBILE_QUERY = "(max-width: 767px)";
 
 const SIDEBAR_HOTKEY = "Mod+B";
 
+const SIDEBAR_WIDTH_STORAGE_KEY = "treetime-sidebar-width";
+
+declare module "react" {
+  interface CSSProperties {
+    "--sidebar-width"?: string;
+  }
+}
+
 const SidebarContext = React.createContext<SidebarContextProps | undefined>(undefined);
 
-function SidebarProvider({ className, children, ...props }: React.ComponentProps<"div">) {
+function SidebarProvider({ className, style, children, ...props }: React.ComponentProps<"div">) {
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const [open, setOpen] = React.useState(true);
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [resizing, setResizing] = React.useState(false);
+
+  const [width, setWidth] = useLocalStorage({
+    key: SIDEBAR_WIDTH_STORAGE_KEY,
+    defaultValue: SIDEBAR_WIDTH_DEFAULT,
+    getInitialValueInEffect: false,
+    deserialize: parseSidebarWidth,
+  });
 
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -31,15 +55,17 @@ function SidebarProvider({ className, children, ...props }: React.ComponentProps
   useHotkey(SIDEBAR_HOTKEY, toggleSidebar);
 
   const contextValue = React.useMemo<SidebarContextProps>(
-    () => ({ open, isMobile, openMobile, setOpenMobile, toggleSidebar }),
-    [open, isMobile, openMobile, toggleSidebar],
+    () => ({ open, isMobile, openMobile, setOpenMobile, toggleSidebar, width, setWidth, resizing, setResizing }),
+    [open, isMobile, openMobile, toggleSidebar, width, setWidth, resizing],
   );
 
   return (
     <SidebarContext value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        className={cn("group/sidebar-wrapper flex min-h-svh w-full [--sidebar-width:16rem]", className)}
+        className={cn("group/sidebar-wrapper flex min-h-svh w-full", className)}
+        // oxlint-disable-next-line react/forbid-dom-props -- the dragged sidebar width is a runtime value that no Tailwind class can hold
+        style={{ ...style, "--sidebar-width": `${width}px` }}
         {...props}
       >
         {children}
@@ -49,7 +75,7 @@ function SidebarProvider({ className, children, ...props }: React.ComponentProps
 }
 
 function Sidebar({ className, children }: { className?: string; children: React.ReactNode }) {
-  const { isMobile, open, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, open, openMobile, setOpenMobile, resizing } = useSidebar();
 
   if (isMobile) {
     return (
@@ -74,24 +100,92 @@ function Sidebar({ className, children }: { className?: string; children: React.
     <div
       className="group peer text-sidebar-foreground hidden md:block"
       data-state={open ? "expanded" : "collapsed"}
+      data-resizing={resizing || undefined}
       data-slot="sidebar"
     >
       <div
         data-slot="sidebar-gap"
-        className="relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear group-data-[state=collapsed]:w-0"
+        className="relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear group-data-resizing:transition-none group-data-[state=collapsed]:w-0"
       />
       <div
         data-slot="sidebar-container"
         className={cn(
-          "fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) border-r transition-[left] duration-200 ease-linear group-data-[state=collapsed]:left-[calc(var(--sidebar-width)*-1)] md:flex",
+          "fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) border-r transition-[left] duration-200 ease-linear group-data-resizing:transition-none group-data-[state=collapsed]:left-[calc(var(--sidebar-width)*-1)] md:flex",
           className,
         )}
       >
         <div data-slot="sidebar-inner" className="bg-sidebar flex size-full flex-col">
           {children}
         </div>
+        <SidebarResizeHandle />
       </div>
     </div>
+  );
+}
+
+function SidebarResizeHandle() {
+  const { width, setWidth, resizing, setResizing } = useSidebar();
+
+  const onPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setResizing(true);
+    },
+    [setResizing],
+  );
+
+  const onPointerMove = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const container = event.currentTarget.parentElement;
+
+      if (container !== null && event.currentTarget.hasPointerCapture(event.pointerId)) {
+        setWidth(clampSidebarWidth(event.clientX - container.getBoundingClientRect().left));
+      }
+    },
+    [setWidth],
+  );
+
+  const onLostPointerCapture = React.useCallback(() => setResizing(false), [setResizing]);
+
+  const onKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const next = sidebarWidthForKey(width, event.key);
+
+      if (next !== undefined) {
+        event.preventDefault();
+        setWidth(next);
+      }
+    },
+    [setWidth, width],
+  );
+
+  const onDoubleClick = React.useCallback(() => setWidth(SIDEBAR_WIDTH_DEFAULT), [setWidth]);
+
+  return (
+    <div
+      data-slot="sidebar-resize-handle"
+      data-resizing={resizing || undefined}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a focusable separator is the WAI-ARIA window splitter widget, and the linter treats hr as non-interactive
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuenow={width}
+      aria-valuemin={SIDEBAR_WIDTH_MIN}
+      aria-valuemax={SIDEBAR_WIDTH_MAX}
+      tabIndex={0}
+      title="Drag to resize, double-click to reset"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onLostPointerCapture={onLostPointerCapture}
+      onKeyDown={onKeyDown}
+      onDoubleClick={onDoubleClick}
+      className="after:bg-sidebar-ring absolute inset-y-0 -right-1 z-20 m-0 h-auto w-2 cursor-col-resize touch-none border-0 outline-hidden group-data-[state=collapsed]:hidden after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:opacity-0 after:transition-opacity hover:after:opacity-100 focus-visible:after:opacity-100 data-resizing:after:opacity-100"
+    />
   );
 }
 
@@ -204,6 +298,10 @@ interface SidebarContextProps {
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   toggleSidebar: () => void;
+  width: number;
+  setWidth: (width: number) => void;
+  resizing: boolean;
+  setResizing: (resizing: boolean) => void;
 }
 
 function useSidebar(): SidebarContextProps {
