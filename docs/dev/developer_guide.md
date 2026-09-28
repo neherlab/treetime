@@ -121,6 +121,21 @@ The TypeScript apps (`app-ui`, `app-web`, `app-desktop`) are a user interface ar
 - **Checks**: `check-config` classifies configuration problems and input facts into checks that block the run, warn, or advise, with the settings that fix them
 - **Types**: every value that crosses from Rust to TypeScript is a Rust type with a derived schema in the OpenAPI document; the apps read it through the generated types and zod schemas in `app-contracts`, never through hand-written ones
 
+### Interface components
+
+The interface is built from [shadcn/ui](https://ui.shadcn.com) components in the `base-vega` style, which run on Base UI. The components are vendored into `packages/app-ui/src/ui/`, one file per component, and the app composes them; it does not style raw elements. The theme tokens (colors, radius, fonts) live in `packages/app-ui/src/theme.css`, and `packages/app-ui/src/ui/shadcn.css` is the stylesheet of the `shadcn` npm package that defines the variants the components use.
+
+To add or update a component, fetch its source from the registry, `https://ui.shadcn.com/r/styles/base-vega/<name>.json` (the `files[0].content` field), and apply the rewrites the shadcn CLI would apply:
+
+- **Imports**: `@/registry/base-vega/ui/<name>` becomes `./<name>`, and `cn` comes from `./cn`
+- **Icons**: each `IconPlaceholder` element becomes the `lucide-react` icon named in its `lucide` attribute
+- **Classes**: `cn-font-heading` becomes `font-heading`, and the other `cn-*` marker classes are removed
+- **Comments**: removed, as in all TypeScript source
+
+The vendored files keep the upstream code shape, so `oxlint.config.ts` turns off the style rules for `packages/app-ui/src/ui/*.tsx` while the Tailwind class check stays on.
+
+Library hooks cover the behavior around the components: `@tanstack/react-hotkeys` for keyboard shortcuts, `react-dropzone` for file drops, `use-stick-to-bottom` for the following log, `@tanstack/react-table` for sortable tables, `@tanstack/react-pacer` for debouncing, `cmdk` for the command palette, and `@mantine/hooks` for the clipboard, element sizes, media queries, and the file dialog.
+
 ### Web app
 
 `just up` starts the API server and the Vite dev server in the foreground until Ctrl-C. `just health` and `just status` report whether they run and which commit they were started from.
