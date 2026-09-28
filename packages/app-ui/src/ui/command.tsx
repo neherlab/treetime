@@ -1,97 +1,72 @@
-import { Command as CommandPrimitive } from "cmdk";
-import { CheckIcon, SearchIcon } from "lucide-react";
-import * as React from "react";
+import { Autocomplete } from "@base-ui/react/autocomplete";
+import { SearchIcon } from "lucide-react";
+import type * as React from "react";
 
 import { cn } from "./cn";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
-import { InputGroup, InputGroupAddon } from "./input-group";
 
-function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
-  return (
-    <CommandPrimitive
-      data-slot="command"
-      className={cn(
-        "bg-popover text-popover-foreground flex size-full flex-col overflow-hidden rounded-xl! p-1",
-        className,
-      )}
-      {...props}
-    />
-  );
+function Command<Groups extends readonly { items: readonly unknown[] }[]>(
+  props: Omit<Autocomplete.Root.Props<Groups[number]["items"][number]>, "items"> & { items: Groups },
+) {
+  return <Autocomplete.Root open inline autoHighlight="always" keepHighlight {...props} />;
 }
 
 function CommandDialog({
-  title = "Command Palette",
-  description = "Search for a command to run...",
+  title,
+  description,
   children,
   className,
-  showCloseButton = false,
+  finalFocus,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
-  title?: string;
-  description?: string;
+  title: string;
+  description: string;
   className?: string;
-  showCloseButton?: boolean;
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
   children: React.ReactNode;
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
       <DialogContent
-        className={cn("top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0", className)}
-        showCloseButton={showCloseButton}
+        className={cn("top-1/3 flex translate-y-0 flex-col gap-0 overflow-hidden p-0", className)}
+        showCloseButton={false}
+        finalFocus={finalFocus}
       >
+        <DialogHeader className="sr-only">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>
   );
 }
 
-function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+function CommandInput({ className, ...props }: Autocomplete.Input.Props) {
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="border-input/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
-        <CommandPrimitive.Input
-          data-slot="command-input"
-          className={cn("w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50", className)}
-          {...props}
-        />
-        <InputGroupAddon>
-          <SearchIcon className="size-4 shrink-0 opacity-50" />
-        </InputGroupAddon>
-      </InputGroup>
-    </div>
+    <Autocomplete.InputGroup
+      data-slot="command-input-wrapper"
+      className="flex h-11 items-center gap-2 border-b px-3"
+    >
+      <SearchIcon aria-hidden className="text-muted-foreground size-4 shrink-0" />
+      <Autocomplete.Input
+        data-slot="command-input"
+        className={cn(
+          "placeholder:text-muted-foreground h-full w-full bg-transparent text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+          className,
+        )}
+        {...props}
+      />
+    </Autocomplete.InputGroup>
   );
 }
 
-function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
+function CommandList({ className, ...props }: Autocomplete.List.Props) {
   return (
-    <CommandPrimitive.List
+    <Autocomplete.List
       data-slot="command-list"
-      className={cn("no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none", className)}
-      {...props}
-    />
-  );
-}
-
-function CommandEmpty({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
-  return (
-    <CommandPrimitive.Empty
-      data-slot="command-empty"
-      className={cn("py-6 text-center text-sm", className)}
-      {...props}
-    />
-  );
-}
-
-function CommandGroup({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Group>) {
-  return (
-    <CommandPrimitive.Group
-      data-slot="command-group"
       className={cn(
-        "text-foreground **:[[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium",
+        "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain p-1 outline-none",
         className,
       )}
       {...props}
@@ -99,38 +74,44 @@ function CommandGroup({ className, ...props }: React.ComponentProps<typeof Comma
   );
 }
 
-function CommandSeparator({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Separator>) {
+function CommandEmpty({ className, ...props }: Autocomplete.Empty.Props) {
   return (
-    <CommandPrimitive.Separator
-      data-slot="command-separator"
-      className={cn("bg-border -mx-1 h-px w-auto", className)}
+    <Autocomplete.Empty
+      data-slot="command-empty"
+      className={cn("text-muted-foreground py-6 text-center text-sm empty:hidden", className)}
       {...props}
     />
   );
 }
 
-function CommandItem({ className, children, ...props }: React.ComponentProps<typeof CommandPrimitive.Item>) {
+function CommandGroup({ className, ...props }: Autocomplete.Group.Props) {
   return (
-    <CommandPrimitive.Item
+    <Autocomplete.Group
+      data-slot="command-group"
+      className={cn("text-foreground overflow-hidden not-last:mb-1", className)}
+      {...props}
+    />
+  );
+}
+
+function CommandGroupLabel({ className, ...props }: Autocomplete.GroupLabel.Props) {
+  return (
+    <Autocomplete.GroupLabel
+      data-slot="command-group-label"
+      className={cn("text-muted-foreground px-2 py-1.5 text-xs font-bold", className)}
+      {...props}
+    />
+  );
+}
+
+const CommandCollection = Autocomplete.Collection;
+
+function CommandItem({ className, ...props }: Autocomplete.Item.Props) {
+  return (
+    <Autocomplete.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item data-selected:bg-muted data-selected:text-foreground data-selected:**:[svg]:text-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
-    </CommandPrimitive.Item>
-  );
-}
-
-function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) {
-  return (
-    <span
-      data-slot="command-shortcut"
-      className={cn(
-        "text-muted-foreground group-data-selected/command-item:text-foreground ml-auto text-xs tracking-widest",
+        "data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -140,12 +121,12 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) 
 
 export {
   Command,
+  CommandCollection,
   CommandDialog,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandGroupLabel,
+  CommandInput,
   CommandItem,
-  CommandShortcut,
-  CommandSeparator,
+  CommandList,
 };

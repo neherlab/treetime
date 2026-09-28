@@ -25,7 +25,6 @@
     "@tanstack/react-table": "9.2.4",
     "auspice": "3.0.0",
     "class-variance-authority": "0.7.1",
-    "cmdk": "1.1.1",
     "cn": "0.3.0",
     "d3-scale": "4.0.2",
     "i18next": "19.9.2",

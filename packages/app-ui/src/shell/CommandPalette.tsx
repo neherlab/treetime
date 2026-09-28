@@ -2,7 +2,7 @@ import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
 import { datasets, runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
@@ -11,11 +11,14 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
+import { wordMatcher } from "../text";
 import {
   Command,
+  CommandCollection,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
+  CommandGroupLabel,
   CommandInput,
   CommandItem,
   CommandList,
@@ -28,66 +31,82 @@ const PALETTE_KINDS = ["Action", "Run", "Setting", "Example"] as const;
 
 type PaletteKind = (typeof PALETTE_KINDS)[number];
 
-const FOCUS_DELAY_MS = 50;
-
 export function CommandPalette() {
   const open = useShellStore((state) => state.paletteOpen);
   const setOpen = useShellStore((state) => state.setPaletteOpen);
-  const close = useCallback(() => setOpen(false), [setOpen]);
+  const focusTarget = useRef<string | undefined>(undefined);
+
+  const onOpenChange = useCallback(
+    (next: boolean) => {
+      if (next) {
+        focusTarget.current = undefined;
+      }
+
+      setOpen(next);
+    },
+    [setOpen],
+  );
+
+  const finalFocus = useCallback(
+    () => (focusTarget.current === undefined ? true : (document.getElementById(focusTarget.current) ?? true)),
+    [],
+  );
+
+  const choose = useCallback(
+    async (item: PaletteItem) => {
+      focusTarget.current = item.focusId;
+
+      if (item.focusId === undefined) {
+        setOpen(false);
+        await item.run();
+      } else {
+        await item.run();
+        setOpen(false);
+      }
+    },
+    [setOpen],
+  );
 
   return (
     <CommandDialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={onOpenChange}
       title="Search"
       description="Search runs, settings, examples and actions"
       className="sm:max-w-2xl"
+      finalFocus={finalFocus}
     >
-      {open && <PaletteBody close={close} />}
+      {open && <PaletteBody choose={choose} />}
     </CommandDialog>
   );
 }
 
-function PaletteBody({ close }: { close: () => void }) {
-  const items = usePaletteItems();
+function PaletteBody({ choose }: { choose: (item: PaletteItem) => Promise<void> }) {
+  const groups = usePaletteGroups();
 
   return (
-    <Command>
-      <CommandInput placeholder="Search runs, settings, examples" />
+    <Command items={groups} filter={matchesItem} itemToStringValue={itemTitle}>
+      <CommandInput placeholder="Search runs, settings, examples" aria-label="Search" />
+      <CommandEmpty>Nothing matches.</CommandEmpty>
       <CommandList className="max-h-[min(60vh,32rem)]">
-        <CommandEmpty>Nothing matches.</CommandEmpty>
-        {PALETTE_KINDS.map((kind) => (
-          <PaletteGroup key={kind} kind={kind} items={items} close={close} />
-        ))}
+        {(group: PaletteGroup) => (
+          <CommandGroup key={group.kind} items={group.items}>
+            <CommandGroupLabel>{`${group.kind}s`}</CommandGroupLabel>
+            <CommandCollection>
+              {(item: PaletteItem) => <PaletteEntry key={item.id} item={item} choose={choose} />}
+            </CommandCollection>
+          </CommandGroup>
+        )}
       </CommandList>
     </Command>
   );
 }
 
-function PaletteGroup({ kind, items, close }: { kind: PaletteKind; items: readonly PaletteItem[]; close: () => void }) {
-  const members = items.filter((item) => item.kind === kind);
-
-  if (members.length === 0) {
-    return null;
-  }
+function PaletteEntry({ item, choose }: { item: PaletteItem; choose: (item: PaletteItem) => Promise<void> }) {
+  const onClick = useCallback(() => void choose(item), [choose, item]);
 
   return (
-    <CommandGroup heading={`${kind}s`}>
-      {members.map((item) => (
-        <PaletteEntry key={item.id} item={item} close={close} />
-      ))}
-    </CommandGroup>
-  );
-}
-
-function PaletteEntry({ item, close }: { item: PaletteItem; close: () => void }) {
-  const onSelect = useCallback(() => {
-    close();
-    item.run();
-  }, [close, item]);
-
-  return (
-    <CommandItem value={item.id} keywords={item.keywords} onSelect={onSelect} className="items-start">
+    <CommandItem value={item} onClick={onClick} className="items-start">
       <span className="grid min-w-0 gap-0.5">
         <span className="truncate">{item.title}</span>
         {item.description !== "" && (
@@ -96,6 +115,28 @@ function PaletteEntry({ item, close }: { item: PaletteItem; close: () => void })
       </span>
     </CommandItem>
   );
+}
+
+function matchesItem(item: PaletteItem, query: string): boolean {
+  return wordMatcher(query)(item.keywords);
+}
+
+function itemTitle(item: PaletteItem): string {
+  return item.title;
+}
+
+function usePaletteGroups(): PaletteGroup[] {
+  const items = usePaletteItems();
+
+  return useMemo(() => {
+    const byKind = Object.groupBy(items, (item) => item.kind);
+
+    return PALETTE_KINDS.flatMap((kind) => {
+      const members = byKind[kind];
+
+      return members === undefined ? [] : [{ kind, items: members }];
+    });
+  }, [items]);
 }
 
 function usePaletteItems(): PaletteItem[] {
@@ -125,7 +166,7 @@ function usePaletteItems(): PaletteItem[] {
 
   return useMemo(() => {
     const items: PaletteItem[] = [
-      paletteItem("Action", "action-new", "New analysis", "", () => void navigate({ to: "/new" })),
+      paletteItem("Action", "action-new", "New analysis", "", () => navigate({ to: "/new" })),
       paletteItem("Action", "action-theme", "Change theme", "System, light or dark", () => setTheme(nextTheme(theme))),
     ];
 
@@ -138,7 +179,7 @@ function usePaletteItems(): PaletteItem[] {
           "action-compare",
           "Compare selected runs",
           "",
-          () => void navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
+          () => navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
         ),
       );
     }
@@ -150,7 +191,7 @@ function usePaletteItems(): PaletteItem[] {
           `run-${run.id}`,
           run.title,
           [COMMAND_INFO[run.command].label, ...changedFlags(run)].join("  "),
-          () => void navigate({ to: "/runs/$id/results", params: { id: run.id } }),
+          () => navigate({ to: "/runs/$id/results", params: { id: run.id } }),
         ),
       );
     }
@@ -160,15 +201,16 @@ function usePaletteItems(): PaletteItem[] {
         items.push(
           paletteItem("Setting", `setting-${spec.key}`, `${spec.label}  ${spec.flag}`, spec.help, () => {
             useDraftStore.getState().update({ view: "all", search: spec.key, changedOnly: false });
-            void navigate({ to: "/new" }).then(() => focusLater(settingFieldId(spec.key)));
-          }),
+
+            return navigate({ to: "/new" });
+          }, settingFieldId(spec.key)),
         );
       }
     }
 
     for (const example of catalog?.examples ?? []) {
       items.push(
-        paletteItem("Example", `example-${example.path}`, example.title, example.path, () => void loadExample(example)),
+        paletteItem("Example", `example-${example.path}`, example.title, example.path, () => loadExample(example)),
       );
     }
 
@@ -176,12 +218,15 @@ function usePaletteItems(): PaletteItem[] {
   }, [catalog, command, compareIds, loadExample, navigate, runList, setTheme, theme]);
 }
 
-function paletteItem(kind: PaletteKind, id: string, title: string, description: string, run: () => void): PaletteItem {
-  return { id, kind, title, description, keywords: [kind, title, description], run };
-}
-
-function focusLater(id: string) {
-  globalThis.setTimeout(() => document.getElementById(id)?.focus(), FOCUS_DELAY_MS);
+function paletteItem(
+  kind: PaletteKind,
+  id: string,
+  title: string,
+  description: string,
+  run: () => Promise<void> | void,
+  focusId?: string,
+): PaletteItem {
+  return { id, kind, title, description, keywords: [kind, title, description].join(" "), run, focusId };
 }
 
 interface PaletteItem {
@@ -189,6 +234,12 @@ interface PaletteItem {
   kind: PaletteKind;
   title: string;
   description: string;
-  keywords: string[];
-  run: () => void;
+  keywords: string;
+  run: () => Promise<void> | void;
+  focusId?: string | undefined;
+}
+
+interface PaletteGroup {
+  kind: PaletteKind;
+  items: PaletteItem[];
 }
