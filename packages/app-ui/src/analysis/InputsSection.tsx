@@ -1,45 +1,64 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
-import { BookOpen, Upload } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Upload } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
 
+import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
 import { useLocalFiles } from "../platform";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { ExamplesPanel } from "./ExamplesPanel";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
 import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
 
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
-  const [showExamples, setShowExamples] = useState(false);
+  const [panel, setPanel] = useState<ExamplesPanelKind | null>(null);
   const localFiles = useLocalFiles();
-  const closeExamples = useCallback(() => setShowExamples(false), []);
+  const pressed = useMemo(() => (panel === null ? [] : [panel]), [panel]);
+  const closePanel = useCallback(() => setPanel(null), []);
+
+  const onPanelChange = useCallback(
+    (next: string[]) => setPanel(pressedChoice(EXAMPLES_PANEL_KINDS, next) ?? null),
+    [],
+  );
 
   return (
-    <Collapsible open={showExamples} onOpenChange={setShowExamples} className="grid grid-cols-1 gap-2">
+    <div className="grid grid-cols-1 gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-sm">
           {localFiles === null
             ? "Files are uploaded into the run folder on the server"
             : "Files are read from this computer"}
         </span>
-        <CollapsibleTrigger render={<Button type="button" variant="outline" size="sm" className="ml-auto" />}>
-          <BookOpen aria-hidden />
-          {showExamples ? "Hide examples" : "Examples and earlier inputs"}
-        </CollapsibleTrigger>
+        <ToggleGroup
+          aria-label="Examples"
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          value={pressed}
+          onValueChange={onPanelChange}
+        >
+          {EXAMPLES_PANEL_KINDS.map((kind) => {
+            const { title, icon: Icon } = EXAMPLES_PANELS[kind];
+
+            return (
+              <ToggleGroupItem key={kind} value={kind}>
+                <Icon aria-hidden />
+                {title}
+              </ToggleGroupItem>
+            );
+          })}
+        </ToggleGroup>
       </div>
-      <CollapsibleContent>
-        <ExamplesPanel command={command} close={closeExamples} />
-      </CollapsibleContent>
+      {panel !== null && <ExamplesPanel kind={panel} command={command} close={closePanel} />}
       {COMMAND_SETTINGS[command].inputs.map((input) => (
         <InputSlotRow key={input.kind} command={command} slot={input} facts={facts} />
       ))}
-    </Collapsible>
+    </div>
   );
 }
 

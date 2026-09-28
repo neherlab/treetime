@@ -1,6 +1,7 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, Dataset, ExampleConfig, RunRecord } from "@neherlab/app-contracts";
 import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
+import { Database, FileCog } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { useApi, useApiQueries } from "../api/hooks";
@@ -18,12 +19,29 @@ import { useInputActions } from "./useInputActions";
 
 const EARLIER_RUNS_SHOWN = 8;
 
-export function ExamplesPanel({ command, close }: { command: AppCommand; close: () => void }) {
+export const EXAMPLES_PANELS = {
+  datasets: { title: "Example datasets", hint: "Bundled datasets with tree, alignment and metadata", icon: Database },
+  configs: { title: "Example configs", hint: "Ready-made settings and inputs from the repository", icon: FileCog },
+} as const;
+
+export type ExamplesPanelKind = keyof typeof EXAMPLES_PANELS;
+
+export const EXAMPLES_PANEL_KINDS: readonly ExamplesPanelKind[] = ["datasets", "configs"];
+
+export function ExamplesPanel({
+  kind,
+  command,
+  close,
+}: {
+  kind: ExamplesPanelKind;
+  command: AppCommand;
+  close: () => void;
+}) {
   const { data: catalog, error } = useApi((context) => datasets(context), { staleTime: Infinity });
 
   return (
     <Card size="sm" className="gap-0 py-0">
-      <PanelHeading title="Example data" hint="Bundled datasets with tree, alignment and metadata">
+      <PanelHeading title={EXAMPLES_PANELS[kind].title} hint={EXAMPLES_PANELS[kind].hint}>
         <Button type="button" variant="ghost" size="sm" onClick={close}>
           Close
         </Button>
@@ -33,24 +51,30 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
           <AlertDescription>The examples cannot be listed: {error.message}</AlertDescription>
         </Alert>
       )}
-      <div className="max-h-72 overflow-auto overscroll-contain">
-        <Table>
-          <TableBody>
-            {(catalog?.datasets ?? []).map((dataset) => (
-              <DatasetRow key={dataset.name} command={command} dataset={dataset} close={close} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <PanelHeading title="Example configs" hint="Ready-made settings and inputs from the repository" />
-      <Table>
-        <TableBody>
-          {(catalog?.examples ?? []).map((example) => (
-            <ExampleRow key={example.path} example={example} />
-          ))}
-        </TableBody>
-      </Table>
-      <EarlierInputs command={command} close={close} />
+      {kind === "datasets" ? (
+        <>
+          <div className="max-h-72 overflow-auto overscroll-contain">
+            <Table>
+              <TableBody>
+                {(catalog?.datasets ?? []).map((dataset) => (
+                  <DatasetRow key={dataset.name} command={command} dataset={dataset} close={close} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <EarlierInputs command={command} close={close} />
+        </>
+      ) : (
+        <div className="max-h-72 overflow-auto overscroll-contain">
+          <Table>
+            <TableBody>
+              {(catalog?.examples ?? []).map((example) => (
+                <ExampleRow key={example.path} example={example} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </Card>
   );
 }
