@@ -1,14 +1,15 @@
-import { useFileDialog } from "@mantine/hooks";
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { type DropzoneOptions, useDropzone } from "react-dropzone";
 
 import type { JsonValue } from "../settings/json";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { useToastManager } from "../ui/toast";
 import { useInputActions } from "./useInputActions";
+
+const ANY_APPLICATION_TYPE = "application/*";
 
 interface PathPickerProps {
   command: AppCommand;
@@ -23,7 +24,7 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
   const actions = useInputActions(command);
   const [busy, setBusy] = useState(false);
   const toasts = useToastManager();
-  const accept = useMemo(() => extensions.map((extension) => `.${extension}`).join(","), [extensions]);
+  const accept = useMemo(() => acceptExtensions(extensions), [extensions]);
 
   const upload = useCallback(
     async (file: File) => {
@@ -40,18 +41,25 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
     [actions, list, settingKey, title, toasts],
   );
 
-  const onFiles = useCallback(
-    (files: FileList | null) => {
-      const file = files?.item(0) ?? null;
+  const onDropAccepted = useCallback(
+    (files: File[]) => {
+      const [file] = files;
 
-      if (file !== null) {
+      if (file !== undefined) {
         void upload(file);
       }
     },
     [upload],
   );
 
-  const dialog = useFileDialog({ multiple: false, accept, resetOnOpen: true, onChange: onFiles });
+  const dialog = useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    noDrag: true,
+    ...accept,
+    onDropAccepted,
+  });
 
   const choose = useCallback(async () => {
     if (!actions.canPick) {
@@ -73,6 +81,7 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
 
   return (
     <div className="flex shrink-0 gap-1">
+      <input {...dialog.getInputProps()} />
       <Button type="button" variant="outline" size="sm" onClick={onChoose} disabled={busy}>
         {busy && <Spinner />}
         {buttonText(busy, filled)}
@@ -119,6 +128,12 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
     noDragEventsBubbling: true,
     onDropAccepted,
   });
+}
+
+function acceptExtensions(extensions: readonly string[]): Pick<DropzoneOptions, "accept"> {
+  return extensions.length === 0
+    ? {}
+    : { accept: { [ANY_APPLICATION_TYPE]: extensions.map((extension) => `.${extension}`) } };
 }
 
 function emptyValue(list: boolean): JsonValue {
