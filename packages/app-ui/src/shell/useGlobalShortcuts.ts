@@ -1,19 +1,18 @@
 import { runsList } from "@neherlab/app-contracts/client";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { PALETTE_HOTKEY } from "../hotkeys";
 import { useShellStore } from "../store/shell";
 import { listedRuns } from "./runList";
-import { useCurrentRunId } from "./useCurrentRunId";
 
 export const RUN_FILTER_ID = "run-filter";
 
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
-  const currentId = useCurrentRunId();
+  const currentId = useParams({ strict: false, select: (params) => params.id });
   const { data } = useApi((context) => runsList(context));
   const runFilter = useShellStore((state) => state.runFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);

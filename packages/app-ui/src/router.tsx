@@ -3,7 +3,7 @@ import { createRootRoute, createRoute, createRouter, Navigate } from "@tanstack/
 import { NewAnalysisPage } from "./analysis/NewAnalysisPage";
 import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
-import { RunPage } from "./runs/RunPage";
+import { RunLogTab, RunPage, RunResultsTab, RunSettingsTab } from "./runs/RunPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -11,31 +11,22 @@ const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", com
 
 const newRoute = createRoute({ getParentRoute: () => rootRoute, path: "/new", component: NewAnalysisPage });
 
-const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id", component: RunRedirect });
+const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id", component: RunLayout });
 
-const runResultsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/runs/$id/results",
-  component: RunResults,
-});
+const runIndexRoute = createRoute({ getParentRoute: () => runRoute, path: "/", component: RunRedirect });
 
-const runSettingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/runs/$id/settings",
-  component: RunSettings,
-});
+const runResultsRoute = createRoute({ getParentRoute: () => runRoute, path: "/results", component: RunResultsTab });
 
-const runLogRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$id/log", component: RunLog });
+const runSettingsRoute = createRoute({ getParentRoute: () => runRoute, path: "/settings", component: RunSettingsTab });
+
+const runLogRoute = createRoute({ getParentRoute: () => runRoute, path: "/log", component: RunLogTab });
 
 const compareRoute = createRoute({ getParentRoute: () => rootRoute, path: "/compare/$a/$b", component: CompareRuns });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
   newRoute,
-  runRoute,
-  runResultsRoute,
-  runSettingsRoute,
-  runLogRoute,
+  runRoute.addChildren([runIndexRoute, runResultsRoute, runSettingsRoute, runLogRoute]),
   compareRoute,
 ]);
 
@@ -56,28 +47,16 @@ function IndexRedirect() {
   return <Navigate to="/new" replace />;
 }
 
+function RunLayout() {
+  const { id } = runRoute.useParams();
+
+  return <RunPage id={id} />;
+}
+
 function RunRedirect() {
   const { id } = runRoute.useParams();
 
   return <Navigate to="/runs/$id/results" params={{ id }} replace />;
-}
-
-function RunResults() {
-  const { id } = runResultsRoute.useParams();
-
-  return <RunPage id={id} tab="results" />;
-}
-
-function RunSettings() {
-  const { id } = runSettingsRoute.useParams();
-
-  return <RunPage id={id} tab="settings" />;
-}
-
-function RunLog() {
-  const { id } = runLogRoute.useParams();
-
-  return <RunPage id={id} tab="log" />;
 }
 
 function CompareRuns() {

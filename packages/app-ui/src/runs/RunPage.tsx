@@ -1,10 +1,10 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useChildMatches, useNavigate } from "@tanstack/react-router";
 import { Pin, PinOff, RotateCcw } from "lucide-react";
 import { DateTime } from "luxon";
-import { useCallback, useMemo } from "react";
+import { createContext, use, useCallback, useMemo } from "react";
 
 import { useRunEvents } from "../api/events";
 import { useApi, useApiMutation } from "../api/hooks";
@@ -31,24 +31,28 @@ import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
 
-type RunTab = "results" | "settings" | "log";
+const TABS = [
+  { label: "Results", to: "/runs/$id/results" },
+  { label: "Settings", to: "/runs/$id/settings" },
+  { label: "Log", to: "/runs/$id/log" },
+] as const;
 
-const TABS: ReadonlyArray<{
-  tab: RunTab;
-  label: string;
-  to: "/runs/$id/results" | "/runs/$id/settings" | "/runs/$id/log";
-}> = [
-  { tab: "results", label: "Results", to: "/runs/$id/results" },
-  { tab: "settings", label: "Settings", to: "/runs/$id/settings" },
-  { tab: "log", label: "Log", to: "/runs/$id/log" },
-];
+const LOG_TAB = "/runs/$id/log";
+
+const RunContext = createContext<RunView | undefined>(undefined);
 
 const LIVE_STATUSES = new Set(["created", "running"]);
 
-export function RunPage({ id, tab }: { id: string; tab: RunTab }) {
+export function RunPage({ id }: { id: string }) {
   const { data: record, error } = useApi((context) => runsGet({ ...context, path: { id } }));
   const { data: progress = EMPTY_PROGRESS, error: eventsError } = useRunEvents(id);
   const failure = eventsError === null ? undefined : errorMessage(eventsError);
+  const tab = useChildMatches({ select: (matches) => matches.at(0)?.fullPath });
+
+  const view = useMemo(
+    () => (record === undefined ? undefined : { record, progress, failure }),
+    [failure, progress, record],
+  );
 
   if (error !== null) {
     return (
@@ -74,13 +78,13 @@ export function RunPage({ id, tab }: { id: string; tab: RunTab }) {
         <TabsList variant="line" aria-label="Run views" className="border-b">
           {TABS.map((entry) => (
             <TabsTrigger
-              key={entry.tab}
-              value={entry.tab}
+              key={entry.to}
+              value={entry.to}
               nativeButton={false}
               render={<Link to={entry.to} params={{ id }} />}
             >
               {entry.label}
-              {entry.tab === "log" && warnings > 0 && (
+              {entry.to === LOG_TAB && warnings > 0 && (
                 <Badge variant="outline" className="text-warning border-warning/40">
                   {warnings} {warnings === 1 ? "warning" : "warnings"}
                 </Badge>
@@ -89,16 +93,18 @@ export function RunPage({ id, tab }: { id: string; tab: RunTab }) {
           ))}
         </TabsList>
         <TabsContent value={tab}>
-          {tab === "results" && <ResultsTab record={record} progress={progress} />}
-          {tab === "settings" && <SettingsTab record={record} />}
-          {tab === "log" && <LogTab progress={progress} failure={failure} />}
+          <RunContext value={view}>
+            <Outlet />
+          </RunContext>
         </TabsContent>
       </Tabs>
     </PageShell>
   );
 }
 
-function ResultsTab({ record, progress }: { record: RunRecord; progress: RunProgress }) {
+export function RunResultsTab() {
+  const { record, progress } = useRunView();
+
   if (LIVE_STATUSES.has(record.status)) {
     return <RunningView record={record} progress={progress} />;
   }
@@ -108,6 +114,34 @@ function ResultsTab({ record, progress }: { record: RunRecord; progress: RunProg
   }
 
   return <FinishedResults record={record} />;
+}
+
+export function RunSettingsTab() {
+  const { record } = useRunView();
+
+  return <SettingsTab record={record} />;
+}
+
+export function RunLogTab() {
+  const { progress, failure } = useRunView();
+
+  return <LogTab progress={progress} failure={failure} />;
+}
+
+interface RunView {
+  record: RunRecord;
+  progress: RunProgress;
+  failure: string | undefined;
+}
+
+function useRunView(): RunView {
+  const view = use(RunContext);
+
+  if (view === undefined) {
+    throw new Error("A run tab renders only inside the run page");
+  }
+
+  return view;
 }
 
 function FinishedResults({ record }: { record: RunRecord }) {

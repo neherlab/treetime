@@ -1,6 +1,6 @@
 import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
@@ -29,7 +29,6 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { changedFlags, groupRuns, listedRuns } from "./runList";
 import { StatusIcon, statusLabel } from "./StatusIcon";
-import { useCurrentRunId } from "./useCurrentRunId";
 import { RUN_FILTER_ID } from "./useGlobalShortcuts";
 
 const FLAGS_SHOWN = 2;
@@ -168,7 +167,7 @@ function CommandFilter({ commands }: { commands: readonly AppCommand[] }) {
 }
 
 function RunItem({ run }: { run: RunSummary }) {
-  const currentId = useCurrentRunId();
+  const currentId = useParams({ strict: false, select: (params) => params.id });
   const flags = changedFlags(run);
   const headline = run.status === "ok" ? headlineText(run.headline) : "";
 
