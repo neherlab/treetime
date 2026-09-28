@@ -5,7 +5,7 @@ import { fromJsonFloat } from "./numbers";
 
 export type { RunEvent };
 
-export type LogFilter = "all" | "warnings" | "stages";
+export type LogFilter = "all" | "warnings";
 
 export interface RunProgress {
   startedAt: DateTime | undefined;
@@ -50,6 +50,7 @@ export interface StageSection {
   state: StageState;
   seconds: number;
   entries: readonly LogEntry[];
+  defaultOpen: boolean;
 }
 
 const PRELUDE_SEQ = -1;
@@ -76,9 +77,7 @@ export function filterLog(entries: readonly LogEntry[], filter: LogFilter, query
 
   return entries.filter(
     (entry) =>
-      (filter === "all" ||
-        (filter === "warnings" && WARNING_LEVELS.has(entry.level)) ||
-        (filter === "stages" && entry.kind === "stage")) &&
+      (filter === "all" || WARNING_LEVELS.has(entry.level)) &&
       (needle === "" || entry.message.toLowerCase().includes(needle)),
   );
 }
@@ -101,32 +100,31 @@ export function stageSections(progress: RunProgress): StageSection[] {
   return spans.map((span, index) => {
     const next = spans.at(index + 1)?.seq ?? Number.POSITIVE_INFINITY;
     const isLast = index === spans.length - 1;
+    const entries = logs.filter((entry) => entry.seq > span.seq && entry.seq < next);
 
     return {
       key: String(span.seq),
       name: span.name,
       state: span.endSeconds === undefined ? "running" : isLast ? ended : "done",
       seconds: (span.endSeconds ?? span.startSeconds) - span.startSeconds,
-      entries: logs.filter((entry) => entry.seq > span.seq && entry.seq < next),
+      entries,
+      defaultOpen: progress.terminal === undefined ? isLast : entries.length > 0,
     };
   });
 }
 
 export function openSections(sections: readonly StageSection[], overrides: ReadonlyMap<string, boolean>): string[] {
-  const current = sections.at(-1)?.key;
-
-  return sections.flatMap(({ key }) => ((overrides.get(key) ?? key === current) ? [key] : []));
+  return sections.flatMap(({ key, defaultOpen }) => ((overrides.get(key) ?? defaultOpen) ? [key] : []));
 }
 
 export function sectionOverrides(sections: readonly StageSection[], open: readonly string[]): Map<string, boolean> {
-  const current = sections.at(-1)?.key;
   const opened = new Set(open);
 
   return new Map(
     sections.flatMap((section): Array<[string, boolean]> => {
       const isOpen = opened.has(section.key);
 
-      return isOpen === (section.key === current) ? [] : [[section.key, isOpen]];
+      return isOpen === section.defaultOpen ? [] : [[section.key, isOpen]];
     }),
   );
 }

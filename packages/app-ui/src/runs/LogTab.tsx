@@ -3,33 +3,34 @@ import { useCallback, useMemo, useState } from "react";
 
 import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
-import { Panel } from "../components/Panel";
 import { countWarnings, filterLog, logText, type LogFilter, type RunProgress } from "../results/progress";
 import { Alert, AlertDescription } from "../ui/alert";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
-import { LogLines } from "./LogLines";
+import { StageLog } from "./StageLog";
 
 export function LogTab({ progress, failure }: { progress: RunProgress; failure: string | undefined }) {
   const [filter, setFilter] = useState<LogFilter>("all");
   const [query, setQuery] = useState("");
   const entries = useMemo(() => filterLog(progress.entries, filter, query), [filter, progress.entries, query]);
+  const lines = progress.entries.filter((entry) => entry.kind === "log").length;
   const warnings = countWarnings(progress.entries);
-  const stages = progress.entries.filter((entry) => entry.kind === "stage").length;
 
   const options = useMemo(
     () => [
-      { value: "all" as const, label: `All ${progress.entries.length}` },
+      { value: "all" as const, label: `All ${lines}` },
       { value: "warnings" as const, label: `Warnings ${warnings}` },
-      { value: "stages" as const, label: `Stages ${stages}` },
     ],
-    [progress.entries.length, stages, warnings],
+    [lines, warnings],
   );
 
   const onQuery = useCallback((event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value), []);
 
   return (
-    <Panel
-      title="Log"
+    <StageLog
+      progress={progress}
+      filter={filter}
+      query={query}
+      hint="One card per stage"
       actions={
         <>
           <OptionToggle label="Log filter" value={filter} onChange={setFilter} options={options} />
@@ -49,18 +50,11 @@ export function LogTab({ progress, failure }: { progress: RunProgress; failure: 
         </>
       }
     >
-      <div className="grid gap-2 p-2.5">
-        {failure !== undefined && (
-          <Alert variant="destructive">
-            <AlertDescription>The log cannot be followed: {failure}</AlertDescription>
-          </Alert>
-        )}
-        <LogLines
-          entries={entries}
-          className="h-[calc(100svh-var(--header-height)-16rem)] min-h-80"
-          empty={progress.entries.length === 0 ? "No log lines yet." : "No matching lines."}
-        />
-      </div>
-    </Panel>
+      {failure !== undefined && (
+        <Alert variant="destructive">
+          <AlertDescription>The log cannot be followed: {failure}</AlertDescription>
+        </Alert>
+      )}
+    </StageLog>
   );
 }

@@ -120,13 +120,12 @@ describe("log filters", () => {
     ]);
   });
 
-  test("warnings, stages and search select their lines", () => {
+  test("warnings and search select their lines", () => {
     expect({
       warnings: filterLog(entries, "warnings", "").map((entry) => entry.seq),
-      stages: filterLog(entries, "stages", "").map((entry) => entry.seq),
       search: filterLog(entries, "all", "  SEQUENCES ").map((entry) => entry.seq),
       count: countWarnings(entries),
-    }).toStrictEqual({ warnings: [5], stages: [1, 4], search: [2], count: 1 });
+    }).toStrictEqual({ warnings: [5], search: [2], count: 1 });
   });
 });
 
@@ -204,6 +203,17 @@ describe("stage sections", () => {
     );
 
     expect(sections.map((section) => section.state)).toStrictEqual(["done", "done", "done", "done"]);
+  });
+
+  test("the stages of an ended run that hold log lines are open by default", () => {
+    const sections = stageSections(
+      foldRunEvents(EMPTY_PROGRESS, [
+        ...LIVE,
+        { seq: 7, time: "2026-09-25T10:00:06.000Z", type: "terminal", data: { job_id: "run", status: "cancelled" } },
+      ]),
+    );
+
+    expect(openSections(sections, new Map())).toStrictEqual(["-1", "2", "5"]);
   });
 
   test("lines before any stage form a running start section", () => {

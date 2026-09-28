@@ -8,16 +8,20 @@ import { cn } from "../ui/cn";
 
 const FOLLOW = { initial: "instant", resize: "instant" } as const;
 
+const STILL = { initial: false, resize: "instant" } as const;
+
 export function LogLines({
   entries,
   className,
   empty,
+  follow,
 }: {
   entries: readonly LogEntry[];
   className?: string;
   empty: string;
+  follow: boolean;
 }) {
-  const { scrollRef, contentRef, isAtBottom, scrollToBottom } = useStickToBottom(FOLLOW);
+  const { scrollRef, contentRef, isAtBottom, scrollToBottom } = useStickToBottom(follow ? FOLLOW : STILL);
   const jumpToEnd = useCallback(() => void scrollToBottom(), [scrollToBottom]);
 
   return (
@@ -38,7 +42,7 @@ export function LogLines({
           ))}
         </div>
       </div>
-      {!isAtBottom && (
+      {follow && !isAtBottom && (
         <Button type="button" size="xs" variant="secondary" onClick={jumpToEnd} className="absolute right-3 bottom-3">
           <ArrowDown aria-hidden />
           Follow new lines
