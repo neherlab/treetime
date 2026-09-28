@@ -123,18 +123,11 @@ The TypeScript apps (`app-ui`, `app-web`, `app-desktop`) are a user interface ar
 
 ### Interface components
 
-The interface is built from [shadcn/ui](https://ui.shadcn.com) components in the `base-vega` style, which run on Base UI. The components are vendored into `packages/app-ui/src/ui/`, one file per component, and the app composes them; it does not style raw elements. The theme tokens (colors, radius, fonts) live in `packages/app-ui/src/theme.css`, and `packages/app-ui/src/ui/shadcn.css` is the stylesheet of the `shadcn` npm package that defines the variants the components use.
+The interface is built from [shadcn/ui](https://ui.shadcn.com) components in the `base-vega` style, which run on Base UI. The components are vendored into `packages/app-ui/src/ui/`, one file per component, and the app composes them; it does not style raw elements. TreeTime owns the vendored files: they pass the same lint rules as the rest of the source and keep only the parts the app uses. `packages/app-ui/src/ui/UPSTREAM.md` records their source, the rewrites that turn a registry file into a component, and the local changes to re-apply when a component is refreshed.
 
-To add or update a component, fetch its source from the registry, `https://ui.shadcn.com/r/styles/base-vega/<name>.json` (the `files[0].content` field), and apply the rewrites the shadcn CLI would apply:
+The theme tokens (colors, radius, fonts) live in `packages/app-ui/src/theme.css`: green-grey surfaces with a deep teal accent, Lato for text and IBM Plex Mono for code. `packages/app-ui/src/ui/shadcn.css` is the stylesheet of the `shadcn` npm package that defines the variants the components use.
 
-- **Imports**: `@/registry/base-vega/ui/<name>` becomes `./<name>`, and `cn` comes from `./cn`
-- **Icons**: each `IconPlaceholder` element becomes the `lucide-react` icon named in its `lucide` attribute
-- **Classes**: `cn-font-heading` becomes `font-heading`, and the other `cn-*` marker classes are removed
-- **Comments**: removed, as in all TypeScript source
-
-The vendored files keep the upstream code shape, so `oxlint.config.ts` turns off the style rules for `packages/app-ui/src/ui/*.tsx` while the Tailwind class check stays on.
-
-Library hooks cover the behavior around the components: `@tanstack/react-hotkeys` for keyboard shortcuts, `react-dropzone` for file drops, `use-stick-to-bottom` for the following log, `@tanstack/react-table` for sortable tables, `@tanstack/react-pacer` for debouncing, `cmdk` for the command palette, and `@mantine/hooks` for the clipboard, element sizes, media queries, and the file dialog.
+Library hooks cover the behavior around the components: `@tanstack/react-hotkeys` for keyboard shortcuts and their platform labels, `react-dropzone` for file drops and the file dialog, `use-stick-to-bottom` for the following log, `@tanstack/react-table` for sortable tables, `@tanstack/react-pacer` for debouncing, Base UI Autocomplete for the command palette, and `@mantine/hooks` for the clipboard, the size of the Auspice panel, and the mobile media query.
 
 ### Web app
 
