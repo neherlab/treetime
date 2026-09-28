@@ -5,6 +5,10 @@ import * as React from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 
+const ACTION_BUTTON = <Button variant="outline" size="sm" />;
+
+const CLOSE_BUTTON = <Button variant="ghost" size="icon-sm" />;
+
 const toast = ToastPrimitive.createToastManager();
 
 function ToastProvider({ ...props }: ToastPrimitive.Provider.Props) {
@@ -82,22 +86,13 @@ function ToastDescription({ className, ...props }: ToastPrimitive.Description.Pr
   );
 }
 
-function ToastAction({
-  className,
-  render = <Button variant="outline" size="sm" />,
-  ...props
-}: ToastPrimitive.Action.Props) {
+function ToastAction({ className, render = ACTION_BUTTON, ...props }: ToastPrimitive.Action.Props) {
   return (
     <ToastPrimitive.Action data-slot="toast-action" render={render} className={cn("shrink-0", className)} {...props} />
   );
 }
 
-function ToastClose({
-  className,
-  children,
-  render = <Button variant="ghost" size="icon-sm" />,
-  ...props
-}: ToastPrimitive.Close.Props) {
+function ToastClose({ className, children, render = CLOSE_BUTTON, ...props }: ToastPrimitive.Close.Props) {
   return (
     <ToastPrimitive.Close
       data-slot="toast-close"
@@ -179,7 +174,6 @@ function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Pr
   );
 }
 
-const createToastManager = ToastPrimitive.createToastManager;
 const useToastManager = ToastPrimitive.useToastManager;
 
 export {
@@ -193,7 +187,6 @@ export {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-  createToastManager,
   toast,
   useToastManager,
 };

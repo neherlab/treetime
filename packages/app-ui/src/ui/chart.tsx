@@ -84,7 +84,7 @@ function ChartTooltipContent({
 }
 
 function tooltipValue(value: TooltipValueType): string {
-  return typeof value === "number" ? value.toLocaleString() : String(value);
+  return value.toLocaleString();
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartTooltipFrame };
