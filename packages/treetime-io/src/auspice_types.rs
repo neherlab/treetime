@@ -140,7 +140,7 @@ pub struct AuspiceGenomeAnnotations {
   pub other: Value,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuspiceGenomeAnnotationNuc {
   pub start: isize,
 

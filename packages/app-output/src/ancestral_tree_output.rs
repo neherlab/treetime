@@ -13,7 +13,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
-  AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc, AuspiceGenomeAnnotations, AuspiceTree, Segments, StartEnd,
+  AuspiceGenomeAnnotationCds, AuspiceTree, Segments, StartEnd,
 };
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
@@ -67,17 +67,16 @@ pub(crate) fn ancestral_to_auspice(
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
   let root_sequences = ancestral_root_sequences(maps, aa_node_data);
-  let genome_annotations = ancestral_genome_annotations(&root_sequences, aa_annotations)?;
   let data = auspice_data(
     "TreeTime ancestral analysis",
     updated,
     vec![],
     vec![],
     None,
-    genome_annotations,
+    ancestral_cds_annotations(aa_annotations)?,
     Some(root_sequences),
     !ancestral_all_mutations(graph, maps, aa_node_data).is_empty(),
-  );
+  )?;
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());
@@ -117,34 +116,13 @@ fn ancestral_root_sequences(maps: &AncestralOutputMaps, aa_node_data: Option<&Aa
   sequences
 }
 
-fn ancestral_genome_annotations(
-  root_sequences: &BTreeMap<String, String>,
+fn ancestral_cds_annotations(
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-) -> Result<Option<AuspiceGenomeAnnotations>, Report> {
-  let nuc = root_sequences
-    .get(NUC_TRACK)
-    .map(|sequence| -> Result<_, Report> {
-      Ok(AuspiceGenomeAnnotationNuc {
-        start: 1,
-        end: isize::try_from(sequence.len()).wrap_err("Nucleotide sequence length does not fit Auspice coordinates")?,
-        strand: Some("+".to_owned()),
-        r#type: Some("source".to_owned()),
-        other: Value::default(),
-      })
-    })
-    .transpose()?;
-  let cdses = aa_annotations
+) -> Result<BTreeMap<String, AuspiceGenomeAnnotationCds>, Report> {
+  aa_annotations
     .iter()
     .map(|(name, annotation)| Ok((name.clone(), auspice_cds_annotation(name, annotation)?)))
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  if nuc.is_none() && cdses.is_empty() {
-    return Ok(None);
-  }
-  Ok(Some(AuspiceGenomeAnnotations {
-    nuc,
-    cdses,
-    other: Value::default(),
-  }))
+    .collect()
 }
 
 fn auspice_cds_annotation(

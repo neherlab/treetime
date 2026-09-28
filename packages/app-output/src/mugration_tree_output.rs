@@ -57,10 +57,10 @@ pub(crate) fn mugration_to_auspice(
     vec![coloring(attribute, attribute, "categorical")],
     vec![attribute.to_owned()],
     Some(attribute.to_owned()),
-    None,
+    BTreeMap::new(),
     None,
     false,
-  );
+  )?;
   auspice_from_graph(graph, data, |context| {
     let name = node_name_value(context.node_key, nodes[&context.node_key].name.as_deref());
     let traits = mugration_traits(graph, output, context.node_key, &name, attribute)?;

@@ -10,7 +10,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
-  AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree,
+  AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
+  AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree,
   AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode,
   AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
 };
@@ -30,6 +31,8 @@ pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
 pub(crate) const COLORING_NUM_DATE: &str = "num_date";
 pub(crate) const NUC_TRACK: &str = "nuc";
+pub(crate) const PANEL_ENTROPY: &str = "entropy";
+pub(crate) const PANEL_TREE: &str = "tree";
 
 pub(crate) fn write_tree_outputs<A, M>(
   graph: &Graph,
@@ -100,19 +103,24 @@ pub(crate) fn auspice_data(
   mut colorings: Vec<AuspiceColoring>,
   filters: Vec<String>,
   color_by: Option<String>,
-  genome_annotations: Option<AuspiceGenomeAnnotations>,
+  cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,
   root_sequences: Option<BTreeMap<String, String>>,
   has_mutations: bool,
-) -> AuspiceTreeData {
+) -> Result<AuspiceTreeData, Report> {
   if has_mutations {
     colorings.push(coloring(COLORING_GENOTYPE, "Genotype", "categorical"));
   }
-  AuspiceTreeData {
+  let genome_annotations = genome_annotations(root_sequences.as_ref(), cdses)?;
+  let mut panels = vec![PANEL_TREE.to_owned()];
+  if genome_annotations.is_some() {
+    panels.push(PANEL_ENTROPY.to_owned());
+  }
+  Ok(AuspiceTreeData {
     version: Some("v2".to_owned()),
     meta: AuspiceTreeMeta {
       title: Some(title.to_owned()),
       updated: Some(updated.to_owned()),
-      panels: vec!["tree".to_owned()],
+      panels,
       genome_annotations,
       colorings,
       filters,
@@ -124,7 +132,33 @@ pub(crate) fn auspice_data(
     },
     root_sequence: root_sequences.filter(|sequences| !sequences.is_empty()),
     other: Value::default(),
+  })
+}
+
+fn genome_annotations(
+  root_sequences: Option<&BTreeMap<String, String>>,
+  cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,
+) -> Result<Option<AuspiceGenomeAnnotations>, Report> {
+  let nuc = root_sequences
+    .and_then(|sequences| sequences.get(NUC_TRACK))
+    .map(|sequence| -> Result<_, Report> {
+      Ok(AuspiceGenomeAnnotationNuc {
+        start: 1,
+        end: isize::try_from(sequence.len()).wrap_err("Nucleotide sequence length does not fit Auspice coordinates")?,
+        strand: Some("+".to_owned()),
+        r#type: Some("source".to_owned()),
+        other: Value::default(),
+      })
+    })
+    .transpose()?;
+  if nuc.is_none() && cdses.is_empty() {
+    return Ok(None);
   }
+  Ok(Some(AuspiceGenomeAnnotations {
+    nuc,
+    cdses,
+    other: Value::default(),
+  }))
 }
 
 pub(crate) fn sequence_auspice_node(

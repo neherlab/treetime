@@ -51,10 +51,10 @@ pub(crate) fn clock_to_auspice(
     ],
     vec![COLORING_BAD_BRANCH.to_owned()],
     Some(COLORING_BAD_BRANCH.to_owned()),
-    None,
+    BTreeMap::new(),
     None,
     false,
-  );
+  )?;
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());

@@ -54,10 +54,10 @@ pub(crate) fn optimize_to_auspice(
     vec![],
     vec![],
     None,
-    None,
+    BTreeMap::new(),
     Some(root_sequences),
     maps.root_sequence.is_some(),
-  );
+  )?;
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());

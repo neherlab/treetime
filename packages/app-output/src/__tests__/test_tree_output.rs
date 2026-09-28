@@ -12,11 +12,14 @@ pub(super) mod tests {
   use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
   use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
   use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
+  use crate::timetree_result::TimetreeOutputMaps;
   use crate::tree_output::{format_number, group_mutations};
   use approx::assert_ulps_eq;
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use serde_json::json;
 
   use serde_json::Value;
   use tempfile::TempDir;
@@ -29,6 +32,7 @@ pub(super) mod tests {
   use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_primitives::{AsciiChar, LogLh, Seq};
@@ -51,7 +55,17 @@ pub(super) mod tests {
     )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(Some("2026-07-19"), auspice.data.meta.updated.as_deref());
-    assert_eq!(vec!["tree".to_owned()], auspice.data.meta.panels);
+    assert_eq!(vec!["tree".to_owned(), "entropy".to_owned()], auspice.data.meta.panels);
+    assert_eq!(
+      Some(3),
+      auspice
+        .data
+        .meta
+        .genome_annotations
+        .as_ref()
+        .and_then(|annotations| annotations.nuc.as_ref())
+        .map(|nuc| nuc.end)
+    );
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
@@ -201,6 +215,68 @@ pub(super) mod tests {
       .expect("Auspice meta must be an object")
       .remove("updated");
     assert!(!validator.is_valid(&malformed));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_root_sequence_adds_nuc_annotation_and_entropy_panel() -> Result<(), Report> {
+    let (graph, names, _branch_lengths) = helpers::timetree_graph()?;
+    let maps = TimetreeOutputMaps {
+      root_sequence: Some(Seq::try_from_str("ACGT")?),
+      ..TimetreeOutputMaps::default()
+    };
+    let auspice = timetree_to_auspice(
+      &graph,
+      &helpers::timetree_nodes(&names, &graph, &btreemap! {}),
+      &maps,
+      None,
+      None,
+      "2026-07-19",
+    )?;
+
+    assert_eq!(vec!["tree".to_owned(), "entropy".to_owned()], auspice.data.meta.panels);
+    let annotations = auspice
+      .data
+      .meta
+      .genome_annotations
+      .as_ref()
+      .expect("a root sequence must produce genome annotations");
+    assert_eq!(
+      Some(AuspiceGenomeAnnotationNuc {
+        start: 1,
+        end: 4,
+        strand: Some("+".to_owned()),
+        r#type: Some("source".to_owned()),
+        other: Value::default(),
+      }),
+      annotations.nuc
+    );
+    assert!(annotations.cdses.is_empty());
+    let document = helpers::json_value(&auspice)?;
+    let errors = helpers::auspice_validator()?
+      .iter_errors(&document)
+      .map(|error| error.to_string())
+      .collect::<Vec<_>>()
+      .join("\n");
+    assert!(errors.is_empty(), "timetree Auspice schema errors:\n{errors}");
+
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::optimize( 1)]
+  #[case::prune(    2)]
+  #[case::clock(    3)]
+  #[case::mugration(4)]
+  #[case::timetree( 5)]
+  #[trace]
+  fn test_tree_output_auspice_without_sequences_has_tree_panel_only(#[case] command: usize) -> Result<(), Report> {
+    let document = &helpers::all_auspice_documents()?[command];
+
+    assert_eq!(json!(["tree"]), document["meta"]["panels"]);
+    assert_eq!(None, document["meta"].get("genome_annotations"));
 
     Ok(())
   }
@@ -815,7 +891,7 @@ pub(super) mod tests {
       Ok((output, names, branch_lengths))
     }
 
-    fn timetree_graph() -> Result<
+    pub(crate) fn timetree_graph() -> Result<
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
@@ -830,7 +906,7 @@ pub(super) mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    fn timetree_nodes(
+    pub(crate) fn timetree_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -901,7 +977,7 @@ pub(super) mod tests {
       Ok(weights)
     }
 
-    fn json_value(value: &impl Serialize) -> Result<Value, Report> {
+    pub(crate) fn json_value(value: &impl Serialize) -> Result<Value, Report> {
       json_write_str(value, JsonPretty(false)).and_then(|json| json_read_str(&json))
     }
 
