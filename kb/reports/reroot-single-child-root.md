@@ -73,9 +73,9 @@ This pattern fits a subtree cut from a large mutation-annotated tree, with the a
 
 - **Other identity checks on `bad_branch`**: `init_date_constraints()` tests `is True` [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/clock_tree.py#L389)] and `convert_dates()` tests `is False` [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/clock_tree.py#L972)]. For internal nodes with `np.False_`, the warning "node is later than today, but it is not marked as BAD" is never shown. `TreeAnc._prepare_nodes()` computes the same flag as a Python `bool` [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/treeanc.py#L488)], so the type depends on which function set it last
 - **Dated one-child nodes lose their date**: `resolve_polytomies()` removes every non-root one-child node [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/treetime.py#L705-L709)], also one with a date constraint. TreeTime supports dates on internal nodes [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/clock_tree.py#L378-L387)]. The date is dropped without a message (runs `inner-node-dated` and `inner-node-dated-kp`)
-- **An undated one-child node inside the tree changes the timetree result**: rate `8.457e-04` with the node and `8.452e-04` without it (runs `inner-node` and `no-stem`). The difference appears in both joint (`--time-marginal never`) and marginal (`--time-marginal always`) runs. `treetime clock` gives the same rate and root for both trees, so the difference comes from the timetree iterations. The cause is not traced
-- **Direct use of `TreeRegression.optimal_reroot()`** [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/treeregression.py#L416)] on a tree with a one-child root also creates the extra leaf (101 leaves on this tree). `TreeRegression` knows only the tip values of leaves, so it cannot tell a dated root from an undated one. Direct use also requires a `bad_branch` attribute on every node, which the class does not set
-- **Unused field in the residual clock filter**: `residual_filter()` sets `exact_date` only when `type(node) is float` [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/clock_filter_methods.py#L23)]. A tree node is never a float, so the value is always `None`. The outlier table drops the column, so there is no output effect
+- **An undated one-child node inside the tree changes the timetree result**: rate `8.457e-04` with the node and `8.452e-04` without it (runs `inner-node` and `no-stem`). The difference appears in both joint (`--time-marginal never`) and marginal (`--time-marginal always`) runs. `treetime clock` gives the same rate and root for both trees, so the difference comes from the timetree iterations. The cause is not traced: [kb/issues/timetree-inner-single-child-node-changes-rate.md](../issues/timetree-inner-single-child-node-changes-rate.md)
+- **Direct use of `TreeRegression.optimal_reroot()`** [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/treeregression.py#L416)] on a tree with a one-child root also creates the extra leaf (101 leaves on this tree). `TreeRegression` knows only the tip values of leaves, so it cannot tell a dated root from an undated one. Direct use also requires a `bad_branch` attribute on every node, which the class does not set: [kb/issues/treeregression-reroot-single-child-root.md](../issues/treeregression-reroot-single-child-root.md)
+- **Unused field in the residual clock filter**: `residual_filter()` sets `exact_date` only when `type(node) is float` [[src](https://github.com/neherlab/treetime/blob/3aaffc5f600f16d613d16b7228e6d317354e5993/treetime/clock_filter_methods.py#L23)]. A tree node is never a float, so the value is always `None`. The outlier table drops the column, so there is no output effect: [kb/issues/clock-filter-residual-exact-date-unused.md](../issues/clock-filter-residual-exact-date-unused.md)
 
 ## Options
 
@@ -120,3 +120,20 @@ This is the usual representation of a sampled ancestor. In TreeTime it is only a
 6. **Keep dated one-child nodes in `resolve_polytomies()`**, so their date constraints stay in the inference
 
 The inner-node rate difference, direct use of `TreeRegression.optimal_reroot()`, and the unused `exact_date` field are separate defects and are not part of this fix.
+
+## Resolution
+
+The recommended fix is implemented, with regression tests in `test/test_treetime.py` that need no network data:
+
+- `TreeTime.reroot()` removes an undated one-child root before rerooting, keeps a dated one, and raises `TreeTimeError` if the reroot creates a leaf without a date
+- `ClockTree._assign_dates()` stores `bad_branch` as a Python `bool`, and all checks of the flag use truthiness
+- `resolve_polytomies()` keeps one-child nodes that have a date constraint
+
+Results of the commands in [Reproduction](#reproduction) after the fix:
+
+| Run | Exit | Result |
+| --- | --- | --- |
+| `timetree` | 0 | 100 leaves. `dates.tsv` identical to run `no-stem` |
+| `clock` | 0 | `rerooted.newick` has 100 leaves |
+| `keep-root` | 0 | `dates.tsv` identical to the result before the fix |
+| `inner-node-dated` | 0 | `u1` dated 2020-03-01 as given, `i359805` dated 2020-04-26: the same dates as run `inner-node-dated-kp` before the fix |
