@@ -182,7 +182,7 @@ function SettingGroup({
       defaultOpen={filtering || outputs.length === 0}
       className="scroll-mt-4 border-b last:border-b-0"
     >
-      <CollapsibleTrigger className="group/trigger hover:bg-muted/50 flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-medium">
+      <CollapsibleTrigger className="group/trigger hover:bg-muted/50 flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-bold">
         <ChevronRight
           aria-hidden
           className="text-muted-foreground size-4 transition-transform group-data-panel-open/trigger:rotate-90"

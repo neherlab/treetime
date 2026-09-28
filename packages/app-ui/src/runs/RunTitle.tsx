@@ -79,14 +79,14 @@ export function RunTitle({ record }: { record: RunRecord }) {
         ref={focusInput}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="font-heading h-9 text-xl font-semibold md:text-xl"
+        className="font-heading h-9 text-xl font-bold md:text-xl"
       />
     );
   }
 
   return (
     <div className="flex items-center gap-1">
-      <h1 className="font-heading text-2xl leading-tight font-semibold">{record.title}</h1>
+      <h1 className="font-heading text-2xl leading-tight font-bold">{record.title}</h1>
       <Button
         type="button"
         variant="ghost"

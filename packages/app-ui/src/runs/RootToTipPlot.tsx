@@ -268,7 +268,7 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
 
   return (
     <ChartTooltipFrame>
-      <div className="font-semibold">{point.data.name}</div>
+      <div className="font-bold">{point.data.name}</div>
       <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}

@@ -71,7 +71,7 @@ function InputSlotRow({
     >
       <input {...getInputProps()} />
       <div className="grid gap-0.5">
-        <span className="font-medium">{slot.label}</span>
+        <span className="font-bold">{slot.label}</span>
         <span className="text-muted-foreground text-xs">
           {slot.need === "required" ? slot.formats : `${slot.formats}, ${slot.need}`}
         </span>

@@ -67,7 +67,7 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
 
   return (
     <ChartTooltipFrame>
-      <div className="font-semibold">
+      <div className="font-bold">
         {shift.name}, {shift.tips} samples
       </div>
       <div>Date {shift.date_first.date}</div>

@@ -196,7 +196,7 @@ function EarlierRow({
 function PanelHeading({ title, hint, children }: { title: string; hint: string; children?: React.ReactNode }) {
   return (
     <div className="bg-muted/40 flex items-center gap-2.5 border-y px-3.5 py-2 first:border-t-0">
-      <h3 className="text-sm font-medium">{title}</h3>
+      <h3 className="text-sm font-bold">{title}</h3>
       <span className="text-muted-foreground text-xs">{hint}</span>
       {children !== undefined && <div className="ml-auto">{children}</div>}
     </div>

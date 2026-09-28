@@ -182,10 +182,10 @@ function Step({
   return (
     <section aria-labelledby={`step-${number}`} className="@container grid gap-2.5">
       <div className="flex items-baseline gap-2.5 border-b pb-1.5">
-        <span className="text-primary font-mono text-sm font-medium" aria-hidden>
+        <span className="text-primary font-mono text-sm font-bold" aria-hidden>
           {String(number).padStart(2, "0")}
         </span>
-        <h2 id={`step-${number}`} className="font-heading text-base font-semibold">
+        <h2 id={`step-${number}`} className="font-heading text-base font-bold">
           {title}
         </h2>
         {hint !== undefined && <span className="text-muted-foreground text-sm">{hint}</span>}

@@ -183,13 +183,13 @@ function RunItem({ run }: { run: RunSummary }) {
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="flex items-baseline gap-2">
-            <span className="truncate font-medium" title={run.title}>
+            <span className="truncate font-bold" title={run.title}>
               {run.title}
             </span>
             <span className="text-muted-foreground ml-auto text-xs whitespace-nowrap">{headline}</span>
           </span>
           <span className="text-muted-foreground flex items-center gap-1 overflow-hidden text-xs">
-            <span className="text-primary font-medium">{run.command}</span>
+            <span className="text-primary font-bold">{run.command}</span>
             {flags.slice(0, FLAGS_SHOWN).map((flag) => (
               <Badge
                 key={flag}

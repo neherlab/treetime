@@ -39,7 +39,7 @@ export function SiteHeader() {
       <SidebarTrigger />
       <Separator orientation="vertical" className="data-vertical:h-4 data-vertical:self-auto" />
       <div className="flex items-baseline gap-2 px-1">
-        <span className="font-heading text-base font-semibold">TreeTime</span>
+        <span className="font-heading text-base font-bold">TreeTime</span>
         {version !== undefined && <span className="text-muted-foreground font-mono text-xs">v{version.version}</span>}
       </div>
       <Button variant="outline" onClick={openPalette} className="text-muted-foreground ml-auto justify-start sm:w-72">

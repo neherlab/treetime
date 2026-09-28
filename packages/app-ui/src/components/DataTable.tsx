@@ -69,7 +69,7 @@ export function DataTable<Row extends RowData>({
                     variant="ghost"
                     size="xs"
                     onClick={header.column.getToggleSortingHandler()}
-                    className="text-muted-foreground -mx-2 font-medium"
+                    className="text-muted-foreground -mx-2 font-bold"
                   >
                     <table.FlexRender header={header} />
                     <SortIcon header={header} />

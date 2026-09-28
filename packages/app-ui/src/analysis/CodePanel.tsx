@@ -107,7 +107,7 @@ export function CodeLineView({ line, continued, indent }: { line: CodeLine; cont
     <span
       className={cn(
         "block whitespace-pre",
-        line.kind === "changed" && "text-primary font-medium",
+        line.kind === "changed" && "text-primary font-bold",
         line.kind === "comment" && "text-muted-foreground",
       )}
     >

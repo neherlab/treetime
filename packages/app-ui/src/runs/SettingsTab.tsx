@@ -97,7 +97,7 @@ export function SettingsTab({ record }: { record: RunRecord }) {
                     <TableRow key={spec.key} className={cn(changed && "bg-accent/60")}>
                       <TableCell className="whitespace-normal">
                         {changed && <span className="sr-only">Changed: </span>}
-                        <span className={cn(changed && "font-medium")}>{spec.label}</span>{" "}
+                        <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
                         <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
                       </TableCell>
                       <TableCell className="font-mono text-xs break-all whitespace-normal">

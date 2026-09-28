@@ -476,7 +476,7 @@ function MainRow({
   return (
     <div className="grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 @xl:grid-cols-[12.5rem_minmax(0,1fr)]">
       <div className="grid content-start gap-0.5">
-        <span className="flex items-center gap-1.5 font-medium">
+        <span className="flex items-center gap-1.5 font-bold">
           {label}
           {changed && (
             <Badge variant="secondary" className="text-primary h-4 px-1.5 text-[0.6875rem]">

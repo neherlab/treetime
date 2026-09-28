@@ -66,8 +66,8 @@ export function runTimeEntry(record: RunRecord): SummaryEntry {
 }
 
 const TONE_CLASS = {
-  caution: "text-warning font-medium",
-  fault: "text-destructive font-medium",
+  caution: "text-warning font-bold",
+  fault: "text-destructive font-bold",
 } as const;
 
 export function SummaryStrip({ entries }: { entries: readonly SummaryEntry[] }) {
@@ -76,7 +76,7 @@ export function SummaryStrip({ entries }: { entries: readonly SummaryEntry[] }) 
       {entries.map((entry) => (
         <div key={entry.label} className="bg-card grid content-start gap-0.5 px-3.5 py-2.5">
           <dt className="text-muted-foreground text-xs">{entry.label}</dt>
-          <dd className="text-lg leading-snug font-medium">{entry.value}</dd>
+          <dd className="text-lg leading-snug font-bold">{entry.value}</dd>
           {entry.detail !== undefined && (
             <dd
               className={cn(

@@ -57,7 +57,7 @@ export function RunningView({ record, progress }: { record: RunRecord; progress:
                   ) : (
                     <CircleCheck aria-label="Done" className="text-success size-3.5" />
                   )}
-                  <span className={cn(stage.endSeconds === undefined && "font-medium")}>{stage.name}</span>
+                  <span className={cn(stage.endSeconds === undefined && "font-bold")}>{stage.name}</span>
                   <span className="text-muted-foreground ml-auto text-xs">
                     {((stage.endSeconds ?? stage.startSeconds) - stage.startSeconds).toFixed(1)} s
                   </span>
@@ -111,7 +111,7 @@ function NumberCell({ value, format }: { value: number | undefined; format: (val
   return Number.isFinite(value) ? (
     <TableCell className="text-right">{format(value)}</TableCell>
   ) : (
-    <TableCell className="text-destructive text-right font-medium" title="Not a finite number">
+    <TableCell className="text-destructive text-right font-bold" title="Not a finite number">
       {nonFiniteLabel(value)}
     </TableCell>
   );

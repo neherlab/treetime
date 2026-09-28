@@ -81,7 +81,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
           href={citation.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary font-medium underline-offset-4 hover:underline"
+          className="text-primary font-bold underline-offset-4 hover:underline"
         >
           doi:{citation.doi}
         </a>

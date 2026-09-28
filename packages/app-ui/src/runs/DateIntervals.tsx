@@ -104,7 +104,7 @@ function IntervalTooltip({
 
   return (
     <ChartTooltipFrame>
-      <div className="font-medium">{row.label}</div>
+      <div className="font-bold">{row.label}</div>
       <div>{row.date.date}</div>
       {row.interval !== undefined && (
         <div className="text-muted-foreground">

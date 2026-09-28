@@ -317,7 +317,7 @@ function RunHeader({ record }: { record: RunRecord }) {
       <div className="grid min-w-0 gap-1">
         <RunTitle record={record} />
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
+          <span className="text-foreground inline-flex items-center gap-1.5 font-bold">
             <StatusIcon status={record.status} />
             {statusLabel(record.status)}
           </span>

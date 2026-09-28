@@ -31,7 +31,7 @@ export function LogLines({
           {entries.map((entry) => (
             <div key={`${entry.kind}:${entry.seq}`} className={lineClass(entry)}>
               <span className="text-muted-foreground select-none">{formatSeconds(entry.seconds)} </span>
-              {entry.level === "warn" && <span className="font-medium">warning: </span>}
+              {entry.level === "warn" && <span className="font-bold">warning: </span>}
               {entry.level === "error" && <span>error: </span>}
               {entry.message}
             </div>
@@ -50,7 +50,7 @@ export function LogLines({
 
 function lineClass(entry: LogEntry): string | undefined {
   if (entry.kind === "stage") {
-    return "text-primary font-medium";
+    return "text-primary font-bold";
   }
 
   if (entry.level === "warn") {
@@ -58,7 +58,7 @@ function lineClass(entry: LogEntry): string | undefined {
   }
 
   if (entry.level === "error") {
-    return "text-destructive font-medium";
+    return "text-destructive font-bold";
   }
 
   return entry.level === "debug" || entry.level === "trace" ? "text-muted-foreground" : undefined;

@@ -25,7 +25,7 @@ export function PageHeading({
   return (
     <header className="flex flex-wrap items-start gap-4">
       <div className="grid min-w-0 gap-1">
-        <h1 className="font-heading text-2xl leading-tight font-semibold">{title}</h1>
+        <h1 className="font-heading text-2xl leading-tight font-bold">{title}</h1>
         {description !== undefined && <p className="text-muted-foreground text-sm">{description}</p>}
       </div>
       {actions !== undefined && <div className="ml-auto flex flex-wrap items-center gap-1.5">{actions}</div>}

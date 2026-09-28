@@ -65,7 +65,7 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
   return (
     <PageShell>
       <header className="flex flex-wrap items-center gap-2.5">
-        <h1 className="font-heading mr-2 text-2xl font-semibold">Compare runs</h1>
+        <h1 className="font-heading mr-2 text-2xl font-bold">Compare runs</h1>
         <RunPicker current={left} other={right} side="first" />
         <Button type="button" variant="ghost" size="sm" onClick={swap} aria-label="Swap the runs">
           <ArrowLeftRight aria-hidden />
@@ -113,7 +113,7 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
       aria-label={side === "first" ? "First run" : "Second run"}
       value={current.id}
       onChange={onChange}
-      className="max-w-[min(18rem,100%)] font-medium"
+      className="max-w-[min(18rem,100%)] font-bold"
     >
       {runs.map((run) => (
         <NativeSelectOption key={run.id} value={run.id}>
@@ -204,7 +204,7 @@ function RunLink({ record }: { record: RunRecord }) {
     <Link
       to="/runs/$id/results"
       params={{ id: record.id }}
-      className="text-primary font-medium underline-offset-4 hover:underline"
+      className="text-primary font-bold underline-offset-4 hover:underline"
     >
       {record.title}
     </Link>
@@ -369,7 +369,7 @@ function EstimateRow({
       <TableCell className="text-muted-foreground">{label}</TableCell>
       <TableCell className="whitespace-normal">{first}</TableCell>
       <TableCell className="whitespace-normal">{second}</TableCell>
-      <TableCell className="font-medium">{difference}</TableCell>
+      <TableCell className="font-bold">{difference}</TableCell>
     </TableRow>
   );
 }

@@ -98,7 +98,7 @@ export function SelectionPanel({
         {node.excluded === true && isTip && (
           <>
             <dt className="text-muted-foreground">Clock</dt>
-            <dd className="text-warning font-medium">Excluded: no usable date or clock outlier</dd>
+            <dd className="text-warning font-bold">Excluded: no usable date or clock outlier</dd>
           </>
         )}
         <dt className="text-muted-foreground">Mutations</dt>
@@ -110,7 +110,7 @@ export function SelectionPanel({
         <div className="border-t px-3.5 py-3">
           {matched > 0 && (
             <>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-bold">
                 Date of this {isTip ? "sample" : "clade"} in {matched} other time tree {matched === 1 ? "run" : "runs"}
               </p>
               <p className="text-muted-foreground mt-0.5 mb-2 text-xs">
