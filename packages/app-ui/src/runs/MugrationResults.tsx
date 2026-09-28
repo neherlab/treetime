@@ -113,7 +113,7 @@ export function MugrationResults({
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
       {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={attribute} />}
-      <div className="grid gap-3.5 xl:grid-cols-2">
+      <div className="grid gap-3.5 @4xl:grid-cols-2">
         <Panel title="State changes" hint="Counted over branches of the tree">
           <SortableTable
             label="State changes"

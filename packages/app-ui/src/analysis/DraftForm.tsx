@@ -118,8 +118,12 @@ export function DraftForm({ command }: { command: AppCommand }) {
     <div className="mx-auto max-w-[92.5rem] px-5 pt-4 pb-16">
       <PageHeader />
       <FormProvider {...form}>
-        <form noValidate onSubmit={onSubmit} className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
-          <div className="grid min-w-0 gap-5">
+        <form
+          noValidate
+          onSubmit={onSubmit}
+          className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_25rem]"
+        >
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
             <Step number={1} title="Analysis">
               <CommandCards command={command} config={config} />
             </Step>
@@ -134,7 +138,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
               <SettingsPanel command={command} config={config} facts={facts ?? undefined} checks={checks} />
             </Step>
           </div>
-          <aside className="grid gap-3.5 xl:sticky xl:top-4">
+          <aside className="grid gap-3.5 @4xl:sticky @4xl:top-[calc(var(--spacing-bar)+1rem)]">
             <CodePanel command={command} code={code} />
             <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_INFO[command].verb} />
           </aside>
@@ -187,7 +191,7 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={`step-${number}`}>
+    <section aria-labelledby={`step-${number}`} className="@container">
       <div className="mb-2 flex items-baseline gap-2.5">
         <span className="bg-ink text-surface-1 inline-grid size-5.5 place-items-center rounded-full text-xs font-bold">
           {number}

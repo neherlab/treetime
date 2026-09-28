@@ -66,7 +66,7 @@ export function AncestralResults({
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
       {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={undefined} />}
-      <div className="grid gap-3.5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-3.5 @4xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel title="Branches with the most mutations">
           <SortableTable
             label="Branches with the most mutations"

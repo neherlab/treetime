@@ -64,7 +64,7 @@ export function SettingsTab({ record }: { record: RunRecord }) {
   );
 
   return (
-    <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1fr)_32rem]">
+    <div className="grid gap-3.5 @5xl:grid-cols-[minmax(0,1fr)_32rem]">
       <Panel
         title="Settings used"
         hint={`${changedCount} ${changedCount === 1 ? "setting differs" : "settings differ"} from the defaults`}
@@ -75,45 +75,47 @@ export function SettingsTab({ record }: { record: RunRecord }) {
           </span>
         }
       >
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="text-ink-faint text-xs">
-              <th className="px-3.5 py-1.5 font-normal">Setting</th>
-              <th className="px-3.5 py-1.5 font-normal">Value</th>
-              <th className="px-3.5 py-1.5 font-normal">Default</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map(({ group, rows }) => (
-              <Fragment key={group}>
-                <tr className="bg-surface-2">
-                  <th colSpan={3} className="text-ink-muted px-3.5 py-1 text-xs font-bold">
-                    {group}
-                  </th>
-                </tr>
-                {rows.map((spec) => {
-                  const changed = changedKeys.has(spec.key);
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="text-ink-faint text-xs">
+                <th className="px-3.5 py-1.5 font-normal">Setting</th>
+                <th className="px-3.5 py-1.5 font-normal">Value</th>
+                <th className="px-3.5 py-1.5 font-normal">Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(({ group, rows }) => (
+                <Fragment key={group}>
+                  <tr className="bg-surface-2">
+                    <th colSpan={3} className="text-ink-muted px-3.5 py-1 text-xs font-bold">
+                      {group}
+                    </th>
+                  </tr>
+                  {rows.map((spec) => {
+                    const changed = changedKeys.has(spec.key);
 
-                  return (
-                    <tr key={spec.key} className={cn("border-line border-t", changed && "bg-accent-subtle")}>
-                      <td className="px-3.5 py-1.5">
-                        {changed && <span className="sr-only">Changed: </span>}
-                        <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
-                        <code className="text-ink-faint font-mono text-xs">{spec.flag}</code>
-                      </td>
-                      <td className="px-3.5 py-1.5 font-mono text-xs break-all">
-                        {defaultText(settingValue(config, spec))}
-                      </td>
-                      <td className="text-ink-faint px-3.5 py-1.5 font-mono text-xs">
-                        {spec.role === "setting" ? defaultText(spec.default_value) : ""}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+                    return (
+                      <tr key={spec.key} className={cn("border-line border-t", changed && "bg-accent-subtle")}>
+                        <td className="px-3.5 py-1.5">
+                          {changed && <span className="sr-only">Changed: </span>}
+                          <span className={cn(changed && "font-bold")}>{spec.label}</span>{" "}
+                          <code className="text-ink-faint font-mono text-xs">{spec.flag}</code>
+                        </td>
+                        <td className="px-3.5 py-1.5 font-mono text-xs break-all">
+                          {defaultText(settingValue(config, spec))}
+                        </td>
+                        <td className="text-ink-faint px-3.5 py-1.5 font-mono text-xs">
+                          {spec.role === "setting" ? defaultText(spec.default_value) : ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Panel>
       <div className="grid content-start gap-3.5">
         <Panel
@@ -128,7 +130,7 @@ export function SettingsTab({ record }: { record: RunRecord }) {
           }
         >
           <div className="grid gap-2 px-3.5 py-3">
-            <pre className="border-line bg-surface-2 m-0 max-h-96 overflow-auto rounded-md border px-3 py-2.5 font-mono text-xs leading-relaxed">
+            <pre className="border-line bg-surface-2 m-0 overflow-x-auto rounded-md border px-3 py-2.5 font-mono text-xs leading-relaxed">
               {keyedLines(lines).map(({ key, line, index }) => (
                 <CodeLineView
                   key={key}

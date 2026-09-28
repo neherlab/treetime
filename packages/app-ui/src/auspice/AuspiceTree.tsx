@@ -57,8 +57,8 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
     <I18nextProvider i18n={AUSPICE_I18N}>
       <ThemeProvider theme={SIDEBAR_THEME}>
         <Provider store={store}>
-          <div className="light-scope border-line grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border lg:grid-cols-[260px_minmax(0,1fr)]">
-            <aside aria-label="Tree controls" className="border-line border-b lg:border-r lg:border-b-0">
+          <div className="light-scope border-line grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border @3xl:grid-cols-[260px_minmax(0,1fr)]">
+            <aside aria-label="Tree controls" className="border-line border-b @3xl:border-r @3xl:border-b-0">
               <ControlsContainer>
                 <ControlHeader title="Color By" tooltip={ColorByInfo} />
                 <ColorBy />

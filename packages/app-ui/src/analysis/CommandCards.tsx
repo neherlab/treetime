@@ -28,7 +28,7 @@ export function CommandCards({ command, config }: { command: AppCommand; config:
   );
 
   return (
-    <fieldset className="m-0 grid grid-cols-2 gap-2 border-0 p-0 lg:grid-cols-3">
+    <fieldset className="m-0 grid grid-cols-2 gap-2 border-0 p-0 @2xl:grid-cols-3">
       <legend className="sr-only">Analysis</legend>
       {APP_COMMANDS.map((candidate) => (
         <CommandCard key={candidate} command={candidate} pressed={candidate === command} select={select} />

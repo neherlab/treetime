@@ -15,11 +15,11 @@ export function RootLayout() {
 
   return (
     <Tooltip.Provider delay={300}>
-      <div className="bg-surface-0 text-ink relative grid h-screen grid-rows-[3rem_1fr] overflow-hidden text-sm">
+      <div className="bg-surface-0 text-ink isolate grid min-h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[var(--spacing-bar)_1fr] text-sm">
         <TopBar />
-        <div className="grid min-h-0 grid-cols-1 md:grid-cols-[18.75rem_1fr]">
+        <div className="grid grid-cols-1 md:grid-cols-[18.75rem_minmax(0,1fr)]">
           <Sidebar />
-          <main className="relative min-w-0 overflow-auto">
+          <main className="@container">
             <Outlet />
           </main>
         </div>

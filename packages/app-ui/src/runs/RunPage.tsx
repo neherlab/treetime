@@ -276,7 +276,7 @@ function RunHeader({ record }: { record: RunRecord }) {
             aria-label="Compare with another run"
             value=""
             onChange={onCompare}
-            className="border-line-strong bg-surface-1 h-7 rounded-md border px-2 text-xs"
+            className="border-line-strong bg-surface-1 h-7 w-40 rounded-md border px-2 text-xs"
           >
             <option value="">Compare with...</option>
             {comparable.map((run) => (

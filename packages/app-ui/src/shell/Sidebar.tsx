@@ -44,7 +44,10 @@ export function Sidebar() {
   );
 
   return (
-    <nav aria-label="Runs" className="border-line bg-surface-1 hidden min-h-0 flex-col border-r md:flex">
+    <nav
+      aria-label="Runs"
+      className="border-line bg-surface-1 top-bar sticky hidden h-[calc(100dvh-var(--spacing-bar))] flex-col border-r md:flex"
+    >
       <div className="grid gap-2 px-3 pt-3 pb-2">
         <Button className="w-full" onClick={openNew}>
           <Plus size={14} aria-hidden />
@@ -62,7 +65,7 @@ export function Sidebar() {
         />
         {commands.length > 1 && <CommandFilter commands={commands} />}
       </div>
-      <div className="relative min-h-0 flex-1 overflow-auto px-1.5 pb-3">
+      <div className="min-h-0 flex-1 overflow-auto px-1.5 pb-3">
         {error !== null && <p className="text-signal-danger p-3 text-xs">The runs cannot be listed: {error.message}</p>}
         {groups.map((group) => (
           <section key={group.label} aria-label={group.label}>

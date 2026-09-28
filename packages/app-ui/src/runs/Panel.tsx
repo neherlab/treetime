@@ -23,7 +23,7 @@ export function Panel({
       <header className="border-line flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b px-3.5 py-2.5">
         <h3 className="font-bold">{title}</h3>
         {hint !== undefined && <span className="text-ink-faint text-xs">{hint}</span>}
-        {actions !== undefined && <div className="ml-auto flex items-center gap-1.5">{actions}</div>}
+        {actions !== undefined && <div className="ml-auto flex flex-wrap items-center gap-1.5">{actions}</div>}
       </header>
       {children}
     </section>
@@ -49,7 +49,7 @@ export function runTimeEntry(record: RunRecord): SummaryEntry {
 
 export function SummaryStrip({ entries }: { entries: readonly SummaryEntry[] }) {
   return (
-    <dl className="border-line bg-surface-1 m-0 grid grid-cols-2 gap-px overflow-hidden rounded-lg border sm:grid-cols-3 xl:grid-cols-6">
+    <dl className="border-line bg-surface-1 m-0 grid grid-cols-2 gap-px overflow-hidden rounded-lg border @lg:grid-cols-3 @5xl:grid-cols-6">
       {entries.map((entry) => (
         <div key={entry.label} className="bg-surface-1 px-3.5 py-2.5">
           <dt className="text-ink-faint text-xs">{entry.label}</dt>

@@ -32,7 +32,7 @@ export function TopBar() {
   const cycleTheme = useCallback(() => setTheme(nextTheme(theme)), [setTheme, theme]);
 
   return (
-    <header className="border-line bg-surface-1 flex items-center gap-3 border-b px-3.5">
+    <header className="border-line bg-surface-1 sticky top-0 z-10 flex items-center gap-3 border-b px-3.5">
       <div className="flex items-center gap-2 text-base font-bold">
         <BrandMark />
         TreeTime
@@ -48,7 +48,7 @@ export function TopBar() {
       >
         <Search size={14} aria-hidden />
         <span className="hidden flex-1 md:inline">Search runs, settings, examples</span>
-        <kbd className="border-line-strong bg-surface-1 text-ink-muted rounded-sm border px-1 font-mono text-[0.6875rem]">
+        <kbd className="border-line-strong bg-surface-1 text-ink-muted hidden rounded-sm border px-1 font-mono text-[0.6875rem] md:inline">
           Ctrl K
         </kbd>
       </button>

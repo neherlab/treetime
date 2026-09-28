@@ -393,7 +393,7 @@ function ModelRow({ context }: { context: RowContext }) {
           aria-label="Model parameters"
           placeholder="kappa=0.2 pis=0.25,0.25,0.25,0.25"
           onChange={onParams}
-          className="border-line-strong bg-surface-1 w-72 rounded-md border px-2 py-1"
+          className="border-line-strong bg-surface-1 w-72 max-w-full rounded-md border px-2 py-1"
         />
       </Labeled>
     </MainRow>
@@ -474,7 +474,7 @@ function MainRow({
   const checks = context.checks.filter((check) => check.settings.some((setting) => keys.includes(setting)));
 
   return (
-    <div className="border-surface-3 grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 md:grid-cols-[12.5rem_1fr]">
+    <div className="border-surface-3 grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 @xl:grid-cols-[12.5rem_minmax(0,1fr)]">
       <div className="font-bold">
         {label}
         {changed && (
@@ -576,7 +576,7 @@ function Inline({ children }: { children: React.ReactNode }) {
 
 function Labeled({ text, children }: { text: string; children: React.ReactNode }) {
   return (
-    <span className="text-ink-muted inline-flex items-center gap-1.5">
+    <span className="text-ink-muted inline-flex max-w-full flex-wrap items-center gap-1.5">
       {text}
       {children}
     </span>

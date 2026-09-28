@@ -27,7 +27,7 @@ export function RunningView({ record, progress }: { record: RunRecord; progress:
   const percent = Math.round(Math.min(1, Math.max(0, progress.fraction)) * 100);
 
   return (
-    <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_26rem]">
+    <div className="grid gap-3.5 @3xl:grid-cols-[minmax(0,1fr)_26rem]">
       <Panel
         title="Log"
         hint="Follows new lines until you scroll up"

@@ -54,21 +54,23 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
         <p className="text-signal-danger px-3.5 py-3">The file list cannot be loaded: {error.message}</p>
       )}
       {files !== undefined && (
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="text-ink-faint text-xs">
-              <th className="px-3.5 py-1.5 font-normal">File</th>
-              <th className="px-3.5 py-1.5 font-normal">Contents</th>
-              <th className="px-3.5 py-1.5 text-right font-normal">Size</th>
-              <th className="px-3.5 py-1.5" aria-label="Download" />
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((file) => (
-              <FileRow key={file.path} runId={record.id} file={file} />
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="text-ink-faint text-xs">
+                <th className="px-3.5 py-1.5 font-normal">File</th>
+                <th className="px-3.5 py-1.5 font-normal">Contents</th>
+                <th className="px-3.5 py-1.5 text-right font-normal">Size</th>
+                <th className="px-3.5 py-1.5" aria-label="Download" />
+              </tr>
+            </thead>
+            <tbody>
+              {files.map((file) => (
+                <FileRow key={file.path} runId={record.id} file={file} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <p className="border-line text-ink-muted m-0 border-t px-3.5 py-3 text-xs">
         Please cite: {citation.text}{" "}

@@ -34,7 +34,7 @@ export function SettingField({
   return (
     <div
       className={cn(
-        "border-surface-3 grid gap-x-4.5 gap-y-1 border-t py-2 pr-3.5 pl-7.5 md:grid-cols-[minmax(0,1fr)_16.25rem]",
+        "border-surface-3 grid gap-x-4.5 gap-y-1 border-t py-2 pr-3.5 pl-7.5 @xl:grid-cols-[minmax(0,1fr)_16.25rem]",
         changed && "from-accent-subtle bg-gradient-to-r to-transparent to-60%",
       )}
     >
@@ -47,7 +47,7 @@ export function SettingField({
           <span className="text-ink-faint text-xs">Default: {defaultText(spec.default_value)}</span>
         )}
       </div>
-      <div className="flex items-start gap-1.5 md:col-start-2 md:row-span-2 md:row-start-1">
+      <div className="flex items-start gap-1.5 @xl:col-start-2 @xl:row-span-2 @xl:row-start-1">
         <div className="min-w-0 flex-1">
           <SettingControl command={command} spec={spec} label={label} />
           {error !== null && <p className="text-signal-danger mt-0.5 text-xs">{error}</p>}

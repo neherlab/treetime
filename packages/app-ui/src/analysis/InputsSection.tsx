@@ -19,8 +19,8 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
   const closeExamples = useCallback(() => setShowExamples(false), []);
 
   return (
-    <div className="grid gap-2">
-      <div className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-ink-faint">
           {localFiles === null
             ? "Files are uploaded into the run folder on the server"
@@ -60,7 +60,7 @@ function InputSlotRow({
       onDragLeave={drop.onDragLeave}
       onDrop={drop.onDrop}
       className={cn(
-        "bg-surface-1 grid grid-cols-[7.5rem_1fr_auto] items-center gap-3 rounded-lg border px-3 py-2.5",
+        "bg-surface-1 grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5",
         paths.length > 0 ? "border-line" : "border-line-strong border-dashed",
         drop.over && "border-accent bg-accent-subtle",
       )}

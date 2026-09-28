@@ -55,7 +55,7 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
   );
 
   return (
-    <div className="mx-auto grid max-w-[110rem] gap-3.5 px-5 pt-4 pb-16">
+    <div className="mx-auto grid max-w-[110rem] grid-cols-1 gap-3.5 px-5 pt-4 pb-16">
       <div className="flex flex-wrap items-center gap-2.5">
         <h1 className="mr-2 text-2xl font-bold">Compare runs</h1>
         <RunPicker current={left} other={right} side="first" />
@@ -99,7 +99,7 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
       aria-label={side === "first" ? "First run" : "Second run"}
       value={current.id}
       onChange={onChange}
-      className="border-line-strong bg-surface-1 h-8 max-w-72 rounded-md border px-2 font-bold"
+      className="border-line-strong bg-surface-1 h-8 max-w-[min(18rem,100%)] rounded-md border px-2 font-bold"
     >
       {runs.map((run) => (
         <option key={run.id} value={run.id}>
@@ -245,7 +245,7 @@ function TimetreeEstimatesComparison({
 
   return (
     <>
-      <div className="grid gap-3.5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid gap-3.5 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Panel title="Estimates">
           <table className="w-full border-collapse text-left text-sm tabular-nums">
             <thead>

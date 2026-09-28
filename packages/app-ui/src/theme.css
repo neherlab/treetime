@@ -9,6 +9,8 @@
   --radius-md: 0.3125rem;
   --radius-lg: 0.5rem;
 
+  --spacing-bar: 3rem;
+
   /* Each color resolves by the color-scheme of the element that uses it: light-dark(<light>, <dark>) */
   --color-surface-0: light-dark(#e9eeec, #0e1615);
   --color-surface-1: light-dark(#ffffff, #15201e);
@@ -45,6 +47,7 @@
   }
 
   html {
+    scroll-padding-top: var(--spacing-bar);
     font-family: var(--font-sans);
     font-variant-numeric: tabular-nums lining-nums;
     -webkit-font-smoothing: antialiased;
