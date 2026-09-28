@@ -22,7 +22,7 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
   const { data: catalog, error } = useApi((context) => datasets(context), { staleTime: Infinity });
 
   return (
-    <Card size="sm" className="gap-0 py-0 shadow-none">
+    <Card size="sm" className="gap-0 py-0">
       <PanelHeading title="Example data" hint="Bundled datasets with tree, alignment and metadata">
         <Button type="button" variant="ghost" size="sm" onClick={close}>
           Close

@@ -54,7 +54,7 @@ export function SettingsPanel({
   const onChangedOnly = useCallback((checked: boolean) => update({ changedOnly: checked }), [update]);
 
   return (
-    <Card size="sm" className="gap-0 py-0 shadow-none">
+    <Card size="sm" className="gap-0 py-0">
       <div className="flex flex-wrap items-center gap-2.5 border-b px-3.5 py-2.5">
         <OptionToggle label="Settings view" value={view} onChange={onView} options={views} />
         {view === "all" ? (
