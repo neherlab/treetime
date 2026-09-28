@@ -1,8 +1,11 @@
+import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
 import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { createAuspiceStore } from "../store";
 import { focusNode } from "../store-hooks";
+
+const NUC_ANNOTATION = { nuc: { start: 1, end: 3, strand: "+", type: "source" } };
 
 describe("auspice store", () => {
   beforeEach(() => {
@@ -66,6 +69,30 @@ describe("auspice store", () => {
 
     expect(store.getState().controls.scatterVariables).toStrictEqual({ x: "gt", y: "div" });
   });
+
+  test.each([
+    {
+      annotations: "a nuc range",
+      meta: { panels: ["tree", "entropy"], genome_annotations: NUC_ANNOTATION },
+      panels: ["tree", "entropy"],
+    },
+    { annotations: "no", meta: { panels: ["tree"] }, panels: ["tree"] },
+  ])(
+    "a document with $annotations genome annotations displays the panels $panels (auspice entropy needs meta.genome_annotations)",
+    ({ meta, panels }) => {
+      const store = createAuspiceStore();
+
+      const state = createStateFromQueryOrJSONs({
+        json: auspiceDocument(meta),
+        query: {},
+        dispatch: store.dispatch,
+      });
+
+      store.dispatch({ ...state, type: CLEAN_START });
+
+      expect(store.getState().controls.panelsToDisplay).toStrictEqual(panels);
+    },
+  );
 });
 
 function cleanStart({ tips, controls }: { tips: number; controls: Readonly<Record<string, unknown>> }) {
@@ -93,5 +120,27 @@ function newGenotypeColors() {
     type: NEW_COLORS,
     colorBy: "gt-nuc_2",
     colorScale: { scaleType: "categorical", domain: ["A", "C"] },
+  };
+}
+
+function auspiceDocument(meta: Readonly<Record<string, unknown>>) {
+  return {
+    version: "v2",
+    meta: {
+      title: "TreeTime ancestral analysis",
+      updated: "2026-07-19",
+      colorings: [{ key: "gt", title: "Genotype", type: "categorical" }],
+      display_defaults: { color_by: "gt-nuc_1" },
+      ...meta,
+    },
+    tree: {
+      name: "root",
+      node_attrs: { div: 0 },
+      children: [
+        { name: "A", node_attrs: { div: 0.5 }, branch_attrs: { mutations: { nuc: ["A1T"] } } },
+        { name: "B", node_attrs: { div: 0.1 } },
+      ],
+    },
+    root_sequence: { nuc: "ACG" },
   };
 }

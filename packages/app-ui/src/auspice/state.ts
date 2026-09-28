@@ -29,6 +29,7 @@ interface AuspiceNode {
 export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
+  panelsToDisplay: readonly string[];
   selectedNode: AuspiceSelectedNode | null;
   filters: Readonly<Record<string, readonly AuspiceFilterValue[]>>;
   performanceFlags: ReadonlyMap<string, boolean>;

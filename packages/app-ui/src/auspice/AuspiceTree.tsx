@@ -10,6 +10,7 @@ import { ControlsContainer } from "auspice/src/components/controls/styles";
 import { ToggleFocus } from "auspice/src/components/controls/toggle-focus";
 import { DownloadButtons } from "auspice/src/components/download/downloadButtons";
 import { publications } from "auspice/src/components/download/downloadModal";
+import Entropy from "auspice/src/components/entropy";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
 import { calcUsableWidth } from "auspice/src/util/computeResponsive";
@@ -21,7 +22,9 @@ import { ThemeProvider } from "styled-components";
 import { useElementWidth } from "../hooks/useElementWidth";
 import { Button } from "../ui";
 import { AUSPICE_I18N } from "./i18n";
+import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
+import { useAuspiceSelector } from "./store-hooks";
 
 const SIDEBAR_THEME = {
   background: "var(--color-surface-2)",
@@ -43,9 +46,12 @@ const MIN_TREE_HEIGHT = 480;
 
 const MAX_TREE_HEIGHT = 1100;
 
+const ENTROPY_HEIGHT = 300;
+
 export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number }) {
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const toggleDownloads = useCallback(() => setDownloadsOpen((open) => !open), []);
+  const showEntropy = useAuspiceSelector(store, selectShowEntropy);
 
   return (
     <I18nextProvider i18n={AUSPICE_I18N}>
@@ -86,7 +92,7 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
                   <DownloadButtons relevantPublications={RELEVANT_PUBLICATIONS} />
                 </div>
               )}
-              <SizedTree tips={tips} />
+              <SizedPanels tips={tips} showEntropy={showEntropy} />
             </div>
           </div>
         </Provider>
@@ -95,14 +101,23 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
   );
 }
 
-function SizedTree({ tips }: { tips: number }) {
+function SizedPanels({ tips, showEntropy }: { tips: number; showEntropy: boolean }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const width = Math.floor(calcUsableWidth(useElementWidth(container), 1));
   const height = Math.min(MAX_TREE_HEIGHT, Math.max(MIN_TREE_HEIGHT, tips * TREE_ROW_PX));
 
   return (
     <div ref={setContainer} className="relative min-w-0 pb-2">
-      {width >= MIN_TREE_WIDTH && <Tree width={width} height={height} />}
+      {width >= MIN_TREE_WIDTH && (
+        <>
+          <Tree width={width} height={height} />
+          {showEntropy && <Entropy width={width} height={ENTROPY_HEIGHT} />}
+        </>
+      )}
     </div>
   );
+}
+
+function selectShowEntropy(state: AuspiceState): boolean {
+  return state.controls.panelsToDisplay.includes("entropy");
 }
