@@ -92,7 +92,7 @@ impl AppService {
     if defer_start {
       Ok(record)
     } else {
-      self.start(&record.id, None)
+      self.start(&record.id, StartRunRequest::default())
     }
   }
 
@@ -101,7 +101,7 @@ impl AppService {
   }
 
   pub fn start_run(&self, id: &JobId, request: StartRunRequest) -> Result<RunRecord, Report> {
-    self.start(id, request.config)
+    self.start(id, request)
   }
 
   pub fn update_run(&self, id: &JobId, request: UpdateRunRequest) -> Result<RunSummary, Report> {
@@ -139,9 +139,12 @@ impl AppService {
     Box::new(move |config: &mut Value| policy.confine(command, config))
   }
 
-  fn start(&self, id: &JobId, config: Option<Value>) -> Result<RunRecord, Report> {
-    let command = self.runs.get(id)?.command;
-    let started = self.runs.start(id, config, self.hook(command))?;
+  fn start(&self, id: &JobId, request: StartRunRequest) -> Result<RunRecord, Report> {
+    let command = match request.command {
+      Some(command) => command,
+      None => self.runs.get(id)?.command,
+    };
+    let started = self.runs.start(id, request, self.hook(command))?;
     let record = started.record().clone();
     let run_id = id.clone();
     thread::Builder::new()

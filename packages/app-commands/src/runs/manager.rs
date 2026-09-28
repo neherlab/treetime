@@ -6,9 +6,11 @@ use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::{file_sha256, hash_inputs};
-use crate::runs::record::{CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, UpdateRunRequest};
+use crate::runs::record::{
+  CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, StartRunRequest, UpdateRunRequest,
+};
 use crate::runs::store::RunStore;
-use chrono::Utc;
+use chrono::{TimeDelta, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::error;
@@ -31,6 +33,8 @@ const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
 const APP_EVENT_CAPACITY: usize = 1024;
 
+const UNSTARTED_RUN_LIFETIME: TimeDelta = TimeDelta::days(1);
+
 pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
 
 pub fn unconfined() -> ConfigHook {
@@ -50,6 +54,9 @@ impl RunManager {
     store
       .recover_interrupted()
       .wrap_err("When marking the runs of a previous process as interrupted")?;
+    store
+      .remove_unstarted(Utc::now() - UNSTARTED_RUN_LIFETIME)
+      .wrap_err("When removing runs that were created for uploads and never started")?;
     let first_app_seq =
       usize::try_from(Utc::now().timestamp_micros()).wrap_err("When numbering the app events from the current time")?;
     Ok(Arc::new(Self {
@@ -92,13 +99,16 @@ impl RunManager {
     Ok(record)
   }
 
-  pub fn start(self: &Arc<Self>, id: &JobId, config: Option<Value>, hook: ConfigHook) -> Result<StartedRun, Report> {
+  pub fn start(self: &Arc<Self>, id: &JobId, request: StartRunRequest, hook: ConfigHook) -> Result<StartedRun, Report> {
     let mut active = self.active.lock();
     let record = self.modify(id, |record| {
       if record.status != RunStatus::Created {
         return Err(conflict(format!("run `{}` has already started", id.as_str())));
       }
-      if let Some(config) = config {
+      if let Some(command) = request.command {
+        record.command = command;
+      }
+      if let Some(config) = request.config {
         let Value::Object(config) = config else {
           return Err(invalid("a command configuration must be a mapping of settings"));
         };

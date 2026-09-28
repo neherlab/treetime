@@ -773,6 +773,11 @@ export type UpdateRunRequest = {
  */
 export type StartRunRequest = {
   /**
+   * Command that replaces the one given at creation, for example when the user chose another analysis after
+   * uploading its inputs.
+   */
+  command?: AppCommand | null;
+  /**
    * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
    */
   config?: unknown;

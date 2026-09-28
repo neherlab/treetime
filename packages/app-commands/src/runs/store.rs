@@ -126,6 +126,19 @@ impl RunStore {
     Ok(self.run_ids()?.iter().map(|id| self.inputs_dir(id)).collect())
   }
 
+  pub fn remove_unstarted(&self, created_before: DateTime<Utc>) -> Result<Vec<JobId>, Report> {
+    let mut removed = vec![];
+    for record in self.list()? {
+      if record.status != RunStatus::Created || record.created_at >= created_before {
+        continue;
+      }
+      let dir = self.run_dir(&record.id);
+      fs::remove_dir_all(&dir).wrap_err_with(|| format!("When removing the unstarted run '{}'", dir.display()))?;
+      removed.push(record.id);
+    }
+    Ok(removed)
+  }
+
   pub fn recover_interrupted(&self) -> Result<Vec<JobId>, Report> {
     let mut recovered = vec![];
     for mut record in self.list()? {

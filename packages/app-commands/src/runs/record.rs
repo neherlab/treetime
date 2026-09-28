@@ -166,6 +166,10 @@ pub struct CreateRunRequest {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StartRunRequest {
+  /// Command that replaces the one given at creation, for example when the user chose another analysis after
+  /// uploading its inputs.
+  #[serde(default)]
+  pub command: Option<AppCommand>,
   /// Configuration that replaces the one given at creation, for example to point at uploaded inputs.
   #[serde(default)]
   pub config: Option<Value>,

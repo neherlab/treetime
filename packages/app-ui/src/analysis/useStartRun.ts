@@ -21,17 +21,14 @@ export function useStartRun(command: AppCommand) {
 
       try {
         const upload = await pendingUploadRun(client, draft.uploadRunId);
-        let id: string;
 
-        if (upload !== undefined && upload.command === command) {
-          id = (await runsStart({ client, path: { id: upload.id }, body: { config }, throwOnError: true })).data.id;
-        } else {
-          id = (await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })).data
-            .id;
-        }
+        const { data: record } =
+          upload === undefined
+            ? await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })
+            : await runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true });
 
         draft.update({ fromRunId: null, uploadRunId: null });
-        await navigate({ to: "/runs/$id/results", params: { id } });
+        await navigate({ to: "/runs/$id/results", params: { id: record.id } });
       } catch (error: unknown) {
         toasts.add({
           title: "The run cannot be started",

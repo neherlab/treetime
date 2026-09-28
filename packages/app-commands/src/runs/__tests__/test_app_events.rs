@@ -2,7 +2,7 @@
 mod tests {
   use crate::runs::app_events::{AppChange, AppEventLog, StalePath};
   use crate::runs::manager::{RunManager, unconfined};
-  use crate::runs::record::UpdateRunRequest;
+  use crate::runs::record::{StartRunRequest, UpdateRunRequest};
   use helpers::{Change, changes, collect, create, recorded, seqs, summarize};
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -176,7 +176,10 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs);
     let received = collect(runs.app_events(), None);
-    runs.start(&created.id, None, unconfined()).unwrap().run();
+    runs
+      .start(&created.id, StartRunRequest::default(), unconfined())
+      .unwrap()
+      .run();
     let statuses = changes(&received)
       .into_iter()
       .map(|change| (change.kind, change.status))

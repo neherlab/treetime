@@ -2275,6 +2275,18 @@
         "description": "Request to start a created run.",
         "type": "object",
         "properties": {
+          "command": {
+            "description": "Command that replaces the one given at creation, for example when the user chose another analysis after\nuploading its inputs.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppCommand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "config": {
             "description": "Configuration that replaces the one given at creation, for example to point at uploaded inputs.",
             "default": null

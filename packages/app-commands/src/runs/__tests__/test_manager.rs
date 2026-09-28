@@ -1,16 +1,18 @@
 #[cfg(test)]
 mod tests {
   use crate::command::AppCommand;
-  use crate::job::{JobEvent, TerminalEvent};
+  use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::manager::RunManager;
-  use crate::runs::record::{RunRecord, RunStatus, UpdateRunRequest};
+  use crate::runs::record::{RunRecord, RunStatus, StartRunRequest, UpdateRunRequest};
   use crate::runs::store::{RunStore, default_title};
-  use chrono::Local;
+  use chrono::{Local, TimeDelta, Utc};
   use helpers::{accept, clock_config, create, event_types, terminal_status, timetree_config};
+  use maplit::btreeset;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::collections::BTreeSet;
   use std::fs;
   use std::sync::Arc;
   use std::thread;
@@ -24,7 +26,10 @@ mod tests {
     let created = create(&runs, AppCommand::Clock, clock_config());
     assert_eq!(RunStatus::Created, created.status);
 
-    let terminal = runs.start(&created.id, None, accept()).unwrap().run();
+    let terminal = runs
+      .start(&created.id, StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
     assert_eq!("ok", terminal_status(&terminal));
 
     let record = runs.get(&created.id).unwrap();
@@ -58,7 +63,10 @@ mod tests {
     config["output_all"] = json!("/elsewhere");
     config["output_clock_model"] = json!("/elsewhere/model.json");
     let created = create(&runs, AppCommand::Clock, config);
-    runs.start(&created.id, None, accept()).unwrap().run();
+    runs
+      .start(&created.id, StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
     let record = runs.get(&created.id).unwrap();
     let files: Vec<&str> = record
       .output_files
@@ -86,7 +94,7 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let first = create(&runs, AppCommand::Clock, clock_config());
     let second = create(&runs, AppCommand::Clock, clock_config());
-    let started = runs.start(&second.id, None, accept()).unwrap();
+    let started = runs.start(&second.id, StartRunRequest::default(), accept()).unwrap();
     let list = runs.list().unwrap();
     assert_eq!(
       (vec![second.id, first.id], 1),
@@ -115,7 +123,7 @@ mod tests {
       )
     );
     assert_error!(
-      runs.start(&created.id, None, accept()),
+      runs.start(&created.id, StartRunRequest::default(), accept()),
       format!("run `{}` has already started", created.id.as_str())
     );
   }
@@ -126,8 +134,8 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let first = create(&runs, AppCommand::Timetree, timetree_config());
     let second = create(&runs, AppCommand::Timetree, timetree_config());
-    let first_started = runs.start(&first.id, None, accept()).unwrap();
-    let second_started = runs.start(&second.id, None, accept()).unwrap();
+    let first_started = runs.start(&first.id, StartRunRequest::default(), accept()).unwrap();
+    let second_started = runs.start(&second.id, StartRunRequest::default(), accept()).unwrap();
 
     let cancelled = Arc::new(Mutex::new(false));
     let manager = Arc::clone(&runs);
@@ -180,7 +188,7 @@ mod tests {
     let id = {
       let runs = RunManager::open(root.path()).unwrap();
       let created = create(&runs, AppCommand::Clock, clock_config());
-      let started = runs.start(&created.id, None, accept()).unwrap();
+      let started = runs.start(&created.id, StartRunRequest::default(), accept()).unwrap();
       drop(started);
       created.id
     };
@@ -268,7 +276,10 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, clock_config());
-    runs.start(&created.id, None, accept()).unwrap().run();
+    runs
+      .start(&created.id, StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
     fs::write(root.path().join("outside.txt"), "secret").unwrap();
     runs.file_path(&created.id, "clock.clock-model.json").unwrap();
     for escape in ["../run.json", "/etc/passwd", "../../outside.txt", ""] {
@@ -289,7 +300,7 @@ mod tests {
     let names: Vec<String> = fs::read_dir(&dir)
       .unwrap()
       .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-      .collect::<std::collections::BTreeSet<_>>()
+      .collect::<BTreeSet<_>>()
       .into_iter()
       .collect();
     let reread: RunRecord = serde_json::from_str(&fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
@@ -299,6 +310,47 @@ mod tests {
         default_title(&record.created_at.with_timezone(&Local))
       ),
       (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
+    );
+  }
+
+  #[test]
+  fn test_manager_start_replaces_the_command_given_at_creation() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Timetree, json!({}));
+    let request = StartRunRequest {
+      command: Some(AppCommand::Clock),
+      config: Some(clock_config()),
+    };
+    let terminal = runs.start(&created.id, request, accept()).unwrap().run();
+    let record = runs.get(&created.id).unwrap();
+    assert_eq!(("ok", AppCommand::Clock), (terminal_status(&terminal), record.command));
+  }
+
+  #[test]
+  fn test_manager_open_removes_unstarted_runs_older_than_a_day() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let recent = create(&runs, AppCommand::Clock, clock_config());
+    let mut stale = create(&runs, AppCommand::Clock, clock_config());
+    let mut finished = create(&runs, AppCommand::Clock, clock_config());
+    runs
+      .start(&finished.id, StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
+    finished = runs.get(&finished.id).unwrap();
+    let two_days_ago = Utc::now() - TimeDelta::days(2);
+    stale.created_at = two_days_ago;
+    finished.created_at = two_days_ago;
+    runs.store().write(&stale).unwrap();
+    runs.store().write(&finished).unwrap();
+    drop(runs);
+
+    let reopened = RunManager::open(root.path()).unwrap();
+    let kept: BTreeSet<JobId> = reopened.list().unwrap().runs.into_iter().map(|run| run.id).collect();
+    assert_eq!(
+      (btreeset! { recent.id, finished.id }, false),
+      (kept, reopened.store().run_dir(&stale.id).exists())
     );
   }
 

@@ -435,6 +435,7 @@ export const zUpdateRunRequest = z.strictObject({
  * Request to start a created run.
  */
 export const zStartRunRequest = z.strictObject({
+  command: zAppCommand.nullish().default(null),
   config: z.unknown().optional().default(null)
 });
 

@@ -414,7 +414,7 @@ mod tests {
     use crate::command::AppCommand;
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
-    use crate::runs::record::{CreateRunRequest, RunStatus};
+    use crate::runs::record::{CreateRunRequest, RunStatus, StartRunRequest};
     use app_output::output_plan::OutputSelection;
     use eyre::Report;
     use serde_json::{Value, json};
@@ -453,7 +453,11 @@ mod tests {
         })
         .unwrap();
       runs
-        .start(&created.id, None, Box::new(|_config: &mut Value| Ok(())))
+        .start(
+          &created.id,
+          StartRunRequest::default(),
+          Box::new(|_config: &mut Value| Ok(())),
+        )
         .unwrap()
         .run();
       assert_eq!(RunStatus::Ok, runs.get(&created.id).unwrap().status);
