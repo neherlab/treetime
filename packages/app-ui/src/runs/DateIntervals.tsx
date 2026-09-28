@@ -1,11 +1,9 @@
-import { useElementSize } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { Bar, ComposedChart, Scatter, XAxis, YAxis } from "recharts";
 
 import type { DateInterval, YearDate } from "../results/types";
-import { ChartTooltip } from "../ui/chart";
-import { CHART, niceAxis, TICK_STYLE, tickCountFor, yearTick } from "./palette";
-import { TooltipCard } from "./TooltipCard";
+import { ChartTooltip, ChartTooltipFrame } from "../ui/chart";
+import { CHART, niceAxis, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 
 export interface DateRow {
   id: string;
@@ -19,8 +17,6 @@ const ROW_HEIGHT = 28;
 
 const AXIS_HEIGHT = 28;
 
-const PX_PER_TICK = 80;
-
 const MIN_SPAN_YEARS = 0.05;
 
 const LABEL_WIDTH = 160;
@@ -29,6 +25,8 @@ const MARGIN = { top: 4, right: 16, bottom: 0, left: 0 };
 
 const BAR_SIZE = 6;
 
+const FULL_WIDTH = "100%";
+
 export function DateIntervals({
   rows,
   onOpen,
@@ -36,9 +34,7 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const { ref, width } = useElementSize<HTMLDivElement>();
-  const tickCount = tickCountFor(width - LABEL_WIDTH, PX_PER_TICK);
-  const axis = useMemo(() => dateAxis(rows, tickCount), [rows, tickCount]);
+  const axis = useMemo(() => dateAxis(rows), [rows]);
   const data = useMemo(() => rows.map(plotRow), [rows]);
   const labels = useMemo(() => new Map(rows.map((row) => [row.id, row.label])), [rows]);
   const rowLabel = useCallback((id: string) => labels.get(id) ?? id, [labels]);
@@ -55,41 +51,38 @@ export function DateIntervals({
   );
 
   return (
-    <div
-      ref={ref}
-      className="[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-surface]:outline-hidden"
-    >
-      {width > 0 && (
-        <ComposedChart
-          layout="vertical"
-          data={data}
-          margin={MARGIN}
-          width={width}
-          height={rows.length * ROW_HEIGHT + AXIS_HEIGHT}
-        >
-          <XAxis
-            type="number"
-            domain={axis.domain}
-            ticks={axis.ticks}
-            tick={TICK_STYLE}
-            tickFormatter={yearTick}
-            stroke={CHART.muted}
-          />
-          <YAxis
-            type="category"
-            dataKey="id"
-            width={LABEL_WIDTH}
-            tick={TICK_STYLE}
-            tickFormatter={rowLabel}
-            onClick={openRow}
-            className={onOpen === undefined ? "" : "cursor-pointer"}
-          />
-          <ChartTooltip content={<IntervalTooltip rows={rows} />} isAnimationActive={false} cursor={false} />
-          <Bar dataKey="interval" barSize={BAR_SIZE} fill={CHART.accent} fillOpacity={0.35} isAnimationActive={false} />
-          <Scatter dataKey="otherYear" fill={CHART.accent} isAnimationActive={false} />
-          <Scatter dataKey="currentYear" fill={CHART.selection} isAnimationActive={false} />
-        </ComposedChart>
-      )}
+    <div className="[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-surface]:outline-hidden">
+      <ComposedChart
+        responsive
+        layout="vertical"
+        data={data}
+        margin={MARGIN}
+        width={FULL_WIDTH}
+        height={rows.length * ROW_HEIGHT + AXIS_HEIGHT}
+      >
+        <XAxis
+          type="number"
+          domain={axis.domain}
+          ticks={axis.ticks}
+          {...THINNED_TICKS}
+          tick={TICK_STYLE}
+          tickFormatter={yearTick}
+          stroke={CHART.muted}
+        />
+        <YAxis
+          type="category"
+          dataKey="id"
+          width={LABEL_WIDTH}
+          tick={TICK_STYLE}
+          tickFormatter={rowLabel}
+          onClick={openRow}
+          className={onOpen === undefined ? "" : "cursor-pointer"}
+        />
+        <ChartTooltip content={<IntervalTooltip rows={rows} />} isAnimationActive={false} cursor={false} />
+        <Bar dataKey="interval" barSize={BAR_SIZE} fill={CHART.accent} fillOpacity={0.35} isAnimationActive={false} />
+        <Scatter dataKey="otherYear" fill={CHART.accent} isAnimationActive={false} />
+        <Scatter dataKey="currentYear" fill={CHART.selection} isAnimationActive={false} />
+      </ComposedChart>
     </div>
   );
 }
@@ -110,7 +103,7 @@ function IntervalTooltip({
   }
 
   return (
-    <TooltipCard>
+    <ChartTooltipFrame>
       <div className="font-medium">{row.label}</div>
       <div>{row.date.date}</div>
       {row.interval !== undefined && (
@@ -118,7 +111,7 @@ function IntervalTooltip({
           {row.interval.lower.date} to {row.interval.upper.date}
         </div>
       )}
-    </TooltipCard>
+    </ChartTooltipFrame>
   );
 }
 
@@ -131,7 +124,7 @@ function plotRow(row: DateRow): PlotRow {
   };
 }
 
-function dateAxis(rows: readonly DateRow[], tickCount: number) {
+function dateAxis(rows: readonly DateRow[]) {
   const ends = rows.flatMap((row) => [
     row.interval?.lower.year ?? row.date.year,
     row.interval?.upper.year ?? row.date.year,
@@ -141,7 +134,7 @@ function dateAxis(rows: readonly DateRow[], tickCount: number) {
   const high = Math.max(...ends);
   const pad = Math.max((high - low) * 0.05, MIN_SPAN_YEARS / 2);
 
-  return niceAxis([low - pad, high + pad], tickCount);
+  return niceAxis([low - pad, high + pad]);
 }
 
 interface PlotRow {

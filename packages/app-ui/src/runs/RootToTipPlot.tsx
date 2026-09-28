@@ -1,4 +1,3 @@
-import { useElementSize } from "@mantine/hooks";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -13,12 +12,11 @@ import {
 } from "recharts";
 import * as z from "zod";
 
-import { ChartContainer, ChartTooltip } from "../ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { Label as FieldLabel } from "../ui/label";
 import { Switch } from "../ui/switch";
-import { CHART, CHART_CONFIG, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
+import { CHART, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
-import { TooltipCard } from "./TooltipCard";
 
 export interface RttPoint {
   name: string;
@@ -34,8 +32,6 @@ export interface RttLine {
   intercept: number;
   label: string;
 }
-
-const X_PX_PER_TICK = 100;
 
 const FADED_OPACITY = 0.18;
 
@@ -78,22 +74,17 @@ export function RootToTipPlot({
   onSelect: ((name: string) => void) | undefined;
 }) {
   const [fitToModel, setFitToModel] = useState(true);
-  const { ref: chart, width } = useElementSize<HTMLDivElement>();
   const fitId = useId();
-  const xTickCount = tickCountFor(width, X_PX_PER_TICK);
   const hasOutliers = useMemo(() => points.some((point) => point.excluded), [points]);
 
-  const frame = useMemo(
-    () => plotFrame(points, fitToModel && hasOutliers, xTickCount),
-    [fitToModel, hasOutliers, points, xTickCount],
-  );
+  const frame = useMemo(() => plotFrame(points, fitToModel && hasOutliers), [fitToModel, hasOutliers, points]);
 
   const placed = useMemo(() => placePoints(points, frame), [frame, points]);
   const series = useMemo(() => pointSeries(placed, selected, inView), [inView, placed, selected]);
   const segment = useMemo(() => lineSegment(frame, line), [frame, line]);
 
   return (
-    <div ref={chart}>
+    <div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 pb-1 text-xs">
         {line === undefined ? (
           <span />
@@ -110,7 +101,7 @@ export function RootToTipPlot({
           </FieldLabel>
         )}
       </div>
-      <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[300px] w-full">
+      <ChartContainer className="aspect-auto h-[300px] w-full">
         <ScatterChart margin={PLOT_MARGIN}>
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
@@ -118,6 +109,7 @@ export function RootToTipPlot({
             dataKey="x"
             domain={frame.x.domain}
             ticks={frame.x.ticks}
+            {...THINNED_TICKS}
             tick={TICK_STYLE}
             tickFormatter={yearTick}
             stroke={CHART.muted}
@@ -275,14 +267,14 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   }
 
   return (
-    <TooltipCard>
+    <ChartTooltipFrame>
       <div className="font-semibold">{point.data.name}</div>
       <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
       {point.data.excluded && <div className="text-destructive">Excluded from the clock model</div>}
       {point.data.offAxes && <div className="text-muted-foreground">Outside the axes; drawn at their edge</div>}
-    </TooltipCard>
+    </ChartTooltipFrame>
   );
 }
 

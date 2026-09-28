@@ -3,7 +3,7 @@ import { Line, LineChart, XAxis, YAxis } from "recharts";
 
 import type { IterationPoint } from "../results/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
-import { CHART, CHART_CONFIG, TICK_STYLE } from "./palette";
+import { CHART, TICK_STYLE } from "./palette";
 
 const MARGIN = { top: 6, right: 12, bottom: 4, left: 8 };
 
@@ -15,7 +15,7 @@ export function RateTrace({ iterations }: { iterations: readonly IterationPoint[
   const data = useMemo(() => iterations.filter((point) => Number.isFinite(point.clockRate)), [iterations]);
 
   return (
-    <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[110px] w-full">
+    <ChartContainer className="aspect-auto h-[110px] w-full">
       <LineChart data={data} margin={MARGIN}>
         <XAxis dataKey="iteration" tick={TICK_STYLE} allowDecimals={false} />
         <YAxis domain={AUTO_EXTENT} tick={TICK_STYLE} tickFormatter={rateTick} width={56} />

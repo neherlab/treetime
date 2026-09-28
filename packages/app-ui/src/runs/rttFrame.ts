@@ -1,13 +1,13 @@
 import { type AxisFrame, clamp, niceAxis } from "./palette";
 import type { RttPoint } from "./RootToTipPlot";
 
-export function plotFrame(points: readonly RttPoint[], fitToModel: boolean, xTickCount?: number): PlotFrame {
+export function plotFrame(points: readonly RttPoint[], fitToModel: boolean): PlotFrame {
   const inModel = points.filter((point) => !point.excluded);
   const basis = fitToModel && inModel.length > 0 ? inModel : points;
   const dates = basis.map((point) => point.date);
   const divs = basis.map((point) => point.div);
 
-  return { x: niceAxis(dates, xTickCount), y: niceAxis([0, ...divs]) };
+  return { x: niceAxis(dates), y: niceAxis([0, ...divs]) };
 }
 
 export function placePoints(points: readonly RttPoint[], frame: PlotFrame): PlacedPoint[] {

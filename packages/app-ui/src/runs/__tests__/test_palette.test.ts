@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { niceAxis, tickCountFor, yearTick } from "../palette";
+import { niceAxis, yearTick } from "../palette";
 
 describe("chart axes", () => {
   test.each([
@@ -26,15 +26,6 @@ describe("chart axes", () => {
       domain: [2000, 2014],
       ticks: [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014],
     });
-  });
-
-  test.each([
-    [1100, 11],
-    [0, 2],
-    [99, 2],
-    [5000, 12],
-  ])("an axis %d px wide at 100 px per tick gets %d ticks, between 2 and 12", (width, count) => {
-    expect(tickCountFor(width, 100)).toBe(count);
   });
 
   test("the domain of a nice axis covers values beyond the last round tick", () => {
