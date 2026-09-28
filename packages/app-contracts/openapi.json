@@ -2465,13 +2465,6 @@
             "description": "Results specific to the command of the run.",
             "$ref": "#/components/schemas/CommandResults"
           },
-          "methods": {
-            "description": "Paragraph describing the analysis, for a methods section.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "citation": {
             "description": "The publication to cite.",
             "$ref": "#/components/schemas/Citation"

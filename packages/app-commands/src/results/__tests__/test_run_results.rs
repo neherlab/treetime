@@ -23,7 +23,7 @@ mod tests {
   use treetime_utils::assert_error;
 
   #[test]
-  fn test_run_results_of_a_timetree_run_hold_estimates_regression_and_methods() -> Result<(), Report> {
+  fn test_run_results_of_a_timetree_run_hold_estimates_and_regression() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
     let id = finished_run(&runs, AppCommand::Timetree, timetree_config(None));
@@ -34,7 +34,6 @@ mod tests {
     let RunResults {
       tree,
       results: CommandResults::Timetree(timetree),
-      methods,
       problems,
       ..
     } = results
@@ -54,7 +53,6 @@ mod tests {
           intercept: model.intercept()
         }),
         Some(model.clock_rate()),
-        true,
       ),
       (
         problems.into_iter().map(|problem| problem.message).collect(),
@@ -66,7 +64,6 @@ mod tests {
           .count(),
         line,
         estimates.clock_rate,
-        methods.is_some_and(|methods| methods.starts_with("A time-scaled phylogeny of 20 samples")),
       )
     );
     assert_eq!(timetree.iterations.len(), estimates.iterations);

@@ -55,7 +55,7 @@ export function TreeOnlyResults({
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
       {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={undefined} />}
-      <OutputFiles record={record} methods={undefined} citation={results.citation} />
+      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

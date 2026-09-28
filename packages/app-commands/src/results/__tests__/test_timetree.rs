@@ -3,15 +3,14 @@ mod tests {
   use crate::json_float::JsonFloat;
   use crate::results::__tests__::test_tree::tests::helpers::fixture;
   use crate::results::clock::{ClockLine, RootToTip, RootToTipPoint, root_to_tip};
-  use crate::results::methods::timetree_methods;
   use crate::results::timetree::{
-    CoalescentPrior, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, timetree_results,
+    CoalescentPrior, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, relaxed_clock,
+    timetree_results,
   };
   use crate::results::tree::{DateInterval, ResultTree};
   use crate::results::year_date::YearDate;
   use eyre::Report;
   use helpers::{clock_model, config, fixed_clock_model, metrics, node_data_clock};
-  use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::clock::rtt::{ClockDateSource, ClockRegressionResult};
@@ -140,83 +139,16 @@ mod tests {
     assert_eq!(expected, coalescent_prior(&config));
   }
 
-  #[test]
-  fn test_timetree_methods_describe_an_estimated_rate() -> Result<(), Report> {
-    let tree = ResultTree::from_auspice(&fixture())?;
-    let model = clock_model();
-    let clock = node_data_clock();
-    let config = config(|_| {});
-    let estimates = timetree_results(
-      &TimetreeOutputs {
-        tree: Some(&tree),
-        clock_model: Some(&model),
-        clock_rows: None,
-        node_data_clock: Some(&clock),
-        trace: &[],
-        coalescent: &[],
-      },
-      &config,
-    )
-    .estimates
-    .unwrap();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::absent(    vec![],         None)]
+  #[case::one_value( vec![1.0],      None)]
+  #[case::both(      vec![1.0, 0.5], Some(RelaxedClock { slack: 1.0, coupling: 0.5 }))]
+  #[trace]
+  fn test_relaxed_clock_from_config(#[case] relax: Vec<f64>, #[case] expected: Option<RelaxedClock>) {
+    let config = config(|config| config.relax = relax);
 
-    let expected = indoc! {"
-    A time-scaled phylogeny of 3 samples was inferred with TreeTime 1.2.3 (timetree command). \
-    The clock rate was estimated at 1.00e-3 substitutions per site per year (standard deviation 2.00e-4). \
-    Samples whose root-to-tip residual exceeded 3 interquartile distances were treated as clock outliers. \
-    1 of 3 samples had no usable date or were clock outliers and did not constrain the clock model. \
-    The root was dated to 2010-01-01 (90% interval 2009-01-01 to 2011-01-01). \
-    Please cite: Sagulenko P, Puller V, Neher RA. TreeTime: Maximum-likelihood phylodynamic analysis. \
-    Virus Evolution 4 (2018), vex042."};
-    assert_eq!(expected, timetree_methods("1.2.3", &config, &estimates));
-    Ok(())
-  }
-
-  #[test]
-  fn test_timetree_methods_describe_a_fixed_rate_prior_and_relaxed_clock() -> Result<(), Report> {
-    let tree = ResultTree::from_auspice(&fixture())?;
-    let model = fixed_clock_model();
-    let config = config(|config| {
-      config.clock_std_dev = Some(1e-4);
-      config.clock_filter = 0.0;
-      config.coalescent_skyline = true;
-      config.skyline_n_points = 20;
-      config.skyline_stiffness = 2.0;
-      config.relax = vec![1.0, 0.5];
-    });
-    let mut estimates = timetree_results(
-      &TimetreeOutputs {
-        tree: Some(&tree),
-        clock_model: Some(&model),
-        clock_rows: None,
-        node_data_clock: None,
-        trace: &[],
-        coalescent: &[],
-      },
-      &config,
-    )
-    .estimates
-    .unwrap();
-    estimates.root_interval = None;
-
-    let expected = indoc! {"
-    A time-scaled phylogeny of 3 samples was inferred with TreeTime 1.2.3 (timetree command). \
-    The clock rate was fixed at 8.00e-4 substitutions per site per year with standard deviation 1.00e-4. \
-    1 of 3 samples had no usable date or were clock outliers and did not constrain the clock model. \
-    A coalescent prior was used (skyline, 20 points, stiffness 2). \
-    A relaxed clock was used (slack 1, coupling 0.5). \
-    The root was dated to 2010-01-01. \
-    Please cite: Sagulenko P, Puller V, Neher RA. TreeTime: Maximum-likelihood phylodynamic analysis. \
-    Virus Evolution 4 (2018), vex042."};
-    assert_eq!(
-      (Some(RelaxedClock {
-        slack: 1.0,
-        coupling: 0.5
-      }),),
-      (estimates.relaxed_clock,)
-    );
-    assert_eq!(expected, timetree_methods("1.2.3", &config, &estimates));
-    Ok(())
+    assert_eq!(expected, relaxed_clock(&config));
   }
 
   #[test]

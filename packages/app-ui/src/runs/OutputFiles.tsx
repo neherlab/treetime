@@ -11,20 +11,10 @@ import { downloadName, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
 import { Button, Toast } from "../ui";
 import { Panel } from "./Panel";
-import { useCopy } from "./useCopy";
 
-export function OutputFiles({
-  record,
-  methods,
-  citation,
-}: {
-  record: RunRecord;
-  methods: string | undefined;
-  citation: Citation;
-}) {
+export function OutputFiles({ record, citation }: { record: RunRecord; citation: Citation }) {
   const { save } = useApiContext();
   const toasts = Toast.useToastManager();
-  const copy = useCopy();
 
   const { data: files, error } = useApi((context) => runsFiles({ ...context, path: { id: record.id } }), {
     staleTime: Infinity,
@@ -48,12 +38,6 @@ export function OutputFiles({
   }, [record.id, record.title, save, toasts]);
 
   const onArchive = useCallback(() => void downloadArchive(), [downloadArchive]);
-
-  const copyMethods = useCallback(() => {
-    if (methods !== undefined) {
-      copy(methods, "Methods text copied to the clipboard");
-    }
-  }, [copy, methods]);
 
   return (
     <Panel
@@ -86,24 +70,12 @@ export function OutputFiles({
           </tbody>
         </table>
       )}
-      <div className="border-line text-ink-muted grid gap-2 border-t px-3.5 py-3 text-xs">
-        <p className="m-0">
-          Please cite: {citation.text}{" "}
-          <a href={citation.url} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
-            doi:{citation.doi}
-          </a>
-        </p>
-        {methods !== undefined && (
-          <div className="grid gap-1.5">
-            <p className="text-ink m-0 leading-relaxed">{methods}</p>
-            <div>
-              <Button type="button" variant="ghost" size="sm" onClick={copyMethods}>
-                Copy methods text
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      <p className="border-line text-ink-muted m-0 border-t px-3.5 py-3 text-xs">
+        Please cite: {citation.text}{" "}
+        <a href={citation.url} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
+          doi:{citation.doi}
+        </a>
+      </p>
     </Panel>
   );
 }

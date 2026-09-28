@@ -1768,7 +1768,6 @@ export const zCommandResults = z.discriminatedUnion('command', [
 export const zRunResults = z.object({
   tree: zResultTree.nullish(),
   results: zCommandResults,
-  methods: z.string().nullish(),
   citation: zCitation,
   problems: z.array(zOutputProblem)
 });

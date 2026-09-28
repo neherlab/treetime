@@ -2,10 +2,10 @@
 mod __tests__;
 
 pub mod auspice;
+pub mod citation;
 pub mod clades;
 pub mod clock;
 pub mod compare;
-pub mod methods;
 pub mod mugration;
 pub mod mutations;
 pub mod outputs;

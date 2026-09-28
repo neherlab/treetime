@@ -60,7 +60,7 @@ function TimetreeView({
     <div className="grid gap-3.5">
       <SummaryStrip entries={summary} />
       <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} aside={aside} />
-      <OutputFiles record={record} methods={results.methods ?? undefined} citation={results.citation} />
+      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

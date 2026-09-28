@@ -2,8 +2,8 @@ use crate::command::AppCommand;
 use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use crate::job::JobId;
+use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
-use crate::results::methods::{Citation, citation, timetree_methods};
 use crate::results::mugration::{MugrationResults, mugration_results};
 use crate::results::mutations::{AncestralResults, ancestral_results};
 use crate::results::outputs::{OutputProblem, RunOutputs};
@@ -29,8 +29,6 @@ pub struct RunResults {
   pub tree: Option<ResultTree>,
   /// Results specific to the command of the run.
   pub results: CommandResults,
-  /// Paragraph describing the analysis, for a methods section.
-  pub methods: Option<String>,
   /// The publication to cite.
   pub citation: Citation,
   /// Output files that could not be read.
@@ -102,10 +100,10 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     coalescent,
     problems,
   } = RunOutputs::read(record.command, out_dir, &record.output_files);
-  let (results, methods) = match record.command {
+  let results = match record.command {
     AppCommand::Timetree => {
       let config: TreetimeTimetreeArgsRaw = run_config(record)?;
-      let results = timetree_results(
+      CommandResults::Timetree(Box::new(timetree_results(
         &TimetreeOutputs {
           tree: tree.as_ref(),
           clock_model: clock_model.as_ref(),
@@ -115,42 +113,27 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
           coalescent: coalescent.as_deref().unwrap_or_default(),
         },
         &config,
-      );
-      let methods = results
-        .estimates
-        .as_ref()
-        .map(|estimates| timetree_methods(&record.treetime_version, &config, estimates));
-      (CommandResults::Timetree(Box::new(results)), methods)
+      )))
     },
-    AppCommand::Clock => (
-      CommandResults::Clock(clock_results(
-        tree.as_ref(),
-        clock_model.as_ref(),
-        clock_rows.as_deref(),
-      )),
-      None,
-    ),
-    AppCommand::Ancestral => (CommandResults::Ancestral(ancestral_results(tree.as_ref())?), None),
+    AppCommand::Clock => CommandResults::Clock(clock_results(
+      tree.as_ref(),
+      clock_model.as_ref(),
+      clock_rows.as_deref(),
+    )),
+    AppCommand::Ancestral => CommandResults::Ancestral(ancestral_results(tree.as_ref())?),
     AppCommand::Mugration => {
       let config: TreetimeMugrationArgsRaw = run_config(record)?;
       let attribute = config
         .attribute
         .ok_or_else(|| make_report!("mugration run `{}` names no attribute", record.id.as_str()))?;
-      (
-        CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?),
-        None,
-      )
+      CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
-    AppCommand::Optimize => (
-      CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref())),
-      None,
-    ),
-    AppCommand::Prune => (CommandResults::Prune(tree_summary(tree.as_ref(), None, None)), None),
+    AppCommand::Optimize => CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref())),
+    AppCommand::Prune => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
   };
   Ok(RunResults {
     tree,
     results,
-    methods,
     citation: citation(),
     problems,
   })

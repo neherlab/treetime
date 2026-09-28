@@ -137,7 +137,7 @@ export function MugrationResults({
           )}
         </Panel>
       </div>
-      <OutputFiles record={record} methods={undefined} citation={results.citation} />
+      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

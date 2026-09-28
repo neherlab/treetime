@@ -827,10 +827,6 @@ export type RunResults = {
    */
   results: CommandResults;
   /**
-   * Paragraph describing the analysis, for a methods section.
-   */
-  methods?: string | null;
-  /**
    * The publication to cite.
    */
   citation: Citation;
