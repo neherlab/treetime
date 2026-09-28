@@ -396,9 +396,9 @@ def _single_child_root_tree_time(dates):
     )
 
 
-def _write_single_child_root_inputs(tmp_path, dates):
+def _write_tree_and_dates(tmp_path, newick, dates):
     tree_file = tmp_path / 'tree.nwk'
-    tree_file.write_text(SINGLE_CHILD_ROOT_TREE + '\n')
+    tree_file.write_text(newick + '\n')
     dates_file = tmp_path / 'dates.tsv'
     dates_file.write_text('name\tdate\n' + ''.join(f'{name}\t{date}\n' for name, date in dates.items()))
     return tree_file, dates_file
@@ -464,7 +464,7 @@ def test_cli_reroot_of_single_child_root_writes_samples_only(tmp_path, command, 
     """`treetime` and `treetime clock` crashed in the root-to-tip plot and wrote an extra leaf (issue #959)."""
     from Bio import Phylo
 
-    tree_file, dates_file = _write_single_child_root_inputs(tmp_path, SINGLE_CHILD_ROOT_DATES)
+    tree_file, dates_file = _write_tree_and_dates(tmp_path, SINGLE_CHILD_ROOT_TREE, SINGLE_CHILD_ROOT_DATES)
     outdir = tmp_path / 'out'
 
     _run_cli([*command, '--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--outdir', outdir])
@@ -477,7 +477,7 @@ def test_cli_reroot_of_single_child_root_writes_samples_only(tmp_path, command, 
 def test_cli_keep_root_keeps_single_child_root(tmp_path):
     from Bio import Phylo
 
-    tree_file, dates_file = _write_single_child_root_inputs(tmp_path, SINGLE_CHILD_ROOT_DATES)
+    tree_file, dates_file = _write_tree_and_dates(tmp_path, SINGLE_CHILD_ROOT_TREE, SINGLE_CHILD_ROOT_DATES)
     outdir = tmp_path / 'out'
 
     _run_cli(['--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--keep-root', '--outdir', outdir])
@@ -521,3 +521,44 @@ def test_reroot_rejects_new_undated_leaf():
     with patch.object(TreeTime, '_remove_undated_single_child_root'):
         with pytest.raises(TreeTimeError, match='into leaves: ROOT$'):
             tt.reroot('least-squares')
+
+
+# U and V are single-child nodes inside the tree
+INNER_SINGLE_CHILD_TREE = (
+    '(((A:0.010,B:0.012)AB:0.004,((C:0.015,D:0.013)CD:0.002)U:0.001)ABCD:0.002,'
+    '(((E:0.011,F:0.016)EF:0.001)V:0.001,(G:0.014,H:0.009)GH:0.005)EFGH:0.003)MRCA:0;'
+)
+
+
+def test_resolve_polytomies_keeps_dated_single_child_node():
+    from Bio import Phylo
+    from treetime import TreeTime
+
+    tt = TreeTime(
+        tree=Phylo.read(StringIO(INNER_SINGLE_CHILD_TREE), 'newick'),
+        dates={**SINGLE_CHILD_ROOT_DATES, 'U': 2000.0},
+        seq_len=1000,
+        gtr='Jukes-Cantor',
+        verbose=0,
+        rng_seed=1234,
+    )
+
+    tt.resolve_polytomies()
+
+    names = {n.name for n in tt.tree.find_clades()}
+    assert 'U' in names
+    assert 'V' not in names
+
+
+def test_cli_timetree_uses_date_of_single_child_node(tmp_path):
+    tree_file, dates_file = _write_tree_and_dates(
+        tmp_path, INNER_SINGLE_CHILD_TREE, {**SINGLE_CHILD_ROOT_DATES, 'U': 2000.0}
+    )
+    outdir = tmp_path / 'out'
+
+    _run_cli(['--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--outdir', outdir])
+
+    rows = [line.split('\t') for line in (outdir / 'dates.tsv').read_text().splitlines()[1:]]
+    numeric_dates = {row[0]: float(row[2]) for row in rows}
+    assert abs(numeric_dates['U'] - 2000.0) < 1e-6
+    assert 'V' not in numeric_dates

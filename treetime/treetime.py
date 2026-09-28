@@ -737,7 +737,12 @@ class TreeTime(ClockTree):
 
                 poly_found += prior_n_clades - len(n.clades)
 
-        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades) == 1 and n.up is not None]
+        # a single-child node with a date constraint carries data and stays in the tree
+        obsolete_nodes = [
+            n
+            for n in self.tree.find_clades()
+            if len(n.clades) == 1 and n.up is not None and getattr(n, 'raw_date_constraint', None) is None
+        ]
         for node in obsolete_nodes:
             self.logger('TreeTime.resolve_polytomies: remove obsolete node ' + node.name, 4)
             if node.up is not None:
