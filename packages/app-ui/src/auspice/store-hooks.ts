@@ -1,9 +1,8 @@
 import type { AuspiceDocument } from "@neherlab/app-contracts";
 import { changeColorBy } from "auspice/src/actions/colors";
 import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
-import { applyFilter, updateVisibleTipsAndBranchThicknesses } from "auspice/src/actions/tree";
+import { updateVisibleTipsAndBranchThicknesses } from "auspice/src/actions/tree";
 import { CLEAN_START, SELECT_NODE } from "auspice/src/actions/types";
-import { strainSymbol } from "auspice/src/util/globals";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import type { AuspiceState } from "./state";
@@ -34,7 +33,6 @@ export function focusNode(store: AuspiceStore, name: string): void {
   }
 
   store.dispatch({ type: SELECT_NODE, name: node.name, idx: node.arrayIdx, isBranch: false, treeId: "LEFT" });
-  store.dispatch(applyFilter("add", strainSymbol, [node.name]));
 }
 
 export function showWholeTree(store: AuspiceStore): void {

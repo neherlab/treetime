@@ -30,8 +30,14 @@ export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
   selectedNode: AuspiceSelectedNode | null;
+  filters: Readonly<Record<string, readonly AuspiceFilterValue[]>>;
   performanceFlags: ReadonlyMap<string, boolean>;
   scatterVariables: AuspiceScatterVariables;
+}
+
+interface AuspiceFilterValue {
+  value: string;
+  active: boolean;
 }
 
 interface AuspiceScatterVariables {

@@ -35,7 +35,6 @@ const AUSPICE_ENTRIES = [
   "auspice/src/reducers/tree",
   "auspice/src/reducers/tree/treeToo",
   "auspice/src/util/computeResponsive",
-  "auspice/src/util/globals",
 ];
 
 const APP_UI_PACKAGE = "@neherlab/app-ui";

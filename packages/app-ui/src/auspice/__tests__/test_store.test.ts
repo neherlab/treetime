@@ -2,6 +2,7 @@ import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { createAuspiceStore } from "../store";
+import { focusNode } from "../store-hooks";
 
 describe("auspice store", () => {
   beforeEach(() => {
@@ -42,6 +43,19 @@ describe("auspice store", () => {
       xDomain: ["A", "C"],
       xTemporal: false,
     });
+  });
+
+  test("focusing a tip twice adds no filter", () => {
+    const store = createAuspiceStore();
+
+    store.dispatch({
+      ...cleanStart({ tips: 1, controls: { filters: {} } }),
+      tree: { loaded: true, nodes: [{ name: "A", hasChildren: false, arrayIdx: 0, fullTipCount: 1 }] },
+    });
+    focusNode(store, "A");
+    focusNode(store, "A");
+
+    expect(store.getState().controls.filters).toStrictEqual({});
   });
 
   test("a genotype color-by leaves the scatterplot axes unchanged in the rectangular layout", () => {
