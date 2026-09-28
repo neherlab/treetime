@@ -11,7 +11,6 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
-import { wordMatcher } from "../text";
 import {
   Command,
   CommandCollection,
@@ -24,12 +23,9 @@ import {
   CommandList,
 } from "../ui/command";
 import { useToastManager } from "../ui/toast";
+import { matchesPaletteItem, type PaletteGroup, type PaletteItem, paletteGroups, paletteItem } from "./paletteItems";
 import { changedFlags, listedRuns } from "./runList";
 import { nextTheme } from "./SiteHeader";
-
-const PALETTE_KINDS = ["Action", "Run", "Setting", "Example"] as const;
-
-type PaletteKind = (typeof PALETTE_KINDS)[number];
 
 export function CommandPalette() {
   const open = useShellStore((state) => state.paletteOpen);
@@ -85,7 +81,7 @@ function PaletteBody({ choose }: { choose: (item: PaletteItem) => Promise<void> 
   const groups = usePaletteGroups();
 
   return (
-    <Command items={groups} filter={matchesItem} itemToStringValue={itemTitle}>
+    <Command items={groups} filter={matchesPaletteItem} itemToStringValue={itemTitle}>
       <CommandInput placeholder="Search runs, settings, examples" aria-label="Search" />
       <CommandEmpty>Nothing matches.</CommandEmpty>
       <CommandList className="max-h-[min(60vh,32rem)]">
@@ -117,10 +113,6 @@ function PaletteEntry({ item, choose }: { item: PaletteItem; choose: (item: Pale
   );
 }
 
-function matchesItem(item: PaletteItem, query: string): boolean {
-  return wordMatcher(query)(item.keywords);
-}
-
 function itemTitle(item: PaletteItem): string {
   return item.title;
 }
@@ -128,15 +120,7 @@ function itemTitle(item: PaletteItem): string {
 function usePaletteGroups(): PaletteGroup[] {
   const items = usePaletteItems();
 
-  return useMemo(() => {
-    const byKind = Object.groupBy(items, (item) => item.kind);
-
-    return PALETTE_KINDS.flatMap((kind) => {
-      const members = byKind[kind];
-
-      return members === undefined ? [] : [{ kind, items: members }];
-    });
-  }, [items]);
+  return useMemo(() => paletteGroups(items), [items]);
 }
 
 function usePaletteItems(): PaletteItem[] {
@@ -219,30 +203,4 @@ function usePaletteItems(): PaletteItem[] {
 
     return items;
   }, [catalog, command, compareIds, loadExample, navigate, runList, setTheme, theme]);
-}
-
-function paletteItem(
-  kind: PaletteKind,
-  id: string,
-  title: string,
-  description: string,
-  run: () => Promise<void> | void,
-  focusId?: string,
-): PaletteItem {
-  return { id, kind, title, description, keywords: [kind, title, description].join(" "), run, focusId };
-}
-
-interface PaletteItem {
-  id: string;
-  kind: PaletteKind;
-  title: string;
-  description: string;
-  keywords: string;
-  run: () => Promise<void> | void;
-  focusId?: string | undefined;
-}
-
-interface PaletteGroup {
-  kind: PaletteKind;
-  items: PaletteItem[];
 }

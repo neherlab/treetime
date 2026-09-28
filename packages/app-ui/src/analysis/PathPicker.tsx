@@ -1,15 +1,14 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
-import { type DropzoneOptions, useDropzone } from "react-dropzone";
+import { useDropzone } from "react-dropzone";
 
 import type { JsonValue } from "../settings/json";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { useToastManager } from "../ui/toast";
+import { dropzoneAccept } from "./fileAccept";
 import { useInputActions } from "./useInputActions";
-
-const ANY_APPLICATION_TYPE = "application/*";
 
 interface PathPickerProps {
   command: AppCommand;
@@ -24,7 +23,7 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
   const actions = useInputActions(command);
   const [busy, setBusy] = useState(false);
   const toasts = useToastManager();
-  const accept = useMemo(() => acceptExtensions(extensions), [extensions]);
+  const accept = useMemo(() => dropzoneAccept(extensions), [extensions]);
 
   const upload = useCallback(
     async (file: File) => {
@@ -128,12 +127,6 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
     noDragEventsBubbling: true,
     onDropAccepted,
   });
-}
-
-function acceptExtensions(extensions: readonly string[]): Pick<DropzoneOptions, "accept"> {
-  return extensions.length === 0
-    ? {}
-    : { accept: { [ANY_APPLICATION_TYPE]: extensions.map((extension) => `.${extension}`) } };
 }
 
 function emptyValue(list: boolean): JsonValue {
