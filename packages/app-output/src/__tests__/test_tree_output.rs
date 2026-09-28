@@ -11,8 +11,8 @@ pub(super) mod tests {
   use crate::mugration_tree_output::{mugration_to_auspice, mugration_to_mat};
   use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
   use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
-  use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
   use crate::timetree_result::TimetreeOutputMaps;
+  use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
   use crate::tree_output::{format_number, group_mutations};
   use approx::assert_ulps_eq;
   use eyre::{Report, WrapErr};

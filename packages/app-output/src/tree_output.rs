@@ -11,9 +11,8 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
-  AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree,
-  AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode,
-  AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
+  AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
+  AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
 };
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::graphviz::graphviz_write_file;

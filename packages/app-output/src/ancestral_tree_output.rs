@@ -12,9 +12,7 @@ use treetime::seq::mutation::{Mutation, MutationTrack};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::auspice_types::{
-  AuspiceGenomeAnnotationCds, AuspiceTree, Segments, StartEnd,
-};
+use treetime_io::auspice_types::{AuspiceGenomeAnnotationCds, AuspiceTree, Segments, StartEnd};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::usher_mat::UsherTree;
