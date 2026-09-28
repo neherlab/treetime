@@ -578,6 +578,7 @@ class TreeTime(ClockTree):
         use_cov = self.use_covariation if covariation is None else covariation
         slope = 0.0 if type(root) == str and root.startswith('min_dev') else clock_rate
         self._remove_undated_single_child_root(keep=root)
+        leaves_before = {id(n) for n in self.tree.get_terminals()}
         old_root = self.tree.root
 
         self.logger('TreeTime.reroot: with method or node: %s' % root, 0)
@@ -625,6 +626,17 @@ class TreeTime(ClockTree):
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length / 2)
             self.tree.root.clades.sort(key=lambda x: x.count_terminals())
             self.get_clock_model(covariation=use_cov, slope=slope)
+
+        undated_new_leaves = [
+            n.name
+            for n in self.tree.get_terminals()
+            if id(n) not in leaves_before and getattr(n, 'raw_date_constraint', None) is None
+        ]
+        if undated_new_leaves:
+            raise TreeTimeError(
+                'TreeTime.reroot: rerooting turned internal nodes without a date into leaves: '
+                + ', '.join(str(name) for name in undated_new_leaves)
+            )
 
         self.logger(
             'TreeTime.reroot: Tree was re-rooted to node ' + ('new_node' if new_root.name is None else new_root.name), 2

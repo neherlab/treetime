@@ -509,3 +509,15 @@ def test_tip_value_treats_falsy_bad_branch_as_good():
     leaf.bad_branch = np.False_
 
     assert tt.setup_TreeRegression().tip_value(leaf) == SINGLE_CHILD_ROOT_DATES['A']
+
+
+def test_reroot_rejects_new_undated_leaf():
+    """Without the single-child root removal, rerooting leaves ROOT as an undated leaf."""
+    from unittest.mock import patch
+    from treetime import TreeTime, TreeTimeError
+
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+
+    with patch.object(TreeTime, '_remove_undated_single_child_root'):
+        with pytest.raises(TreeTimeError, match='into leaves: ROOT$'):
+            tt.reroot('least-squares')
