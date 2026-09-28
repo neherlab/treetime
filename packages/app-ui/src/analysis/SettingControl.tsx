@@ -58,7 +58,7 @@ export function SettingControl({
     );
   }
 
-  if (spec.role !== "setting") {
+  if (spec.role === "input") {
     return <PathControl command={command} spec={spec} label={label} className={className} />;
   }
 
