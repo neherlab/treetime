@@ -1787,12 +1787,6 @@ export type AppEvent = ({
 } & AppEventRunCreated) | ({
   kind: 'run-updated';
 } & AppEventRunUpdated) | ({
-  kind: 'run-deleted';
-} & AppEventRunDeleted) | ({
-  kind: 'run-restored';
-} & AppEventRunRestored) | ({
-  kind: 'run-purged';
-} & AppEventRunPurged) | ({
   kind: 'resync';
 } & AppEventResync);
 
@@ -4436,81 +4430,6 @@ export type AppEventRunUpdated = {
 };
 
 /**
- * A run moved to the trash.
- */
-export type AppEventRunDeleted = {
-  /**
-   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
-   * the event.
-   */
-  seq: number;
-  /**
-   * Time the event was recorded.
-   */
-  time: string;
-  /**
-   * REST paths whose answers the change made stale.
-   */
-  stale: Array<StalePath>;
-  /**
-   * Id of the run.
-   */
-  id: JobId;
-  kind: 'run-deleted';
-};
-
-/**
- * A run came back from the trash.
- */
-export type AppEventRunRestored = {
-  /**
-   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
-   * the event.
-   */
-  seq: number;
-  /**
-   * Time the event was recorded.
-   */
-  time: string;
-  /**
-   * REST paths whose answers the change made stale.
-   */
-  stale: Array<StalePath>;
-  /**
-   * The restored run.
-   */
-  run: RunSummary;
-  kind: 'run-restored';
-};
-
-/**
- * A deleted run was removed for good.
- */
-export type AppEventRunPurged = {
-  /**
-   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
-   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
-   * the event.
-   */
-  seq: number;
-  /**
-   * Time the event was recorded.
-   */
-  time: string;
-  /**
-   * REST paths whose answers the change made stale.
-   */
-  stale: Array<StalePath>;
-  /**
-   * Id of the run.
-   */
-  id: JobId;
-  kind: 'run-purged';
-};
-
-/**
  * The stream cannot continue after the requested event, because the server no longer keeps that event or the
  * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
@@ -4802,36 +4721,6 @@ export type RunsCreateResponses = {
 
 export type RunsCreateResponse = RunsCreateResponses[keyof RunsCreateResponses];
 
-export type RunsDeleteData = {
-  body?: never;
-  path: {
-    /**
-     * Id of the run.
-     */
-    id: JobId;
-  };
-  query?: never;
-  url: '/api/runs/{id}';
-};
-
-export type RunsDeleteErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type RunsDeleteError = RunsDeleteErrors[keyof RunsDeleteErrors];
-
-export type RunsDeleteResponses = {
-  /**
-   * no content
-   */
-  204: void;
-};
-
-export type RunsDeleteResponse = RunsDeleteResponses[keyof RunsDeleteResponses];
-
 export type RunsGetData = {
   body?: never;
   path: {
@@ -4957,66 +4846,6 @@ export type RunsCancelResponses = {
 };
 
 export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
-
-export type RunsRestoreData = {
-  body?: never;
-  path: {
-    /**
-     * Id of the run.
-     */
-    id: JobId;
-  };
-  query?: never;
-  url: '/api/runs/{id}/restore';
-};
-
-export type RunsRestoreErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type RunsRestoreError = RunsRestoreErrors[keyof RunsRestoreErrors];
-
-export type RunsRestoreResponses = {
-  /**
-   * Entry of a run list.
-   */
-  200: RunSummary;
-};
-
-export type RunsRestoreResponse = RunsRestoreResponses[keyof RunsRestoreResponses];
-
-export type RunsPurgeData = {
-  body?: never;
-  path: {
-    /**
-     * Id of the run.
-     */
-    id: JobId;
-  };
-  query?: never;
-  url: '/api/runs/{id}/purge';
-};
-
-export type RunsPurgeErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type RunsPurgeError = RunsPurgeErrors[keyof RunsPurgeErrors];
-
-export type RunsPurgeResponses = {
-  /**
-   * no content
-   */
-  204: void;
-};
-
-export type RunsPurgeResponse = RunsPurgeResponses[keyof RunsPurgeResponses];
 
 export type RunsFilesData = {
   body?: never;

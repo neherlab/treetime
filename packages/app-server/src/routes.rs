@@ -27,7 +27,6 @@ use app_commands::runs::record::{
 };
 use axum::extract::{DefaultBodyLimit, State};
 use axum::http::{HeaderMap, HeaderValue};
-use axum::response::NoContent;
 use axum::{Json, Router};
 use eyre::{Report, WrapErr};
 use schemars::JsonSchema;
@@ -164,10 +163,6 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         .patch_with(runs_update, |op| {
           op.id("runsUpdate")
             .description("Change the title or pinned state of a run.")
-        })
-        .delete_with(runs_delete, |op| {
-          op.id("runsDelete")
-            .description("Move a run to the trash; restore undoes it.")
         }),
     )
     .api_route(
@@ -179,18 +174,6 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       post_with(runs_cancel, |op| {
         op.id("runsCancel")
           .description("Request cancellation of a run; the run ends with a `cancelled` terminal event.")
-      }),
-    )
-    .api_route(
-      "/api/runs/{id}/restore",
-      post_with(runs_restore, |op| {
-        op.id("runsRestore").description("Bring a run back from the trash.")
-      }),
-    )
-    .api_route(
-      "/api/runs/{id}/purge",
-      post_with(runs_purge, |op| {
-        op.id("runsPurge").description("Remove a deleted run for good.")
       }),
     )
     .api_route(
@@ -241,9 +224,8 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       "/api/events",
       get_with(events, |op| {
         op.id("events").description(
-          "Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and \
-           `run-purged`, each with the REST paths it made stale, either the path alone (`exact`) or the path and \
-           every path below it (`subtree`). Without `from` the stream sends the changes from now \
+          "Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, \
+           either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now \
            on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server \
            no longer keeps that event or the event is from a previous server, the stream starts with a `resync` \
            event instead.",
@@ -422,29 +404,6 @@ async fn runs_cancel(
   ApiPath(RunPath { id }): ApiPath<RunPath>,
 ) -> Result<Json<CancelRunResponse>, AppError> {
   call(&state, move |service| service.cancel_run(&id)).await.map(Json)
-}
-
-async fn runs_delete(
-  State(state): State<Arc<AppState>>,
-  ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<NoContent, AppError> {
-  call(&state, move |service| service.delete_run(&id)).await?;
-  Ok(NoContent)
-}
-
-async fn runs_restore(
-  State(state): State<Arc<AppState>>,
-  ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<RunSummary>, AppError> {
-  call(&state, move |service| service.restore_run(&id)).await.map(Json)
-}
-
-async fn runs_purge(
-  State(state): State<Arc<AppState>>,
-  ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<NoContent, AppError> {
-  call(&state, move |service| service.purge_run(&id)).await?;
-  Ok(NoContent)
 }
 
 async fn runs_files(

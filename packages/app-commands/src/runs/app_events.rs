@@ -90,21 +90,6 @@ pub enum AppChange {
     /// The run after the change.
     run: RunSummary,
   },
-  /// A run moved to the trash.
-  RunDeleted {
-    /// Id of the run.
-    id: JobId,
-  },
-  /// A run came back from the trash.
-  RunRestored {
-    /// The restored run.
-    run: RunSummary,
-  },
-  /// A deleted run was removed for good.
-  RunPurged {
-    /// Id of the run.
-    id: JobId,
-  },
   /// The stream cannot continue after the requested event, because the server no longer keeps that event or the
   /// event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
   /// events after this one.

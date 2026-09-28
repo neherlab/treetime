@@ -1,6 +1,6 @@
 use crate::command::AppCommand;
 use crate::job::{JobEvent, JobId, TerminalEvent};
-use crate::runs::errors::{conflict, invalid, not_found};
+use crate::runs::errors::{invalid, not_found};
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::record::{RunRecord, RunStatus};
@@ -20,7 +20,6 @@ const RUN_FILE: &str = "run.json";
 const EVENTS_FILE: &str = "events.jsonl";
 const INPUTS_DIR: &str = "inputs";
 const OUT_DIR: &str = "out";
-const TRASH_DIR: &str = ".trash";
 
 #[derive(Clone, Debug)]
 pub struct RunStore {
@@ -29,8 +28,7 @@ pub struct RunStore {
 
 impl RunStore {
   pub fn open(root: &Path) -> Result<Self, Report> {
-    fs::create_dir_all(root.join(TRASH_DIR))
-      .wrap_err_with(|| format!("When creating the runs directory '{}'", root.display()))?;
+    fs::create_dir_all(root).wrap_err_with(|| format!("When creating the runs directory '{}'", root.display()))?;
     let root = root
       .canonicalize()
       .wrap_err_with(|| format!("When resolving the runs directory '{}'", root.display()))?;
@@ -118,36 +116,6 @@ impl RunStore {
     Ok(self.run_ids()?.iter().map(|id| self.inputs_dir(id)).collect())
   }
 
-  pub fn trash(&self, id: &JobId) -> Result<(), Report> {
-    self.read(id)?;
-    let target = self.root.join(TRASH_DIR).join(id.as_str());
-    if target.exists() {
-      fs::remove_dir_all(&target).wrap_err_with(|| format!("When replacing the deleted run '{}'", target.display()))?;
-    }
-    fs::rename(self.run_dir(id), &target).wrap_err_with(|| format!("When deleting run `{}`", id.as_str()))
-  }
-
-  pub fn restore(&self, id: &JobId) -> Result<RunRecord, Report> {
-    let source = self.root.join(TRASH_DIR).join(id.as_str());
-    if !source.join(RUN_FILE).is_file() {
-      return Err(not_found(format!("no deleted run with id `{}`", id.as_str())));
-    }
-    let target = self.run_dir(id);
-    if target.exists() {
-      return Err(conflict(format!("a run with id `{}` already exists", id.as_str())));
-    }
-    fs::rename(&source, &target).wrap_err_with(|| format!("When restoring run `{}`", id.as_str()))?;
-    self.read(id)
-  }
-
-  pub fn purge(&self, id: &JobId) -> Result<(), Report> {
-    let dir = self.root.join(TRASH_DIR).join(id.as_str());
-    if !dir.is_dir() {
-      return Err(not_found(format!("no deleted run with id `{}`", id.as_str())));
-    }
-    fs::remove_dir_all(&dir).wrap_err_with(|| format!("When purging run `{}`", id.as_str()))
-  }
-
   pub fn recover_interrupted(&self) -> Result<Vec<JobId>, Report> {
     let mut recovered = vec![];
     for mut record in self.list()? {
@@ -173,7 +141,7 @@ impl RunStore {
     for entry in fs::read_dir(&self.root).wrap_err_with(|| format!("When listing '{}'", self.root.display()))? {
       let entry = entry?;
       let name = entry.file_name().to_string_lossy().into_owned();
-      if name == TRASH_DIR || !entry.file_type()?.is_dir() || !entry.path().join(RUN_FILE).is_file() {
+      if !entry.file_type()?.is_dir() || !entry.path().join(RUN_FILE).is_file() {
         continue;
       }
       if let Ok(id) = JobId::parse(&name) {

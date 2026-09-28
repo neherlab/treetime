@@ -202,7 +202,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_list_rename_pin_delete_restore_and_purge() {
+  async fn test_routes_list_rename_and_pin() {
     let test = app();
     let mut ids = vec![];
     for title in ["older", "newer"] {
@@ -238,19 +238,6 @@ mod tests {
       (200, json!("renamed"), json!(true)),
       (status, summary["title"].clone(), summary["pinned"].clone())
     );
-
-    let (status, _) = request(&test, "DELETE", &format!("/api/runs/{}", ids[0]), None).await;
-    assert_eq!(204, status);
-    let (status, _) = request(&test, "GET", &format!("/api/runs/{}", ids[0]), None).await;
-    assert_eq!(404, status);
-    let (status, summary) = request(&test, "POST", &format!("/api/runs/{}/restore", ids[0]), None).await;
-    assert_eq!((200, json!("renamed")), (status, summary["title"].clone()));
-
-    request(&test, "DELETE", &format!("/api/runs/{}", ids[1]), None).await;
-    let (status, _) = request(&test, "POST", &format!("/api/runs/{}/purge", ids[1]), None).await;
-    assert_eq!(204, status);
-    let (status, _) = request(&test, "POST", &format!("/api/runs/{}/restore", ids[1]), None).await;
-    assert_eq!(404, status, "a purged run cannot be restored");
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -586,27 +573,6 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_delete_run_answers_no_content() {
-    let test = app();
-    let (_, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "clock", "config": {}, "defer_start": true })),
-    )
-    .await;
-    let id = record["id"].as_str().unwrap().to_owned();
-    let response = test
-      .send(
-        axum::http::Request::delete(format!("/api/runs/{id}"))
-          .body(axum::body::Body::empty())
-          .unwrap(),
-      )
-      .await;
-    assert_eq!((204, Value::Null), helpers::body_json(response).await);
-  }
-
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_app_events_report_run_changes_with_their_stale_paths() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
@@ -618,7 +584,13 @@ mod tests {
       Some(json!({ "title": "renamed" })),
     )
     .await;
-    request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
+    request(
+      &test,
+      "PATCH",
+      &format!("/api/runs/{id}"),
+      Some(json!({ "pinned": true })),
+    )
+    .await;
 
     let events = take_events(&mut stream, 3).await;
     let stale = json!([
@@ -630,21 +602,25 @@ mod tests {
       vec![
         ("run-created", json!("run-created"), json!(id), stale.clone()),
         ("run-updated", json!("run-updated"), json!(id), stale.clone()),
-        ("run-deleted", json!("run-deleted"), json!(id), stale),
+        ("run-updated", json!("run-updated"), json!(id), stale),
       ],
       events
         .iter()
         .map(|event| (
           event.name.as_str(),
           event.data["kind"].clone(),
-          event.data["run"]["id"]
-            .as_str()
-            .map_or_else(|| event.data["id"].clone(), |id| json!(id)),
+          event.data["run"]["id"].clone(),
           event.data["stale"].clone(),
         ))
         .collect::<Vec<_>>()
     );
-    assert_eq!(json!("renamed"), events[1].data["run"]["title"]);
+    assert_eq!(
+      (json!("renamed"), json!(true)),
+      (
+        events[1].data["run"]["title"].clone(),
+        events[2].data["run"]["pinned"].clone()
+      )
+    );
     let seqs = events
       .iter()
       .map(|event| event.data["seq"].as_u64().unwrap())
@@ -739,7 +715,13 @@ mod tests {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
     let id = create_deferred(&test, "a").await;
-    request(&test, "DELETE", &format!("/api/runs/{id}"), None).await;
+    request(
+      &test,
+      "PATCH",
+      &format!("/api/runs/{id}"),
+      Some(json!({ "title": "renamed" })),
+    )
+    .await;
     let mut stale = take_events(&mut stream, 2)
       .await
       .iter()

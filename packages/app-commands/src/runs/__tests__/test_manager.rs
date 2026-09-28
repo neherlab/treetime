@@ -196,40 +196,6 @@ mod tests {
   }
 
   #[test]
-  fn test_manager_delete_restore_and_purge() {
-    let root = tempdir().unwrap();
-    let runs = RunManager::open(root.path()).unwrap();
-    let created = create(&runs, AppCommand::Clock, clock_config());
-    runs.delete(&created.id).unwrap();
-    assert_error!(
-      runs.get(&created.id),
-      format!("no run with id `{}`", created.id.as_str())
-    );
-    assert!(runs.list().unwrap().runs.is_empty());
-    assert_eq!(created.id, runs.restore(&created.id).unwrap().id);
-    runs.delete(&created.id).unwrap();
-    runs.purge(&created.id).unwrap();
-    assert_error!(
-      runs.restore(&created.id),
-      format!("no deleted run with id `{}`", created.id.as_str())
-    );
-  }
-
-  #[test]
-  fn test_manager_refuses_to_delete_a_running_run() {
-    let root = tempdir().unwrap();
-    let runs = RunManager::open(root.path()).unwrap();
-    let created = create(&runs, AppCommand::Clock, clock_config());
-    let started = runs.start(&created.id, None, accept()).unwrap();
-    assert_error!(
-      runs.delete(&created.id),
-      format!("run `{}` is running; cancel it before deleting it", created.id.as_str())
-    );
-    started.run();
-    runs.delete(&created.id).unwrap();
-  }
-
-  #[test]
   fn test_manager_rename_and_pin() {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();

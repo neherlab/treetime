@@ -144,10 +144,6 @@ mod tests {
       )
       .unwrap();
     runs.cancel(&second.id).unwrap();
-    runs.delete(&first.id).unwrap();
-    runs.restore(&first.id).unwrap();
-    runs.delete(&second.id).unwrap();
-    runs.purge(&second.id).unwrap();
 
     let stale = |id: &str| {
       vec![
@@ -163,16 +159,12 @@ mod tests {
         Change::new("run-created", b, Some("second"), Some("created"), stale(b)),
         Change::new("run-updated", a, Some("renamed"), Some("created"), stale(a)),
         Change::new("run-updated", b, Some("second"), Some("cancelled"), stale(b)),
-        Change::new("run-deleted", a, None, None, stale(a)),
-        Change::new("run-restored", a, Some("renamed"), Some("created"), stale(a)),
-        Change::new("run-deleted", b, None, None, stale(b)),
-        Change::new("run-purged", b, None, None, vec![]),
       ],
       changes(&received)
     );
     let numbers = seqs(&received);
     assert_eq!(
-      (1..=8).map(|offset| numbers[0] + offset - 1).collect::<Vec<_>>(),
+      (1..=4).map(|offset| numbers[0] + offset - 1).collect::<Vec<_>>(),
       numbers,
       "consecutive changes have consecutive numbers"
     );

@@ -1948,39 +1948,6 @@ export const zAppEventRunUpdated = z.object({
 });
 
 /**
- * A run moved to the trash.
- */
-export const zAppEventRunDeleted = z.object({
-  seq: z.int().gte(0),
-  time: z.string(),
-  stale: z.array(zStalePath),
-  id: zJobId,
-  kind: z.literal('run-deleted')
-});
-
-/**
- * A run came back from the trash.
- */
-export const zAppEventRunRestored = z.object({
-  seq: z.int().gte(0),
-  time: z.string(),
-  stale: z.array(zStalePath),
-  run: zRunSummary,
-  kind: z.literal('run-restored')
-});
-
-/**
- * A deleted run was removed for good.
- */
-export const zAppEventRunPurged = z.object({
-  seq: z.int().gte(0),
-  time: z.string(),
-  stale: z.array(zStalePath),
-  id: zJobId,
-  kind: z.literal('run-purged')
-});
-
-/**
  * The stream cannot continue after the requested event, because the server no longer keeps that event or the
  * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
@@ -1998,9 +1965,6 @@ export const zAppEventResync = z.object({
 export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventRunCreated,
   zAppEventRunUpdated,
-  zAppEventRunDeleted,
-  zAppEventRunRestored,
-  zAppEventRunPurged,
   zAppEventResync
 ]);
 
@@ -2112,15 +2076,6 @@ export const zRunsCreateBody = zCreateRunRequest;
  */
 export const zRunsCreateResponse = zRunRecord;
 
-export const zRunsDeletePath = z.object({
-  id: zJobId
-});
-
-/**
- * no content
- */
-export const zRunsDeleteResponse = z.void();
-
 export const zRunsGetPath = z.object({
   id: zJobId
 });
@@ -2166,24 +2121,6 @@ export const zRunsCancelPath = z.object({
  * Answer to a cancellation request.
  */
 export const zRunsCancelResponse = zCancelRunResponse;
-
-export const zRunsRestorePath = z.object({
-  id: zJobId
-});
-
-/**
- * Entry of a run list.
- */
-export const zRunsRestoreResponse = zRunSummary;
-
-export const zRunsPurgePath = z.object({
-  id: zJobId
-});
-
-/**
- * no content
- */
-export const zRunsPurgeResponse = z.void();
 
 export const zRunsFilesPath = z.object({
   id: zJobId

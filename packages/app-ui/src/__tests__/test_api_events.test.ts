@@ -47,10 +47,25 @@ const RESYNC_STALE: StalePath[] = [
   { path: "/api/clade-in-runs", scope: "exact" },
 ];
 
-function appEvent(seq: number, kind: "resync" | "run-deleted", stale: StalePath[]) {
+function appEvent(seq: number, kind: "resync" | "run-updated", stale: StalePath[]) {
   return kind === "resync"
     ? { seq, time: "2026-09-25T10:00:00Z", stale, kind }
-    : { seq, time: "2026-09-25T10:00:00Z", stale, kind, id: "abc" };
+    : {
+        seq,
+        time: "2026-09-25T10:00:00Z",
+        stale,
+        kind,
+        run: {
+          id: "abc",
+          title: "abc",
+          command: "clock",
+          status: "ok",
+          pinned: false,
+          created_at: "2026-09-25T08:00:00Z",
+          changed_settings: [],
+          headline: {},
+        },
+      };
 }
 
 function seeded(keys: readonly QueryKey[]): QueryClient {
@@ -146,10 +161,10 @@ describe("api events app stream", () => {
     const server = new FakeServer({
       "GET /api/events?from=0": () =>
         eventStream(
-          [appEvent(7, "resync", RESYNC_STALE), appEvent(8, "run-deleted", RUN_ABC_STALE)],
+          [appEvent(7, "resync", RESYNC_STALE), appEvent(8, "run-updated", RUN_ABC_STALE)],
           new TypeError("connection reset"),
         ),
-      "GET /api/events?from=9": () => eventStream([appEvent(9, "run-deleted", xyz)]),
+      "GET /api/events?from=9": () => eventStream([appEvent(9, "run-updated", xyz)]),
     });
 
     const client = server.client();

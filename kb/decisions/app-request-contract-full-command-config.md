@@ -23,7 +23,7 @@ The HTTP server and the desktop back end accept, for each of the six app command
 
 ## App-wide events
 
-- **Event**: `AppEvent` in `packages/app-commands/src/runs/app_events.rs` reports that a run was created, updated (started, ended, renamed, pinned or unpinned), deleted, restored or purged, with the new `RunSummary` or the run id. `RunManager` appends one event per change to a bounded in-memory log
+- **Event**: `AppEvent` in `packages/app-commands/src/runs/app_events.rs` reports that a run was created or updated (started, ended, renamed, pinned or unpinned), with the new `RunSummary`. `RunManager` appends one event per change to a bounded in-memory log
 - **Stale paths**: every event lists the REST paths whose answers the change made stale, computed in Rust next to the change. Each entry is `{ path, scope }`: `exact` covers the answers of the path itself for every query string and body, `subtree` also covers every path below it. A change to run `abc` lists `/api/runs` (exact), `/api/runs/abc` (subtree) and `/api/clade-in-runs` (exact). Clients invalidate what the server lists, so mutations carry no invalidation lists, and other tabs, other windows and outside clients stay consistent
 - **Resync**: sequence numbers start at the process start time in microseconds, so a restarted server or utility process numbers its events above those of the previous one. When a client asks for an event the log no longer keeps, or for one above the head of the log, the stream starts with a `resync` event whose stale paths cover every run, then continues with new events
 

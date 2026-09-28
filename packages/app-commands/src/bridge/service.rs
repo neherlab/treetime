@@ -114,18 +114,6 @@ impl AppService {
     })
   }
 
-  pub fn delete_run(&self, id: &JobId) -> Result<(), Report> {
-    self.runs.delete(id)
-  }
-
-  pub fn restore_run(&self, id: &JobId) -> Result<RunSummary, Report> {
-    self.runs.restore(id)
-  }
-
-  pub fn purge_run(&self, id: &JobId) -> Result<(), Report> {
-    self.runs.purge(id)
-  }
-
   pub fn run_files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
     self.runs.files(id)
   }

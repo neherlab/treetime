@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsDeleteData, RunsDeleteErrors, RunsDeleteResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsPurgeData, RunsPurgeErrors, RunsPurgeResponses, RunsRestoreData, RunsRestoreErrors, RunsRestoreResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses } from './types.gen';
-import { zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsDeletePath, zRunsDeleteResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsPurgePath, zRunsPurgeResponse, zRunsRestorePath, zRunsRestoreResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse } from './zod.gen';
+import type { CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses } from './types.gen';
+import { zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -163,20 +163,6 @@ export const runsCreate = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Move a run to the trash; restore undoes it.
- */
-export const runsDelete = <ThrowOnError extends boolean = false>(options: Options<RunsDeleteData, ThrowOnError>): RequestResult<RunsDeleteResponses, RunsDeleteErrors, ThrowOnError> => (options.client ?? client).delete<RunsDeleteResponses, RunsDeleteErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: z.never().optional(),
-    path: zRunsDeletePath,
-    query: z.never().optional()
-  }).parseAsync(data),
-  responseValidator: async (data) => await zRunsDeleteResponse.parseAsync(data),
-  url: '/api/runs/{id}',
-  ...options
-});
-
-/**
  * The record of a run.
  */
 export const runsGet = <ThrowOnError extends boolean = false>(options: Options<RunsGetData, ThrowOnError>): RequestResult<RunsGetResponses, RunsGetErrors, ThrowOnError> => (options.client ?? client).get<RunsGetResponses, RunsGetErrors, ThrowOnError>({
@@ -237,34 +223,6 @@ export const runsCancel = <ThrowOnError extends boolean = false>(options: Option
   }).parseAsync(data),
   responseValidator: async (data) => await zRunsCancelResponse.parseAsync(data),
   url: '/api/runs/{id}/cancel',
-  ...options
-});
-
-/**
- * Bring a run back from the trash.
- */
-export const runsRestore = <ThrowOnError extends boolean = false>(options: Options<RunsRestoreData, ThrowOnError>): RequestResult<RunsRestoreResponses, RunsRestoreErrors, ThrowOnError> => (options.client ?? client).post<RunsRestoreResponses, RunsRestoreErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: z.never().optional(),
-    path: zRunsRestorePath,
-    query: z.never().optional()
-  }).parseAsync(data),
-  responseValidator: async (data) => await zRunsRestoreResponse.parseAsync(data),
-  url: '/api/runs/{id}/restore',
-  ...options
-});
-
-/**
- * Remove a deleted run for good.
- */
-export const runsPurge = <ThrowOnError extends boolean = false>(options: Options<RunsPurgeData, ThrowOnError>): RequestResult<RunsPurgeResponses, RunsPurgeErrors, ThrowOnError> => (options.client ?? client).post<RunsPurgeResponses, RunsPurgeErrors, ThrowOnError>({
-  requestValidator: async (data) => await z.object({
-    body: z.never().optional(),
-    path: zRunsPurgePath,
-    query: z.never().optional()
-  }).parseAsync(data),
-  responseValidator: async (data) => await zRunsPurgeResponse.parseAsync(data),
-  url: '/api/runs/{id}/purge',
   ...options
 });
 
@@ -357,7 +315,7 @@ export const runsEvents = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Stream of changes to the runs: `run-created`, `run-updated`, `run-deleted`, `run-restored` and `run-purged`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.
+ * Stream of changes to the runs: `run-created` and `run-updated`, each with the REST paths it made stale, either the path alone (`exact`) or the path and every path below it (`subtree`). Without `from` the stream sends the changes from now on. `from`, or the `Last-Event-ID` header of a reconnect, resumes after an earlier event; when the server no longer keeps that event or the event is from a previous server, the stream starts with a `resync` event instead.
  */
 export const events = <ThrowOnError extends boolean = false>(options?: Options<EventsData, ThrowOnError, EventsResponse>): Promise<ServerSentEventsResult<EventsResponses>> => (options?.client ?? client).sse.get<EventsResponses, EventsErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({

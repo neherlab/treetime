@@ -188,39 +188,6 @@ impl RunManager {
     Ok(record.summary())
   }
 
-  pub fn delete(&self, id: &JobId) -> Result<(), Report> {
-    let mut active = self.active.lock();
-    if active.get(id).is_some_and(|run| run.is_started()) {
-      return Err(conflict(format!(
-        "run `{}` is running; cancel it before deleting it",
-        id.as_str()
-      )));
-    }
-    active.remove(id);
-    let _records = self.records.lock();
-    self.store.trash(id)?;
-    self
-      .app_events
-      .append(AppChange::RunDeleted { id: id.clone() }, run_stale_paths(id));
-    Ok(())
-  }
-
-  pub fn restore(&self, id: &JobId) -> Result<RunSummary, Report> {
-    let _records = self.records.lock();
-    let summary = self.store.restore(id)?.summary();
-    self
-      .app_events
-      .append(AppChange::RunRestored { run: summary.clone() }, run_stale_paths(id));
-    Ok(summary)
-  }
-
-  pub fn purge(&self, id: &JobId) -> Result<(), Report> {
-    let _records = self.records.lock();
-    self.store.purge(id)?;
-    self.app_events.append(AppChange::RunPurged { id: id.clone() }, vec![]);
-    Ok(())
-  }
-
   pub fn input_dirs(&self) -> Result<Vec<PathBuf>, Report> {
     self.store.input_dirs()
   }
