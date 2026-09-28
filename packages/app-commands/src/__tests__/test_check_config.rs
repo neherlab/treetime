@@ -41,6 +41,32 @@ mod tests {
   }
 
   #[test]
+  fn test_check_config_drops_the_output_paths_the_app_sets_for_each_run() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text: indoc! {r#"
+        tree: data/zika/20/tree.nwk
+        output_all: /home/user/results
+        output_tree_nwk: /home/user/tree.nwk
+      "#}
+      .to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
+    });
+    let CheckConfigResponse::Valid { config, code, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (None, None, Some("--output-all out")),
+      (
+        config.get("output_all").cloned(),
+        config.get("output_tree_nwk").cloned(),
+        code.command_line.last().map(|line| line.text.as_str())
+      )
+    );
+  }
+
+  #[test]
   fn test_check_config_accepts_json_text() {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,

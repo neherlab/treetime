@@ -155,13 +155,18 @@ impl AppCommand {
     let Value::Object(settings) = &mut config else {
       return make_error!("a command configuration must be a mapping of settings");
     };
+    self.remove_output_paths(settings)?;
+    let text = json_write_str(&config, JsonPretty(true))?;
+    self.prepare_source("config.json", &text, Some(out_dir))
+  }
+
+  pub fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report> {
     for leaf in leaf_properties(self.config_schema().as_value())? {
       if leaf.path_role == Some(PathRole::Output) {
         remove_setting(settings, &leaf.key_path);
       }
     }
-    let text = json_write_str(&config, JsonPretty(true))?;
-    self.prepare_source("config.json", &text, Some(out_dir))
+    Ok(())
   }
 
   fn prepare_source(self, source_name: &str, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {

@@ -8,7 +8,7 @@ import { CodeLineView, keyedLines } from "../analysis/CodePanel";
 import { defaultText } from "../analysis/SettingField";
 import { useApi } from "../api/hooks";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
-import { outputFreeConfig, settingValue } from "../settings/config";
+import { settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
 import type { CodeFormat } from "../store/draftSchema";
 import { Button, Segmented, Switch, cn } from "../ui";
@@ -44,13 +44,12 @@ export function SettingsTab({ record }: { record: RunRecord }) {
   );
 
   const changedCount = changedKeys.size;
-  const reproducible = useMemo(() => outputFreeConfig(specs, config), [config, specs]);
 
   const { data: check } = useApi(
     (context) =>
       configCheck({
         ...context,
-        body: { command: record.command, text: JSON.stringify(reproducible), input_facts: null },
+        body: { command: record.command, text: JSON.stringify(config), input_facts: null },
       }),
     { placeholderData: keepPreviousData, staleTime: Infinity },
   );

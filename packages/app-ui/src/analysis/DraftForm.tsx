@@ -8,7 +8,7 @@ import { useDebounce } from "use-debounce";
 import { useApi } from "../api/hooks";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
-import { changedSpecs, normalizeConfig, outputFreeConfig } from "../settings/config";
+import { changedSpecs, normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { zJsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
@@ -43,7 +43,6 @@ export function DraftForm({ command }: { command: AppCommand }) {
   }, [initial, specs, watched]);
 
   const [settled] = useDebounce(config, CHECK_DEBOUNCE_MS);
-  const request = useMemo(() => outputFreeConfig(specs, settled), [settled, specs]);
   const factsRequest = useMemo(() => inputFactsRequest(command, settled), [command, settled]);
 
   const { data: facts } = useApi(
@@ -53,12 +52,12 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const { data: check } = useApi(
     (context) =>
-      configCheck({ ...context, body: { command, text: JSON.stringify(request), input_facts: facts ?? null } }),
+      configCheck({ ...context, body: { command, text: JSON.stringify(settled), input_facts: facts ?? null } }),
     { placeholderData: keepPreviousData, staleTime: Infinity },
   );
 
   const { data: runConfig } = useApi(
-    (context) => resolveRunConfig({ ...context, body: { command, config: request } }),
+    (context) => resolveRunConfig({ ...context, body: { command, config: settled } }),
     { placeholderData: keepPreviousData, staleTime: 10_000 },
   );
 
@@ -96,7 +95,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
   const changed = changedSpecs(specs, config);
 
   const submit = useMemo(
-    () => form.handleSubmit((values) => startRun(outputFreeConfig(specs, normalizeConfig(specs, values)))),
+    () => form.handleSubmit((values) => startRun(normalizeConfig(specs, values))),
     [form, specs, startRun],
   );
 

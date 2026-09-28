@@ -4045,7 +4045,7 @@ export type CheckConfigResponseValid = {
    */
   command: AppCommand;
   /**
-   * The configuration with every default filled in.
+   * The configuration with every default filled in and without output paths, which the app sets for each run.
    */
   config: {
     [key: string]: unknown;

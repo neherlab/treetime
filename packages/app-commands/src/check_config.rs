@@ -28,9 +28,11 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     Ok(prepared) => prepared,
     Err(report) => return invalid(command, &report, None, facts),
   };
-  let resolved = command
-    .prepare_text(SOURCE_NAME, &text)
-    .and_then(|prepared| Ok((config_code(command, &prepared.config)?, prepared.config)));
+  let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
+    let mut config = prepared.config;
+    command.remove_output_paths(&mut config)?;
+    Ok((config_code(command, &config)?, config))
+  });
   match resolved {
     Ok((code, config)) => CheckConfigResponse::Valid {
       command,
@@ -55,7 +57,7 @@ pub enum CheckConfigResponse {
   Valid {
     /// Command the configuration is for.
     command: AppCommand,
-    /// The configuration with every default filled in.
+    /// The configuration with every default filled in and without output paths, which the app sets for each run.
     config: Map<String, Value>,
     /// The command line and the YAML config that reproduce the configuration.
     code: ConfigCode,

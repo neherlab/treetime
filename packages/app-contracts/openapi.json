@@ -7425,7 +7425,7 @@
             "$ref": "#/components/schemas/AppCommand"
           },
           "config": {
-            "description": "The configuration with every default filled in.",
+            "description": "The configuration with every default filled in and without output paths, which the app sets for each run.",
             "type": "object",
             "additionalProperties": true
           },

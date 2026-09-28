@@ -62,15 +62,3 @@ export function carryOverConfig(
 
   return config;
 }
-
-export function outputFreeConfig(specs: readonly SettingSpec[], config: JsonObject): JsonObject {
-  let result = config;
-
-  for (const spec of specs) {
-    if (spec.role === "output") {
-      result = setAt(result, spec.path, null);
-    }
-  }
-
-  return result;
-}
