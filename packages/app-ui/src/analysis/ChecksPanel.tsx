@@ -1,17 +1,21 @@
 import type { CheckLevel, RunCheck, RunSummary } from "@neherlab/app-contracts";
 import { Link } from "@tanstack/react-router";
-import { CircleAlert, CircleCheck, Info, OctagonX } from "lucide-react";
+import { CircleAlert, CircleCheck, Copy, Info, OctagonX, Play } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
+import { Panel } from "../components/Panel";
 import { zJsonValue } from "../settings/json";
-import { Button } from "../ui";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Button } from "../ui/button";
+import { Kbd, KbdGroup } from "../ui/kbd";
+import { Spinner } from "../ui/spinner";
 import { toFormValue, type FormConfig } from "./formValues";
 
 const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {
-  block: <OctagonX size={15} aria-label="Blocks the run" className="text-signal-danger" />,
-  warn: <CircleAlert size={15} aria-label="Warning" className="text-signal-warn" />,
-  advice: <Info size={15} aria-label="Advice" className="text-ink-faint" />,
+  block: <OctagonX aria-label="Blocks the run" className="text-destructive size-4" />,
+  warn: <CircleAlert aria-label="Warning" className="text-warning size-4" />,
+  advice: <Info aria-label="Advice" className="text-muted-foreground size-4" />,
 };
 
 export function ChecksPanel({
@@ -33,15 +37,12 @@ export function ChecksPanel({
     : blocking
       ? "Resolve the blocking checks first"
       : isValid
-        ? "Ctrl Enter"
+        ? "Run with Ctrl Enter"
         : "Correct the settings marked as invalid first";
 
   return (
-    <div className="border-line bg-surface-1 rounded-lg border">
-      <div className="border-line border-b px-3.5 py-2.5">
-        <h3 className="font-bold">Checks</h3>
-      </div>
-      <div className="grid gap-2.5 px-3.5 py-3">
+    <Panel title="Checks">
+      <div className="grid gap-3 p-3.5">
         <ul className="grid gap-1.5">
           {formError !== undefined && (
             <li className="grid grid-cols-[1.125rem_1fr] items-start gap-1.5">
@@ -54,33 +55,46 @@ export function ChecksPanel({
           ))}
           {checks?.length === 0 && (
             <li className="grid grid-cols-[1.125rem_1fr] items-start gap-1.5">
-              <CircleCheck size={15} aria-hidden className="text-signal-ok mt-0.5" />
+              <CircleCheck aria-hidden className="text-success mt-0.5 size-4" />
               <span>Ready to run.</span>
             </li>
           )}
         </ul>
         {duplicate !== undefined && (
-          <div className="bg-signal-warn-subtle grid gap-1.5 rounded-md px-2.5 py-2">
-            <span>Run &quot;{duplicate.title}&quot; has the same inputs and settings.</span>
-            <span>
-              <Link to="/runs/$id/results" params={{ id: duplicate.id }} className="text-accent font-bold">
-                Open it
-              </Link>{" "}
-              <span className="text-ink-muted">or run again to check that it reproduces</span>
-            </span>
-          </div>
+          <Alert className="border-warning/40 bg-warning/10">
+            <Copy aria-hidden />
+            <AlertTitle>Run &quot;{duplicate.title}&quot; has the same inputs and settings</AlertTitle>
+            <AlertDescription>
+              <span>
+                <Link
+                  to="/runs/$id/results"
+                  params={{ id: duplicate.id }}
+                  className="text-primary font-medium underline-offset-4 hover:underline"
+                >
+                  Open it
+                </Link>{" "}
+                or run again to check that it reproduces.
+              </span>
+            </AlertDescription>
+          </Alert>
         )}
         <Button
           type="submit"
+          size="lg"
           className="w-full"
           disabled={checking || blocking || !isValid || isSubmitting}
           title={reason}
         >
+          {isSubmitting ? <Spinner /> : <Play aria-hidden />}
           {duplicate === undefined ? verb : `${verb} again`}
+          <KbdGroup className="ml-auto">
+            <Kbd className="bg-primary-foreground/15 text-primary-foreground">Ctrl</Kbd>
+            <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd>
+          </KbdGroup>
         </Button>
-        {(checking || blocking || !isValid) && <p className="text-ink-faint text-center text-xs">{reason}</p>}
+        {(checking || blocking || !isValid) && <p className="text-muted-foreground text-center text-xs">{reason}</p>}
       </div>
-    </div>
+    </Panel>
   );
 }
 

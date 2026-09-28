@@ -1,24 +1,17 @@
 import { errorMessage, type RunRecord } from "@neherlab/app-contracts";
 import { runsUpdate } from "@neherlab/app-contracts/client";
 import { Pencil } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { useApiMutation } from "../api/hooks";
-import { Button, Toast } from "../ui";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { useToastManager } from "../ui/toast";
 
 export function RunTitle({ record }: { record: RunRecord }) {
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
   const [draft, setDraft] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const settled = useRef(true);
-  const editing = draft !== null;
-
-  useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [editing]);
 
   const { mutateAsync: rename } = useApiMutation((context, title: string) =>
     runsUpdate({ ...context, path: { id: record.id }, body: { title } }),
@@ -56,6 +49,11 @@ export function RunTitle({ record }: { record: RunRecord }) {
 
   const onChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => setDraft(event.target.value), []);
 
+  const focusInput = useCallback((input: HTMLInputElement | null) => {
+    input?.focus();
+    input?.select();
+  }, []);
+
   const onBlur = useCallback(() => void save(), [save]);
 
   const onKeyDown = useCallback(
@@ -71,26 +69,33 @@ export function RunTitle({ record }: { record: RunRecord }) {
     [cancel, save],
   );
 
-  if (editing) {
+  if (draft !== null) {
     return (
-      <input
+      <Input
         type="text"
-        ref={inputRef}
         aria-label="Run title"
         value={draft}
         onChange={onChange}
+        ref={focusInput}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="border-line-strong bg-surface-1 w-full rounded-md border px-2 text-2xl leading-tight font-bold"
+        className="font-heading h-9 text-xl font-semibold md:text-xl"
       />
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <h1 className="text-2xl leading-tight font-bold">{record.title}</h1>
-      <Button type="button" variant="ghost" size="sm" onClick={startEditing} aria-label="Rename the run" title="Rename">
-        <Pencil size={14} aria-hidden />
+    <div className="flex items-center gap-1">
+      <h1 className="font-heading text-2xl leading-tight font-semibold">{record.title}</h1>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={startEditing}
+        aria-label="Rename the run"
+        title="Rename"
+      >
+        <Pencil aria-hidden />
       </Button>
     </div>
   );

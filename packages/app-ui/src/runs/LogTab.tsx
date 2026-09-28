@@ -1,16 +1,17 @@
-import { Copy } from "lucide-react";
+import { Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { CopyButton } from "../components/CopyButton";
+import { OptionToggle } from "../components/OptionToggle";
+import { Panel } from "../components/Panel";
 import { countWarnings, filterLog, logText, type LogFilter, type RunProgress } from "../results/progress";
-import { Button, Segmented } from "../ui";
+import { Alert, AlertDescription } from "../ui/alert";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { LogLines } from "./LogLines";
-import { Panel } from "./Panel";
-import { useCopy } from "./useCopy";
 
 export function LogTab({ progress, failure }: { progress: RunProgress; failure: string | undefined }) {
   const [filter, setFilter] = useState<LogFilter>("all");
   const [query, setQuery] = useState("");
-  const copy = useCopy();
   const entries = useMemo(() => filterLog(progress.entries, filter, query), [filter, progress.entries, query]);
   const warnings = countWarnings(progress.entries);
   const stages = progress.entries.filter((entry) => entry.kind === "stage").length;
@@ -25,34 +26,38 @@ export function LogTab({ progress, failure }: { progress: RunProgress; failure: 
   );
 
   const onQuery = useCallback((event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value), []);
-  const onCopy = useCallback(() => copy(logText(entries), "Log copied to the clipboard"), [copy, entries]);
 
   return (
     <Panel
       title="Log"
       actions={
         <>
-          <Segmented label="Log filter" value={filter} onChange={setFilter} options={options} />
-          <input
-            type="search"
-            value={query}
-            onChange={onQuery}
-            placeholder="Search the log"
-            aria-label="Search the log"
-            className="border-line-strong bg-surface-2 w-56 rounded-md border px-2 py-1 text-sm"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={onCopy}>
-            <Copy size={13} aria-hidden />
-            Copy
-          </Button>
+          <OptionToggle label="Log filter" value={filter} onChange={setFilter} options={options} />
+          <InputGroup className="h-8 w-56">
+            <InputGroupAddon>
+              <Search aria-hidden />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              value={query}
+              onChange={onQuery}
+              placeholder="Search the log"
+              aria-label="Search the log"
+            />
+          </InputGroup>
+          <CopyButton text={logText(entries)} label="Copy the log" />
         </>
       }
     >
-      <div className="p-2.5">
-        {failure !== undefined && <p className="text-signal-danger mb-2">The log cannot be followed: {failure}</p>}
+      <div className="grid gap-2 p-2.5">
+        {failure !== undefined && (
+          <Alert variant="destructive">
+            <AlertDescription>The log cannot be followed: {failure}</AlertDescription>
+          </Alert>
+        )}
         <LogLines
           entries={entries}
-          scroller="page"
+          className="h-[calc(100svh-var(--header-height)-16rem)] min-h-80"
           empty={progress.entries.length === 0 ? "No log lines yet." : "No matching lines."}
         />
       </div>

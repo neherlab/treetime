@@ -1,30 +1,40 @@
 import { Outlet } from "@tanstack/react-router";
 
 import { useElectronThemeSync } from "./hooks/useElectronThemeSync";
+import { AppSidebar } from "./shell/AppSidebar";
 import { CommandPalette } from "./shell/CommandPalette";
-import { Sidebar } from "./shell/Sidebar";
-import { TopBar } from "./shell/TopBar";
+import { SiteHeader } from "./shell/SiteHeader";
 import { useGlobalShortcuts } from "./shell/useGlobalShortcuts";
 import { useYamlDrop } from "./shell/useYamlDrop";
-import { Tooltip } from "./ui";
+import { SidebarInset, SidebarProvider } from "./ui/sidebar";
+import { TooltipProvider } from "./ui/tooltip";
+
+export const MAIN_SCROLL_ID = "main-scroll";
 
 export function RootLayout() {
   useElectronThemeSync();
   useGlobalShortcuts();
-  useYamlDrop();
+  const { getRootProps, getInputProps } = useYamlDrop();
 
   return (
-    <Tooltip.Provider delay={300}>
-      <div className="bg-surface-0 text-ink isolate grid min-h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[var(--spacing-bar)_1fr] text-sm">
-        <TopBar />
-        <div className="grid grid-cols-1 md:grid-cols-[18.75rem_minmax(0,1fr)]">
-          <Sidebar />
-          <main className="@container">
+    <TooltipProvider delay={300}>
+      <SidebarProvider
+        {...getRootProps({ className: "h-svh flex-col overflow-hidden [--header-height:calc(--spacing(12))]" })}
+      >
+        <input {...getInputProps()} />
+        <SiteHeader />
+        <div className="flex min-h-0 flex-1">
+          <AppSidebar />
+          <SidebarInset
+            id={MAIN_SCROLL_ID}
+            data-scroll-restoration-id={MAIN_SCROLL_ID}
+            className="@container min-h-0 overflow-y-auto overscroll-contain"
+          >
             <Outlet />
-          </main>
+          </SidebarInset>
         </div>
-      </div>
+      </SidebarProvider>
       <CommandPalette />
-    </Tooltip.Provider>
+    </TooltipProvider>
   );
 }

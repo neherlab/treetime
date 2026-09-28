@@ -1,17 +1,18 @@
 import { scaleLinear } from "d3-scale";
 
+import type { ChartConfig } from "../ui/chart";
+
 export const CHART = {
-  ink: "var(--color-ink)",
-  muted: "var(--color-ink-muted)",
-  faint: "var(--color-ink-faint)",
-  grid: "var(--color-chart-grid)",
-  accent: "var(--color-accent)",
-  fault: "var(--color-signal-danger)",
-  tip: "var(--color-chart-tip)",
-  selection: "var(--color-chart-selection)",
+  ink: "var(--foreground)",
+  muted: "var(--muted-foreground)",
+  grid: "var(--border)",
+  accent: "var(--chart-1)",
+  fault: "var(--destructive)",
+  tip: "var(--chart-4)",
+  selection: "var(--chart-2)",
 } as const;
 
-export const TICK_STYLE = { fontSize: 11, fill: CHART.muted } as const;
+export const TICK_STYLE = { fontSize: 11 } as const;
 
 export const PLOT_MARGIN = { top: 8, right: 16, bottom: 24, left: 16 } as const;
 
@@ -46,3 +47,5 @@ export function clamp(value: number, low: number, high: number): number {
 export function tickCountFor(width: number, pxPerTick: number): number {
   return clamp(Math.floor(width / pxPerTick), MIN_TICKS, MAX_TICKS);
 }
+
+export const CHART_CONFIG: ChartConfig = {};

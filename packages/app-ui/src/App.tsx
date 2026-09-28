@@ -4,7 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import "./ui/fonts";
 import { LocalFilesContext } from "./platform";
 import { router } from "./router";
-import { Toast } from "./ui";
+import { Toaster } from "./ui/toast";
 
 export interface AppProps {
   localFiles?: LocalFiles | undefined;
@@ -13,10 +13,9 @@ export interface AppProps {
 export function App({ localFiles }: AppProps) {
   return (
     <LocalFilesContext.Provider value={localFiles ?? null}>
-      <Toast.Provider>
+      <Toaster>
         <RouterProvider router={router} />
-        <Toast.Viewport />
-      </Toast.Provider>
+      </Toaster>
     </LocalFilesContext.Provider>
   );
 }

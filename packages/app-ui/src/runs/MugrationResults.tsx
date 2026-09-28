@@ -1,62 +1,61 @@
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
+import { DataTable, dataColumns } from "../components/DataTable";
+import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import type { AncestorState, MugrationData, StateChange } from "../results/types";
+import { Empty, EmptyDescription } from "../ui/empty";
 import { OutputFiles } from "./OutputFiles";
-import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
-import { SortableTable, type Column } from "./SortableTable";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
-const BRANCHES_SORT = { key: "branches", descending: true };
+const BRANCHES_SORT = [{ id: "branches", desc: true }];
 
-const PROBABILITY_SORT = { key: "probability", descending: false };
+const PROBABILITY_SORT = [{ id: "probability", desc: false }];
+
+const CHANGE_NUMERIC = new Set(["branches"]);
+
+const ANCESTOR_NUMERIC = new Set(["probability"]);
 
 type StateColors = ReadonlyMap<string, string>;
 
-function changeColumns(colors: StateColors): ReadonlyArray<Column<StateChange>> {
-  return [
-    {
-      key: "from",
-      label: "From",
-      kind: "text",
-      value: (row) => row.from,
-      render: (row) => <StateLabel state={row.from} colors={colors} />,
-    },
-    {
-      key: "to",
-      label: "To",
-      kind: "text",
-      value: (row) => row.to,
-      render: (row) => <StateLabel state={row.to} colors={colors} />,
-    },
-    { key: "branches", label: "Branches", kind: "number", value: (row) => row.branches },
-  ];
+const changeColumn = dataColumns<StateChange>();
+
+const ancestorColumn = dataColumns<AncestorState>();
+
+function changeColumns(colors: StateColors) {
+  return changeColumn.columns([
+    changeColumn.accessor((row) => row.from, {
+      id: "from",
+      header: "From",
+      cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
+    }),
+    changeColumn.accessor((row) => row.to, {
+      id: "to",
+      header: "To",
+      cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
+    }),
+    changeColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
+  ]);
 }
 
-function ancestorColumns(colors: StateColors): ReadonlyArray<Column<AncestorState>> {
-  return [
-    {
-      key: "name",
-      label: "Ancestor",
-      kind: "text",
-      value: (row) => row.name,
-      render: (row) => `${row.name} (${row.tips} samples)`,
-    },
-    {
-      key: "state",
-      label: "Most probable state",
-      kind: "text",
-      value: (row) => row.state,
-      render: (row) => <StateLabel state={row.state} colors={colors} />,
-    },
-    {
-      key: "probability",
-      label: "Probability",
-      kind: "number",
-      value: (row) => row.probability,
-      render: (row) => row.probability.toFixed(3),
-    },
-  ];
+function ancestorColumns(colors: StateColors) {
+  return ancestorColumn.columns([
+    ancestorColumn.accessor((row) => row.name, {
+      id: "name",
+      header: "Ancestor",
+      cell: ({ row }) => `${row.original.name} (${row.original.tips} samples)`,
+    }),
+    ancestorColumn.accessor((row) => row.state, {
+      id: "state",
+      header: "Most probable state",
+      cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
+    }),
+    ancestorColumn.accessor((row) => row.probability, {
+      id: "probability",
+      header: "Probability",
+      cell: ({ getValue }) => getValue().toFixed(3),
+    }),
+  ]);
 }
 
 export function MugrationResults({
@@ -110,29 +109,33 @@ export function MugrationResults({
   );
 
   return (
-    <div className="grid gap-3.5">
+    <div className="grid gap-4">
       <SummaryStrip entries={summary} />
       {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={attribute} />}
-      <div className="grid gap-3.5 @4xl:grid-cols-2">
+      <div className="grid gap-4 @4xl:grid-cols-2">
         <Panel title="State changes" hint="Counted over branches of the tree">
-          <SortableTable
+          <DataTable
             label="State changes"
             columns={changeCols}
             rows={changes}
-            rowKey={changeKey}
-            initialSort={BRANCHES_SORT}
+            rowId={changeKey}
+            numeric={CHANGE_NUMERIC}
+            initialSorting={BRANCHES_SORT}
           />
         </Panel>
         <Panel title="Uncertain ancestors" hint={`Ancestors whose most probable state has P below ${threshold}`}>
           {uncertain.length === 0 ? (
-            <p className="text-ink-muted px-3.5 py-3">Every ancestor has a state with P of at least {threshold}.</p>
+            <Empty className="py-6">
+              <EmptyDescription>Every ancestor has a state with P of at least {threshold}.</EmptyDescription>
+            </Empty>
           ) : (
-            <SortableTable
+            <DataTable
               label="Uncertain ancestors"
               columns={ancestorCols}
               rows={uncertain}
-              rowKey={ancestorKey}
-              initialSort={PROBABILITY_SORT}
+              rowId={ancestorKey}
+              numeric={ANCESTOR_NUMERIC}
+              initialSorting={PROBABILITY_SORT}
             />
           )}
         </Panel>

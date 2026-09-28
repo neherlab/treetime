@@ -1,11 +1,11 @@
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
+import { SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
@@ -57,7 +57,7 @@ function TimetreeView({
   );
 
   return (
-    <div className="grid gap-3.5">
+    <div className="grid gap-4">
       <SummaryStrip entries={summary} />
       <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} aside={aside} />
       <OutputFiles record={record} citation={results.citation} />
@@ -88,7 +88,7 @@ function TimetreeAside({
         caption="Samples as TreeTime's final clock model saw them; red points are clock-filter outliers, grey points have an inferred date"
       >
         {points.length === 0 ? (
-          <p className="text-ink-muted m-0 px-2 py-3 text-sm">This run wrote no clock regression table.</p>
+          <p className="text-muted-foreground px-2 py-3 text-sm">This run wrote no clock regression table.</p>
         ) : (
           <RootToTipPlot
             points={points}

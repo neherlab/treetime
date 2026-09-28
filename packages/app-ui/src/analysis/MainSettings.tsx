@@ -2,12 +2,19 @@ import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
+import { OptionToggle, type ToggleOption } from "../components/OptionToggle";
 import { COMMAND_SETTINGS, type SettingSpec } from "../settings/catalog";
 import { MAIN_SETTING_KEYS, type SettingKey } from "../settings/commands";
 import { isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson, type JsonObject, type JsonValue } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { Segmented, Switch, cn, type SegmentedOption } from "../ui";
+import { Badge } from "../ui/badge";
+import { cn } from "../ui/cn";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { NativeSelect, NativeSelectOption } from "../ui/native-select";
+import { Slider } from "../ui/slider";
+import { Switch } from "../ui/switch";
 import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";
@@ -27,19 +34,19 @@ type CoalescentMode = "none" | "fixed" | "optimized" | "skyline";
 
 type RootMode = "optimize" | "keep";
 
-const RATE_MODES: ReadonlyArray<SegmentedOption<RateMode>> = [
+const RATE_MODES: ReadonlyArray<ToggleOption<RateMode>> = [
   { value: "estimate", label: "Estimate from data" },
   { value: "fixed", label: "Fixed rate" },
 ];
 
-const COALESCENT_MODES: ReadonlyArray<SegmentedOption<CoalescentMode>> = [
+const COALESCENT_MODES: ReadonlyArray<ToggleOption<CoalescentMode>> = [
   { value: "none", label: "None" },
   { value: "fixed", label: "Fixed Tc" },
   { value: "optimized", label: "Optimize Tc" },
   { value: "skyline", label: "Skyline" },
 ];
 
-const ROOT_MODES: ReadonlyArray<SegmentedOption<RootMode>> = [
+const ROOT_MODES: ReadonlyArray<ToggleOption<RootMode>> = [
   { value: "optimize", label: "Optimize root" },
   { value: "keep", label: "Keep input root" },
 ];
@@ -192,7 +199,7 @@ function ClockRateRow({ context }: { context: RowContext }) {
 
   return (
     <MainRow context={context} label="Clock rate" sub="Substitutions per site per year" keys={CLOCK_RATE_KEYS}>
-      <Segmented label="Clock rate" value={fixed ? "fixed" : "estimate"} onChange={onMode} options={RATE_MODES} />
+      <OptionToggle label="Clock rate" value={fixed ? "fixed" : "estimate"} onChange={onMode} options={RATE_MODES} />
       {fixed ? (
         <Inline>
           <Labeled text="Rate">
@@ -241,7 +248,7 @@ function CoalescentRow({ context }: { context: RowContext }) {
 
   return (
     <MainRow context={context} label="Coalescent prior" sub="Prior on node times" keys={COALESCENT_KEYS}>
-      <Segmented label="Coalescent prior" value={mode} onChange={onMode} options={COALESCENT_MODES} />
+      <OptionToggle label="Coalescent prior" value={mode} onChange={onMode} options={COALESCENT_MODES} />
       {mode === "fixed" && (
         <Inline>
           <Labeled text="Tc in years">
@@ -285,7 +292,7 @@ function RootRow({ context }: { context: RowContext }) {
 
   return (
     <MainRow context={context} label="Root" sub="Where the tree is rooted" keys={ROOT_KEYS}>
-      <Segmented label="Root" value={keep ? "keep" : "optimize"} onChange={onMode} options={ROOT_MODES} />
+      <OptionToggle label="Root" value={keep ? "keep" : "optimize"} onChange={onMode} options={ROOT_MODES} />
       {keep ? (
         <Note>The input root is kept; use this when the tree is rooted with an outgroup.</Note>
       ) : (
@@ -304,23 +311,21 @@ function ClockFilterRow({ context }: { context: RowContext }) {
   const { get, set } = context;
   const value = Number(get("clock_filter") ?? 0);
 
-  const onSlide = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => set("clock_filter", Number(event.target.value)),
-    [set],
-  );
+  const slid = useMemo(() => [Math.min(value, CLOCK_FILTER_MAX)], [value]);
+
+  const onSlide = useCallback((next: number | readonly number[]) => set("clock_filter", [next].flat()[0] ?? 0), [set]);
 
   return (
     <MainRow context={context} label="Clock filter" sub="Outlier threshold in IQD" keys={CLOCK_FILTER_KEYS}>
       <Inline>
-        <input
-          type="range"
+        <Slider
           min={0}
           max={CLOCK_FILTER_MAX}
           step={CLOCK_FILTER_STEP}
-          value={Math.min(value, CLOCK_FILTER_MAX)}
+          value={slid}
           aria-label="Clock filter threshold"
-          onChange={onSlide}
-          className="accent-accent w-56"
+          onValueChange={onSlide}
+          className="w-56"
         />
         <Control context={context} settingKey="clock_filter" className="w-20" />
       </Inline>
@@ -351,10 +356,10 @@ function RelaxRow({ context }: { context: RowContext }) {
   return (
     <MainRow context={context} label="Relaxed clock" sub="Rate variation between branches" keys={RELAX_KEYS}>
       <Inline>
-        <span className="text-ink-muted inline-flex items-center gap-1.5">
-          <Switch label="Relax the clock" checked={relaxed} onCheckedChange={onRelax} />
+        <Label className="font-normal">
+          <Switch checked={relaxed} onCheckedChange={onRelax} />
           Relax the clock
-        </span>
+        </Label>
         {relaxed && (
           <>
             <Labeled text={slack}>
@@ -387,13 +392,13 @@ function ModelRow({ context }: { context: RowContext }) {
       <Control context={context} settingKey="model" className="w-auto" />
       {modelHelp !== "" && <Note>{modelHelp}</Note>}
       <Labeled text="Parameters">
-        <input
+        <Input
           type="text"
           value={formatList(params)}
           aria-label="Model parameters"
           placeholder="kappa=0.2 pis=0.25,0.25,0.25,0.25"
           onChange={onParams}
-          className="border-line-strong bg-surface-1 w-72 max-w-full rounded-md border px-2 py-1"
+          className="h-8 w-72 max-w-full font-mono"
         />
       </Labeled>
     </MainRow>
@@ -414,19 +419,14 @@ function AttributeRow({ context, columns }: { context: RowContext; columns: read
     <MainRow context={context} label="Trait" sub="Metadata column to reconstruct" keys={ATTRIBUTE_KEYS}>
       {columns.length > 0 ? (
         <Labeled text="Column">
-          <select
-            aria-label="Trait column"
-            value={isString(value) ? value : ""}
-            onChange={onColumn}
-            className="border-line-strong bg-surface-1 rounded-md border px-2 py-1"
-          >
-            <option value="">Choose a column</option>
+          <NativeSelect size="sm" aria-label="Trait column" value={isString(value) ? value : ""} onChange={onColumn}>
+            <NativeSelectOption value="">Choose a column</NativeSelectOption>
             {columns.map((column) => (
-              <option key={column} value={column}>
+              <NativeSelectOption key={column} value={column}>
                 {column}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </Labeled>
       ) : (
         <Control context={context} settingKey="attribute" />
@@ -474,16 +474,17 @@ function MainRow({
   const checks = context.checks.filter((check) => check.settings.some((setting) => keys.includes(setting)));
 
   return (
-    <div className="border-surface-3 grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 @xl:grid-cols-[12.5rem_minmax(0,1fr)]">
-      <div className="font-bold">
-        {label}
-        {changed && (
-          <span
-            title="Changed from default"
-            className="bg-accent ml-1.5 inline-block size-1.5 rounded-full align-middle"
-          />
-        )}
-        {sub !== undefined && <small className="text-ink-faint block text-xs font-normal">{sub}</small>}
+    <div className="grid gap-3.5 border-t px-3.5 py-3 first:border-t-0 @xl:grid-cols-[12.5rem_minmax(0,1fr)]">
+      <div className="grid content-start gap-0.5">
+        <span className="flex items-center gap-1.5 font-medium">
+          {label}
+          {changed && (
+            <Badge variant="secondary" className="text-primary h-4 px-1.5 text-[0.6875rem]">
+              changed
+            </Badge>
+          )}
+        </span>
+        {sub !== undefined && <span className="text-muted-foreground text-xs">{sub}</span>}
       </div>
       <div className="grid justify-items-start gap-2">
         {children}
@@ -496,9 +497,9 @@ function MainRow({
         )}
         <div className="flex flex-wrap gap-1">
           {specs.map((spec) => (
-            <code key={spec.key} className="bg-surface-3 text-ink-muted rounded-sm px-1 font-mono text-[0.6875rem]">
+            <Badge key={spec.key} variant="outline" className="text-muted-foreground h-4 px-1 font-mono font-normal">
               {spec.flag}
-            </code>
+            </Badge>
           ))}
         </div>
       </div>
@@ -519,10 +520,10 @@ function SwitchLabel({ context, settingKey, text }: { context: RowContext; setti
   const onChange = useCallback((checked: boolean) => set(settingKey, checked), [set, settingKey]);
 
   return (
-    <span className="text-ink-muted inline-flex items-center gap-1.5">
-      <Switch label={text} checked={get(settingKey) === true} onCheckedChange={onChange} />
+    <Label className="font-normal">
+      <Switch checked={get(settingKey) === true} onCheckedChange={onChange} />
       {text}
-    </span>
+    </Label>
   );
 }
 
@@ -549,13 +550,13 @@ function NumberPairInput({
   );
 
   return (
-    <input
+    <Input
       type="number"
       step="any"
       aria-label={label}
       value={isNumber(item) ? item : ""}
       onChange={onInput}
-      className="border-line-strong bg-surface-1 w-24 rounded-md border px-2 py-1"
+      className="h-8 w-24 font-mono"
     />
   );
 }
@@ -576,13 +577,13 @@ function Inline({ children }: { children: React.ReactNode }) {
 
 function Labeled({ text, children }: { text: string; children: React.ReactNode }) {
   return (
-    <span className="text-ink-muted inline-flex max-w-full flex-wrap items-center gap-1.5">
+    <Label className="text-muted-foreground max-w-full flex-wrap font-normal">
       {text}
       {children}
-    </span>
+    </Label>
   );
 }
 
 function Note({ children }: { children: React.ReactNode }) {
-  return <p className="text-ink-faint text-xs">{children}</p>;
+  return <p className="text-muted-foreground text-xs">{children}</p>;
 }

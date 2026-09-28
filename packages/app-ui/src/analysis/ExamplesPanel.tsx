@@ -7,7 +7,12 @@ import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
-import { Button, Toast } from "../ui";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Spinner } from "../ui/spinner";
+import { Table, TableBody, TableCell, TableRow } from "../ui/table";
+import { useToastManager } from "../ui/toast";
 import { useConfigLoader } from "./useConfigLoader";
 import { useInputActions } from "./useInputActions";
 
@@ -17,34 +22,36 @@ export function ExamplesPanel({ command, close }: { command: AppCommand; close: 
   const { data: catalog, error } = useApi((context) => datasets(context), { staleTime: Infinity });
 
   return (
-    <div className="border-line bg-surface-1 rounded-lg border">
+    <Card size="sm" className="gap-0 py-0 shadow-none">
       <PanelHeading title="Example data" hint="Bundled datasets with tree, alignment and metadata">
         <Button type="button" variant="ghost" size="sm" onClick={close}>
           Close
         </Button>
       </PanelHeading>
       {error !== null && (
-        <p className="text-signal-danger px-3.5 py-2">The examples cannot be listed: {error.message}</p>
+        <Alert variant="destructive" className="m-3.5 w-auto">
+          <AlertDescription>The examples cannot be listed: {error.message}</AlertDescription>
+        </Alert>
       )}
-      <div className="max-h-72 overflow-auto">
-        <table className="w-full border-collapse">
-          <tbody>
+      <div className="max-h-72 overflow-auto overscroll-contain">
+        <Table>
+          <TableBody>
             {(catalog?.datasets ?? []).map((dataset) => (
               <DatasetRow key={dataset.name} command={command} dataset={dataset} close={close} />
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <PanelHeading title="Example configs" hint="Ready-made settings and inputs from the repository" />
-      <table className="w-full border-collapse">
-        <tbody>
+      <Table>
+        <TableBody>
           {(catalog?.examples ?? []).map((example) => (
             <ExampleRow key={example.path} example={example} />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <EarlierInputs command={command} close={close} />
-    </div>
+    </Card>
   );
 }
 
@@ -58,21 +65,23 @@ function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset:
   }, [actions, close, inputs]);
 
   return (
-    <tr className="border-line border-b">
-      <td className="px-3.5 py-1.5 font-mono text-xs">{dataset.name}</td>
-      <td className="text-ink-faint px-2 py-1.5 text-xs">{inputs.map((input) => input.key).join(", ")}</td>
-      <td className="px-3.5 py-1 text-right">
+    <TableRow>
+      <TableCell className="font-mono text-xs">{dataset.name}</TableCell>
+      <TableCell className="text-muted-foreground text-xs whitespace-normal">
+        {inputs.map((input) => input.key).join(", ")}
+      </TableCell>
+      <TableCell className="text-right">
         <Button type="button" variant="outline" size="sm" disabled={inputs.length === 0} onClick={load}>
           Load
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
 function ExampleRow({ example }: { example: ExampleConfig }) {
   const loadConfig = useConfigLoader();
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -97,15 +106,16 @@ function ExampleRow({ example }: { example: ExampleConfig }) {
   const onLoad = useCallback(() => void load(), [load]);
 
   return (
-    <tr className="border-line border-b">
-      <td className="px-3.5 py-1.5">{example.title}</td>
-      <td className="text-ink-faint px-2 py-1.5 font-mono text-xs">{example.command}</td>
-      <td className="px-3.5 py-1 text-right">
+    <TableRow>
+      <TableCell className="whitespace-normal">{example.title}</TableCell>
+      <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">{example.command}</TableCell>
+      <TableCell className="text-right">
         <Button type="button" variant="outline" size="sm" disabled={loading} onClick={onLoad}>
-          {loading ? "Loading..." : "Load"}
+          {loading && <Spinner />}
+          Load
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -139,13 +149,13 @@ function EarlierInputs({ command, close }: { command: AppCommand; close: () => v
   return (
     <>
       <PanelHeading title="Inputs of earlier runs" hint="The files an earlier run read" />
-      <table className="w-full border-collapse">
-        <tbody>
+      <Table>
+        <TableBody>
           {rows.map(({ record, inputs }) => (
             <EarlierRow key={record.id} command={command} record={record} inputs={inputs} close={close} />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </>
   );
 }
@@ -169,23 +179,25 @@ function EarlierRow({
   }, [actions, close, inputs]);
 
   return (
-    <tr className="border-line border-b">
-      <td className="px-3.5 py-1.5">{record.title}</td>
-      <td className="text-ink-faint px-2 py-1.5 font-mono text-xs">{inputs.map((input) => input.label).join(", ")}</td>
-      <td className="px-3.5 py-1 text-right">
+    <TableRow>
+      <TableCell className="whitespace-normal">{record.title}</TableCell>
+      <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
+        {inputs.map((input) => input.label).join(", ")}
+      </TableCell>
+      <TableCell className="text-right">
         <Button type="button" variant="outline" size="sm" onClick={use}>
           Use
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
 function PanelHeading({ title, hint, children }: { title: string; hint: string; children?: React.ReactNode }) {
   return (
-    <div className="border-line flex items-center gap-2.5 border-b px-3.5 py-2.5">
-      <h3 className="font-bold">{title}</h3>
-      <span className="text-ink-faint text-xs">{hint}</span>
+    <div className="bg-muted/40 flex items-center gap-2.5 border-y px-3.5 py-2 first:border-t-0">
+      <h3 className="text-sm font-medium">{title}</h3>
+      <span className="text-muted-foreground text-xs">{hint}</span>
       {children !== undefined && <div className="ml-auto">{children}</div>}
     </div>
   );

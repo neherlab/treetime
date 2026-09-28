@@ -1,4 +1,5 @@
 import type { AppCommand } from "@neherlab/app-contracts";
+import { RotateCcw } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
@@ -6,7 +7,10 @@ import type { SettingSpec } from "../settings/catalog";
 import { isChanged, resetValue } from "../settings/config";
 import { isJsonObject, type JsonObject, type JsonValue } from "../settings/json";
 import { formatList } from "../settings/lists";
-import { cn } from "../ui";
+import { Button } from "../ui/button";
+import { cn } from "../ui/cn";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { Label } from "../ui/label";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { SettingControl } from "./SettingControl";
@@ -34,36 +38,34 @@ export function SettingField({
   return (
     <div
       className={cn(
-        "border-surface-3 grid gap-x-4.5 gap-y-1 border-t py-2 pr-3.5 pl-7.5 @xl:grid-cols-[minmax(0,1fr)_16.25rem]",
-        changed && "from-accent-subtle bg-gradient-to-r to-transparent to-60%",
+        "grid gap-x-4.5 gap-y-1 border-t py-2.5 pr-3.5 pl-7.5 @xl:grid-cols-[minmax(0,1fr)_16.25rem]",
+        changed && "bg-accent/50",
       )}
     >
       <div className="flex flex-wrap items-baseline gap-2">
-        <label htmlFor={settingFieldId(spec.key)} className="font-bold">
-          {label}
-        </label>
-        <code className="text-ink-faint font-mono text-xs">{spec.flag}</code>
+        <Label htmlFor={settingFieldId(spec.key)}>{label}</Label>
+        <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
         {spec.role === "setting" && (
-          <span className="text-ink-faint text-xs">Default: {defaultText(spec.default_value)}</span>
+          <span className="text-muted-foreground text-xs">Default: {defaultText(spec.default_value)}</span>
         )}
       </div>
       <div className="flex items-start gap-1.5 @xl:col-start-2 @xl:row-span-2 @xl:row-start-1">
-        <div className="min-w-0 flex-1">
+        <div className="grid min-w-0 flex-1 gap-1">
           <SettingControl command={command} spec={spec} label={label} />
-          {error !== null && <p className="text-signal-danger mt-0.5 text-xs">{error}</p>}
+          {error !== null && <p className="text-destructive text-xs">{error}</p>}
         </div>
         {spec.role === "setting" && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={reset}
             title="Reset to default"
-            className={cn(
-              "text-ink-muted hover:bg-surface-2 rounded-md px-2 py-1 text-xs font-bold",
-              !changed && "invisible",
-            )}
+            aria-label={`Reset ${label} to default`}
+            className={cn(!changed && "invisible")}
           >
-            Reset
-          </button>
+            <RotateCcw aria-hidden />
+          </Button>
         )}
       </div>
       <SettingHelp spec={spec} />
@@ -73,13 +75,13 @@ export function SettingField({
 
 export function SettingHelp({ spec }: { spec: SettingSpec }) {
   return (
-    <div className="text-ink-muted max-w-[72ch] text-[0.8125rem]">
+    <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
       {spec.help}
       {spec.more !== "" && (
-        <details className="inline">
-          <summary className="text-accent ml-1 inline cursor-pointer">More</summary>
-          <span className="block whitespace-pre-line">{spec.more}</span>
-        </details>
+        <Collapsible className="inline">
+          <CollapsibleTrigger className="text-primary ml-1 underline-offset-4 hover:underline">More</CollapsibleTrigger>
+          <CollapsibleContent className="whitespace-pre-line">{spec.more}</CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );

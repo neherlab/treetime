@@ -1,7 +1,10 @@
 import type { AuspiceDocument } from "@neherlab/app-contracts";
+import { TreePine } from "lucide-react";
 import { lazy, Suspense, type ReactNode } from "react";
 
+import { LoadingState } from "../components/PageShell";
 import type { ResultTree } from "../results/types";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeLink } from "./TreeWorkspace";
 
 const TreeWorkspace = lazy(async () => ({ default: (await import("./TreeWorkspace")).TreeWorkspace }));
@@ -21,7 +24,7 @@ export function TreeView({
   aside?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
   return (
-    <Suspense fallback={<p className="text-ink-muted px-3.5 py-6 text-center">Loading the tree view...</p>}>
+    <Suspense fallback={<LoadingState text="Loading the tree view" />}>
       <TreeWorkspace data={data} colorBy={colorBy} aside={aside} />
     </Suspense>
   );
@@ -29,9 +32,11 @@ export function TreeView({
 
 export function MissingTree() {
   return (
-    <p className="border-line bg-surface-1 text-ink-muted rounded-lg border px-4 py-3.5">
-      This run wrote no Auspice tree, so the tree view is not available. The output files are listed below.
-    </p>
+    <Alert>
+      <TreePine aria-hidden />
+      <AlertTitle>No tree view</AlertTitle>
+      <AlertDescription>This run wrote no Auspice tree. The output files are listed below.</AlertDescription>
+    </Alert>
   );
 }
 

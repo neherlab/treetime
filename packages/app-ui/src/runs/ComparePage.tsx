@@ -7,6 +7,8 @@ import { useCallback, useMemo } from "react";
 import { defaultText } from "../analysis/SettingField";
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
+import { LoadingState, PageShell } from "../components/PageShell";
+import { Panel } from "../components/Panel";
 import { formatLevel, formatRate, formatSignedDays } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import type { SettingDifference, SettingsComparison, TimetreeEstimates, YearDate } from "../results/types";
@@ -14,9 +16,11 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { baseName } from "../settings/inputs";
 import { zJsonValue } from "../settings/json";
-import { Button } from "../ui";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Button } from "../ui/button";
+import { NativeSelect, NativeSelectOption } from "../ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { DateIntervals } from "./DateIntervals";
-import { Panel } from "./Panel";
 import { Plate } from "./Plate";
 import { ShiftPlot } from "./ShiftPlot";
 
@@ -28,10 +32,15 @@ export function ComparePage({ first, second }: { first: string; second: string }
   if (left?.data === undefined || right?.data === undefined) {
     const error = left?.error ?? right?.error ?? null;
 
-    return (
-      <p className="text-ink-muted p-10 text-center">
-        {error === null ? "Loading the runs..." : `The runs cannot be loaded: ${error.message}`}
-      </p>
+    return error === null ? (
+      <LoadingState text="Loading the runs" />
+    ) : (
+      <PageShell>
+        <Alert variant="destructive">
+          <AlertTitle>The runs cannot be loaded</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
+        </Alert>
+      </PageShell>
     );
   }
 
@@ -55,27 +64,32 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
   );
 
   return (
-    <div className="mx-auto grid max-w-[110rem] grid-cols-1 gap-3.5 px-5 pt-4 pb-16">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="mr-2 text-2xl font-bold">Compare runs</h1>
+    <PageShell>
+      <header className="flex flex-wrap items-center gap-2.5">
+        <h1 className="font-heading mr-2 text-2xl font-semibold">Compare runs</h1>
         <RunPicker current={left} other={right} side="first" />
         <Button type="button" variant="ghost" size="sm" onClick={swap} aria-label="Swap the runs">
-          <ArrowLeftRight size={14} aria-hidden />
+          <ArrowLeftRight aria-hidden />
           Swap
         </Button>
         <RunPicker current={right} other={left} side="second" />
-      </div>
-      {comparison === undefined ? (
-        <p className="text-ink-muted">
-          {error === null ? "Comparing the runs..." : `The runs cannot be compared: ${error.message}`}
-        </p>
-      ) : (
+      </header>
+      {comparison === undefined &&
+        (error === null ? (
+          <LoadingState text="Comparing the runs" />
+        ) : (
+          <Alert variant="destructive">
+            <AlertTitle>The runs cannot be compared</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        ))}
+      {comparison !== undefined && (
         <>
           {timetrees && <TimetreeEstimatesComparison left={left} right={right} comparison={comparison} />}
           <SettingsDifferences left={left} right={right} settings={comparison.settings ?? undefined} />
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -95,18 +109,19 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
   );
 
   return (
-    <select
+    <NativeSelect
+      size="sm"
       aria-label={side === "first" ? "First run" : "Second run"}
       value={current.id}
       onChange={onChange}
-      className="border-line-strong bg-surface-1 h-8 max-w-[min(18rem,100%)] rounded-md border px-2 font-bold"
+      className="max-w-[min(18rem,100%)] font-medium"
     >
       {runs.map((run) => (
-        <option key={run.id} value={run.id}>
+        <NativeSelectOption key={run.id} value={run.id}>
           {run.title} ({COMMAND_INFO[run.command].label})
-        </option>
+        </NativeSelectOption>
       ))}
-    </select>
+    </NativeSelect>
   );
 }
 
@@ -135,24 +150,24 @@ function SettingsDifferences({
       }
     >
       {differences.length > 0 && (
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="text-ink-faint text-xs">
-              <th className="px-3.5 py-1.5 font-normal">Setting</th>
-              <th className="px-3.5 py-1.5 font-normal">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Setting</TableHead>
+              <TableHead>
                 <RunLink record={left} />
-              </th>
-              <th className="px-3.5 py-1.5 font-normal">
+              </TableHead>
+              <TableHead>
                 <RunLink record={right} />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {differences.map((difference) => (
               <DifferenceRow key={difference.key} record={left} difference={difference} />
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </Panel>
   );
@@ -162,32 +177,36 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
   const spec = COMMAND_SETTINGS[record.command].specs.find((candidate) => candidate.key === difference.key);
 
   return (
-    <tr className="border-line border-t">
-      <td className="px-3.5 py-1.5">
-        {spec?.label ?? difference.key} <code className="text-ink-faint font-mono text-xs">{spec?.flag}</code>
+    <TableRow>
+      <TableCell className="whitespace-normal">
+        {spec?.label ?? difference.key} <code className="text-muted-foreground font-mono text-xs">{spec?.flag}</code>
         {difference.kind === "input" && (
-          <span className="text-ink-muted block text-xs">
+          <span className="text-muted-foreground block text-xs">
             {difference.same_content ? "Same file contents" : "Different file contents"}
           </span>
         )}
-      </td>
-      <td className="px-3.5 py-1.5 font-mono text-xs break-all">
+      </TableCell>
+      <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.first.map(baseName).join(", ")
           : defaultText(zJsonValue.parse(difference.first))}
-      </td>
-      <td className="px-3.5 py-1.5 font-mono text-xs break-all">
+      </TableCell>
+      <TableCell className="font-mono text-xs break-all whitespace-normal">
         {difference.kind === "input"
           ? difference.second.map(baseName).join(", ")
           : defaultText(zJsonValue.parse(difference.second))}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
 function RunLink({ record }: { record: RunRecord }) {
   return (
-    <Link to="/runs/$id/results" params={{ id: record.id }} className="text-accent font-bold">
+    <Link
+      to="/runs/$id/results"
+      params={{ id: record.id }}
+      className="text-primary font-medium underline-offset-4 hover:underline"
+    >
       {record.title}
     </Link>
   );
@@ -231,7 +250,9 @@ function TimetreeEstimatesComparison({
 
   if (estimates === undefined || ancestors === undefined) {
     return (
-      <p className="text-ink-muted">One of the runs wrote no Auspice tree, so their estimates cannot be compared.</p>
+      <p className="text-muted-foreground">
+        One of the runs wrote no Auspice tree, so their estimates cannot be compared.
+      </p>
     );
   }
 
@@ -245,22 +266,22 @@ function TimetreeEstimatesComparison({
 
   return (
     <>
-      <div className="grid gap-3.5 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid gap-4 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Panel title="Estimates">
-          <table className="w-full border-collapse text-left text-sm tabular-nums">
-            <thead>
-              <tr className="text-ink-faint text-xs">
-                <th className="px-3.5 py-1.5 font-normal">Estimate</th>
-                <th className="px-3.5 py-1.5 font-normal">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Estimate</TableHead>
+                <TableHead>
                   <RunLink record={left} />
-                </th>
-                <th className="px-3.5 py-1.5 font-normal">
+                </TableHead>
+                <TableHead>
                   <RunLink record={right} />
-                </th>
-                <th className="px-3.5 py-1.5 font-normal">Difference</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead>Difference</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               <EstimateRow
                 label="Root date"
                 first={dateText(a.root_date)}
@@ -301,8 +322,8 @@ function TimetreeEstimatesComparison({
                     : `${likelihoodChange > 0 ? "+" : ""}${likelihoodChange.toFixed(1)}`
                 }
               />
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Panel>
         {rootRows !== undefined && (
           <Plate title="Root date" caption={`With the ${intervalName.toLowerCase()} of each run`}>
@@ -315,7 +336,7 @@ function TimetreeEstimatesComparison({
         caption={shiftCaption(shifts.length, ancestors.ancestors, ancestors.mean_absolute_shift_days ?? undefined)}
       >
         {shifts.length === 0 ? (
-          <p className="text-ink-muted m-0 px-2 py-3 text-sm">
+          <p className="text-muted-foreground px-2 py-3 text-sm">
             The trees share no ancestor with the same set of samples.
           </p>
         ) : (
@@ -344,12 +365,12 @@ function EstimateRow({
   difference: string;
 }) {
   return (
-    <tr className="border-line border-t">
-      <td className="text-ink-muted px-3.5 py-1.5">{label}</td>
-      <td className="px-3.5 py-1.5">{first}</td>
-      <td className="px-3.5 py-1.5">{second}</td>
-      <td className="px-3.5 py-1.5 font-bold">{difference}</td>
-    </tr>
+    <TableRow>
+      <TableCell className="text-muted-foreground">{label}</TableCell>
+      <TableCell className="whitespace-normal">{first}</TableCell>
+      <TableCell className="whitespace-normal">{second}</TableCell>
+      <TableCell className="font-medium">{difference}</TableCell>
+    </TableRow>
   );
 }
 

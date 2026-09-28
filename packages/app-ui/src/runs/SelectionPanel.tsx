@@ -4,12 +4,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
+import { Panel } from "../components/Panel";
 import { formatLevel } from "../format";
 import type { ResultTree } from "../results/types";
-import { Button } from "../ui";
+import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DateIntervals, type DateRow } from "./DateIntervals";
-import { Panel } from "./Panel";
 import type { TreeLink } from "./TreeWorkspace";
 
 export function SelectionPanel({
@@ -84,45 +84,43 @@ export function SelectionPanel({
         ) : undefined
       }
     >
-      <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
-        <dt className="text-ink-faint">{isTip ? "Date in tree" : "Date"}</dt>
-        <dd className="m-0 tabular-nums">
-          {node.date === null || node.date === undefined ? "not dated" : node.date.date}
-        </dd>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
+        <dt className="text-muted-foreground">{isTip ? "Date in tree" : "Date"}</dt>
+        <dd className="tabular-nums">{node.date === null || node.date === undefined ? "not dated" : node.date.date}</dd>
         {interval !== undefined && (
           <>
-            <dt className="text-ink-faint">{formatLevel(interval.level)} interval</dt>
-            <dd className="m-0 tabular-nums">
+            <dt className="text-muted-foreground">{formatLevel(interval.level)} interval</dt>
+            <dd className="tabular-nums">
               {interval.lower.date} to {interval.upper.date} ({Math.round(interval.days)} days)
             </dd>
           </>
         )}
         {node.excluded === true && isTip && (
           <>
-            <dt className="text-ink-faint">Clock</dt>
-            <dd className="text-signal-warn m-0 font-bold">Excluded: no usable date or clock outlier</dd>
+            <dt className="text-muted-foreground">Clock</dt>
+            <dd className="text-warning font-medium">Excluded: no usable date or clock outlier</dd>
           </>
         )}
-        <dt className="text-ink-faint">Mutations</dt>
-        <dd className="m-0 font-mono text-xs">
+        <dt className="text-muted-foreground">Mutations</dt>
+        <dd className="font-mono text-xs">
           {node.mutations.length === 0 ? "none on this branch" : node.mutations.join(" ")}
         </dd>
       </dl>
       {searched > 0 && (
-        <div className="border-line border-t px-3.5 py-3">
+        <div className="border-t px-3.5 py-3">
           {matched > 0 && (
             <>
-              <p className="m-0 text-sm font-bold">
+              <p className="text-sm font-medium">
                 Date of this {isTip ? "sample" : "clade"} in {matched} other time tree {matched === 1 ? "run" : "runs"}
               </p>
-              <p className="text-ink-faint mt-0.5 mb-2 text-xs">
+              <p className="text-muted-foreground mt-0.5 mb-2 text-xs">
                 Runs whose tree has a node with the same set of samples below it. Click a run to open it.
               </p>
               <DateIntervals rows={rows} onOpen={open} />
             </>
           )}
           {missing > 0 && (
-            <p className={cn("text-ink-faint m-0 text-xs", matched > 0 && "mt-2")}>
+            <p className={cn("text-muted-foreground text-xs", matched > 0 && "mt-2")}>
               {absentText(missing, searched, isTip)}
             </p>
           )}

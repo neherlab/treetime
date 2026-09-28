@@ -1,25 +1,13 @@
+import { useElementSize } from "@mantine/hooks";
 import { zAncestorShift } from "@neherlab/app-contracts";
-import { useMemo, useState } from "react";
-import {
-  CartesianGrid,
-  Label,
-  ReferenceLine,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ZAxis,
-} from "recharts";
+import { useMemo } from "react";
+import { CartesianGrid, Label, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts";
 
 import { formatSignedDays } from "../format";
-import { useElementWidth } from "../hooks/useElementWidth";
 import type { AncestorShift } from "../results/types";
-import { ChartTooltip } from "./ChartTooltip";
-import { CHART, niceAxis, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
-
-const HEIGHT = 300;
+import { ChartContainer, ChartTooltip } from "../ui/chart";
+import { CHART, CHART_CONFIG, niceAxis, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
+import { TooltipCard } from "./TooltipCard";
 
 const X_PX_PER_TICK = 100;
 
@@ -31,8 +19,8 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
     [shifts],
   );
 
-  const [chart, setChart] = useState<HTMLDivElement | null>(null);
-  const xTickCount = tickCountFor(useElementWidth(chart), X_PX_PER_TICK);
+  const { ref: chart, width } = useElementSize<HTMLDivElement>();
+  const xTickCount = tickCountFor(width, X_PX_PER_TICK);
 
   const xAxis = useMemo(
     () =>
@@ -44,8 +32,8 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
   );
 
   return (
-    <div ref={setChart}>
-      <ResponsiveContainer width="100%" height={HEIGHT}>
+    <div ref={chart}>
+      <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[300px] w-full">
         <ScatterChart margin={PLOT_MARGIN}>
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
@@ -56,17 +44,29 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
             tick={TICK_STYLE}
             tickFormatter={yearTick}
           >
-            <Label value={`Date in ${firstLabel}`} position="bottom" offset={4} {...TICK_STYLE} />
+            <Label
+              value={`Date in ${firstLabel}`}
+              position="bottom"
+              offset={4}
+              {...TICK_STYLE}
+              className="fill-muted-foreground"
+            />
           </XAxis>
           <YAxis type="number" dataKey="y" tick={TICK_STYLE} width={56}>
-            <Label value="Shift in days" angle={-90} position="insideLeft" {...TICK_STYLE} />
+            <Label
+              value="Shift in days"
+              angle={-90}
+              position="insideLeft"
+              {...TICK_STYLE}
+              className="fill-muted-foreground"
+            />
           </YAxis>
           <ZAxis type="number" dataKey="z" range={CLADE_SIZE} />
           <ReferenceLine y={0} stroke={CHART.muted} strokeDasharray="3 3" />
-          <Tooltip content={<ShiftTooltip />} isAnimationActive={false} />
+          <ChartTooltip content={<ShiftTooltip />} isAnimationActive={false} />
           <Scatter data={data} fill={CHART.accent} fillOpacity={0.65} isAnimationActive={false} />
         </ScatterChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }
@@ -81,12 +81,12 @@ function ShiftTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   const shift = parsed.data;
 
   return (
-    <ChartTooltip>
-      <div className="font-bold">
+    <TooltipCard>
+      <div className="font-semibold">
         {shift.name}, {shift.tips} samples
       </div>
       <div>Date {shift.date_first.date}</div>
       <div>Shift {formatSignedDays(shift.shift_days)}</div>
-    </ChartTooltip>
+    </TooltipCard>
   );
 }

@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useElementSize } from "@mantine/hooks";
+import { useCallback, useMemo } from "react";
+import { Bar, ComposedChart, Scatter, XAxis, YAxis } from "recharts";
 
-import { useElementWidth } from "../hooks/useElementWidth";
 import type { DateInterval, YearDate } from "../results/types";
-import { cn } from "../ui/cn";
-import { CHART, niceAxis, tickCountFor, yearTick } from "./palette";
+import { ChartTooltip } from "../ui/chart";
+import { CHART, niceAxis, TICK_STYLE, tickCountFor, yearTick } from "./palette";
+import { TooltipCard } from "./TooltipCard";
 
 export interface DateRow {
   id: string;
@@ -13,13 +15,19 @@ export interface DateRow {
   current: boolean;
 }
 
-const TRACK_HEIGHT = 22;
+const ROW_HEIGHT = 28;
 
-const AXIS_HEIGHT = 20;
+const AXIS_HEIGHT = 28;
 
 const PX_PER_TICK = 80;
 
 const MIN_SPAN_YEARS = 0.05;
+
+const LABEL_WIDTH = 160;
+
+const MARGIN = { top: 4, right: 16, bottom: 0, left: 0 };
+
+const BAR_SIZE = 6;
 
 export function DateIntervals({
   rows,
@@ -28,96 +36,102 @@ export function DateIntervals({
   rows: readonly DateRow[];
   onOpen?: ((id: string) => void) | undefined;
 }) {
-  const [axis, setAxis] = useState<HTMLDivElement | null>(null);
-  const tickCount = tickCountFor(useElementWidth(axis), PX_PER_TICK);
-  const scale = useMemo(() => dateScale(rows, tickCount), [rows, tickCount]);
+  const { ref, width } = useElementSize<HTMLDivElement>();
+  const tickCount = tickCountFor(width - LABEL_WIDTH, PX_PER_TICK);
+  const axis = useMemo(() => dateAxis(rows, tickCount), [rows, tickCount]);
+  const data = useMemo(() => rows.map(plotRow), [rows]);
+  const labels = useMemo(() => new Map(rows.map((row) => [row.id, row.label])), [rows]);
+  const rowLabel = useCallback((id: string) => labels.get(id) ?? id, [labels]);
+
+  const openRow = useCallback(
+    (point: { value?: unknown }) => {
+      const row = rows.find((candidate) => candidate.id === point.value && !candidate.current);
+
+      if (row !== undefined) {
+        onOpen?.(row.id);
+      }
+    },
+    [onOpen, rows],
+  );
 
   return (
-    <div className="grid grid-cols-[minmax(0,12rem)_auto_minmax(0,1fr)] items-center gap-x-3 text-xs">
-      {rows.map((row) => (
-        <IntervalRow key={row.id} row={row} scale={scale} onOpen={row.current ? undefined : onOpen} />
-      ))}
-      <span className="col-span-2" />
-      <div ref={setAxis}>
-        <svg width="100%" height={AXIS_HEIGHT} className="overflow-visible" aria-hidden>
-          <line x1="0%" x2="100%" y1={0.5} y2={0.5} stroke={CHART.faint} />
-          {scale.ticks.map((tick, index) => (
-            <g key={tick}>
-              <line x1={scale.at(tick)} x2={scale.at(tick)} y1={0} y2={4} stroke={CHART.faint} />
-              <text
-                x={scale.at(tick)}
-                y={AXIS_HEIGHT - 3}
-                fontSize={10}
-                fill={CHART.muted}
-                textAnchor={tickAnchor(index, scale.ticks.length)}
-              >
-                {yearTick(tick)}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
+    <div
+      ref={ref}
+      className="[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-surface]:outline-hidden"
+    >
+      {width > 0 && (
+        <ComposedChart
+          layout="vertical"
+          data={data}
+          margin={MARGIN}
+          width={width}
+          height={rows.length * ROW_HEIGHT + AXIS_HEIGHT}
+        >
+          <XAxis
+            type="number"
+            domain={axis.domain}
+            ticks={axis.ticks}
+            tick={TICK_STYLE}
+            tickFormatter={yearTick}
+            stroke={CHART.muted}
+          />
+          <YAxis
+            type="category"
+            dataKey="id"
+            width={LABEL_WIDTH}
+            tick={TICK_STYLE}
+            tickFormatter={rowLabel}
+            onClick={openRow}
+            className={onOpen === undefined ? "" : "cursor-pointer"}
+          />
+          <ChartTooltip content={<IntervalTooltip rows={rows} />} isAnimationActive={false} cursor={false} />
+          <Bar dataKey="interval" barSize={BAR_SIZE} fill={CHART.accent} fillOpacity={0.35} isAnimationActive={false} />
+          <Scatter dataKey="otherYear" fill={CHART.accent} isAnimationActive={false} />
+          <Scatter dataKey="currentYear" fill={CHART.selection} isAnimationActive={false} />
+        </ComposedChart>
+      )}
     </div>
   );
 }
 
-function IntervalRow({
-  row,
-  scale,
-  onOpen,
+function IntervalTooltip({
+  rows,
+  active,
+  label,
 }: {
-  row: DateRow;
-  scale: DateScale;
-  onOpen: ((id: string) => void) | undefined;
+  rows: readonly DateRow[];
+  active?: boolean;
+  label?: string | number;
 }) {
-  const open = useCallback(() => onOpen?.(row.id), [onOpen, row.id]);
-  const title = rowTitle(row);
-  const labelClass = cn("truncate text-left", row.current ? "text-ink font-bold" : "text-ink-muted");
+  const row = rows.find((candidate) => candidate.id === label);
+
+  if (active !== true || row === undefined) {
+    return null;
+  }
 
   return (
-    <>
-      {onOpen === undefined ? (
-        <span className={labelClass} title={title}>
-          {row.label}
-        </span>
-      ) : (
-        <button
-          type="button"
-          className={cn(labelClass, "hover:text-accent cursor-pointer underline-offset-2 hover:underline")}
-          title={`${title}. Open this run`}
-          onClick={open}
-        >
-          {row.label}
-        </button>
+    <TooltipCard>
+      <div className="font-medium">{row.label}</div>
+      <div>{row.date.date}</div>
+      {row.interval !== undefined && (
+        <div className="text-muted-foreground">
+          {row.interval.lower.date} to {row.interval.upper.date}
+        </div>
       )}
-      <span className={cn("tabular-nums", row.current ? "text-ink font-bold" : "text-ink-muted")}>{row.date.date}</span>
-      <svg width="100%" height={TRACK_HEIGHT} className="overflow-visible" aria-hidden>
-        <title>{title}</title>
-        <line x1="0%" x2="100%" y1={TRACK_HEIGHT / 2} y2={TRACK_HEIGHT / 2} stroke={CHART.grid} />
-        {row.interval !== undefined && (
-          <line
-            x1={scale.at(row.interval.lower.year)}
-            x2={scale.at(row.interval.upper.year)}
-            y1={TRACK_HEIGHT / 2}
-            y2={TRACK_HEIGHT / 2}
-            stroke={CHART.accent}
-            strokeWidth={4}
-            strokeOpacity={0.35}
-            strokeLinecap="round"
-          />
-        )}
-        <circle
-          cx={scale.at(row.date.year)}
-          cy={TRACK_HEIGHT / 2}
-          r={4}
-          fill={row.current ? CHART.selection : CHART.accent}
-        />
-      </svg>
-    </>
+    </TooltipCard>
   );
 }
 
-function dateScale(rows: readonly DateRow[], tickCount: number): DateScale {
+function plotRow(row: DateRow): PlotRow {
+  return {
+    id: row.id,
+    otherYear: row.current ? null : row.date.year,
+    currentYear: row.current ? row.date.year : null,
+    interval: [row.interval?.lower.year ?? row.date.year, row.interval?.upper.year ?? row.date.year],
+  };
+}
+
+function dateAxis(rows: readonly DateRow[], tickCount: number) {
   const ends = rows.flatMap((row) => [
     row.interval?.lower.year ?? row.date.year,
     row.interval?.upper.year ?? row.date.year,
@@ -127,31 +141,12 @@ function dateScale(rows: readonly DateRow[], tickCount: number): DateScale {
   const high = Math.max(...ends);
   const pad = Math.max((high - low) * 0.05, MIN_SPAN_YEARS / 2);
 
-  const {
-    domain: [from, to],
-    ticks,
-  } = niceAxis([low - pad, high + pad], tickCount);
-
-  return { ticks, at: (year: number) => `${((year - from) / (to - from)) * 100}%` };
+  return niceAxis([low - pad, high + pad], tickCount);
 }
 
-function tickAnchor(index: number, count: number): "start" | "middle" | "end" {
-  if (index === 0) {
-    return "start";
-  }
-
-  return index === count - 1 ? "end" : "middle";
-}
-
-interface DateScale {
-  ticks: number[];
-  at: (year: number) => string;
-}
-
-function rowTitle(row: DateRow): string {
-  if (row.interval === undefined) {
-    return `${row.label}: ${row.date.date}`;
-  }
-
-  return `${row.label}: ${row.date.date} (${row.interval.lower.date} to ${row.interval.upper.date})`;
+interface PlotRow {
+  id: string;
+  otherYear: number | null;
+  currentYear: number | null;
+  interval: [number, number];
 }

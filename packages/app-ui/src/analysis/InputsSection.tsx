@@ -1,4 +1,5 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
+import { BookOpen, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -7,7 +8,9 @@ import { useLocalFiles } from "../platform";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { Button, cn } from "../ui";
+import { Button } from "../ui/button";
+import { cn } from "../ui/cn";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { ExamplesPanel } from "./ExamplesPanel";
 import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
@@ -15,26 +18,28 @@ import { PathPicker, useFileDrop } from "./PathPicker";
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
   const [showExamples, setShowExamples] = useState(false);
   const localFiles = useLocalFiles();
-  const toggleExamples = useCallback(() => setShowExamples((shown) => !shown), []);
   const closeExamples = useCallback(() => setShowExamples(false), []);
 
   return (
-    <div className="grid grid-cols-1 gap-2">
+    <Collapsible open={showExamples} onOpenChange={setShowExamples} className="grid grid-cols-1 gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-ink-faint">
+        <span className="text-muted-foreground text-sm">
           {localFiles === null
             ? "Files are uploaded into the run folder on the server"
             : "Files are read from this computer"}
         </span>
-        <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={toggleExamples}>
+        <CollapsibleTrigger render={<Button type="button" variant="outline" size="sm" className="ml-auto" />}>
+          <BookOpen aria-hidden />
           {showExamples ? "Hide examples" : "Examples and earlier inputs"}
-        </Button>
+        </CollapsibleTrigger>
       </div>
-      {showExamples && <ExamplesPanel command={command} close={closeExamples} />}
+      <CollapsibleContent>
+        <ExamplesPanel command={command} close={closeExamples} />
+      </CollapsibleContent>
       {COMMAND_SETTINGS[command].inputs.map((input) => (
         <InputSlotRow key={input.kind} command={command} slot={input} facts={facts} />
       ))}
-    </div>
+    </Collapsible>
   );
 }
 
@@ -49,44 +54,47 @@ function InputSlotRow({
 }) {
   const value = useWatch<FormConfig>({ name: slot.kind });
   const source = useDraftStore((state) => state.sources[slot.kind]);
-  const drop = useFileDrop(command, slot.kind, slot.list);
+  const { getRootProps, getInputProps, isDragActive } = useFileDrop(command, slot.kind, slot.list);
   const paths = pathList(value);
   const factsText = slotFactsText(slot.kind, facts, COMMAND_SETTINGS[command].uses_dates);
   const problem = slotProblem(slot.kind, facts);
 
   return (
     <div
-      onDragOver={drop.onDragOver}
-      onDragLeave={drop.onDragLeave}
-      onDrop={drop.onDrop}
-      className={cn(
-        "bg-surface-1 grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5",
-        paths.length > 0 ? "border-line" : "border-line-strong border-dashed",
-        drop.over && "border-accent bg-accent-subtle",
-      )}
+      {...getRootProps({
+        className: cn(
+          "bg-card grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+          paths.length === 0 && "border-input border-dashed",
+          isDragActive && "border-primary bg-accent",
+        ),
+      })}
     >
-      <div className="font-bold">
-        {slot.label}
-        <small className="text-ink-faint block text-xs font-normal">
+      <input {...getInputProps()} />
+      <div className="grid gap-0.5">
+        <span className="font-medium">{slot.label}</span>
+        <span className="text-muted-foreground text-xs">
           {slot.need === "required" ? slot.formats : `${slot.formats}, ${slot.need}`}
-        </small>
+        </span>
       </div>
       {paths.length > 0 ? (
-        <div className="min-w-0">
+        <div className="grid min-w-0 gap-0.5">
           <div className="truncate font-mono text-xs" title={paths.join("\n")}>
             {source?.label ?? paths.map(baseName).join(", ")}
             {source?.size !== null && source?.size !== undefined && (
-              <span className="text-ink-faint ml-2">{formatBytes(source.size)}</span>
+              <span className="text-muted-foreground ml-2">{formatBytes(source.size)}</span>
             )}
           </div>
           {problem === null ? (
-            <div className="text-ink-muted text-xs">{factsText ?? "Checking..."}</div>
+            <div className="text-muted-foreground text-xs">{factsText ?? "Checking..."}</div>
           ) : (
-            <div className="text-signal-danger text-xs">{problem}</div>
+            <div className="text-destructive text-xs">{problem}</div>
           )}
         </div>
       ) : (
-        <div className="text-ink-faint">Drop a file here or choose one</div>
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Upload aria-hidden className="size-4" />
+          Drop a file here or choose one
+        </div>
       )}
       <PathPicker
         command={command}

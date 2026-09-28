@@ -1,14 +1,14 @@
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
+import { DataTable, dataColumns } from "../components/DataTable";
+import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
 import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
 import { Plate } from "./Plate";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
-import { SortableTable, type Column } from "./SortableTable";
 import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
 import type { TreeLink } from "./TreeWorkspace";
 
@@ -22,33 +22,31 @@ interface SampleRow {
 
 const CLOCK_COLORINGS = ["num_date"];
 
-const RESIDUAL_SORT = { key: "residual", descending: true };
+const RESIDUAL_SORT = [{ id: "residual", desc: true }];
 
-const SAMPLE_COLUMNS: ReadonlyArray<Column<SampleRow>> = [
-  { key: "name", label: "Sample", kind: "text", value: (row) => row.name },
-  {
-    key: "date",
-    label: "Date",
-    kind: "number",
-    value: (row) => row.date.year,
-    render: (row) => row.date.date,
-  },
-  {
-    key: "predicted",
-    label: "Clock prediction",
-    kind: "number",
-    value: (row) => row.predictedDate.year,
-    render: (row) => row.predictedDate.date,
-  },
-  {
-    key: "residual",
-    label: "Residual",
-    kind: "number",
-    value: (row) => Math.abs(row.residualDays),
-    render: (row) => formatSignedDays(row.residualDays),
-  },
-  { key: "outlier", label: "Clock filter", kind: "text", value: (row) => (row.outlier ? "outlier" : "kept") },
-];
+const sampleColumn = dataColumns<SampleRow>();
+
+const SAMPLE_COLUMNS = sampleColumn.columns([
+  sampleColumn.accessor((row) => row.name, { id: "name", header: "Sample" }),
+  sampleColumn.accessor((row) => row.date.year, {
+    id: "date",
+    header: "Date",
+    cell: ({ row }) => row.original.date.date,
+  }),
+  sampleColumn.accessor((row) => row.predictedDate.year, {
+    id: "predicted",
+    header: "Clock prediction",
+    cell: ({ row }) => row.original.predictedDate.date,
+  }),
+  sampleColumn.accessor((row) => Math.abs(row.residualDays), {
+    id: "residual",
+    header: "Residual",
+    cell: ({ row }) => formatSignedDays(row.original.residualDays),
+  }),
+  sampleColumn.accessor((row) => (row.outlier ? "outlier" : "kept"), { id: "outlier", header: "Clock filter" }),
+]);
+
+const SAMPLE_NUMERIC = new Set(["date", "predicted", "residual"]);
 
 export function ClockResults({
   record,
@@ -84,7 +82,7 @@ export function ClockResults({
   );
 
   return (
-    <div className="grid gap-3.5">
+    <div className="grid gap-4">
       <SummaryStrip entries={summary} />
       {tree === undefined ? (
         <MissingTree />
@@ -95,13 +93,14 @@ export function ClockResults({
         title="Samples"
         hint="Residual = sampling date minus the date the clock model predicts from the root-to-tip distance"
       >
-        <SortableTable
+        <DataTable
           label="Samples"
           columns={SAMPLE_COLUMNS}
           rows={samples}
-          rowKey={sampleKey}
-          initialSort={RESIDUAL_SORT}
-          rowTone={sampleTone}
+          rowId={sampleKey}
+          numeric={SAMPLE_NUMERIC}
+          initialSorting={RESIDUAL_SORT}
+          rowClassName={sampleTone}
         />
       </Panel>
       <OutputFiles record={record} citation={results.citation} />
@@ -113,8 +112,8 @@ function sampleKey(row: SampleRow): string {
   return row.name;
 }
 
-function sampleTone(row: SampleRow): "caution" | undefined {
-  return row.outlier ? "caution" : undefined;
+function sampleTone(row: SampleRow): string | undefined {
+  return row.outlier ? "bg-warning/10" : undefined;
 }
 
 function sampleRows(data: ClockData): SampleRow[] {

@@ -1,12 +1,11 @@
+import { useElementSize } from "@mantine/hooks";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Label,
   ReferenceLine,
-  ResponsiveContainer,
   Scatter,
   ScatterChart,
-  Tooltip,
   XAxis,
   YAxis,
   ZAxis,
@@ -14,11 +13,12 @@ import {
 } from "recharts";
 import * as z from "zod";
 
-import { useElementWidth } from "../hooks/useElementWidth";
-import { Switch } from "../ui";
-import { ChartTooltip } from "./ChartTooltip";
-import { CHART, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
+import { ChartContainer, ChartTooltip } from "../ui/chart";
+import { Label as FieldLabel } from "../ui/label";
+import { Switch } from "../ui/switch";
+import { CHART, CHART_CONFIG, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
+import { TooltipCard } from "./TooltipCard";
 
 export interface RttPoint {
   name: string;
@@ -35,8 +35,6 @@ export interface RttLine {
   label: string;
 }
 
-const HEIGHT = 300;
-
 const X_PX_PER_TICK = 100;
 
 const FADED_OPACITY = 0.18;
@@ -48,10 +46,10 @@ const TIP_SIZE: [number, number] = [36, 36];
 const RING_SIZE: [number, number] = [220, 220];
 
 const SERIES_LOOK: readonly SeriesLook[] = [
-  { key: "inferredFaded", fill: CHART.faint, opacity: FADED_OPACITY },
+  { key: "inferredFaded", fill: CHART.muted, opacity: FADED_OPACITY },
   { key: "tipsFaded", fill: CHART.tip, opacity: FADED_OPACITY },
   { key: "excludedFaded", fill: CHART.fault, opacity: FADED_OPACITY },
-  { key: "inferred", fill: CHART.faint, opacity: 1 },
+  { key: "inferred", fill: CHART.muted, opacity: 1 },
   { key: "tips", fill: CHART.tip, opacity: 1 },
   { key: "excluded", fill: CHART.fault, opacity: 1 },
 ];
@@ -80,9 +78,9 @@ export function RootToTipPlot({
   onSelect: ((name: string) => void) | undefined;
 }) {
   const [fitToModel, setFitToModel] = useState(true);
-  const [chart, setChart] = useState<HTMLDivElement | null>(null);
+  const { ref: chart, width } = useElementSize<HTMLDivElement>();
   const fitId = useId();
-  const xTickCount = tickCountFor(useElementWidth(chart), X_PX_PER_TICK);
+  const xTickCount = tickCountFor(width, X_PX_PER_TICK);
   const hasOutliers = useMemo(() => points.some((point) => point.excluded), [points]);
 
   const frame = useMemo(
@@ -95,24 +93,24 @@ export function RootToTipPlot({
   const segment = useMemo(() => lineSegment(frame, line), [frame, line]);
 
   return (
-    <div ref={setChart}>
+    <div ref={chart}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 pb-1 text-xs">
         {line === undefined ? (
           <span />
         ) : (
-          <p className="text-ink-muted m-0">
-            <span className="bg-accent mr-1.5 inline-block h-0.5 w-4 align-middle" />
+          <p className="text-muted-foreground">
+            <span className="bg-chart-1 mr-1.5 inline-block h-0.5 w-4 align-middle" />
             {line.label}
           </p>
         )}
         {hasOutliers && (
-          <label htmlFor={fitId} className="text-ink-muted flex cursor-pointer items-center gap-2">
+          <FieldLabel htmlFor={fitId} className="text-muted-foreground text-xs font-normal">
             <Switch id={fitId} checked={fitToModel} onCheckedChange={setFitToModel} />
             Fit axes to the samples in the clock model
-          </label>
+          </FieldLabel>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={HEIGHT}>
+      <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[300px] w-full">
         <ScatterChart margin={PLOT_MARGIN}>
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
@@ -122,9 +120,9 @@ export function RootToTipPlot({
             ticks={frame.x.ticks}
             tick={TICK_STYLE}
             tickFormatter={yearTick}
-            stroke={CHART.faint}
+            stroke={CHART.muted}
           >
-            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
+            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} className="fill-muted-foreground" />
           </XAxis>
           <YAxis
             type="number"
@@ -133,14 +131,20 @@ export function RootToTipPlot({
             ticks={frame.y.ticks}
             tick={TICK_STYLE}
             tickFormatter={divergenceTick}
-            stroke={CHART.faint}
+            stroke={CHART.muted}
             width={56}
           >
-            <Label value="Divergence from the root" angle={-90} position="insideLeft" {...TICK_STYLE} />
+            <Label
+              value="Divergence from the root"
+              angle={-90}
+              position="insideLeft"
+              {...TICK_STYLE}
+              className="fill-muted-foreground"
+            />
           </YAxis>
           <ZAxis zAxisId="tip" range={TIP_SIZE} />
           <ZAxis zAxisId="ring" range={RING_SIZE} />
-          <Tooltip content={<PointTooltip />} isAnimationActive={false} />
+          <ChartTooltip content={<PointTooltip />} isAnimationActive={false} />
           {segment !== undefined && (
             <ReferenceLine segment={segment} stroke={CHART.accent} strokeWidth={1.5} ifOverflow="hidden" />
           )}
@@ -157,7 +161,7 @@ export function RootToTipPlot({
             isAnimationActive={false}
           />
         </ScatterChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }
@@ -271,14 +275,14 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: Readonl
   }
 
   return (
-    <ChartTooltip>
-      <div className="font-bold">{point.data.name}</div>
+    <TooltipCard>
+      <div className="font-semibold">{point.data.name}</div>
       <div>Date {point.data.dateText}</div>
       <div>Divergence {point.data.div.toExponential(3)}</div>
       {point.data.inferred && <div>Date inferred by the time tree; the sample has no input date</div>}
-      {point.data.excluded && <div className="text-signal-danger">Excluded from the clock model</div>}
-      {point.data.offAxes && <div className="text-ink-muted">Outside the axes; drawn at their edge</div>}
-    </ChartTooltip>
+      {point.data.excluded && <div className="text-destructive">Excluded from the clock model</div>}
+      {point.data.offAxes && <div className="text-muted-foreground">Outside the axes; drawn at their edge</div>}
+    </TooltipCard>
   );
 }
 

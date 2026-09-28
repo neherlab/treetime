@@ -7,13 +7,13 @@ import { useCallback } from "react";
 import { useApiContext } from "../api/context";
 import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
-import { Toast } from "../ui";
+import { useToastManager } from "../ui/toast";
 import { pendingUploadRun } from "./pendingUpload";
 
 export function useStartRun(command: AppCommand) {
   const { client } = useApiContext();
   const navigate = useNavigate();
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
 
   return useCallback(
     async (config: JsonObject) => {

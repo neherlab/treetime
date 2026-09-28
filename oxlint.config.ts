@@ -20,6 +20,42 @@ const IMPORT_BOUNDARY_PATTERNS = [
   },
 ];
 
+const VENDORED_SHADCN_RULES: NonNullable<OxlintOverride["rules"]> = Object.fromEntries(
+  [
+    "anti-slop/no-runtime-typeof",
+    "anti-slop/no-unknown-parameters",
+    "anti-slop/require-readable-spacing",
+    "eslint/eqeqeq",
+    "eslint/require-unicode-regexp",
+    "jsx-a11y/click-events-have-key-events",
+    "jsx-a11y/label-has-associated-control",
+    "jsx-a11y/no-noninteractive-element-interactions",
+    "jsx-a11y/prefer-tag-over-role",
+    "react/forbid-dom-props",
+    "react/jsx-no-constructed-context-values",
+    "react/no-array-index-key",
+    "react/no-danger",
+    "react/no-object-type-as-default-prop",
+    "react-perf/jsx-no-new-function-as-prop",
+    "sonarjs/pseudo-random",
+    "treetime/callers-before-callees",
+    "typescript/consistent-type-assertions",
+    "typescript/no-confusing-void-expression",
+    "typescript/no-deprecated",
+    "typescript/no-unnecessary-type-assertion",
+    "typescript/no-unsafe-argument",
+    "typescript/no-unsafe-assignment",
+    "typescript/no-unsafe-member-access",
+    "typescript/no-unsafe-type-assertion",
+    "typescript/prefer-nullish-coalescing",
+    "typescript/restrict-template-expressions",
+    "typescript/strict-boolean-expressions",
+    "unicorn/explicit-length-check",
+    "unicorn/no-negated-condition",
+    "unicorn/prefer-string-replace-all",
+  ].map((rule) => [rule, "off"]),
+);
+
 const PACKAGE_GRAPH_MESSAGE =
   "This package may import only the workspace packages it declares. Add the dependency to its package.json, or route through an allowed package.";
 
@@ -457,6 +493,10 @@ export default defineConfig({
         "react-perf/jsx-no-jsx-as-prop": "off",
         "react-perf/jsx-no-new-object-as-prop": "off",
       },
+    },
+    {
+      files: ["packages/app-ui/src/ui/*.tsx"],
+      rules: VENDORED_SHADCN_RULES,
     },
     {
       files: [

@@ -1,24 +1,24 @@
 import type { RunStatus } from "@neherlab/app-contracts";
 import { Ban, CircleCheck, CircleDashed, CircleX, LoaderCircle, OctagonAlert, type LucideIcon } from "lucide-react";
 
-import { cn } from "../ui";
+import { cn } from "../ui/cn";
 
 const STATUS_LOOK: Record<RunStatus, { label: string; icon: LucideIcon; className: string }> = {
-  created: { label: "Waiting to start", icon: CircleDashed, className: "text-ink-faint" },
-  running: { label: "Running", icon: LoaderCircle, className: "text-accent animate-spin" },
-  ok: { label: "Finished", icon: CircleCheck, className: "text-signal-ok" },
-  error: { label: "Failed", icon: CircleX, className: "text-signal-danger" },
-  cancelled: { label: "Cancelled", icon: Ban, className: "text-ink-faint" },
-  interrupted: { label: "Interrupted", icon: OctagonAlert, className: "text-signal-warn" },
+  created: { label: "Waiting to start", icon: CircleDashed, className: "text-muted-foreground" },
+  running: { label: "Running", icon: LoaderCircle, className: "text-primary animate-spin" },
+  ok: { label: "Finished", icon: CircleCheck, className: "text-success" },
+  error: { label: "Failed", icon: CircleX, className: "text-destructive" },
+  cancelled: { label: "Cancelled", icon: Ban, className: "text-muted-foreground" },
+  interrupted: { label: "Interrupted", icon: OctagonAlert, className: "text-warning" },
 };
 
 export function statusLabel(status: RunStatus): string {
   return STATUS_LOOK[status].label;
 }
 
-export function StatusIcon({ status, size = 14 }: { status: RunStatus; size?: number }) {
+export function StatusIcon({ status, className }: { status: RunStatus; className?: string }) {
   const look = STATUS_LOOK[status];
   const Icon = look.icon;
 
-  return <Icon size={size} aria-label={look.label} className={cn(look.className)} />;
+  return <Icon aria-label={look.label} className={cn("size-3.5 shrink-0", look.className, className)} />;
 }

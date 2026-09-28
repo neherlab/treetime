@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import ChooseBranchLabelling from "auspice/src/components/controls/choose-branch-labelling";
 import ChooseLayout from "auspice/src/components/controls/choose-layout";
 import ChooseMetric from "auspice/src/components/controls/choose-metric";
@@ -19,21 +20,20 @@ import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import { useElementWidth } from "../hooks/useElementWidth";
-import { Button } from "../ui";
+import { Button } from "../ui/button";
 import { AUSPICE_I18N } from "./i18n";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
 
 const SIDEBAR_THEME = {
-  background: "var(--color-surface-2)",
-  color: "var(--color-ink)",
+  background: "var(--muted)",
+  color: "var(--foreground)",
   "font-family": "Lato, Helvetica Neue, Helvetica, sans-serif",
   sidebarBoxShadow: "rgba(0, 0, 0, 0.15)",
-  selectedColor: "var(--color-accent)",
-  unselectedColor: "var(--color-ink-muted)",
-  alternateBackground: "var(--color-line-strong)",
+  selectedColor: "var(--primary)",
+  unselectedColor: "var(--muted-foreground)",
+  alternateBackground: "var(--input)",
 };
 
 const RELEVANT_PUBLICATIONS = [publications.treetime];
@@ -57,8 +57,8 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
     <I18nextProvider i18n={AUSPICE_I18N}>
       <ThemeProvider theme={SIDEBAR_THEME}>
         <Provider store={store}>
-          <div className="light-scope border-line grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border @3xl:grid-cols-[260px_minmax(0,1fr)]">
-            <aside aria-label="Tree controls" className="border-line border-b @3xl:border-r @3xl:border-b-0">
+          <div className="light-scope grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border @3xl:grid-cols-[260px_minmax(0,1fr)]">
+            <aside aria-label="Tree controls" className="border-b @3xl:border-r @3xl:border-b-0">
               <ControlsContainer>
                 <ControlHeader title="Color By" tooltip={ColorByInfo} />
                 <ColorBy />
@@ -102,12 +102,12 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
 }
 
 function SizedPanels({ tips, showEntropy }: { tips: number; showEntropy: boolean }) {
-  const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const width = Math.floor(calcUsableWidth(useElementWidth(container), 1));
+  const { ref, width: measured } = useElementSize<HTMLDivElement>();
+  const width = Math.floor(calcUsableWidth(measured, 1));
   const height = Math.min(MAX_TREE_HEIGHT, Math.max(MIN_TREE_HEIGHT, tips * TREE_ROW_PX));
 
   return (
-    <div ref={setContainer} className="relative min-w-0 pb-2">
+    <div ref={ref} className="relative min-w-0 pb-2">
       {width >= MIN_TREE_WIDTH && (
         <>
           <Tree width={width} height={height} />

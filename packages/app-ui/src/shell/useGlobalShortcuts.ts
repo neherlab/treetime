@@ -1,14 +1,14 @@
 import { runsList } from "@neherlab/app-contracts/client";
+import { useHotkey } from "@tanstack/react-hotkeys";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { useShellStore } from "../store/shell";
 import { listedRuns } from "./runList";
-import { RUN_FILTER_ID } from "./Sidebar";
 import { useCurrentRunId } from "./useCurrentRunId";
 
-const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+export const RUN_FILTER_ID = "run-filter";
 
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
@@ -17,47 +17,23 @@ export function useGlobalShortcuts() {
   const runFilter = useShellStore((state) => state.runFilter);
   const commandFilter = useShellStore((state) => state.commandFilter);
   const setPaletteOpen = useShellStore((state) => state.setPaletteOpen);
+  const runs = useMemo(() => listedRuns(data?.runs ?? [], runFilter, commandFilter), [commandFilter, data, runFilter]);
 
-  useEffect(() => {
-    const runs = listedRuns(data?.runs ?? [], runFilter, commandFilter);
+  const step = useCallback(
+    (offset: number) => {
+      const index = runs.findIndex((run) => run.id === currentId);
+      const next = runs[Math.min(runs.length - 1, Math.max(0, index + offset))];
 
-    function onKeyDown(event: KeyboardEvent) {
-      const modifier = event.ctrlKey || event.metaKey;
-
-      if (modifier && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen(true);
-
-        return;
+      if (next !== undefined) {
+        void navigate({ to: "/runs/$id/results", params: { id: next.id } });
       }
+    },
+    [currentId, navigate, runs],
+  );
 
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      const typing = target !== null && (TYPING_TAGS.has(target.tagName) || target.isContentEditable);
-
-      if (typing || modifier || event.altKey) {
-        return;
-      }
-
-      if (event.key === "n") {
-        event.preventDefault();
-        void navigate({ to: "/new" });
-      } else if (event.key === "/") {
-        event.preventDefault();
-        document.getElementById(RUN_FILTER_ID)?.focus();
-      } else if (event.key === "[" || event.key === "]") {
-        const index = runs.findIndex((run) => run.id === currentId);
-        const step = event.key === "]" ? 1 : -1;
-        const next = runs[Math.min(runs.length - 1, Math.max(0, index + step))];
-
-        if (next !== undefined) {
-          event.preventDefault();
-          void navigate({ to: "/runs/$id/results", params: { id: next.id } });
-        }
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [commandFilter, currentId, data, navigate, runFilter, setPaletteOpen]);
+  useHotkey("Mod+K", () => setPaletteOpen(true));
+  useHotkey("N", () => void navigate({ to: "/new" }));
+  useHotkey("/", () => document.getElementById(RUN_FILTER_ID)?.focus());
+  useHotkey("[", () => step(-1));
+  useHotkey("]", () => step(1));
 }

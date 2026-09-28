@@ -1,7 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Navigate } from "@tanstack/react-router";
 
 import { NewAnalysisPage } from "./analysis/NewAnalysisPage";
-import { RootLayout } from "./RootLayout";
+import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
 import { RunPage } from "./runs/RunPage";
 
@@ -39,7 +39,12 @@ const routeTree = rootRoute.addChildren([
   compareRoute,
 ]);
 
-export const router = createRouter({ routeTree, defaultPreload: "intent", scrollRestoration: true });
+export const router = createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  scrollRestoration: true,
+  scrollToTopSelectors: [`#${MAIN_SCROLL_ID}`],
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Line, LineChart, XAxis, YAxis } from "recharts";
 
 import type { IterationPoint } from "../results/progress";
-import { CHART, TICK_STYLE } from "./palette";
-
-const HEIGHT = 110;
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
+import { CHART, CHART_CONFIG, TICK_STYLE } from "./palette";
 
 const MARGIN = { top: 6, right: 12, bottom: 4, left: 8 };
 
@@ -16,11 +15,11 @@ export function RateTrace({ iterations }: { iterations: readonly IterationPoint[
   const data = useMemo(() => iterations.filter((point) => Number.isFinite(point.clockRate)), [iterations]);
 
   return (
-    <ResponsiveContainer width="100%" height={HEIGHT}>
+    <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[110px] w-full">
       <LineChart data={data} margin={MARGIN}>
         <XAxis dataKey="iteration" tick={TICK_STYLE} allowDecimals={false} />
         <YAxis domain={AUTO_EXTENT} tick={TICK_STYLE} tickFormatter={rateTick} width={56} />
-        <Tooltip isAnimationActive={false} />
+        <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
         <Line
           dataKey="clockRate"
           name="Clock rate"
@@ -30,7 +29,7 @@ export function RateTrace({ iterations }: { iterations: readonly IterationPoint[
           isAnimationActive={false}
         />
       </LineChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
 

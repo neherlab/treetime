@@ -6,11 +6,15 @@ import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { carryOverConfig } from "../settings/config";
 import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 export function CommandCards({ command, config }: { command: AppCommand; config: JsonObject }) {
   const select = useCallback(
-    (target: AppCommand) => {
-      if (target === command) {
+    (value: string) => {
+      const target = APP_COMMANDS.find((candidate) => candidate === value);
+
+      if (target === undefined || target === command) {
         return;
       }
 
@@ -28,44 +32,40 @@ export function CommandCards({ command, config }: { command: AppCommand; config:
   );
 
   return (
-    <fieldset className="m-0 grid grid-cols-2 gap-2 border-0 p-0 @2xl:grid-cols-3">
-      <legend className="sr-only">Analysis</legend>
+    <RadioGroup
+      aria-label="Analysis"
+      value={command}
+      onValueChange={select}
+      className="grid-cols-2 gap-2 @2xl:grid-cols-3"
+    >
       {APP_COMMANDS.map((candidate) => (
-        <CommandCard key={candidate} command={candidate} pressed={candidate === command} select={select} />
+        <CommandCard key={candidate} command={candidate} />
       ))}
-    </fieldset>
+    </RadioGroup>
   );
 }
 
-function CommandCard({
-  command,
-  pressed,
-  select,
-}: {
-  command: AppCommand;
-  pressed: boolean;
-  select: (command: AppCommand) => void;
-}) {
+function CommandCard({ command }: { command: AppCommand }) {
   const info = COMMAND_INFO[command];
-  const onClick = useCallback(() => select(command), [command, select]);
+  const id = `command-${command}`;
 
   const needs = COMMAND_SETTINGS[command].inputs
     .flatMap((input) => (input.need === "required" ? [input.label.toLowerCase()] : []))
     .join(" and ");
 
   return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className="border-line bg-surface-1 hover:border-line-strong aria-pressed:border-accent aria-pressed:bg-accent-subtle aria-pressed:ring-accent grid gap-1 rounded-lg border px-3 py-2.5 text-left aria-pressed:ring-1 aria-pressed:ring-inset"
-    >
-      <span className="flex justify-between text-[0.9375rem] font-bold">
-        {info.label}
-        <code className="text-ink-faint font-mono text-xs font-normal">{command}</code>
-      </span>
-      <span className="text-ink-muted">{info.description}</span>
-      <span className="text-ink-faint text-xs">Needs {needs}</span>
-    </button>
+    <FieldLabel htmlFor={id} className="bg-card">
+      <Field orientation="horizontal" className="items-start">
+        <FieldContent>
+          <FieldTitle className="w-full justify-between">
+            {info.label}
+            <code className="text-muted-foreground font-mono text-xs font-normal">{command}</code>
+          </FieldTitle>
+          <FieldDescription>{info.description}</FieldDescription>
+          <FieldDescription className="text-xs">Needs {needs}</FieldDescription>
+        </FieldContent>
+        <RadioGroupItem value={command} id={id} />
+      </Field>
+    </FieldLabel>
   );
 }

@@ -1,21 +1,25 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import { ErrorBoundary as ReactErrorBoundary, type FallbackProps } from "react-error-boundary";
 
-import { Button } from "./ui";
+import { Button } from "./ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
-  const message = errorMessage(error);
-
   return (
-    <div role="alert" className="bg-surface-0 text-ink flex min-h-dvh flex-col items-center justify-center gap-4 p-8">
-      <h1 className="text-lg font-semibold">Something went wrong</h1>
-      <pre className="bg-surface-1 text-ink-muted max-h-64 max-w-2xl overflow-auto rounded-md p-4 text-sm">
-        {message}
-      </pre>
-      <Button variant="outline" onClick={resetErrorBoundary}>
-        Try again
-      </Button>
-    </div>
+    <Empty role="alert" className="min-h-svh">
+      <EmptyHeader>
+        <EmptyTitle>Something went wrong</EmptyTitle>
+        <EmptyDescription>The app stopped because of an error it could not handle.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent className="max-w-2xl">
+        <pre className="bg-muted text-muted-foreground max-h-64 w-full overflow-auto rounded-md p-4 text-left font-mono text-xs">
+          {errorMessage(error)}
+        </pre>
+        <Button variant="outline" onClick={resetErrorBoundary}>
+          Try again
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 

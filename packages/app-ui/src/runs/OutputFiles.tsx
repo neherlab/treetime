@@ -6,15 +6,19 @@ import { useCallback, useState } from "react";
 
 import { useApiContext } from "../api/context";
 import { useApi } from "../api/hooks";
+import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
 import { downloadName, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
-import { Button, Toast } from "../ui";
-import { Panel } from "./Panel";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { useToastManager } from "../ui/toast";
 
 export function OutputFiles({ record, citation }: { record: RunRecord; citation: Citation }) {
   const { save } = useApiContext();
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
 
   const { data: files, error } = useApi((context) => runsFiles({ ...context, path: { id: record.id } }), {
     staleTime: Infinity,
@@ -28,10 +32,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
     try {
       await save.saveRunArchive(record.id, downloadName(record.title, ".zip"));
     } catch (failure: unknown) {
-      toasts.add({
-        title: "The archive cannot be downloaded",
-        description: errorMessage(failure),
-      });
+      toasts.add({ title: "The archive cannot be downloaded", description: errorMessage(failure) });
     } finally {
       setBusy(false);
     }
@@ -45,36 +46,43 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
       hint={files === undefined ? undefined : `${files.length} files, ${formatBytes(totalSize(files))}`}
       actions={
         <Button type="button" variant="outline" size="sm" onClick={onArchive} disabled={busy || files === undefined}>
-          <Download size={13} aria-hidden />
+          {busy ? <Spinner /> : <Download aria-hidden />}
           Download all (.zip)
         </Button>
       }
     >
       {error !== null && (
-        <p className="text-signal-danger px-3.5 py-3">The file list cannot be loaded: {error.message}</p>
+        <Alert variant="destructive" className="m-3.5 w-auto">
+          <AlertDescription>The file list cannot be loaded: {error.message}</AlertDescription>
+        </Alert>
       )}
       {files !== undefined && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="text-ink-faint text-xs">
-                <th className="px-3.5 py-1.5 font-normal">File</th>
-                <th className="px-3.5 py-1.5 font-normal">Contents</th>
-                <th className="px-3.5 py-1.5 text-right font-normal">Size</th>
-                <th className="px-3.5 py-1.5" aria-label="Download" />
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((file) => (
-                <FileRow key={file.path} runId={record.id} file={file} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>File</TableHead>
+              <TableHead>Contents</TableHead>
+              <TableHead className="text-right">Size</TableHead>
+              <TableHead>
+                <span className="sr-only">Download</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {files.map((file) => (
+              <FileRow key={file.path} runId={record.id} file={file} />
+            ))}
+          </TableBody>
+        </Table>
       )}
-      <p className="border-line text-ink-muted m-0 border-t px-3.5 py-3 text-xs">
+      <p className="text-muted-foreground border-t px-3.5 py-3 text-xs">
         Please cite: {citation.text}{" "}
-        <a href={citation.url} target="_blank" rel="noopener noreferrer" className="text-accent font-bold">
+        <a
+          href={citation.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
           doi:{citation.doi}
         </a>
       </p>
@@ -84,33 +92,30 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 
 function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
   const { save } = useApiContext();
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
 
   const download = useCallback(async () => {
     try {
       await save.saveRunFile(runId, file.path, file.path.split("/").at(-1) ?? file.path);
     } catch (failure: unknown) {
-      toasts.add({
-        title: "The file cannot be downloaded",
-        description: errorMessage(failure),
-      });
+      toasts.add({ title: "The file cannot be downloaded", description: errorMessage(failure) });
     }
   }, [file.path, runId, save, toasts]);
 
   const onDownload = useCallback(() => void download(), [download]);
 
   return (
-    <tr className="border-line border-t">
-      <td className="px-3.5 py-1.5">
+    <TableRow>
+      <TableCell>
         <code className="font-mono text-xs">{file.path}</code>
-      </td>
-      <td className="text-ink-muted px-3.5 py-1.5 text-xs">{file.description}</td>
-      <td className="px-3.5 py-1.5 text-right text-xs tabular-nums">{formatBytes(file.size)}</td>
-      <td className="px-2 py-1 text-right">
-        <Button type="button" variant="ghost" size="icon" aria-label={`Download ${file.path}`} onClick={onDownload}>
-          <Download size={13} aria-hidden />
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs whitespace-normal">{file.description}</TableCell>
+      <TableCell className="text-right text-xs">{formatBytes(file.size)}</TableCell>
+      <TableCell className="text-right">
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Download ${file.path}`} onClick={onDownload}>
+          <Download aria-hidden />
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

@@ -1,9 +1,9 @@
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
+import { runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import type { TreeSummary } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
-import { runTimeEntry, SummaryStrip, type SummaryEntry } from "./Panel";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 export function TreeOnlyResults({
@@ -52,7 +52,7 @@ export function TreeOnlyResults({
   }, [data, record, tree]);
 
   return (
-    <div className="grid gap-3.5">
+    <div className="grid gap-4">
       <SummaryStrip entries={summary} />
       {tree === undefined ? <MissingTree /> : <TreeView data={tree} colorBy={undefined} />}
       <OutputFiles record={record} citation={results.citation} />

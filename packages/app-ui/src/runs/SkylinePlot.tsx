@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
-import { Area, CartesianGrid, ComposedChart, Label, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useElementSize } from "@mantine/hooks";
+import { useMemo } from "react";
+import { Area, CartesianGrid, ComposedChart, Label, Line, XAxis, YAxis } from "recharts";
 
-import { useElementWidth } from "../hooks/useElementWidth";
 import type { SkylineSegment } from "../results/types";
-import { CHART, niceAxis, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
-
-const HEIGHT = 220;
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
+import { CHART, CHART_CONFIG, niceAxis, PLOT_MARGIN, TICK_STYLE, tickCountFor, yearTick } from "./palette";
 
 const X_PX_PER_TICK = 100;
 
@@ -21,8 +20,8 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
     [segments],
   );
 
-  const [chart, setChart] = useState<HTMLDivElement | null>(null);
-  const xTickCount = tickCountFor(useElementWidth(chart), X_PX_PER_TICK);
+  const { ref: chart, width } = useElementSize<HTMLDivElement>();
+  const xTickCount = tickCountFor(width, X_PX_PER_TICK);
 
   const xAxis = useMemo(
     () =>
@@ -34,8 +33,8 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
   );
 
   return (
-    <div ref={setChart}>
-      <ResponsiveContainer width="100%" height={HEIGHT}>
+    <div ref={chart}>
+      <ChartContainer config={CHART_CONFIG} className="aspect-auto h-[220px] w-full">
         <ComposedChart data={data} margin={PLOT_MARGIN}>
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
@@ -46,12 +45,18 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
             tick={TICK_STYLE}
             tickFormatter={yearTick}
           >
-            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} />
+            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} className="fill-muted-foreground" />
           </XAxis>
           <YAxis type="number" scale="log" domain={AUTO_EXTENT} allowDataOverflow tick={TICK_STYLE} width={56}>
-            <Label value="Effective population size" angle={-90} position="insideLeft" {...TICK_STYLE} />
+            <Label
+              value="Effective population size"
+              angle={-90}
+              position="insideLeft"
+              {...TICK_STYLE}
+              className="fill-muted-foreground"
+            />
           </YAxis>
-          <Tooltip isAnimationActive={false} />
+          <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
           <Area
             dataKey="band"
             type="linear"
@@ -71,7 +76,7 @@ export function SkylinePlot({ segments }: { segments: readonly SkylineSegment[] 
             name="Ne"
           />
         </ComposedChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }

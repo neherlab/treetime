@@ -1,9 +1,13 @@
+import { useFileDialog } from "@mantine/hooks";
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand } from "@neherlab/app-contracts";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useDropzone } from "react-dropzone";
 
 import type { JsonValue } from "../settings/json";
-import { Button, Toast } from "../ui";
+import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { useToastManager } from "../ui/toast";
 import { useInputActions } from "./useInputActions";
 
 interface PathPickerProps {
@@ -17,14 +21,41 @@ interface PathPickerProps {
 
 export function PathPicker({ command, settingKey, title, extensions, list, filled }: PathPickerProps) {
   const actions = useInputActions(command);
-  const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
   const accept = useMemo(() => extensions.map((extension) => `.${extension}`).join(","), [extensions]);
+
+  const upload = useCallback(
+    async (file: File) => {
+      setBusy(true);
+
+      try {
+        await actions.addFile(settingKey, file, list);
+      } catch (error: unknown) {
+        toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [actions, list, settingKey, title, toasts],
+  );
+
+  const onFiles = useCallback(
+    (files: FileList | null) => {
+      const file = files?.item(0) ?? null;
+
+      if (file !== null) {
+        void upload(file);
+      }
+    },
+    [upload],
+  );
+
+  const dialog = useFileDialog({ multiple: false, accept, resetOnOpen: true, onChange: onFiles });
 
   const choose = useCallback(async () => {
     if (!actions.canPick) {
-      fileInput.current?.click();
+      dialog.open();
 
       return;
     }
@@ -34,40 +65,16 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
     } catch (error: unknown) {
       toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
     }
-  }, [actions, extensions, list, settingKey, title, toasts]);
+  }, [actions, dialog, extensions, list, settingKey, title, toasts]);
 
   const onChoose = useCallback(() => void choose(), [choose]);
-
-  const onFile = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      const target = event.target;
-
-      if (file === undefined) {
-        return;
-      }
-
-      setBusy(true);
-
-      try {
-        await actions.addFile(settingKey, file, list);
-      } catch (error: unknown) {
-        toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
-      } finally {
-        setBusy(false);
-        target.value = "";
-      }
-    },
-    [actions, list, settingKey, title, toasts],
-  );
-
-  const onFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => void onFile(event), [onFile]);
 
   const onRemove = useCallback(() => actions.clear(settingKey, emptyValue(list)), [actions, list, settingKey]);
 
   return (
     <div className="flex shrink-0 gap-1">
       <Button type="button" variant="outline" size="sm" onClick={onChoose} disabled={busy}>
+        {busy && <Spinner />}
         {buttonText(busy, filled)}
       </Button>
       {filled && (
@@ -75,23 +82,13 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
           Remove
         </Button>
       )}
-      <input
-        ref={fileInput}
-        type="file"
-        tabIndex={-1}
-        aria-hidden
-        accept={accept}
-        onChange={onFileChange}
-        className="hidden"
-      />
     </div>
   );
 }
 
 export function useFileDrop(command: AppCommand, settingKey: string, list: boolean) {
   const actions = useInputActions(command);
-  const [over, setOver] = useState(false);
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
 
   const addDropped = useCallback(
     async (file: File) => {
@@ -104,20 +101,9 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
     [actions, list, settingKey, toasts],
   );
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setOver(true);
-  }, []);
-
-  const onDragLeave = useCallback(() => setOver(false), []);
-
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setOver(false);
-      const file = event.dataTransfer.files[0];
+  const onDropAccepted = useCallback(
+    (files: File[]) => {
+      const [file] = files;
 
       if (file !== undefined) {
         void addDropped(file);
@@ -126,7 +112,13 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
     [addDropped],
   );
 
-  return { over, onDragOver, onDragLeave, onDrop };
+  return useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    noDragEventsBubbling: true,
+    onDropAccepted,
+  });
 }
 
 function emptyValue(list: boolean): JsonValue {

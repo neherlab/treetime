@@ -7,6 +7,7 @@ import type { AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
 import { focusNode, showWholeTree, useAuspiceSelector, useAuspiceStore } from "../auspice/store-hooks";
 import type { ResultNode, ResultTree } from "../results/types";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeData } from "./TreeView";
 
 export interface TreeLink {
@@ -31,7 +32,7 @@ export function TreeWorkspace({
 
   return (
     <div className="@container min-w-0">
-      <div className="grid min-w-0 grid-cols-1 gap-3.5 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
+      <div className="grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
         <ErrorBoundary FallbackComponent={TreeFailure}>
           <AuspiceTree store={store} tips={tips} />
         </ErrorBoundary>
@@ -64,7 +65,7 @@ function LinkedAside({
   const reset = useCallback(() => showWholeTree(store), [store]);
 
   return (
-    <div className="grid min-w-0 content-start gap-3.5">
+    <div className="grid min-w-0 content-start gap-4">
       {aside({ focus: nodeAt(tree, byName.get(focusName ?? "")), zoomed, inView, select, reset })}
     </div>
   );
@@ -72,10 +73,10 @@ function LinkedAside({
 
 function TreeFailure({ error }: FallbackProps) {
   return (
-    <div role="alert" className="border-signal-danger bg-signal-danger-subtle rounded-lg border px-4 py-3.5">
-      <h3 className="mb-1 font-bold">Auspice cannot draw this tree</h3>
-      <p className="m-0">{errorMessage(error)}</p>
-    </div>
+    <Alert variant="destructive">
+      <AlertTitle>Auspice cannot draw this tree</AlertTitle>
+      <AlertDescription>{errorMessage(error)}</AlertDescription>
+    </Alert>
   );
 }
 

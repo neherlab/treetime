@@ -1,13 +1,21 @@
 import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
+import { ChevronRight, Search } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
-import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
+import { OptionToggle } from "../components/OptionToggle";
+import { COMMAND_SETTINGS, groupedSpecs, type SettingSpec } from "../settings/catalog";
 import { isChanged } from "../settings/config";
 import type { JsonObject } from "../settings/json";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
 import type { SettingsView } from "../store/draftSchema";
-import { Segmented } from "../ui";
+import { Badge } from "../ui/badge";
+import { Card } from "../ui/card";
+import { Checkbox } from "../ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { Empty, EmptyDescription } from "../ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
+import { Label } from "../ui/label";
 import { MainSettings } from "./MainSettings";
 import { SettingField } from "./SettingField";
 
@@ -43,32 +51,33 @@ export function SettingsPanel({
     [update],
   );
 
-  const onChangedOnly = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => update({ changedOnly: event.target.checked }),
-    [update],
-  );
+  const onChangedOnly = useCallback((checked: boolean) => update({ changedOnly: checked }), [update]);
 
   return (
-    <div className="border-line bg-surface-1 rounded-lg border">
-      <div className="border-line flex flex-wrap items-center gap-2.5 border-b px-3.5 py-2.5">
-        <Segmented label="Settings view" value={view} onChange={onView} options={views} />
+    <Card size="sm" className="gap-0 py-0 shadow-none">
+      <div className="flex flex-wrap items-center gap-2.5 border-b px-3.5 py-2.5">
+        <OptionToggle label="Settings view" value={view} onChange={onView} options={views} />
         {view === "all" ? (
           <>
-            <input
-              type="search"
-              value={search}
-              onChange={onSearch}
-              placeholder="Search settings by name, flag or description"
-              aria-label="Search settings"
-              className="border-line bg-surface-2 min-w-44 flex-1 rounded-md border px-2.5 py-1"
-            />
-            <label className="text-ink-muted inline-flex items-center gap-1.5">
-              <input type="checkbox" checked={changedOnly} onChange={onChangedOnly} />
-              Changed only
-            </label>
+            <InputGroup className="h-8 min-w-44 flex-1">
+              <InputGroupAddon>
+                <Search aria-hidden />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="search"
+                value={search}
+                onChange={onSearch}
+                placeholder="Search settings by name, flag or description"
+                aria-label="Search settings"
+              />
+            </InputGroup>
+            <div className="flex items-center gap-2">
+              <Checkbox id="settings-changed-only" checked={changedOnly} onCheckedChange={onChangedOnly} />
+              <Label htmlFor="settings-changed-only">Changed only</Label>
+            </div>
           </>
         ) : (
-          <span className="text-ink-faint text-xs">
+          <span className="text-muted-foreground text-xs">
             Every setting is also under All settings, with its CLI flag and help text.
           </span>
         )}
@@ -78,7 +87,7 @@ export function SettingsPanel({
       ) : (
         <AllSettings command={command} config={config} search={search} changedOnly={changedOnly} />
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -101,70 +110,107 @@ function AllSettings({
 
   if (groups.length === 0) {
     return (
-      <p className="text-ink-muted p-10 text-center">
-        {changedOnly && search.trim() === ""
-          ? "No setting differs from its default."
-          : `No setting matches "${search}".`}
-      </p>
+      <Empty className="py-10">
+        <EmptyDescription>
+          {changedOnly && search.trim() === ""
+            ? "No setting differs from its default."
+            : `No setting matches "${search}".`}
+        </EmptyDescription>
+      </Empty>
     );
   }
 
   return (
     <div>
-      <nav aria-label="Setting groups" className="border-line flex flex-wrap gap-1 border-b px-3.5 py-2">
+      <nav aria-label="Setting groups" className="flex flex-wrap gap-1 border-b px-3.5 py-2">
         {groups.map(([group]) => {
           const changed =
             allGroups.find(([candidate]) => candidate === group)?.[1].filter((spec) => isChanged(config, spec))
               .length ?? 0;
 
           return (
-            <a
+            <Badge
               key={group}
-              href={`#group-${groupAnchor(group)}`}
-              className="border-line text-ink-muted hover:border-line-strong rounded-full border px-2 py-0.5 text-xs"
+              variant="outline"
+              render={
+                <a
+                  href={`#group-${groupAnchor(group)}`}
+                  aria-label={changed > 0 ? `${group}, ${changed} changed` : group}
+                />
+              }
             >
               {group}
-              {changed > 0 && ` - ${changed} changed`}
-            </a>
+              {changed > 0 && <span className="text-primary">{changed} changed</span>}
+            </Badge>
           );
         })}
       </nav>
-      {groups.map(([group, members]) => {
-        const editable = members.filter((spec) => spec.role !== "output");
-        const outputs = members.filter((spec) => spec.role === "output");
-        const changed = members.filter((spec) => isChanged(config, spec)).length;
-
-        return (
-          <details
-            key={group}
-            id={`group-${groupAnchor(group)}`}
-            open={filtering || outputs.length === 0}
-            className="border-line border-b last:border-b-0"
-          >
-            <summary className="flex cursor-pointer items-center gap-2 px-3.5 py-2.5 font-bold">
-              {group}
-              <span className="text-ink-faint text-xs font-normal">
-                {members.length} {members.length === 1 ? "setting" : "settings"}
-              </span>
-              {changed > 0 && <span className="text-accent text-xs">{changed} changed</span>}
-            </summary>
-            {editable.map((spec) => (
-              <SettingField key={spec.key} command={command} spec={spec} config={config} />
-            ))}
-            {outputs.length > 0 && (
-              <details className="px-7.5 pt-1.5 pb-2.5">
-                <summary className="text-ink-muted cursor-pointer text-[0.8125rem]">
-                  {outputs.length} file paths, set by the app for each run
-                </summary>
-                {outputs.map((spec) => (
-                  <SettingField key={spec.key} command={command} spec={spec} config={config} />
-                ))}
-              </details>
-            )}
-          </details>
-        );
-      })}
+      {groups.map(([group, members]) => (
+        <SettingGroup
+          key={`${group}:${String(filtering)}`}
+          command={command}
+          config={config}
+          group={group}
+          members={members}
+          filtering={filtering}
+        />
+      ))}
     </div>
+  );
+}
+
+function SettingGroup({
+  command,
+  config,
+  group,
+  members,
+  filtering,
+}: {
+  command: AppCommand;
+  config: JsonObject;
+  group: string;
+  members: readonly SettingSpec[];
+  filtering: boolean;
+}) {
+  const editable = members.filter((spec) => spec.role !== "output");
+  const outputs = members.filter((spec) => spec.role === "output");
+  const changed = members.filter((spec) => isChanged(config, spec)).length;
+
+  return (
+    <Collapsible
+      id={`group-${groupAnchor(group)}`}
+      defaultOpen={filtering || outputs.length === 0}
+      className="scroll-mt-4 border-b last:border-b-0"
+    >
+      <CollapsibleTrigger className="group/trigger hover:bg-muted/50 flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-medium">
+        <ChevronRight
+          aria-hidden
+          className="text-muted-foreground size-4 transition-transform group-data-panel-open/trigger:rotate-90"
+        />
+        {group}
+        <span className="text-muted-foreground text-xs font-normal">
+          {members.length} {members.length === 1 ? "setting" : "settings"}
+        </span>
+        {changed > 0 && <span className="text-primary text-xs">{changed} changed</span>}
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {editable.map((spec) => (
+          <SettingField key={spec.key} command={command} spec={spec} config={config} />
+        ))}
+        {outputs.length > 0 && (
+          <Collapsible className="px-7.5 pt-1.5 pb-2.5">
+            <CollapsibleTrigger className="text-muted-foreground hover:text-foreground text-xs">
+              {outputs.length} file paths, set by the app for each run
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {outputs.map((spec) => (
+                <SettingField key={spec.key} command={command} spec={spec} config={config} />
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

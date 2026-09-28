@@ -2,7 +2,8 @@
   "$schema": "https://unpkg.com/knip@6.36.0/schema.json",
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
-    "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"]
+    "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"],
+    "packages/app-ui/src/ui/*.tsx": ["exports", "types"]
   },
   "workspaces": {
     ".": {
@@ -20,7 +21,8 @@
     },
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"]
+      "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
+      "ignoreDependencies": ["tw-animate-css"]
     },
     "packages/app-web": {
       "entry": ["index.html!"],

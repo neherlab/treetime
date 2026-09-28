@@ -1,23 +1,20 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import { useEffect } from "react";
+import { useCallback } from "react";
+import { useDropzone, type FileRejection } from "react-dropzone";
 
 import { useConfigLoader } from "../analysis/useConfigLoader";
 import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
-import { Toast } from "../ui";
+import { useToastManager } from "../ui/toast";
 
-const YAML_FILE = /\.ya?ml$/iu;
+const YAML_ACCEPT = { "application/yaml": [".yaml", ".yml"] };
 
 export function useYamlDrop() {
   const loadConfig = useConfigLoader();
-  const toasts = Toast.useToastManager();
+  const toasts = useToastManager();
 
-  useEffect(() => {
-    function onDragOver(event: DragEvent) {
-      event.preventDefault();
-    }
-
-    async function load(file: File) {
+  const load = useCallback(
+    async (file: File) => {
       try {
         const requested = useDraftStore.getState().command;
         const result = await loadConfig(await file.text(), requested, true);
@@ -28,34 +25,38 @@ export function useYamlDrop() {
             : { title: `${file.name} is not a valid config`, description: result.messages.join("; ") },
         );
       } catch (error: unknown) {
-        toasts.add({
-          title: `${file.name} cannot be loaded`,
-          description: errorMessage(error),
-        });
+        toasts.add({ title: `${file.name} cannot be loaded`, description: errorMessage(error) });
       }
-    }
+    },
+    [loadConfig, toasts],
+  );
 
-    function onDrop(event: DragEvent) {
-      event.preventDefault();
-      const file = event.dataTransfer?.files[0];
+  const onDropAccepted = useCallback(
+    (files: File[]) => {
+      const [file] = files;
 
-      if (file === undefined) {
-        return;
-      }
-
-      if (YAML_FILE.test(file.name)) {
+      if (file !== undefined) {
         void load(file);
-      } else {
+      }
+    },
+    [load],
+  );
+
+  const onDropRejected = useCallback(
+    (rejections: FileRejection[]) => {
+      if (rejections.length > 0) {
         toasts.add({ title: "Drop data files on the input slots of a new analysis" });
       }
-    }
+    },
+    [toasts],
+  );
 
-    window.addEventListener("dragover", onDragOver);
-    window.addEventListener("drop", onDrop);
-
-    return () => {
-      window.removeEventListener("dragover", onDragOver);
-      window.removeEventListener("drop", onDrop);
-    };
-  }, [loadConfig, toasts]);
+  return useDropzone({
+    accept: YAML_ACCEPT,
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    onDropAccepted,
+    onDropRejected,
+  });
 }

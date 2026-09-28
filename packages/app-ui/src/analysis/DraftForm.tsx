@@ -1,17 +1,21 @@
 import type { AppCommand } from "@neherlab/app-contracts";
 import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } from "@neherlab/app-contracts/client";
+import { useHotkey } from "@tanstack/react-hotkeys";
+import { useDebouncedValue } from "@tanstack/react-pacer";
 import { keepPreviousData } from "@tanstack/react-query";
+import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
-import { useDebounce } from "use-debounce";
 
 import { useApi } from "../api/hooks";
+import { PageHeading, PageShell } from "../components/PageShell";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { zJsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
+import { Button } from "../ui/button";
 import { ChecksPanel } from "./ChecksPanel";
 import { CodePanel } from "./CodePanel";
 import { CommandCards } from "./CommandCards";
@@ -21,7 +25,7 @@ import { InputsSection } from "./InputsSection";
 import { SettingsPanel } from "./SettingsPanel";
 import { useStartRun } from "./useStartRun";
 
-const CHECK_DEBOUNCE_MS = 400;
+const CHECK_DEBOUNCE = { wait: 400 };
 
 export function DraftForm({ command }: { command: AppCommand }) {
   const specs = COMMAND_SETTINGS[command].specs;
@@ -42,7 +46,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
     return parsed.success ? normalizeConfig(specs, parsed.data) : initial;
   }, [initial, specs, watched]);
 
-  const [settled] = useDebounce(config, CHECK_DEBOUNCE_MS);
+  const [settled] = useDebouncedValue(config, CHECK_DEBOUNCE);
   const factsRequest = useMemo(() => inputFactsRequest(command, settled), [command, settled]);
 
   const { data: facts } = useApi(
@@ -101,29 +105,18 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        void submit();
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [submit]);
+  useHotkey("Mod+Enter", () => void submit());
 
   return (
-    <div className="mx-auto max-w-[92.5rem] px-5 pt-4 pb-16">
+    <PageShell className="max-w-[92.5rem]">
       <PageHeader />
       <FormProvider {...form}>
         <form
           noValidate
           onSubmit={onSubmit}
-          className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_25rem]"
+          className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 @4xl:grid-cols-[minmax(0,1fr)_25rem]"
         >
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
             <Step number={1} title="Analysis">
               <CommandCards command={command} config={config} />
             </Step>
@@ -138,13 +131,13 @@ export function DraftForm({ command }: { command: AppCommand }) {
               <SettingsPanel command={command} config={config} facts={facts ?? undefined} checks={checks} />
             </Step>
           </div>
-          <aside className="grid gap-3.5 @4xl:sticky @4xl:top-[calc(var(--spacing-bar)+1rem)]">
+          <aside className="grid gap-4 @4xl:sticky @4xl:top-5">
             <CodePanel command={command} code={code} />
             <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_INFO[command].verb} />
           </aside>
         </form>
       </FormProvider>
-    </div>
+    </PageShell>
   );
 }
 
@@ -157,25 +150,20 @@ function PageHeader() {
   const resetForm = useCallback(() => reset(command), [command, reset]);
 
   return (
-    <div className="mb-3.5 flex items-start gap-4">
-      <div>
-        <h1 className="text-2xl leading-tight font-bold">
-          {fromRunId === null ? "New analysis" : "Edit and run again"}
-        </h1>
-        <p className="text-ink-muted mt-1">
-          {fromRunId === null
-            ? "Choose an analysis, add the data, check the settings, run."
-            : `Settings copied from "${fromTitle ?? ""}". The original run stays unchanged.`}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={resetForm}
-        className="text-ink-muted hover:bg-surface-2 hover:text-ink ml-auto rounded-md px-3 py-1.5 font-bold"
-      >
-        Reset form
-      </button>
-    </div>
+    <PageHeading
+      title={fromRunId === null ? "New analysis" : "Edit and run again"}
+      description={
+        fromRunId === null
+          ? "Choose an analysis, add the data, check the settings, run."
+          : `Settings copied from "${fromTitle ?? ""}". The original run stays unchanged.`
+      }
+      actions={
+        <Button type="button" variant="ghost" onClick={resetForm}>
+          <RotateCcw aria-hidden />
+          Reset form
+        </Button>
+      }
+    />
   );
 }
 
@@ -191,15 +179,15 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={`step-${number}`} className="@container">
-      <div className="mb-2 flex items-baseline gap-2.5">
-        <span className="bg-ink text-surface-1 inline-grid size-5.5 place-items-center rounded-full text-xs font-bold">
-          {number}
+    <section aria-labelledby={`step-${number}`} className="@container grid gap-2.5">
+      <div className="flex items-baseline gap-2.5 border-b pb-1.5">
+        <span className="text-primary font-mono text-sm font-medium" aria-hidden>
+          {String(number).padStart(2, "0")}
         </span>
-        <h2 id={`step-${number}`} className="text-base font-bold">
+        <h2 id={`step-${number}`} className="font-heading text-base font-semibold">
           {title}
         </h2>
-        {hint !== undefined && <span className="text-ink-faint">{hint}</span>}
+        {hint !== undefined && <span className="text-muted-foreground text-sm">{hint}</span>}
       </div>
       {children}
     </section>

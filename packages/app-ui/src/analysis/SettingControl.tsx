@@ -6,13 +6,16 @@ import type { SettingSpec } from "../settings/catalog";
 import { baseName, pathList } from "../settings/inputs";
 import { isJsonObject, sameJson, type JsonValue } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { Switch, cn } from "../ui";
+import { cn } from "../ui/cn";
+import { Input } from "../ui/input";
+import { NativeSelect, NativeSelectOption } from "../ui/native-select";
+import { Switch } from "../ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { PathPicker } from "./PathPicker";
 
-const INPUT_CLASS =
-  "border-line-strong bg-surface-1 focus-visible:ring-accent aria-[invalid=true]:border-signal-danger w-full rounded-md border px-2 py-1 outline-none focus-visible:ring-2 disabled:opacity-60";
+const CONTROL_HEIGHT = "h-8";
 
 const NO_EXTENSIONS: readonly string[] = [];
 
@@ -47,13 +50,13 @@ export function SettingControl({
 }) {
   if (spec.role === "output") {
     return (
-      <input
+      <Input
         id={settingFieldId(spec.key)}
         type="text"
         disabled
         aria-label={label}
         placeholder="Set by the app for each run"
-        className={cn(INPUT_CLASS, className)}
+        className={cn(CONTROL_HEIGHT, className)}
       />
     );
   }
@@ -98,7 +101,7 @@ function SwitchControl({ spec, label, className }: ControlProps) {
   return (
     <Switch
       id={settingFieldId(spec.key)}
-      label={label}
+      aria-label={label}
       checked={value === true}
       onCheckedChange={set}
       className={className}
@@ -116,17 +119,18 @@ function TristateControl({ spec, label, className }: ControlProps) {
   );
 
   return (
-    <select
+    <NativeSelect
       id={settingFieldId(spec.key)}
+      size="sm"
       aria-label={label}
       value={value === null ? "" : scalarText(value)}
       onChange={onChange}
-      className={cn(INPUT_CLASS, className)}
+      className={className}
     >
-      <option value="">Automatic</option>
-      <option value="true">On</option>
-      <option value="false">Off</option>
-    </select>
+      <NativeSelectOption value="">Automatic</NativeSelectOption>
+      <NativeSelectOption value="true">On</NativeSelectOption>
+      <NativeSelectOption value="false">Off</NativeSelectOption>
+    </NativeSelect>
   );
 }
 
@@ -139,21 +143,22 @@ function EnumControl({ spec, label, className }: ControlProps) {
   );
 
   return (
-    <select
+    <NativeSelect
       id={settingFieldId(spec.key)}
+      size="sm"
       aria-label={label}
       aria-invalid={invalid}
       value={value === null ? "" : scalarText(value)}
       onChange={onChange}
-      className={cn(INPUT_CLASS, className)}
+      className={className}
     >
-      {spec.nullable && <option value="">Not set</option>}
+      {spec.nullable && <NativeSelectOption value="">Not set</NativeSelectOption>}
       {spec.options.map((option) => (
-        <option key={option.value} value={option.value} title={option.help}>
+        <NativeSelectOption key={option.value} value={option.value} title={option.help}>
           {option.value}
-        </option>
+        </NativeSelectOption>
       ))}
-    </select>
+    </NativeSelect>
   );
 }
 
@@ -166,7 +171,7 @@ function NumberControl({ spec, label, className }: ControlProps) {
   );
 
   return (
-    <input
+    <Input
       id={settingFieldId(spec.key)}
       type="number"
       aria-label={label}
@@ -177,7 +182,7 @@ function NumberControl({ spec, label, className }: ControlProps) {
       placeholder={spec.nullable ? "Not set" : ""}
       onChange={onChange}
       onBlur={onBlur}
-      className={cn(INPUT_CLASS, className)}
+      className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />
   );
 }
@@ -192,7 +197,7 @@ function TextControl({ spec, label, className }: ControlProps) {
   );
 
   return (
-    <input
+    <Input
       id={settingFieldId(spec.key)}
       type="text"
       aria-label={label}
@@ -201,7 +206,7 @@ function TextControl({ spec, label, className }: ControlProps) {
       placeholder={spec.nullable ? "Not set" : ""}
       onChange={onChange}
       onBlur={onBlur}
-      className={cn(INPUT_CLASS, className)}
+      className={cn(CONTROL_HEIGHT, className)}
     />
   );
 }
@@ -220,7 +225,7 @@ function ListControl({ spec, label, className }: ControlProps) {
   );
 
   return (
-    <input
+    <Input
       id={settingFieldId(spec.key)}
       type="text"
       aria-label={label}
@@ -228,56 +233,44 @@ function ListControl({ spec, label, className }: ControlProps) {
       value={shown}
       placeholder={spec.item_kind === "string" ? "Values, separated by spaces" : "Numbers, separated by spaces"}
       onChange={onChange}
-      className={cn(INPUT_CLASS, className)}
+      className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />
   );
 }
 
 function EnumListControl({ spec, label, className }: ControlProps) {
   const { value, set } = useSetting(spec);
-  const selected = useMemo(() => (Array.isArray(value) ? value : []), [value]);
+  const selected = useMemo(() => (Array.isArray(value) ? value.map(scalarText) : []), [value]);
+
+  const onValueChange = useCallback(
+    (next: string[]) => set(spec.options.flatMap((option) => (next.includes(option.value) ? [option.value] : []))),
+    [set, spec.options],
+  );
 
   return (
-    <fieldset id={settingFieldId(spec.key)} className={cn("m-0 flex flex-wrap gap-1 border-0 p-0", className)}>
-      <legend className="sr-only">{label}</legend>
+    <ToggleGroup
+      id={settingFieldId(spec.key)}
+      aria-label={label}
+      multiple
+      variant="outline"
+      size="sm"
+      spacing={1}
+      value={selected}
+      onValueChange={onValueChange}
+      className={cn("flex-wrap", className)}
+    >
       {spec.options.map((option) => (
-        <EnumListOption key={option.value} spec={spec} option={option} selected={selected} set={set} />
+        <EnumListOption key={option.value} option={option} />
       ))}
-    </fieldset>
+    </ToggleGroup>
   );
 }
 
-function EnumListOption({
-  spec,
-  option,
-  selected,
-  set,
-}: {
-  spec: SettingSpec;
-  option: SettingOption;
-  selected: readonly JsonValue[];
-  set: (value: JsonValue) => void;
-}) {
-  const onChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const chosen = new Set(selected);
-
-      if (event.target.checked) {
-        chosen.add(option.value);
-      } else {
-        chosen.delete(option.value);
-      }
-
-      set(spec.options.flatMap((candidate) => (chosen.has(candidate.value) ? [candidate.value] : [])));
-    },
-    [option.value, selected, set, spec.options],
-  );
-
+function EnumListOption({ option }: { option: SettingOption }) {
   return (
-    <label title={option.help} className="border-line inline-flex items-center gap-1 rounded-sm border px-1.5 text-xs">
-      <input type="checkbox" checked={selected.includes(option.value)} onChange={onChange} />
+    <ToggleGroupItem value={option.value} title={option.help} className="h-7 px-2 font-mono text-xs">
       {option.value}
-    </label>
+    </ToggleGroupItem>
   );
 }
 

@@ -1,82 +1,156 @@
-@theme {
-  --font-sans: "Lato", ui-sans-serif, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+/*
+ * TreeTime instrument-panel theme on shadcn/ui tokens (https://ui.shadcn.com/docs/theming).
+ * Cool blue-grey neutrals, petrol primary, amber for warnings, crimson for faults, a tight radius.
+ * Chart colors are categorical: petrol fit, amber selection, crimson faults, slate blue tips, olive extra series.
+ */
+@import "../node_modules/tw-animate-css/dist/tw-animate.css";
+@import "./ui/shadcn.css";
 
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
+@custom-variant dark (&:is(.dark *):not(.light-scope, .light-scope *));
 
-  --radius-sm: 0.1875rem;
-  --radius-md: 0.3125rem;
-  --radius-lg: 0.5rem;
-
-  --spacing-bar: 3rem;
-
-  /* Each color resolves by the color-scheme of the element that uses it: light-dark(<light>, <dark>) */
-  --color-surface-0: light-dark(#e9eeec, #0e1615);
-  --color-surface-1: light-dark(#ffffff, #15201e);
-  --color-surface-2: light-dark(#f4f7f6, #1a2725);
-  --color-surface-3: light-dark(#e3e9e7, #22322f);
-  --color-line: light-dark(#d3dcd9, #2a3b38);
-  --color-line-strong: light-dark(#bfcbc7, #3a4f4b);
-
-  --color-ink: light-dark(#16302b, #e0e9e6);
-  --color-ink-muted: light-dark(#4b5f5a, #a6b7b2);
-  --color-ink-faint: light-dark(#72847f, #8a9b96);
-
-  --color-accent: light-dark(#17695a, #5cc3a5);
-  --color-accent-hover: light-dark(#115549, #7dd3b9);
-  --color-accent-fg: light-dark(#ffffff, #0e1615);
-  --color-accent-subtle: light-dark(#d8ece6, #173a33);
-
-  --color-signal-ok: light-dark(#2c7a4b, #6fcf97);
-  --color-signal-warn: light-dark(#9a6200, #e3ad4c);
-  --color-signal-warn-subtle: light-dark(#fbf0d4, #3a2f16);
-  --color-signal-danger: light-dark(#b42318, #f0877c);
-  --color-signal-danger-subtle: light-dark(#fbe4e1, #3d1f1c);
-
-  --color-chart-grid: light-dark(#e3e9e7, #263633);
-  --color-chart-tip: light-dark(#27477f, #8fb0ec);
-  --color-chart-selection: light-dark(#882255, #e889b8);
+:root,
+.light-scope {
+  --background: oklch(0.985 0.003 220);
+  --foreground: oklch(0.22 0.02 235);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 235);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 235);
+  --primary: oklch(0.47 0.085 205);
+  --primary-foreground: oklch(0.985 0.005 205);
+  --secondary: oklch(0.95 0.008 220);
+  --secondary-foreground: oklch(0.28 0.02 235);
+  --muted: oklch(0.955 0.006 220);
+  --muted-foreground: oklch(0.5 0.02 235);
+  --accent: oklch(0.94 0.02 205);
+  --accent-foreground: oklch(0.3 0.05 210);
+  --destructive: oklch(0.55 0.2 25);
+  --warning: oklch(0.53 0.12 60);
+  --success: oklch(0.5 0.11 150);
+  --border: oklch(0.9 0.008 220);
+  --input: oklch(0.86 0.01 220);
+  --ring: oklch(0.6 0.08 205);
+  --chart-1: oklch(0.52 0.09 205);
+  --chart-2: oklch(0.72 0.15 70);
+  --chart-3: oklch(0.57 0.19 22);
+  --chart-4: oklch(0.5 0.11 255);
+  --chart-5: oklch(0.6 0.13 130);
+  --radius: 0.375rem;
+  --sidebar: oklch(0.97 0.005 220);
+  --sidebar-foreground: oklch(0.22 0.02 235);
+  --sidebar-primary: oklch(0.47 0.085 205);
+  --sidebar-primary-foreground: oklch(0.985 0.005 205);
+  --sidebar-accent: oklch(0.93 0.015 210);
+  --sidebar-accent-foreground: oklch(0.22 0.03 225);
+  --sidebar-border: oklch(0.9 0.008 220);
+  --sidebar-ring: oklch(0.6 0.08 205);
 }
 
-@variant dark (&:where(.dark, .dark *));
+.dark {
+  --background: oklch(0.17 0.012 235);
+  --foreground: oklch(0.93 0.008 220);
+  --card: oklch(0.2 0.013 235);
+  --card-foreground: oklch(0.93 0.008 220);
+  --popover: oklch(0.21 0.013 235);
+  --popover-foreground: oklch(0.93 0.008 220);
+  --primary: oklch(0.74 0.1 200);
+  --primary-foreground: oklch(0.18 0.02 225);
+  --secondary: oklch(0.26 0.014 235);
+  --secondary-foreground: oklch(0.93 0.008 220);
+  --muted: oklch(0.24 0.012 235);
+  --muted-foreground: oklch(0.7 0.015 225);
+  --accent: oklch(0.29 0.035 210);
+  --accent-foreground: oklch(0.93 0.02 205);
+  --destructive: oklch(0.68 0.17 22);
+  --warning: oklch(0.8 0.13 75);
+  --success: oklch(0.74 0.13 150);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.6 0.08 200);
+  --chart-1: oklch(0.74 0.1 200);
+  --chart-2: oklch(0.8 0.14 75);
+  --chart-3: oklch(0.7 0.17 22);
+  --chart-4: oklch(0.72 0.1 255);
+  --chart-5: oklch(0.76 0.13 130);
+  --sidebar: oklch(0.19 0.012 235);
+  --sidebar-foreground: oklch(0.93 0.008 220);
+  --sidebar-primary: oklch(0.74 0.1 200);
+  --sidebar-primary-foreground: oklch(0.18 0.02 225);
+  --sidebar-accent: oklch(0.27 0.03 215);
+  --sidebar-accent-foreground: oklch(0.95 0.01 210);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.6 0.08 200);
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
   }
 
-  html {
-    scroll-padding-top: var(--spacing-bar);
-    font-family: var(--font-sans);
-    font-variant-numeric: tabular-nums lining-nums;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  code,
-  kbd,
-  pre {
-    font-variant-ligatures: none;
+  .dark {
+    color-scheme: dark;
   }
 
   body {
-    margin: 0;
-    background-color: var(--color-surface-0);
-    color: var(--color-ink);
-  }
-
-  /* Recharts makes its charts and their layers focusable for keyboard navigation; a mouse click should not outline them */
-  .recharts-wrapper :focus:not(:focus-visible) {
-    outline: none;
+    @apply bg-background text-foreground font-sans tabular-nums antialiased;
   }
 }
 
-/* Auspice has no dark theme: its panels keep the light colors inside a dark page */
+/* Auspice has no dark theme: its panels keep the light tokens (set with :root above) inside a dark page */
 @utility light-scope {
   color-scheme: light;
-  background-color: var(--color-surface-1);
-  color: var(--color-ink);
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
