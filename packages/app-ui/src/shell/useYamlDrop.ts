@@ -2,6 +2,7 @@ import { errorMessage } from "@neherlab/app-contracts";
 import { useEffect } from "react";
 
 import { useConfigLoader } from "../analysis/useConfigLoader";
+import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { Toast } from "../ui";
 
@@ -18,11 +19,12 @@ export function useYamlDrop() {
 
     async function load(file: File) {
       try {
-        const result = await loadConfig(await file.text(), useDraftStore.getState().command, true);
+        const requested = useDraftStore.getState().command;
+        const result = await loadConfig(await file.text(), requested, true);
 
         toasts.add(
           result.loaded
-            ? { title: `Loaded ${file.name}` }
+            ? { title: `Loaded ${file.name}`, description: commandSwitchNote(requested, result.command) }
             : { title: `${file.name} is not a valid config`, description: result.messages.join("; ") },
         );
       } catch (error: unknown) {

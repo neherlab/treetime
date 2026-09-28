@@ -3,6 +3,7 @@ import type { AppCommand, CodeLine, ConfigCode } from "@neherlab/app-contracts";
 import { Copy } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import type { CodeFormat } from "../store/draftSchema";
 import { Button, Segmented, Toast, cn } from "../ui";
@@ -114,6 +115,7 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
   const [messages, setMessages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const loadConfig = useConfigLoader();
+  const toasts = Toast.useToastManager();
 
   const apply = useCallback(async () => {
     setBusy(true);
@@ -122,6 +124,12 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
       const result = await loadConfig(text, command, true);
 
       if (result.loaded) {
+        const note = commandSwitchNote(command, result.command);
+
+        if (note !== undefined) {
+          toasts.add({ title: note });
+        }
+
         close();
       } else {
         setMessages(result.messages);
@@ -131,7 +139,7 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
     } finally {
       setBusy(false);
     }
-  }, [close, command, loadConfig, text]);
+  }, [close, command, loadConfig, text, toasts]);
 
   const onApply = useCallback(() => void apply(), [apply]);
   const onText = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => setText(event.target.value), []);

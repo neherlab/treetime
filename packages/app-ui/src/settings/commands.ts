@@ -93,3 +93,7 @@ export const MAIN_SETTING_KEYS = {
   optimize: ["opt_method", "reroot", "divergence_units", "no_indels", "max_iter"],
   prune: ["prune_short", "prune_empty", "merge_shared_mutations", "prune_nodes_list"],
 } satisfies { readonly [C in AppCommand]: ReadonlyArray<SettingKey<C>> };
+
+export function commandSwitchNote(requested: AppCommand, loaded: AppCommand): string | undefined {
+  return requested === loaded ? undefined : `Switched to ${COMMAND_INFO[loaded].label}`;
+}
