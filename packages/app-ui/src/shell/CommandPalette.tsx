@@ -174,12 +174,8 @@ function usePaletteItems(): PaletteItem[] {
 
     if (first !== undefined && second !== undefined) {
       items.push(
-        paletteItem(
-          "Action",
-          "action-compare",
-          "Compare selected runs",
-          "",
-          () => navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
+        paletteItem("Action", "action-compare", "Compare selected runs", "", () =>
+          navigate({ to: "/compare/$a/$b", params: { a: first, b: second } }),
         ),
       );
     }
@@ -199,11 +195,18 @@ function usePaletteItems(): PaletteItem[] {
     for (const spec of COMMAND_SETTINGS[command].specs) {
       if (spec.role !== "output") {
         items.push(
-          paletteItem("Setting", `setting-${spec.key}`, `${spec.label}  ${spec.flag}`, spec.help, () => {
-            useDraftStore.getState().update({ view: "all", search: spec.key, changedOnly: false });
+          paletteItem(
+            "Setting",
+            `setting-${spec.key}`,
+            `${spec.label}  ${spec.flag}`,
+            spec.help,
+            () => {
+              useDraftStore.getState().update({ view: "all", search: spec.key, changedOnly: false });
 
-            return navigate({ to: "/new" });
-          }, settingFieldId(spec.key)),
+              return navigate({ to: "/new" });
+            },
+            settingFieldId(spec.key),
+          ),
         );
       }
     }

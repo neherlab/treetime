@@ -44,10 +44,7 @@ function CommandDialog({
 
 function CommandInput({ className, ...props }: Autocomplete.Input.Props) {
   return (
-    <Autocomplete.InputGroup
-      data-slot="command-input-wrapper"
-      className="flex h-11 items-center gap-2 border-b px-3"
-    >
+    <Autocomplete.InputGroup data-slot="command-input-wrapper" className="flex h-11 items-center gap-2 border-b px-3">
       <SearchIcon aria-hidden className="text-muted-foreground size-4 shrink-0" />
       <Autocomplete.Input
         data-slot="command-input"

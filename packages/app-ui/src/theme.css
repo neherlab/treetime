@@ -139,7 +139,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans tabular-nums lining-nums antialiased;
+    @apply bg-background text-foreground font-sans lining-nums tabular-nums antialiased;
   }
 
   code,
