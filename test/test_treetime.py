@@ -488,3 +488,24 @@ def test_cli_keep_root_keeps_single_child_root(tmp_path):
     rows = [line.split('\t') for line in (outdir / 'dates.tsv').read_text().splitlines()[1:]]
     numeric_dates = {row[0]: float(row[2]) for row in rows}
     assert numeric_dates['ROOT'] < numeric_dates['MRCA']
+
+
+def test_bad_branch_flags_are_python_bools():
+    """Undated leaves G and H make their parent GH a bad branch."""
+    dates = {name: date for name, date in SINGLE_CHILD_ROOT_DATES.items() if name not in ('G', 'H')}
+    tt = _single_child_root_tree_time(dates)
+
+    flags = {n.name: n.bad_branch for n in tt.tree.find_clades()}
+
+    assert all(type(flag) is bool for flag in flags.values())
+    assert {name for name, flag in flags.items() if flag} == {'G', 'H', 'GH'}
+
+
+def test_tip_value_treats_falsy_bad_branch_as_good():
+    import numpy as np
+
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+    leaf = next(n for n in tt.tree.get_terminals() if n.name == 'A')
+    leaf.bad_branch = np.False_
+
+    assert tt.setup_TreeRegression().tip_value(leaf) == SINGLE_CHILD_ROOT_DATES['A']

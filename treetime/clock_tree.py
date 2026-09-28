@@ -149,7 +149,7 @@ class ClockTree(TreeAnc):
                 else:
                     # If all branches dowstream are 'bad', and there is no date constraint for
                     # this node, the branch is marked as 'bad'
-                    node.bad_branch = np.all([x.bad_branch for x in node])
+                    node.bad_branch = all(x.bad_branch for x in node)
 
             if node.is_terminal() and node.bad_branch:
                 bad_branch_counter += 1
@@ -272,7 +272,7 @@ class ClockTree(TreeAnc):
         """
         from .treeregression import TreeRegression
 
-        tip_value = lambda x: np.mean(x.raw_date_constraint) if (x.is_terminal() and (x.bad_branch is False)) else None
+        tip_value = lambda x: np.mean(x.raw_date_constraint) if (x.is_terminal() and not x.bad_branch) else None
         branch_value = lambda x: x.mutation_length
         if covariation:
             om = self.one_mutation
@@ -386,7 +386,7 @@ class ClockTree(TreeAnc):
                     tbp = self.date2dist.get_time_before_present(np.array(node.raw_date_constraint))
                     node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False, min_width=self.min_width)
 
-                if hasattr(node, 'bad_branch') and node.bad_branch is True:
+                if hasattr(node, 'bad_branch') and node.bad_branch:
                     self.logger(
                         'ClockTree.init_date_constraints -- WARNING: Branch is marked as bad'
                         ', excluding it from the optimization process.'
@@ -969,7 +969,7 @@ class ClockTree(TreeAnc):
         for node in self.tree.find_clades():
             years_bp = self.date2dist.to_years(node.time_before_present)
             if years_bp < 0 and self.real_dates:
-                if not hasattr(node, 'bad_branch') or node.bad_branch is False:
+                if not hasattr(node, 'bad_branch') or not node.bad_branch:
                     self.logger(
                         'ClockTree.convert_dates -- WARNING: The node is later than today, but it is not '
                         'marked as "BAD", which indicates the error in the '
