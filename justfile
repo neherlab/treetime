@@ -485,8 +485,7 @@ desktop: _js
 # Build the desktop app for production and start it from the checkout (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
 desktop-prod: build-desktop
-    TREETIME_PROJECT_ROOT="${PWD}" LD_PRELOAD="${PWD}/packages/app-napi/app-napi.linux-x64-gnu.node${LD_PRELOAD:+:${LD_PRELOAD}}" \
-      node packages/app-desktop/node_modules/electron/cli.js packages/app-desktop --enable-logging
+    TREETIME_PROJECT_ROOT="${PWD}" node packages/app-desktop/node_modules/electron/cli.js packages/app-desktop --enable-logging
 
 # Production build of the web app
 [group("app")]

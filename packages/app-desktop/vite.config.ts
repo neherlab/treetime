@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
@@ -10,12 +9,6 @@ import electron from "vite-plugin-electron/simple";
 import { contentSecurityPolicy } from "./build/content-security-policy";
 
 const projectRoot = resolve(__dirname, "../..");
-
-const napiNode = resolve(__dirname, "../app-napi/app-napi.linux-x64-gnu.node");
-
-if (existsSync(napiNode)) {
-  process.env["LD_PRELOAD"] = [process.env["LD_PRELOAD"], napiNode].filter(Boolean).join(":");
-}
 
 process.env["TREETIME_PROJECT_ROOT"] ??= projectRoot;
 
