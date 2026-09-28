@@ -2022,14 +2022,6 @@
           "config": {
             "description": "Configuration of the command, in the form `treetime <command> --config` reads."
           },
-          "title": {
-            "description": "Title of the run. Defaults to the command name.",
-            "type": [
-              "string",
-              "null"
-            ],
-            "default": null
-          },
           "defer_start": {
             "description": "Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.",
             "type": "boolean",
@@ -2051,7 +2043,7 @@
             "$ref": "#/components/schemas/JobId"
           },
           "title": {
-            "description": "Title shown in run lists.",
+            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
             "type": "string"
           },
           "command": {

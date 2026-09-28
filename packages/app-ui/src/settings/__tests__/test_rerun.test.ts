@@ -37,14 +37,12 @@ describe("edit and run again", () => {
       outputAll: draft.config["output_all"],
       selection: draft.config["output_selection"],
       labels: draft.inputLabels,
-      title: draft.title,
     }).toStrictEqual({
       tree: "/runs/r0/inputs/tree.nwk",
       keepRoot: true,
       outputAll: null,
       selection: ["Nwk", "Auspice"],
       labels: { tree: "tree.nwk", metadata: "metadata.tsv" },
-      title: "Baseline (edited)",
     });
   });
 

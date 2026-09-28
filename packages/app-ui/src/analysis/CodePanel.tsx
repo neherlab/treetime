@@ -119,7 +119,7 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
     setBusy(true);
 
     try {
-      const result = await loadConfig(text, command, null, true);
+      const result = await loadConfig(text, command, true);
 
       if (result.loaded) {
         close();

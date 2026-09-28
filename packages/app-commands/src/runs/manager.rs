@@ -84,7 +84,7 @@ impl RunManager {
   }
 
   pub fn create(&self, request: CreateRunRequest) -> Result<RunRecord, Report> {
-    let record = self.store.create(request.command, request.config, request.title)?;
+    let record = self.store.create(request.command, request.config)?;
     self.app_events.append(
       AppChange::RunCreated { run: record.summary() },
       run_stale_paths(&record.id),

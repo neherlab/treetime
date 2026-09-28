@@ -6,16 +6,18 @@ describe("draft", () => {
   test("a stored draft replaces the fields it holds", () => {
     const current = freshDraft("timetree");
 
-    expect(restoredDraft({ command: "clock", title: "stored", unknown: 1 }, current)).toStrictEqual({
+    expect(
+      restoredDraft({ command: "clock", search: "stored", title: "Run name of an older draft" }, current),
+    ).toStrictEqual({
       ...current,
       command: "clock",
-      title: "stored",
+      search: "stored",
     });
   });
 
   test("a stored draft with an invalid field is ignored", () => {
     const current = freshDraft("timetree");
 
-    expect(restoredDraft({ title: "stored", view: "sideways" }, current)).toStrictEqual(current);
+    expect(restoredDraft({ search: "stored", view: "sideways" }, current)).toStrictEqual(current);
   });
 });

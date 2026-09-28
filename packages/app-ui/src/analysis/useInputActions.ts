@@ -12,8 +12,6 @@ import type { InputOrigin } from "../store/draftSchema";
 import { toFormValue, type FormConfig } from "./formValues";
 import { pendingUploadRun } from "./pendingUpload";
 
-const UPLOAD_RUN_TITLE = "Uploaded inputs";
-
 interface InputActions {
   canPick: boolean;
   assign: (key: string, value: JsonValue, label: string, origin: InputOrigin, size: number | null) => void;
@@ -63,7 +61,7 @@ export function useInputActions(command: AppCommand): InputActions {
 
     const { data: record } = await runsCreate({
       client,
-      body: { command, config: {}, title: UPLOAD_RUN_TITLE, defer_start: true },
+      body: { command, config: {}, defer_start: true },
       throwOnError: true,
     });
 

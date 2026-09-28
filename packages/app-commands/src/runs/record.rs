@@ -13,7 +13,7 @@ use strum_macros::Display;
 pub struct RunRecord {
   /// Identifier of the run, also the name of its folder.
   pub id: JobId,
-  /// Title shown in run lists.
+  /// Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
   pub title: String,
   /// Command the run executes.
   pub command: AppCommand,
@@ -157,9 +157,6 @@ pub struct CreateRunRequest {
   pub command: AppCommand,
   /// Configuration of the command, in the form `treetime <command> --config` reads.
   pub config: Value,
-  /// Title of the run. Defaults to the command name.
-  #[serde(default)]
-  pub title: Option<String>,
   /// Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
   #[serde(default)]
   pub defer_start: bool,

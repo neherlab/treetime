@@ -5,7 +5,8 @@ mod tests {
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::manager::RunManager;
   use crate::runs::record::{RunRecord, RunStatus, UpdateRunRequest};
-  use crate::runs::store::RunStore;
+  use crate::runs::store::{RunStore, default_title};
+  use chrono::Local;
   use helpers::{accept, clock_config, create, event_types, terminal_status, timetree_config};
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
@@ -283,9 +284,7 @@ mod tests {
   fn test_manager_store_writes_run_json_atomically() {
     let root = tempdir().unwrap();
     let store = RunStore::open(root.path()).unwrap();
-    let record = store
-      .create(AppCommand::Prune, json!({ "tree": "t.nwk" }), None)
-      .unwrap();
+    let record = store.create(AppCommand::Prune, json!({ "tree": "t.nwk" })).unwrap();
     let dir = store.run_dir(&record.id);
     let names: Vec<String> = fs::read_dir(&dir)
       .unwrap()
@@ -295,11 +294,11 @@ mod tests {
       .collect();
     let reread: RunRecord = serde_json::from_str(&fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
     assert_eq!(
-      (vec!["inputs", "out", "run.json"], "prune"),
       (
-        names.iter().map(String::as_str).collect::<Vec<_>>(),
-        reread.title.as_str()
-      )
+        vec!["inputs", "out", "run.json"],
+        default_title(&record.created_at.with_timezone(&Local))
+      ),
+      (names.iter().map(String::as_str).collect::<Vec<_>>(), reread.title)
     );
   }
 
@@ -321,7 +320,6 @@ mod tests {
         .create(CreateRunRequest {
           command,
           config,
-          title: None,
           defer_start: true,
         })
         .unwrap()

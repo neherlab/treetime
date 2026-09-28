@@ -18,7 +18,7 @@ export function useYamlDrop() {
 
     async function load(file: File) {
       try {
-        const result = await loadConfig(await file.text(), useDraftStore.getState().command, null, true);
+        const result = await loadConfig(await file.text(), useDraftStore.getState().command, true);
 
         toasts.add(
           result.loaded

@@ -11,7 +11,6 @@ import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig, outputFreeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { zJsonObject } from "../settings/json";
-import { autoTitle, changedChips } from "../settings/titles";
 import { useDraftStore } from "../store/draft";
 import { ChecksPanel } from "./ChecksPanel";
 import { CodePanel } from "./CodePanel";
@@ -96,18 +95,9 @@ export function DraftForm({ command }: { command: AppCommand }) {
 
   const changed = changedSpecs(specs, config);
 
-  const title = autoTitle(
-    command,
-    changedChips(
-      code,
-      specs,
-      changed.map((spec) => spec.key),
-    ),
-  );
-
   const submit = useMemo(
-    () => form.handleSubmit((values) => startRun(outputFreeConfig(specs, normalizeConfig(specs, values)), title)),
-    [form, specs, startRun, title],
+    () => form.handleSubmit((values) => startRun(outputFreeConfig(specs, normalizeConfig(specs, values)))),
+    [form, specs, startRun],
   );
 
   const onSubmit = useCallback((event: React.SubmitEvent) => void submit(event), [submit]);
@@ -147,12 +137,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
           </div>
           <aside className="grid gap-3.5 xl:sticky xl:top-4">
             <CodePanel command={command} code={code} />
-            <ChecksPanel
-              suggestedTitle={title}
-              checks={checks}
-              duplicate={duplicate}
-              verb={COMMAND_INFO[command].verb}
-            />
+            <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_INFO[command].verb} />
           </aside>
         </form>
       </FormProvider>

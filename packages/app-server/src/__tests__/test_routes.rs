@@ -15,13 +15,10 @@ mod tests {
       &test,
       "POST",
       "/api/runs",
-      Some(json!({ "command": "timetree", "config": timetree_config(), "title": "zika" })),
+      Some(json!({ "command": "timetree", "config": timetree_config() })),
     )
     .await;
-    assert_eq!(
-      (200, json!("running"), json!("zika")),
-      (status, record["status"].clone(), record["title"].clone())
-    );
+    assert_eq!((200, json!("running")), (status, record["status"].clone()));
     let id = record["id"].as_str().unwrap().to_owned();
 
     let events = events_of(&test, &id, "").await;
@@ -202,29 +199,36 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_create_run_takes_no_title() {
+    let test = app();
+    let (status, _) = request(
+      &test,
+      "POST",
+      "/api/runs",
+      Some(json!({ "command": "clock", "config": {}, "title": "zika", "defer_start": true })),
+    )
+    .await;
+    assert_eq!(
+      400, status,
+      "a run gets its title from the server and is renamed afterwards"
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_list_rename_and_pin() {
     let test = app();
-    let mut ids = vec![];
-    for title in ["older", "newer"] {
-      let (_, record) = request(
-        &test,
-        "POST",
-        "/api/runs",
-        Some(json!({ "command": "clock", "config": {}, "title": title, "defer_start": true })),
-      )
-      .await;
-      ids.push(record["id"].as_str().unwrap().to_owned());
-    }
+    let ids = [create_deferred(&test).await, create_deferred(&test).await];
     let (_, list) = request(&test, "GET", "/api/runs", None).await;
-    let titles: Vec<&str> = list["runs"]
+    let listed: Vec<&str> = list["runs"]
       .as_array()
       .unwrap()
       .iter()
-      .map(|run| run["title"].as_str().unwrap())
+      .map(|run| run["id"].as_str().unwrap())
       .collect();
     assert_eq!(
-      (vec!["newer", "older"], json!(0)),
-      (titles, list["active_runs"].clone())
+      (vec![ids[1].as_str(), ids[0].as_str()], json!(0)),
+      (listed, list["active_runs"].clone()),
+      "the list starts with the newest run"
     );
 
     let (status, summary) = request(
@@ -576,7 +580,7 @@ mod tests {
   async fn test_routes_app_events_report_run_changes_with_their_stale_paths() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
-    let id = create_deferred(&test, "first").await;
+    let id = create_deferred(&test).await;
     request(
       &test,
       "PATCH",
@@ -642,8 +646,8 @@ mod tests {
   async fn test_routes_app_events_resume_from_an_event_by_query_or_last_event_id() {
     let test = app();
     let mut live = open_app_events(&test, "", None).await;
-    for title in ["a", "b", "c"] {
-      create_deferred(&test, title).await;
+    for _ in 0..3 {
+      create_deferred(&test).await;
     }
     let seqs = |events: &[helpers::SseEvent]| events.iter().map(|event| event.data["seq"].clone()).collect::<Vec<_>>();
     let all = take_events(&mut live, 3).await;
@@ -659,7 +663,7 @@ mod tests {
       )
     );
 
-    create_deferred(&test, "d").await;
+    create_deferred(&test).await;
     let next = json!(first + 3);
     assert_eq!(
       (vec![next.clone()], vec![next]),
@@ -675,7 +679,7 @@ mod tests {
   async fn test_routes_app_events_resync_when_the_event_is_not_in_the_log() {
     let test = app();
     let mut live = open_app_events(&test, "", None).await;
-    create_deferred(&test, "a").await;
+    create_deferred(&test).await;
     let mut head = take_events(&mut live, 1).await[0].data["seq"].as_u64().unwrap();
 
     for query in ["?from=1".to_owned(), format!("?from={}", head + 1000)] {
@@ -699,7 +703,7 @@ mod tests {
         ),
         "{query}"
       );
-      create_deferred(&test, "next").await;
+      create_deferred(&test).await;
       let next = &take_events(&mut stream, 1).await[0];
       let expected = take_events(&mut live, 1).await[0].data["seq"].clone();
       assert_eq!(
@@ -714,7 +718,7 @@ mod tests {
   async fn test_routes_app_event_stale_paths_are_paths_or_path_prefixes_of_the_api() {
     let test = app();
     let mut stream = open_app_events(&test, "", None).await;
-    let id = create_deferred(&test, "a").await;
+    let id = create_deferred(&test).await;
     request(
       &test,
       "PATCH",
@@ -1012,12 +1016,12 @@ mod tests {
       events
     }
 
-    pub(super) async fn create_deferred(test: &TestApp, title: &str) -> String {
+    pub(super) async fn create_deferred(test: &TestApp) -> String {
       let (_, record) = request(
         test,
         "POST",
         "/api/runs",
-        Some(json!({ "command": "clock", "config": {}, "title": title, "defer_start": true })),
+        Some(json!({ "command": "clock", "config": {}, "defer_start": true })),
       )
       .await;
       record["id"].as_str().unwrap().to_owned()

@@ -17,6 +17,7 @@ import { ClockResults } from "./ClockResults";
 import { LogTab } from "./LogTab";
 import { MugrationResults } from "./MugrationResults";
 import { RunningView } from "./RunningView";
+import { RunTitle } from "./RunTitle";
 import { SettingsTab } from "./SettingsTab";
 import { TimetreeResults } from "./TimetreeResults";
 import { TreeOnlyResults } from "./TreeOnlyResults";
@@ -255,7 +256,7 @@ function RunHeader({ record }: { record: RunRecord }) {
   return (
     <div className="mb-3.5 flex flex-wrap items-start gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl leading-tight font-bold">{record.title}</h1>
+        <RunTitle record={record} />
         <div className="text-ink-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span className="inline-flex items-center gap-1.5 font-bold">
             <StatusIcon status={record.status} />

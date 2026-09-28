@@ -5,7 +5,6 @@ import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
 import { zJsonValue } from "../settings/json";
-import { useDraftStore } from "../store/draft";
 import { Button } from "../ui";
 import { toFormValue, type FormConfig } from "./formValues";
 
@@ -16,27 +15,18 @@ const LEVEL_ICON: Record<CheckLevel, React.ReactNode> = {
 };
 
 export function ChecksPanel({
-  suggestedTitle,
   checks,
   duplicate,
   verb,
 }: {
-  suggestedTitle: string;
   checks: readonly RunCheck[] | undefined;
   duplicate: RunSummary | undefined;
   verb: string;
 }) {
   const { isSubmitting, isValid, errors } = useFormState<FormConfig>();
   const formError = errors.root?.message;
-  const title = useDraftStore((state) => state.title);
-  const update = useDraftStore((state) => state.update);
   const checking = checks === undefined;
   const blocking = checks?.some((check) => check.level === "block") ?? false;
-
-  const onTitle = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => update({ title: event.target.value }),
-    [update],
-  );
 
   const reason = checking
     ? "Checking the settings"
@@ -80,16 +70,6 @@ export function ChecksPanel({
             </span>
           </div>
         )}
-        <label className="text-ink-muted grid gap-1">
-          Run name
-          <input
-            type="text"
-            value={title}
-            onChange={onTitle}
-            placeholder={suggestedTitle}
-            className="border-line-strong bg-surface-1 text-ink rounded-md border px-2.5 py-1.5"
-          />
-        </label>
         <Button
           type="submit"
           className="w-full"

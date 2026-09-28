@@ -17,7 +17,6 @@ export function useRerun(record: RunRecord): () => void {
       sources: Object.fromEntries(
         Object.entries(draft.inputLabels).map(([key, label]) => [key, { label, origin: "run" as const, size: null }]),
       ),
-      title: draft.title,
       fromRunId: record.id,
       uploadRunId: null,
     });

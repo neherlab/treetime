@@ -8,7 +8,6 @@ import { zJsonObject, type JsonObject } from "./json";
 interface RerunDraft {
   config: JsonObject;
   inputLabels: Record<string, string>;
-  title: string;
 }
 
 export function rerunDraft(record: RunRecord): RerunDraft {
@@ -19,6 +18,5 @@ export function rerunDraft(record: RunRecord): RerunDraft {
     inputLabels: Object.fromEntries(
       runInputAssignments(record.command, record.inputs).map((input) => [input.key, input.label]),
     ),
-    title: `${record.title} (edited)`,
   };
 }

@@ -184,7 +184,6 @@ mod tests {
     let created = runs.create(CreateRunRequest {
       command: AppCommand::Clock,
       config: json!({ "tree": zika("tree.nwk") }),
-      title: None,
       defer_start: true,
     })?;
 
@@ -288,7 +287,6 @@ mod tests {
     let created = runs.create(CreateRunRequest {
       command: AppCommand::Clock,
       config: json!({ "tree": zika("tree.nwk") }),
-      title: None,
       defer_start: true,
     })?;
 
@@ -451,7 +449,6 @@ mod tests {
         .create(CreateRunRequest {
           command,
           config,
-          title: None,
           defer_start: true,
         })
         .unwrap();

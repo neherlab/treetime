@@ -18,12 +18,7 @@ export function useConfigLoader() {
   const navigate = useNavigate();
 
   return useCallback(
-    async (
-      text: string,
-      fallbackCommand: AppCommand,
-      title: string | null,
-      keepInputs: boolean,
-    ): Promise<ConfigLoadResult> => {
+    async (text: string, fallbackCommand: AppCommand, keepInputs: boolean): Promise<ConfigLoadResult> => {
       const draft = useDraftStore.getState();
       const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
 
@@ -60,7 +55,6 @@ export function useConfigLoader() {
         config,
         sources,
         fromRunId: null,
-        title: title ?? draft.title,
       });
       await navigate({ to: "/new" });
 

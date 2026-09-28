@@ -614,10 +614,6 @@ export type CreateRunRequest = {
    */
   config: unknown;
   /**
-   * Title of the run. Defaults to the command name.
-   */
-  title?: string | null;
-  /**
    * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
    */
   defer_start?: boolean;
@@ -632,7 +628,7 @@ export type RunRecord = {
    */
   id: JobId;
   /**
-   * Title shown in run lists.
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
    */
   title: string;
   /**

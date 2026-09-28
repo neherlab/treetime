@@ -4,11 +4,12 @@ use crate::runs::errors::{invalid, not_found};
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::record::{RunRecord, RunStatus};
-use chrono::Utc;
+use chrono::{DateTime, Local, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::Value;
 use std::cmp::Reverse;
+use std::fmt::Display;
 use std::fs;
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -20,6 +21,14 @@ const RUN_FILE: &str = "run.json";
 const EVENTS_FILE: &str = "events.jsonl";
 const INPUTS_DIR: &str = "inputs";
 const OUT_DIR: &str = "out";
+const DEFAULT_TITLE_FORMAT: &str = "Run %Y-%m-%d %H:%M";
+
+pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String
+where
+  Tz::Offset: Display,
+{
+  created_at.format(DEFAULT_TITLE_FORMAT).to_string()
+}
 
 #[derive(Clone, Debug)]
 pub struct RunStore {
@@ -51,7 +60,7 @@ impl RunStore {
     self.run_dir(id).join(EVENTS_FILE)
   }
 
-  pub fn create(&self, command: AppCommand, config: Value, title: Option<String>) -> Result<RunRecord, Report> {
+  pub fn create(&self, command: AppCommand, config: Value) -> Result<RunRecord, Report> {
     let Value::Object(config) = config else {
       return Err(invalid("a command configuration must be a mapping of settings"));
     };
@@ -62,14 +71,15 @@ impl RunStore {
       fs::create_dir_all(dir.join(sub))
         .wrap_err_with(|| format!("When creating the directory '{}'", dir.join(sub).display()))?;
     }
+    let created_at = Utc::now();
     let record = RunRecord {
       id,
-      title: title.unwrap_or_else(|| command.to_string()),
+      title: default_title(&created_at.with_timezone(&Local)),
       command,
       config,
       status: RunStatus::Created,
       pinned: false,
-      created_at: Utc::now(),
+      created_at,
       started_at: None,
       finished_at: None,
       duration_seconds: None,

@@ -342,7 +342,6 @@ export const zRunList = z.object({
 export const zCreateRunRequest = z.strictObject({
   command: zAppCommand,
   config: z.unknown(),
-  title: z.string().nullish().default(null),
   defer_start: z.boolean().optional().default(false)
 });
 

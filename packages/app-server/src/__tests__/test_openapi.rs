@@ -90,10 +90,7 @@ mod tests {
   fn test_openapi_request_schemas_carry_defaults() {
     let doc = api_doc().unwrap();
     assert_eq!(
-      vec![
-        "CreateRunRequest/properties/title/default",
-        "CreateRunRequest/properties/defer_start/default"
-      ],
+      vec!["CreateRunRequest/properties/defer_start/default"],
       keyword_locations(
         &doc["components"]["schemas"]["CreateRunRequest"],
         "default",

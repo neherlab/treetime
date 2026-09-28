@@ -132,8 +132,8 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let received = collect(runs.app_events(), None);
-    let first = create(&runs, "first");
-    let second = create(&runs, "second");
+    let first = create(&runs);
+    let second = create(&runs);
     runs
       .update(
         &first.id,
@@ -155,10 +155,10 @@ mod tests {
     let (a, b) = (first.id.as_str(), second.id.as_str());
     assert_eq!(
       vec![
-        Change::new("run-created", a, Some("first"), Some("created"), stale(a)),
-        Change::new("run-created", b, Some("second"), Some("created"), stale(b)),
+        Change::new("run-created", a, Some(&first.title), Some("created"), stale(a)),
+        Change::new("run-created", b, Some(&second.title), Some("created"), stale(b)),
         Change::new("run-updated", a, Some("renamed"), Some("created"), stale(a)),
-        Change::new("run-updated", b, Some("second"), Some("cancelled"), stale(b)),
+        Change::new("run-updated", b, Some(&second.title), Some("cancelled"), stale(b)),
       ],
       changes(&received)
     );
@@ -174,7 +174,7 @@ mod tests {
   fn test_app_events_record_the_status_changes_of_a_computed_run() {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
-    let created = create(&runs, "clock");
+    let created = create(&runs);
     let received = collect(runs.app_events(), None);
     runs.start(&created.id, None, unconfined()).unwrap().run();
     let statuses = changes(&received)
@@ -196,8 +196,8 @@ mod tests {
     let root = tempdir().unwrap();
     let before = RunManager::open(root.path()).unwrap();
     let received = collect(before.app_events(), None);
-    for title in ["a", "b", "c"] {
-      create(&before, title);
+    for _ in 0..3 {
+      create(&before);
     }
     let last = *seqs(&received).last().unwrap();
     drop(before);
@@ -274,16 +274,15 @@ mod tests {
       received
     }
 
-    pub(super) fn create(runs: &RunManager, title: &str) -> RunRecord {
-      runs.create(request(title)).unwrap()
+    pub(super) fn create(runs: &RunManager) -> RunRecord {
+      runs.create(request()).unwrap()
     }
 
-    fn request(title: &str) -> CreateRunRequest {
+    fn request() -> CreateRunRequest {
       let zika = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
       CreateRunRequest {
         command: AppCommand::Clock,
         config: json!({ "tree": zika.join("tree.nwk"), "metadata": zika.join("metadata.tsv") }),
-        title: Some(title.to_owned()),
         defer_start: true,
       }
     }

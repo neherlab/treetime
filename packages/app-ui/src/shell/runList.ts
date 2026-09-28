@@ -4,7 +4,6 @@ import type { DateTime } from "luxon";
 import { dayLabel } from "../format";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
-import { settingFlags } from "../settings/titles";
 import { wordMatcher } from "../text";
 
 interface RunGroup {
@@ -50,5 +49,7 @@ export function groupRuns(runs: readonly RunSummary[], now: DateTime): RunGroup[
 }
 
 export function changedFlags(run: RunSummary): string[] {
-  return settingFlags(COMMAND_SETTINGS[run.command].specs, run.changed_settings);
+  const flags = new Map(COMMAND_SETTINGS[run.command].specs.map((spec) => [spec.key, spec.flag]));
+
+  return run.changed_settings.map((key) => flags.get(key) ?? key);
 }
