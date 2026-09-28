@@ -577,6 +577,7 @@ class TreeTime(ClockTree):
 
         use_cov = self.use_covariation if covariation is None else covariation
         slope = 0.0 if type(root) == str and root.startswith('min_dev') else clock_rate
+        self._remove_undated_single_child_root(keep=root)
         old_root = self.tree.root
 
         self.logger('TreeTime.reroot: with method or node: %s' % root, 0)
@@ -648,6 +649,28 @@ class TreeTime(ClockTree):
         self.get_clock_model(covariation=self.use_covariation, slope=slope)
 
         return new_root
+
+    def _remove_undated_single_child_root(self, keep=None):
+        """
+        Make the only child of an undated single-child root the new root.
+
+        Biopython's `root_with_outgroup` turns a single-child root into a leaf.
+        An undated single-child root carries no sample, date, or sequence, so
+        removing it before rerooting leaves the likelihood and the root-to-tip
+        regression unchanged. A dated single-child root is kept: after rerooting
+        it is a dated leaf like any other sample.
+
+        Parameters
+        ----------
+         keep : Phylo.Clade, optional
+            node that must stay in the tree, e.g. the requested new root
+        """
+        root = self.tree.root
+        if len(root.clades) != 1 or root.raw_date_constraint is not None or root is keep:
+            return
+        self.logger(f'TreeTime.reroot: removing undated single-child root {root.name}', 2)
+        self.tree.root = root.clades[0]
+        self.tree.root.up = None
 
     def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05, stochastic_resolve=False):
         """
