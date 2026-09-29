@@ -440,7 +440,7 @@ fmt-check-ts: _js
 [group("format")]
 fmt-other:
     shfmt --write $(dev/shell-files)
-    RUST_LOG=warn taplo fmt
+    dev/toml-files | RUST_LOG=warn xargs -0r taplo fmt
     just --fmt
 
 # Check formatting of shell scripts (shfmt), TOML (taplo), and the justfile, keep-going
@@ -449,7 +449,7 @@ fmt-other:
 fmt-check-other:
     status=0
     shfmt --diff $(dev/shell-files) || status=1
-    RUST_LOG=warn taplo fmt --check --diff || status=1
+    dev/toml-files | RUST_LOG=warn xargs -0r taplo fmt --check --diff || status=1
     just --fmt --check || status=1
     exit "${status}"
 

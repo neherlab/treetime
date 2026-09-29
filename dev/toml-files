@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Print the tracked and untracked, not ignored, TOML files of the repository,
+# NUL-separated, for taplo. taplo expands its default `**/*.toml` pattern over
+# the whole tree and applies its `exclude` list only to the files it found, so
+# without an explicit file list it walks build caches, dependency trees, and
+# clones. taplo still applies the `exclude` list of `taplo.toml` to these files.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+git ls-files -z --cached --others --exclude-standard -- '*.toml' | LC_ALL=C sort -zu
