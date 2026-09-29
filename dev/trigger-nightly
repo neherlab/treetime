@@ -4,18 +4,22 @@
 #
 # Trigger a nightly build and release via GitHub Actions.
 #
-# Dispatches the default-branch scheduler, which builds rust and publishes
-# binaries in the source repository.
+# Dispatches the default-branch scheduler, which builds rust, publishes the CLI
+# binaries in the source repository, and deploys the web app to the nightly server.
 #
 # Options:
-#   -h, --help    Show this help
-#   -f, --force   Build even when source has not changed since the latest nightly
+#   -h, --help                Show this help
+#   -f, --force               Build even when source has not changed since the latest nightly
+#   -o, --only <cli|web|both> Run only the CLI release (cli), only the web app deploy
+#                             (web), or both (default). A web-only run always deploys
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
 #
 # Examples:
 #   $0
+#   $0 --only web
+#   $0 --force --only cli
 #
 set -euo pipefail
 trap "exit" INT
@@ -28,6 +32,7 @@ main() {
   }
 
   local force="false"
+  local only="both"
 
   # shfmt:off
   while (($# > 0)); do
@@ -39,6 +44,14 @@ main() {
     -f | --force)
       force="true"
       shift
+      ;;
+    -o | --only)
+      if (($# < 2)); then
+        printf "Missing value of %s\n" "${1}" >&2
+        exit 1
+      fi
+      only="${2}"
+      shift 2
       ;;
     --)
       shift
@@ -53,6 +66,14 @@ main() {
   done
   # shfmt:on
 
+  case "${only}" in
+  cli | web | both) ;;
+  *)
+    printf "Invalid value of --only: '%s'. Expected cli, web, or both\n" "${only}" >&2
+    exit 1
+    ;;
+  esac
+
   local source_repo
   source_repo=$(git -C "${THIS_DIR}" remote get-url origin | sed 's|.*github\.com[:/]||; s|\.git$||')
 
@@ -65,15 +86,21 @@ main() {
     exit 1
   }
 
-  local force_args=()
-  local force_label=""
+  # The default is left out of the dispatch, so it also works with a scheduler
+  # that does not declare the `only` input.
+  local input_args=()
+  local label=""
+  if [[ "${only}" != "both" ]]; then
+    input_args+=(-f "only=${only}")
+    label+=" (only ${only})"
+  fi
   if [[ "${force}" == "true" ]]; then
-    force_args=(-f "force=true")
-    force_label=" (force)"
+    input_args+=(-f "force=true")
+    label+=" (force)"
   fi
 
-  printf "Triggering nightly workflow in %s%s\n" "${source_repo}" "${force_label}"
-  gh workflow run schedule-nightly.yml --repo "${source_repo}" "${force_args[@]}"
+  printf "Triggering nightly workflow in %s%s\n" "${source_repo}" "${label}"
+  gh workflow run schedule-nightly.yml --repo "${source_repo}" "${input_args[@]}"
   printf "Workflow dispatched. Monitor at: https://github.com/%s/actions/workflows/schedule-nightly.yml\n" "${source_repo}"
 }
 
