@@ -120,7 +120,6 @@ argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg
 async-stream = "=0.3.6"
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", features = ["json"] }
-bio = { version = "=2.3.0", features = ["phylogeny"] }
 bon = "=3.9.3"
 bytes = { version = "=1.12.1", features = ["serde"] }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std", "serde"] }
@@ -164,7 +163,6 @@ parking_lot = { version = "=0.12.5", features = ["arc_lock", "serde"] }
 percent-encoding = "=2.3.2"
 pest = "=2.9.1"
 pest_derive = "=2.9.1"
-petgraph = { version = "=0.6.5", features = ["serde", "stable_graph"] }
 plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.1"
 pretty_dtoa = "=0.3.0"

@@ -58,12 +58,10 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 
 [dev-dependencies]
-bio = { workspace = true }
 criterion = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
 parking_lot = { workspace = true }
-petgraph = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }

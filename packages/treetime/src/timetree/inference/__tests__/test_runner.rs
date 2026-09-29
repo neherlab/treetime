@@ -9,13 +9,9 @@ mod tests {
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
   use crate::timetree::inference::time_inference::{BranchLikelihood, unit_gammas};
   use approx::assert_abs_diff_eq;
-  use bio::io::newick;
   use eyre::Report;
-  use maplit::btreemap;
-  use petgraph::visit::EdgeRef;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::io::Cursor;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
@@ -62,31 +58,10 @@ mod tests {
         (key, branches[&key].time_length)
       })
       .collect();
-    let newick_output = nwk_write_str(&graph, &names, &time_lengths, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(&graph, &names, &time_lengths, &NwkWriteOptions::default())?;
 
-    let parsed = newick::read(Cursor::new(&newick_output)).expect("bio::newick should parse our output");
-
-    let mut branch_lengths: BTreeMap<String, f64> = BTreeMap::new();
-    for edge in parsed.g.edge_references() {
-      let target_name = &parsed.g[edge.target()];
-      if !target_name.is_empty() {
-        branch_lengths.insert(target_name.clone(), *edge.weight() as f64);
-      }
-    }
-
-    let expected: BTreeMap<&str, f64> = btreemap! {
-      "A" => 3.0,
-      "B" => 6.0,
-      "AB" => 9.0,
-      "C" => 12.0,
-    };
-
-    for (name, expected_length) in expected {
-      let actual_length = branch_lengths
-        .get(name)
-        .unwrap_or_else(|| panic!("Node '{name}' not found in parsed tree"));
-      pretty_assert_ulps_eq!(*actual_length, expected_length, max_ulps = 4);
-    }
+    let expected = "((A:3,B:6)AB:9,C:12)root;";
+    assert_eq!(expected, actual);
 
     Ok(())
   }
