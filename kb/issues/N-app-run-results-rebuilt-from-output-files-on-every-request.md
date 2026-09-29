@@ -25,6 +25,10 @@ Release N-API addon, requests sent through an in-process router, median of repea
 - Every page that opens the results of a large run waits this long for each answer, and every invalidation of the run's cache entries (for example a title change) reads the files again
 - Comparing two large runs and searching a clade across many runs scale with the number and size of the runs read
 
+## Partial mitigation
+
+The web server sends a weak `ETag` with the results, the Auspice document, and the comparison of finished runs (`packages/app-server/src/api/cache.rs`). A browser that asks again for the same answer gets `304 Not Modified` before the server reads the output files. The first request of each browser, every request after a server restart, the clade search, and the desktop app still rebuild the answer.
+
 ## Possible changes
 
 - Keep the built answers of finished runs in a bounded in-memory cache keyed by run id, dropped when the run is deleted or purged
