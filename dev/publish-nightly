@@ -2,7 +2,8 @@
 #
 # Usage: $0 [options]
 #
-# Upload CLI artifacts as a nightly release in the release repository.
+# Upload the CLI and desktop app artifacts as a nightly release in the release
+# repository.
 # The release tag combines the workspace version and supplied nightly suffix.
 #
 # Options:

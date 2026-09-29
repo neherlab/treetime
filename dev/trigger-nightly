@@ -5,13 +5,14 @@
 # Trigger a nightly build and release via GitHub Actions.
 #
 # Dispatches the default-branch scheduler, which builds rust, publishes the CLI
-# binaries in the source repository, and deploys the web app to the nightly server.
+# binaries and the desktop apps in the release repository, and deploys the web
+# app to the nightly server.
 #
 # Options:
 #   -h, --help                Show this help
 #   -f, --force               Build even when source has not changed since the latest nightly
-#   -o, --only <cli|web|both> Run only the CLI release (cli), only the web app deploy
-#                             (web), or both (default). A web-only run always deploys
+#   -o, --only <cli|web|both> Run only the CLI and desktop release (cli), only the web
+#                             app deploy (web), or both (default). A web-only run always deploys
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.

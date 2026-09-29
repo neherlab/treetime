@@ -73,6 +73,17 @@ jobs:
       build_mode: dev
     secrets: inherit
 
+  # Desktop apps build only on manual runs here and in the nightly, which keeps
+  # the addon cross builds and the macOS and Windows runner jobs out of every push.
+  build-desktop:
+    name: "Build desktop app"
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/desktop-build.yml
+    with:
+      source_ref: ${{ github.sha }}
+      build_mode: dev
+    secrets: inherit
+
   compat-linux:
     name: "Compat test (${{ matrix.target }})"
     needs: [build-cli]

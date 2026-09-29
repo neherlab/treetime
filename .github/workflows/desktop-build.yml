@@ -1,0 +1,297 @@
+name: "Build desktop app"
+
+# Builds the Node addon in the cross image of each Electron target, the Vite
+# bundles once, and one package per target: an AppImage for Linux, a zip
+# archive for Windows, a dmg for macOS. Each package is started on a system of
+# its target before it is uploaded as the artifact treetime-desktop-<target>, so
+# the nightly publishes only packages that passed. Runs in the nightly and on
+# manual runs of the CI workflow.
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: "Immutable source commit to build"
+        required: true
+        type: string
+      build_mode:
+        description: "Build version mode: dev, nightly, or release"
+        required: true
+        type: string
+      version_suffix:
+        description: "Version suffix for TREETIME_VERSION_SUFFIX"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  TREETIME_BUILD_MODE: ${{ inputs.build_mode }}
+  TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
+
+jobs:
+  addon:
+    name: "Build addon (${{ matrix.target }})"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    # A desktop failure never blocks the CLI nightly.
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      # A cache name of its own: the CLI build of the same target runs at the
+      # same time, and cache keys cannot be overwritten.
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          image: ${{ matrix.target }}
+          cache: desktop
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name != 'pull_request' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Build"
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: |
+          dev/docker/run dev/cross/build --lib app-napi
+          dev/docker/run dev/cross/check --lib app-napi
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: app-napi-${{ matrix.target }}
+          path: .out/app-napi-${{ matrix.target }}.node
+          # The action skips paths under a directory whose name starts with a dot, such as .out/.
+          include-hidden-files: true
+          if-no-files-found: error
+
+  bundles:
+    name: "Build bundles"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          cache: desktop-bundles
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name != 'pull_request' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Build"
+        run: |
+          dev/docker/run bun install --frozen-lockfile
+          dev/docker/run bun run --silent build:desktop
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-bundles
+          path: |
+            packages/app-desktop/dist
+            packages/app-desktop/dist-electron
+          if-no-files-found: error
+
+  package-linux-windows:
+    name: "Package (${{ matrix.target }})"
+    needs: [addon, bundles]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          cache: desktop-package
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name != 'pull_request' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Restore the Electron downloads"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build/desktop/cache/
+          key: desktop-downloads-${{ matrix.target }}-${{ hashFiles('bun.lock') }}
+          restore-keys: desktop-downloads-${{ matrix.target }}-
+
+      - name: "Download the bundles"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-bundles
+          path: packages/app-desktop
+
+      - name: "Download the addon"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: app-napi-${{ matrix.target }}
+          path: .out
+
+      - name: "Package"
+        run: |
+          dev/docker/run bun install --frozen-lockfile
+          dev/docker/run dev/desktop/package "${{ matrix.target }}"
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-package-${{ matrix.target }}
+          path: .out/treetime-desktop-${{ matrix.target }}.*
+          include-hidden-files: true
+          if-no-files-found: error
+
+  package-macos:
+    name: "Package (${{ matrix.target }})"
+    needs: [addon, bundles]
+    runs-on: macos-latest
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      # The scripts need Bash 5; macOS ships Bash 3.2.
+      - name: "Install Bash"
+        run: brew install bash
+
+      # Only the tools the packaging needs: the full list includes Linux-only tools.
+      - name: "Install tools"
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: "2026.9.10"
+          install_args: "node bun jq yq"
+
+      - name: "Restore the Electron downloads"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build/desktop/cache/
+          key: desktop-downloads-${{ matrix.target }}-${{ hashFiles('bun.lock') }}
+          restore-keys: desktop-downloads-${{ matrix.target }}-
+
+      - name: "Download the bundles"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-bundles
+          path: packages/app-desktop
+
+      - name: "Download the addon"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: app-napi-${{ matrix.target }}
+          path: .out
+
+      - name: "Package"
+        run: |
+          bun install --frozen-lockfile
+          dev/desktop/package "${{ matrix.target }}"
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-package-${{ matrix.target }}
+          path: .out/treetime-desktop-${{ matrix.target }}.*
+          include-hidden-files: true
+          if-no-files-found: error
+
+  # Starts each package on a system of its target. Only a package that starts
+  # becomes the public artifact treetime-desktop-<target>, which the nightly
+  # publishes. The Windows start also proves that Electron loads the addon built
+  # with MinGW.
+  start:
+    name: "Start test (${{ matrix.target }})"
+    needs: [package-linux-windows, package-macos]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - target: x86_64-pc-windows-gnu
+            runner: windows-2022
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: "Download the package"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-package-${{ matrix.target }}
+          path: .out
+
+      # The AppImage runtime mounts the app with fusermount3; Xvfb is the display.
+      - name: "Install Xvfb and FUSE"
+        if: runner.os == 'Linux'
+        run: sudo apt-get install --yes --no-install-recommends fuse3 xvfb
+
+      - name: "Install Bash"
+        if: runner.os == 'macOS'
+        run: brew install bash
+
+      - name: "Start the app"
+        run: dev/desktop/start-test "${{ matrix.target }}"
+
+      - name: "Upload"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: treetime-desktop-${{ matrix.target }}
+          path: .out/treetime-desktop-${{ matrix.target }}.*
+          include-hidden-files: true
+          if-no-files-found: error

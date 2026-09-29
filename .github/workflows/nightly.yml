@@ -1,4 +1,4 @@
-name: "Nightly CLI release and web deploy"
+name: "Nightly release and web deploy"
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
       only:
-        description: "What to run: cli (CLI release), web (web app deploy), or both"
+        description: "What to run: cli (CLI and desktop release), web (web app deploy), or both"
         required: false
         type: string
         default: "both"
@@ -78,10 +78,24 @@ jobs:
       version_suffix: ${{ needs.prepare.outputs.version_suffix }}
     secrets: inherit
 
+  # The desktop jobs continue on error in nightly mode, so a desktop failure
+  # never blocks the CLI release; only desktop packages that passed their start
+  # test are uploaded as treetime-desktop-<target> and published.
+  build-desktop:
+    name: "Build desktop app"
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
+    uses: neherlab/treetime/.github/workflows/desktop-build.yml@rust
+    with:
+      source_ref: ${{ needs.prepare.outputs.source_sha }}
+      build_mode: nightly
+      version_suffix: ${{ needs.prepare.outputs.version_suffix }}
+    secrets: inherit
+
   publish:
     name: "Publish nightly release"
-    needs: [prepare, build]
-    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
+    needs: [prepare, build, build-desktop]
+    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && inputs.only != 'web' && needs.build.result == 'success' }}
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
