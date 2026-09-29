@@ -42,6 +42,16 @@ impl RootObjective {
       Self::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
     }
   }
+
+  pub(crate) fn has_positive_rate(self, clock_set: &ClockSet) -> bool {
+    match self {
+      Self::EstimatedRate => {
+        let det = clock_set.determinant();
+        det > 0.0 && clock_set.clock_rate(det) > 0.0
+      },
+      Self::FixedRate(rate) => rate >= 0.0,
+    }
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]

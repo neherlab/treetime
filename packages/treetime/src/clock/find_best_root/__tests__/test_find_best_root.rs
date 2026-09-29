@@ -471,4 +471,36 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_find_best_root_force_positive_accepts_fixed_positive_rate() -> Result<(), Report> {
+    let (graph, names, options, inputs, state, branch_lengths) = setup_negative_rate_graph()?;
+    let rate = 1e-3;
+
+    let best_root = find_best_root(
+      &graph,
+      &inputs,
+      &state,
+      &options,
+      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
+      &branch_lengths,
+      true,
+      RootObjective::FixedRate(rate),
+      &names,
+      &NoopProgress,
+    )?;
+
+    let det = best_root.clock_set.determinant();
+    assert!(
+      best_root.clock_set.clock_rate(det) < 0.0,
+      "estimated rate should be negative for this test graph"
+    );
+    pretty_assert_ulps_eq!(
+      best_root.chisq,
+      best_root.clock_set.chisq_fixed_rate(rate),
+      max_ulps = 4
+    );
+
+    Ok(())
+  }
 }

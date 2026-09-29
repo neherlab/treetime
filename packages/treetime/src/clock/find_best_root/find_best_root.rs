@@ -1,5 +1,4 @@
 use crate::clock::clock_regression::ClockVarianceParams;
-use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
@@ -40,7 +39,7 @@ pub(crate) fn find_best_root(
   let mut best_root_node = root;
 
   let root_clock_set = state.node(root.key()).clock_set.clone();
-  let root_acceptable = !force_positive || has_positive_clock_rate(&root_clock_set);
+  let root_acceptable = !force_positive || objective.has_positive_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
     objective.score(&root_clock_set)
   } else {
@@ -67,7 +66,7 @@ pub(crate) fn find_best_root(
     .into_par_iter()
     .map(|node| {
       let clock_set = &state.node(node.key()).clock_set;
-      let acceptable = !force_positive || has_positive_clock_rate(clock_set);
+      let acceptable = !force_positive || objective.has_positive_rate(clock_set);
       (node, acceptable.then(|| objective.score(clock_set)))
     })
     .collect::<Vec<_>>();
@@ -110,7 +109,7 @@ pub(crate) fn find_best_root(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
     );
-    let split_acceptable = !force_positive || has_positive_clock_rate(&res.clock_set);
+    let split_acceptable = !force_positive || objective.has_positive_rate(&res.clock_set);
     if res.chisq < best_chisq && split_acceptable {
       debug!(
         "Parent branch optimization improved chi-squared from {:.6e} to {:.6e}",
@@ -139,7 +138,7 @@ pub(crate) fn find_best_root(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split
     );
-    let split_acceptable = !force_positive || has_positive_clock_rate(&res.clock_set);
+    let split_acceptable = !force_positive || objective.has_positive_rate(&res.clock_set);
     if res.chisq < best_chisq && split_acceptable {
       debug!(
         "Child branch {} optimization improved chi-squared from {:.6e} to {:.6e}",
@@ -150,7 +149,7 @@ pub(crate) fn find_best_root(
     }
   }
 
-  if force_positive && !has_positive_clock_rate(&best_res.clock_set) {
+  if force_positive && !objective.has_positive_rate(&best_res.clock_set) {
     return make_error!(
       "Clock rate is negative for all root positions. \
        The data may lack temporal signal. Please specify --clock-rate explicitly."
@@ -165,9 +164,4 @@ pub(crate) fn find_best_root(
   );
 
   Ok(best_res)
-}
-
-fn has_positive_clock_rate(clock_set: &ClockSet) -> bool {
-  let det = clock_set.determinant();
-  det > 0.0 && clock_set.clock_rate(det) > 0.0
 }
