@@ -74,4 +74,6 @@ jobs:
         with:
           name: treetime-${{ matrix.target }}
           path: .out/treetime-${{ matrix.target }}*
+          # The action skips paths under a directory whose name starts with a dot, such as .out/.
+          include-hidden-files: true
           if-no-files-found: error
