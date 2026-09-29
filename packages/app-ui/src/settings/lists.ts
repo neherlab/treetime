@@ -1,6 +1,7 @@
 import type { ListItemKind } from "@neherlab/app-contracts";
 
 import { isJsonObject, type JsonValue } from "./json";
+import { parseNumber } from "./numbers";
 
 const TAB_ESCAPE = "\\t";
 
@@ -19,7 +20,7 @@ export function parseList(text: string, itemKind: ListItemKind): JsonValue[] {
 
       const item = token.replaceAll(TAB_ESCAPE, "\t");
 
-      return [itemKind === "string" ? item : Number(item)];
+      return [itemKind === "string" ? item : parseNumber(item)];
     });
 }
 

@@ -13,6 +13,7 @@ import { Switch } from "../ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
+import { NumberInput } from "./NumberInput";
 import { PathPicker } from "./PathPicker";
 
 const CONTROL_HEIGHT = "h-8";
@@ -165,22 +166,14 @@ function EnumControl({ spec, label, className }: ControlProps) {
 function NumberControl({ spec, label, className }: ControlProps) {
   const { value, set, onBlur, invalid } = useSetting(spec);
 
-  const onChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => set(event.target.value === "" ? null : Number(event.target.value)),
-    [set],
-  );
-
   return (
-    <Input
+    <NumberInput
       id={settingFieldId(spec.key)}
-      type="number"
       aria-label={label}
       aria-invalid={invalid}
-      step={spec.kind === "integer" ? 1 : "any"}
-      min={spec.minimum ?? undefined}
-      value={value === null ? "" : scalarText(value)}
+      value={value}
       placeholder={spec.nullable ? "Not set" : ""}
-      onChange={onChange}
+      onValueChange={set}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />

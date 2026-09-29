@@ -17,6 +17,7 @@ import { Slider } from "../ui/slider";
 import { Switch } from "../ui/switch";
 import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
+import { NumberInput } from "./NumberInput";
 import { SettingControl } from "./SettingControl";
 import { SettingHelp } from "./SettingField";
 
@@ -309,7 +310,8 @@ function RootRow({ context }: { context: RowContext }) {
 
 function ClockFilterRow({ context }: { context: RowContext }) {
   const { get, set } = context;
-  const value = Number(get("clock_filter") ?? 0);
+  const filter = get("clock_filter");
+  const value = isNumber(filter) ? filter : 0;
 
   const slid = useMemo(() => [Math.min(value, CLOCK_FILTER_MAX)], [value]);
 
@@ -539,30 +541,20 @@ function NumberPairInput({
   label: string;
 }) {
   const pair = useMemo(() => (Array.isArray(value) ? value : []), [value]);
-  const item = pair[index];
 
   const onInput = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) =>
-      onChange(
-        pair.map((current, position) => (position === index ? numberOrNull(event.target.valueAsNumber) : current)),
-      ),
+    (next: JsonValue) => onChange(pair.map((current, position) => (position === index ? next : current))),
     [index, onChange, pair],
   );
 
   return (
-    <Input
-      type="number"
-      step="any"
+    <NumberInput
       aria-label={label}
-      value={isNumber(item) ? item : ""}
-      onChange={onInput}
+      value={pair[index] ?? null}
+      onValueChange={onInput}
       className="h-8 w-24 font-mono"
     />
   );
-}
-
-function numberOrNull(value: number): number | null {
-  return Number.isNaN(value) ? null : value;
 }
 
 function valueNameLabel(name: string): string {

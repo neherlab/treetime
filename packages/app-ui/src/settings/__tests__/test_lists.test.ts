@@ -20,6 +20,6 @@ describe("list settings", () => {
   });
 
   test("a word in a number list is not a number, so the form reports it", () => {
-    expect(parseList("1 x", "number")).toStrictEqual([1, Number.NaN]);
+    expect(parseList("1 x", "number")).toStrictEqual([1, "x"]);
   });
 });
