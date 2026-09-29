@@ -9,10 +9,11 @@
 # app to the nightly server.
 #
 # Options:
-#   -h, --help                Show this help
-#   -f, --force               Build even when source has not changed since the latest nightly
-#   -o, --only <cli|web|both> Run only the CLI and desktop release (cli), only the web
-#                             app deploy (web), or both (default). A web-only run always deploys
+#   -h, --help                         Show this help
+#   -f, --force                        Build even when source has not changed since the latest nightly
+#   -o, --only <cli|desktop|web|all>   Run only the CLI release (cli), only the desktop app release
+#                                      (desktop), only the web app deploy (web), or all (default).
+#                                      Desktop-only and web-only runs also run when the source is unchanged
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
@@ -20,6 +21,7 @@
 # Examples:
 #   $0
 #   $0 --only web
+#   $0 --only desktop
 #   $0 --force --only cli
 #
 set -euo pipefail
@@ -33,7 +35,7 @@ main() {
   }
 
   local force="false"
-  local only="both"
+  local only="all"
 
   # shfmt:off
   while (($# > 0)); do
@@ -68,9 +70,9 @@ main() {
   # shfmt:on
 
   case "${only}" in
-  cli | web | both) ;;
+  cli | desktop | web | all) ;;
   *)
-    printf "Invalid value of --only: '%s'. Expected cli, web, or both\n" "${only}" >&2
+    printf "Invalid value of --only: '%s'. Expected cli, desktop, web, or all\n" "${only}" >&2
     exit 1
     ;;
   esac
@@ -91,7 +93,7 @@ main() {
   # that does not declare the `only` input.
   local input_args=()
   local label=""
-  if [[ "${only}" != "both" ]]; then
+  if [[ "${only}" != "all" ]]; then
     input_args+=(-f "only=${only}")
     label+=" (only ${only})"
   fi

@@ -9,10 +9,10 @@ on:
         type: boolean
         default: false
       only:
-        description: "What to run: cli (CLI and desktop release), web (web app deploy), or both"
+        description: "What to run: cli (CLI release), desktop (desktop app release), web (web app deploy), or all"
         required: false
         type: string
-        default: "both"
+        default: "all"
 
 permissions:
   contents: read
@@ -44,19 +44,21 @@ jobs:
           ONLY: ${{ inputs.only }}
         run: |
           case "${ONLY}" in
-          cli | web | both) ;;
+          cli | desktop | web | all) ;;
           *)
-            printf 'Invalid input only: "%s". Expected cli, web, or both\n' "${ONLY}" >&2
+            printf 'Invalid input only: "%s". Expected cli, desktop, web, or all\n' "${ONLY}" >&2
             exit 1
             ;;
           esac
 
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
-          latest_tag=$(gh release list --repo "${RELEASE_REPOSITORY}" --exclude-drafts --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
+          # Only a release with the CLI counts, so a desktop-only release does
+          # not make the next scheduled run skip the CLI.
+          latest_tag=$(gh api "repos/${RELEASE_REPOSITORY}/releases?per_page=100" --jq '[.[] | select((.draft | not) and (.tag_name | contains("-nightly.")) and any(.assets[]; .name == "treetime-x86_64-unknown-linux-gnu"))][0].tag_name // ""')
 
           should_build=true
-          if [[ "${{ inputs.force }}" != "true" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
+          if [[ "${{ inputs.force }}" != "true" && "${ONLY}" != "desktop" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
             should_build=false
           fi
 
@@ -70,7 +72,7 @@ jobs:
   build:
     name: "Build"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
+    if: needs.prepare.outputs.should_build == 'true' && (inputs.only == 'cli' || inputs.only == 'all')
     uses: neherlab/treetime/.github/workflows/cli-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
@@ -84,7 +86,7 @@ jobs:
   build-desktop:
     name: "Build desktop app"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
+    if: needs.prepare.outputs.should_build == 'true' && (inputs.only == 'desktop' || inputs.only == 'all')
     uses: neherlab/treetime/.github/workflows/desktop-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
@@ -95,7 +97,11 @@ jobs:
   publish:
     name: "Publish nightly release"
     needs: [prepare, build, build-desktop]
-    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && inputs.only != 'web' && needs.build.result == 'success' }}
+    if: >-
+      ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && (
+        ((inputs.only == 'cli' || inputs.only == 'all') && needs.build.result == 'success') ||
+        (inputs.only == 'desktop' && needs.build-desktop.result == 'success')
+      ) }}
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
@@ -120,7 +126,8 @@ jobs:
             --source_repo "${GITHUB_REPOSITORY}" \
             --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
-            --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
+            --version_suffix "${{ needs.prepare.outputs.version_suffix }}" \
+            --only "${{ inputs.only }}"
 
   # Independent of build and publish, so a failure of the web deploy or of the
   # CLI release never blocks the other. should_build compares only with the
@@ -129,7 +136,7 @@ jobs:
   deploy-web:
     name: "Deploy web app"
     needs: prepare
-    if: inputs.only != 'cli' && (needs.prepare.outputs.should_build == 'true' || inputs.only == 'web')
+    if: (inputs.only == 'all' && needs.prepare.outputs.should_build == 'true') || inputs.only == 'web'
     uses: neherlab/treetime/.github/workflows/web-deploy.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}

@@ -13,6 +13,9 @@
 #   --release_repo <owner/repo>    GitHub repository receiving the release
 #   --git_sha <sha>                Source commit SHA
 #   --version_suffix <suffix>      Nightly version suffix
+#   --only <cli|desktop|all>       Release contents (default: all). cli and all
+#                                  require the x86_64-unknown-linux-gnu binary,
+#                                  desktop requires at least one desktop package
 #
 # Environment:
 #   GITHUB_TOKEN    GitHub token with contents:write for the release repository.
@@ -147,6 +150,7 @@ main() {
   local release_repo=""
   local git_sha=""
   local version_suffix=""
+  local only="all"
 
   # shfmt:off
   while (($# > 0)); do
@@ -173,6 +177,10 @@ main() {
       ;;
     --version_suffix)
       version_suffix="${2}"
+      shift 2
+      ;;
+    --only)
+      only="${2}"
       shift 2
       ;;
     --)
@@ -227,11 +235,25 @@ main() {
     exit 1
   }
 
-  local binary="${artifacts_dir}/treetime-x86_64-unknown-linux-gnu"
-  [[ -f "${binary}" ]] || {
-    printf "Required Linux artifact not found: %s\n" "${binary}" >&2
+  case "${only}" in
+  cli | all)
+    local binary="${artifacts_dir}/treetime-x86_64-unknown-linux-gnu"
+    [[ -f "${binary}" ]] || {
+      printf "Required Linux artifact not found: %s\n" "${binary}" >&2
+      exit 1
+    }
+    ;;
+  desktop)
+    compgen -G "${artifacts_dir}/treetime-desktop-*" >/dev/null || {
+      printf "No desktop packages found in: %s\n" "${artifacts_dir}" >&2
+      exit 1
+    }
+    ;;
+  *)
+    printf "Invalid value of --only: '%s'. Expected cli, desktop, or all\n" "${only}" >&2
     exit 1
-  }
+    ;;
+  esac
 
   local cargo_version
   cargo_version=$(yq -r '.workspace.package.version' Cargo.toml)
