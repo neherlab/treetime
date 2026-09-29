@@ -47,6 +47,17 @@ find_last_nightly_sha() {
   printf "%s\n" "${resolved}"
 }
 
+# Open a collapsed section of the release notes, titled with its item count, so
+# long lists keep the release page short. GitHub renders Markdown inside
+# <details> only after a blank line.
+details_open() {
+  printf "\n<details>\n<summary><strong>%s</strong> (%d)</summary>\n\n" "${1}" "${2}"
+}
+
+details_close() {
+  printf "\n</details>\n"
+}
+
 # Emit the release body. The base template is always produced; the changelog
 # (compare link, merged pull requests, and commits landed outside any pull
 # request) is appended only when the previous nightly source is known and its
@@ -80,9 +91,13 @@ EOF
     --json number,title,mergeCommit,mergedAt \
     --jq "[.[] | select(.mergedAt > \"${last_commit_date}\")]" 2>/dev/null) || pr_json="[]"
 
-  if (($(jq 'length' <<<"${pr_json}") > 0)); then
-    printf "\n## Pull requests\n\n| PR | Title |\n|---|---|\n"
+  local pr_count
+  pr_count=$(jq 'length' <<<"${pr_json}")
+  if ((pr_count > 0)); then
+    details_open "Pull requests" "${pr_count}"
+    printf "| PR | Title |\n|---|---|\n"
     jq -r ".[] | \"| [#\\(.number)](https://github.com/${repo}/pull/\\(.number)) | \\(.title | gsub(\"[|]\"; \"\\\\|\")) |\"" <<<"${pr_json}"
+    details_close
   fi
 
   local pr_shas
@@ -91,7 +106,7 @@ EOF
   all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}" 2>/dev/null) || return 0
 
   local orphan_table=""
-  local listed=0 omitted=0
+  local listed=0 omitted=0 first_omitted=""
   local line commit_sha commit_msg
   while IFS= read -r line; do
     [[ -n "${line}" ]] || continue
@@ -99,6 +114,7 @@ EOF
     commit_msg="${line#* }"
     if [[ -z "${pr_shas}" ]] || ! grep -qF "${commit_sha}" <<<"${pr_shas}"; then
       if ((listed >= MAX_LISTED_COMMITS)); then
+        [[ -n "${first_omitted}" ]] || first_omitted="${commit_sha}"
         omitted=$((omitted + 1))
         continue
       fi
@@ -109,14 +125,15 @@ EOF
 
   [[ -n "${orphan_table}" ]] || return 0
 
-  # A collapsed section keeps the release page short; GitHub renders Markdown
-  # inside <details> only after a blank line.
-  printf "\n<details>\n<summary><strong>Commits not in any PR</strong> (%d)</summary>\n\n" "$((listed + omitted))"
+  details_open "Commits not in any PR" "$((listed + omitted))"
   printf "| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
   if ((omitted > 0)); then
-    printf "\n%d older commits are not listed; the Compare link above shows all of them.\n" "${omitted}"
+    # The compare page lists at most 250 commits, so the link opens the history
+    # at the newest unlisted commit instead.
+    printf "\n[%d older commits](https://github.com/%s/commits/%s) are not listed here.\n" \
+      "${omitted}" "${repo}" "${first_omitted}"
   fi
-  printf "\n</details>\n"
+  details_close
 }
 
 main() {
