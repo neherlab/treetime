@@ -20,6 +20,13 @@ const IMPORT_BOUNDARY_PATTERNS = [
   },
 ];
 
+const REJECTED_LIBRARY_PATTERNS = [
+  {
+    group: ["lucide-react", "lucide-react/*"],
+    message: 'Import icons from Iconify sets through unplugin-icons, e.g. `import XIcon from "~icons/lucide/x"`.',
+  },
+];
+
 const PACKAGE_GRAPH_MESSAGE =
   "This package may import only the workspace packages it declares. Add the dependency to its package.json, or route through an allowed package.";
 
@@ -54,7 +61,13 @@ function packageBoundaryOverrides(): OxlintOverride[] {
         rules: {
           "no-restricted-imports": [
             "error",
-            { patterns: [...IMPORT_BOUNDARY_PATTERNS, { group: banned, message: PACKAGE_GRAPH_MESSAGE }] },
+            {
+              patterns: [
+                ...IMPORT_BOUNDARY_PATTERNS,
+                ...REJECTED_LIBRARY_PATTERNS,
+                { group: banned, message: PACKAGE_GRAPH_MESSAGE },
+              ],
+            },
           ],
         },
       },
@@ -250,7 +263,7 @@ export default defineConfig({
     "anti-slop/require-readable-spacing": "error",
     "oxc/no-accumulating-spread": "error",
 
-    "no-restricted-imports": ["error", { patterns: IMPORT_BOUNDARY_PATTERNS }],
+    "no-restricted-imports": ["error", { patterns: [...IMPORT_BOUNDARY_PATTERNS, ...REJECTED_LIBRARY_PATTERNS] }],
 
     "react/rules-of-hooks": "error",
     "react/checked-requires-onchange-or-readonly": "error",
