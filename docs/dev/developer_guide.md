@@ -333,7 +333,7 @@ A failed scheduled deploy is retried only when `rust` changes. Run it again with
    - secret `DEPLOY_KNOWN_HOSTS`: the output of `ssh-keyscan <host>`
    - variable `DEPLOY_HOST`: the host name
 3. **DNS**: before the first deploy, add `A` and `AAAA` records in Route 53 for the host name and set `TREETIME_DOMAIN=<host name>` in `/opt/treetime/.env`. Caddy requests the certificate when it starts, and Let's Encrypt rate-limits repeated failures, so the records must resolve first
-4. **Password**: before the first deploy, create the hash with `docker run --rm -it caddy:2 caddy hash-password` and set `TREETIME_USER=<user name>` and `TREETIME_PASSWORD_HASH='<hash>'` in `/opt/treetime/.env`. Keep the single quotes: the hash contains `$`, which Docker Compose expands in unquoted and double-quoted values. Setting a new hash revokes all access; share the new password with the people who need it
+4. **Password**: before the first deploy, create the hash with `docker run --rm -it caddy:2 caddy hash-password --bcrypt-cost 8` and set `TREETIME_USER=<user name>` and `TREETIME_PASSWORD_HASH='<hash>'` in `/opt/treetime/.env`. Keep the single quotes: the hash contains `$`, which Docker Compose expands in unquoted and double-quoted values. Setting a new hash revokes all access; share the new password with the people who need it. The password only keeps crawlers and bots away, so the hash uses bcrypt cost 8 in place of Caddy's default 14: on a CX23, a wrong password then costs about 20 ms of CPU in place of about 1.4 s
 
 `/opt/treetime/.env` belongs to user `deploy` with mode 600. The deploy changes only its `TREETIME_TAG` line.
 
