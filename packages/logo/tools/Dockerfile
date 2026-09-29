@@ -9,6 +9,7 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get update -qq \
 && apt-get install --no-install-recommends --yes -qq \
   bash \
+  gifsicle \
   imagemagick \
   libxml2-utils \
   librsvg2-bin \

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+this_dir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+tools_dir="$(cd "${this_dir}/../tools" && pwd -P)"
+root="$(cd "${this_dir}/../../.." && pwd -P)"
+
+source_png="${this_dir}/input/logo-concept-02.png"
+output="${this_dir}/output"
+mask="${output}/logo-concept-02-mask.svg"
+public_dir="${root}/packages/app-ui/public"
+tools=(convert gifsicle potrace rsvg-convert svgo xmllint)
+
+mode="auto"
+while (($# > 0)); do
+  case "$1" in
+  --docker) mode="docker" ;;
+  --host) mode="host" ;;
+  *)
+    printf 'Unknown option: %s\n' "$1" >&2
+    exit 1
+    ;;
+  esac
+  shift
+done
+
+has_tools() {
+  local tool
+  for tool in "${tools[@]}"; do
+    command -v "${tool}" >/dev/null || return 1
+  done
+}
+
+if [[ "${mode}" == docker ]] || { [[ "${mode}" == auto ]] && ! has_tools; }; then
+  exec "${tools_dir}/run" "${this_dir}/generate" --host
+fi
+
+if ! has_tools; then
+  printf 'Missing tools; install %s or run with --docker\n' "${tools[*]}" >&2
+  exit 1
+fi
+
+mkdir -p "${output}" "${public_dir}"
+if [[ -f "${source_png}" ]]; then
+  "${tools_dir}/trace" "${source_png}" "${mask}"
+fi
+"${this_dir}/compose" "${mask}" "${output}"
+cp "${output}/logo.svg" "${output}/logo-small.svg" "${output}/logo-loading.svg" "${public_dir}/"
+"${tools_dir}/icons" "${output}/logo.svg" "${output}/logo-small.svg" "${public_dir}"
+"${this_dir}/animate" "${output}/logo-loading.svg" "${output}/logo-loading.gif"

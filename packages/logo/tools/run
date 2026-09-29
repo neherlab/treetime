@@ -7,11 +7,18 @@ if (($# == 0)); then
 fi
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+root="$(cd "${dir}/../../.." && pwd -P)"
 image="treetime-logo:$(cat "${dir}/Dockerfile" "${dir}/Dockerfile.dockerignore" "${dir}/package.json" "${dir}/package-lock.json" | sha256sum | cut -c1-16)"
 
 if ! docker image inspect "${image}" >/dev/null 2>&1; then
   docker build --quiet --file="${dir}/Dockerfile" --tag="${image}" "${dir}" >/dev/null
 fi
+
+workdir="$(pwd -P)"
+case "${workdir}/" in
+"${root}/"*) ;;
+*) workdir="${dir}" ;;
+esac
 
 tty_flag=()
 if [[ -t 0 && -t 1 ]]; then
@@ -23,7 +30,9 @@ exec docker run --rm --interactive "${tty_flag[@]+"${tty_flag[@]}"}" \
   --cap-drop=ALL \
   --security-opt=no-new-privileges \
   --user="$(id -u):$(id -g)" \
-  --volume="${dir}:/workdir" \
-  --workdir="/workdir" \
+  --env="HOME=/tmp" \
+  --volume="${root}:${root}" \
+  --volume="${root}/.git:${root}/.git:ro" \
+  --workdir="${workdir}" \
   "${image}" \
   "$@"

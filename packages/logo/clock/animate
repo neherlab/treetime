@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+loading="${1:?input loading SVG required}"
+output="${2:?output GIF required}"
+
+size="${SIZE:-160}"
+fps="${FPS:-20}"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "${tmp}"' EXIT
+
+style="$(xmllint --xpath 'string(//*[local-name()="style"])' "${loading}")"
+angle() {
+  printf '%s' "${style}" | sed -nE "s/.*\\.$1\\{transform:rotate\\((-?[0-9.]+)deg\\).*/\\1/p"
+}
+duration() {
+  printf '%s' "${style}" | sed -nE "s/.*\\.$1\\{[^}]*animation-duration:([0-9.]+)s.*/\\1/p"
+}
+
+hour_start="$(angle h)"
+minute_start="$(angle m)"
+hour_period="$(duration h)"
+minute_period="$(duration m)"
+frames="$(awk -v p="${hour_period}" -v f="${fps}" 'BEGIN{printf "%d", p * f + 0.5}')"
+
+for ((i = 0; i < frames; i++)); do
+  read -r hour minute < <(awk -v i="${i}" -v f="${fps}" -v hs="${hour_start}" -v ms="${minute_start}" \
+    -v hp="${hour_period}" -v mp="${minute_period}" 'BEGIN{t = i / f; printf "%.3f %.3f\n", hs + 360 * t / hp, ms + 360 * t / mp}')
+  sed -E \
+    -e 's/<style>.*<\/style>//' \
+    -e "s/class=\"h\"/transform=\"rotate(${hour} 256 256)\"/g" \
+    -e "s/class=\"m\"/transform=\"rotate(${minute} 256 256)\"/g" \
+    "${loading}" | rsvg-convert --width="${size}" --height="${size}" --output="$(printf '%s/frame-%04d.png' "${tmp}" "${i}")"
+done
+
+convert -delay "$((100 / fps))" -loop 0 -dispose none "${tmp}"/frame-*.png \
+  -channel A -threshold 50% +channel +dither "${tmp}/plain.gif"
+gifsicle --colors=255 --optimize=3 --output="${output}" "${tmp}/plain.gif"

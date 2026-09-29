@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+logo="${1:?input logo SVG required}"
+small="${2:?input small logo SVG required}"
+outdir="${3:?output directory required}"
+
+name="TreeTime"
+description="Time-scaled phylogenetics, ancestral reconstruction, and molecular clock inference"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "${tmp}"' EXIT
+
+dial_ref="$(xmllint --xpath 'string(//*[local-name()="circle"][1]/@fill)' "${logo}")"
+dial_id="${dial_ref#url(#}"
+dial_id="${dial_id%)}"
+background="$(xmllint --xpath "string(//*[@id='${dial_id}']/*[local-name()='stop'][1]/@stop-color)" "${logo}")"
+
+png() {
+  rsvg-convert --width="$1" --height="$1" --output="$2" "${3:-${logo}}"
+}
+
+tile() {
+  local size="$1" inner="$2" output="$3"
+  png "${inner}" "${tmp}/tile.png"
+  convert "${tmp}/tile.png" -background "${background}" -gravity center -extent "${size}x${size}" -alpha remove -alpha off "${output}"
+}
+
+mkdir -p "${outdir}"
+cp "${small}" "${outdir}/favicon.svg"
+
+for size in 16 32 48; do
+  png "${size}" "${tmp}/favicon-${size}.png" "${small}"
+done
+convert "${tmp}/favicon-16.png" "${tmp}/favicon-32.png" "${tmp}/favicon-48.png" "${outdir}/favicon.ico"
+
+png 192 "${outdir}/icon-192.png"
+png 512 "${outdir}/icon-512.png"
+tile 512 410 "${outdir}/icon-maskable-512.png"
+tile 180 156 "${outdir}/apple-touch-icon.png"
+
+cat >"${outdir}/manifest.webmanifest" <<JSON
+{
+  "name": "${name}",
+  "short_name": "${name}",
+  "description": "${description}",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "${background}",
+  "theme_color": "${background}",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
+JSON
