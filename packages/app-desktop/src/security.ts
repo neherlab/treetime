@@ -2,15 +2,13 @@ function isAppUrl(url: string, appUrl: string): boolean {
   const candidate = parseUrl(url);
   const app = parseUrl(appUrl);
 
-  if (candidate === undefined || app === undefined || candidate.protocol !== app.protocol) {
-    return false;
-  }
-
-  if (app.protocol === "file:") {
-    return candidate.pathname === app.pathname;
-  }
-
-  return candidate.origin === app.origin;
+  return (
+    candidate !== undefined &&
+    app !== undefined &&
+    candidate.protocol === app.protocol &&
+    candidate.host === app.host &&
+    candidate.host !== ""
+  );
 }
 
 interface SenderFrame {

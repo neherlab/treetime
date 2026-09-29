@@ -9,6 +9,8 @@ import {
   ipcMain,
   MessageChannelMain,
   nativeTheme,
+  net,
+  protocol,
   shell,
   utilityProcess,
   webContents,
@@ -19,6 +21,7 @@ import {
   type WebContents,
 } from "electron";
 
+import { APP_SCHEME, APP_SCHEME_PRIVILEGES, APP_URL, resolveAppAsset } from "./app-scheme";
 import { shouldRestart } from "./backend-process";
 import type { ControlReply, SaveRequest } from "./backend-protocol";
 import {
@@ -58,10 +61,15 @@ if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
-const appUrl = devServer ? devServerUrl : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
+const appUrl = devServer ? devServerUrl : APP_URL;
+
+const appRoot = path.join(__dirname, "../dist");
+
+protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
 
 async function main(): Promise<void> {
   await app.whenReady();
+  protocol.handle(APP_SCHEME, serveAppAsset);
   const backend = new BackendProcess(runsDir);
   registerIpcHandlers(backend);
   await createWindow();
@@ -204,6 +212,20 @@ function listen(channel: string, listener: (event: IpcMainEvent, ...args: unknow
       listener(event, ...args);
     }
   });
+}
+
+async function serveAppAsset(request: Request): Promise<Response> {
+  const asset = resolveAppAsset(request.url, appRoot);
+
+  if (asset.kind === "not-found") {
+    return new Response(null, { status: 404 });
+  }
+
+  try {
+    return await net.fetch(pathToFileURL(asset.path).href);
+  } catch {
+    return new Response(null, { status: 404 });
+  }
 }
 
 function isThemeSource(value: unknown): value is "system" | "light" | "dark" {

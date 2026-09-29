@@ -17,6 +17,7 @@ const electronArgs = process.env["ELECTRON_DISABLE_SANDBOX"] === "1" ? ["--no-sa
 
 export default defineConfig({
   root: "renderer",
+  base: "/",
   publicDir,
   plugins: [
     electron({

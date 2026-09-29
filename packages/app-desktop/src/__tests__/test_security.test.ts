@@ -1,15 +1,19 @@
 import { describe, expect, test } from "vitest";
 
+import { APP_URL } from "../app-scheme";
 import { confineNavigation, isTrustedSender } from "../security";
 
-const PACKAGED = "file:///opt/treetime/resources/app/dist/index.html";
+const PACKAGED = APP_URL;
 
 const DEV_SERVER = "http://localhost:5173/";
 
 describe("security navigation", () => {
   test.each([
     [PACKAGED, PACKAGED, true],
-    [`${PACKAGED}#/runs/r1`, PACKAGED, true],
+    ["app://treetime/runs/r1/results", PACKAGED, true],
+    ["app://other/", PACKAGED, false],
+    ["app:///index.html", PACKAGED, false],
+    ["file:///opt/treetime/resources/app.asar/dist/index.html", PACKAGED, false],
     ["file:///home/user/secrets.html", PACKAGED, false],
     ["http://localhost:5173/runs/r1", DEV_SERVER, true],
     ["http://localhost:5174/", DEV_SERVER, false],
@@ -28,7 +32,11 @@ describe("security navigation", () => {
 
 describe("security senders", () => {
   test("the top-level frame of the application is trusted", () => {
-    expect(isTrustedSender({ url: `${PACKAGED}#/`, parent: null }, PACKAGED)).toBe(true);
+    expect(isTrustedSender({ url: `${PACKAGED}runs/r1/log`, parent: null }, PACKAGED)).toBe(true);
+  });
+
+  test("a frame of another app scheme host is not trusted", () => {
+    expect(isTrustedSender({ url: "app://other/runs/r1/log", parent: null }, PACKAGED)).toBe(false);
   });
 
   test("a subframe of the application is not trusted", () => {
