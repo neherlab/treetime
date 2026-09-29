@@ -2,10 +2,10 @@ name: "Build desktop app"
 
 # Builds the Node addon in the cross image of each Electron target, the Vite
 # bundles once, and one package per target: an AppImage for Linux, a zip
-# archive for Windows, a dmg for macOS. Each package is started on a system of
-# its target before it is uploaded as the artifact treetime-desktop-<target>, so
-# the nightly publishes only packages that passed. Runs in the nightly and on
-# manual runs of the CI workflow.
+# archive for Windows, a dmg for macOS. On manual runs of the CI workflow, the
+# addon linkage is checked and each package is started on a system of its target
+# before it is uploaded as the artifact treetime-desktop-<target>. The nightly
+# skips both checks and publishes every package that builds.
 
 on:
   workflow_call:
@@ -74,7 +74,12 @@ jobs:
           CROSS_COMPILE: ${{ matrix.target }}
         run: |
           dev/docker/run dev/cross/build --lib app-napi
-          dev/docker/run dev/cross/check --lib app-napi
+
+      - name: "Check linkage"
+        if: inputs.build_mode != 'nightly'
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: dev/docker/run dev/cross/check --lib app-napi
 
       - name: "Upload"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -172,7 +177,7 @@ jobs:
       - name: "Upload"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: desktop-package-${{ matrix.target }}
+          name: ${{ inputs.build_mode == 'nightly' && 'treetime-desktop' || 'desktop-package' }}-${{ matrix.target }}
           path: .out/treetime-desktop-${{ matrix.target }}.*
           include-hidden-files: true
           if-no-files-found: error
@@ -234,21 +239,21 @@ jobs:
       - name: "Upload"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: desktop-package-${{ matrix.target }}
+          name: ${{ inputs.build_mode == 'nightly' && 'treetime-desktop' || 'desktop-package' }}-${{ matrix.target }}
           path: .out/treetime-desktop-${{ matrix.target }}.*
           include-hidden-files: true
           if-no-files-found: error
 
   # Starts each package on a system of its target. Only a package that starts
-  # becomes the public artifact treetime-desktop-<target>, which the nightly
-  # publishes. The Windows start also proves that Electron loads the addon built
-  # with MinGW.
+  # becomes the artifact treetime-desktop-<target>. The Windows start also
+  # proves that Electron loads the addon built with MinGW. The nightly uploads
+  # the packages under that name directly and skips this job.
   start:
     name: "Start test (${{ matrix.target }})"
     needs: [package-linux-windows, package-macos]
+    if: inputs.build_mode != 'nightly'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
-    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:

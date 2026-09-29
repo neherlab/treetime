@@ -34,8 +34,8 @@ jobs:
     name: "Build CLI (${{ matrix.target }})"
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    # A nightly publishes every target that builds; the Linux x86_64 binary is required.
-    continue-on-error: ${{ inputs.build_mode == 'nightly' && matrix.target != 'x86_64-unknown-linux-gnu' }}
+    # A nightly publishes every target that builds.
+    continue-on-error: ${{ inputs.build_mode == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +67,12 @@ jobs:
           CROSS_COMPILE: ${{ matrix.target }}
         run: |
           dev/docker/run dev/cross/build treetime
-          dev/docker/run dev/cross/check treetime
+
+      - name: "Check linkage"
+        if: inputs.build_mode != 'nightly'
+        env:
+          CROSS_COMPILE: ${{ matrix.target }}
+        run: dev/docker/run dev/cross/check treetime
 
       - name: "Upload"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

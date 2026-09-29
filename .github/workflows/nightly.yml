@@ -53,9 +53,9 @@ jobs:
 
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
-          # Only a release with the CLI counts, so a desktop-only release does
-          # not make the next scheduled run skip the CLI.
-          latest_tag=$(gh api "repos/${RELEASE_REPOSITORY}/releases?per_page=100" --jq '[.[] | select((.draft | not) and (.tag_name | contains("-nightly.")) and any(.assets[]; .name == "treetime-x86_64-unknown-linux-gnu"))][0].tag_name // ""')
+          # Only a release with CLI binaries counts, so a desktop-only release
+          # does not make the next scheduled run skip the CLI.
+          latest_tag=$(gh api "repos/${RELEASE_REPOSITORY}/releases?per_page=100" --jq '[.[] | select((.draft | not) and (.tag_name | contains("-nightly.")) and any(.assets[]; .name | startswith("treetime-") and (startswith("treetime-desktop-") | not)))][0].tag_name // ""')
 
           should_build=true
           if [[ "${{ inputs.force }}" != "true" && "${ONLY}" != "desktop" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
@@ -80,9 +80,9 @@ jobs:
       version_suffix: ${{ needs.prepare.outputs.version_suffix }}
     secrets: inherit
 
-  # The desktop jobs continue on error in nightly mode, so a desktop failure
-  # never blocks the CLI release; only desktop packages that passed their start
-  # test are uploaded as treetime-desktop-<target> and published.
+  # The build jobs continue on error in nightly mode, so a failed target never
+  # blocks the others: the release contains every CLI binary and desktop
+  # package that builds.
   build-desktop:
     name: "Build desktop app"
     needs: prepare
@@ -97,11 +97,7 @@ jobs:
   publish:
     name: "Publish nightly release"
     needs: [prepare, build, build-desktop]
-    if: >-
-      ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && (
-        ((inputs.only == 'cli' || inputs.only == 'all') && needs.build.result == 'success') ||
-        (inputs.only == 'desktop' && needs.build-desktop.result == 'success')
-      ) }}
+    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && inputs.only != 'web' }}
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
@@ -126,8 +122,7 @@ jobs:
             --source_repo "${GITHUB_REPOSITORY}" \
             --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
-            --version_suffix "${{ needs.prepare.outputs.version_suffix }}" \
-            --only "${{ inputs.only }}"
+            --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
 
   # Independent of build and publish, so a failure of the web deploy or of the
   # CLI release never blocks the other. should_build compares only with the

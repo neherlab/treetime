@@ -317,10 +317,10 @@ The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on 
 
 ### Nightly releases
 
-Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). A nightly publishes every target that builds; a release with the CLI requires the `x86_64-unknown-linux-gnu` binary.
+Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). A nightly publishes every CLI binary and desktop package that builds, without the linkage checks and start tests of the CI workflow.
 
 1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
-2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, the packages, and a start test of each package on a runner of its system. Only packages that pass their start test are published, and a desktop failure does not block the CLI release
+2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, and the packages. A failed target does not block the others
 3. `dev/publish-nightly` creates the prerelease with the built binaries and desktop packages
 
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
