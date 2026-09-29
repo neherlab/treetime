@@ -56,7 +56,7 @@ const LAST_EVENT_ID: &str = "last-event-id";
 
 const HEALTH_STATUS: &str = "ok";
 
-const NO_STORE: &str = "no-store";
+pub(crate) const NO_STORE: &str = "no-store";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 

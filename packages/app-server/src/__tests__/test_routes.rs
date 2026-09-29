@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use crate::routes::api_doc;
   use helpers::{
     TestApp, app, app_with_upload_limit, create_deferred, events_of, is_documented_path, is_documented_prefix,
@@ -873,7 +873,7 @@ mod tests {
     );
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use crate::web::WebOptions;
@@ -890,27 +890,27 @@ mod tests {
     use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
 
-    pub(super) struct SseEvent {
+    pub(crate) struct SseEvent {
       pub id: Option<String>,
       pub name: String,
       pub data: Value,
     }
 
-    pub(super) struct TestApp {
+    pub(crate) struct TestApp {
       pub router: Router,
       pub runs_dir: TempDir,
     }
 
     impl TestApp {
-      pub(super) fn data_dir() -> PathBuf {
+      pub(crate) fn data_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
       }
 
-      pub(super) async fn send(&self, request: Request<Body>) -> Response {
+      pub(crate) async fn send(&self, request: Request<Body>) -> Response {
         self.router.clone().oneshot(request).await.unwrap()
       }
 
-      pub(super) async fn upload(&self, id: &str, name: &str, bytes: Vec<u8>) -> (u16, Value) {
+      pub(crate) async fn upload(&self, id: &str, name: &str, bytes: Vec<u8>) -> (u16, Value) {
         let response = self
           .send(
             Request::put(format!("/api/runs/{id}/inputs/{name}"))
@@ -922,26 +922,30 @@ mod tests {
       }
     }
 
-    pub(super) fn app() -> TestApp {
+    pub(crate) fn app() -> TestApp {
       app_with_upload_limit(DEFAULT_MAX_UPLOAD_SIZE)
     }
 
-    pub(super) fn app_with_upload_limit(max_upload_size: usize) -> TestApp {
+    pub(crate) fn app_with_upload_limit(max_upload_size: usize) -> TestApp {
+      app_with(max_upload_size, &CancellationToken::new(), &WebOptions::default())
+    }
+
+    pub(crate) fn app_with(max_upload_size: usize, shutdown: &CancellationToken, options: &WebOptions) -> TestApp {
       let runs_dir = tempdir().unwrap();
       let router = create_router(
         ServerConfig {
           data_dir: TestApp::data_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
-          shutdown: CancellationToken::new(),
+          shutdown: shutdown.clone(),
         },
-        &WebOptions::default(),
+        options,
       )
       .unwrap();
       TestApp { router, runs_dir }
     }
 
-    pub(super) fn timetree_config() -> Value {
+    pub(crate) fn timetree_config() -> Value {
       json!({
         "tree": "zika/20/tree.nwk",
         "metadata": "zika/20/metadata.tsv",
@@ -951,7 +955,7 @@ mod tests {
       })
     }
 
-    pub(super) async fn request(test: &TestApp, method: &str, uri: &str, body: Option<Value>) -> (u16, Value) {
+    pub(crate) async fn request(test: &TestApp, method: &str, uri: &str, body: Option<Value>) -> (u16, Value) {
       let builder = Request::builder()
         .method(method)
         .uri(uri)
@@ -964,7 +968,7 @@ mod tests {
       body_json(test.send(request).await).await
     }
 
-    pub(super) async fn body_json(response: Response) -> (u16, Value) {
+    pub(crate) async fn body_json(response: Response) -> (u16, Value) {
       let status = response.status().as_u16();
       let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
       let value = if bytes.is_empty() {
@@ -975,7 +979,7 @@ mod tests {
       (status, value)
     }
 
-    pub(super) async fn events_of(test: &TestApp, id: &str, query: &str) -> Vec<SseEvent> {
+    pub(crate) async fn events_of(test: &TestApp, id: &str, query: &str) -> Vec<SseEvent> {
       let response = test
         .send(
           Request::get(format!("/api/runs/{id}/events{query}"))
@@ -986,7 +990,7 @@ mod tests {
       read_events(response).await
     }
 
-    pub(super) async fn open_app_events(test: &TestApp, query: &str, last_event_id: Option<&str>) -> BodyDataStream {
+    pub(crate) async fn open_app_events(test: &TestApp, query: &str, last_event_id: Option<&str>) -> BodyDataStream {
       let request = Request::get(format!("/api/events{query}"));
       let request = match last_event_id {
         Some(id) => request.header("last-event-id", id),
@@ -1006,7 +1010,7 @@ mod tests {
       response.into_body().into_data_stream()
     }
 
-    pub(super) async fn take_events(stream: &mut BodyDataStream, count: usize) -> Vec<SseEvent> {
+    pub(crate) async fn take_events(stream: &mut BodyDataStream, count: usize) -> Vec<SseEvent> {
       let mut buffer = String::new();
       let mut events = vec![];
       while events.len() < count {
@@ -1019,7 +1023,7 @@ mod tests {
       events
     }
 
-    pub(super) async fn create_deferred(test: &TestApp) -> String {
+    pub(crate) async fn create_deferred(test: &TestApp) -> String {
       let (_, record) = request(
         test,
         "POST",
@@ -1030,11 +1034,11 @@ mod tests {
       record["id"].as_str().unwrap().to_owned()
     }
 
-    pub(super) fn is_documented_path(doc: &Value, path: &str) -> bool {
+    pub(crate) fn is_documented_path(doc: &Value, path: &str) -> bool {
       is_documented(doc, path, |template, segments| template == segments)
     }
 
-    pub(super) fn is_documented_prefix(doc: &Value, path: &str) -> bool {
+    pub(crate) fn is_documented_prefix(doc: &Value, path: &str) -> bool {
       is_documented(doc, path, |template, segments| template >= segments)
     }
 
@@ -1050,7 +1054,7 @@ mod tests {
       })
     }
 
-    pub(super) async fn wait_for_status(test: &TestApp, id: &str, status: &str) -> Value {
+    pub(crate) async fn wait_for_status(test: &TestApp, id: &str, status: &str) -> Value {
       for _ in 0..600 {
         let (_, record) = request(test, "GET", &format!("/api/runs/{id}"), None).await;
         if record["status"] == json!(status) {
@@ -1061,7 +1065,7 @@ mod tests {
       panic!("run {id} did not reach status {status}");
     }
 
-    pub(super) async fn read_events(response: Response) -> Vec<SseEvent> {
+    pub(crate) async fn read_events(response: Response) -> Vec<SseEvent> {
       let mut stream = response.into_body().into_data_stream();
       let mut buffer = String::new();
       let mut events = vec![];
@@ -1071,7 +1075,7 @@ mod tests {
       events
     }
 
-    pub(super) async fn next_event(stream: &mut BodyDataStream, buffer: &mut String) -> Option<SseEvent> {
+    pub(crate) async fn next_event(stream: &mut BodyDataStream, buffer: &mut String) -> Option<SseEvent> {
       loop {
         if let Some(end) = buffer.find("\n\n") {
           let block: String = buffer.drain(..end + 2).collect();

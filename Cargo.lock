@@ -330,6 +330,7 @@ dependencies = [
  "percent-encoding",
  "pretty_assertions",
  "rayon",
+ "rstest",
  "schemars",
  "serde",
  "serde_json",
@@ -344,6 +345,7 @@ dependencies = [
  "treetime",
  "treetime-schema",
  "treetime-utils",
+ "zip",
 ]
 
 [[package]]

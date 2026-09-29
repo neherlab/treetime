@@ -1,5 +1,5 @@
 use crate::error::plain_error;
-use crate::routes::not_found;
+use crate::routes::{NO_STORE, not_found};
 use app_commands::bridge::error::ErrorCode;
 use axum::Router;
 use axum::body::Body;
@@ -18,6 +18,7 @@ use tower_http::CompressionLevel;
 use tower_http::compression::CompressionLayer;
 use tower_http::compression::predicate::{DefaultPredicate, NotForContentType, Predicate};
 use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::set_header::response::SetMultipleResponseHeadersLayer;
 
 const ASSETS_DIR: &str = "assets";
@@ -49,7 +50,11 @@ pub struct WebOptions {
 pub(crate) fn web_router(api: Router, options: &WebOptions) -> Router {
   let fallback = Router::new()
     .route("/api", any(not_found))
-    .route("/api/{*path}", any(not_found));
+    .route("/api/{*path}", any(not_found))
+    .route_layer(SetResponseHeaderLayer::if_not_present(
+      header::CACHE_CONTROL,
+      HeaderValue::from_static(NO_STORE),
+    ));
   let fallback = match &options.static_dir {
     Some(dir) => fallback
       .nest_service(
