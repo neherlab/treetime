@@ -80,8 +80,30 @@ pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Repor
 }
 
 pub fn write_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write + Seek) -> Result<(), Report> {
-  let mut zip = ZipWriter::new(writer);
-  let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+  fill_run_zip(
+    ZipWriter::new(writer),
+    out_dir,
+    folder_name,
+    CompressionMethod::Deflated,
+  )
+}
+
+pub fn stream_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write) -> Result<(), Report> {
+  fill_run_zip(
+    ZipWriter::new_stream(writer),
+    out_dir,
+    folder_name,
+    CompressionMethod::Stored,
+  )
+}
+
+fn fill_run_zip<W: Write + Seek>(
+  mut zip: ZipWriter<W>,
+  out_dir: &Path,
+  folder_name: &str,
+  method: CompressionMethod,
+) -> Result<(), Report> {
+  let options = SimpleFileOptions::default().compression_method(method);
   for path in walk_files(out_dir)? {
     let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
     zip

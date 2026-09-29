@@ -17,6 +17,7 @@ use tempfile::NamedTempFile;
 use tokio::runtime::{Builder, Runtime};
 use tokio::task::AbortHandle;
 use tokio_stream::StreamExt as _;
+use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use treetime_utils::env::env_var_optional;
 
@@ -46,6 +47,7 @@ impl DesktopService {
         data_dir,
         runs_dir: runs_dir.to_path_buf(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
+        shutdown: CancellationToken::new(),
       },
     )?;
     let runtime = Builder::new_multi_thread()

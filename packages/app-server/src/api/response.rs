@@ -3,6 +3,7 @@ use aide::OperationOutput;
 use aide::generate::GenContext;
 use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode};
 use app_commands::bridge::error::ErrorResponse;
+use axum::body::Body;
 use axum::http::{HeaderValue, header};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -73,14 +74,11 @@ impl<T: JsonSchema> OperationOutput for TypedSse<T> {
   }
 }
 
-pub(crate) struct FileContent {
-  pub content_type: HeaderValue,
-  pub bytes: Vec<u8>,
-}
+pub(crate) struct FileContent(pub Response);
 
 impl IntoResponse for FileContent {
   fn into_response(self) -> Response {
-    ([(header::CONTENT_TYPE, self.content_type)], self.bytes).into_response()
+    self.0
   }
 }
 
@@ -98,7 +96,7 @@ impl OperationOutput for FileContent {
 
 pub(crate) struct ZipAttachment {
   pub disposition: HeaderValue,
-  pub bytes: Vec<u8>,
+  pub body: Body,
 }
 
 impl IntoResponse for ZipAttachment {
@@ -108,7 +106,7 @@ impl IntoResponse for ZipAttachment {
         (header::CONTENT_TYPE, HeaderValue::from_static(ZIP)),
         (header::CONTENT_DISPOSITION, self.disposition),
       ],
-      self.bytes,
+      self.body,
     )
       .into_response()
   }

@@ -1,13 +1,16 @@
+use crate::api::cache::{Revalidated, finished_runs_tag, is_unchanged};
+use crate::api::download::{serve_run_file, stream_run_archive};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
-use crate::error::AppError;
+use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
 use aide::openapi::{Contact, Info, License, OpenApi};
+use app_commands::bridge::error::ErrorCode;
 use app_commands::bridge::service::AppService;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
@@ -25,36 +28,37 @@ use app_commands::runs::manager::UploadedInput;
 use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
-use axum::extract::{DefaultBodyLimit, State};
-use axum::http::{HeaderMap, HeaderValue};
-use axum::{Json, Router};
-use eyre::{Report, WrapErr};
+use axum::error_handling::HandleErrorLayer;
+use axum::extract::{DefaultBodyLimit, Request, State};
+use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
+use axum::response::{IntoResponse, Response};
+use axum::{BoxError, Json, Router};
+use eyre::{Report, eyre};
+use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::any::Any;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
+use std::process;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio_stream::StreamExt as _;
 use tokio_util::io::{StreamReader, SyncIoBridge};
+use tower::ServiceBuilder;
+use tower::timeout::error::Elapsed;
+use tower_http::catch_panic::CatchPanicLayer;
+use tower_http::set_header::SetResponseHeaderLayer;
 use treetime_schema::{VersionInfo, version_info};
 
 const LAST_EVENT_ID: &str = "last-event-id";
 
 const HEALTH_STATUS: &str = "ok";
 
-const CONTENT_TYPES: &[(&str, &str)] = &[
-  ("json", "application/json"),
-  ("svg", "image/svg+xml"),
-  ("png", "image/png"),
-  ("zip", "application/zip"),
-  ("nwk", "text/plain; charset=utf-8"),
-  ("nexus", "text/plain; charset=utf-8"),
-  ("csv", "text/csv; charset=utf-8"),
-  ("tsv", "text/tab-separated-values; charset=utf-8"),
-  ("fasta", "text/plain; charset=utf-8"),
-  ("dot", "text/plain; charset=utf-8"),
-  ("jsonl", "application/jsonl"),
-];
+const NO_STORE: &str = "no-store";
+
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Router, OpenApi), Report> {
   let (router, api) = build_api()?;
@@ -63,8 +67,20 @@ pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Rou
     runs: Arc::clone(service.runs()),
     service,
     openapi: serde_json::to_value(&api)?,
+    instance: instance_id()?,
   });
-  Ok((router.with_state(state), api))
+  let router = router
+    .method_not_allowed_fallback(method_not_allowed)
+    .fallback(not_found)
+    .layer(SetResponseHeaderLayer::if_not_present(
+      header::CACHE_CONTROL,
+      HeaderValue::from_static(NO_STORE),
+    ))
+    .layer(CatchPanicLayer::custom(|payload: Box<dyn Any + Send>| {
+      panic_response(&*payload)
+    }))
+    .with_state(state);
+  Ok((router, api))
 }
 
 pub fn api_doc() -> Result<Value, Report> {
@@ -233,20 +249,6 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       }),
     )
     .api_route(
-      "/api/runs/{id}/inputs/{name}",
-      put_with(runs_upload_input, |op| {
-        op.id("runsUploadInput")
-          .description(
-            "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
-             for it in the run's configuration.",
-          )
-          .response_with::<413, AppError, _>(|response| {
-            response.description("The inputs of the run exceed the upload limit of the server")
-          })
-      })
-      .layer(DefaultBodyLimit::disable()),
-    )
-    .api_route(
       "/api/runs/{id}/file",
       get_with(runs_file, |op| {
         op.id("runsFile")
@@ -259,6 +261,25 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("runsArchive")
           .description("Zip archive of the run's `out/` folder.")
       }),
+    )
+    .layer(
+      ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(timed_out))
+        .timeout(REQUEST_TIMEOUT),
+    )
+    .api_route(
+      "/api/runs/{id}/inputs/{name}",
+      put_with(runs_upload_input, |op| {
+        op.id("runsUploadInput")
+          .description(
+            "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
+             for it in the run's configuration.",
+          )
+          .response_with::<413, AppError, _>(|response| {
+            response.description("The inputs of the run exceed the upload limit of the server")
+          })
+      })
+      .layer(DefaultBodyLimit::disable()),
     )
 }
 
@@ -416,24 +437,34 @@ async fn runs_files(
 async fn runs_results(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<RunResults>, AppError> {
-  call(&state, move |service| service.run_results(&id)).await.map(Json)
+  headers: HeaderMap,
+) -> Result<Revalidated<Json<RunResults>>, AppError> {
+  revalidated(&state, &headers, vec![id.clone()], move |service| {
+    service.run_results(&id)
+  })
+  .await
 }
 
 async fn runs_auspice(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<AuspiceDocument>, AppError> {
-  call(&state, move |service| service.run_auspice(&id)).await.map(Json)
+  headers: HeaderMap,
+) -> Result<Revalidated<Json<AuspiceDocument>>, AppError> {
+  revalidated(&state, &headers, vec![id.clone()], move |service| {
+    service.run_auspice(&id)
+  })
+  .await
 }
 
 async fn runs_compare(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPairPath { id, other }): ApiPath<RunPairPath>,
-) -> Result<Json<RunComparison>, AppError> {
-  call(&state, move |service| service.compare_runs(&id, &other))
-    .await
-    .map(Json)
+  headers: HeaderMap,
+) -> Result<Revalidated<Json<RunComparison>>, AppError> {
+  revalidated(&state, &headers, vec![id.clone(), other.clone()], move |service| {
+    service.compare_runs(&id, &other)
+  })
+  .await
 }
 
 async fn clade_in_runs(
@@ -488,27 +519,45 @@ async fn runs_file(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   ApiQuery(query): ApiQuery<FileQuery>,
+  request: Request,
 ) -> Result<FileContent, AppError> {
-  let path = state.runs.file_path(&id, &query.path)?;
-  let bytes = tokio::fs::read(&path)
-    .await
-    .wrap_err_with(|| format!("When reading '{}'", path.display()))?;
-  let extension = path.extension().and_then(|extension| extension.to_str()).unwrap_or("");
-  Ok(FileContent {
-    content_type: content_type(extension),
-    bytes,
-  })
+  let path = call(&state, move |service| service.runs().file_path(&id, &query.path)).await?;
+  serve_run_file(path, request).await
 }
 
 async fn runs_archive(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
 ) -> Result<ZipAttachment, AppError> {
-  let runs = Arc::clone(&state.runs);
-  let archive_id = id.clone();
-  let bytes = tokio::task::spawn_blocking(move || runs.zip(&archive_id)).await??;
-  let disposition = HeaderValue::from_str(&format!("attachment; filename=\"treetime-{}.zip\"", id.as_str()))?;
-  Ok(ZipAttachment { disposition, bytes })
+  let name = id.as_str().to_owned();
+  let out_dir = call(&state, move |service| service.runs().out_dir(&id)).await?;
+  stream_run_archive(out_dir, &name)
+}
+
+async fn revalidated<T, F>(
+  state: &AppState,
+  headers: &HeaderMap,
+  ids: Vec<JobId>,
+  operation: F,
+) -> Result<Revalidated<Json<T>>, AppError>
+where
+  T: Send + 'static,
+  F: FnOnce(&AppService) -> Result<T, Report> + Send + 'static,
+{
+  let instance = state.instance;
+  let tag = call(state, move |service| {
+    let records = ids
+      .iter()
+      .map(|id| service.runs().get(id))
+      .try_collect::<_, Vec<_>, _>()?;
+    finished_runs_tag(instance, &records)
+  })
+  .await?;
+  if let Some(tag) = tag.clone().filter(|tag| is_unchanged(headers, Some(tag))) {
+    return Ok(Revalidated::Unchanged(tag));
+  }
+  let value = call(state, operation).await?;
+  Ok(Revalidated::Fresh(tag, Json(value)))
 }
 
 async fn call<T, F>(state: &AppState, operation: F) -> Result<T, AppError>
@@ -520,10 +569,34 @@ where
   Ok(tokio::task::spawn_blocking(move || operation(&service)).await??)
 }
 
-fn content_type(extension: &str) -> HeaderValue {
-  let content_type = CONTENT_TYPES
-    .iter()
-    .find(|(known, _)| *known == extension)
-    .map_or("application/octet-stream", |(_, content_type)| *content_type);
-  HeaderValue::from_static(content_type)
+pub(crate) async fn not_found(uri: Uri) -> Response {
+  plain_error(ErrorCode::NotFound, format!("the API has no path `{}`", uri.path()))
+}
+
+async fn method_not_allowed(method: Method, uri: Uri) -> Response {
+  plain_error(
+    ErrorCode::MethodNotAllowed,
+    format!("the API path `{}` does not accept `{method}` requests", uri.path()),
+  )
+}
+
+async fn timed_out(error: BoxError) -> Response {
+  if error.is::<Elapsed>() {
+    plain_error(
+      ErrorCode::Timeout,
+      format!("the request took longer than {} seconds", REQUEST_TIMEOUT.as_secs()),
+    )
+  } else {
+    AppError::from(eyre!(error)).into_response()
+  }
+}
+
+fn instance_id() -> Result<u64, Report> {
+  let mut hasher = DefaultHasher::new();
+  SystemTime::now()
+    .duration_since(UNIX_EPOCH)?
+    .as_nanos()
+    .hash(&mut hasher);
+  process::id().hash(&mut hasher);
+  Ok(hasher.finish())
 }

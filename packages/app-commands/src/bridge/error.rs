@@ -48,6 +48,12 @@ pub enum ErrorCode {
   Conflict,
   /// The request is malformed or names an invalid value.
   InvalidRequest,
+  /// The path exists, but not for the request's method.
+  MethodNotAllowed,
+  /// The server does not answer requests for the host the request names.
+  Forbidden,
+  /// The server did not finish the request in time.
+  Timeout,
   /// The back end failed.
   InternalError,
 }

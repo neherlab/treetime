@@ -43,6 +43,7 @@ mod tests {
     use app_napi::port::{PortHeader, PortReply, PortRequest};
     use app_server::create_router;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
+    use app_server::web::WebOptions;
     use axum::body::Body;
     use axum::http::Request;
     use serde_json::{Value, json};
@@ -51,6 +52,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::sync::mpsc;
     use std::time::Duration;
+    use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
 
@@ -126,8 +128,9 @@ mod tests {
           data_dir: data_dir(),
           runs_dir: runs_dir.to_path_buf(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
+          shutdown: CancellationToken::new(),
         },
-        None,
+        &WebOptions::default(),
       )
       .unwrap();
       let request = Request::post("/api/runs")

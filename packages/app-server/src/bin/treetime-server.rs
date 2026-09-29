@@ -9,12 +9,14 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use app_server::create_router;
 use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
+use app_server::web::WebOptions;
 use clap::Parser;
 use ctor::ctor;
 use eyre::WrapErr;
 use log::{LevelFilter, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
+use tokio_util::sync::CancellationToken;
 use treetime_utils::env::env_var_optional;
 use treetime_utils::init::global::{global_init, setup_logger};
 use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
@@ -22,6 +24,7 @@ use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
 const HOST_ENV: &str = "HOST";
 const PORT_ENV: &str = "PORT";
 const STATIC_DIR_ENV: &str = "STATIC_DIR";
+const ALLOWED_HOSTS_ENV: &str = "ALLOWED_HOSTS";
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 3100;
 
@@ -53,13 +56,31 @@ async fn main() -> eyre::Result<()> {
     },
   };
 
+  let allowed_hosts = if args.allowed_host.is_empty() {
+    env_var_optional(ALLOWED_HOSTS_ENV)?.map_or_else(Vec::new, |value| {
+      value
+        .split(',')
+        .map(str::trim)
+        .filter(|host| !host.is_empty())
+        .map(str::to_owned)
+        .collect()
+    })
+  } else {
+    args.allowed_host
+  };
+
+  let shutdown = CancellationToken::new();
   let config = ServerConfig {
     data_dir: args.data_dir,
     runs_dir: args.runs_dir,
     max_upload_size: args.max_upload_size,
+    shutdown: shutdown.clone(),
   };
 
-  let static_dir = env_var_optional(STATIC_DIR_ENV)?.map(PathBuf::from);
+  let options = WebOptions {
+    static_dir: env_var_optional(STATIC_DIR_ENV)?.map(PathBuf::from),
+    allowed_hosts,
+  };
 
   let addr = format!("{host}:{port}");
   let listener = tokio::net::TcpListener::bind(&addr)
@@ -67,8 +88,11 @@ async fn main() -> eyre::Result<()> {
     .wrap_err_with(|| format!("When binding the server to {addr}"))?;
   writeln!(io::stderr().lock(), "TreeTime server listening on http://{addr}")
     .wrap_err("When writing the startup line to standard error")?;
-  axum::serve(listener, create_router(config, static_dir)?)
-    .with_graceful_shutdown(shutdown_signal())
+  axum::serve(listener, create_router(config, &options)?)
+    .with_graceful_shutdown(async move {
+      shutdown_signal().await;
+      shutdown.cancel();
+    })
     .await
     .wrap_err("When serving HTTP requests")?;
   Ok(())
@@ -100,6 +124,11 @@ struct ServerArgs {
   /// Largest total size, in bytes, of the files uploaded into one run. Defaults to 1 GiB
   #[arg(long, default_value_t = DEFAULT_MAX_UPLOAD_SIZE)]
   max_upload_size: usize,
+
+  /// Host name the server answers besides localhost, `*.localhost`, 127.0.0.1 and [::1]; repeat for several.
+  /// Falls back to the comma-separated ALLOWED_HOSTS env var. Requests that name another host get HTTP 403
+  #[arg(long)]
+  allowed_host: Vec<String>,
 }
 
 #[allow(

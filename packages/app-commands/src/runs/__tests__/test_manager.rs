@@ -288,7 +288,7 @@ mod tests {
         format!("file path `{escape}` must name a file inside the run's output folder")
       );
     }
-    assert!(runs.zip(&created.id).unwrap().starts_with(b"PK"));
+    assert_eq!(runs.store().out_dir(&created.id), runs.out_dir(&created.id).unwrap());
   }
 
   #[test]

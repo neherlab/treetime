@@ -3,7 +3,7 @@ use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, Terminal
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
-use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
+use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::{file_sha256, hash_inputs};
 use crate::runs::record::{
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -274,11 +274,9 @@ impl RunManager {
     resolve_run_file(&self.store.out_dir(id), relative)
   }
 
-  pub fn zip(&self, id: &JobId) -> Result<Vec<u8>, Report> {
+  pub fn out_dir(&self, id: &JobId) -> Result<PathBuf, Report> {
     self.store.read(id)?;
-    let mut buffer = Cursor::new(vec![]);
-    write_run_zip(&self.store.out_dir(id), id.as_str(), &mut buffer)?;
-    Ok(buffer.into_inner())
+    Ok(self.store.out_dir(id))
   }
 
   fn modify(&self, id: &JobId, change: impl FnOnce(&mut RunRecord) -> Result<(), Report>) -> Result<RunRecord, Report> {

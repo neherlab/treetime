@@ -8,26 +8,17 @@ mod events;
 mod openapi;
 pub mod routes;
 pub mod state;
+pub mod web;
 
 use crate::routes::api_router;
 use crate::state::{ServerConfig, server_service};
+use crate::web::{WebOptions, web_router};
 use axum::Router;
 use eyre::Report;
-use std::path::PathBuf;
-use tower_http::cors::CorsLayer;
-use tower_http::services::{ServeDir, ServeFile};
 
-pub fn create_router(config: ServerConfig, static_dir: Option<PathBuf>) -> Result<Router, Report> {
+pub fn create_router(config: ServerConfig, options: &WebOptions) -> Result<Router, Report> {
   let (api, _) = api_router(server_service(&config)?, config)?;
-
-  let router = match static_dir {
-    Some(static_dir) => {
-      let index = static_dir.join("index.html");
-      api.fallback_service(ServeDir::new(&static_dir).fallback(ServeFile::new(index)))
-    },
-    None => api,
-  };
-  Ok(router.layer(CorsLayer::permissive()))
+  Ok(web_router(api, options))
 }
 
 #[cfg(test)]

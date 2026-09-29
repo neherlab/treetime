@@ -6,6 +6,7 @@ use eyre::Report;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
@@ -14,6 +15,7 @@ pub struct ServerConfig {
   pub data_dir: PathBuf,
   pub runs_dir: PathBuf,
   pub max_upload_size: usize,
+  pub shutdown: CancellationToken,
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {
@@ -31,6 +33,7 @@ pub(crate) struct AppState {
   pub runs: Arc<RunManager>,
   pub service: Arc<AppService>,
   pub openapi: Value,
+  pub instance: u64,
 }
 
 struct ServerInputs {

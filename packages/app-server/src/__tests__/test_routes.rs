@@ -876,6 +876,7 @@ mod tests {
   mod helpers {
     use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
+    use crate::web::WebOptions;
     use axum::Router;
     use axum::body::{Body, BodyDataStream};
     use axum::http::Request;
@@ -886,6 +887,7 @@ mod tests {
     use std::time::Duration;
     use tempfile::{TempDir, tempdir};
     use tokio_stream::StreamExt;
+    use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
 
     pub(super) struct SseEvent {
@@ -931,8 +933,9 @@ mod tests {
           data_dir: TestApp::data_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
+          shutdown: CancellationToken::new(),
         },
-        None,
+        &WebOptions::default(),
       )
       .unwrap();
       TestApp { router, runs_dir }

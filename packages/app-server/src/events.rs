@@ -6,8 +6,11 @@ use app_commands::runs::app_events::AppEvent;
 use app_commands::runs::events::RunEvent;
 use axum::response::sse::Event;
 use serde::Serialize;
+use std::convert;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::{self as stream, Stream, StreamExt as _};
+use tokio_util::sync::CancellationToken;
 
 #[allow(
   clippy::disallowed_methods,
@@ -20,7 +23,8 @@ pub(crate) fn run_events_sse(state: &AppState, id: &JobId, from: usize) -> Resul
     from,
     Box::new(move |event: &RunEvent| tx.send(event.clone()).is_ok()),
   )?;
-  Ok(TypedSse::new(UnboundedReceiverStream::new(rx), run_sse_event))
+  let events = until_shutdown(UnboundedReceiverStream::new(rx), state.config.shutdown.clone());
+  Ok(TypedSse::new(events, run_sse_event))
 }
 
 #[allow(
@@ -33,7 +37,22 @@ pub(crate) fn app_events_sse(state: &AppState, from: Option<usize>) -> TypedSse<
     .runs
     .app_events()
     .subscribe(from, Box::new(move |event: &AppEvent| tx.send(event.clone()).is_ok()));
-  TypedSse::new(UnboundedReceiverStream::new(rx), app_sse_event)
+  let events = until_shutdown(UnboundedReceiverStream::new(rx), state.config.shutdown.clone());
+  TypedSse::new(events, app_sse_event)
+}
+
+fn until_shutdown<T: Send + 'static>(
+  items: impl Stream<Item = T> + Send + 'static,
+  shutdown: CancellationToken,
+) -> impl Stream<Item = T> + Send + 'static {
+  let stop = stream::once(())
+    .then(move |()| shutdown.clone().cancelled_owned())
+    .map(|()| None);
+  items
+    .map(Some)
+    .chain(stream::once(None))
+    .merge(stop)
+    .map_while(convert::identity)
 }
 
 fn run_sse_event(event: &RunEvent) -> Event {
