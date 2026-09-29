@@ -19,11 +19,9 @@ declare global {
   }
 }
 
-const DESKTOP_ORIGIN = "http://treetime.desktop";
-
 const connection = windowFetchConnection(window, window.treetimeShell);
 
-const client = createApiClient({ baseUrl: DESKTOP_ORIGIN, fetch: createPortFetch(connection) });
+const client = createApiClient({ baseUrl: globalThis.location.origin, fetch: createPortFetch(connection) });
 
 const save = createDesktopSaveActions(window.treetimeShell);
 
