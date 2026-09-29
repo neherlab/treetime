@@ -22,6 +22,9 @@ export const zErrorCode = z.union([
   z.literal('upload_too_large'),
   z.literal('conflict'),
   z.literal('invalid_request'),
+  z.literal('method_not_allowed'),
+  z.literal('forbidden'),
+  z.literal('timeout'),
   z.literal('internal_error')
 ]);
 
@@ -2188,18 +2191,6 @@ export const zEventsQuery = z.object({
  */
 export const zEventsResponse = zAppEvent;
 
-export const zRunsUploadInputBody = z.instanceof(Blob);
-
-export const zRunsUploadInputPath = z.object({
-  id: zJobId,
-  name: z.string()
-});
-
-/**
- * A file uploaded into a run's `inputs/` folder.
- */
-export const zRunsUploadInputResponse = zUploadedInput;
-
 export const zRunsFilePath = z.object({
   id: zJobId
 });
@@ -2221,3 +2212,15 @@ export const zRunsArchivePath = z.object({
  * Zip archive
  */
 export const zRunsArchiveResponse = z.instanceof(Blob);
+
+export const zRunsUploadInputBody = z.instanceof(Blob);
+
+export const zRunsUploadInputPath = z.object({
+  id: zJobId,
+  name: z.string()
+});
+
+/**
+ * A file uploaded into a run's `inputs/` folder.
+ */
+export const zRunsUploadInputResponse = zUploadedInput;

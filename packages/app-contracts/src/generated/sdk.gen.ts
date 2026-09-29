@@ -329,25 +329,6 @@ export const events = <ThrowOnError extends boolean = false>(options?: Options<E
 });
 
 /**
- * Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.
- */
-export const runsUploadInput = <ThrowOnError extends boolean = false>(options: Options<RunsUploadInputData, ThrowOnError>): RequestResult<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError> => (options.client ?? client).put<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError>({
-  bodySerializer: null,
-  requestValidator: async (data) => await z.object({
-    body: zRunsUploadInputBody,
-    path: zRunsUploadInputPath,
-    query: z.never().optional()
-  }).parseAsync(data),
-  responseValidator: async (data) => await zRunsUploadInputResponse.parseAsync(data),
-  url: '/api/runs/{id}/inputs/{name}',
-  ...options,
-  headers: {
-    'Content-Type': 'application/octet-stream',
-    ...options.headers
-  }
-});
-
-/**
  * Contents of a file in the run's `out/` folder.
  */
 export const runsFile = <ThrowOnError extends boolean = false>(options: Options<RunsFileData, ThrowOnError>): RequestResult<RunsFileResponses, RunsFileErrors, ThrowOnError> => (options.client ?? client).get<RunsFileResponses, RunsFileErrors, ThrowOnError>({
@@ -373,4 +354,23 @@ export const runsArchive = <ThrowOnError extends boolean = false>(options: Optio
   responseValidator: async (data) => await zRunsArchiveResponse.parseAsync(data),
   url: '/api/runs/{id}/archive',
   ...options
+});
+
+/**
+ * Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.
+ */
+export const runsUploadInput = <ThrowOnError extends boolean = false>(options: Options<RunsUploadInputData, ThrowOnError>): RequestResult<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError> => (options.client ?? client).put<RunsUploadInputResponses, RunsUploadInputErrors, ThrowOnError>({
+  bodySerializer: null,
+  requestValidator: async (data) => await z.object({
+    body: zRunsUploadInputBody,
+    path: zRunsUploadInputPath,
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zRunsUploadInputResponse.parseAsync(data),
+  url: '/api/runs/{id}/inputs/{name}',
+  ...options,
+  headers: {
+    'Content-Type': 'application/octet-stream',
+    ...options.headers
+  }
 });

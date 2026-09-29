@@ -570,6 +570,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -611,6 +614,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -663,6 +669,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "The answer is unchanged since the response that carried the `If-None-Match` tag"
           }
         }
       }
@@ -801,79 +810,6 @@
         }
       }
     },
-    "/api/runs/{id}/inputs/{name}": {
-      "put": {
-        "description": "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.",
-        "operationId": "runsUploadInput",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "description": "Id of a run that has not started.",
-            "required": true,
-            "schema": {
-              "description": "Id of a run that has not started.",
-              "$ref": "#/components/schemas/JobId"
-            },
-            "style": "simple"
-          },
-          {
-            "in": "path",
-            "name": "name",
-            "description": "File name inside the run's `inputs/` folder.",
-            "required": true,
-            "schema": {
-              "description": "File name inside the run's `inputs/` folder.",
-              "type": "string"
-            },
-            "style": "simple"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/octet-stream": {
-              "schema": {
-                "type": "string",
-                "format": "binary"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "A file uploaded into a run's `inputs/` folder.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadedInput"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "The inputs of the run exceed the upload limit of the server",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/runs/{id}/file": {
       "get": {
         "description": "Contents of a file in the run's `out/` folder.",
@@ -968,6 +904,79 @@
           }
         }
       }
+    },
+    "/api/runs/{id}/inputs/{name}": {
+      "put": {
+        "description": "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use for it in the run's configuration.",
+        "operationId": "runsUploadInput",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of a run that has not started.",
+            "required": true,
+            "schema": {
+              "description": "Id of a run that has not started.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "description": "File name inside the run's `inputs/` folder.",
+            "required": true,
+            "schema": {
+              "description": "File name inside the run's `inputs/` folder.",
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "A file uploaded into a run's `inputs/` folder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedInput"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The inputs of the run exceed the upload limit of the server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1049,6 +1058,21 @@
             "description": "The request is malformed or names an invalid value.",
             "type": "string",
             "const": "invalid_request"
+          },
+          {
+            "description": "The path exists, but not for the request's method.",
+            "type": "string",
+            "const": "method_not_allowed"
+          },
+          {
+            "description": "The server does not answer requests for the host the request names.",
+            "type": "string",
+            "const": "forbidden"
+          },
+          {
+            "description": "The server did not finish the request in time.",
+            "type": "string",
+            "const": "timeout"
           },
           {
             "description": "The back end failed.",

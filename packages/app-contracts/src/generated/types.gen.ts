@@ -43,7 +43,7 @@ export type ErrorResponse = {
 /**
  * Class of a back-end error. The web server answers each class with its own HTTP status.
  */
-export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'internal_error';
+export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'forbidden' | 'timeout' | 'internal_error';
 
 /**
  * Example datasets and example command configurations found in the data directory.
@@ -5062,44 +5062,6 @@ export type EventsResponses = {
 
 export type EventsResponse = EventsResponses[keyof EventsResponses];
 
-export type RunsUploadInputData = {
-  body: Blob | File;
-  path: {
-    /**
-     * Id of a run that has not started.
-     */
-    id: JobId;
-    /**
-     * File name inside the run's `inputs/` folder.
-     */
-    name: string;
-  };
-  query?: never;
-  url: '/api/runs/{id}/inputs/{name}';
-};
-
-export type RunsUploadInputErrors = {
-  /**
-   * The inputs of the run exceed the upload limit of the server
-   */
-  413: ErrorResponse;
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputErrors];
-
-export type RunsUploadInputResponses = {
-  /**
-   * A file uploaded into a run's `inputs/` folder.
-   */
-  200: UploadedInput;
-};
-
-export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
-
 export type RunsFileData = {
   body?: never;
   path: {
@@ -5164,3 +5126,41 @@ export type RunsArchiveResponses = {
 };
 
 export type RunsArchiveResponse = RunsArchiveResponses[keyof RunsArchiveResponses];
+
+export type RunsUploadInputData = {
+  body: Blob | File;
+  path: {
+    /**
+     * Id of a run that has not started.
+     */
+    id: JobId;
+    /**
+     * File name inside the run's `inputs/` folder.
+     */
+    name: string;
+  };
+  query?: never;
+  url: '/api/runs/{id}/inputs/{name}';
+};
+
+export type RunsUploadInputErrors = {
+  /**
+   * The inputs of the run exceed the upload limit of the server
+   */
+  413: ErrorResponse;
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsUploadInputError = RunsUploadInputErrors[keyof RunsUploadInputErrors];
+
+export type RunsUploadInputResponses = {
+  /**
+   * A file uploaded into a run's `inputs/` folder.
+   */
+  200: UploadedInput;
+};
+
+export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
