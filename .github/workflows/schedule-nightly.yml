@@ -1,4 +1,4 @@
-name: "Nightly CLI"
+name: "Nightly CLI and web"
 
 on:
   schedule:
@@ -11,6 +11,15 @@ on:
         required: false
         type: boolean
         default: false
+      only:
+        description: "What to run: cli (CLI release), web (web app deploy), or both"
+        required: false
+        type: choice
+        options:
+          - both
+          - cli
+          - web
+        default: both
 
 permissions:
   contents: read
@@ -20,4 +29,6 @@ jobs:
     uses: neherlab/treetime/.github/workflows/nightly.yml@rust
     with:
       force: ${{ inputs.force || false }}
+      # The cron has no inputs and runs both.
+      only: ${{ inputs.only || 'both' }}
     secrets: inherit
