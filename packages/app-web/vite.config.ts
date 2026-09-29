@@ -1,18 +1,25 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import zlib from "node:zlib";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
+import { contentSecurityPolicyMeta } from "@neherlab/app-ui/build/content-security-policy-vite";
 import { icons } from "@neherlab/app-ui/build/icons-vite";
 import { publicDir } from "@neherlab/app-ui/build/public-dir";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { RouteStore, formatUrl, parseHostname } from "portless";
 import { createLogger, defineConfig, type Plugin } from "vite";
+import { compression, defineAlgorithm } from "vite-plugin-compression2";
 
 const apiPort = process.env["TREETIME_API_PORT"] ?? "3100";
 
 const webPort = Number(process.env["TREETIME_WEB_PORT"] ?? "5173");
+
+const COMPRESSIBLE_FILES = /\.(html|css|js|mjs|json|svg|webmanifest)$/u;
+
+const COMPRESSION_THRESHOLD = 1024;
 
 const logger = createLogger("info", { allowClearScreen: false });
 
@@ -24,7 +31,22 @@ logger.info = (msg, options) => {
 };
 
 export default defineConfig({
-  plugins: [auspice(), icons(), tailwindcss(), react(), portless()],
+  plugins: [
+    contentSecurityPolicyMeta(),
+    auspice(),
+    icons(),
+    tailwindcss(),
+    react(),
+    portless(),
+    compression({
+      include: COMPRESSIBLE_FILES,
+      threshold: COMPRESSION_THRESHOLD,
+      algorithms: [
+        defineAlgorithm("gzip", { level: 9 }),
+        defineAlgorithm("brotliCompress", { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }),
+      ],
+    }),
+  ],
   publicDir,
   customLogger: logger,
   clearScreen: false,

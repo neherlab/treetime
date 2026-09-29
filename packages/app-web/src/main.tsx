@@ -1,4 +1,4 @@
-import { ApiProvider, App, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import { ApiProvider, App, ErrorBoundary, QueryProvider, reloadOnChunkError, ThemeProvider } from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -6,6 +6,8 @@ import { createWebApiClient } from "./api-client";
 import { createWebSaveActions } from "./save-web";
 
 import "./index.css";
+
+reloadOnChunkError(globalThis.window);
 
 const client = createWebApiClient();
 

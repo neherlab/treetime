@@ -41,6 +41,12 @@ export function requestKey(client: ApiClient, request: ApiRequest): ApiKey {
   ];
 }
 
+export function requestUrl(client: ApiClient, request: ApiRequest): string {
+  const captured = captureRequest(client, request);
+
+  return client.buildUrl({ url: captured.url, path: captured.path ?? {}, query: captured.query ?? {} });
+}
+
 function pathKey(path: string): string[] {
   return path
     .split("/")

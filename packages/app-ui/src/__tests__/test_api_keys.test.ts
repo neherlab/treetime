@@ -16,7 +16,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { apiKey, apiQueryOptions } from "../api/hooks";
-import { requestKey, staleCoversKey, type ApiRequest } from "../api/keys";
+import { requestKey, requestUrl, staleCoversKey, type ApiRequest } from "../api/keys";
 import { FakeServer, json, RECORD } from "./api_server";
 
 const CLIENT = new FakeServer({}).client();
@@ -204,5 +204,13 @@ describe("api keys", () => {
     expect(record).toStrictEqual(RECORD);
     expect(queryClient.getQueryData(apiKey(client, get))).toStrictEqual(RECORD);
     expect(server.keys()).toStrictEqual(["GET /api/runs/r1"]);
+  });
+
+  test("the URL of a request carries its base, path and query", () => {
+    const url = requestUrl(CLIENT, (context) =>
+      runsFile({ ...context, path: { id: "r 1" }, query: { path: "out/a b.nwk" } }),
+    );
+
+    expect(url).toBe("http://treetime.test/api/runs/r%201/file?path=out%2Fa%20b.nwk");
   });
 });

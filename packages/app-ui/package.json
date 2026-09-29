@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./build/auspice-vite": "./build/auspice-vite.ts",
+    "./build/content-security-policy-vite": "./build/content-security-policy-vite.ts",
     "./build/icons-vite": "./build/icons-vite.ts",
     "./build/public-dir": "./build/public-dir.ts",
     "./icons": "./src/icons.d.ts"

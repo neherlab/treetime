@@ -30,7 +30,7 @@
     },
     "packages/app-desktop": {
       "entry": ["src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],
-      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!", "build/**/*.ts"]
+      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!"]
     },
     "packages/app-napi": {
       "entry": [],

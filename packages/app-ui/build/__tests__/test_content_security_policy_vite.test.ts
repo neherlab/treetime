@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { contentSecurityPolicy } from "../content-security-policy";
+import { contentSecurityPolicy } from "../content-security-policy-vite";
 
 describe("content security policy", () => {
   test("the packaged application allows scripts of its own origin only", () => {

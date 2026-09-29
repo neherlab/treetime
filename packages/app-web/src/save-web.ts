@@ -1,28 +1,31 @@
 import { type ApiClient, runsArchive, runsFile } from "@neherlab/app-contracts/client";
-import type { SaveActions } from "@neherlab/app-ui";
+import { requestUrl, type SaveActions } from "@neherlab/app-ui";
 
 export function createWebSaveActions(
   client: ApiClient,
-  saveBlob: (blob: Blob, name: string) => void = downloadBlob,
+  saveUrl: (url: string, name: string) => void = downloadUrl,
 ): SaveActions {
   return {
-    async saveRunFile(id, path, name) {
-      const { data } = await runsFile({ client, path: { id }, query: { path }, parseAs: "blob", throwOnError: true });
-      saveBlob(data, name);
+    saveRunFile(id, path, name) {
+      saveUrl(
+        requestUrl(client, (context) => runsFile({ ...context, path: { id }, query: { path } })),
+        name,
+      );
 
-      return true;
+      return Promise.resolve(true);
     },
-    async saveRunArchive(id, name) {
-      const { data } = await runsArchive({ client, path: { id }, parseAs: "blob", throwOnError: true });
-      saveBlob(data, name);
+    saveRunArchive(id, name) {
+      saveUrl(
+        requestUrl(client, (context) => runsArchive({ ...context, path: { id } })),
+        name,
+      );
 
-      return true;
+      return Promise.resolve(true);
     },
   };
 }
 
-export function downloadBlob(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
+export function downloadUrl(url: string, name: string): void {
   const anchor = document.createElement("a");
 
   anchor.href = url;
@@ -30,5 +33,4 @@ export function downloadBlob(blob: Blob, name: string): void {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
 }
