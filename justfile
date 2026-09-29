@@ -389,7 +389,7 @@ lint-shell:
 # Dockerfiles (hadolint)
 [group("lint")]
 lint-docker:
-    hadolint --config .config/hadolint.yaml dev/docker/*.dockerfile
+    hadolint --config .config/hadolint.yaml dev/docker/*.dockerfile dev/deploy/*.dockerfile
 
 # GitHub Actions workflows (actionlint)
 [group("lint")]

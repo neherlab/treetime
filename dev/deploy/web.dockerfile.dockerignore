@@ -1,0 +1,4 @@
+*
+!.out/treetime-server-*-linux-musl
+!data/
+!packages/app-web/dist/

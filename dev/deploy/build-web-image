@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <tag> [target]
+#
+# Build the web app image treetime-web:<tag>: the static treetime-server binary
+# for a musl target (default x86_64-unknown-linux-musl), the web UI, and the
+# example datasets. Run it on the host; the compilation runs in the build
+# containers of dev/docker/run.
+#
+# Examples:
+#   $0 local
+#   $0 "$(git rev-parse --short HEAD)"
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+tag="${1:?image tag}"
+target="${2:-x86_64-unknown-linux-musl}"
+
+# The distroless base image has no libc, so only fully static musl binaries run in it.
+case "${target}" in
+x86_64-unknown-linux-musl) platform="linux/amd64" ;;
+aarch64-unknown-linux-musl) platform="linux/arm64" ;;
+*)
+  printf 'Unsupported target: %s. The image needs a static musl binary\n' "${target}" >&2
+  exit 1
+  ;;
+esac
+
+CROSS_COMPILE="${target}" dev/docker/run dev/cross/build treetime-server
+CROSS_COMPILE="${target}" dev/docker/run dev/cross/check treetime-server
+
+# CI exports CROSS_COMPILE for the whole job, and the cross images have no bun.
+CROSS_COMPILE=native dev/docker/run bun install --frozen-lockfile
+CROSS_COMPILE=native dev/docker/run bun run build:web
+
+docker build \
+  --platform="${platform}" \
+  --build-arg="TARGET=${target}" \
+  --file=dev/deploy/web.dockerfile \
+  --tag="treetime-web:${tag}" \
+  .
