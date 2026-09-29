@@ -69,21 +69,25 @@ lto = "off"
 overflow-checks = true
 
 # The shipped artifact, built in CI and by the cross builds: fat LTO and one
-# codegen unit for speed.
+# codegen unit for speed. Stripping the debug info makes the binaries several
+# times smaller; backtraces keep function names but lose file and line numbers.
 [profile.dist]
 inherits = "release"
 codegen-units = 1
 incremental = false
 lto = "fat"
+strip = "debuginfo"
 
 # The shipped artifact with full debug info, for profilers.
 [profile.profiling]
 inherits = "dist"
 debug = true
+strip = "none"
 
-# Benchmarks measure the shipped artifact.
+# Benchmarks measure the shipped artifact, with debug info kept for profilers.
 [profile.bench]
 inherits = "dist"
+strip = "none"
 
 
 [patch.crates-io]
