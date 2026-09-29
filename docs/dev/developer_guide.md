@@ -127,6 +127,16 @@ The interface is built from [shadcn/ui](https://ui.shadcn.com) components in the
 
 The theme tokens (colors, radius, fonts) live in `packages/app-ui/src/theme.css`: green-grey surfaces with a deep teal accent, Lato for text and IBM Plex Mono for code. `packages/app-ui/src/ui/shadcn.css` is the stylesheet of the `shadcn` npm package that defines the variants the components use.
 
+Icons come from [Iconify](https://icon-sets.iconify.design) sets. `unplugin-icons` compiles each imported icon into an inline SVG React component at build time, so the bundle holds only the icons in use and the apps load nothing from an icon host at runtime. An icon is a default import from the virtual `~icons/<set>/<name>` module:
+
+```tsx
+import XIcon from "~icons/lucide/x";
+
+<XIcon aria-hidden className="size-4" />;
+```
+
+Lucide is the base set and matches the stroke style of the shadcn components. When Lucide has no fitting icon, add the Iconify set that has one: install its `@iconify-json/<set>` package as a pinned devDependency of `packages/app-ui` and import from `~icons/<set>/<name>`; the plugin configuration in `packages/app-ui/build/icons-vite.ts` needs no change. Icons render at 24 by 24 pixels unless a class or a parent sets their size. A decorative icon takes `aria-hidden`, and an icon that carries meaning on its own takes an `aria-label`. `lucide-react` is banned by the lint rules because its components duplicate the compiled icons.
+
 Library hooks cover the behavior around the components: `@tanstack/react-hotkeys` for keyboard shortcuts and their platform labels, `react-dropzone` for file drops and the file dialog, `use-stick-to-bottom` for the following log, `@tanstack/react-table` for sortable tables, `@tanstack/react-pacer` for debouncing, Base UI Autocomplete for the command palette, and `@mantine/hooks` for the clipboard, the size of the Auspice panel, and the mobile media query.
 
 ### Web app

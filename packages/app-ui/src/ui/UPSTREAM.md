@@ -14,7 +14,7 @@ The files in this directory started as [shadcn/ui](https://ui.shadcn.com) compon
 These are the rewrites the shadcn CLI applies when it installs a component:
 
 - **Imports**: `@/registry/base-vega/ui/<name>` becomes `./<name>`, and `cn` comes from `./cn`
-- **Icons**: each `IconPlaceholder` element becomes the `lucide-react` icon named in its `lucide` attribute
+- **Icons**: each `IconPlaceholder` element becomes the Iconify Lucide icon named in its `lucide` attribute, imported as `import <Name>Icon from "~icons/lucide/<kebab-name>"` with `aria-hidden`, for example `lucide="ChevronDownIcon"` becomes `import ChevronDownIcon from "~icons/lucide/chevron-down"`
 - **Classes**: `cn-font-heading` becomes `font-heading`, and the other `cn-*` marker classes are removed
 - **Comments**: removed, as in all TypeScript source
 
