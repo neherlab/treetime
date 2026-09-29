@@ -1,0 +1,71 @@
+#cloud-config
+#
+# Setup of a fresh Ubuntu 24.04 server for the nightly web app deploy
+# (docs/dev/developer_guide.md, section "Nightly web deploy"). Replace
+# <deploy public key> with the public half of the deploy key before creating the
+# server.
+#
+# Each deploy brings compose.yaml and the Caddyfile. The admin copies
+# dev/deploy/hetzner/treetime-deploy to /usr/local/bin/ after the first boot, so
+# the repository holds one copy of that script.
+
+ssh_pwauth: false
+
+package_update: true
+package_upgrade: true
+
+apt:
+  sources:
+    docker.list:
+      source: "deb [arch=amd64 signed-by=$KEY_FILE] https://download.docker.com/linux/ubuntu $RELEASE stable"
+      # Docker Release (CE deb) <docker@docker.com>
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+packages:
+  - containerd.io
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+  - unattended-upgrades
+  - zstd
+
+users:
+  - default
+  - name: deploy
+    shell: /bin/bash
+    lock_passwd: true
+    # The forced command runs treetime-deploy for every login with this key;
+    # `restrict` turns off port forwarding, agent forwarding, and the terminal.
+    ssh_authorized_keys:
+      - 'restrict,command="/usr/local/bin/treetime-deploy" <deploy public key>'
+
+write_files:
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  # Docker starts on boot and the restart policy of compose.yaml brings the stack back.
+  - path: /etc/apt/apt.conf.d/52treetime-reboot
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+  # Values of compose.yaml; the admin sets them before the first deploy.
+  - path: /opt/treetime/.env
+    owner: deploy:deploy
+    permissions: "0600"
+    defer: true
+    content: |
+      # TREETIME_DOMAIN=<host name>
+      # TREETIME_USER=<user name>
+      # TREETIME_PASSWORD_HASH='<output of caddy hash-password>'
+
+# The docker group exists only after the packages are installed, so membership
+# is added here. Membership in docker equals root on this host.
+runcmd:
+  - usermod --append --groups docker deploy
+  - chown deploy:deploy /opt/treetime
+  - chmod 0750 /opt/treetime
+  # 65532 is the nonroot user of the distroless app image; the app cannot write
+  # to a directory with another owner.
+  - install --directory --owner=65532 --group=65532 --mode=0750 /opt/treetime/runs
+  - systemctl enable --now docker

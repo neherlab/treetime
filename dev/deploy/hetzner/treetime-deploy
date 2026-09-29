@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# Usage: ssh deploy@<host> deploy <tag> < bundle.tar.zst
+#
+# Install a web app release on the nightly server. Runs as the SSH forced
+# command of user `deploy` (/usr/local/bin/treetime-deploy), so it reads the
+# requested command from SSH_ORIGINAL_COMMAND and the release from stdin: a
+# zstd-compressed tar of `image.tar` (docker save of treetime-web:<tag>),
+# `compose.yaml`, and `Caddyfile`.
+#
+# The script loads the image, installs the files in the deploy directory, points
+# TREETIME_TAG of its .env at the new tag, and restarts the stack. When the app
+# does not answer within 60 s, it restores the previous files and tag and exits
+# non-zero; on a first deploy it stops the stack instead.
+#
+# Environment:
+#   TREETIME_DEPLOY_DIR   Deploy directory (default /opt/treetime). SSH forced
+#                         commands with `restrict` receive no client environment,
+#                         so only local test runs change it
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+deploy_dir="${TREETIME_DEPLOY_DIR:-/opt/treetime}"
+previous_dir="${deploy_dir}/previous"
+history_file="${deploy_dir}/deployed-tags"
+health_timeout=60
+images_kept=3
+
+fail() {
+  printf 'treetime-deploy: %s\n' "$*" >&2
+  exit 1
+}
+
+log() {
+  printf 'treetime-deploy: %s\n' "$*"
+}
+
+compose() {
+  docker compose --file="${deploy_dir}/compose.yaml" --project-directory="${deploy_dir}" "$@"
+}
+
+# Replace the tag line of .env and keep every other line: they hold the domain,
+# the user, and the password hash.
+set_tag() {
+  local env_file="${deploy_dir}/.env"
+  local new_env="${deploy_dir}/.env.new"
+  { grep -v '^TREETIME_TAG=' "${env_file}" || true; } >"${new_env}"
+  printf 'TREETIME_TAG=%s\n' "${1}" >>"${new_env}"
+  chmod --reference="${env_file}" "${new_env}"
+  mv "${new_env}" "${env_file}"
+}
+
+get_tag() {
+  sed -n 's/^TREETIME_TAG=//p' "${deploy_dir}/.env" | tail -n 1
+}
+
+# cp writes into the existing file instead of replacing it: the caddy container
+# bind-mounts the Caddyfile by inode and would keep reading a replaced file.
+install_files() {
+  cp "${1}/compose.yaml" "${deploy_dir}/compose.yaml"
+  cp "${1}/Caddyfile" "${deploy_dir}/Caddyfile"
+}
+
+# A changed bind-mounted file does not recreate the container, so Caddy reloads
+# its configuration explicitly. Its admin endpoint needs a moment after a start.
+restart_stack() {
+  compose up -d --remove-orphans
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; then
+      return 0
+    fi
+    log "Caddy reload failed (attempt ${attempt}), retrying"
+    sleep 1
+  done
+  return 1
+}
+
+# The check reaches the app over the compose network from the caddy container:
+# requests through the public side of Caddy get 401, and the app image has no
+# HTTP client.
+wait_healthy() {
+  local deadline=$((SECONDS + health_timeout))
+  while ((SECONDS < deadline)); do
+    if compose exec -T caddy curl -fsS --max-time 5 --output /dev/null http://app:3100/api/version 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+rollback() {
+  if [[ ! -f "${previous_dir}/tag" ]]; then
+    log "First deploy failed; stopping the stack"
+    compose down || log "Stopping the stack failed"
+    return
+  fi
+  local previous_tag
+  previous_tag="$(cat "${previous_dir}/tag")"
+  log "Restoring the previous release ${previous_tag}"
+  install_files "${previous_dir}"
+  set_tag "${previous_tag}"
+  restart_stack || log "Restart of the previous release failed"
+}
+
+# Keep the images of the latest deployed tags, the current one included.
+prune_images() {
+  local kept images image
+  kept="$(tail -n "${images_kept}" "${history_file}")"
+  images="$(docker image ls --format='{{.Repository}}:{{.Tag}}' treetime-web)"
+  while read -r image; do
+    [[ -z "${image}" ]] && continue
+    if ! grep -qxF -- "${image#treetime-web:}" <<<"${kept}"; then
+      docker image rm "${image}" >/dev/null || log "Could not remove ${image}"
+    fi
+  done <<<"${images}"
+}
+
+main() {
+  local request="${SSH_ORIGINAL_COMMAND:-}"
+  [[ "${request}" =~ ^deploy\ ([0-9a-f]{7,40})$ ]] || fail "Unsupported command: '${request}'. Expected: deploy <hex commit hash>"
+  local tag="${BASH_REMATCH[1]}"
+
+  [[ -f "${deploy_dir}/.env" ]] || fail "Missing ${deploy_dir}/.env"
+  local key
+  for key in TREETIME_DOMAIN TREETIME_USER TREETIME_PASSWORD_HASH; do
+    grep -q "^${key}=." "${deploy_dir}/.env" || fail "Set ${key} in ${deploy_dir}/.env before the first deploy"
+  done
+
+  exec 9>"${deploy_dir}/.deploy.lock"
+  flock -n 9 || fail "Another deploy is running"
+
+  local bundle
+  bundle="$(mktemp -d)"
+  # shellcheck disable=SC2064 # expand now: the local variable is gone when the trap runs
+  trap "rm -rf '${bundle}'" EXIT
+
+  zstd -dc | tar -x --no-same-owner --no-same-permissions -C "${bundle}"
+
+  local expected=$'Caddyfile\ncompose.yaml\nimage.tar' actual
+  actual="$(cd "${bundle}" && find . -mindepth 1 -printf '%P\n' | LC_ALL=C sort)"
+  [[ "${actual}" == "${expected}" ]] || fail "The bundle must hold exactly image.tar, compose.yaml and Caddyfile; received: ${actual//$'\n'/, }"
+  local file
+  for file in image.tar compose.yaml Caddyfile; do
+    [[ -f "${bundle}/${file}" && ! -L "${bundle}/${file}" ]] || fail "Not a regular file in the bundle: ${file}"
+  done
+
+  log "Loading image treetime-web:${tag}"
+  docker load --quiet --input="${bundle}/image.tar"
+  docker image inspect "treetime-web:${tag}" >/dev/null 2>&1 || fail "The bundle does not contain image treetime-web:${tag}"
+
+  local current_tag
+  current_tag="$(get_tag)"
+  if [[ -n "${current_tag}" && -f "${deploy_dir}/compose.yaml" && -f "${deploy_dir}/Caddyfile" ]]; then
+    mkdir -p "${previous_dir}"
+    cp "${deploy_dir}/compose.yaml" "${deploy_dir}/Caddyfile" "${previous_dir}/"
+    printf '%s\n' "${current_tag}" >"${previous_dir}/tag"
+  else
+    rm -rf "${previous_dir}"
+  fi
+
+  log "Starting release ${tag}"
+  install_files "${bundle}"
+  set_tag "${tag}"
+
+  if restart_stack && wait_healthy; then
+    printf '%s\n' "${tag}" >>"${history_file}"
+    prune_images
+    log "Release ${tag} is up"
+    return 0
+  fi
+
+  printf 'treetime-deploy: release %s did not start or did not answer within %s s\n' "${tag}" "${health_timeout}" >&2
+  compose logs --no-color --tail=50 app >&2 || log "Reading the app logs failed"
+  rollback
+  exit 1
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,11 @@
+# Reverse proxy of the nightly server: HTTPS with a Let's Encrypt certificate and
+# one shared password. The browser asks for the password once and sends it with
+# every same-origin request, including the fetch calls and event streams of the UI.
+# Caddy stores only the bcrypt hash of the password.
+{$TREETIME_DOMAIN} {
+	basic_auth {
+		{$TREETIME_USER} {$TREETIME_PASSWORD_HASH}
+	}
+	encode zstd gzip
+	reverse_proxy app:3100
+}

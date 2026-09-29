@@ -1,0 +1,57 @@
+# Web app stack of the nightly server. Each deploy installs this file in
+# /opt/treetime/ (dev/deploy/hetzner/treetime-deploy), next to the .env file that
+# holds TREETIME_TAG, TREETIME_DOMAIN, TREETIME_USER, and TREETIME_PASSWORD_HASH.
+name: treetime
+
+# The default json-file log driver never rotates its logs and fills the disk.
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  app:
+    image: treetime-web:${TREETIME_TAG:?}
+    command:
+      - --data-dir=/app/data
+      - --runs-dir=/runs
+      - --max-upload-size=52428800
+      - -j
+      - "2"
+    restart: unless-stopped
+    logging: *logging
+    # The server has no login and no limit on parallel runs; these limits bound
+    # what one client can take from the host.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 256
+    volumes:
+      - ./runs:/runs
+    # No healthcheck: the image has no shell or HTTP client. treetime-deploy
+    # checks the health through the caddy container.
+
+  caddy:
+    image: caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443/tcp"
+      - "443:443/udp"
+    environment:
+      TREETIME_DOMAIN: ${TREETIME_DOMAIN:?}
+      TREETIME_USER: ${TREETIME_USER:?}
+      TREETIME_PASSWORD_HASH: ${TREETIME_PASSWORD_HASH:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
