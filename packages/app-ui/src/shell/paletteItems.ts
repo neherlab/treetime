@@ -1,4 +1,4 @@
-import { wordMatcher } from "../text";
+import { fuzzyFilter } from "../fuzzy";
 
 const PALETTE_KINDS = ["Action", "Run", "Setting", "Example"] as const;
 
@@ -23,8 +23,8 @@ export function paletteGroups(items: readonly PaletteItem[]): PaletteGroup[] {
   });
 }
 
-export function matchesPaletteItem(item: PaletteItem, query: string): boolean {
-  return wordMatcher(query)(item.keywords);
+export function matchingPaletteItems(items: readonly PaletteItem[], query: string): PaletteItem[] {
+  return fuzzyFilter(items, query, (item) => item.keywords);
 }
 
 export interface PaletteItem {

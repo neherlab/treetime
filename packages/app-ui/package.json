@@ -18,6 +18,7 @@
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/lato": "5.3.0",
     "@hookform/resolvers": "5.9.1",
+    "@leeoniya/ufuzzy": "1.0.19",
     "@mantine/hooks": "9.6.2",
     "@neherlab/app-contracts": "workspace:*",
     "@tanstack/react-hotkeys": "0.10.0",

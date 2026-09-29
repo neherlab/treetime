@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { matchesPaletteItem, paletteGroups, paletteItem } from "../paletteItems";
+import { matchingPaletteItems, paletteGroups, paletteItem } from "../paletteItems";
 
 const NOOP = () => undefined;
 
@@ -24,15 +24,12 @@ describe("command palette items", () => {
     expect(paletteGroups([]).length).toBe(0);
   });
 
-  test("a query matches an item whose kind, title and description hold every word, in any order and case", () => {
-    const [, ebola] = ITEMS;
-
-    expect(ebola).toBeDefined();
+  test("a query matches the items whose kind, title and description hold every word, in any order and case", () => {
     expect(
-      ["clock-rate EBOLA", "run tree", "ebola zika"].map(
-        (query) => ebola !== undefined && matchesPaletteItem(ebola, query),
+      ["clock-rate EBOLA", "run tree", "ebola zika", "clock"].map((query) =>
+        matchingPaletteItems(ITEMS, query).map((item) => item.id),
       ),
-    ).toStrictEqual([true, true, false]);
+    ).toStrictEqual([["run-1"], ["run-1"], [], ["run-1", "run-2"]]);
   });
 
   test("an item keeps the element to focus once the palette closes", () => {

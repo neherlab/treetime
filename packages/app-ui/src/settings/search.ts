@@ -1,4 +1,4 @@
-import { wordMatcher } from "../text";
+import { fuzzyFilter } from "../fuzzy";
 import type { SettingSpec } from "./catalog";
 import { isChanged } from "./config";
 import type { JsonObject } from "./json";
@@ -9,11 +9,7 @@ export function matchingSpecs(
   search: string,
   changedOnly: boolean,
 ): SettingSpec[] {
-  const matches = wordMatcher(search);
+  const candidates = changedOnly ? specs.filter((spec) => isChanged(config, spec)) : specs;
 
-  return specs.filter(
-    (spec) =>
-      (!changedOnly || isChanged(config, spec)) &&
-      matches([spec.key, spec.flag, spec.label, spec.help, spec.more].join(" ")),
-  );
+  return fuzzyFilter(candidates, search, (spec) => [spec.key, spec.flag, spec.label, spec.help, spec.more].join(" "));
 }

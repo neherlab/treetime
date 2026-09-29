@@ -6,7 +6,10 @@ import { cn } from "./cn";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
 function Command<Groups extends readonly { items: readonly unknown[] }[]>(
-  props: Omit<Autocomplete.Root.Props<Groups[number]["items"][number]>, "items"> & { items: Groups },
+  props: Omit<Autocomplete.Root.Props<Groups[number]["items"][number]>, "items" | "filteredItems"> & {
+    items: Groups;
+    filteredItems?: Groups;
+  },
 ) {
   return <Autocomplete.Root open inline autoHighlight="always" keepHighlight {...props} />;
 }

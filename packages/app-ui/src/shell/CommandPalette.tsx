@@ -2,7 +2,7 @@ import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
 import { datasets, runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
@@ -23,7 +23,7 @@ import {
   CommandList,
 } from "../ui/command";
 import { useToastManager } from "../ui/toast";
-import { matchesPaletteItem, type PaletteGroup, type PaletteItem, paletteGroups, paletteItem } from "./paletteItems";
+import { matchingPaletteItems, type PaletteGroup, type PaletteItem, paletteGroups, paletteItem } from "./paletteItems";
 import { changedFlags, listedRuns } from "./runList";
 import { nextTheme } from "./SiteHeader";
 
@@ -78,10 +78,19 @@ export function CommandPalette() {
 }
 
 function PaletteBody({ choose }: { choose: (item: PaletteItem) => Promise<void> }) {
-  const groups = usePaletteGroups();
+  const items = usePaletteItems();
+  const [query, setQuery] = useState("");
+  const groups = useMemo(() => paletteGroups(items), [items]);
+  const filteredGroups = useMemo(() => paletteGroups(matchingPaletteItems(items, query)), [items, query]);
 
   return (
-    <Command items={groups} filter={matchesPaletteItem} itemToStringValue={itemTitle}>
+    <Command
+      items={groups}
+      filteredItems={filteredGroups}
+      value={query}
+      onValueChange={setQuery}
+      itemToStringValue={itemTitle}
+    >
       <CommandInput placeholder="Search runs, settings, examples" aria-label="Search" />
       <CommandEmpty>Nothing matches.</CommandEmpty>
       <CommandList className="max-h-[min(60vh,32rem)]">
@@ -115,12 +124,6 @@ function PaletteEntry({ item, choose }: { item: PaletteItem; choose: (item: Pale
 
 function itemTitle(item: PaletteItem): string {
   return item.title;
-}
-
-function usePaletteGroups(): PaletteGroup[] {
-  const items = usePaletteItems();
-
-  return useMemo(() => paletteGroups(items), [items]);
 }
 
 function usePaletteItems(): PaletteItem[] {

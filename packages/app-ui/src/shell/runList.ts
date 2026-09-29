@@ -2,9 +2,9 @@ import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import type { DateTime } from "luxon";
 
 import { dayLabel } from "../format";
+import { fuzzyFilter } from "../fuzzy";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
-import { wordMatcher } from "../text";
 
 interface RunGroup {
   label: string;
@@ -12,13 +12,10 @@ interface RunGroup {
 }
 
 export function listedRuns(runs: readonly RunSummary[], filter: string, command: AppCommand | null): RunSummary[] {
-  const matches = wordMatcher(filter);
+  const candidates = runs.filter((run) => run.status !== "created" && (command === null || run.command === command));
 
-  return runs.filter(
-    (run) =>
-      run.status !== "created" &&
-      (command === null || run.command === command) &&
-      matches([run.title, run.command, COMMAND_INFO[run.command].label, ...changedFlags(run)].join(" ")),
+  return fuzzyFilter(candidates, filter, (run) =>
+    [run.title, run.command, COMMAND_INFO[run.command].label, ...changedFlags(run)].join(" "),
   );
 }
 
