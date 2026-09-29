@@ -125,10 +125,16 @@ export default defineConfig({
   jsPlugins: [
     "eslint-plugin-no-comments",
     "eslint-plugin-sonarjs",
+    "eslint-plugin-better-tailwindcss",
+    "eslint-plugin-react-you-might-not-need-an-effect",
     "./dev/lints/oxlint/index.ts",
     "./dev/lints/oxlint/web.ts",
     "./dev/lints/oxlint-anti-slop/index.ts",
   ],
+
+  settings: {
+    "better-tailwindcss": { cwd: "packages/app-web", entryPoint: "src/index.css" },
+  },
 
   categories: {
     correctness: "warn",
@@ -339,7 +345,9 @@ export default defineConfig({
     {
       files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-desktop/renderer/**"],
       rules: {
-        "web/tailwind-classes": "error",
+        "better-tailwindcss/no-unknown-classes": "error",
+        "better-tailwindcss/no-conflicting-classes": "error",
+        "better-tailwindcss/no-duplicate-classes": "error",
 
         "web/use-themed-cn": "error",
 
@@ -350,9 +358,15 @@ export default defineConfig({
         "react/static-components": "error",
 
         "react/no-deriving-state-in-effects": "error",
-        "web/no-chained-state-updates": "error",
-        "web/no-event-handler-effect": "error",
-        "web/no-state-in-effect-initializer": "error",
+        "react-you-might-not-need-an-effect/no-adjust-state-on-prop-change": "error",
+        "react-you-might-not-need-an-effect/no-chain-state-updates": "error",
+        "react-you-might-not-need-an-effect/no-derived-state": "error",
+        "react-you-might-not-need-an-effect/no-event-handler": "error",
+        "react-you-might-not-need-an-effect/no-external-store-subscription": "error",
+        "react-you-might-not-need-an-effect/no-initialize-state": "error",
+        "react-you-might-not-need-an-effect/no-pass-data-to-parent": "error",
+        "react-you-might-not-need-an-effect/no-pass-live-state-to-parent": "error",
+        "react-you-might-not-need-an-effect/no-reset-all-state-on-prop-change": "error",
 
         "react/no-danger": "error",
         "react/forbid-dom-props": [
@@ -468,12 +482,6 @@ export default defineConfig({
         "anti-slop/no-runtime-typeof": "off",
         "anti-slop/no-unknown-parameters": "off",
         "anti-slop/no-unknown-returns": "off",
-      },
-    },
-    {
-      files: ["dev/lints/oxlint/rules/tailwind-classes.ts"],
-      rules: {
-        "unicorn/no-array-sort": "off",
       },
     },
   ],
