@@ -395,7 +395,7 @@ knip: _js
 # Shell scripts in dev/ (shellcheck)
 [group("lint")]
 lint-shell:
-    shellcheck --source-path=SCRIPTDIR $(dev/shell-files)
+    dev/shell-files | xargs -0r shellcheck --source-path=SCRIPTDIR
 
 # Dockerfiles (hadolint)
 [group("lint")]
@@ -439,7 +439,7 @@ fmt-check-ts: _js
 # Format shell scripts (shfmt), TOML (taplo), and the justfile
 [group("format")]
 fmt-other:
-    shfmt --write $(dev/shell-files)
+    dev/shell-files | xargs -0r shfmt --write
     dev/toml-files | RUST_LOG=warn xargs -0r taplo fmt
     just --fmt
 
@@ -448,7 +448,7 @@ fmt-other:
 [script]
 fmt-check-other:
     status=0
-    shfmt --diff $(dev/shell-files) || status=1
+    dev/shell-files | xargs -0r shfmt --diff || status=1
     dev/toml-files | RUST_LOG=warn xargs -0r taplo fmt --check --diff || status=1
     just --fmt --check || status=1
     exit "${status}"
