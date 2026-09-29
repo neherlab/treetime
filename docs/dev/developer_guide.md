@@ -269,7 +269,7 @@ After changing `pixi.toml`, run `pixi lock` and commit both files. Package relea
 - `dev` (`just build`, `just run`, the tests): unoptimized workspace crates, dependencies at `opt-level = 2`, full debug info
 - `dev-opt` (`just run-dev-opt`): `dev` with optimized workspace crates, for long runs on real datasets; rebuilds are slower
 - `release` (`just build-release`, `just run-release`, `just example`, `just smoke`): optimized and fast to rebuild, without LTO
-- `dist` (`just build-dist`, `just cross`, nightly releases): the shipped binary, with fat LTO and one codegen unit
+- `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO and one codegen unit
 - `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info
 - `bench` (`just bench`): the `dist` settings
 
@@ -296,6 +296,8 @@ The dependency recipes run in the main checkout only. `just audit` checks both d
 ## Cross-compilation and releases
 
 `just cross` (host) builds the shipped CLI (`dist` profile) for every target in `dev/cross/targets` in its cross image, in parallel, into `.out/`. `just cross --target=aarch64-apple-darwin` builds one target. Without `just` on the host, run `./dev/cross/all treetime`.
+
+`just cross-napi` (host) builds the Node addon of the desktop app the same way, with the same profile and CPU flags, for every target in `dev/cross/targets-desktop`, the targets Electron supports (no musl), into `.out/app-napi-<target>.node` (`./dev/cross/all --lib app-napi` without `just`). `dev/cross/check --lib` fails when an addon needs OpenBLAS, the Fortran runtime, a MinGW runtime DLL, or a macOS library outside the system. The Windows addon is built with MinGW, like the CLI, and loads into Electron, which is built with MSVC: Node-API reaches the addon through the functions that `napi-sys` looks up in the running executable, not through an import library.
 
 The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2.
 

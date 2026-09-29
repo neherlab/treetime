@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 #
 # Usage: $0 [options] <bin>...
+#        $0 --lib [options] <package>...
 #
 # Cross-compile shipped (dist profile) binaries for every target in
 # dev/cross/targets, each in its cross image, in parallel. Output goes to
 # .out/<bin>-<target>, one log per target to tmp/cross/<target>.log.
 #
+# With --lib, build the shared library of each package instead (the Node addon
+# of the desktop app, package app-napi) for every target in
+# dev/cross/targets-desktop, the targets Electron supports. Output goes to
+# .out/<package>-<target>.node (see `dev/cross/build --help`).
+#
 # Options:
 #   -h, --help          Show this help
+#   --lib               Build shared libraries of packages instead of binaries
 #   --target=<triple>   Build this target only (repeatable)
 #   --serial            Build one target after another, with output streamed
 #   --run               Run each binary with `--help` after building (QEMU, Wine)
@@ -15,6 +22,7 @@
 # Examples:
 #   $0 treetime
 #   $0 --target=aarch64-apple-darwin --target=x86_64-pc-windows-gnu treetime
+#   $0 --lib app-napi
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -27,9 +35,9 @@ build_one() {
   shift
   local bin
   for bin in "${bins[@]}"; do
-    CROSS_COMPILE="${target}" dev/docker/run dev/cross/build "${bin}" "${target}"
-    CROSS_COMPILE="${target}" dev/docker/run dev/cross/check "${bin}" "${target}"
-    if [[ -n "${run}" && "${target}" != *-apple-darwin ]]; then
+    CROSS_COMPILE="${target}" dev/docker/run dev/cross/build "${mode[@]}" "${bin}" "${target}"
+    CROSS_COMPILE="${target}" dev/docker/run dev/cross/check "${mode[@]}" "${bin}" "${target}"
+    if [[ -n "${run}" && -z "${lib}" && "${target}" != *-apple-darwin ]]; then
       CROSS_COMPILE="${target}" dev/docker/run dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
   done
@@ -38,6 +46,8 @@ build_one() {
 main() {
   local targets=() serial="" target
   run=""
+  lib=""
+  mode=()
   bins=()
   while (($# > 0)); do
     case "${1}" in
@@ -48,6 +58,7 @@ main() {
     --target=*) targets+=("${1#--target=}") ;;
     --serial) serial=1 ;;
     --run) run=1 ;;
+    --lib) lib=1 mode=(--lib) ;;
     -*)
       printf 'Unknown option: %s\n' "${1}" >&2
       exit 1
@@ -61,7 +72,11 @@ main() {
     exit 1
   fi
   if ((${#targets[@]} == 0)); then
-    mapfile -t targets <dev/cross/targets
+    if [[ -n "${lib}" ]]; then
+      mapfile -t targets <dev/cross/targets-desktop
+    else
+      mapfile -t targets <dev/cross/targets
+    fi
   fi
 
   mkdir -p tmp/cross

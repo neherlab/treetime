@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 #
 # Usage: $0 <bin> [target]
+#        $0 --lib <package> [target]
 #
 # Build a shipped (dist profile) binary for a target inside its cross image and
 # copy it to .out/<bin>-<target>. The target defaults to CROSS_COMPILE, which
 # dev/docker/run sets in the cross images.
 #
+# With --lib, build the shared library of a package instead, with the same
+# profile and CPU flags, and copy it to .out/<package>-<target>.node. This
+# builds the Node addon of the desktop app (package app-napi). Linux musl
+# targets cannot build it: a statically linked C runtime cannot be a shared
+# library.
+#
 # Examples:
 #   CROSS_COMPILE=aarch64-apple-darwin dev/docker/run dev/cross/build treetime
+#   CROSS_COMPILE=x86_64-pc-windows-gnu dev/docker/run dev/cross/build --lib app-napi
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -15,7 +23,12 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
 
-bin="${1:?binary name}"
+lib=""
+if [[ "${1:-}" == "--lib" ]]; then
+  lib=1
+  shift
+fi
+name="${1:?binary or package name}"
 target="${2:-${CROSS_COMPILE:?target}}"
 target_safe="${target//-/_}"
 
@@ -49,6 +62,10 @@ case "${target}" in
   rustflags="${rust_arch}"
   ;;
 *-linux-musl)
+  if [[ -n "${lib}" ]]; then
+    printf 'Cannot build a shared library for %s\n' "${target}" >&2
+    exit 1
+  fi
   # The musl toolchains do not find these libraries on their own.
   rustflags="${rust_arch} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
   ;;
@@ -61,6 +78,19 @@ esac
 # .cargo/config.toml replaces the script for x86_64-unknown-linux-gnu, and the
 # cross linkers do not search LIBRARY_PATH.
 rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
+
+if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
+  # The addon pulls OpenBLAS LAPACK routines written in Fortran, which need the
+  # Fortran runtime; the openblas-src build script does not declare it. The
+  # runtime comes last on the link line, after the C runtime libraries that
+  # rustc lists, so it is linked in one group with them again.
+  runtime="-lgfortran -l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc"
+  rustflags="${rustflags} -C link-arg=-Wl,--start-group"
+  for arg in ${runtime}; do
+    rustflags="${rustflags} -C link-arg=${arg}"
+  done
+  rustflags="${rustflags} -C link-arg=-Wl,--end-group"
+fi
 
 c_flags="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
 # RUSTFLAGS replaces the target rustflags of .cargo/config.toml (native mold
@@ -80,10 +110,40 @@ if [[ -n "${KACHE_STORE:-}" ]]; then
 fi
 
 target_dir="${root}/.build/cross/${target}"
-cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
+out_dir="${target_dir}/${target}/dist"
+mkdir -p .out
+
+if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
+  # napi-build assumes that a Windows GNU target means the MSYS2 build of Node,
+  # which keeps Node-API in libnode.dll: the build scripts of the napi crate and
+  # of the addon panic unless they find that file, then link it. Node and
+  # Electron for Windows are built with MSVC and export Node-API from the
+  # executable, and napi-sys loads every Node-API function at run time (its
+  # default dyn-symbols feature). An empty libnode.dll satisfies the lookup; the
+  # addon uses none of its symbols, so the DLL imports nothing from it, which
+  # dev/cross/check verifies.
+  linker_var="CARGO_TARGET_$(tr '[:lower:]' '[:upper:]' <<<"${target_safe}")_LINKER"
+  export LIBNODE_PATH="${target_dir}/libnode"
+  mkdir -p "${LIBNODE_PATH}"
+  "${!linker_var}" -shared -o "${LIBNODE_PATH}/libnode.dll" -x c /dev/null
+fi
+
+if [[ -n "${lib}" ]]; then
+  cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --package="${name}" --lib
+  lib_name="${name//-/_}"
+  case "${target}" in
+  *-apple-darwin) lib_file="lib${lib_name}.dylib" ;;
+  *-windows-gnu) lib_file="${lib_name}.dll" ;;
+  *) lib_file="lib${lib_name}.so" ;;
+  esac
+  cp "${out_dir}/${lib_file}" ".out/${name}-${target}.node"
+  printf 'Built .out/%s-%s.node\n' "${name}" "${target}" >&2
+  exit 0
+fi
+
+cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${name}"
 
 ext=""
 [[ "${target}" == *windows* ]] && ext=".exe"
-mkdir -p .out
-cp "${target_dir}/${target}/dist/${bin}${ext}" ".out/${bin}-${target}${ext}"
-printf 'Built .out/%s-%s%s\n' "${bin}" "${target}" "${ext}" >&2
+cp "${out_dir}/${name}${ext}" ".out/${name}-${target}${ext}"
+printf 'Built .out/%s-%s%s\n' "${name}" "${target}" "${ext}" >&2

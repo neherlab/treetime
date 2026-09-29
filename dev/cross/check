@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 #
 # Usage: $0 <bin> [target]
+#        $0 --lib <package> [target]
 #
 # Check a cross-compiled binary in .out/: print its format and linkage, and fail
 # when a binary that must be static is not (musl and Windows targets).
+#
+# With --lib, check the shared library .out/<package>-<target>.node built by
+# `dev/cross/build --lib`: print its format and linkage, and fail when it needs
+# a library that a user system does not provide: OpenBLAS or the Fortran runtime
+# on every target, a MinGW runtime DLL (lib*.dll) or a Node DLL on Windows, and
+# a library outside /usr/lib and /System on macOS. Linux libraries of the C and
+# GCC runtime (libc, libm, libgcc_s) are allowed: Electron needs them too.
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -11,10 +19,61 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
 
-bin="${1:?binary name}"
+lib=""
+if [[ "${1:-}" == "--lib" ]]; then
+  lib=1
+  shift
+fi
+name="${1:?binary or package name}"
 target="${2:-${CROSS_COMPILE:?target}}"
-ext=""
-[[ "${target}" == *windows* ]] && ext=".exe"
+target_safe="${target//-/_}"
 
-file -h ".out/${bin}-${target}${ext}"
-dev/is-static-binary ".out/${bin}-${target}${ext}" "${target}"
+# Print the libraries a shared library needs, one per line.
+dependencies() {
+  local file="${1}" objdump otool
+  objdump="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
+  otool="$(printenv "OTOOL_${target_safe}" || printenv "OTOOL" || echo "otool")"
+  case "${target}" in
+  *-apple-darwin)
+    local id
+    id="$("${otool}" -D "${file}" | awk 'NR > 1')"
+    "${otool}" -L "${file}" | awk -v id="${id}" 'NR > 1 && $1 != id {print $1}'
+    ;;
+  *-windows-gnu) "${objdump}" -p "${file}" | awk '/DLL Name:/ {print $3}' ;;
+  *) "${objdump}" -p "${file}" | awk '$1 == "NEEDED" {print $2}' ;;
+  esac
+}
+
+# Print the dependencies that a user system does not provide.
+foreign_dependencies() {
+  local allowed="" denied=""
+  case "${target}" in
+  *-apple-darwin) allowed='^(/usr/lib/|/system/)' ;;
+  *-windows-gnu) denied='^(lib|node)' ;;
+  esac
+  dependencies "${1}" | awk -v allowed="${allowed}" -v denied="${denied}" '
+    { name = tolower($0) }
+    name ~ /openblas|gfortran|quadmath/ || (allowed != "" && name !~ allowed) || (denied != "" && name ~ denied)
+  '
+}
+
+if [[ -z "${lib}" ]]; then
+  ext=""
+  [[ "${target}" == *windows* ]] && ext=".exe"
+  file -h ".out/${name}-${target}${ext}"
+  dev/is-static-binary ".out/${name}-${target}${ext}" "${target}"
+  exit 0
+fi
+
+file=".out/${name}-${target}.node"
+file -h "${file}"
+printf 'Needs:\n'
+dependencies "${file}" | sed 's/^/  * /'
+foreign="$(foreign_dependencies "${file}")"
+if [[ -n "${foreign}" ]]; then
+  printf '%s needs libraries that user systems do not provide:\n' "${file}" >&2
+  while IFS= read -r dependency; do
+    printf '  * %s\n' "${dependency}" >&2
+  done <<<"${foreign}"
+  exit 1
+fi

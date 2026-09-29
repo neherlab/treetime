@@ -168,6 +168,11 @@ build-napi profile="dev":
 cross *args:
     dev/cross/all "$@" treetime
 
+# Cross-compile the Node addon of the desktop app (dist profile) for the Electron targets (host only, needs Docker): just cross-napi [--target=<triple>]
+[group("build")]
+cross-napi *args:
+    dev/cross/all --lib "$@" app-napi
+
 # Run a binary (dev profile): just run treetime ancestral --help
 [group("run")]
 run bin *args:
