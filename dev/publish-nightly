@@ -19,6 +19,11 @@
 set -euo pipefail
 trap "exit" INT
 
+# GitHub rejects release bodies over 125000 characters. A table row takes up to
+# about 200 characters, so this cap keeps the notes well below the limit after a
+# long gap between nightlies.
+MAX_LISTED_COMMITS=300
+
 # Resolve the source commit of the most recent published nightly, used as the
 # lower bound of the changelog. Always succeeds: on any lookup or resolution
 # failure it prints nothing so the caller falls back to notes without a
@@ -86,18 +91,27 @@ EOF
   all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}" 2>/dev/null) || return 0
 
   local orphan_table=""
+  local listed=0 omitted=0
   local line commit_sha commit_msg
   while IFS= read -r line; do
     [[ -n "${line}" ]] || continue
     commit_sha="${line%% *}"
     commit_msg="${line#* }"
     if [[ -z "${pr_shas}" ]] || ! grep -qF "${commit_sha}" <<<"${pr_shas}"; then
+      if ((listed >= MAX_LISTED_COMMITS)); then
+        omitted=$((omitted + 1))
+        continue
+      fi
       orphan_table+="| [\`${commit_sha:0:7}\`](https://github.com/${repo}/commit/${commit_sha}) | ${commit_msg//|/\\|} |"$'\n'
+      listed=$((listed + 1))
     fi
   done <<<"${all_commits}"
 
   if [[ -n "${orphan_table}" ]]; then
     printf "\n## Commits not in any PR\n\n| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
+  fi
+  if ((omitted > 0)); then
+    printf "\n%d older commits are not listed; the Compare link above shows all of them.\n" "${omitted}"
   fi
 }
 
