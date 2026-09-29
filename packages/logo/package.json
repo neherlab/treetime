@@ -1,0 +1,7 @@
+{
+  "name": "treetime-logo",
+  "private": true,
+  "dependencies": {
+    "svgo": "4.1.0"
+  }
+}

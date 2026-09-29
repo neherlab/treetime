@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+this_dir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+mask="${1:?input mask SVG required}"
+logo="${2:?output logo SVG required}"
+loading="${3:?output loading SVG required}"
+
+dial_top="#0B1B3A"
+dial_bottom="#07112A"
+tree_root="#4FE3C1"
+tree_tips="#B28CFF"
+tick_color="#5C7699"
+needle="#FFD166"
+casing="#091632"
+
+tick_outer=226
+tick_minor=208
+tick_major=196
+tree_gap=16
+hour_len=118
+minute_len=186
+hour_deg=-60
+minute_deg=0
+minute_period=1.2
+
+svgo_run() {
+  svgo --config="${this_dir}/svgo.config.mjs" --input=- --output=- --quiet
+}
+
+read -r mask_w mask_h < <(xmllint --xpath 'string(/*[local-name()="svg"]/@viewBox)' "${mask}" | awk '{print $3, $4}')
+render_mask() {
+  rsvg-convert -w "$((mask_w * 10))" -b white "${mask}" | convert - -threshold 50% -negate "$@"
+}
+IFS='x+' read -r bw _ bx _ < <(render_mask -format '%@\n' info:)
+IFS='x+' read -r _ th _ ty < <(render_mask -crop "6x$((mask_h * 10))+${bx}+0" +repage -format '%@\n' info:)
+
+read -r scale tx ty < <(awk -v bw="${bw}" -v bx="${bx}" -v th="${th}" -v ty="${ty}" \
+  -v inner="$((tick_outer - (tick_outer - tick_major) - tree_gap))" 'BEGIN{
+  s = 2 * inner / (bw / 10); tipx = bx / 10; tipy = (ty + th / 2) / 10
+  printf "%.5f %.3f %.3f\n", s, 256 - inner - tipx * s, 256 - tipy * s }')
+
+tree_path="$(
+  svgo_run <<SVG | xmllint --xpath 'string(//*[local-name()="path"]/@d)' -
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g transform="translate(${tx} ${ty}) scale(${scale})"><path d="$(xmllint --xpath 'string(//*[local-name()="path"]/@d)' "${mask}")"/></g></svg>
+SVG
+)"
+
+ticks="$(awk -v ro="${tick_outer}" -v rmin="${tick_minor}" -v rmaj="${tick_major}" 'BEGIN{
+  for (i = 0; i < 12; i++) { a = i * 3.14159265358979 / 6; ri = (i % 3 == 0) ? rmaj : rmin; w = (i % 3 == 0) ? 14 : 9
+    printf "<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke-width=\"%d\"/>", 256 + ri * sin(a), 256 - ri * cos(a), 256 + ro * sin(a), 256 - ro * cos(a), w } }')"
+
+hand() {
+  awk -v len="$1" -v deg="$2" -v w="$3" -v extra="$4" -v attrs="$5" 'BEGIN{
+    a = deg * 3.14159265358979 / 180
+    printf "<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke-width=\"%d\"%s/>", 256 - 20 * sin(a), 256 + 20 * cos(a), 256 + len * sin(a), 256 - len * cos(a), w + extra, attrs }'
+}
+
+needles() {
+  local hdeg="$1" mdeg="$2" hattr="$3" mattr="$4"
+  printf '<g stroke="%s" stroke-linecap="round">%s%s</g><circle cx="256" cy="256" r="27" fill="%s"/>' \
+    "${casing}" "$(hand "${hour_len}" "${hdeg}" 20 14 "${hattr}")" "$(hand "${minute_len}" "${mdeg}" 15 14 "${mattr}")" "${casing}"
+  printf '<g stroke="%s" stroke-linecap="round">%s%s</g><circle cx="256" cy="256" r="19" fill="%s"/>' \
+    "${needle}" "$(hand "${hour_len}" "${hdeg}" 20 0 "${hattr}")" "$(hand "${minute_len}" "${mdeg}" 15 0 "${mattr}")" "${needle}"
+}
+
+render() {
+  local style="$1" needle_markup="$2"
+  cat <<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${style}
+  <defs>
+    <linearGradient id="dial" x1="0" y1="0" x2=".4" y2="1">
+      <stop offset="0" stop-color="${dial_top}"/>
+      <stop offset="1" stop-color="${dial_bottom}"/>
+    </linearGradient>
+    <linearGradient id="tree" gradientUnits="userSpaceOnUse" x1="${tx}" y1="0" x2="$((512 - ${tx%.*}))" y2="0">
+      <stop offset="0" stop-color="${tree_root}"/>
+      <stop offset="1" stop-color="${tree_tips}"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#dial)"/>
+  <circle cx="256" cy="256" r="251" fill="none" stroke="url(#tree)" stroke-width="10" opacity=".55"/>
+  <g stroke="${tick_color}" stroke-linecap="round">${ticks}</g>
+  <path d="${tree_path}" fill="url(#tree)"/>
+  ${needle_markup}
+</svg>
+SVG
+}
+
+render "" "$(needles "${hour_deg}" "${minute_deg}" "" "")" | svgo_run >"${logo}"
+
+hour_period="$(awk -v p="${minute_period}" 'BEGIN{print p * 12}')"
+animation="<style>.h,.m{transform-origin:256px 256px;animation:linear infinite}.h{transform:rotate(${hour_deg}deg);animation-name:hour;animation-duration:${hour_period}s}.m{transform:rotate(${minute_deg}deg);animation-name:minute;animation-duration:${minute_period}s}@keyframes hour{to{transform:rotate($((hour_deg + 360))deg)}}@keyframes minute{to{transform:rotate($((minute_deg + 360))deg)}}@media (prefers-reduced-motion:reduce){.h,.m{animation:none}}</style>"
+render "${animation}" "$(needles 0 0 ' class="h"' ' class="m"')" | svgo_run >"${loading}"

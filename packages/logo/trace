@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+this_dir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+input="${1:?input PNG required}"
+output="${2:?output SVG required}"
+scale="${SCALE:-4}"
+threshold="${THRESHOLD:-35%}"
+blur="${BLUR:-6}"
+
+read -r width height < <(convert "${input}" -format '%w %h\n' info:)
+bg="$(convert "${input}" -format '%[pixel:p{0,0}]' info:)"
+
+convert "${input}" \
+  \( +clone -fill "${bg}" -colorize 100 \) \
+  -compose difference -composite \
+  -separate -evaluate-sequence max \
+  -filter Mitchell -resize "$((scale * 100))%" \
+  -threshold "${threshold}" \
+  -blur "0x${blur}" -threshold 50% -negate \
+  pbm:- |
+  potrace --svg --flat \
+    --turdsize="$((scale * scale * 4))" \
+    --opttolerance=1 \
+    --unit=1 \
+    --width="${width}pt" --height="${height}pt" \
+    --output=- |
+  svgo --config="${this_dir}/svgo.config.mjs" --input=- --output=- --quiet \
+    >"${output}"

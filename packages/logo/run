@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (($# == 0)); then
+  printf 'Usage: %s <command> [args...]\n' "$0" >&2
+  exit 1
+fi
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+image="treetime-logo:$(cat "${dir}/Dockerfile" "${dir}/Dockerfile.dockerignore" "${dir}/package.json" "${dir}/package-lock.json" | sha256sum | cut -c1-16)"
+
+if ! docker image inspect "${image}" >/dev/null 2>&1; then
+  docker build --quiet --file="${dir}/Dockerfile" --tag="${image}" "${dir}" >/dev/null
+fi
+
+tty_flag=()
+if [[ -t 0 && -t 1 ]]; then
+  tty_flag=(--tty)
+fi
+
+exec docker run --rm --interactive "${tty_flag[@]+"${tty_flag[@]}"}" \
+  --network="${NETWORK:-none}" \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --user="$(id -u):$(id -g)" \
+  --volume="${dir}:/workdir" \
+  --workdir="/workdir" \
+  "${image}" \
+  "$@"
