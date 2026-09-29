@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import { icons } from "@neherlab/app-ui/build/icons-vite";
+import { publicDir } from "@neherlab/app-ui/build/public-dir";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
@@ -37,6 +38,7 @@ function contentSecurityPolicyMeta(): Plugin {
 
 export default defineConfig({
   root: "renderer",
+  publicDir,
   plugins: [
     electron({
       main: {

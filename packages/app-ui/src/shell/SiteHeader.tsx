@@ -41,7 +41,8 @@ export function SiteHeader() {
     <header className="bg-background z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b px-3">
       <SidebarTrigger />
       <Separator orientation="vertical" className="data-vertical:h-4 data-vertical:self-auto" />
-      <div className="flex items-baseline gap-2 px-1">
+      <div className="flex items-center gap-2 px-1">
+        <img src={`${import.meta.env.BASE_URL}logo-small.svg`} alt="" className="size-6" />
         <span className="font-heading text-base font-bold">TreeTime</span>
         {version !== undefined && <span className="text-muted-foreground font-mono text-xs">v{version.version}</span>}
       </div>

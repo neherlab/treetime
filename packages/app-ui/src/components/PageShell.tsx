@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { cn } from "../ui/cn";
-import { Spinner } from "../ui/spinner";
 
 export function PageShell({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -35,8 +34,8 @@ export function PageHeading({
 
 export function LoadingState({ text }: { text: string }) {
   return (
-    <output className="text-muted-foreground flex items-center justify-center gap-2 p-10 text-sm">
-      <Spinner aria-hidden />
+    <output className="text-muted-foreground flex flex-col items-center justify-center gap-3 p-10 text-sm">
+      <img src={`${import.meta.env.BASE_URL}logo-loading.svg`} alt="" className="size-12" />
       {text}
     </output>
   );

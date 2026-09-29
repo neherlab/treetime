@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./build/auspice-vite": "./build/auspice-vite.ts",
     "./build/icons-vite": "./build/icons-vite.ts",
+    "./build/public-dir": "./build/public-dir.ts",
     "./icons": "./src/icons.d.ts"
   },
   "scripts": {

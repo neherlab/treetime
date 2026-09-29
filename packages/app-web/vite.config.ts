@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import { icons } from "@neherlab/app-ui/build/icons-vite";
+import { publicDir } from "@neherlab/app-ui/build/public-dir";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { RouteStore, formatUrl, parseHostname } from "portless";
@@ -24,6 +25,7 @@ logger.info = (msg, options) => {
 
 export default defineConfig({
   plugins: [auspice(), icons(), tailwindcss(), react(), portless()],
+  publicDir,
   customLogger: logger,
   clearScreen: false,
   server: {
