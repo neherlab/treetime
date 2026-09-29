@@ -40,6 +40,7 @@ app-output = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
+zip = { workspace = true }
 
 [lints]
 workspace = true

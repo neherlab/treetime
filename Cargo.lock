@@ -279,6 +279,7 @@ dependencies = [
  "tower",
  "treetime-schema",
  "treetime-utils",
+ "zip",
 ]
 
 [[package]]

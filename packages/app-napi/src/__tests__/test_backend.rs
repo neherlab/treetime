@@ -4,7 +4,8 @@ mod tests {
   use crate::port::PortReply;
   use app_output::output_plan::OutputSelection;
   use helpers::{
-    Ended, ancestral_request, event_ids, fetch, fetch_bytes, fetch_json, header, open_fetch, wait_for_terminal,
+    Ended, ancestral_request, archive_contents, event_ids, fetch, fetch_bytes, fetch_json, header, open_fetch,
+    wait_for_terminal,
   };
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
@@ -95,9 +96,9 @@ mod tests {
     assert_eq!(
       (
         fetch_bytes(&service, &format!("/api/runs/{id}/file?path=ancestral.nwk")),
-        fetch_bytes(&service, &format!("/api/runs/{id}/archive"))
+        archive_contents(fetch_bytes(&service, &format!("/api/runs/{id}/archive")))
       ),
-      (fs::read(&file).unwrap(), fs::read(&archive).unwrap())
+      (fs::read(&file).unwrap(), archive_contents(fs::read(&archive).unwrap()))
     );
   }
 
@@ -259,11 +260,13 @@ mod tests {
     use crate::backend::DesktopService;
     use crate::port::{PortError, PortHeader, PortReply, PortRequest};
     use serde_json::{Value, json};
+    use std::io::{Cursor, Read};
     use std::path::Path;
     use std::sync::mpsc;
     use std::time::Duration;
     use tokio::task::AbortHandle;
     use treetime_utils::o;
+    use zip::ZipArchive;
 
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum Ended {
@@ -342,6 +345,18 @@ mod tests {
       );
       assert_eq!(Ended::End, exchange.ended);
       (exchange.status, serde_json::from_slice(&exchange.body).unwrap())
+    }
+
+    pub(super) fn archive_contents(bytes: Vec<u8>) -> Vec<(String, Vec<u8>)> {
+      let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+      (0..archive.len())
+        .map(|index| {
+          let mut file = archive.by_index(index).unwrap();
+          let mut content = vec![];
+          file.read_to_end(&mut content).unwrap();
+          (file.name().to_owned(), content)
+        })
+        .collect()
     }
 
     pub(super) fn header(headers: &[(String, String)], name: &str) -> Option<String> {
