@@ -5,10 +5,10 @@ mod tests {
   use axum::body::Body;
   use axum::http::Request;
   use helpers::{header_of, headers_of, web_app};
-  use std::fs;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
+  use std::fs;
   use std::time::Duration;
 
   const IMMUTABLE: &str = "public, max-age=31536000, immutable";
