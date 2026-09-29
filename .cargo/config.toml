@@ -16,6 +16,10 @@ KACHE_PROGRESS = { value = "off", force = true }
 # - mold links fast; the link runs on every edit and is never cached
 # - frame pointers and v0 symbol mangling give profilers and backtraces full
 #   stacks and generic paths
+# - the OpenBLAS archive comes last on every link line: rustc links the
+#   openblas-src library only into targets that reach a crate naming it
+#   (ndarray-linalg), and test targets that call BLAS only through ndarray
+#   reach none
 # - the static OpenBLAS archive needs libgfortran and pthreads, which the
 #   openblas-src build script does not declare; both link statically, so the
 #   binaries and the Node addon do not depend on the compiler runtime
@@ -26,8 +30,18 @@ rustflags = [
   "-Cforce-frame-pointers=yes",
   "-Csymbol-mangling-version=v0",
   "-Clink-arg=-pthread",
-  "-Clink-arg=-lopenblas",
+  "-Clink-arg=-l:libopenblas.a",
   "-Clink-arg=-lgfortran",
   "-Clink-arg=-static-libgfortran",
   "-Clink-arg=-static-libgcc",
 ]
+
+# Link OpenBLAS statically, so no binary or Node addon depends on a system
+# OpenBLAS. This replaces the openblas-src build script, which asks for the
+# shared library: a host with the Debian package libopenblas-dev has both, and
+# the linker would pick libopenblas.so. The images install only the archive.
+# `-bundle` leaves the lookup to the linker, which finds the archive in its
+# library path; rustc would search only its `-L` directories. The cross images
+# have only the archive; dev/cross/build passes its directory to the linker.
+[target.x86_64-unknown-linux-gnu.openblas]
+rustc-link-lib = ["static:-bundle=openblas"]

@@ -56,6 +56,11 @@ case "${target}" in
   rustflags="${rust_arch} ${static}"
   ;;
 esac
+# The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. The
+# openblas-src build script passes that directory to the linker, but
+# .cargo/config.toml replaces the script for x86_64-unknown-linux-gnu, and the
+# cross linkers do not search LIBRARY_PATH.
+rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
 
 c_flags="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
 # RUSTFLAGS replaces the target rustflags of .cargo/config.toml (native mold

@@ -38,7 +38,7 @@ just setup
 just check
 ```
 
-Host builds go to `.build/host/`. The dylint and IQ-TREE tools are available on Linux only; run the recipes that need them in the container on other hosts.
+Host builds go to `.build/host/`. Host builds of the Rust code work on Linux x86_64 only; on macOS, build in the container. Every build links OpenBLAS statically: `.cargo/config.toml` makes the linker take `libopenblas.a` even where `libopenblas-dev` also installs the shared library, so no binary and no Node addon depends on a system OpenBLAS. On macOS, the pinned `openblas-src` links Homebrew's OpenBLAS, which also needs the gfortran and OpenMP runtimes, and the configuration passes no link flags for them. The dylint and IQ-TREE tools are available on Linux only; run the recipes that need them in the container on other hosts.
 
 ### Machine settings
 
