@@ -19,7 +19,6 @@ export function initDiagnostics(title: string, diagnosticDir: string): void {
     process.report.directory = diagnosticDir;
     process.report.reportOnFatalError = true;
     process.report.reportOnSignal = true;
-    process.report.signal = "SIGUSR2";
   }
 
   setHeapSnapshotNearHeapLimit(1);
