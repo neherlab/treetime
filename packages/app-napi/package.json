@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "description": "TreeTime desktop application - Rust native addon for Electron",
-  "main": "index.js",
+  "main": "app-napi.node",
   "types": "index.d.ts",
   "scripts": {
-    "build": "RUSTC_WRAPPER= napi build --platform --release --no-dts-header --dts index.build.d.ts"
+    "generate": "napi build --platform --no-js --no-dts-header"
   },
   "devDependencies": {
     "@napi-rs/cli": "3.10.3"

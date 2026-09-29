@@ -47,7 +47,7 @@ produce_ts_client() {
 
 produce_napi_types() {
   mkdir -p "${1}/packages/app-napi"
-  (cd packages/app-napi && RUSTC_WRAPPER="" node_modules/.bin/napi build --platform --no-js --no-dts-header --output-dir "${1}/packages/app-napi") >&2
+  (cd packages/app-napi && bun run --silent generate --output-dir "${1}/packages/app-napi") >&2
   printf 'packages/app-napi/index.d.ts\n'
 }
 

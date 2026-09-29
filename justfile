@@ -157,6 +157,12 @@ build-dist bin="treetime" *args:
 build-profiling bin="treetime" *args:
     cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
+# Build the Node addon of the desktop app and copy it to packages/app-napi/app-napi.node: just build-napi [dev|dist]
+[group("build")]
+build-napi profile="dev":
+    cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
+    cp {{ quote(CARGO_TARGET_DIR / (if profile == "dev" { "debug" } else { profile }) / "libapp_napi.so") }} packages/app-napi/app-napi.node
+
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
 cross *args:
@@ -477,12 +483,12 @@ health:
 status:
     dev/app status
 
-# Start the desktop app in development mode (in the container: TREETIME_DOCKER_X11=1)
+# Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
-desktop: _js
+desktop: _js (build-napi "dev")
     bun run --silent dev:desktop
 
-# Build the desktop app for production and start it from the checkout (in the container: TREETIME_DOCKER_X11=1)
+# Build the desktop app for production (Node addon of the dist profile) and start it from the checkout (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
 desktop-prod: build-desktop
     TREETIME_PROJECT_ROOT="${PWD}" node packages/app-desktop/node_modules/electron/cli.js packages/app-desktop --enable-logging
@@ -492,9 +498,9 @@ desktop-prod: build-desktop
 build-web: _js
     bun run --silent build:web
 
-# Production build of the desktop app
+# Production build of the desktop app, with the Node addon of the dist profile
 [group("app")]
-build-desktop: _js
+build-desktop: _js (build-napi "dist")
     bun run --silent build:desktop
 
 # Run all benchmarks (bench profile: the shipped dist settings)

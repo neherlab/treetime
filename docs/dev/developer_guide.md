@@ -171,7 +171,9 @@ The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TL
 
 ### Desktop app
 
-`just desktop` starts the Electron app in development mode. `just desktop-prod` builds the desktop app for production (the release Node addon and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
+`just desktop` starts the Electron app in development mode. `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
+
+The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like the CLI, and copied to `packages/app-napi/app-napi.node`, the `main` file of the package: `just build-napi` builds the `dev` profile for `just desktop`, and `just build-napi dist` the `dist` profile for `just build-desktop` and `just desktop-prod`. `just gen napi-types` generates its TypeScript types (`index.d.ts`).
 
 ## Generated files
 
