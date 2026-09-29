@@ -9,6 +9,20 @@
 # checked password, but every new wrong password costs one bcrypt check, and Caddy
 # has no limit of its own on guesses. The limit leaves room for the first page load
 # of the UI, which fetches many files.
+#
+# Caddy serves HTTP/1.1 and HTTP/2 only. The event streams of the UI need HTTP/2,
+# which lifts the browser limit of six connections per host; HTTP/3 (QUIC) runs in
+# user space and costs more CPU per byte than TCP on the two cores the server shares
+# with the runs.
+#
+# The app compresses its own responses and sends the UI files precompressed, so
+# Caddy does not compress again.
+{
+	servers {
+		protocols h1 h2
+	}
+}
+
 {$TREETIME_DOMAIN} {
 	rate_limit {
 		zone per_client {
@@ -21,6 +35,6 @@
 	basic_auth {
 		{$TREETIME_USER} {$TREETIME_PASSWORD_HASH}
 	}
-	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
 	reverse_proxy app:3100
 }

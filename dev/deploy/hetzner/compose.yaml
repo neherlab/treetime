@@ -17,6 +17,10 @@ services:
       - --data-dir=/app/data
       - --runs-dir=/runs
       - --max-upload-size=52428800
+      # The server answers only the hosts it knows: `app` for the health check of
+      # treetime-deploy, and the public domain that Caddy forwards.
+      - --allowed-host=app
+      - --allowed-host=${TREETIME_DOMAIN:?}
       - -j
       - "2"
     restart: unless-stopped
@@ -41,8 +45,7 @@ services:
     depends_on: [app]
     ports:
       - "80:80"
-      - "443:443/tcp"
-      - "443:443/udp"
+      - "443:443"
     environment:
       TREETIME_DOMAIN: ${TREETIME_DOMAIN:?}
       TREETIME_USER: ${TREETIME_USER:?}
