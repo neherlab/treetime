@@ -5,10 +5,10 @@
 # Install a web app release on the nightly server. Runs as the SSH forced
 # command of user `deploy` (/usr/local/bin/treetime-deploy), so it reads the
 # requested command from SSH_ORIGINAL_COMMAND and the release from stdin: a
-# zstd-compressed tar of `image.tar` (docker save of treetime-web:<tag>),
-# `compose.yaml`, and `Caddyfile`.
+# zstd-compressed tar of `image.tar` (docker save of treetime-web:<tag> and
+# treetime-caddy:<tag>), `compose.yaml`, and `Caddyfile`.
 #
-# The script loads the image, installs the files in the deploy directory, points
+# The script loads the images, installs the files in the deploy directory, points
 # TREETIME_TAG of its .env at the new tag, and restarts the stack. When the app
 # does not answer within 60 s, it restores the previous files and tag and exits
 # non-zero; on a first deploy it stops the stack instead.
@@ -26,6 +26,7 @@ previous_dir="${deploy_dir}/previous"
 history_file="${deploy_dir}/deployed-tags"
 health_timeout=60
 images_kept=3
+image_repositories=(treetime-web treetime-caddy)
 
 fail() {
   printf 'treetime-deploy: %s\n' "$*" >&2
@@ -107,15 +108,17 @@ rollback() {
 
 # Keep the images of the latest deployed tags, the current one included.
 prune_images() {
-  local kept images image
+  local kept repository images image
   kept="$(tail -n "${images_kept}" "${history_file}")"
-  images="$(docker image ls --format='{{.Repository}}:{{.Tag}}' treetime-web)"
-  while read -r image; do
-    [[ -z "${image}" ]] && continue
-    if ! grep -qxF -- "${image#treetime-web:}" <<<"${kept}"; then
-      docker image rm "${image}" >/dev/null || log "Could not remove ${image}"
-    fi
-  done <<<"${images}"
+  for repository in "${image_repositories[@]}"; do
+    images="$(docker image ls --format='{{.Repository}}:{{.Tag}}' "${repository}")"
+    while read -r image; do
+      [[ -z "${image}" ]] && continue
+      if ! grep -qxF -- "${image#"${repository}":}" <<<"${kept}"; then
+        docker image rm "${image}" >/dev/null || log "Could not remove ${image}"
+      fi
+    done <<<"${images}"
+  done
 }
 
 main() {
@@ -147,9 +150,12 @@ main() {
     [[ -f "${bundle}/${file}" && ! -L "${bundle}/${file}" ]] || fail "Not a regular file in the bundle: ${file}"
   done
 
-  log "Loading image treetime-web:${tag}"
+  log "Loading the images of ${tag}"
   docker load --quiet --input="${bundle}/image.tar"
-  docker image inspect "treetime-web:${tag}" >/dev/null 2>&1 || fail "The bundle does not contain image treetime-web:${tag}"
+  local repository
+  for repository in "${image_repositories[@]}"; do
+    docker image inspect "${repository}:${tag}" >/dev/null 2>&1 || fail "The bundle does not contain image ${repository}:${tag}"
+  done
 
   local current_tag
   current_tag="$(get_tag)"

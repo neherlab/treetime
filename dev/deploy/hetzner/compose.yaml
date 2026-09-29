@@ -35,7 +35,7 @@ services:
     # checks the health through the caddy container.
 
   caddy:
-    image: caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f
+    image: treetime-caddy:${TREETIME_TAG:?}
     restart: unless-stopped
     logging: *logging
     depends_on: [app]
@@ -51,6 +51,14 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+
+networks:
+  # Without IPv6 on the network, Docker forwards IPv6 connections through its
+  # userland proxy, and Caddy sees the address of the network gateway in place
+  # of the client: the rate limit of the Caddyfile would then count all IPv6
+  # clients as one.
+  default:
+    enable_ipv6: true
 
 volumes:
   caddy-data:

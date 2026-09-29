@@ -1,7 +1,7 @@
 name: "Deploy web app"
 
-# Builds the web app image for one commit and sends it to the nightly server
-# over SSH, without an image registry. The server runs
+# Builds the web app and Caddy images for one commit and sends them to the
+# nightly server over SSH, without an image registry. The server runs
 # dev/deploy/hetzner/treetime-deploy as the forced command of the deploy key,
 # which installs the release and rolls back when the app does not start.
 # Manual runs go through the nightly dispatcher: `dev/trigger-nightly --only web`.
@@ -52,7 +52,7 @@ jobs:
           dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           dockerhub-token: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
 
-      - name: "Build the image"
+      - name: "Build the images"
         id: build
         run: |
           sha="$(git rev-parse HEAD)"
@@ -80,7 +80,7 @@ jobs:
           )
           printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" >"${ssh_dir}/known_hosts"
 
-          docker save --output="${bundle}/image.tar" "treetime-web:${TAG}"
+          docker save --output="${bundle}/image.tar" "treetime-web:${TAG}" "treetime-caddy:${TAG}"
           cp dev/deploy/hetzner/compose.yaml dev/deploy/hetzner/Caddyfile "${bundle}/"
 
           # The server runs its forced command whatever command is sent, and

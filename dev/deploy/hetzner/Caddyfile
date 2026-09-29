@@ -2,7 +2,22 @@
 # one shared password. The browser asks for the password once and sends it with
 # every same-origin request, including the fetch calls and event streams of the UI.
 # Caddy stores only the bcrypt hash of the password.
+#
+# The rate limit (plugin github.com/mholt/caddy-ratelimit, dev/deploy/caddy.dockerfile)
+# runs before the password check and answers 429 above 600 requests per minute per
+# client address, or per /64 network for IPv6. Caddy caches the result of each
+# checked password, but every new wrong password costs one bcrypt check, and Caddy
+# has no limit of its own on guesses. The limit leaves room for the first page load
+# of the UI, which fetches many files.
 {$TREETIME_DOMAIN} {
+	rate_limit {
+		zone per_client {
+			key {remote_host}
+			events 600
+			window 1m
+			ipv6_prefix 64
+		}
+	}
 	basic_auth {
 		{$TREETIME_USER} {$TREETIME_PASSWORD_HASH}
 	}

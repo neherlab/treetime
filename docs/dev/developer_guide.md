@@ -316,10 +316,10 @@ The nightly deploys the web app (UI and API server) of `rust` to one Hetzner Clo
 How a deploy works:
 
 1. The `deploy-web` job of `nightly.yml` calls `.github/workflows/web-deploy.yml` for the same commit as the CLI release. It runs when a CLI nightly is built, or on every `--only web` run, and does not depend on the CLI jobs
-2. `dev/deploy/build-web-image <tag>` builds the static `treetime-server` binary for `x86_64-unknown-linux-musl`, the UI, and the image `treetime-web:<tag>` (`dev/deploy/web.dockerfile`), which only copies these artifacts and `data/`. The tag is the short commit hash. The same command builds the image locally
-3. The workflow sends the saved image, `compose.yaml`, and `Caddyfile` as one zstd-compressed tar stream over SSH, without an image registry
+2. `dev/deploy/build-web-image <tag>` builds the static `treetime-server` binary for `x86_64-unknown-linux-musl`, the UI, and the image `treetime-web:<tag>` (`dev/deploy/web.dockerfile`), which only copies these artifacts and `data/`. It also builds `treetime-caddy:<tag>` (`dev/deploy/caddy.dockerfile`): Caddy with the rate limit plugin `github.com/mholt/caddy-ratelimit`, because stock Caddy cannot limit requests. The tag is the short commit hash. The same command builds the images locally
+3. The workflow saves both images into one `image.tar` and sends it, `compose.yaml`, and `Caddyfile` as one zstd-compressed tar stream over SSH, without an image registry
 4. On the server, the SSH key of user `deploy` runs only `/usr/local/bin/treetime-deploy` (a copy of `dev/deploy/hetzner/treetime-deploy`). It loads the image, installs the files in `/opt/treetime/`, sets `TREETIME_TAG` in `/opt/treetime/.env`, and restarts the Docker Compose stack. When the app does not answer within 60 s, it restores the previous release and the job fails. It keeps the images of the last three deployed releases
-5. Caddy serves HTTPS with a Let's Encrypt certificate and asks for the password (HTTP Basic Auth) before it forwards requests to the app
+5. Caddy serves HTTPS with a Let's Encrypt certificate and asks for the password (HTTP Basic Auth) before it forwards requests to the app. Before the password check, it answers HTTP 429 to a client address (an IPv6 `/64` network counts as one address) above 600 requests per minute. Each new wrong password costs one bcrypt check, and the limit bounds the CPU that password guessing can take. The compose network has IPv6 enabled, because Docker otherwise forwards IPv6 connections through its userland proxy, and Caddy then sees the gateway address of the network in place of the client address
 
 The server has no login of its own, lists all runs to everyone who has the password, has no limit on parallel runs, and never deletes runs: they stay in `/opt/treetime/runs/`. The container limits of `compose.yaml` (2 CPUs, 3 GB memory, 50 MB of uploads per run) bound what one client can take from the server.
 
@@ -343,7 +343,7 @@ Membership in the `docker` group equals root on the server, and each deploy send
 
 #### Rollback and maintenance
 
-To run an older release, as admin set `TREETIME_TAG` in `/opt/treetime/.env` to one of the tags of `docker image ls treetime-web`, then run `docker compose up -d` in `/opt/treetime/`. The next deploy replaces it.
+To run an older release, as admin set `TREETIME_TAG` in `/opt/treetime/.env` to one of the tags of `docker image ls treetime-web` (the image `treetime-caddy` has the same tags), then run `docker compose up -d` in `/opt/treetime/`. The next deploy replaces it.
 
 The server installs security updates by itself and reboots at 03:00 UTC when an update requires it. Docker starts on boot and brings the stack back.
 
