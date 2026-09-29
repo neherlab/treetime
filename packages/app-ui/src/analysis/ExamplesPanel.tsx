@@ -1,8 +1,9 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, Dataset, ExampleConfig, RunRecord } from "@neherlab/app-contracts";
 import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
-import { Database, FileCog } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import Database from "~icons/lucide/database";
+import FileCog from "~icons/lucide/file-cog";
 
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";

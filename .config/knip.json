@@ -11,7 +11,8 @@
         "dev/lints/oxlint-anti-slop/effect/index.ts",
         "dev/lints/oxlint-anti-slop/**/*.test.ts"
       ],
-      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts"]
+      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts"],
+      "ignoreDependencies": ["react"]
     },
     "packages/app-contracts": {
       "entry": ["src/generated/index.ts"],
@@ -21,7 +22,7 @@
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
-      "ignoreDependencies": ["tw-animate-css"]
+      "ignoreDependencies": ["tw-animate-css", "@svgr/plugin-jsx"]
     },
     "packages/app-web": {
       "entry": ["index.html!"],

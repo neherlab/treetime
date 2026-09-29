@@ -1,5 +1,5 @@
-import { Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import Search from "~icons/lucide/search";
 
 import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";

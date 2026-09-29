@@ -1,6 +1,7 @@
 import type { RunRecord } from "@neherlab/app-contracts";
-import { CircleX, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import CircleX from "~icons/lucide/circle-x";
+import TriangleAlert from "~icons/lucide/triangle-alert";
 
 import { formatDuration } from "../format";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "../ui/card";

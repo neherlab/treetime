@@ -2,9 +2,11 @@ import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecord, RunResults } from "@neherlab/app-contracts";
 import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
 import { Link, Outlet, useChildMatches, useNavigate } from "@tanstack/react-router";
-import { Pin, PinOff, RotateCcw } from "lucide-react";
 import { DateTime } from "luxon";
 import { createContext, use, useCallback, useMemo } from "react";
+import Pin from "~icons/lucide/pin";
+import PinOff from "~icons/lucide/pin-off";
+import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useRunEvents } from "../api/events";
 import { useApi, useApiMutation } from "../api/hooks";

@@ -1,6 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
-import { Check, Copy } from "lucide-react";
 import { useCallback } from "react";
+import Check from "~icons/lucide/check";
+import Copy from "~icons/lucide/copy";
 
 import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";

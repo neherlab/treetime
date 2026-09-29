@@ -1,6 +1,7 @@
 import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
-import { ChevronRight, Search } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import ChevronRight from "~icons/lucide/chevron-right";
+import Search from "~icons/lucide/search";
 
 import { OptionToggle } from "../components/OptionToggle";
 import { COMMAND_SETTINGS, groupedSpecs, type SettingSpec } from "../settings/catalog";

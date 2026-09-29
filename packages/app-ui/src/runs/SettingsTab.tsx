@@ -1,8 +1,8 @@
 import type { RunRecord } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
-import { RotateCcw } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
+import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
 import { defaultText } from "../analysis/SettingField";

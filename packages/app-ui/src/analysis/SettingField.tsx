@@ -1,7 +1,7 @@
 import type { AppCommand } from "@neherlab/app-contracts";
-import { RotateCcw } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
+import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import type { SettingSpec } from "../settings/catalog";
 import { isChanged, resetValue } from "../settings/config";

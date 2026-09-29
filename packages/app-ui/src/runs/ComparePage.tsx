@@ -1,8 +1,8 @@
 import type { RunComparison, RunRecord } from "@neherlab/app-contracts";
 import { runsCompare, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeftRight } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import ArrowLeftRight from "~icons/lucide/arrow-left-right";
 
 import { defaultText } from "../analysis/SettingField";
 import { useApi, useApiQueries } from "../api/hooks";

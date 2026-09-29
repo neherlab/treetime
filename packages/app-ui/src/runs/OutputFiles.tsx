@@ -1,8 +1,8 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { RunRecord } from "@neherlab/app-contracts";
 import { runsFiles } from "@neherlab/app-contracts/client";
-import { Download } from "lucide-react";
 import { useCallback, useState } from "react";
+import Download from "~icons/lucide/download";
 
 import { useApiContext } from "../api/context";
 import { useApi } from "../api/hooks";

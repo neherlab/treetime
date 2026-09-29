@@ -6,7 +6,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./build/auspice-vite": "./build/auspice-vite.ts"
+    "./build/auspice-vite": "./build/auspice-vite.ts",
+    "./build/icons-vite": "./build/icons-vite.ts",
+    "./icons": "./src/icons.d.ts"
   },
   "scripts": {
     "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
@@ -28,7 +30,6 @@
     "cn": "0.3.0",
     "d3-scale": "4.0.2",
     "i18next": "19.9.2",
-    "lucide-react": "1.47.0",
     "luxon": "3.7.2",
     "next-themes": "0.4.6",
     "react": "catalog:",
@@ -48,6 +49,9 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "1.2.135",
+    "@svgr/core": "8.1.0",
+    "@svgr/plugin-jsx": "8.1.0",
     "@types/d3-scale": "4.0.9",
     "@types/luxon": "3.7.5",
     "@types/node": "catalog:",
@@ -56,6 +60,7 @@
     "@types/react-redux": "7.1.34",
     "@types/styled-components": "5.1.36",
     "typescript": "catalog:",
+    "unplugin-icons": "24.0.0",
     "vite": "catalog:"
   }
 }

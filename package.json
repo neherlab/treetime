@@ -55,6 +55,7 @@
     "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
     "oxlint-tsgolint": "7.0.2001",
+    "react": "catalog:",
     "turbo": "2.10.13",
     "typescript": "catalog:",
     "vite": "catalog:",

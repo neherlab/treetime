@@ -2,8 +2,8 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { useLocalStorage, useMediaQuery } from "@mantine/hooks";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
+import PanelLeftIcon from "~icons/lucide/panel-left";
 
 import { Button } from "./button";
 import { cn } from "./cn";
@@ -201,7 +201,7 @@ function SidebarTrigger({ className, ...props }: Omit<React.ComponentProps<typeo
       onClick={toggleSidebar}
       {...props}
     >
-      <PanelLeftIcon />
+      <PanelLeftIcon aria-hidden />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

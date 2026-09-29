@@ -1,7 +1,7 @@
 import { errorMessage } from "@neherlab/app-contracts";
 import type { AppCommand, CodeLine, ConfigCode } from "@neherlab/app-contracts";
-import { FileUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import FileUp from "~icons/lucide/file-up";
 
 import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";

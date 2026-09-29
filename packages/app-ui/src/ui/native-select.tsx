@@ -1,5 +1,5 @@
-import { ChevronDownIcon } from "lucide-react";
 import * as React from "react";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
 
 import { cn } from "./cn";
 

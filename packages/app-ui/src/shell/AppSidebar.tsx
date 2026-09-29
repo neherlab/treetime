@@ -1,9 +1,10 @@
 import type { AppCommand, RunSummary } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Plus, Search } from "lucide-react";
 import { DateTime } from "luxon";
 import { useCallback, useMemo } from "react";
+import Plus from "~icons/lucide/plus";
+import Search from "~icons/lucide/search";
 
 import { useApi } from "../api/hooks";
 import { toggledChoice } from "../components/toggleChoice";

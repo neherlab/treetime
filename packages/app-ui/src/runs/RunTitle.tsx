@@ -1,7 +1,7 @@
 import { errorMessage, type RunRecord } from "@neherlab/app-contracts";
 import { runsUpdate } from "@neherlab/app-contracts/client";
-import { Pencil } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import Pencil from "~icons/lucide/pencil";
 
 import { useApiMutation } from "../api/hooks";
 import { Button } from "../ui/button";

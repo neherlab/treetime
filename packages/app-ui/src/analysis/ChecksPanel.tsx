@@ -1,9 +1,14 @@
 import type { CheckLevel, RunCheck, RunSummary } from "@neherlab/app-contracts";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { Link } from "@tanstack/react-router";
-import { CircleAlert, CircleCheck, Copy, Info, OctagonX, Play } from "lucide-react";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
+import CircleAlert from "~icons/lucide/circle-alert";
+import CircleCheck from "~icons/lucide/circle-check";
+import Copy from "~icons/lucide/copy";
+import Info from "~icons/lucide/info";
+import OctagonX from "~icons/lucide/octagon-x";
+import Play from "~icons/lucide/play";
 
 import { Panel } from "../components/Panel";
 import { RUN_HOTKEY } from "../hotkeys";

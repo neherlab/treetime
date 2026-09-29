@@ -1,7 +1,7 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
-import { Upload } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
+import Upload from "~icons/lucide/upload";
 
 import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";

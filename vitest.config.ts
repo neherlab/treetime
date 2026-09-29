@@ -1,11 +1,12 @@
 import { defineConfig } from "vitest/config";
 
 import { auspice } from "./packages/app-ui/build/auspice-vite.ts";
+import { icons } from "./packages/app-ui/build/icons-vite.ts";
 
 const DETERMINISTIC_SEED = 20260919;
 
 export default defineConfig({
-  plugins: [auspice()],
+  plugins: [auspice(), icons()],
   test: {
     server: { deps: { inline: ["auspice"] } },
     include: ["packages/*/src/**/*.test.{ts,tsx}", "packages/*/build/**/*.test.ts"],

@@ -10,7 +10,9 @@ import {
   type Header,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import ArrowDown from "~icons/lucide/arrow-down";
+import ArrowUp from "~icons/lucide/arrow-up";
+import ArrowUpDown from "~icons/lucide/arrow-up-down";
 
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";

@@ -1,5 +1,6 @@
-import { CircleCheck, CircleX } from "lucide-react";
 import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
+import CircleCheck from "~icons/lucide/circle-check";
+import CircleX from "~icons/lucide/circle-x";
 
 import { formatDuration } from "../format";
 import {

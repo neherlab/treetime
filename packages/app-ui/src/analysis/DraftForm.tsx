@@ -3,9 +3,9 @@ import { configCheck, inputsCheck, runConfig as resolveRunConfig, runsList } fro
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { keepPreviousData } from "@tanstack/react-query";
-import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
+import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { useApi } from "../api/hooks";
 import { PageHeading, PageShell } from "../components/PageShell";

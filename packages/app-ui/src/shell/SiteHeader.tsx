@@ -1,8 +1,11 @@
 import { version as getVersion } from "@neherlab/app-contracts/client";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
-import { Monitor, Moon, Search, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useCallback } from "react";
+import { useCallback, type ComponentType, type SVGProps } from "react";
+import Monitor from "~icons/lucide/monitor";
+import Moon from "~icons/lucide/moon";
+import Search from "~icons/lucide/search";
+import Sun from "~icons/lucide/sun";
 
 import { useApi } from "../api/hooks";
 import { PALETTE_HOTKEY } from "../hotkeys";
@@ -17,7 +20,7 @@ const THEME_CYCLE = ["system", "light", "dark"] as const;
 
 type ThemeChoice = (typeof THEME_CYCLE)[number];
 
-const THEME_META: Record<ThemeChoice, { label: string; icon: LucideIcon }> = {
+const THEME_META: Record<ThemeChoice, { label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = {
   system: { label: "Theme follows the system", icon: Monitor },
   light: { label: "Light theme", icon: Sun },
   dark: { label: "Dark theme", icon: Moon },

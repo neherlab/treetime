@@ -1,6 +1,6 @@
-import { ArrowDown } from "lucide-react";
 import { useCallback } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
+import ArrowDown from "~icons/lucide/arrow-down";
 
 import { formatSeconds, type LogEntry } from "../results/progress";
 import { Button } from "../ui/button";

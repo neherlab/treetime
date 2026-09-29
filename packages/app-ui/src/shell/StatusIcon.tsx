@@ -1,9 +1,18 @@
 import type { RunStatus } from "@neherlab/app-contracts";
-import { Ban, CircleCheck, CircleDashed, CircleX, LoaderCircle, OctagonAlert, type LucideIcon } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
+import Ban from "~icons/lucide/ban";
+import CircleCheck from "~icons/lucide/circle-check";
+import CircleDashed from "~icons/lucide/circle-dashed";
+import CircleX from "~icons/lucide/circle-x";
+import LoaderCircle from "~icons/lucide/loader-circle";
+import OctagonAlert from "~icons/lucide/octagon-alert";
 
 import { cn } from "../ui/cn";
 
-const STATUS_LOOK: Record<RunStatus, { label: string; icon: LucideIcon; className: string }> = {
+const STATUS_LOOK: Record<
+  RunStatus,
+  { label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; className: string }
+> = {
   created: { label: "Waiting to start", icon: CircleDashed, className: "text-muted-foreground" },
   running: { label: "Running", icon: LoaderCircle, className: "text-primary animate-spin" },
   ok: { label: "Finished", icon: CircleCheck, className: "text-success" },

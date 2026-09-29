@@ -1,6 +1,6 @@
 import { Autocomplete } from "@base-ui/react/autocomplete";
-import { SearchIcon } from "lucide-react";
 import type * as React from "react";
+import SearchIcon from "~icons/lucide/search";
 
 import { cn } from "./cn";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
