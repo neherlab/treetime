@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <target>
+#
+# Check the unpacked desktop app that dev/desktop/package leaves in
+# .build/desktop/<target>/package: the Electron fuses of the executable, and
+# that the Node addon sits in app.asar.unpacked next to the app.asar archive,
+# because Electron cannot load a native library from inside the archive.
+#
+# Examples:
+#   $0 x86_64-unknown-linux-gnu
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+target="${1:?target}"
+output=".build/desktop/${target}/package"
+
+# The fuses that packages/app-desktop/electron-builder.config.ts sets, as
+# `electron-fuses read` prints them.
+expected_fuses=(
+  "RunAsNode is Disabled"
+  "EnableCookieEncryption is Enabled"
+  "EnableNodeOptionsEnvironmentVariable is Disabled"
+  "EnableNodeCliInspectArguments is Disabled"
+  "EnableEmbeddedAsarIntegrityValidation is Enabled"
+  "OnlyLoadAppFromAsar is Enabled"
+)
+
+case "${target}" in
+x86_64-unknown-linux-gnu) app="${output}/linux-unpacked/treetime" resources="${output}/linux-unpacked/resources" ;;
+aarch64-unknown-linux-gnu) app="${output}/linux-arm64-unpacked/treetime" resources="${output}/linux-arm64-unpacked/resources" ;;
+x86_64-pc-windows-gnu) app="${output}/win-unpacked/TreeTime.exe" resources="${output}/win-unpacked/resources" ;;
+x86_64-apple-darwin) app="${output}/mac/TreeTime.app" resources="${app}/Contents/Resources" ;;
+aarch64-apple-darwin) app="${output}/mac-arm64/TreeTime.app" resources="${app}/Contents/Resources" ;;
+*)
+  printf 'Unsupported desktop target: %s\n' "${target}" >&2
+  exit 1
+  ;;
+esac
+
+failed=0
+
+fuses="$(cd packages/app-desktop && NO_COLOR=1 FORCE_COLOR=0 bun run --silent read-fuses --app "${root}/${app}")"
+printf '%s\n' "${fuses}"
+for fuse in "${expected_fuses[@]}"; do
+  if ! grep -qxF "  ${fuse}" <<<"${fuses}"; then
+    printf 'Fuse not set: %s\n' "${fuse}" >&2
+    failed=1
+  fi
+done
+
+addon="${resources}/app.asar.unpacked/node_modules/@neherlab/app-napi/app-napi.node"
+for file in "${resources}/app.asar" "${addon}"; do
+  if [[ ! -f "${file}" ]]; then
+    printf 'Missing %s\n' "${file}" >&2
+    failed=1
+  fi
+done
+
+if ((failed)); then
+  printf 'Desktop package checks failed: %s\n' "${target}" >&2
+  exit 1
+fi
+printf 'Fuses set and addon outside app.asar: %s\n' "${target}" >&2

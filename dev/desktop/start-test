@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <target> [seconds]
+#
+# Start the packaged desktop app .out/treetime-desktop-<target>.<ext> on a
+# matching system and fail when it exits before the time limit (default 30
+# seconds) or logs an error of the Electron main process (`[TreeTime] ...`, for
+# example when the back end cannot load the Node addon). The app is stopped
+# after the time limit.
+#
+#   Linux     runs the AppImage; without DISPLAY, on a virtual display (Xvfb)
+#   Windows   extracts the zip archive and runs the app (Git Bash)
+#   macOS     copies the app out of the dmg and runs it
+#
+# Examples:
+#   $0 x86_64-unknown-linux-gnu
+#   $0 aarch64-apple-darwin 60
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+target="${1:?target}"
+seconds="${2:-30}"
+work="$(mktemp -d)"
+log="${work}/app.log"
+pids=()
+
+cleanup() {
+  local pid
+  for pid in "${pids[@]}"; do
+    kill "${pid}" 2>/dev/null || true # the process may have exited already
+  done
+  if [[ -n "${mounted:-}" ]]; then
+    hdiutil detach -quiet "${mounted}" || true # best effort; the runner discards the mount
+  fi
+}
+trap cleanup EXIT
+
+case "${target}" in
+*-linux-gnu)
+  app="${work}/treetime-desktop.AppImage"
+  cp ".out/treetime-desktop-${target}.AppImage" "${app}"
+  chmod +x "${app}"
+  if [[ -z "${DISPLAY:-}" ]]; then
+    export DISPLAY=":97"
+    Xvfb "${DISPLAY}" -screen 0 1280x1024x24 -nolisten tcp &
+    pids+=("$!")
+    sleep 2
+  fi
+  ;;
+*-windows-gnu)
+  unzip -q ".out/treetime-desktop-${target}.zip" -d "${work}/app"
+  app="${work}/app/TreeTime.exe"
+  ;;
+*-apple-darwin)
+  mounted="${work}/dmg"
+  hdiutil attach -quiet -nobrowse -readonly -mountpoint "${mounted}" ".out/treetime-desktop-${target}.dmg"
+  cp -R "${mounted}/TreeTime.app" "${work}/"
+  hdiutil detach -quiet "${mounted}"
+  mounted=""
+  app="${work}/TreeTime.app/Contents/MacOS/TreeTime"
+  ;;
+*)
+  printf 'Unsupported desktop target: %s\n' "${target}" >&2
+  exit 1
+  ;;
+esac
+
+if [[ ! -f "${app}" ]]; then
+  printf 'App not found: %s\n' "${app}" >&2
+  exit 1
+fi
+
+ELECTRON_ENABLE_LOGGING=1 "${app}" --enable-logging >"${log}" 2>&1 &
+app_pid="$!"
+pids+=("${app_pid}")
+
+status=""
+for ((second = 0; second < seconds; second++)); do
+  if ! kill -0 "${app_pid}" 2>/dev/null; then
+    status=0
+    wait "${app_pid}" || status="$?"
+    break
+  fi
+  sleep 1
+done
+
+printf 'Log of %s:\n' "${app}"
+cat "${log}"
+
+if [[ -n "${status}" ]]; then
+  printf 'The app exited after %s seconds with status %s\n' "${second}" "${status}" >&2
+  exit 1
+fi
+if grep -qF '[TreeTime]' "${log}"; then
+  printf 'The app logged an error (lines starting with [TreeTime] above)\n' >&2
+  exit 1
+fi
+printf 'The app ran for %s seconds without errors: %s\n' "${seconds}" "${target}" >&2

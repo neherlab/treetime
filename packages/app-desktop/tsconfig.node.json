@@ -5,5 +5,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["vite.config.ts", "build"]
+  "include": ["vite.config.ts", "electron-builder.config.ts", "build"]
 }

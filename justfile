@@ -508,6 +508,13 @@ build-web: _js
 build-desktop: _js (build-napi "dist")
     bun run --silent build:desktop
 
+# Package the desktop app into .out/treetime-desktop-<target>.<ext>: just package-desktop [x86_64-unknown-linux-gnu|x86_64-pc-windows-gnu|...]; other targets need the addon from `just cross-napi`
+[group("app")]
+package-desktop target="x86_64-unknown-linux-gnu": _js
+    if [[ {{ quote(target) }} == "x86_64-unknown-linux-gnu" ]]; then just build-napi dist && mkdir -p .out && cp packages/app-napi/app-napi.node .out/app-napi-x86_64-unknown-linux-gnu.node; fi
+    bun run --silent build:desktop
+    dev/desktop/package {{ quote(target) }}
+
 # Run all benchmarks (bench profile: the shipped dist settings)
 [group("bench")]
 bench *args:

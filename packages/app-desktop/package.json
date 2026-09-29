@@ -7,12 +7,15 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "package": "electron-builder",
+    "read-fuses": "electron-fuses read"
   },
   "dependencies": {
     "@neherlab/app-napi": "workspace:*"
   },
   "devDependencies": {
+    "@electron/fuses": "1.8.0",
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
@@ -21,6 +24,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "electron": "44.4.1",
+    "electron-builder": "26.16.1",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",

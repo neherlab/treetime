@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <target>
+#
+# Package the desktop app of a target with electron-builder and copy the result
+# to .out/treetime-desktop-<target>.<ext>: an AppImage for Linux, a zip archive
+# for Windows, a dmg for macOS. Stages the app with dev/desktop/stage
+# first and checks the unpacked app with dev/desktop/check afterwards, so the
+# inputs of dev/desktop/stage must exist.
+#
+# Linux and Windows packages build on Linux x86_64 (the native image). macOS
+# packages build only on macOS, where the dmg tools and codesign exist.
+#
+# Downloads (Electron, AppImage tools, 7-Zip) are cached in
+# .build/desktop/cache, because the home directory of the container is not kept.
+#
+# Environment:
+#   TREETIME_VERSION_SUFFIX   Prerelease suffix of the app version (see dev/desktop/stage)
+#
+# Examples:
+#   $0 x86_64-unknown-linux-gnu
+#   $0 x86_64-pc-windows-gnu
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+target="${1:?target}"
+
+case "${target}" in
+x86_64-unknown-linux-gnu) platform=(--linux --x64) ext="AppImage" ;;
+aarch64-unknown-linux-gnu) platform=(--linux --arm64) ext="AppImage" ;;
+x86_64-pc-windows-gnu) platform=(--win --x64) ext="zip" ;;
+x86_64-apple-darwin) platform=(--mac --x64) ext="dmg" ;;
+aarch64-apple-darwin) platform=(--mac --arm64) ext="dmg" ;;
+*)
+  printf 'Unsupported desktop target: %s (see dev/cross/targets-desktop)\n' "${target}" >&2
+  exit 1
+  ;;
+esac
+if [[ "${target}" == *-apple-darwin && "$(uname -s)" != "Darwin" ]]; then
+  printf 'macOS packages build only on macOS: %s\n' "${target}" >&2
+  exit 1
+fi
+
+stage="$(dev/desktop/stage "${target}")"
+output="$(dirname "${stage}")/package"
+rm -rf "${output}"
+
+export ELECTRON_CACHE="${root}/.build/desktop/cache/electron"
+export ELECTRON_BUILDER_CACHE="${root}/.build/desktop/cache/electron-builder"
+export TREETIME_DESKTOP_TARGET="${target}"
+
+(
+  cd packages/app-desktop && bun run --silent package \
+    --projectDir "${root}/${stage}" \
+    --config "${root}/packages/app-desktop/electron-builder.config.ts" \
+    --publish never \
+    "${platform[@]}"
+)
+
+dev/desktop/check "${target}"
+
+artifact="treetime-desktop-${target}.${ext}"
+mkdir -p .out
+cp "${output}/${artifact}" ".out/${artifact}"
+printf 'Built .out/%s\n' "${artifact}" >&2

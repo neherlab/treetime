@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <target>
+#
+# Stage the desktop app of a target for electron-builder in
+# .build/desktop/<target>/app, and print that directory. The staged app holds
+# the Vite bundles of packages/app-desktop (dist/, dist-electron/), a minimal
+# package.json, and the Node addon .out/app-napi-<target>.node as the package
+# node_modules/@neherlab/app-napi. The addon package is the only production
+# dependency: electron-builder copies from node_modules only the packages of the
+# production dependency tree, and the Bun workspace (symlinks, isolated linker)
+# would give it the whole development tree.
+#
+# Build the bundles first (`bun run build:desktop`) and the addon with
+# `dev/cross/build --lib app-napi <target>` or `just build-napi dist`.
+#
+# Environment:
+#   TREETIME_VERSION_SUFFIX   Prerelease suffix of the app version, as in the
+#                             CLI (nightly builds: nightly.<timestamp>+<sha>)
+#
+# Examples:
+#   $0 x86_64-unknown-linux-gnu
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+target="${1:?target}"
+desktop="packages/app-desktop"
+addon=".out/app-napi-${target}.node"
+stage=".build/desktop/${target}/app"
+
+for input in "${desktop}/dist/index.html" "${desktop}/dist-electron/main.js" "${addon}"; do
+  if [[ ! -f "${input}" ]]; then
+    printf 'Missing %s; build the desktop bundles and the addon first (see --help)\n' "${input}" >&2
+    exit 1
+  fi
+done
+
+version="$(yq -r '.workspace.package.version' Cargo.toml)"
+if [[ -n "${TREETIME_VERSION_SUFFIX:-}" ]]; then
+  version="${version}-${TREETIME_VERSION_SUFFIX}"
+fi
+napi_version="$(jq -r '.version' packages/app-napi/package.json)"
+
+rm -rf "${stage}"
+mkdir -p "${stage}/node_modules/@neherlab/app-napi"
+cp -R "${desktop}/dist" "${desktop}/dist-electron" "${stage}/"
+cp "${addon}" "${stage}/node_modules/@neherlab/app-napi/app-napi.node"
+
+jq -n \
+  --arg version "${napi_version}" \
+  '{name: "@neherlab/app-napi", version: $version, main: "app-napi.node"}' \
+  >"${stage}/node_modules/@neherlab/app-napi/package.json"
+
+yq -p toml -o json '.workspace.package' Cargo.toml | jq \
+  --arg version "${version}" \
+  --arg napi_version "${napi_version}" \
+  '{
+    name: "treetime",
+    productName: "TreeTime",
+    version: $version,
+    description: .description,
+    homepage: .homepage,
+    license: .license,
+    author: (.authors[0] | capture("^(?<name>[^<]+) <(?<url>[^>]+)>$")),
+    main: "dist-electron/main.js",
+    desktopName: "treetime.desktop",
+    dependencies: {"@neherlab/app-napi": $napi_version}
+  }' >"${stage}/package.json"
+
+printf '%s\n' "${stage}"

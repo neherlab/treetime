@@ -175,6 +175,20 @@ The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TL
 
 The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like the CLI, and copied to `packages/app-napi/app-napi.node`, the `main` file of the package: `just build-napi` builds the `dev` profile for `just desktop`, and `just build-napi dist` the `dist` profile for `just build-desktop` and `just desktop-prod`. `just gen napi-types` generates its TypeScript types (`index.d.ts`).
 
+#### Packages
+
+`just package-desktop [target]` packages the desktop app with [electron-builder](https://www.electron.build) into `.out/treetime-desktop-<target>.<ext>`:
+
+- Linux (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`): an AppImage, which runs without installation
+- Windows (`x86_64-pc-windows-gnu`): a zip archive; users extract it and start `TreeTime.exe`
+- macOS (`x86_64-apple-darwin`, `aarch64-apple-darwin`): a dmg
+
+The recipe builds the addon for the native target `x86_64-unknown-linux-gnu` itself; the other targets take the addon from `just cross-napi` (see [Cross-compilation and releases](#cross-compilation-and-releases)). Linux and Windows packages build in the container; electron-builder downloads Electron, the AppImage tools, and 7-Zip into `.build/desktop/cache/`. macOS packages build only on macOS, because the dmg tools and `codesign` exist only there. `dev/desktop/package --help` describes the steps: `dev/desktop/stage` puts the bundles, a minimal `package.json`, and the addon into `.build/desktop/<target>/app`, electron-builder packages that directory with `packages/app-desktop/electron-builder.config.ts`, and `dev/desktop/check` checks the Electron fuses and that the addon sits outside `app.asar`. `dev/desktop/start-test <target>` starts a package and fails when it exits early or logs an error.
+
+The packages set the Electron [fuses](https://www.electronjs.org/docs/latest/tutorial/fuses) that turn off running the app as plain Node.js (`RunAsNode`, `NODE_OPTIONS`, `--inspect`) and load the app only from its integrity-checked `app.asar`. They are not signed with a developer certificate: on macOS they carry an ad-hoc signature, and macOS (Gatekeeper) and Windows (SmartScreen) ask the user to confirm the first start. The app has the default Electron icon.
+
+On Ubuntu 24.04 and newer, AppArmor blocks the unprivileged user namespaces that the Chromium sandbox needs. The AppImage cannot install an AppArmor profile, so its start script detects the block and starts the app with `--no-sandbox`: on those systems the app runs without the Chromium sandbox. The AppImage uses the static AppImage runtime, which needs only `fusermount3` (installed by default on Ubuntu) and not `libfuse2`.
+
 ## Generated files
 
 The JSON schemas, the OpenAPI document, its TypeScript client, and the CLI reference documentation are generated and committed. `just gen` regenerates them, and `just generated-check`, part of `check-all`, fails when a committed copy is stale. Never edit them by hand.
