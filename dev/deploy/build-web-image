@@ -31,12 +31,13 @@ aarch64-unknown-linux-musl) platform="linux/arm64" ;;
   ;;
 esac
 
-CROSS_COMPILE="${target}" dev/docker/run dev/cross/build treetime-server
-CROSS_COMPILE="${target}" dev/docker/run dev/cross/check treetime-server
-
-# CI exports CROSS_COMPILE for the whole job, and the cross images have no bun.
-CROSS_COMPILE=native dev/docker/run bun install --frozen-lockfile
-CROSS_COMPILE=native dev/docker/run bun run build:web
+# The cross image also holds bun and node, so the server binary and the UI build
+# in one image.
+export CROSS_COMPILE="${target}"
+dev/docker/run dev/cross/build treetime-server
+dev/docker/run dev/cross/check treetime-server
+dev/docker/run bun install --frozen-lockfile
+dev/docker/run bun run build:web
 
 docker build \
   --platform="${platform}" \

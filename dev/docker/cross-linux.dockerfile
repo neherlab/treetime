@@ -256,9 +256,10 @@ RUN set -euxo pipefail >/dev/null \
 && if [[ "${CROSS_COMPILE}" =~ (mingw|windows) ]]; then /install-wine-bcryptprimitives "/opt/wine"; fi \
 && rm /install-wine-bcryptprimitives
 
-# kache, the optional compiler cache of dev/cross/build, at the version, URL, and
-# sha256 of .config/mise.lock, so the cross and development images run the same
-# kache.
+# kache, the optional compiler cache of dev/cross/build, and bun and node, which
+# build the web UI next to the server binary (dev/deploy/build-web-image), at the
+# versions, URLs, and sha256 of .config/mise.lock, so the cross and development
+# images run the same tools.
 ENV MISE_DATA_DIR="/opt/mise"
 ENV MISE_CACHE_DIR="/tmp/mise/cache"
 ENV MISE_STATE_DIR="/tmp/mise/state"
@@ -267,8 +268,13 @@ RUN set -euxo pipefail >/dev/null \
 && /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \
 && tar -xzf "/tmp/mise.tar.gz" --strip-components=2 -C "/usr/local/bin" "mise/bin/mise" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
-&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" \
-&& ln -sf -t "/usr/local/bin" "$(mise -C "/tmp/mise/project" which kache)" \
+&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "bun" "node" \
+&& ln -sf -t "/usr/local/bin" \
+  "$(mise -C "/tmp/mise/project" which kache)" \
+  "$(mise -C "/tmp/mise/project" which bun)" \
+  "$(mise -C "/tmp/mise/project" which node)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
 && rm -rf "/tmp/mise" "/tmp/mise.tar.gz" "/usr/local/bin/mise" \
-&& kache --version
+&& kache --version \
+&& bun --version \
+&& node --version
