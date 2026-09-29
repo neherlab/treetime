@@ -1,0 +1,94 @@
+name: "Deploy web app"
+
+# Builds the web app image for one commit and sends it to the nightly server
+# over SSH, without an image registry. The server runs
+# dev/deploy/hetzner/treetime-deploy as the forced command of the deploy key,
+# which installs the release and rolls back when the app does not start.
+# Manual runs go through the nightly dispatcher: `dev/trigger-nightly --only web`.
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: "Immutable source commit to deploy"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+
+jobs:
+  deploy:
+    name: "Build and deploy the web app"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    # Holds DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, and DEPLOY_HOST; limited to rust and master.
+    environment: nightly-web
+    concurrency:
+      group: web-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      # The cache name differs from the `release` cache of the CLI build: both
+      # jobs run at the same time, cache keys cannot be overwritten, and a
+      # shared key leaves one of the jobs without its compiled crates.
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          image: x86_64-unknown-linux-musl
+          cache: web
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+
+      - name: "Build the image"
+        id: build
+        run: |
+          sha="$(git rev-parse HEAD)"
+          tag="${sha:0:7}"
+          dev/deploy/build-web-image "${tag}"
+          printf 'tag=%s\n' "${tag}" >>"${GITHUB_OUTPUT}"
+
+      - name: "Deploy"
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          TAG: ${{ steps.build.outputs.tag }}
+        run: |
+          : "${DEPLOY_SSH_KEY:?secret DEPLOY_SSH_KEY of environment nightly-web is not set}"
+          : "${DEPLOY_KNOWN_HOSTS:?secret DEPLOY_KNOWN_HOSTS of environment nightly-web is not set}"
+          : "${DEPLOY_HOST:?variable DEPLOY_HOST of environment nightly-web is not set}"
+
+          ssh_dir="$(mktemp -d)"
+          bundle="$(mktemp -d)"
+          trap 'rm -rf "${ssh_dir}" "${bundle}"' EXIT
+          (
+            umask 077
+            printf '%s\n' "${DEPLOY_SSH_KEY}" >"${ssh_dir}/key"
+          )
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" >"${ssh_dir}/known_hosts"
+
+          docker save --output="${bundle}/image.tar" "treetime-web:${TAG}"
+          cp dev/deploy/hetzner/compose.yaml dev/deploy/hetzner/Caddyfile "${bundle}/"
+
+          # The server runs its forced command whatever command is sent, and
+          # reads "deploy <tag>" from SSH_ORIGINAL_COMMAND.
+          tar -C "${bundle}" -cf - . | zstd -T0 | ssh \
+            -i "${ssh_dir}/key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${ssh_dir}/known_hosts" \
+            "deploy@${DEPLOY_HOST}" deploy "${TAG}"

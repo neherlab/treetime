@@ -1,4 +1,4 @@
-name: "Nightly CLI release"
+name: "Nightly CLI release and web deploy"
 
 on:
   workflow_call:
@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      only:
+        description: "What to run: cli (CLI release), web (web app deploy), or both"
+        required: false
+        type: string
+        default: "both"
 
 permissions:
   contents: read
@@ -36,7 +41,16 @@ jobs:
         id: prepare
         env:
           GH_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
+          ONLY: ${{ inputs.only }}
         run: |
+          case "${ONLY}" in
+          cli | web | both) ;;
+          *)
+            printf 'Invalid input only: "%s". Expected cli, web, or both\n' "${ONLY}" >&2
+            exit 1
+            ;;
+          esac
+
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
           latest_tag=$(gh release list --repo "${RELEASE_REPOSITORY}" --exclude-drafts --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
@@ -56,7 +70,7 @@ jobs:
   build:
     name: "Build"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true'
+    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
     uses: neherlab/treetime/.github/workflows/cli-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
@@ -67,7 +81,7 @@ jobs:
   publish:
     name: "Publish nightly release"
     needs: [prepare, build]
-    if: needs.prepare.outputs.should_build == 'true'
+    if: needs.prepare.outputs.should_build == 'true' && inputs.only != 'web'
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
@@ -93,3 +107,16 @@ jobs:
             --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
             --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
+
+  # Independent of build and publish, so a failure of the web deploy or of the
+  # CLI release never blocks the other. should_build compares only with the
+  # latest CLI release, so the cron deploys exactly when a CLI nightly is built,
+  # and a manual web-only run always deploys.
+  deploy-web:
+    name: "Deploy web app"
+    needs: prepare
+    if: inputs.only != 'cli' && (needs.prepare.outputs.should_build == 'true' || inputs.only == 'web')
+    uses: neherlab/treetime/.github/workflows/web-deploy.yml@rust
+    with:
+      source_ref: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
