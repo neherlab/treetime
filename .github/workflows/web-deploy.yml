@@ -54,6 +54,8 @@ jobs:
 
       - name: "Build the images"
         id: build
+        env:
+          TREETIME_DOCKER_PUSH: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN != '' && '1' || '' }}
         run: |
           sha="$(git rev-parse HEAD)"
           tag="${sha:0:7}"

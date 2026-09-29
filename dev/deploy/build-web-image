@@ -8,6 +8,10 @@
 # proxy with rate limiting (dev/deploy/caddy.dockerfile). Run it on the host; the
 # compilation runs in the build containers of dev/docker/run.
 #
+# Environment:
+#   TREETIME_DOCKER_PUSH=1  Push a newly built Caddy image to the registry, as
+#                           dev/docker/run does with its images (CI only)
+#
 # Examples:
 #   $0 local
 #   $0 "$(git rev-parse --short HEAD)"
@@ -17,6 +21,8 @@ shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
 
 tag="${1:?image tag}"
 target="${2:-x86_64-unknown-linux-musl}"
@@ -30,6 +36,8 @@ aarch64-unknown-linux-musl) platform="linux/arm64" ;;
   exit 1
   ;;
 esac
+
+caddy_registry="neherlab/treetime_builder"
 
 # The cross image also holds bun and node, so the server binary and the UI build
 # in one image.
@@ -46,8 +54,20 @@ docker build \
   --tag="treetime-web:${tag}" \
   .
 
-# The Caddy image needs no build context.
-docker build \
-  --platform="${platform}" \
-  --tag="treetime-caddy:${tag}" \
-  - <dev/deploy/caddy.dockerfile
+# The Caddy image changes only with its Dockerfile. It is named by a hash of the
+# Dockerfile and the platform in the registry of dev/docker/run, pulled when the
+# registry has it, and built otherwise; TREETIME_DOCKER_PUSH=1 (CI) pushes a new
+# build. The build needs no context.
+caddy_image="${caddy_registry}:caddy-$(hash_files dev/deploy/caddy.dockerfile "${platform}")"
+if ! docker image inspect "${caddy_image}" >/dev/null 2>&1 &&
+  ! docker pull --quiet --platform="${platform}" "${caddy_image}" >/dev/null 2>&1; then
+  printf 'Building image %s\n' "${caddy_image}" >&2
+  docker build \
+    --platform="${platform}" \
+    --tag="${caddy_image}" \
+    - <dev/deploy/caddy.dockerfile
+  if [[ "${TREETIME_DOCKER_PUSH:-}" == 1 ]]; then
+    docker push --quiet "${caddy_image}"
+  fi
+fi
+docker tag "${caddy_image}" "treetime-caddy:${tag}"
