@@ -107,12 +107,16 @@ EOF
     fi
   done <<<"${all_commits}"
 
-  if [[ -n "${orphan_table}" ]]; then
-    printf "\n## Commits not in any PR\n\n| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
-  fi
+  [[ -n "${orphan_table}" ]] || return 0
+
+  # A collapsed section keeps the release page short; GitHub renders Markdown
+  # inside <details> only after a blank line.
+  printf "\n<details>\n<summary><strong>Commits not in any PR</strong> (%d)</summary>\n\n" "$((listed + omitted))"
+  printf "| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
   if ((omitted > 0)); then
     printf "\n%d older commits are not listed; the Compare link above shows all of them.\n" "${omitted}"
   fi
+  printf "\n</details>\n"
 }
 
 main() {
