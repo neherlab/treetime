@@ -21,7 +21,6 @@ treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 
 aide = { workspace = true }
-async-stream = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }
 ctor = { workspace = true }

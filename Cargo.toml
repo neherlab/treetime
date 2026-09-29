@@ -117,7 +117,6 @@ aide = { version = "=0.16.0-alpha.4", features = ["axum", "axum-json", "axum-que
 approx = "=0.5.1"
 argmin = "=0.10.0"
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
-async-stream = "=0.3.6"
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", features = ["json"] }
 bon = "=3.9.3"
