@@ -4,6 +4,12 @@ import { router } from "../router";
 
 const RUN_TABS = ["results", "settings", "log"] as const;
 
+describe("root route", () => {
+  test("the root path matches the index route that opens a new analysis", () => {
+    expect(router.matchRoutes("/").at(-1)?.routeId).toBe("/");
+  });
+});
+
 describe("run routes", () => {
   test.each(RUN_TABS)("the %s tab of a run is a child of the run page route", (tab) => {
     expect(router.matchRoutes(`/runs/r1/${tab}`).map((match) => match.routeId)).toStrictEqual([
