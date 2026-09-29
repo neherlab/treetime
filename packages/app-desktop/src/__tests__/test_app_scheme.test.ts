@@ -1,12 +1,10 @@
-import * as path from "node:path";
-
 import { describe, expect, test } from "vitest";
 
 import { APP_URL, resolveAppAsset } from "../app-scheme";
 
-const ROOT = path.resolve("/opt/treetime/resources/app.asar/dist");
+const ROOT = "/opt/treetime/resources/app.asar/dist";
 
-const INDEX = { kind: "file", path: path.join(ROOT, "index.html") };
+const INDEX = { kind: "file", path: `${ROOT}/index.html` };
 
 const NOT_FOUND = { kind: "not-found" };
 
@@ -29,7 +27,7 @@ describe("app scheme", () => {
     ["style", "app://treetime/assets/index-C2.css", "assets/index-C2.css"],
     ["encoded name", "app://treetime/fonts/a%20b.woff2", "fonts/a b.woff2"],
   ])("a %s serves its file", (_name, url, file) => {
-    expect(resolveAppAsset(url, ROOT)).toStrictEqual({ kind: "file", path: path.join(ROOT, file) });
+    expect(resolveAppAsset(url, ROOT)).toStrictEqual({ kind: "file", path: `${ROOT}/${file}` });
   });
 
   test.each([

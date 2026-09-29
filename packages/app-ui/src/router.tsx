@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Navigate } from "@tanstack/react-router";
 
 import { NewAnalysisPage } from "./analysis/NewAnalysisPage";
+import { NotFoundPage } from "./NotFoundPage";
 import { MAIN_SCROLL_ID, RootLayout } from "./RootLayout";
 import { ComparePage } from "./runs/ComparePage";
 import { RunLogTab, RunPage, RunResultsTab, RunSettingsTab } from "./runs/RunPage";
@@ -33,6 +34,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  defaultNotFoundComponent: NotFoundPage,
   scrollRestoration: true,
   scrollToTopSelectors: [`#${MAIN_SCROLL_ID}`],
 });

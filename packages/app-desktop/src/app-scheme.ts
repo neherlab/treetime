@@ -42,7 +42,7 @@ export function resolveAppAsset(url: string, root: string): AppAsset {
 
 function decodePath(pathname: string): string | undefined {
   try {
-    return decodeURIComponent(pathname).replace(/^\/+/, "");
+    return decodeURIComponent(pathname).replace(/^\/+/u, "");
   } catch {
     return undefined;
   }

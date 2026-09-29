@@ -222,7 +222,7 @@ async function serveAppAsset(request: Request): Promise<Response> {
   }
 
   try {
-    return await net.fetch(pathToFileURL(asset.path).href);
+    return await net.fetch(pathToFileURL(asset.path).href, { signal: request.signal });
   } catch {
     return new Response(null, { status: 404 });
   }
