@@ -205,11 +205,15 @@ jobs:
       - name: "Install Bash"
         run: brew install bash
 
+      - name: "Read the mise version"
+        id: mise
+        run: echo "version=$(cat dev/docker/files/mise-version)" >> "${GITHUB_OUTPUT}"
+
       # Only the tools the packaging needs: the full list includes Linux-only tools.
       - name: "Install tools"
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: "2026.9.10"
+          version: ${{ steps.mise.outputs.version }}
           install_args: "node bun jq yq"
 
       - name: "Restore the Electron downloads"

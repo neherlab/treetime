@@ -200,16 +200,16 @@ RUN set -euxo pipefail >/dev/null \
 ENV MISE_DATA_DIR="/opt/mise"
 ENV MISE_CACHE_DIR="/tmp/mise/cache"
 ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY dev/docker/files/install-mise dev/docker/files/mise-version /
 COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
 RUN set -euxo pipefail >/dev/null \
-&& /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \
-&& tar -xzf "/tmp/mise.tar.gz" --strip-components=2 -C "/usr/local/bin" "mise/bin/mise" \
+&& /install-mise "/usr/local/bin" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
 && mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "protoc" \
 && ln -sf -t "/usr/local/bin" \
   "$(mise -C "/tmp/mise/project" which kache)" \
   "$(mise -C "/tmp/mise/project" which protoc)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
-&& rm -rf "/tmp/mise" "/tmp/mise.tar.gz" "/usr/local/bin/mise" \
+&& rm -rf "/tmp/mise" "/install-mise" "/mise-version" "/usr/local/bin/mise" \
 && kache --version \
 && protoc --version

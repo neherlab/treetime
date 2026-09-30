@@ -313,6 +313,7 @@ Every dependency release must be at least seven days old before the project adop
 - Python packages: `exclude-newer` in `pixi.toml` makes `pixi lock` skip younger releases
 - Tools in `.config/mise.toml`: `minimum_release_age` makes `just tools-outdated` list only newer releases that are at least seven days old. mise does not filter an exact version, so check the date of a version you type by hand
 - Base images in `dev/docker/` follow the same rule by hand
+- mise itself: the images and CI install the version in `dev/docker/files/mise-version`, verified by its line in `dev/docker/files/checksums`. `min_version` in `.config/mise.toml` is the oldest mise that reads the configuration; raise it when the configuration needs a newer mise
 - After changing a tool in `.config/mise.toml`, `just tools-lock <tool>` locks only that tool. Locking calls the GitHub API, which allows 60 anonymous requests per hour. With `MISE_GITHUB_TOKEN` set, mise authenticates instead, on the host and in the container alike (`dev/docker/run` forwards it), for example `MISE_GITHUB_TOKEN="$(gh auth token)" ./dev/docker/run just tools-lock <tool>`
 
 Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 19.x, because Auspice runs in-process and each React major needs its own check of the Auspice modules TreeTime imports; `just lint-ts` enforces this.

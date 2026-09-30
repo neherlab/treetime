@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <bindir>
+#
+# Install mise, at the version in the mise-version file next to this script,
+# into a directory.
+#
+set -euxo pipefail
+
+dest="${1:?bindir}"
+version="$(cat "$(dirname "${BASH_SOURCE[0]}")/mise-version")"
+archive="/tmp/mise.tar.gz"
+mkdir -p "${dest}"
+
+/fetch "https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-linux-x64-musl.tar.gz" "${archive}"
+tar -xzf "${archive}" --strip-components=2 -C "${dest}" "mise/bin/mise"
+rm "${archive}"
