@@ -69,8 +69,10 @@ DOWNLOAD_ROWS=(
   "**Windows** x86_64|x86_64-pc-windows-gnu"
 )
 
+# Size in binary megabytes, labeled "MB" as in the asset list of the GitHub
+# release page, so both show the same number.
 format_size() {
-  awk -v bytes="${1}" 'BEGIN { printf "%.1f MB", bytes / 1000000 }'
+  awk -v bytes="${1}" 'BEGIN { printf "%.1f MB", bytes / 1048576 }'
 }
 
 # Print a Markdown link to an asset of the release, followed by its size.
