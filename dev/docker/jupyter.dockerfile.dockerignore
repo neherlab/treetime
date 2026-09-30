@@ -1,4 +1,6 @@
 *
+!.config/mise.lock
+!.config/mise.toml
 !dev/docker/files/
 !pixi.lock
 !pixi.toml

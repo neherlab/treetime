@@ -47,14 +47,27 @@ ENV HOME="/home/${USER}"
 COPY --link "dev/docker/files/fetch" "dev/docker/files/checksums" "dev/docker/files/create-user" "/"
 RUN /create-user
 
+# pixi at the version, URL, and sha256 of .config/mise.lock, so the host and the
+# image run the same pixi.
+ENV MISE_DATA_DIR="/opt/mise"
+ENV MISE_CACHE_DIR="/tmp/mise/cache"
+ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY --link "dev/docker/files/install-mise" "dev/docker/files/mise-version" "/"
+COPY --link ".config/mise.toml" ".config/mise.lock" "/tmp/mise/project/"
+RUN set -euxo pipefail >/dev/null \
+&& /install-mise "/usr/local/bin" \
+&& export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
+&& mise -C "/tmp/mise/project" install "pixi" \
+&& ln -sf -t "/usr/local/bin" "$(mise -C "/tmp/mise/project" which pixi)" \
+&& chmod -R a+rX "${MISE_DATA_DIR}" \
+&& rm -rf "/tmp/mise" "/install-mise" "/mise-version" "/usr/local/bin/mise" \
+&& pixi --version
+
 # The Python environment comes from pixi.toml and pixi.lock, the same files that
-# host users run with `pixi`. The pixi version follows .config/mise.toml.
+# host users run with `pixi`.
 ENV PIXI_PROJECT="/opt/python"
-ARG PIXI_VERSION="0.81.0"
 COPY --link "pixi.toml" "pixi.lock" "${PIXI_PROJECT}/"
 RUN set -euxo pipefail >/dev/null \
-&& /fetch "https://github.com/prefix-dev/pixi/releases/download/v${PIXI_VERSION}/pixi-x86_64-unknown-linux-musl" "/usr/local/bin/pixi" \
-&& chmod +x "/usr/local/bin/pixi" \
 && pixi install --locked --manifest-path "${PIXI_PROJECT}/pixi.toml" \
 && pixi clean cache --yes \
 && chmod -R a+rX "${PIXI_PROJECT}"
