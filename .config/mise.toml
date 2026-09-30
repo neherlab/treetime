@@ -3,6 +3,7 @@ min_version = "2026.9.10"
 [settings]
 lockfile = true
 locked = true
+minimum_release_age = "7d"
 
 [tool_alias]
 cargo-dylint = "github:trailofbits/dylint"

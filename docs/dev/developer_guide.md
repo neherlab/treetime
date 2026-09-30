@@ -311,7 +311,8 @@ Every dependency release must be at least seven days old before the project adop
 - Bun refuses younger npm packages (`minimumReleaseAge` in `bunfig.toml`)
 - Cargo has the age check as an unstable feature until Rust 1.100. `just deps-update` and `just deps-upgrade` enable it for their resolution, and `just deps-age` fails on a lockfile entry younger than seven days
 - Python packages: `exclude-newer` in `pixi.toml` makes `pixi lock` skip younger releases
-- Tools in `.config/mise.toml` and base images in `dev/docker/` follow the same rule by hand; `just tools-outdated` lists newer tool releases
+- Tools in `.config/mise.toml`: `minimum_release_age` makes `just tools-outdated` list only newer releases that are at least seven days old. mise does not filter an exact version, so check the date of a version you type by hand
+- Base images in `dev/docker/` follow the same rule by hand
 - After changing a tool in `.config/mise.toml`, `just tools-lock <tool>` locks only that tool. Locking calls the GitHub API, which allows 60 anonymous requests per hour. With `MISE_GITHUB_TOKEN` set, mise authenticates instead, on the host and in the container alike (`dev/docker/run` forwards it), for example `MISE_GITHUB_TOKEN="$(gh auth token)" ./dev/docker/run just tools-lock <tool>`
 
 Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 19.x, because Auspice runs in-process and each React major needs its own check of the Auspice modules TreeTime imports; `just lint-ts` enforces this.
