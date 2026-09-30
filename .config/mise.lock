@@ -275,32 +275,32 @@ url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/5650856
 provenance = "github-attestations"
 
 [[tools."github:kunobi-ninja/kache"]]
-version = "0.25.0"
+version = "0.28.1"
 backend = "github:kunobi-ninja/kache"
-specifiers = ["0.25.0"]
+specifiers = ["0.28.1"]
 
 [tools."github:kunobi-ninja/kache"."platforms.linux-arm64"]
-checksum = "sha256:4e51f537f7fd4ea9286bbb1022f1ed899780c5c559de1ffe415209f22207d7a1"
-url = "https://github.com/kunobi-ninja/kache/releases/download/v0.25.0/kache-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/573872869"
+checksum = "sha256:b2110805eb24afe9b408e5b9a1e3d0584b7fdd0b79fe8cbe548ab29fbaf50176"
+url = "https://github.com/kunobi-ninja/kache/releases/download/v0.28.1/kache-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/598014543"
 provenance = "github-attestations"
 
 [tools."github:kunobi-ninja/kache"."platforms.linux-x64"]
-checksum = "sha256:bdf924f04270fb7358bfdbb3ccb5960d1f40b60be2ba50500c28144ac84a06fa"
-url = "https://github.com/kunobi-ninja/kache/releases/download/v0.25.0/kache-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/573872910"
+checksum = "sha256:68635a9f92ce5015a2c48c98b968d1b3707b6dbee0ca725e51d1671c9346f38f"
+url = "https://github.com/kunobi-ninja/kache/releases/download/v0.28.1/kache-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/598014601"
 provenance = "github-attestations"
 
 [tools."github:kunobi-ninja/kache"."platforms.macos-arm64"]
-checksum = "sha256:3d0604cadba6323cacfc28ea69bfdf9bfb44607cb012c7272321cdbc31a6a83e"
-url = "https://github.com/kunobi-ninja/kache/releases/download/v0.25.0/kache-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/573872857"
+checksum = "sha256:253096ab5972fe179b86301abbcfb5944bc9807e3fa3d1720b44b129b86fcbff"
+url = "https://github.com/kunobi-ninja/kache/releases/download/v0.28.1/kache-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/598014510"
 provenance = "github-attestations"
 
 [tools."github:kunobi-ninja/kache"."platforms.macos-x64"]
-checksum = "sha256:2c6da934dac7e6292c14795475d4ed5952485845927b5ed1f908ad92c335b33c"
-url = "https://github.com/kunobi-ninja/kache/releases/download/v0.25.0/kache-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/573872888"
+checksum = "sha256:05180b56a4eb8e0600ee47682017a7a81fd4a7cc1e781d481654002af8b082a6"
+url = "https://github.com/kunobi-ninja/kache/releases/download/v0.28.1/kache-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/kunobi-ninja/kache/releases/assets/598014565"
 provenance = "github-attestations"
 
 [[tools."github:shenwei356/seqkit"]]
