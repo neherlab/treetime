@@ -59,25 +59,141 @@ details_close() {
   printf "\n</details>\n"
 }
 
-# Emit the release body. The base template is always produced; the changelog
-# (compare link, merged pull requests, and commits landed outside any pull
-# request) is appended only when the previous nightly source is known and its
-# history is available. Every changelog query degrades to an empty section on
-# failure so notes generation never gates publication of built artifacts.
-generate_release_notes() {
+# Rows of the downloads table, in display order: the platform label, then the
+# target triples whose CLI binaries and desktop packages share the row.
+DOWNLOAD_ROWS=(
+  "**Linux** x86_64|x86_64-unknown-linux-gnu x86_64-unknown-linux-musl"
+  "**Linux** ARM64|aarch64-unknown-linux-gnu aarch64-unknown-linux-musl"
+  "**macOS** Apple Silicon|aarch64-apple-darwin"
+  "**macOS** Intel|x86_64-apple-darwin"
+  "**Windows** x86_64|x86_64-pc-windows-gnu"
+)
+
+format_size() {
+  awk -v bytes="${1}" 'BEGIN { printf "%.1f MB", bytes / 1000000 }'
+}
+
+# Print a Markdown link to an asset of the release, followed by its size.
+download_link() {
+  local base_url="${1}"
+  local path="${2}"
+  local text="${3}"
+  printf "[%s](%s/%s) (%s)" "${text}" "${base_url}" "${path##*/}" "$(format_size "$(wc -c <"${path}")")"
+}
+
+# Join table cell entries with line breaks, or print a dash for an empty cell.
+join_cell() {
+  if (($# == 0)); then
+    printf -- "-"
+    return 0
+  fi
+  local cell="${1}"
+  shift
+  local entry
+  for entry in "$@"; do
+    cell+="<br>${entry}"
+  done
+  printf "%s" "${cell}"
+}
+
+# Emit a table linking every uploaded asset, one row per platform, with CLI
+# binaries and desktop packages in separate columns. Rows of platforms without
+# assets are omitted, so a CLI-only or desktop-only release lists only what it
+# contains. An asset of no known platform gets a row of its own, so a new target
+# is listed even before its row is added to DOWNLOAD_ROWS.
+generate_downloads_table() {
   local repo="${1}"
-  local git_sha="${2}"
-  local short_sha="${3}"
-  local last_sha="${4:-}"
+  local tag="${2}"
+  shift 2
+
+  local base_url="https://github.com/${repo}/releases/download/${tag//+/%2B}"
+
+  local -A unlisted=()
+  local artifact
+  for artifact in "$@"; do
+    unlisted["${artifact##*/}"]="${artifact}"
+  done
+
+  printf "\n### Downloads\n\n| Platform | CLI | Desktop app |\n|---|---|---|\n"
+
+  local row triple name cli_text
+  local -a triples cli desktop
+  for row in "${DOWNLOAD_ROWS[@]}"; do
+    cli=()
+    desktop=()
+    read -ra triples <<<"${row#*|}"
+    for triple in "${triples[@]}"; do
+      case "${triple}" in
+      *-linux-gnu) cli_text="glibc" ;;
+      *-linux-musl) cli_text="musl (static)" ;;
+      *-windows-*) cli_text=".exe" ;;
+      *) cli_text="binary" ;;
+      esac
+      for name in "treetime-${triple}" "treetime-${triple}.exe"; do
+        if [[ -n "${unlisted[${name}]:-}" ]]; then
+          cli+=("$(download_link "${base_url}" "${unlisted[${name}]}" "${cli_text}")")
+          unset "unlisted[${name}]"
+        fi
+      done
+      for name in "${!unlisted[@]}"; do
+        if [[ "${name}" == "treetime-desktop-${triple}."* ]]; then
+          desktop+=("$(download_link "${base_url}" "${unlisted[${name}]}" ".${name##*.}")")
+          unset "unlisted[${name}]"
+        fi
+      done
+    done
+    if ((${#cli[@]} + ${#desktop[@]} > 0)); then
+      printf "| %s | %s | %s |\n" "${row%%|*}" "$(join_cell "${cli[@]}")" "$(join_cell "${desktop[@]}")"
+    fi
+  done
+
+  local link
+  printf "%s\n" "${!unlisted[@]}" | sort | while IFS= read -r name; do
+    [[ -n "${name}" ]] || continue
+    link=$(download_link "${base_url}" "${unlisted[${name}]}" "download")
+    if [[ "${name}" == treetime-desktop-* ]]; then
+      printf "| \`%s\` | - | %s |\n" "${name}" "${link}"
+    else
+      printf "| \`%s\` | %s | - |\n" "${name}" "${link}"
+    fi
+  done
+}
+
+# Emit the release body: the base template, the downloads table, and the
+# changelog.
+generate_release_notes() {
+  local source_repo="${1}"
+  local release_repo="${2}"
+  local tag="${3}"
+  local git_sha="${4}"
+  local last_sha="${5}"
+  shift 5
+
+  local short_sha="${git_sha:0:7}"
 
   cat <<EOF
-Nightly build of [treetime](https://github.com/${repo}).
+Nightly build of [treetime](https://github.com/${source_repo}).
 
-**Source**: [\`${short_sha}\`](https://github.com/${repo}/commit/${git_sha})
+**Source**: [\`${short_sha}\`](https://github.com/${source_repo}/commit/${git_sha})
 
 > [!WARNING]
 > Automated nightly build for early testing. May contain bugs and breaking changes.
 EOF
+
+  generate_downloads_table "${release_repo}" "${tag}" "$@"
+  generate_changelog "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}"
+}
+
+# Emit the changelog: compare link, merged pull requests, and commits landed
+# outside any pull request. Emitted only when the previous nightly source is
+# known and its history is available. Every changelog query degrades to an
+# empty section on failure so notes generation never gates publication of built
+# artifacts.
+generate_changelog() {
+  local repo="${1}"
+  local git_sha="${2}"
+  local short_sha="${3}"
+  local last_sha="${4}"
 
   [[ -n "${last_sha}" ]] || return 0
 
@@ -230,13 +346,11 @@ main() {
   local cargo_version
   cargo_version=$(yq -r '.workspace.package.version' Cargo.toml)
   local version="${cargo_version}-${version_suffix}"
-  local short_sha="${git_sha:0:7}"
-
   local last_sha
   last_sha=$(find_last_nightly_sha "${release_repo}")
 
   printf "Creating nightly release: %s\n" "${version}"
-  generate_release_notes "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}" |
+  generate_release_notes "${source_repo}" "${release_repo}" "${version}" "${git_sha}" "${last_sha}" "${artifacts[@]}" |
     gh release create "${version}" \
       --repo "${release_repo}" \
       --title "${version}" \

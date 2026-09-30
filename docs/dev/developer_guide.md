@@ -332,7 +332,7 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 
 1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
 2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, and the packages. A failed target does not block the others
-3. `dev/publish-nightly` creates the prerelease with the built binaries and desktop packages
+3. `dev/publish-nightly` creates the prerelease with the built binaries and desktop packages. Its notes link every asset in a downloads table, one row per platform, followed by the changelog since the previous nightly
 
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
