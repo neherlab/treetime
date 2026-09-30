@@ -161,8 +161,8 @@ generate_downloads_table() {
   done
 }
 
-# Emit the release body: the base template, the downloads table, and the
-# changelog.
+# Emit the release body: the base template, the changelog, and the downloads
+# table.
 generate_release_notes() {
   local source_repo="${1}"
   local release_repo="${2}"
@@ -182,8 +182,8 @@ Nightly build of [treetime](https://github.com/${source_repo}).
 > Automated nightly build for early testing. May contain bugs and breaking changes.
 EOF
 
-  generate_downloads_table "${release_repo}" "${tag}" "$@"
   generate_changelog "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}"
+  generate_downloads_table "${release_repo}" "${tag}" "$@"
 }
 
 # Emit the changelog: compare link, merged pull requests, and commits landed
