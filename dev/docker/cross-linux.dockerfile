@@ -63,14 +63,13 @@ ENV HOST_GCC_DIR="${PREFIX_HOST}"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV CROSS_GCC_DIR="${PREFIX_CROSS}"
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-protobuf dev/docker/files/install-openblas /
+COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-openblas /
 RUN set -euxo pipefail >/dev/null \
 && /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
 && /install-llvm "/usr/local" \
-&& /install-protobuf "/usr/local" \
 && /install-gcc-cross "${CROSS_GCC_TRIPLET}" "${CROSS_GCC_DIR}" \
 && /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-gcc-cross /install-llvm /install-protobuf /install-openblas
+&& rm /install-gcc-cross /install-llvm /install-openblas
 
 ENV CROSS_SYSROOT="${CROSS_GCC_DIR}/${CROSS_GCC_TRIPLET}/sysroot"
 
@@ -256,10 +255,11 @@ RUN set -euxo pipefail >/dev/null \
 && if [[ "${CROSS_COMPILE}" =~ (mingw|windows) ]]; then /install-wine-bcryptprimitives "/opt/wine"; fi \
 && rm /install-wine-bcryptprimitives
 
-# kache, the optional compiler cache of dev/cross/build, and bun and node, which
-# build the web UI next to the server binary (dev/deploy/build-web-image), at the
-# versions, URLs, and sha256 of .config/mise.lock, so the cross and development
-# images run the same tools.
+# kache, the optional compiler cache of dev/cross/build, protoc, which prost-build
+# runs for the UShER protobuf schemas, and bun and node, which build the web UI
+# next to the server binary (dev/deploy/build-web-image), at the versions, URLs,
+# and sha256 of .config/mise.lock, so the cross and development images run the
+# same tools.
 ENV MISE_DATA_DIR="/opt/mise"
 ENV MISE_CACHE_DIR="/tmp/mise/cache"
 ENV MISE_STATE_DIR="/tmp/mise/state"
@@ -268,13 +268,15 @@ RUN set -euxo pipefail >/dev/null \
 && /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \
 && tar -xzf "/tmp/mise.tar.gz" --strip-components=2 -C "/usr/local/bin" "mise/bin/mise" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
-&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "bun" "node" \
+&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "protoc" "bun" "node" \
 && ln -sf -t "/usr/local/bin" \
   "$(mise -C "/tmp/mise/project" which kache)" \
+  "$(mise -C "/tmp/mise/project" which protoc)" \
   "$(mise -C "/tmp/mise/project" which bun)" \
   "$(mise -C "/tmp/mise/project" which node)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
 && rm -rf "/tmp/mise" "/tmp/mise.tar.gz" "/usr/local/bin/mise" \
 && kache --version \
+&& protoc --version \
 && bun --version \
 && node --version

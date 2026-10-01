@@ -586,18 +586,22 @@ backend = "aqua:protocolbuffers/protobuf/protoc"
 specifiers = ["28.3"]
 
 [tools.protoc."platforms.linux-arm64"]
+checksum = "sha256:1de522032a8b194002fe35cab86d747848238b5e4de4f99648372079f5b46f9a"
 url = "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-aarch_64.zip"
 url_api = "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/201038275"
 
 [tools.protoc."platforms.linux-x64"]
+checksum = "sha256:0ad949f04a6a174da83cdcbdb36dee0a4925272a5b6d83f79a6bf9852076d53f"
 url = "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-x86_64.zip"
 url_api = "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/201038278"
 
 [tools.protoc."platforms.macos-arm64"]
+checksum = "sha256:92ceefda6a7293ec014e6ecac82d64719357145cb6fc2865badadeb5e62c0431"
 url = "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-aarch_64.zip"
 url_api = "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/201038280"
 
 [tools.protoc."platforms.macos-x64"]
+checksum = "sha256:97fe5d442090b4dbc23cd1384fb9b444fa1dc6e67d15bb5e1fe4de0da7638b20"
 url = "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-x86_64.zip"
 url_api = "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/201038282"
 

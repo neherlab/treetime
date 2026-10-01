@@ -49,14 +49,13 @@ ENV HOST_GCC_DIR="${PREFIX_HOST}"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-protobuf dev/docker/files/install-osxcross dev/docker/files/install-openblas /
+COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-osxcross dev/docker/files/install-openblas /
 RUN set -euxo pipefail >/dev/null \
 && /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
 && /install-llvm "/usr/local" \
-&& /install-protobuf "/usr/local" \
 && /install-osxcross "${OSX_CROSS_PATH}" \
 && /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-gcc-cross /install-llvm /install-protobuf /install-osxcross /install-openblas
+&& rm /install-gcc-cross /install-llvm /install-osxcross /install-openblas
 
 ENV OSXCROSS_MP_INC="1"
 ENV MACOSX_DEPLOYMENT_TARGET="10.12"
@@ -194,9 +193,10 @@ RUN set -euxo pipefail >/dev/null \
 && mkdir -p "/tmp/home" \
 && chmod 1777 "/tmp/home"
 
-# kache, the optional compiler cache of dev/cross/build, at the version, URL, and
+# kache, the optional compiler cache of dev/cross/build, and protoc, which
+# prost-build runs for the UShER protobuf schemas, at the versions, URLs, and
 # sha256 of .config/mise.lock, so the cross and development images run the same
-# kache.
+# tools.
 ENV MISE_DATA_DIR="/opt/mise"
 ENV MISE_CACHE_DIR="/tmp/mise/cache"
 ENV MISE_STATE_DIR="/tmp/mise/state"
@@ -205,8 +205,11 @@ RUN set -euxo pipefail >/dev/null \
 && /fetch "https://github.com/jdx/mise/releases/download/v2026.9.10/mise-v2026.9.10-linux-x64-musl.tar.gz" "/tmp/mise.tar.gz" \
 && tar -xzf "/tmp/mise.tar.gz" --strip-components=2 -C "/usr/local/bin" "mise/bin/mise" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
-&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" \
-&& ln -sf -t "/usr/local/bin" "$(mise -C "/tmp/mise/project" which kache)" \
+&& mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "protoc" \
+&& ln -sf -t "/usr/local/bin" \
+  "$(mise -C "/tmp/mise/project" which kache)" \
+  "$(mise -C "/tmp/mise/project" which protoc)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
 && rm -rf "/tmp/mise" "/tmp/mise.tar.gz" "/usr/local/bin/mise" \
-&& kache --version
+&& kache --version \
+&& protoc --version
