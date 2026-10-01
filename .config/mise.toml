@@ -1,52 +1,47 @@
-# Developer tools of TreeTime, pinned here by exact version and in mise.lock by
-# URL and sha256 per platform. The same files drive the host (`mise install`,
-# or `just setup`) and the development container (dev/docker/native.dockerfile).
-# Every pinned release must be at least seven days old. After editing, run
-# `just tools-lock` and commit both files.
-#
-# The Rust toolchains stay with rustup: rust-toolchain.toml, the lint toolchains
-# in dev/lints/*/rust-toolchain.toml, and dev/docker/files/hawk-toolchain.
+min_version = "2026.9.10"
 
 [settings]
 lockfile = true
 locked = true
 
+[tool_alias]
+cargo-dylint = "github:trailofbits/dylint"
+dylint-link = "github:trailofbits/dylint"
+
 [tools]
-just = "1.58.0"
-node = "24.21.0"
+actionlint = "1.7.12"
 bun = "1.4.2"
+cargo-deny = "0.20.2"
+hadolint = "2.15.1"
+hyperfine = "1.20.0"
 jq = "1.8.2"
-yq = "4.53.6"
+just = "1.58.0"
+mold = { version = "2.42.1", os = ["linux"] }
+node = "24.21.0"
+pixi = "0.81.0"
+protoc = "28.3"
 ripgrep = "15.2.0"
-watchexec = "2.7.3"
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
 taplo = "0.10.0"
-hadolint = "2.15.1"
-actionlint = "1.7.12"
-protoc = "28.3"
-hyperfine = "1.20.0"
-pixi = "0.81.0"
-"aqua:EmbarkStudios/cargo-deny" = "0.20.2"
-"aqua:taiki-e/cargo-llvm-cov" = "0.9.1"
+yq = "4.53.6"
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.145"
-"github:astral-sh/hawk" = { version = "0.1.14", exe = "cargo-hawk" }
+"aqua:taiki-e/cargo-llvm-cov" = "0.9.1"
+"cargo:cargo-edit" = "0.13.13"
 "github:Boshen/cargo-shear" = "1.13.4"
+"github:astral-sh/hawk" = { version = "0.1.14", exe = "cargo-hawk" }
 "github:kucherenko/jscpd" = "5.2.1"
+"github:kunobi-ninja/kache" = "0.28.1"
 "github:shenwei356/seqkit" = "2.13.0"
 "github:sourcefrog/cargo-mutants" = "27.1.0"
+cargo-dylint = { version = "6.0.4", os = ["linux"], matching = "cargo-dylint-" }
+dylint-link = { version = "6.0.4", os = ["linux"], matching = "dylint-link-" }
 
-# Linux only: mold is a Linux linker, and the dylint and IQ-TREE releases
-# publish no macOS builds.
-mold = { version = "2.42.1", os = ["linux"] }
-"github:kunobi-ninja/kache" = "0.28.1"
-"github:trailofbits/dylint" = { version = "6.0.4", asset_pattern = "cargo-dylint-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", os = [
-  "linux",
-] }
-"http:dylint-link" = { version = "6.0.4", url = "https://github.com/trailofbits/dylint/releases/download/v{{version}}/dylint-link-x86_64-unknown-linux-gnu-v{{version}}.tar.gz", checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d", os = [
-  "linux",
-] }
-"github:iqtree/iqtree3" = { version = "3.1.4", asset_pattern = "iqtree-{{version}}-Linux-intel.tar.gz", os = ["linux"] }
+[tools."github:iqtree/iqtree3"]
+version = "3.1.4"
 
-# No upstream binaries: built from the crates.io release.
-"cargo:cargo-edit" = "0.13.13"
+[tools."github:iqtree/iqtree3".platforms]
+linux-arm64 = { asset_pattern = "iqtree-{{ version }}-Linux-arm.tar.gz" }
+linux-x64 = { asset_pattern = "iqtree-{{ version }}-Linux-intel.tar.gz" }
+macos-arm64 = { asset_pattern = "iqtree-{{ version }}-macOS-arm.zip" }
+macos-x64 = { asset_pattern = "iqtree-{{ version }}-macOS-intel.zip" }

@@ -31,31 +31,6 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 url_api = "https://api.github.com/repos/rhysd/actionlint/releases/assets/384924880"
 provenance = "github-attestations"
 
-[[tools."aqua:EmbarkStudios/cargo-deny"]]
-version = "0.20.2"
-backend = "aqua:EmbarkStudios/cargo-deny"
-specifiers = ["0.20.2"]
-
-[tools."aqua:EmbarkStudios/cargo-deny"."platforms.linux-arm64"]
-checksum = "sha256:995c82be0defc7a025cae49a2aa2644ce8245c9a3318fc4103907c6a285e8c7d"
-url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598345"
-
-[tools."aqua:EmbarkStudios/cargo-deny"."platforms.linux-x64"]
-checksum = "sha256:9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
-url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598214"
-
-[tools."aqua:EmbarkStudios/cargo-deny"."platforms.macos-arm64"]
-checksum = "sha256:fe67d82a10d8597a3549364cb733a3f9cc1bfff9031b7ae46384a9f2a72090c3"
-url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471597689"
-
-[tools."aqua:EmbarkStudios/cargo-deny"."platforms.macos-x64"]
-checksum = "sha256:248da7f581724e470071990c088ffc55c811981715f4cbdb258621fb79f8b7a6"
-url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598357"
-
 [[tools."aqua:nextest-rs/nextest/cargo-nextest"]]
 version = "0.9.145"
 backend = "aqua:nextest-rs/nextest/cargo-nextest"
@@ -151,10 +126,75 @@ url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-x6
 checksum = "sha256:bad5bbd6cf14d0980d115f5954c9ff904df619d5e994d2da1ffccd3f316300b0"
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-x64-baseline.zip"
 
+[[tools.cargo-deny]]
+version = "0.20.2"
+backend = "aqua:EmbarkStudios/cargo-deny"
+specifiers = ["0.20.2"]
+
+[tools.cargo-deny."platforms.linux-arm64"]
+checksum = "sha256:995c82be0defc7a025cae49a2aa2644ce8245c9a3318fc4103907c6a285e8c7d"
+url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598345"
+
+[tools.cargo-deny."platforms.linux-x64"]
+checksum = "sha256:9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598214"
+
+[tools.cargo-deny."platforms.macos-arm64"]
+checksum = "sha256:fe67d82a10d8597a3549364cb733a3f9cc1bfff9031b7ae46384a9f2a72090c3"
+url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471597689"
+
+[tools.cargo-deny."platforms.macos-x64"]
+checksum = "sha256:248da7f581724e470071990c088ffc55c811981715f4cbdb258621fb79f8b7a6"
+url = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/EmbarkStudios/cargo-deny/releases/assets/471598357"
+
+[[tools.cargo-dylint]]
+version = "6.0.4"
+backend = "github:trailofbits/dylint"
+specifiers = ["6.0.4"]
+
+[tools.cargo-dylint.options]
+matching = "cargo-dylint-"
+
+[tools.cargo-dylint."platforms.linux-arm64"]
+checksum = "sha256:76bea6b65babdbc6d1d96b15b89e731c0afba83338999c0f81a34d3dfd8d8508"
+url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-aarch64-unknown-linux-gnu-v6.0.4.tar.gz"
+url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601048"
+provenance = "github-attestations"
+
+[tools.cargo-dylint."platforms.linux-x64"]
+checksum = "sha256:14195423ac6bfe6b055ffa94e0c48e282e1f5997abd98dfb4ea8bdf4633aec5c"
+url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
+url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601051"
+provenance = "github-attestations"
+
 [[tools."cargo:cargo-edit"]]
 version = "0.13.13"
 backend = "cargo:cargo-edit"
 specifiers = ["0.13.13"]
+
+[[tools.dylint-link]]
+version = "6.0.4"
+backend = "github:trailofbits/dylint"
+specifiers = ["6.0.4"]
+
+[tools.dylint-link.options]
+matching = "dylint-link-"
+
+[tools.dylint-link."platforms.linux-arm64"]
+checksum = "sha256:dd33dd207272cdafab494089239587f93ab2b6b2af18312281b6754b24a1db13"
+url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-aarch64-unknown-linux-gnu-v6.0.4.tar.gz"
+url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601050"
+provenance = "github-attestations"
+
+[tools.dylint-link."platforms.linux-x64"]
+checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d"
+url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
+url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601046"
+provenance = "github-attestations"
 
 [[tools."github:Boshen/cargo-shear"]]
 version = "1.13.4"
@@ -222,27 +262,51 @@ backend = "github:iqtree/iqtree3"
 specifiers = ["3.1.4"]
 
 [tools."github:iqtree/iqtree3".options]
-asset_pattern = "iqtree-{version}-Linux-intel.tar.gz"
+asset_pattern = "iqtree-{{ version }}-macOS-intel.zip"
 
-[tools."github:iqtree/iqtree3"."platforms.linux-arm64"]
-checksum = "sha256:d422cb2b8f04825faea753afda25c60de6611537d07ec8fcd0033e70cb042839"
-url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-Linux-intel.tar.gz"
-url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554591940"
+[tools."github:iqtree/iqtree3"."platforms.macos-x64"]
+checksum = "sha256:567ccd2c2960810afb7c2378fbae4dffca2664a69748236dfc1d041041e25e2b"
+url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-macOS-intel.zip"
+url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554589403"
+
+[[tools."github:iqtree/iqtree3"]]
+version = "3.1.4"
+backend = "github:iqtree/iqtree3"
+specifiers = ["3.1.4"]
+
+[tools."github:iqtree/iqtree3".options]
+asset_pattern = "iqtree-{{ version }}-macOS-arm.zip"
+
+[tools."github:iqtree/iqtree3"."platforms.macos-arm64"]
+checksum = "sha256:5ffcd67a28c4d412391e65a4cb9c27d80163d58cfea484f3b150e2dbd44f9cc8"
+url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-macOS-arm.zip"
+url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554591480"
+
+[[tools."github:iqtree/iqtree3"]]
+version = "3.1.4"
+backend = "github:iqtree/iqtree3"
+specifiers = ["3.1.4"]
+
+[tools."github:iqtree/iqtree3".options]
+asset_pattern = "iqtree-{{ version }}-Linux-intel.tar.gz"
 
 [tools."github:iqtree/iqtree3"."platforms.linux-x64"]
 checksum = "sha256:d422cb2b8f04825faea753afda25c60de6611537d07ec8fcd0033e70cb042839"
 url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-Linux-intel.tar.gz"
 url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554591940"
 
-[tools."github:iqtree/iqtree3"."platforms.macos-arm64"]
-checksum = "sha256:d422cb2b8f04825faea753afda25c60de6611537d07ec8fcd0033e70cb042839"
-url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-Linux-intel.tar.gz"
-url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554591940"
+[[tools."github:iqtree/iqtree3"]]
+version = "3.1.4"
+backend = "github:iqtree/iqtree3"
+specifiers = ["3.1.4"]
 
-[tools."github:iqtree/iqtree3"."platforms.macos-x64"]
-checksum = "sha256:d422cb2b8f04825faea753afda25c60de6611537d07ec8fcd0033e70cb042839"
-url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-Linux-intel.tar.gz"
-url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554591940"
+[tools."github:iqtree/iqtree3".options]
+asset_pattern = "iqtree-{{ version }}-Linux-arm.tar.gz"
+
+[tools."github:iqtree/iqtree3"."platforms.linux-arm64"]
+checksum = "sha256:48fbbee1a5b5eb5b905d3bb9b88ed7651feaa83e9239f66559e3cc3a03455e37"
+url = "https://github.com/iqtree/iqtree3/releases/download/v3.1.4/iqtree-3.1.4-Linux-arm.tar.gz"
+url_api = "https://api.github.com/repos/iqtree/iqtree3/releases/assets/554593499"
 
 [[tools."github:kucherenko/jscpd"]]
 version = "5.2.1"
@@ -343,39 +407,6 @@ checksum = "sha256:7109a9e9673fe0b977f622e6f32383b6d1cbbf3fbb63b7c30db3267462c74
 url = "https://github.com/sourcefrog/cargo-mutants/releases/download/v27.1.0/cargo-mutants-x86_64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/sourcefrog/cargo-mutants/releases/assets/436336082"
 
-[[tools."github:trailofbits/dylint"]]
-version = "6.0.4"
-backend = "github:trailofbits/dylint"
-specifiers = ["6.0.4"]
-
-[tools."github:trailofbits/dylint".options]
-asset_pattern = "cargo-dylint-x86_64-unknown-linux-gnu-v{version}.tar.gz"
-
-[tools."github:trailofbits/dylint"."platforms.linux-arm64"]
-checksum = "sha256:14195423ac6bfe6b055ffa94e0c48e282e1f5997abd98dfb4ea8bdf4633aec5c"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601051"
-provenance = "github-attestations"
-
-[tools."github:trailofbits/dylint"."platforms.linux-x64"]
-checksum = "sha256:14195423ac6bfe6b055ffa94e0c48e282e1f5997abd98dfb4ea8bdf4633aec5c"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601051"
-provenance = "github-attestations"
-provenance_verified = true
-
-[tools."github:trailofbits/dylint"."platforms.macos-arm64"]
-checksum = "sha256:14195423ac6bfe6b055ffa94e0c48e282e1f5997abd98dfb4ea8bdf4633aec5c"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601051"
-provenance = "github-attestations"
-
-[tools."github:trailofbits/dylint"."platforms.macos-x64"]
-checksum = "sha256:14195423ac6bfe6b055ffa94e0c48e282e1f5997abd98dfb4ea8bdf4633aec5c"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/cargo-dylint-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-url_api = "https://api.github.com/repos/trailofbits/dylint/releases/assets/514601051"
-provenance = "github-attestations"
-
 [[tools.hadolint]]
 version = "2.15.1"
 backend = "aqua:hadolint/hadolint"
@@ -404,27 +435,6 @@ checksum = "sha256:ffe9bb18b23d5ed1eae50237aecdbb523d016e96da0bd4e7aa432040acfc3
 url = "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-macos-x86_64"
 url_api = "https://api.github.com/repos/hadolint/hadolint/releases/assets/496546509"
 provenance = "github-attestations"
-
-[[tools."http:dylint-link"]]
-version = "6.0.4"
-backend = "http:dylint-link"
-specifiers = ["6.0.4"]
-
-[tools."http:dylint-link"."platforms.linux-arm64"]
-checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-
-[tools."http:dylint-link"."platforms.linux-x64"]
-checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-
-[tools."http:dylint-link"."platforms.macos-arm64"]
-checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
-
-[tools."http:dylint-link"."platforms.macos-x64"]
-checksum = "sha256:54ce515583ade02b197bc11f6870fd755c30e04b7e44ea015a507726de05fa1d"
-url = "https://github.com/trailofbits/dylint/releases/download/v6.0.4/dylint-link-x86_64-unknown-linux-gnu-v6.0.4.tar.gz"
 
 [[tools.hyperfine]]
 version = "1.20.0"
@@ -686,31 +696,6 @@ url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323110"
 [tools.taplo."platforms.macos-x64"]
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-x86_64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
-
-[[tools.watchexec]]
-version = "2.7.3"
-backend = "aqua:watchexec/watchexec"
-specifiers = ["2.7.3"]
-
-[tools.watchexec."platforms.linux-arm64"]
-checksum = "sha256:02b3e2beddf96fef5fb2b88849902e3cf9e96da87968bdfb7a488700d64142cc"
-url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-aarch64-unknown-linux-gnu.tar.xz"
-url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495662"
-
-[tools.watchexec."platforms.linux-x64"]
-checksum = "sha256:8ace3a1d2e752d189f28b6766311d58f155ab977fae66aba60b111ec8aec2f64"
-url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-x86_64-unknown-linux-gnu.tar.xz"
-url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495660"
-
-[tools.watchexec."platforms.macos-arm64"]
-checksum = "sha256:bb2a3acc02de5c64f87779fc0226274d47d79026c6df969c8c1034a110b2efad"
-url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-aarch64-apple-darwin.tar.xz"
-url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495664"
-
-[tools.watchexec."platforms.macos-x64"]
-checksum = "sha256:ddca28bbd6b219a14ffec4893d56dad2e29cfc8b3e47f49e275706c9af20b4c2"
-url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-x86_64-apple-darwin.tar.xz"
-url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495778"
 
 [[tools.yq]]
 version = "4.53.6"
