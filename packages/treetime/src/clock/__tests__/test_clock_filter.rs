@@ -137,13 +137,89 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_clock_filter_no_outliers_clean_data() -> Result<(), Report> {
+    let (graph, _, times, branch_lengths) = helpers::setup_four_leaf_graph(2010.0)?;
+    let clock_model = ClockModel::for_testing(0.01, -20.0);
+
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
+
+    assert!(result.outliers.is_empty(), "No outliers expected for clean data");
+    assert!(result.iqd.is_finite(), "IQD should be a finite number");
+    assert!(result.iqd >= 0.0, "IQD should be non-negative");
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_filter_detects_outlier() -> Result<(), Report> {
+    let (graph, names, times, branch_lengths) = helpers::setup_four_leaf_graph(1900.0)?;
+    let clock_model = ClockModel::for_testing(0.01, -20.0);
+
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
+
+    assert!(result.iqd > 0.0, "IQD should be positive with varying dates");
+    assert!(
+      get_outlier_names(&names, &result.outliers).contains(&o!("A")),
+      "Node A should be marked as outlier"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_filter_respects_threshold() -> Result<(), Report> {
+    let (graph, _, times, branch_lengths) = helpers::setup_four_leaf_graph(1980.0)?;
+    let clock_model = ClockModel::for_testing(0.01, -20.0);
+
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let outliers_low_threshold = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 1.0, &NoopProgress)?
+      .outliers
+      .len();
+    let outliers_high_threshold = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 100.0, &NoopProgress)?
+      .outliers
+      .len();
+
+    assert!(
+      outliers_high_threshold <= outliers_low_threshold,
+      "Higher threshold should result in fewer or equal outliers"
+    );
+    Ok(())
+  }
+
   mod helpers {
+    use super::OutlierGraphSetup;
+    use crate::o;
     use eyre::Report;
+    use maplit::btreemap;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
+
+    pub(super) fn setup_four_leaf_graph(date_a: f64) -> Result<OutlierGraphSetup, Report> {
+      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
+
+      let dates = btreemap! {
+        o!("A") => date_a,
+        o!("B") => 2020.0,
+        o!("C") => 2015.0,
+        o!("D") => 2012.0,
+      };
+      let times = graph
+        .get_leaves()
+        .map(|leaf| {
+          let name = names[&leaf.key()].clone().unwrap();
+          (leaf.key(), dates.get(&name).copied())
+        })
+        .collect();
+
+      Ok((graph, names, times, branch_lengths))
+    }
 
     pub(super) fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
