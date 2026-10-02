@@ -25,6 +25,7 @@ mod test_marginal_stability;
 mod test_marginal_tip_reconstruction;
 mod test_marginal_topology;
 mod test_mask;
+mod test_plan;
 mod test_python_parity;
 mod test_sample;
 mod test_sample_reconstruction;
