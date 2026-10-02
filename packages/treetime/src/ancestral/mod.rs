@@ -5,13 +5,12 @@ pub(crate) mod fitch_sub;
 pub(crate) mod gtr_inference;
 pub mod marginal;
 pub mod mask;
-pub mod multi;
 pub mod params;
 pub mod pipeline;
 pub(crate) mod plan;
 pub(crate) mod reconstruction;
 pub mod sample;
-pub mod tip_states;
+pub(crate) mod tip_states;
 
 #[cfg(test)]
 mod __tests__;

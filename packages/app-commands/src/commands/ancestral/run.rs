@@ -14,10 +14,9 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-use treetime::ancestral::aa::{AaNodeData, reconstruct_aa};
+use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use treetime::ancestral::mask::create_mask;
-use treetime::ancestral::multi::{MarginalPartitionParams, PartitionPlan};
 use treetime::ancestral::pipeline::{self, AncestralPartition};
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
@@ -435,7 +434,7 @@ fn run_aa_reconstructions(
   cancel.check()?;
   stages.report("AA ancestral reconstruction", 0.75, "");
 
-  let params = MarginalPartitionParams {
+  let params = AaParams {
     dense: ancestral_args.dense,
     include_leaves: ancestral_args.include_leaves,
     impute_missing_data: ancestral_args.impute_missing_data,
@@ -444,7 +443,7 @@ fn run_aa_reconstructions(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  let mut plans = Vec::with_capacity(cdses.len());
+  let mut cds_inputs = Vec::with_capacity(cdses.len());
   for cds in &cdses {
     let path = translation_path(translations, cds);
     let mut sequences = read_many_fasta_path(&[&path], &read_alphabet)?;
@@ -468,7 +467,7 @@ fn run_aa_reconstructions(
       );
     }
 
-    plans.push(PartitionPlan {
+    cds_inputs.push(CdsInput {
       name: cds.clone(),
       alphabet: recon_alphabet.clone(),
       gtr_model: aa_model.gtr_model,
@@ -486,7 +485,7 @@ fn run_aa_reconstructions(
     .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
     .collect();
 
-  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink, log)?;
+  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, cds_inputs, seq_sink, cancel, log)?;
   Ok((node_data, cds_annotations))
 }
 

@@ -57,7 +57,6 @@ mod tests {
       site_specific_gtr: false,
       seed: None,
       sample_from_profile: SampleMode::Root,
-      ignore_missing_alns: false,
     };
     let names = parse.names();
     let sequences =
@@ -124,7 +123,6 @@ mod tests {
         site_specific_gtr: false,
         seed: Some(seed),
         sample_from_profile: mode,
-        ignore_missing_alns: false,
       };
       let names = parse.names();
       let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;

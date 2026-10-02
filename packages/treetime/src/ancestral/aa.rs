@@ -1,7 +1,14 @@
-use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
+use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::attach::complete_alignment_for_leaves;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::AncestralPartition;
+use crate::ancestral::plan::{ReconOptions, ReconPlan, ReconstructedPartition, Representation, reconstruct_partition};
+use crate::ancestral::sample::SampleMode;
+use crate::cancel::Cancel;
+use crate::gtr::get_gtr::GtrModelName;
 use crate::make_error;
-use crate::progress::LogSink;
+use crate::progress::{LogSink, NoopProgress};
+use crate::seq::alignment::node_seq_inputs;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use eyre::Report;
@@ -11,7 +18,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
 use treetime_utils::sync::random::get_random_number_generator;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -19,58 +26,116 @@ pub fn reconstruct_aa(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  params: &MarginalPartitionParams,
-  plans: Vec<PartitionPlan>,
+  params: &AaParams,
+  cdses: Vec<CdsInput>,
   mut seq_sink: Option<Box<dyn SeqSink>>,
+  cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<AaNodeData, Report> {
   let mut rng = get_random_number_generator(params.seed);
+  let options = ReconOptions::new(
+    params.include_leaves,
+    params.impute_missing_data,
+    params.sample_from_profile,
+  );
+  let representation = Representation::resolve(params.dense);
+  let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let mut aa_node_data = AaNodeData::default();
   if let Some(sink) = seq_sink.as_mut() {
     sink.on_topology(graph)?;
   }
-  for (index, plan) in plans.into_iter().enumerate() {
-    let reconstructed =
-      reconstruct_marginal_partition(graph, index, plan, params, names, branch_lengths, &mut rng, log)?;
-    let guard = &reconstructed.partition;
-
-    if let Some(annotation) = &reconstructed.annotation
-      && let Some(cds_len) = annotation_cds_nuc_length(annotation)
-    {
-      let aa_len = i64::try_from(guard.sequence_length())?;
-      if 3 * aa_len != cds_len {
-        return make_error!(
-          "Translated alignment for CDS '{}' has {aa_len} amino acids ({} nucleotides), which does not match \
-           the annotated CDS length of {cds_len} nucleotides. Check that the annotation matches the translations.",
-          reconstructed.name,
-          3 * aa_len
-        );
-      }
-    }
-
-    let cds_data = collect_aa_cds_node_data(
+  for (index, cds) in cdses.into_iter().enumerate() {
+    let CdsInput {
+      name,
+      alphabet,
+      gtr_model,
+      sequences,
+      annotation,
+      reference_override,
+    } = cds;
+    let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, log)?;
+    let node_inputs = node_seq_inputs(graph, names, sequences);
+    let plan = ReconPlan::Marginal {
+      representation,
+      model: gtr_model,
+      gtr_refinement: None,
+    };
+    let ReconstructedPartition { partition, .. } = reconstruct_partition(
       graph,
-      guard,
-      &reconstructed.name,
-      names,
-      reconstructed.reference_override.as_ref(),
+      &plan,
+      index,
+      alphabet,
+      &node_inputs,
+      &profile_lengths,
+      &options,
+      &mut rng,
+      cancel,
+      &NoopProgress,
+      log,
     )?;
-    aa_node_data.add_cds(&reconstructed.name, cds_data);
-
+    validate_cds_length(&name, annotation.as_ref(), &partition)?;
+    let cds_data = collect_aa_cds_node_data(graph, &partition, &name, names, reference_override.as_ref())?;
+    aa_node_data.add_cds(&name, cds_data);
     if let Some(sink) = seq_sink.as_mut() {
-      for node in graph.get_nodes() {
-        let node_key = node.key();
-        let seq = guard.augur_node_sequence(node_key);
-        sink.emit(SeqItem {
-          key: node_key,
-          track: SeqTrack::Aa(reconstructed.name.as_str()),
-          seq: &seq,
-        })?;
-      }
+      emit_cds_sequences(sink.as_mut(), graph, &name, &partition)?;
     }
   }
 
   Ok(aa_node_data)
+}
+
+pub struct CdsInput {
+  pub name: String,
+  pub alphabet: Alphabet,
+  pub gtr_model: GtrModelName,
+  pub sequences: Vec<AlignmentRecord>,
+  pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
+  pub reference_override: Option<Seq>,
+}
+
+pub struct AaParams {
+  pub dense: Option<bool>,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub sample_from_profile: SampleMode,
+  pub seed: Option<u64>,
+  pub ignore_missing_alns: bool,
+}
+
+fn validate_cds_length(
+  name: &str,
+  annotation: Option<&AugurNodeDataJsonAnnotationEntry>,
+  partition: &AncestralPartition,
+) -> Result<(), Report> {
+  if let Some(cds_len) = annotation.and_then(annotation_cds_nuc_length) {
+    let aa_len = i64::try_from(partition.sequence_length())?;
+    if 3 * aa_len != cds_len {
+      return make_error!(
+        "Translated alignment for CDS '{name}' has {aa_len} amino acids ({} nucleotides), which does not match \
+         the annotated CDS length of {cds_len} nucleotides. Check that the annotation matches the translations.",
+        3 * aa_len
+      );
+    }
+  }
+  Ok(())
+}
+
+fn emit_cds_sequences(
+  sink: &mut dyn SeqSink,
+  graph: &Graph,
+  name: &str,
+  partition: &AncestralPartition,
+) -> Result<(), Report> {
+  for node in graph.get_nodes() {
+    let node_key = node.key();
+    let seq = partition.augur_node_sequence(node_key);
+    sink.emit(SeqItem {
+      key: node_key,
+      track: SeqTrack::Aa(name),
+      seq: &seq,
+    })?;
+  }
+  Ok(())
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]

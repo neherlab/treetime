@@ -30,7 +30,6 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
     site_specific_gtr: args.site_specific_gtr,
     seed: args.seed,
     sample_from_profile: args.sample_from_profile,
-    ignore_missing_alns: args.ignore_missing_alns,
   }
 }
 

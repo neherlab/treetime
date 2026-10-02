@@ -1,10 +1,17 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::aa::{AaCdsNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences};
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::aa::{
+    AaCdsNodeData, AaParams, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences, reconstruct_aa,
+  };
+  use crate::ancestral::sample::SampleMode;
+  use crate::cancel::NoopCancel;
+  use crate::progress::NoopProgress;
   use crate::seq::mutation::{MutationEvent, Sub};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::o;
   use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
@@ -83,10 +90,50 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  #[test]
+  fn test_reconstruct_aa_reconstructs_each_cds_independently_with_stop_codon() {
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+    let names = nwk_parsed.names();
+    let aa = Alphabet::new(AlphabetName::Aa).unwrap();
+    let cdses = vec![
+      helpers::cds_input("S", &aa, &[("A", "MC*"), ("B", "MA*")]),
+      helpers::cds_input("N", &aa, &[("A", "KL"), ("B", "KM")]),
+    ];
+    let params = AaParams {
+      dense: Some(false),
+      include_leaves: false,
+      impute_missing_data: false,
+      sample_from_profile: SampleMode::default(),
+      seed: None,
+      ignore_missing_alns: false,
+    };
+
+    let actual = reconstruct_aa(
+      &nwk_parsed.graph,
+      &names,
+      &nwk_parsed.branch_lengths,
+      &params,
+      cdses,
+      None,
+      &NoopCancel,
+      &NoopProgress,
+    )
+    .unwrap();
+
+    let s_root = &actual.root_aa_sequences["S"];
+    assert_eq!(3, s_root.len());
+    assert_eq!(Some('*'), s_root.chars().last());
+    let n_root = &actual.root_aa_sequences["N"];
+    assert_eq!(2, n_root.len());
+    assert_eq!(Some('K'), n_root.chars().next());
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
+    use crate::ancestral::aa::CdsInput;
     use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::pipeline::AncestralPartition;
+    use crate::gtr::get_gtr::GtrModelName;
     use crate::seq::alignment::node_seq_inputs;
     use std::collections::BTreeMap;
     use std::fmt::Write;
@@ -94,7 +141,7 @@ mod tests {
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::nwk_read_str;
-    use treetime_primitives::AlignmentRecord;
+    use treetime_primitives::{AlignmentRecord, Seq};
 
     pub(super) fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -136,6 +183,23 @@ mod tests {
         .collect();
       let partition = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, sequences)).unwrap();
       AncestralPartition::Fitch(partition)
+    }
+
+    pub(super) fn cds_input(name: &str, alphabet: &Alphabet, seqs: &[(&str, &str)]) -> CdsInput {
+      CdsInput {
+        name: name.to_owned(),
+        alphabet: alphabet.clone(),
+        gtr_model: GtrModelName::Infer,
+        sequences: seqs
+          .iter()
+          .map(|(seq_name, seq)| AlignmentRecord {
+            name: (*seq_name).to_owned(),
+            seq: Seq::try_from_str(seq).unwrap(),
+          })
+          .collect(),
+        annotation: None,
+        reference_override: None,
+      }
     }
   }
 }

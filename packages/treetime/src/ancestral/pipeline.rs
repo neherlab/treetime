@@ -1,8 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::MethodAncestral;
-use crate::ancestral::plan::Representation;
+use crate::ancestral::plan::{ReconOptions, ReconstructedPartition, reconstruct_partition, resolve_plan};
 use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
@@ -10,8 +9,6 @@ use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::gtr::refinement::refine_gtr_model;
-use crate::partition::create::{MarginalPartition, build_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -20,7 +17,6 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::{LogSink, StageSink};
-use crate::progress_warn;
 use crate::seq::alignment::AncestralInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
@@ -28,20 +24,14 @@ use eyre::Report;
 use rand::RngCore;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
-use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub fn run(
   params: &AncestralParams,
   input: &AncestralInput,
@@ -51,183 +41,39 @@ pub fn run(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralOutputFull, OperationError> {
-  let branch_lengths = input.branch_lengths();
-  let profile_lengths = branch_lengths_or_zero(&branch_lengths);
-  if params.site_specific_gtr {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--site-specific-gtr is not implemented"
-    )));
-  }
-
-  if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
-       for marginal reconstruction; {:?} has no posterior profile to sample.",
-      params.sample_from_profile,
-      params.method
-    )));
-  }
-
-  let graph = &input.graph;
-  let node_inputs = &input.nodes;
+  let plan = resolve_plan(params)?;
+  let options = ReconOptions::new(
+    params.include_leaves,
+    params.impute_missing_data,
+    params.sample_from_profile,
+  );
   let mut rng = get_random_number_generator(params.seed);
-
-  match params.method {
-    MethodAncestral::Parsimony => {
-      cancel.check()?;
-      stages.report("Fitch parsimony", 0.3, "");
-      let partition = create_fitch_partition(graph, 0, alphabet, node_inputs)?;
-      let mut partitions_parsimony = vec![partition];
-
-      if params.impute_missing_data {
-        progress_warn!(
-          log,
-          "--impute-missing-data has no effect with --method-anc=parsimony: Fitch parsimony produces no \
-           posterior profile to impute missing tip states from. Leaf states are emitted as observed."
-        );
-      }
-
-      let emitted_nodes = ancestral_reconstruction_fitch(graph, params.include_leaves, &mut partitions_parsimony)?;
-
-      let partition = partitions_parsimony
-        .into_iter()
-        .next()
-        .expect("partition vec not empty");
-      Ok(AncestralOutputFull {
-        output: AncestralOutput {
-          gtr: None,
-          model_name: params.model,
-          mask,
-          emitted_nodes,
-        },
-        partition: Some(AncestralPartition::Fitch(partition)),
-      })
+  let branch_lengths = branch_lengths_or_zero(&input.branch_lengths());
+  let ReconstructedPartition {
+    partition,
+    emitted_nodes,
+  } = reconstruct_partition(
+    &input.graph,
+    &plan,
+    0,
+    alphabet,
+    &input.nodes,
+    &branch_lengths,
+    &options,
+    &mut rng,
+    cancel,
+    stages,
+    log,
+  )?;
+  Ok(AncestralOutputFull {
+    output: AncestralOutput {
+      gtr: partition.gtr().cloned(),
+      model_name: params.model,
+      mask,
+      emitted_nodes,
     },
-    MethodAncestral::Marginal => {
-      cancel.check()?;
-      stages.report("Inferring GTR model", 0.2, "");
-
-      let (partition, gtr) = build_marginal_partition(
-        Representation::resolve(params.dense),
-        params.model,
-        graph,
-        0,
-        alphabet,
-        node_inputs,
-        &profile_lengths,
-        log,
-      )?;
-      let model_name = params.model;
-      let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
-
-      let tips = TipStates {
-        include_leaves: params.include_leaves,
-        impute: params.impute_missing_data,
-      };
-
-      match partition {
-        MarginalPartition::Sparse(partition, node_states) => {
-          cancel.check()?;
-          stages.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(&gtr, graph, &profile_lengths, &node_states)?;
-
-          let (gtr, update) = if refine {
-            refine_gtr_model(
-              &partition,
-              gtr,
-              update,
-              params.gtr_iterations,
-              1.0,
-              graph,
-              &profile_lengths,
-              log,
-            )?
-          } else {
-            (gtr, update)
-          };
-          let MarginalUpdate { node_states, edges, .. } = update;
-          let family = SparseReconstruction {
-            partition,
-            gtr,
-            node_states,
-            edges,
-          };
-
-          cancel.check()?;
-          stages.report("Reconstructing sequences", 0.6, "");
-          let ReconstructedSequences {
-            sequences,
-            emitted_nodes,
-          } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
-
-          Ok(AncestralOutputFull {
-            output: AncestralOutput {
-              gtr: Some(family.gtr.clone()),
-              model_name,
-              mask,
-              emitted_nodes,
-            },
-            partition: Some(AncestralPartition::Sparse { family, sequences }),
-          })
-        },
-        MarginalPartition::Dense(partition) => {
-          cancel.check()?;
-          stages.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(&gtr, graph, &profile_lengths, &())?;
-
-          let (gtr, update) = if refine {
-            refine_gtr_model(
-              &partition,
-              gtr,
-              update,
-              params.gtr_iterations,
-              1.0,
-              graph,
-              &profile_lengths,
-              log,
-            )?
-          } else {
-            (gtr, update)
-          };
-          let MarginalUpdate { node_states, edges, .. } = update;
-          let family = DenseReconstruction {
-            partition,
-            gtr,
-            node_states,
-            edges,
-          };
-
-          cancel.check()?;
-          stages.report("Reconstructing sequences", 0.6, "");
-          let ReconstructedSequences {
-            sequences,
-            emitted_nodes,
-          } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
-
-          Ok(AncestralOutputFull {
-            output: AncestralOutput {
-              gtr: Some(family.gtr.clone()),
-              model_name,
-              mask,
-              emitted_nodes,
-            },
-            partition: Some(AncestralPartition::Dense { family, sequences }),
-          })
-        },
-      }
-    },
-    MethodAncestral::Joint => {
-      let available = MethodAncestral::VARIANTS
-        .iter()
-        .filter(|v| **v != "joint")
-        .copied()
-        .collect::<Vec<_>>()
-        .join(", ");
-      Err(OperationError::InvalidParams(make_report!(
-        "Joint ancestral reconstruction has been removed. Available methods: {available}"
-      )))
-    },
-  }
+    partition: Some(partition),
+  })
 }
 
 pub struct AncestralParams {
@@ -240,7 +86,6 @@ pub struct AncestralParams {
   pub site_specific_gtr: bool,
   pub seed: Option<u64>,
   pub sample_from_profile: SampleMode,
-  pub ignore_missing_alns: bool,
 }
 
 pub struct AncestralOutputFull {
@@ -263,6 +108,14 @@ pub enum AncestralPartition {
 }
 
 impl AncestralPartition {
+  pub(crate) fn gtr(&self) -> Option<&GTR> {
+    match self {
+      Self::Fitch(_) => None,
+      Self::Sparse { family, .. } => Some(&family.gtr),
+      Self::Dense { family, .. } => Some(&family.gtr),
+    }
+  }
+
   pub fn sequence_length(&self) -> usize {
     match self {
       Self::Fitch(partition) => partition.sequence_length(),
