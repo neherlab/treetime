@@ -105,7 +105,7 @@ pub struct ClockEdgeInput {
 
 #[derive(Debug)]
 pub(crate) struct ClockState {
-  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockNodeState>,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockSet>,
   pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeState>,
 }
 
@@ -113,7 +113,7 @@ impl ClockState {
   pub(crate) fn new(graph: &Graph) -> Self {
     let nodes = graph
       .get_nodes()
-      .map(|node| (node.key(), ClockNodeState::default()))
+      .map(|node| (node.key(), ClockSet::default()))
       .collect();
     let edges = graph
       .get_edges()
@@ -122,9 +122,11 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
-  #[must_use]
-  pub(crate) fn node(&self, key: GraphNodeKey) -> &ClockNodeState {
+  #[expect(
+    clippy::panic,
+    reason = "every graph node has a clock state; a missing one is a violated internal invariant"
+  )]
+  pub(crate) fn node(&self, key: GraphNodeKey) -> &ClockSet {
     self
       .nodes
       .get(&key)
@@ -143,14 +145,14 @@ impl ClockState {
   pub(crate) fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
-        GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
-      ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
+        GraphPassBackwardContext<'_, ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
+      ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
       + Sync
       + Send,
   {
     let pass = GraphPass::new(graph)?;
     let GraphMapOutputs { nodes, edges } =
-      pass.map_backward(&self.nodes, &self.edges, |_| Ok(ClockNodeState::default()), visit)?;
+      pass.map_backward(&self.nodes, &self.edges, |_| Ok(ClockSet::default()), visit)?;
     self.nodes = nodes;
     self.edges = edges;
     Ok(())
@@ -159,23 +161,18 @@ impl ClockState {
   pub(crate) fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
-        GraphPassForwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState>,
-      ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
+        GraphPassForwardContext<'_, ClockSet, ClockEdgeState, ClockSet>,
+      ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
       + Sync
       + Send,
   {
     let pass = GraphPass::new(graph)?;
     let GraphMapOutputs { nodes, edges } =
-      pass.map_forward(&self.nodes, &self.edges, |_| Ok(ClockNodeState::default()), visit)?;
+      pass.map_forward(&self.nodes, &self.edges, |_| Ok(ClockSet::default()), visit)?;
     self.nodes = nodes;
     self.edges = edges;
     Ok(())
   }
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub(crate) struct ClockNodeState {
-  pub clock_set: ClockSet,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

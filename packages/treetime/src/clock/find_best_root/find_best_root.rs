@@ -38,7 +38,7 @@ pub(crate) fn find_best_root(
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = root;
 
-  let root_clock_set = state.node(root.key()).clock_set.clone();
+  let root_clock_set = state.node(root.key()).clone();
   let root_acceptable = !force_positive || objective.has_positive_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
     objective.score(&root_clock_set)
@@ -65,7 +65,7 @@ pub(crate) fn find_best_root(
     .collect::<Vec<_>>()
     .into_par_iter()
     .map(|node| {
-      let clock_set = &state.node(node.key()).clock_set;
+      let clock_set = state.node(node.key());
       let acceptable = !force_positive || objective.has_positive_rate(clock_set);
       (node, acceptable.then(|| objective.score(clock_set)))
     })

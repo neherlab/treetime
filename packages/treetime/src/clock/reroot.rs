@@ -1,8 +1,6 @@
 use crate::clock::clock_regression::{ClockTree, ClockVarianceParams};
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{
-  ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockNodeState, ClockState,
-};
+use crate::clock::clock_state::{ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
@@ -179,9 +177,7 @@ fn create_new_root_node(
   state
     .edges
     .insert(split_info.child_side_edge_key, ClockEdgeState::default());
-  state
-    .nodes
-    .insert(split_info.new_node_key, ClockNodeState { clock_set });
+  state.nodes.insert(split_info.new_node_key, clock_set);
 
   inputs.edges.remove(&split_info.old_edge_key);
   inputs
@@ -345,7 +341,7 @@ fn find_named_root_point(
 ) -> Result<FindRootResult, Report> {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
     let root = graph.get_exactly_one_root()?;
-    let clock_set = state.node(root.key()).clock_set.clone();
+    let clock_set = state.node(root.key()).clone();
     return Ok(FindRootResult {
       edge: None,
       split: 0.0,

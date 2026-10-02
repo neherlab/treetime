@@ -1,6 +1,6 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockNodeState, ClockState};
+use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockState};
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_clock_tree};
@@ -85,7 +85,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
 
   progress_info!(log, "### Extracting clock model from root");
   let root_key = tree.graph.get_exactly_one_root()?.key();
-  let root_clock_set = state.node(root_key).clock_set.clone();
+  let root_clock_set = state.node(root_key).clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {
     progress_info!(log, "### Using fixed clock rate: {rate:.6e}");
@@ -268,8 +268,8 @@ fn clock_regression_backward_node(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  context: &GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
-) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report> {
+  context: &GraphPassBackwardContext<'_, ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
+) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report> {
   let mut node = context.input.clone();
   let is_leaf = context.is_leaf;
   let date = inputs.likely_time(context.key);
@@ -306,7 +306,7 @@ fn clock_regression_backward_node(
     };
     Some(edge)
   } else {
-    node.clock_set = q_to_parent;
+    node = q_to_parent;
     None
   };
 
@@ -330,7 +330,7 @@ fn clock_regression_forward(
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let mut edge = edge.clone();
       let parent = context.parent.expect("Non-root node must have a parent");
-      let mut q_to_child = parent.clock_set.clone();
+      let mut q_to_child = parent.clone();
       q_to_child -= &edge.clock_from_child;
       edge.clock_to_child = q_to_child;
 
@@ -344,7 +344,7 @@ fn clock_regression_forward(
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
       let mut q_dest = edge.clock_to_parent.clone();
       q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);
-      node.clock_set = q_dest;
+      node = q_dest;
       Some(edge)
     } else {
       None
