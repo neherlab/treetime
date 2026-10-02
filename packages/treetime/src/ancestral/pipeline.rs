@@ -129,7 +129,7 @@ pub fn run(
         MarginalPartition::Sparse(partition, node_states) => {
           cancel.check()?;
           stages.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&gtr, graph, &profile_lengths, &node_states)?;
 
           let (gtr, update) = if refine {
             refine_gtr_model(
@@ -173,7 +173,7 @@ pub fn run(
         MarginalPartition::Dense(partition) => {
           cancel.check()?;
           stages.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(&gtr, graph, &profile_lengths, BTreeMap::new())?;
+          let update = partition.marginal_update(&gtr, graph, &profile_lengths, &())?;
 
           let (gtr, update) = if refine {
             refine_gtr_model(
@@ -411,7 +411,7 @@ impl SparseReconstruction {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(&gtr, graph, branch_lengths, node_states)?;
+    } = partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
     Ok((
       Self {
         partition,
@@ -502,17 +502,12 @@ impl DenseReconstruction {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<(Self, LogLh), Report> {
-    let Self {
-      partition,
-      gtr,
-      node_states,
-      ..
-    } = self;
+    let Self { partition, gtr, .. } = self;
     let MarginalUpdate {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(&gtr, graph, branch_lengths, node_states)?;
+    } = partition.marginal_update(&gtr, graph, branch_lengths, &())?;
     Ok((
       Self {
         partition,

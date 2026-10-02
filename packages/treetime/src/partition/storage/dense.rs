@@ -54,10 +54,6 @@ impl MarginalNodeState for DenseNodeState {
   fn log_lh(&self) -> LogLh {
     self.profile.log_lh
   }
-
-  fn set_log_lh(&mut self, log_lh: LogLh) {
-    self.profile.log_lh = log_lh;
-  }
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

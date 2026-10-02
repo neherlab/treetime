@@ -30,7 +30,7 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), BTreeMap::new())?;
+    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &())?;
   Ok(log_lh.value())
 }
 
@@ -50,7 +50,7 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &node_states)?;
   Ok(log_lh.value())
 }
 

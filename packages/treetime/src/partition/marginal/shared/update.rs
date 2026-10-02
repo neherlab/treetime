@@ -10,16 +10,21 @@ use treetime_primitives::LogLh;
 
 pub trait MarginalPasses {
   type Node: MarginalNodeState;
+  type BackwardInput;
   type Backward;
   type Forward;
   type Estimate;
+
+  fn backward_input(node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> &Self::BackwardInput;
+
+  fn backward_input_with_reset_log_lh(node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> Self::BackwardInput;
 
   fn marginal_backward(
     &self,
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, Self::Node>,
+    input: &Self::BackwardInput,
   ) -> Result<MarginalBackward<Self::Node, Self::Backward>, Report>;
 
   fn marginal_forward(
@@ -46,10 +51,9 @@ pub trait MarginalPasses {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: BTreeMap<GraphNodeKey, Self::Node>,
+    input: &Self::BackwardInput,
   ) -> Result<MarginalUpdate<Self::Node, Self::Backward, Self::Forward, Self::Estimate>, Report> {
-    let MarginalBackward { node_states, backward } =
-      self.marginal_backward(gtr, graph, branch_lengths, &node_states)?;
+    let MarginalBackward { node_states, backward } = self.marginal_backward(gtr, graph, branch_lengths, input)?;
     let log_lh = self.root_log_lh(graph, &node_states)?;
     let MarginalForward {
       node_states,
@@ -76,12 +80,6 @@ pub trait MarginalPasses {
   fn root_log_lh(&self, graph: &Graph, node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> Result<LogLh, Report> {
     let root_key = graph.get_exactly_one_root()?.key();
     Ok(self.get_log_lh(node_states, root_key))
-  }
-
-  fn reset_node_log_lh(&self, node_states: &mut BTreeMap<GraphNodeKey, Self::Node>) {
-    for node in node_states.values_mut() {
-      node.set_log_lh(LogLh::ZERO);
-    }
   }
 }
 
@@ -124,6 +122,4 @@ pub struct MarginalForward<Node, Forward, Estimate> {
 
 pub trait MarginalNodeState {
   fn log_lh(&self) -> LogLh;
-
-  fn set_log_lh(&mut self, log_lh: LogLh);
 }

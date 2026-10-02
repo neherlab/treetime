@@ -20,7 +20,7 @@ use treetime_utils::array::ndarray::argmax_first;
 pub struct PartitionMarginalDiscrete {
   pub(crate) inputs: DenseInputs,
   pub(crate) states: DiscreteStates,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Option<Array2<f64>>>,
 }
 
 impl PartitionMarginalDiscrete {
@@ -44,7 +44,7 @@ impl PartitionMarginalDiscrete {
           .get(&leaf_name)
           .and_then(|trait_value| states.get_index(trait_value))
           .map_or_else(|| uniform_profile(n_states), |index| one_hot_profile(index, n_states));
-        (leaf_key, profile)
+        (leaf_key, Some(profile))
       })
       .collect();
     Ok(Self {
@@ -90,18 +90,25 @@ impl PartitionMarginalDiscrete {
 
 impl MarginalPasses for PartitionMarginalDiscrete {
   type Node = DenseNodeState;
+  type BackwardInput = ();
   type Backward = DenseEdgeBackward;
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
+
+  fn backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> &Self::BackwardInput {
+    &()
+  }
+
+  fn backward_input_with_reset_log_lh(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
 
   fn marginal_backward(
     &self,
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    _node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    (): &(),
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-    indexed_backward(&self.inputs, gtr, 1, self.indexed_kind(), graph, branch_lengths)
+    indexed_backward(&self.inputs, gtr, self.indexed_kind(), graph, branch_lengths)
   }
 
   fn marginal_forward(

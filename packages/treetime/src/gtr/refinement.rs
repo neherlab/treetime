@@ -42,7 +42,7 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
   }
 
-  let update = partition.marginal_update(&gtr, graph, profile_lengths, node_states)?;
+  let update = partition.marginal_update(&gtr, graph, profile_lengths, P::backward_input(&node_states))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
 }
@@ -92,7 +92,7 @@ where
     );
   }
 
-  let update = partition.marginal_update(&gtr, graph, profile_lengths, nodes)?;
+  let update = partition.marginal_update(&gtr, graph, profile_lengths, P::backward_input(&nodes))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
 }
@@ -153,9 +153,8 @@ where
   let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate_gtr = gtr.clone();
     candidate_gtr.mu = sqrt_mu * sqrt_mu;
-    let mut candidate_nodes = nodes.clone();
-    partition.reset_node_log_lh(&mut candidate_nodes);
-    match partition.marginal_backward(&candidate_gtr, graph, profile_lengths, &candidate_nodes) {
+    let input = P::backward_input_with_reset_log_lh(nodes);
+    match partition.marginal_backward(&candidate_gtr, graph, profile_lengths, &input) {
       Ok(MarginalBackward {
         node_states: candidate_nodes,
         backward,
@@ -223,7 +222,7 @@ where
         (gtr, nodes, backward)
       } else {
         let MarginalBackward { node_states, backward } =
-          partition.marginal_backward(&gtr, graph, profile_lengths, nodes)?;
+          partition.marginal_backward(&gtr, graph, profile_lengths, P::backward_input(nodes))?;
         (gtr, node_states, backward)
       };
     restored_gtr.mu = old_mu;

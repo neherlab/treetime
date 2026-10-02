@@ -60,7 +60,7 @@ pub(crate) fn reconstruct_marginal_partition(
   let partition: AncestralPartition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate { node_states, edges, .. } =
-        partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
+        partition.marginal_update(&gtr, graph, &profile_lengths, &node_states)?;
       let family = SparseReconstruction {
         partition,
         gtr,
@@ -72,8 +72,7 @@ pub(crate) fn reconstruct_marginal_partition(
       AncestralPartition::Sparse { family, sequences }
     },
     MarginalPartition::Dense(partition) => {
-      let MarginalUpdate { node_states, edges, .. } =
-        partition.marginal_update(&gtr, graph, &profile_lengths, BTreeMap::new())?;
+      let MarginalUpdate { node_states, edges, .. } = partition.marginal_update(&gtr, graph, &profile_lengths, &())?;
       let family = DenseReconstruction {
         partition,
         gtr,

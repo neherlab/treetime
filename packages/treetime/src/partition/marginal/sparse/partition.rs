@@ -20,7 +20,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
@@ -160,18 +160,31 @@ impl PartitionMarginalSparse {
 
 impl MarginalPasses for PartitionMarginalSparse {
   type Node = SparseNodeState;
+  type BackwardInput = BTreeMap<GraphNodeKey, SparseNodeState>;
   type Backward = SparseEdgeBackward;
   type Forward = SparseEdgeForward;
   type Estimate = Vec<Sub>;
+
+  fn backward_input(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> &Self::BackwardInput {
+    node_states
+  }
+
+  fn backward_input_with_reset_log_lh(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> Self::BackwardInput {
+    let mut input = node_states.clone();
+    for node in input.values_mut() {
+      node.profile.log_lh = LogLh::ZERO;
+    }
+    input
+  }
 
   fn marginal_backward(
     &self,
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    input: &Self::BackwardInput,
   ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
-    backward::process_backward_indexed(self, gtr, graph, branch_lengths, node_states)
+    backward::process_backward_indexed(self, gtr, graph, branch_lengths, input)
   }
 
   fn marginal_forward(

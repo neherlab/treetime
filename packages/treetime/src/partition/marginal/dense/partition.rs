@@ -34,7 +34,7 @@ pub struct PartitionMarginalDense {
   pub(crate) index: usize,
   pub(crate) alphabet: Alphabet,
   pub(crate) length: usize,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, DenseLeafObs>,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Option<DenseLeafObs>>,
 }
 
 impl PartitionMarginalDense {
@@ -58,7 +58,7 @@ impl PartitionMarginalDense {
           .seq
           .as_ref()
           .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
-        Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
+        Ok((leaf_key, Some(DenseLeafObs::new(seq, &alphabet))))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
@@ -211,6 +211,7 @@ impl PartitionMarginalDense {
   fn indexed_kind(&self) -> IndexedKind<'_> {
     IndexedKind::Dense {
       alphabet: &self.alphabet,
+      length: self.length,
       leaves: &self.obs_leaves,
     }
   }
@@ -218,25 +219,25 @@ impl PartitionMarginalDense {
 
 impl MarginalPasses for PartitionMarginalDense {
   type Node = DenseNodeState;
+  type BackwardInput = ();
   type Backward = DenseEdgeBackward;
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
+
+  fn backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> &Self::BackwardInput {
+    &()
+  }
+
+  fn backward_input_with_reset_log_lh(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
 
   fn marginal_backward(
     &self,
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    _node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    (): &(),
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-    indexed_backward(
-      &self.inputs,
-      gtr,
-      self.length,
-      self.indexed_kind(),
-      graph,
-      branch_lengths,
-    )
+    indexed_backward(&self.inputs, gtr, self.indexed_kind(), graph, branch_lengths)
   }
 
   fn marginal_forward(

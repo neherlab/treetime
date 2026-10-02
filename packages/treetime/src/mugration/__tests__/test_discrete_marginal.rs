@@ -12,7 +12,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
@@ -86,8 +86,7 @@ mod tests {
     let (partition, gtr) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
 
     let branch_lengths = branch_lengths_or_zero(&raw_branch_lengths);
-    let MarginalBackward { node_states, backward } =
-      partition.marginal_backward(&gtr, &graph, &branch_lengths, &BTreeMap::new())?;
+    let MarginalBackward { node_states, backward } = partition.marginal_backward(&gtr, &graph, &branch_lengths, &())?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -125,12 +124,7 @@ mod tests {
 
     let MarginalUpdate {
       node_states, log_lh, ..
-    } = partition.marginal_update(
-      &gtr,
-      &graph,
-      &branch_lengths_or_zero(&raw_branch_lengths),
-      BTreeMap::new(),
-    )?;
+    } = partition.marginal_update(&gtr, &graph, &branch_lengths_or_zero(&raw_branch_lengths), &())?;
     let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());
@@ -201,6 +195,8 @@ mod tests {
       name: &str,
     ) -> Array1<f64> {
       partition.obs_leaves[&get_node_key(graph, names, name)]
+        .as_ref()
+        .expect("leaf has an observation")
         .row(0)
         .to_owned()
     }

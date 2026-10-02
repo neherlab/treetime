@@ -17,7 +17,7 @@ mod tests {
   use crate::seq::composition::Composition;
   use ndarray::array;
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlphabetLike;
@@ -88,8 +88,8 @@ mod tests {
       )
       .unwrap();
 
-      let first = partition.marginal_update(&input.gtr, &graph, &branch_lengths, BTreeMap::new()).unwrap();
-      let second = partition.marginal_update(&input.gtr, &graph, &branch_lengths, first.node_states.clone()).unwrap();
+      let first = partition.marginal_update(&input.gtr, &graph, &branch_lengths, &()).unwrap();
+      let second = partition.marginal_update(&input.gtr, &graph, &branch_lengths, &()).unwrap();
 
       prop_assert_eq!(
         json_write_str(&first, JsonPretty(false)).unwrap(),
@@ -116,8 +116,8 @@ mod tests {
       )
       .unwrap();
 
-      let first = partition.marginal_update(&gtr, &graph, &branch_lengths, BTreeMap::new()).unwrap();
-      let second = partition.marginal_update(&gtr, &graph, &branch_lengths, first.node_states.clone()).unwrap();
+      let first = partition.marginal_update(&gtr, &graph, &branch_lengths, &()).unwrap();
+      let second = partition.marginal_update(&gtr, &graph, &branch_lengths, &()).unwrap();
 
       prop_assert_eq!(
         json_write_str(&first, JsonPretty(false)).unwrap(),

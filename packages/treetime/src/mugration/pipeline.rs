@@ -107,7 +107,7 @@ pub fn run(
   )?;
 
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
-  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, BTreeMap::new())?;
+  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, &())?;
   progress_info!(log, "Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
