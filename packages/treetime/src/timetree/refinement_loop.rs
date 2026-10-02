@@ -20,8 +20,8 @@ pub(crate) fn run_refinement_loop(
   log: &dyn LogSink,
 ) -> Result<(RoundState, CoalescentTimescale), Report> {
   cancel.check()?;
-  stages.report("Optimization", 0.3, "");
-  progress_info!(log, "### TreeTime: Optimisation rounds");
+  stages.report("Refinement loop", 0.3, "");
+  progress_info!(log, "### TreeTime: refinement loop");
   let params = inputs.params;
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
   if let Some(sink) = trace_sink {
@@ -46,7 +46,7 @@ pub(crate) fn run_refinement_loop(
     )]
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
     stages.report(
-      "Optimization",
+      "Refinement loop",
       iter_fraction,
       &format!("iteration {}/{max_iter}", i + 1),
     );

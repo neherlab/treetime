@@ -69,7 +69,7 @@ pub(crate) fn clock_filter(
 
   progress_info!(
     log,
-    "Outlier filtering: {} leaves changed status, IQD={iqd:.6e}",
+    "Outlier filtering: {} leaves flagged as outliers, IQD={iqd:.6e}",
     outliers.len()
   );
   log::debug!(

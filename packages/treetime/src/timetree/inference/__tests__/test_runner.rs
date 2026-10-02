@@ -141,9 +141,9 @@ mod tests {
 
     let expected = vec![
       "Timetree: 1 branch(es) run backwards in time, i.e. the child is dated before its parent. Their clock \
-       branch lengths were committed as zero. This is expected only where an observed leaf date conflicts with \
-       the fitted clock, since the forward pass clamps internal nodes to their parent but leaves leaf dates as \
-       given."
+       branch lengths were committed as zero. This is expected only where an observed leaf date or an exact \
+       internal-node date conflicts with the fitted clock, since the forward pass clamps the other internal nodes \
+       to their parent but leaves exact dates as given."
         .to_owned(),
     ];
     assert_eq!(expected, log.warnings());

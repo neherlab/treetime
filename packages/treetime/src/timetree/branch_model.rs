@@ -58,7 +58,7 @@ impl BranchModel {
     let Self::Marginal(partition) = self else {
       return Ok(self);
     };
-    progress_info!(log, "Applying reroot changes to 1 partitions");
+    progress_info!(log, "Applying reroot changes to the marginal reconstruction");
     let partition = partition
       .apply_reroot(reroot)
       .wrap_err("Failed to apply reroot changes to partition")?

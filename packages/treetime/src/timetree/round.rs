@@ -247,7 +247,7 @@ fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn 
   if total_length == 0 {
     progress_info!(
       log,
-      "Skipping relaxed clock: no sequence data (partitions empty or zero-length)"
+      "Skipping relaxed clock: no sequence data (no alignment or zero sequence length)"
     );
     return Ok(state);
   }
@@ -372,7 +372,7 @@ fn infer_times(
   if topology_changed {
     progress_info!(
       log,
-      "Tree structure changed - rebuilding node-time state before coalescent inference"
+      "Tree structure changed - updating node times on the new topology via timetree inference"
     );
   } else {
     progress_info!(log, "Updating node times via timetree inference");

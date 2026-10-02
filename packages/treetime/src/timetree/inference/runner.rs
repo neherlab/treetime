@@ -45,8 +45,6 @@ pub(crate) fn run_timetree(
   } = *inputs;
   progress_info!(log, "# Running timetree inference");
 
-  progress_info!(log, "## Calculating divergence distances");
-
   progress_info!(log, "## Using clock model");
   let clock_rate = clock_model.clock_rate();
   progress_info!(log, "**Clock rate:** {clock_rate:.6e}");
@@ -143,8 +141,8 @@ pub(crate) fn blended_clock_branch_lengths(
       log,
       "Timetree: {inverted} branch(es) run backwards in time, i.e. the child is dated before its \
        parent. Their clock branch lengths were committed as zero. This is expected only where an \
-       observed leaf date conflicts with the fitted clock, since the forward pass clamps internal \
-       nodes to their parent but leaves leaf dates as given."
+       observed leaf date or an exact internal-node date conflicts with the fitted clock, since the \
+       forward pass clamps the other internal nodes to their parent but leaves exact dates as given."
     );
   }
   clock_branch_lengths

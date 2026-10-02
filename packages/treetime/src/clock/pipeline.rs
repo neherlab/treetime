@@ -62,11 +62,7 @@ pub fn run(
   )?;
 
   if let Some(outliers) = &filter_outliers {
-    progress_info!(
-      log,
-      "Clock filter changed outlier status for {} leaf nodes",
-      outliers.len()
-    );
+    progress_info!(log, "Clock filter flagged {} leaf nodes as outliers", outliers.len());
   }
   let outliers = filter_outliers.unwrap_or_default();
 
