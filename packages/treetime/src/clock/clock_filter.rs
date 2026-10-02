@@ -8,17 +8,14 @@ use crate::progress_info;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-#[allow(
-  clippy::integer_division,
-  reason = "the quartile indices are floor divisions of the leaf count"
-)]
 #[expect(
+  clippy::integer_division,
   clippy::integer_division_remainder_used,
   reason = "the quartile indices are floor divisions of the leaf count"
 )]
@@ -39,18 +36,19 @@ pub(crate) fn clock_filter(
 
   let divergences = root_to_node_divergences(graph, |edge_key| branch_length_or_zero(branch_lengths, edge_key))?;
 
-  let leaf_clock_deviations: Vec<f64> = graph
+  let deviations_by_leaf: Vec<(GraphNodeKey, f64)> = graph
     .get_leaves()
     .collect::<Vec<_>>()
     .into_par_iter()
     .filter_map(|leaf| {
       let key = leaf.key();
-      let time = inputs.likely_time(key);
-      time.map(|time| clock_line.clock_deviation(time, divergences[&key]))
+      let time = inputs.likely_time(key)?;
+      Some((key, clock_line.clock_deviation(time, divergences[&key])))
     })
-    .collect::<Vec<_>>()
-    .into_iter()
-    .map(OrderedFloat)
+    .collect();
+  let leaf_clock_deviations: Vec<f64> = deviations_by_leaf
+    .iter()
+    .map(|(_, deviation)| OrderedFloat(*deviation))
     .sorted()
     .map(OrderedFloat::into_inner)
     .collect();
@@ -63,14 +61,10 @@ pub(crate) fn clock_filter(
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
-  let outliers: BTreeSet<GraphNodeKey> = graph
-    .get_leaves()
-    .filter_map(|leaf| {
-      let key = leaf.key();
-      let time = inputs.likely_time(key)?;
-      let clock_deviation = clock_line.clock_deviation(time, divergences[&key]);
-      (clock_deviation.abs() > iqd * threshold).then_some(key)
-    })
+  let outliers: BTreeSet<GraphNodeKey> = deviations_by_leaf
+    .iter()
+    .filter(|(_, deviation)| deviation.abs() > iqd * threshold)
+    .map(|(key, _)| *key)
     .collect();
 
   progress_info!(
