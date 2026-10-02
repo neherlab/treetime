@@ -68,7 +68,6 @@ pub(crate) struct PreLoopState {
   pub branch_model: BranchModel,
   pub clock_fit: ClockFit,
   pub outliers: BTreeSet<GraphNodeKey>,
-  pub filter_divergences: Option<BTreeMap<GraphNodeKey, f64>>,
 }
 
 impl PreLoopState {
@@ -84,7 +83,6 @@ impl PreLoopState {
       branch_model,
       clock_fit,
       outliers: BTreeSet::new(),
-      filter_divergences: None,
     }
   }
 }
@@ -258,11 +256,7 @@ fn filter_clock_outliers(
     inputs.names,
     log,
   );
-  Ok(PreLoopState {
-    outliers,
-    filter_divergences: Some(divergences),
-    ..state
-  })
+  Ok(PreLoopState { outliers, ..state })
 }
 
 fn optimize_branch_lengths(

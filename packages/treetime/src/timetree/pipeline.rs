@@ -1,9 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::branch_lengths::branch_length_or_zero;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFit, ClockTree, ClockVarianceParams};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
+use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
@@ -29,7 +31,6 @@ use crate::timetree::confidence::{
   extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::TraceSink;
-use crate::timetree::divergence::final_divergences;
 use crate::timetree::inference::result::TimeInference;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
@@ -105,15 +106,7 @@ pub fn run(
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
   let final_times = refine_final_times(&round_inputs, coalescent, &timescale, state, log)?;
-  let filter_divergences = initial.filter_divergences.as_ref();
-  let results = gather_results(
-    params,
-    &context,
-    coalescent,
-    &timescale,
-    filter_divergences,
-    final_times,
-  )?;
+  let results = gather_results(params, &context, coalescent, &timescale, final_times)?;
   let state = emit_sequences(params, context.time_marginal, seq_sink, results.state, log)?;
 
   Ok(TimetreeOutput {
@@ -412,7 +405,6 @@ fn gather_results(
   context: &TimetreeContext,
   coalescent: &CoalescentSetup,
   timescale: &CoalescentTimescale,
-  filter_divergences: Option<&BTreeMap<GraphNodeKey, f64>>,
   final_times: FinalTimes,
 ) -> Result<FinalResults, Report> {
   let FinalTimes {
@@ -441,7 +433,9 @@ fn gather_results(
     &coalescent.skyline_params,
   )?;
 
-  let divergences = final_divergences(&state.graph, &state.branch_lengths, &state.names, filter_divergences)?;
+  let divergences = root_to_node_divergences(&state.graph, |edge_key| {
+    branch_length_or_zero(&state.branch_lengths, edge_key)
+  })?;
   let names = assign_node_names(state.names, &state.graph)?;
 
   let clock_regression = clock_fit_regression_results(&state.clock_model, &state.clock_points, &names, |key| {

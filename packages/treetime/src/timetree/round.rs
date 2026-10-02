@@ -41,7 +41,6 @@ pub(crate) struct InitialRound {
   pub state: RoundState,
   pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub outliers: BTreeSet<GraphNodeKey>,
-  pub filter_divergences: Option<BTreeMap<GraphNodeKey, f64>>,
   pub coalescent: CoalescentSetup,
   pub timescale: CoalescentTimescale,
 }
@@ -62,7 +61,6 @@ pub(crate) fn run_initial_round(
       points: clock_points,
     },
     outliers,
-    filter_divergences,
   } = pre_loop;
 
   let leaf_bad_branches = bad_leaves(&graph, &context.date_constraints, &outliers);
@@ -106,7 +104,6 @@ pub(crate) fn run_initial_round(
     state: state.blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, log),
     leaf_bad_branches,
     outliers,
-    filter_divergences,
     coalescent,
     timescale,
   })

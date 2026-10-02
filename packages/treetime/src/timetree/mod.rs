@@ -3,7 +3,6 @@ pub mod coalescent;
 pub(crate) mod coalescent_timescale;
 pub mod confidence;
 pub mod convergence;
-pub(crate) mod divergence;
 pub mod inference;
 pub mod optimization;
 pub mod params;

@@ -34,15 +34,29 @@ mod tests {
   }
 
   #[test]
-  fn test_root_to_node_divergences_covers_unnamed_nodes() -> Result<(), Report> {
-    let parsed = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
+  fn test_root_to_node_divergences_gives_internal_nodes_their_path_sum() -> Result<(), Report> {
+    let parsed = nwk_read_str("((A:0.1,B:0.2):0.3,C:0.4);")?;
+    let names = parsed.names();
 
     let actual = root_to_node_divergences(&parsed.graph, |edge_key| {
       parsed.branch_lengths[&edge_key].unwrap_or_default()
     })?;
 
-    let keys = parsed.graph.get_nodes().map(|node| node.key()).collect::<Vec<_>>();
-    assert_eq!(keys, actual.keys().copied().collect::<Vec<_>>());
+    let expected: BTreeMap<_, f64> = parsed
+      .graph
+      .get_nodes()
+      .map(|node| {
+        let div = match (node.is_root(), node.is_leaf(), names[&node.key()].as_deref()) {
+          (true, _, _) => 0.0,
+          (false, false, _) => 0.3,
+          (false, true, Some("A" | "C")) => 0.4,
+          (false, true, Some("B")) => 0.5,
+          (false, true, other) => panic!("unexpected leaf {other:?}"),
+        };
+        (node.key(), div)
+      })
+      .collect();
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-12);
     Ok(())
   }
 

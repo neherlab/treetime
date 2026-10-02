@@ -101,7 +101,6 @@ mod tests {
       "with at most 2 differences in {SEQUENCE_LENGTH} sites, no branch can stay at {INPUT_BRANCH_LENGTH}"
     );
     assert_eq!(BTreeSet::new(), state.outliers);
-    assert_eq!(None, state.filter_divergences);
     Ok(())
   }
 }
