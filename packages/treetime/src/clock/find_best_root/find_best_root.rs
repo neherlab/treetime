@@ -7,7 +7,7 @@ use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use log::debug;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;

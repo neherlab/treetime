@@ -119,7 +119,7 @@ pub(super) mod support {
       .collect()
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

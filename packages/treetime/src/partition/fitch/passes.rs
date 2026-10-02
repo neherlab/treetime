@@ -13,7 +13,7 @@ use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_in
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

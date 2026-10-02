@@ -59,7 +59,7 @@ impl TimeMarginalMode {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

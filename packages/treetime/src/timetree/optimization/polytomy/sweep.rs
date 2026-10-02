@@ -115,7 +115,7 @@ impl SubtreePlan {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -168,7 +168,7 @@ pub struct Lineage {
   pub(crate) mutations: u32,
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

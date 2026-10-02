@@ -14,7 +14,7 @@ pub(crate) fn capture_node_times(graph: &Graph, inference: &TimeInference) -> No
     .collect()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -48,7 +48,7 @@ pub fn remove_stem_root(graph: &mut Graph, root_key: GraphNodeKey) -> Result<Opt
   }))
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -104,7 +104,7 @@ pub fn apply_reroot_topology(
   Ok(inverted_edge_keys)
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -145,7 +145,7 @@ pub fn remove_node_if_trivial(
   }))
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

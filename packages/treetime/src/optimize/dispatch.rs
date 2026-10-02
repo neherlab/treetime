@@ -8,7 +8,7 @@ use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_f
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;

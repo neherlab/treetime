@@ -1,7 +1,7 @@
 use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
 use eyre::Report;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;

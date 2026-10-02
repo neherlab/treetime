@@ -14,7 +14,7 @@ use crate::timetree::inference::result::{BranchLikelihood, NodeTimes, TimeInfere
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use log::debug;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;

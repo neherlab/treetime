@@ -361,7 +361,7 @@ fn find_named_root_point(
   })
 }
 
-#[allow(
+#[expect(
   clippy::panic,
   clippy::unwrap_used,
   reason = "panics on a violated internal invariant; unwrap on a value an upstream invariant guarantees is present"

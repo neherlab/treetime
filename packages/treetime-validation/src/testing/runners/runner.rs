@@ -7,7 +7,7 @@ use crate::testing::plots::plots::generate_plot_outputs;
 use crate::testing::run::Args;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::fmt::Display;
