@@ -1,3 +1,4 @@
+mod test_assign_node_names;
 mod test_dependency_queue;
 mod test_edge;
 mod test_graph_ops;

@@ -51,7 +51,7 @@ use eyre::{Report, WrapErr};
 use log::debug;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::assign_node_names::{assign_node_names, restrict_node_names};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -410,13 +410,7 @@ fn run_initial_round(
     filter_divergences,
   } = pre_loop;
 
-  let names: BTreeMap<GraphNodeKey, Option<String>> = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, input_names.get(&key).cloned().flatten())
-    })
-    .collect();
+  let names = restrict_node_names(input_names, &graph);
   let gammas = unit_gammas(&graph);
 
   let run = |prior: Option<&CoalescentModel>| {

@@ -38,3 +38,16 @@ pub fn assign_node_names(
 
   Ok(result)
 }
+
+pub fn restrict_node_names(
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  graph: &Graph,
+) -> BTreeMap<GraphNodeKey, Option<String>> {
+  graph
+    .get_nodes()
+    .map(|node| {
+      let key = node.key();
+      (key, names.get(&key).cloned().flatten())
+    })
+    .collect()
+}

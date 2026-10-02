@@ -14,6 +14,7 @@ use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
+use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -67,13 +68,7 @@ pub fn run(
   }
   let outliers = filter_outliers.unwrap_or_default();
 
-  let names: BTreeMap<GraphNodeKey, Option<String>> = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, names.get(&key).cloned().flatten())
-    })
-    .collect();
+  let names = restrict_node_names(names, &graph);
   let divergences = root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
   let regression_results =
     gather_clock_regression_results(&graph, &inputs, &divergences, &outliers, &clock_model, &names);

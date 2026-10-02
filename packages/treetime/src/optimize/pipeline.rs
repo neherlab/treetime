@@ -30,6 +30,7 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -157,14 +158,7 @@ pub fn run(
     )?;
   }
 
-  let loop_names: BTreeMap<GraphNodeKey, Option<String>> = input
-    .graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, names.get(&key).cloned().flatten())
-    })
-    .collect();
+  let loop_names = restrict_node_names(names, &input.graph);
 
   cancel.check()?;
   progress.report("Optimizing branch lengths", 0.3, "");
