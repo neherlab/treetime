@@ -75,7 +75,7 @@ impl AncestralPartition {
 
   pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
-      Self::Fitch(partition) => partition.edge_subs(graph, edge_key),
+      Self::Fitch(partition) => partition.edge_subs(edge_key),
       Self::Marginal { reconstruction, .. } => reconstruction.edge_subs(graph, edge_key),
     }
   }

@@ -78,7 +78,7 @@ impl PartitionFitch {
     self.length
   }
 
-  pub(crate) fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  pub(crate) fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
