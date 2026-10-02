@@ -3,9 +3,9 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -18,7 +18,7 @@ mod tests {
   #[test]
   fn test_partition_timetree_edge_sub_count_unavailable_before_inference() -> Result<(), Report> {
     let (graph, seeded) = helpers::seeded_sparse()?;
-    let partition = PartitionTimetree::Sparse(seeded);
+    let partition = MarginalReconstruction::Sparse(seeded);
     for edge in graph.get_edges() {
       assert_eq!(None, partition.edge_sub_count(&graph, edge.key())?);
     }
@@ -29,7 +29,7 @@ mod tests {
   fn test_partition_timetree_edge_sub_count_matches_edge_subs_after_inference() -> Result<(), Report> {
     let (graph, seeded) = helpers::seeded_sparse()?;
     let (updated, _) = seeded.marginal_update(&graph, &branch_lengths_or_zero(&helpers::branch_lengths()?))?;
-    let partition = PartitionTimetree::Sparse(updated);
+    let partition = MarginalReconstruction::Sparse(updated);
     for edge in graph.get_edges() {
       let expected = partition.edge_subs(&graph, edge.key())?.len();
       assert_eq!(Some(expected), partition.edge_sub_count(&graph, edge.key())?);

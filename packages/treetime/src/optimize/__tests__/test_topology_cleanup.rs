@@ -3,32 +3,27 @@ pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
-    total_sequence_length,
   };
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{
-    find_zero_optimal_internal_edges, marginal_update_dense, marginal_update_sparse, prune_and_merge_in_loop,
-    run_optimize_loop,
-  };
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
+  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
-  use itertools::{Itertools, izip};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -40,11 +35,13 @@ pub(super) mod tests {
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
+  use helpers::{empty_sparse_recon, populate_test_nodes};
+
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = Graph::new();
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &BTreeMap::new());
+    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &BTreeMap::new());
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -56,8 +53,8 @@ pub(super) mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
+    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -69,8 +66,8 @@ pub(super) mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
+    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -82,8 +79,8 @@ pub(super) mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
+    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
@@ -102,8 +99,8 @@ pub(super) mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
+    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 2);
     Ok(())
   }
@@ -144,15 +141,13 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
+    let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let mut dense_partitions: Vec<DenseReconstruction> = vec![];
-
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
@@ -160,7 +155,7 @@ pub(super) mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let sparse_lh;
-      (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+      (reconstruction, sparse_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let sparse_lh = sparse_lh.value();
       let total_lh = sparse_lh;
 
@@ -169,16 +164,15 @@ pub(super) mod tests {
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-      let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
-      sparse_partitions = cleanup.sparse_partitions;
-      dense_partitions = cleanup.dense_partitions;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      reconstruction = cleanup.reconstruction;
 
       lh_prev = total_lh;
     }
@@ -234,15 +228,13 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
+    let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let mut dense_partitions: Vec<DenseReconstruction> = vec![];
-
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
@@ -250,23 +242,22 @@ pub(super) mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let total_lh;
-      (sparse_partitions, total_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+      (reconstruction, total_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let total_lh = total_lh.value();
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-      let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
-      sparse_partitions = cleanup.sparse_partitions;
-      dense_partitions = cleanup.dense_partitions;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      reconstruction = cleanup.reconstruction;
 
       lh_prev = total_lh;
     }
@@ -307,20 +298,18 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(
-      sp_partition,
-      jc69(JC69Params::default())?,
-      sp_node_states,
-    )];
-    let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+    let sparse = SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states);
+    let (sparse, _) = sparse.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let initial_node_count = graph.get_nodes().count();
 
-    let (mut sparse_obs, sparse_gtrs, sparse_node_states): (Vec<_>, Vec<_>, Vec<_>) = sparse_partitions
-      .into_iter()
-      .map(|family| (family.partition, family.gtr, family.node_states))
-      .multiunzip();
+    let SparseReconstruction {
+      partition,
+      gtr,
+      node_states,
+      ..
+    } = sparse;
+    let mut sparse_obs = [partition];
     let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_obs, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
@@ -330,19 +319,14 @@ pub(super) mod tests {
       "merge should have created new internal nodes"
     );
 
-    let live_nodes = live_node_keys(&graph);
-    let sparse_partitions = izip!(sparse_obs, sparse_gtrs, sparse_node_states)
-      .map(|(partition, gtr, node_states)| {
-        SparseReconstruction::seeded(
-          partition,
-          gtr,
-          reconcile_node_states(node_states, &live_nodes, SparseNodeState::empty),
-        )
-      })
-      .collect_vec();
+    let [partition] = sparse_obs;
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      partition,
+      gtr,
+      reconcile_node_states(node_states, &live_node_keys(&graph), SparseNodeState::empty),
+    ));
 
-    let (sparse_partitions, lh) =
-      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
+    let (_, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let lh = lh.value();
     assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
     assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
@@ -361,21 +345,25 @@ pub(super) mod tests {
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
     let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
 
-    let sparse: Vec<SparseReconstruction> = vec![];
-    let dense: Vec<DenseReconstruction> = vec![];
+    let mut partition = empty_sparse_recon()?;
+    populate_test_nodes(&mut partition, &graph);
+    for edge in graph.get_edges() {
+      partition
+        .partition
+        .obs_edges
+        .insert(edge.key(), SparseEdgeObs::default());
+    }
+    let reconstruction = MarginalReconstruction::Sparse(partition);
 
     let mut names_tt_8 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      sparse,
-      dense,
+      reconstruction,
       &[ri1_key, i1i2_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_8,
     )?;
-    let sparse = cleanup.sparse_partitions;
-    let dense = cleanup.dense_partitions;
     let changed = cleanup.topology_changed;
     assert!(changed);
 
@@ -425,16 +413,14 @@ pub(super) mod tests {
     let mut graph: Graph = graph;
 
     let dense_partition = PartitionMarginalDense::new(0, nuc, &graph, &node_seq_inputs(&graph, &names, aln))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?)];
+    let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?));
 
-    let (mut dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
+    let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let mut sparse_partitions: Vec<SparseReconstruction> = vec![];
-
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
@@ -442,23 +428,22 @@ pub(super) mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let dense_lh;
-      (dense_partitions, dense_lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
+      (reconstruction, dense_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let dense_lh = dense_lh.value();
       if (dense_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-      let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
-      sparse_partitions = cleanup.sparse_partitions;
-      dense_partitions = cleanup.dense_partitions;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      reconstruction = cleanup.reconstruction;
 
       lh_prev = dense_lh;
     }
@@ -510,14 +495,12 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
-
-    let dense_partitions: Vec<DenseReconstruction> = vec![];
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
@@ -529,8 +512,7 @@ pub(super) mod tests {
     let names_tt_2 = names;
     run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       10,
       1e-2,
       0.75,
@@ -579,19 +561,16 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       sp_partition,
       jc69(JC69Params::default())?,
       sp_node_states,
-    )];
-    let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
-
-    let dense_partitions: Vec<DenseReconstruction> = vec![];
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    ));
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -608,8 +587,7 @@ pub(super) mod tests {
     let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       10,
       1e-2,
       0.75,
@@ -619,8 +597,6 @@ pub(super) mod tests {
       branch_lengths,
       &names_tt_1,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     assert!(
       graph.get_nodes().count() < initial_node_count,

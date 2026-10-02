@@ -5,10 +5,10 @@ use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::gather::{gather_timetree_edge_contributions, gather_timetree_edge_indel_counts};
+use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
-use crate::partition::timetree::partition::PartitionTimetree;
+use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
@@ -167,7 +167,7 @@ fn ml_optimize(
     return Ok(state);
   };
   progress_info!(log, "{banner}");
-  let partition = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
+  let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
   let (partition, branch_lengths) =
     optimize_branch_lengths(&state.graph, partition, state.branch_lengths, no_indels).wrap_err(failure)?;
   Ok(PreLoopState {
@@ -262,16 +262,16 @@ fn filter_clock_outliers(
 
 fn optimize_branch_lengths(
   graph: &Graph,
-  partition: PartitionTimetree,
+  partition: MarginalReconstruction,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   no_indels: bool,
-) -> Result<(PartitionTimetree, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+) -> Result<(MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 
   let total_length = partition.sequence_length();
-  let contributions = gather_timetree_edge_contributions(graph, &partition)?;
-  let indel_counts = gather_timetree_edge_indel_counts(graph, &partition);
+  let contributions = gather_edge_contributions(graph, &partition)?;
+  let indel_counts = gather_edge_indel_counts(graph, &partition);
   if no_indels {
     run_optimize_mixed_inner(
       graph,
@@ -297,6 +297,6 @@ fn optimize_branch_lengths(
   }
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  let partition = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;
+  let (partition, _) = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;
   Ok((partition, branch_lengths))
 }

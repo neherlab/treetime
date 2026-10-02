@@ -10,23 +10,22 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
-use treetime::make_error;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+use treetime::seq::mutation::MutationTrack;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::AlignmentRecord;
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -76,14 +75,12 @@ pub fn run_optimize(
     mut graph,
     gtr,
     model_name,
-    sparse_partitions,
-    dense_partitions,
+    reconstruction,
     branch_lengths,
     names,
   } = output;
 
-  let maps = gather_optimize_output_maps(&graph, &sparse_partitions, &dense_partitions)?;
-  let has_partitions = !sparse_partitions.is_empty() || !dense_partitions.is_empty();
+  let maps = gather_optimize_output_maps(&graph, &reconstruction)?;
 
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
@@ -113,13 +110,8 @@ pub fn run_optimize(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    let mutation_provider = maps
-      .root_sequence
-      .is_some()
-      .then(|| EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph));
-    let providers = mutation_provider
-      .iter()
-      .fold(CommentProviders::new(), |providers, provider| providers.with(provider));
+    let mutation_provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
+    let providers = CommentProviders::new().with(&mutation_provider);
     write_optimize_tree_outputs(
       &graph,
       &nodes,
@@ -132,14 +124,7 @@ pub fn run_optimize(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let mutation_counts = match args.divergence_units {
-      DivergenceUnits::Mutations => {
-        if !has_partitions {
-          return make_error!(
-            "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
-          );
-        }
-        Some(compute_edge_mutation_counts(&graph, &maps.edge_subs))
-      },
+      DivergenceUnits::Mutations => Some(compute_edge_mutation_counts(&graph, &maps.edge_subs)),
       DivergenceUnits::MutationsPerSite => None,
     };
 
@@ -163,51 +148,27 @@ pub fn run_optimize(
 
 fn gather_optimize_output_maps(
   graph: &Graph,
-  sparse_partitions: &[SparseReconstruction],
-  dense_partitions: &[DenseReconstruction],
+  reconstruction: &MarginalReconstruction,
 ) -> Result<OptimizeOutputMaps, Report> {
-  if let Some(family) = dense_partitions.first() {
-    gather_optimize_partition_maps(
-      graph,
-      family.root_sequence(graph)?,
-      |key| family.edge_mutations(graph, key, &MutationTrack::Nucleotide),
-      |key| family.edge_subs(graph, key),
-    )
-  } else if let Some(family) = sparse_partitions.first() {
-    gather_optimize_partition_maps(
-      graph,
-      family.root_sequence(graph)?,
-      |key| family.edge_mutations(key, &MutationTrack::Nucleotide),
-      |key| family.edge_subs(key),
-    )
-  } else {
-    Ok(OptimizeOutputMaps::default())
-  }
-}
-
-fn gather_optimize_partition_maps(
-  graph: &Graph,
-  root_sequence: Seq,
-  edge_mutations: impl Fn(GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
-  edge_subs: impl Fn(GraphEdgeKey) -> Result<Vec<Sub>, Report>,
-) -> Result<OptimizeOutputMaps, Report> {
-  let root_sequence = Some(root_sequence);
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
       let key = edge.key();
-      Ok((key, edge_mutations(key)?))
+      Ok((
+        key,
+        reconstruction.edge_mutations(graph, key, &MutationTrack::Nucleotide)?,
+      ))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   let edge_subs = graph
     .get_edges()
     .map(|edge| {
       let key = edge.key();
-      Ok((key, edge_subs(key)?))
+      Ok((key, reconstruction.edge_subs(graph, key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(OptimizeOutputMaps {
-    root_sequence,
+    root_sequence: reconstruction.root_sequence(graph)?,
     edge_mutations,
     edge_subs,
   })

@@ -3,8 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;

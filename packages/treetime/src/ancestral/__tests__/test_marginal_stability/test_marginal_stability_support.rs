@@ -3,9 +3,9 @@ pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;

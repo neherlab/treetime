@@ -4,7 +4,6 @@ mod tests {
     ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
   };
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
@@ -15,8 +14,9 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::constraint_coalescent_node_times;
@@ -88,7 +88,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
   type TimetreeSetup = (
     Graph,
     BTreeMap<GraphNodeKey, Option<String>>,
-    PartitionTimetree,
+    MarginalReconstruction,
     ClockModel,
     DateConstraints,
     BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -113,14 +113,14 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
+      let dense_partition = MarginalReconstruction::Dense(DenseReconstruction {
         partition: PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &node_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
       });
 
-      let partition = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+      let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
       let times = likely_times(&graph, &constraints, None)?;
       let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());

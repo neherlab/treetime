@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
-  use super::super::test_convergence_support::tests::{compute_total_lh, setup_partitions, simple_alignment};
+  use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
 
   #[rustfmt::skip]
   #[rstest]
@@ -28,16 +28,16 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
-    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
+    let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -100.0, "Log-LH should be reasonable: {final_lh}");
@@ -71,16 +71,16 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
-    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
+    let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -100.0, "Log-LH should be reasonable: {final_lh}");
@@ -114,16 +114,16 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
-    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
+    let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
     assert!(final_lh > -200.0, "Log-LH should be reasonable: {final_lh}");

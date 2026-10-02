@@ -2,13 +2,12 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -23,7 +22,7 @@ mod tests {
   fn setup_dense(
     newick: &str,
     fasta: &str,
-  ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
       .into_iter()
@@ -36,9 +35,9 @@ mod tests {
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
-    let partitions = vec![DenseReconstruction::seeded(partition, gtr)];
-    let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
-    Ok((graph, partitions, branch_lengths))
+    let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    Ok((graph, reconstruction, branch_lengths))
   }
 
   fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> (f64, f64) {
@@ -66,15 +65,15 @@ mod tests {
 
   #[test]
   fn test_root_preservation_ratio_preserved_after_optimization() -> Result<(), Report> {
-    let (graph, partitions, mut branch_lengths) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
+    let (graph, reconstruction, mut branch_lengths) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
     let ratio_before = bl0_before / total_before;
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     run_optimize_mixed_inner(
       &graph,
       total_length,
@@ -98,11 +97,11 @@ mod tests {
   #[test]
   fn test_root_preservation_both_edges_zero_uses_equal_split() -> Result<(), Report> {
     let tree = "((A:0.1,B:0.2)AB:0.0,(C:0.15,D:0.12)CD:0.0)root:0.0;";
-    let (graph, partitions, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     run_optimize_mixed_inner(
       &graph,
       total_length,
@@ -142,7 +141,7 @@ mod tests {
       >F
       GGGGACGTACGTACGA
     "#};
-    let (graph, partitions, mut branch_lengths) = setup_dense(tree, fasta)?;
+    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, fasta)?;
 
     {
       let root = graph.get_exactly_one_root()?;
@@ -150,9 +149,9 @@ mod tests {
       assert_eq!(3, children.len());
     }
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     run_optimize_mixed_inner(
       &graph,
       total_length,
@@ -169,7 +168,7 @@ mod tests {
   #[test]
   fn test_root_preservation_asymmetric_ratio() -> Result<(), Report> {
     let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;";
-    let (graph, partitions, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
@@ -177,9 +176,9 @@ mod tests {
 
     assert!(ratio_before > 0.9, "pre-condition: asymmetric ratio");
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     run_optimize_mixed_inner(
       &graph,
       total_length,

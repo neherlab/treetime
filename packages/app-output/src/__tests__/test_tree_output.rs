@@ -25,7 +25,7 @@ pub(super) mod tests {
   use tempfile::TempDir;
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::ancestral::aa::AaNodeData;
-  use treetime::ancestral::pipeline::AncestralPartition;
+  use treetime::ancestral::partition::AncestralPartition;
   use treetime::partition::fitch::partition::PartitionFitch;
   use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use treetime::seq::indel::InDel;
@@ -266,7 +266,6 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::optimize( 1)]
   #[case::prune(    2)]
   #[case::clock(    3)]
   #[case::mugration(4)]
@@ -408,8 +407,12 @@ pub(super) mod tests {
       }
     }
 
-    fn optimize_maps(_graph: &Graph) -> OptimizeOutputMaps {
-      OptimizeOutputMaps::default()
+    fn optimize_maps(_graph: &Graph) -> Result<OptimizeOutputMaps, Report> {
+      Ok(OptimizeOutputMaps {
+        root_sequence: Seq::try_from_str("ACGT")?,
+        edge_mutations: BTreeMap::new(),
+        edge_subs: BTreeMap::new(),
+      })
     }
 
     fn prune_maps(_graph: &Graph) -> PruneOutputMaps {
@@ -576,7 +579,7 @@ pub(super) mod tests {
         &optimize_graph,
         &optimize_nodes(&optimize_names, &optimize_graph, &btreemap! {}),
         &optimize_bl,
-        &optimize_maps(&optimize_graph),
+        &optimize_maps(&optimize_graph)?,
         "2026-07-19",
       )?;
       let (prune_graph, prune_names, prune_bl) = prune_graph()?;
@@ -637,7 +640,7 @@ pub(super) mod tests {
           &ancestral_maps(&ancestral, None),
           None,
         )?,
-        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize))?,
+        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?,
         prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?,
         clock_to_mat(&clock, &clock_names, &clock_bl)?,
         mugration_to_mat(mugration, &mugration_names, &mugration_bl)?,
@@ -661,7 +664,7 @@ pub(super) mod tests {
         &graph,
         &optimize_nodes(&names, &graph, &btreemap! {}),
         &branch_lengths,
-        &optimize_maps(&graph),
+        &optimize_maps(&graph)?,
         "2026-07-19",
       )
     }

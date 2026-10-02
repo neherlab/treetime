@@ -2,23 +2,21 @@
 pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::branch_length::invalid_branch_length_descriptions;
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{
-    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
-  };
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::InitialGuessMode;
-  use crate::optimize::run_loop::marginal_update_dense;
   use crate::optimize::run_loop::{
     any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
+  use crate::test_utils::dense_reconstruction_mut;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
@@ -116,13 +114,13 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_auto_preserves_valid_lengths() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -144,7 +142,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_auto_fills_none_from_newick() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
 
     for edge_ref in graph.get_edges() {
       let bl = branch_lengths[&edge_ref.key()];
@@ -154,10 +152,10 @@ pub(super) mod tests {
       );
     }
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -181,16 +179,16 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_auto_fills_only_missing_edges() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let original_lengths = get_branch_lengths(&graph, &branch_lengths);
 
     let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -229,16 +227,16 @@ pub(super) mod tests {
     #[case] has_indels: bool,
     #[case] expects_error: bool,
   ) -> Result<(), Report> {
-    let (graph, names, mut partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     set_first_branch_length(&graph, &mut branch_lengths, -0.1);
     if has_indels {
-      inject_indel_on_first_edge(&graph, &mut partitions)?;
+      inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     }
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
       total_length,
@@ -269,13 +267,13 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_always_overwrites_all() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -294,12 +292,12 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_complete_tree() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,
       total_length,
@@ -319,11 +317,11 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_rejects_nan_tree() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
       total_length,
@@ -347,12 +345,12 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_zero_bl_without_indels() -> Result<(), Report> {
-    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,
       total_length,
@@ -375,12 +373,12 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_rejects_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, names, mut partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
-    inject_indel_on_first_edge(&graph, &mut partitions)?;
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    inject_indel_on_first_edge(&graph, &mut reconstruction)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
       total_length,
@@ -408,13 +406,13 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_positive_bl_with_indels() -> Result<(), Report> {
-    let (graph, names, mut partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
-    inject_indel_on_first_edge(&graph, &mut partitions)?;
+    let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,
       total_length,
@@ -437,8 +435,8 @@ pub(super) mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_false_without_indels() -> Result<(), Report> {
-    let (graph, names, partitions, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let (graph, names, reconstruction, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     assert!(
       !any_indel_edge_has_zero_branch_length(&graph, &indel_counts, &branch_lengths),
       "Without any indels, no indel-bearing zero-BL edges should be detected"
@@ -448,9 +446,9 @@ pub(super) mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_false_with_positive_bl() -> Result<(), Report> {
-    let (graph, names, mut partitions, branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
-    inject_indel_on_first_edge(&graph, &mut partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let (graph, names, mut reconstruction, branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    inject_indel_on_first_edge(&graph, &mut reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     assert!(
       !any_indel_edge_has_zero_branch_length(&graph, &indel_counts, &branch_lengths),
       "Positive branch length on indel-bearing edge must not trigger the zero-BL check"
@@ -460,9 +458,9 @@ pub(super) mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_true_with_indel_and_zero_bl() -> Result<(), Report> {
-    let (graph, names, mut partitions, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
-    inject_indel_on_first_edge(&graph, &mut partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let (graph, names, mut reconstruction, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    inject_indel_on_first_edge(&graph, &mut reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
     assert!(
       any_indel_edge_has_zero_branch_length(&graph, &indel_counts, &branch_lengths),
       "Zero branch length on an indel-bearing edge must be detected"
@@ -512,13 +510,15 @@ pub(super) mod tests {
 
     pub(crate) fn inject_indel_on_first_edge(
       graph: &Graph,
-      partitions: &mut [DenseReconstruction],
+      reconstruction: &mut MarginalReconstruction,
     ) -> Result<(), Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-      for partition in partitions.iter_mut() {
-        partition.edges.estimates.get_mut(&edge_key).unwrap().indels =
-          vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
-      }
+      dense_reconstruction_mut(reconstruction)
+        .edges
+        .estimates
+        .get_mut(&edge_key)
+        .unwrap()
+        .indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
       Ok(())
     }
 
@@ -528,7 +528,7 @@ pub(super) mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        Vec<DenseReconstruction>,
+        MarginalReconstruction,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -542,11 +542,12 @@ pub(super) mod tests {
       let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
-      let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
+      let reconstruction =
+        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
 
-      let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+      let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      Ok((graph, names, partitions, branch_lengths))
+      Ok((graph, names, reconstruction, branch_lengths))
     }
 
     fn test_alignment() -> Result<Vec<FastaRecord>, Report> {

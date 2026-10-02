@@ -1,3 +1,5 @@
+use crate::ancestral::sample::SampleMode;
+use crate::gtr::get_gtr::GtrModelName;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::VariantNames;
@@ -11,4 +13,16 @@ pub enum MethodAncestral {
   Marginal,
   Parsimony,
   Joint,
+}
+
+pub struct AncestralParams {
+  pub method: MethodAncestral,
+  pub model: GtrModelName,
+  pub dense: Option<bool>,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub gtr_iterations: usize,
+  pub site_specific_gtr: bool,
+  pub seed: Option<u64>,
+  pub sample_from_profile: SampleMode,
 }

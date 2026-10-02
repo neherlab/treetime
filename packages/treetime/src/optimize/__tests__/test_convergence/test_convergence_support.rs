@@ -3,15 +3,12 @@ pub(crate) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{
-    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
-  };
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -49,69 +46,71 @@ pub(crate) mod tests {
     )
   }
 
-  pub(crate) fn setup_partitions(
+  pub(crate) fn setup_reconstruction(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
-    let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
-    let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
-
-    let dense_partition =
-      PartitionMarginalDense::new(0, alphabet_dense, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(
-      dense_partition,
+  ) -> Result<MarginalReconstruction, Report> {
+    let fitch = create_fitch_partition(
+      graph,
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      &node_seq_inputs(graph, names, aln.to_vec()),
+    )?;
+    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      partition,
       jc69(JC69Params::default())?,
-    )];
+      node_states,
+    ));
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    apply_initial_guess(graph, &reconstruction, branch_lengths)?;
+    Ok(reconstruction)
+  }
 
-    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(
-      sparse_partition,
-      jc69(JC69Params::default())?,
-      sparse_node_states,
-    )];
-
-    let (dense_partitions, _) =
-      marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), dense_partitions)?;
-    let (sparse_partitions, _) =
-      marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), sparse_partitions)?;
-
-    {
-      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-      let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
-      let sub_counts = gather_edge_sub_counts(graph, &dense_partitions, &sparse_partitions)?;
-      let effective_lengths = gather_edge_effective_lengths(graph, &dense_partitions, &sparse_partitions)?;
-      initial_guess_mixed(
-        graph,
-        total_length,
-        &indel_counts,
-        &sub_counts,
-        &effective_lengths,
-        ExistingBranchLengths::Overwrite,
-        false,
-        branch_lengths,
-      )?;
-    }
-
-    Ok((dense_partitions, sparse_partitions))
+  pub(crate) fn setup_dense_reconstruction(
+    graph: &Graph,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    aln: &[AlignmentRecord],
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MarginalReconstruction, Report> {
+    let partition = PartitionMarginalDense::new(
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      graph,
+      &node_seq_inputs(graph, names, aln.to_vec()),
+    )?;
+    let reconstruction =
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    apply_initial_guess(graph, &reconstruction, branch_lengths)?;
+    Ok(reconstruction)
   }
 
   pub(crate) fn compute_total_lh(
     graph: &Graph,
-    dense_partitions: Vec<DenseReconstruction>,
-    sparse_partitions: Vec<SparseReconstruction>,
+    reconstruction: MarginalReconstruction,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>, f64), Report> {
-    let (dense_partitions, dense_lh) =
-      marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), dense_partitions)?;
-    let (sparse_partitions, sparse_lh) =
-      marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), sparse_partitions)?;
-    Ok((
-      dense_partitions,
-      sparse_partitions,
-      dense_lh.value() + sparse_lh.value(),
-    ))
+  ) -> Result<(MarginalReconstruction, f64), Report> {
+    let (reconstruction, log_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    Ok((reconstruction, log_lh.value()))
+  }
+
+  fn apply_initial_guess(
+    graph: &Graph,
+    reconstruction: &MarginalReconstruction,
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<(), Report> {
+    initial_guess_mixed(
+      graph,
+      reconstruction.sequence_length(),
+      &gather_edge_indel_counts(graph, reconstruction),
+      &gather_edge_sub_counts(graph, reconstruction)?,
+      &gather_edge_effective_lengths(graph, reconstruction)?,
+      ExistingBranchLengths::Overwrite,
+      false,
+      branch_lengths,
+    )
   }
 }

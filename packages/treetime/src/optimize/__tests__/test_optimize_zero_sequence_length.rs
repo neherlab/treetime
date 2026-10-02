@@ -1,14 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
-  use crate::optimize::gather::total_sequence_length;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::seq::alignment::NodeSeqInput;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
@@ -17,7 +15,7 @@ mod tests {
   use treetime_primitives::seq;
   use treetime_utils::assert_error;
 
-  fn zero_length_partitions(graph: &Graph) -> (Vec<DenseReconstruction>, Vec<SparseReconstruction>) {
+  fn zero_length_reconstruction(graph: &Graph) -> MarginalReconstruction {
     let node_inputs = graph
       .get_leaves()
       .map(|leaf| {
@@ -30,15 +28,10 @@ mod tests {
         )
       })
       .collect();
-    let dense = vec![DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc).unwrap(), graph, &node_inputs)
-        .unwrap(),
-      gtr: jc69(JC69Params::default()).unwrap(),
-      node_states: BTreeMap::new(),
-      edges: MarginalEdges::default(),
-    }];
-    let sparse: Vec<SparseReconstruction> = vec![];
-    (dense, sparse)
+    MarginalReconstruction::Dense(DenseReconstruction::seeded(
+      PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc).unwrap(), graph, &node_inputs).unwrap(),
+      jc69(JC69Params::default()).unwrap(),
+    ))
   }
 
   #[test]
@@ -47,8 +40,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense, sparse) = zero_length_partitions(&graph);
-    let total_length = total_sequence_length(&dense, &sparse);
+    let total_length = zero_length_reconstruction(&graph).sequence_length();
     let result = run_optimize_mixed(
       &graph,
       total_length,
@@ -69,8 +61,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense, sparse) = zero_length_partitions(&graph);
-    let total_length = total_sequence_length(&dense, &sparse);
+    let total_length = zero_length_reconstruction(&graph).sequence_length();
     let result = initial_guess_mixed(
       &graph,
       total_length,
@@ -93,8 +84,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense, sparse) = zero_length_partitions(&graph);
-    let total_length = total_sequence_length(&dense, &sparse);
+    let total_length = zero_length_reconstruction(&graph).sequence_length();
     let result = run_optimize_mixed_with_indel_rate(
       &graph,
       total_length,

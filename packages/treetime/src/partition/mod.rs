@@ -4,4 +4,3 @@ pub mod fitch;
 pub mod marginal;
 pub mod optimize;
 pub mod storage;
-pub mod timetree;

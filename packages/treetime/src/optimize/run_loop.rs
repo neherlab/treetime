@@ -1,27 +1,26 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
-use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
-use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
+use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
-use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
-use crate::partition::storage::dense::DenseNodeState;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
-use itertools::{Itertools, izip};
+use itertools::Itertools;
 use log::debug;
 use std::collections::BTreeMap;
+use std::slice;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -32,8 +31,7 @@ use treetime_utils::make_error;
 
 pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
-  sparse_partitions: Vec<SparseReconstruction>,
-  dense_partitions: Vec<DenseReconstruction>,
+  reconstruction: MarginalReconstruction,
   max_iter: usize,
   dp: f64,
   damping: f64,
@@ -45,13 +43,12 @@ pub(crate) fn run_optimize_loop(
 ) -> Result<OptimizeLoopResult, Report> {
   let mut names = names.clone();
   let mut branch_lengths = branch_lengths;
-  let mut sparse_partitions = sparse_partitions;
-  let mut dense_partitions = dense_partitions;
+  let mut reconstruction = reconstruction;
 
   let indel_rate = if no_indels {
     0.0
   } else {
-    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
     estimate_indel_rate(graph, &indel_counts, &branch_lengths)
   };
 
@@ -64,16 +61,8 @@ pub(crate) fn run_optimize_loop(
   let mut best_branch_lengths: Option<BTreeMap<GraphEdgeKey, Option<f64>>> = None;
 
   for i in 0..max_iter {
-    let iteration = compute_iteration(
-      graph,
-      &branch_lengths,
-      sparse_partitions,
-      dense_partitions,
-      indel_rate,
-      no_indels,
-    )?;
-    sparse_partitions = iteration.sparse_partitions;
-    dense_partitions = iteration.dense_partitions;
+    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, indel_rate, no_indels)?;
+    reconstruction = iteration.reconstruction;
     let iteration_lh = iteration.likelihood;
     lh_history.push(iteration_lh.total_lh);
 
@@ -90,9 +79,9 @@ pub(crate) fn run_optimize_loop(
     if !iteration_lh.total_lh.value().is_finite() {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = branch_lengths_or_zero(&branch_lengths);
-        (sparse_partitions, _) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
-        (dense_partitions, _) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
+        reconstruction = reconstruction
+          .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
+          .0;
       }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
@@ -116,9 +105,9 @@ pub(crate) fn run_optimize_loop(
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = branch_lengths_or_zero(&branch_lengths);
-        (sparse_partitions, _) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
-        (dense_partitions, _) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
+        reconstruction = reconstruction
+          .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
+          .0;
       }
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
@@ -126,9 +115,9 @@ pub(crate) fn run_optimize_loop(
 
     let old_branch_lengths = branch_lengths.clone();
     {
-      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-      let contributions = gather_edge_contributions(graph, &dense_partitions, &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
       run_optimize_mixed_inner(
         graph,
         total_length,
@@ -142,7 +131,7 @@ pub(crate) fn run_optimize_loop(
     }
 
     let zero_optimal_edges = if topology_ops.collapse_short_branches {
-      find_zero_optimal_internal_edges(graph, &sparse_partitions, &branch_lengths)
+      find_zero_optimal_internal_edges(graph, &reconstruction, &branch_lengths)
     } else {
       vec![]
     };
@@ -151,15 +140,13 @@ pub(crate) fn run_optimize_loop(
 
     let cleanup = prune_and_merge_in_loop(
       graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       &zero_optimal_edges,
       topology_ops,
       &mut branch_lengths,
       &mut names,
     )?;
-    sparse_partitions = cleanup.sparse_partitions;
-    dense_partitions = cleanup.dense_partitions;
+    reconstruction = cleanup.reconstruction;
     if cleanup.topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
       best_branch_lengths = None;
@@ -170,8 +157,7 @@ pub(crate) fn run_optimize_loop(
   }
 
   Ok(OptimizeLoopResult {
-    sparse_partitions,
-    dense_partitions,
+    reconstruction,
     branch_lengths,
     names,
     lh_history,
@@ -179,11 +165,9 @@ pub(crate) fn run_optimize_loop(
   })
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct OptimizeLoopResult {
-  pub sparse_partitions: Vec<SparseReconstruction>,
-
-  pub dense_partitions: Vec<DenseReconstruction>,
+  pub reconstruction: MarginalReconstruction,
 
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 
@@ -207,25 +191,25 @@ pub(crate) enum ConvergenceReason {
 fn compute_iteration(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sparse_partitions: Vec<SparseReconstruction>,
-  dense_partitions: Vec<DenseReconstruction>,
+  reconstruction: MarginalReconstruction,
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIteration, Report> {
-  let marginal_bl = branch_lengths_or_zero(branch_lengths);
-  let (sparse_partitions, sparse_lh) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
-  let (dense_partitions, dense_lh) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
+  let (reconstruction, marginal_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+  let (sparse_lh, dense_lh) = match reconstruction {
+    MarginalReconstruction::Sparse(_) => (marginal_lh, LogLh::ZERO),
+    MarginalReconstruction::Dense(_) => (LogLh::ZERO, marginal_lh),
+  };
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
-    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
     total_indel_log_lh(graph, &indel_counts, branch_lengths, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
   Ok(OptimizeIteration {
-    sparse_partitions,
-    dense_partitions,
+    reconstruction,
     likelihood: OptimizeIterationLikelihood {
       sparse_lh,
       dense_lh,
@@ -236,37 +220,8 @@ fn compute_iteration(
   })
 }
 
-pub(crate) fn marginal_update_sparse(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  sparse: Vec<SparseReconstruction>,
-) -> Result<(Vec<SparseReconstruction>, LogLh), Report> {
-  sparse
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
-      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-      updated.push(family);
-      Ok((updated, total + log_lh))
-    })
-}
-
-pub(crate) fn marginal_update_dense(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  dense: Vec<DenseReconstruction>,
-) -> Result<(Vec<DenseReconstruction>, LogLh), Report> {
-  dense
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), family| {
-      let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-      updated.push(family);
-      Ok((updated, total + log_lh))
-    })
-}
-
 struct OptimizeIteration {
-  sparse_partitions: Vec<SparseReconstruction>,
-  dense_partitions: Vec<DenseReconstruction>,
+  reconstruction: MarginalReconstruction,
   likelihood: OptimizeIterationLikelihood,
 }
 
@@ -281,26 +236,25 @@ struct OptimizeIterationLikelihood {
 
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
-  sparse_partitions: &[SparseReconstruction],
+  reconstruction: &MarginalReconstruction,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
-    .filter_map(|edge_ref| {
-      let edge = edge_ref;
+    .filter_map(|edge| {
       let bl = branch_lengths[&edge.key()].unwrap_or(f64::NAN);
-      let target_is_leaf = graph.is_leaf(edge.target());
-      if bl != 0.0 || target_is_leaf {
+      if bl != 0.0 || graph.is_leaf(edge.target()) {
         return None;
       }
       let edge_key = edge.key();
-      let has_mutations = sparse_partitions.iter().any(|family| {
-        family
+      let has_mutations = match reconstruction {
+        MarginalReconstruction::Sparse(sparse) => sparse
           .partition
           .obs_edges
           .get(&edge_key)
-          .is_some_and(|e| !e.fitch_subs().is_empty() || !e.indels.is_empty())
-      });
+          .is_some_and(|e| !e.fitch_subs().is_empty() || !e.indels.is_empty()),
+        MarginalReconstruction::Dense(_) => false,
+      };
       (!has_mutations).then_some(edge_key)
     })
     .collect_vec()
@@ -308,22 +262,23 @@ pub(crate) fn find_zero_optimal_internal_edges(
 
 pub(crate) fn prune_and_merge_in_loop(
   graph: &mut Graph,
-  sparse_partitions: Vec<SparseReconstruction>,
-  dense_partitions: Vec<DenseReconstruction>,
+  reconstruction: MarginalReconstruction,
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<TopologyCleanup, Report> {
-  let (mut sparse_obs, sparse_gtrs, mut sparse_node_states, sparse_edges): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
-    sparse_partitions
-      .into_iter()
-      .map(|family| (family.partition, family.gtr, family.node_states, family.edges))
-      .multiunzip();
-  let (dense_obs, dense_gtrs, dense_node_states, dense_edges): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = dense_partitions
-    .into_iter()
-    .map(|family| (family.partition, family.gtr, family.node_states, family.edges))
-    .multiunzip();
+  let mut reconstruction = reconstruction;
+  let (sparse, sparse_node_states): (
+    &mut [PartitionMarginalSparse],
+    &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
+  ) = match &mut reconstruction {
+    MarginalReconstruction::Sparse(sparse) => (
+      slice::from_mut(&mut sparse.partition),
+      slice::from_mut(&mut sparse.node_states),
+    ),
+    MarginalReconstruction::Dense(_) => (&mut [], &mut []),
+  };
 
   let mut topology_changed = false;
 
@@ -339,7 +294,7 @@ pub(crate) fn prune_and_merge_in_loop(
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
-      collapse_edge(graph, &mut sparse_obs, edge_key, branch_lengths)?;
+      collapse_edge(graph, sparse, edge_key, branch_lengths)?;
       collapsed += 1;
     }
 
@@ -349,84 +304,39 @@ pub(crate) fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(
-    graph,
-    &mut sparse_obs,
-    &mut sparse_node_states,
-    topology_ops,
-    branch_lengths,
-  )? > 0
-  {
+  if resolve_polytomies(graph, sparse, sparse_node_states, topology_ops, branch_lengths)? > 0 {
     topology_changed = true;
   }
 
   if !topology_changed {
     return Ok(TopologyCleanup {
-      sparse_partitions: join_sparse(sparse_obs, sparse_gtrs, sparse_node_states, sparse_edges),
-      dense_partitions: join_dense(dense_obs, dense_gtrs, dense_node_states, dense_edges),
+      reconstruction,
       topology_changed,
     });
   }
 
   graph.build()?;
   *names = assign_node_names(std::mem::take(names), graph)?;
-  let live_nodes = live_node_keys(graph);
-  let sparse_partitions = izip!(sparse_obs, sparse_gtrs, sparse_node_states)
-    .map(|(partition, gtr, node_states)| {
-      SparseReconstruction::seeded(
-        partition,
-        gtr,
-        reconcile_node_states(node_states, &live_nodes, SparseNodeState::empty),
-      )
-    })
-    .collect_vec();
-  let dense_partitions = izip!(dense_obs, dense_gtrs)
-    .map(|(partition, gtr)| DenseReconstruction::seeded(partition, gtr))
-    .collect_vec();
+  let reconstruction = match reconstruction {
+    MarginalReconstruction::Sparse(sparse) => MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      sparse.partition,
+      sparse.gtr,
+      reconcile_node_states(sparse.node_states, &live_node_keys(graph), SparseNodeState::empty),
+    )),
+    MarginalReconstruction::Dense(dense) => {
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(dense.partition, dense.gtr))
+    },
+  };
 
   Ok(TopologyCleanup {
-    sparse_partitions,
-    dense_partitions,
+    reconstruction,
     topology_changed,
   })
 }
 
 pub(crate) struct TopologyCleanup {
-  pub sparse_partitions: Vec<SparseReconstruction>,
-  pub dense_partitions: Vec<DenseReconstruction>,
+  pub reconstruction: MarginalReconstruction,
   pub topology_changed: bool,
-}
-
-fn join_sparse(
-  partitions: Vec<PartitionMarginalSparse>,
-  gtrs: Vec<GTR>,
-  node_states: Vec<BTreeMap<GraphNodeKey, SparseNodeState>>,
-  edges: Vec<SparseMarginalEdges>,
-) -> Vec<SparseReconstruction> {
-  izip!(partitions, gtrs, node_states, edges)
-    .map(|(partition, gtr, node_states, edges)| SparseReconstruction {
-      partition,
-      gtr,
-      node_states,
-      edges,
-    })
-    .collect_vec()
-}
-
-fn join_dense(
-  partitions: Vec<PartitionMarginalDense>,
-  gtrs: Vec<GTR>,
-  node_states: Vec<BTreeMap<GraphNodeKey, DenseNodeState>>,
-  edges: Vec<DenseMarginalEdges>,
-) -> Vec<DenseReconstruction> {
-  izip!(partitions, gtrs, node_states, edges)
-    .map(|(partition, gtr, node_states, edges)| DenseReconstruction {
-      partition,
-      gtr,
-      node_states,
-      edges,
-    })
-    .collect_vec()
 }
 
 #[expect(

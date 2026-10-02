@@ -3,13 +3,11 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use treetime_primitives::AlignmentRecord;
 
@@ -47,32 +45,23 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
-    let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
-
-    let dense_partition =
-      PartitionMarginalDense::new(0, alphabet_dense, &graph, &node_seq_inputs(&graph, &names, aln.clone()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(
-      dense_partition,
-      jc69(JC69Params::default())?,
-    )];
-
-    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(
+      &graph,
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      &node_seq_inputs(&graph, &names, aln),
+    )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       sparse_partition,
       jc69(JC69Params::default())?,
       sparse_node_states,
-    )];
+    ));
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let (dense_partitions, _) =
-      marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
-    let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
-
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     run_optimize_mixed(
       &graph,

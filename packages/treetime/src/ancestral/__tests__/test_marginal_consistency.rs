@@ -8,17 +8,19 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name};
+  use crate::test_utils::{
+    dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction,
+  };
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -88,10 +90,10 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     gtr: GTR,
-  ) -> Result<(f64, DenseReconstruction), Report> {
+  ) -> Result<(f64, MarginalReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, gtr);
+    let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -103,11 +105,11 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     gtr: GTR,
-  ) -> Result<(f64, SparseReconstruction), Report> {
+  ) -> Result<(f64, MarginalReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
+    let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -163,8 +165,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Root node not found"))?;
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("AB node not found"))?;
 
-    let dense = &dense_partition;
-    let sparse = &sparse_partition;
+    let dense = dense_reconstruction(&dense_partition);
+    let sparse = sparse_reconstruction(&sparse_partition);
 
     for node_key in [root_key, ab_key] {
       let dense_node = &dense.node_states[&node_key];
@@ -219,8 +221,8 @@ mod tests {
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense = &dense_partition;
-    let sparse = &sparse_partition;
+    let dense = dense_reconstruction(&dense_partition);
+    let sparse = sparse_reconstruction(&sparse_partition);
 
     for node_data in dense.node_states.values() {
       if !node_data.profile.dis.is_empty() {
@@ -284,12 +286,12 @@ mod tests {
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense_sequences = reconstruct_named_sequences_dense(&graph, &names, &dense_partition)?;
-    let sparse_sequences = reconstruct_named_sequences_sparse(&graph, &names, &sparse_partition)?;
+    let dense_sequences = reconstruct_named_sequences(&graph, &names, &dense_partition)?;
+    let sparse_sequences = reconstruct_named_sequences(&graph, &names, &sparse_partition)?;
     assert_eq!(dense_sequences, sparse_sequences);
 
     let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| dense_partition.edge_subs(&graph, key))?;
-    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.edge_subs(key))?;
+    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.edge_subs(&graph, key))?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
     Ok(())
@@ -337,20 +339,10 @@ mod tests {
     Ok(())
   }
 
-  fn reconstruct_named_sequences_dense(
+  fn reconstruct_named_sequences(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    recon: &DenseReconstruction,
-  ) -> Result<BTreeMap<String, Seq>, Report> {
-    let reconstruction =
-      recon.reconstruct_sequences(graph, TipStates::default(), SampleMode::Argmax, &mut rand::thread_rng())?;
-    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, false, key))
-  }
-
-  fn reconstruct_named_sequences_sparse(
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    recon: &SparseReconstruction,
+    recon: &MarginalReconstruction,
   ) -> Result<BTreeMap<String, Seq>, Report> {
     let reconstruction =
       recon.reconstruct_sequences(graph, TipStates::default(), SampleMode::Argmax, &mut rand::thread_rng())?;

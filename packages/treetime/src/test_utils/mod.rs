@@ -7,7 +7,8 @@ mod timetree;
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name};
 pub(crate) use indel::insertion;
 pub(crate) use marginal::{
-  NUC_ALPHABET, emitted_sequences_by_name, run_dense_marginal_with_newick, run_sparse_marginal_with_newick,
+  NUC_ALPHABET, dense_reconstruction, dense_reconstruction_mut, emitted_sequences_by_name,
+  run_dense_marginal_with_newick, run_sparse_marginal_with_newick, sparse_reconstruction, sparse_reconstruction_mut,
 };
 pub(crate) use sparse::sparse_edge_obs;
 pub(crate) use timetree::{constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params};

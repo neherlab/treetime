@@ -4,6 +4,7 @@ use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
@@ -70,4 +71,32 @@ pub(crate) fn emitted_sequences_by_name(
       Ok((names[key].clone().expect("all test nodes are named"), seq))
     })
     .collect()
+}
+
+pub(crate) fn sparse_reconstruction(reconstruction: &MarginalReconstruction) -> &SparseReconstruction {
+  match reconstruction {
+    MarginalReconstruction::Sparse(sparse) => sparse,
+    MarginalReconstruction::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
+  }
+}
+
+pub(crate) fn sparse_reconstruction_mut(reconstruction: &mut MarginalReconstruction) -> &mut SparseReconstruction {
+  match reconstruction {
+    MarginalReconstruction::Sparse(sparse) => sparse,
+    MarginalReconstruction::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
+  }
+}
+
+pub(crate) fn dense_reconstruction_mut(reconstruction: &mut MarginalReconstruction) -> &mut DenseReconstruction {
+  match reconstruction {
+    MarginalReconstruction::Dense(dense) => dense,
+    MarginalReconstruction::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
+  }
+}
+
+pub(crate) fn dense_reconstruction(reconstruction: &MarginalReconstruction) -> &DenseReconstruction {
+  match reconstruction {
+    MarginalReconstruction::Dense(dense) => dense,
+    MarginalReconstruction::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
+  }
 }

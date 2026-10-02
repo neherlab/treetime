@@ -3,15 +3,12 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{
-    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
-  };
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -84,18 +81,18 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<SparseReconstruction>, Report> {
+  ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let partitions = vec![SparseReconstruction::seeded(
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    )];
-    let (partitions, _) = marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
+    ));
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
-    Ok(partitions)
+    Ok(reconstruction)
   }
 
   fn setup_dense(
@@ -103,14 +100,15 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<DenseReconstruction>, Report> {
+  ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
+    let reconstruction =
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
 
-    let (partitions, _) = marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
-    Ok(partitions)
+    Ok(reconstruction)
   }
 
   fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
@@ -128,11 +126,11 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -147,11 +145,11 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -169,11 +167,11 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -191,11 +189,11 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -213,12 +211,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
       if effective < 16 {
         found_reduced = true;
       }
@@ -239,11 +237,11 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let subs = partitions[0].edge_subs(&graph, edge_key)?;
+      let subs = reconstruction.edge_subs(&graph, edge_key)?;
       for sub in &subs {
         assert!(sub.pos() < 4 || sub.pos() >= 8);
       }
@@ -259,12 +257,12 @@ mod tests {
     let graph_clean_names = nwk_parsed.names();
     let graph_clean = nwk_parsed.graph;
     let mut branch_lengths_clean = nwk_parsed.branch_lengths;
-    let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
+    let reconstruction_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
     {
-      let total_length = total_sequence_length(&[], &partitions_clean);
-      let indel_counts = gather_edge_indel_counts(&graph_clean, &[], &partitions_clean);
-      let sub_counts = gather_edge_sub_counts(&graph_clean, &[], &partitions_clean)?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_clean, &[], &partitions_clean)?;
+      let total_length = reconstruction_clean.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph_clean, &reconstruction_clean);
+      let sub_counts = gather_edge_sub_counts(&graph_clean, &reconstruction_clean)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_clean, &reconstruction_clean)?;
       initial_guess_mixed(
         &graph_clean,
         total_length,
@@ -286,12 +284,12 @@ mod tests {
     let graph_gappy_names = nwk_parsed.names();
     let graph_gappy = nwk_parsed.graph;
     let mut branch_lengths_gappy = nwk_parsed.branch_lengths;
-    let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
+    let reconstruction_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
     {
-      let total_length = total_sequence_length(&[], &partitions_gappy);
-      let indel_counts = gather_edge_indel_counts(&graph_gappy, &[], &partitions_gappy);
-      let sub_counts = gather_edge_sub_counts(&graph_gappy, &[], &partitions_gappy)?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_gappy, &[], &partitions_gappy)?;
+      let total_length = reconstruction_gappy.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph_gappy, &reconstruction_gappy);
+      let sub_counts = gather_edge_sub_counts(&graph_gappy, &reconstruction_gappy)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_gappy, &reconstruction_gappy)?;
       initial_guess_mixed(
         &graph_gappy,
         total_length,

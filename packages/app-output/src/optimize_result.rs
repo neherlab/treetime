@@ -6,9 +6,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct OptimizeOutputMaps {
-  pub root_sequence: Option<Seq>,
+  pub root_sequence: Seq,
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   pub edge_subs: BTreeMap<GraphEdgeKey, Vec<Sub>>,
 }

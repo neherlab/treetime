@@ -8,18 +8,18 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
 
-  use crate::partition::timetree::partition::PartitionTimetree;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::timetree::branch_model::BranchModel;
   use eyre::Report;
   use std::collections::{BTreeMap, BTreeSet};
@@ -56,9 +56,9 @@ mod tests {
       .collect();
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
+    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
-    let partition = sparse_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (partition, _) = sparse_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let times = likely_times(&graph, &constraints, None)?;
     let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());

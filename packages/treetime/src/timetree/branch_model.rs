@@ -1,5 +1,5 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
-use crate::partition::timetree::partition::PartitionTimetree;
+use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::{Report, WrapErr};
@@ -14,7 +14,7 @@ use treetime_graph::reroot::RerootResult;
 )]
 pub(crate) enum BranchModel {
   Input,
-  Marginal(PartitionTimetree),
+  Marginal(MarginalReconstruction),
 }
 
 impl BranchModel {
@@ -36,7 +36,7 @@ impl BranchModel {
   ) -> Result<Self, Report> {
     Ok(match self {
       Self::Input => Self::Input,
-      Self::Marginal(partition) => Self::Marginal(partition.marginal_update(graph, branch_lengths)?),
+      Self::Marginal(partition) => Self::Marginal(partition.marginal_update(graph, branch_lengths)?.0),
     })
   }
 
@@ -63,7 +63,8 @@ impl BranchModel {
       .apply_reroot(reroot)
       .wrap_err("Failed to apply reroot changes to partition")?
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))
-      .wrap_err("Failed to update marginal after reroot")?;
+      .wrap_err("Failed to update marginal after reroot")?
+      .0;
     Ok(Self::Marginal(partition))
   }
 }

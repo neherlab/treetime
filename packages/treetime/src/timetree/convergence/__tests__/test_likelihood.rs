@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::node_time::CoalescentNodeTimes;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
-  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::NodeSeqInput;
   use crate::test_utils::find_node_key_by_name;
@@ -168,7 +168,7 @@ mod tests {
       graph: &Graph,
       root_key: GraphNodeKey,
       log_lh: f64,
-    ) -> Result<PartitionTimetree, Report> {
+    ) -> Result<MarginalReconstruction, Report> {
       let alphabet = Alphabet::default();
       let fill = alphabet.char(0);
       let node_inputs = graph
@@ -190,7 +190,7 @@ mod tests {
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       };
-      Ok(PartitionTimetree::Dense(DenseReconstruction {
+      Ok(MarginalReconstruction::Dense(DenseReconstruction {
         partition,
         gtr: jc69(JC69Params::default())?,
         node_states,

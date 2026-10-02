@@ -8,12 +8,12 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::reconstruction::ReconstructedSequences;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::emitted_sequences_by_name;
   use eyre::Report;
@@ -136,7 +136,11 @@ mod tests {
       &node_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+      node_states,
+    ));
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
@@ -157,7 +161,7 @@ mod tests {
       graph,
       &node_seq_inputs(graph, names, aln.to_vec()),
     )?;
-    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
+    let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,

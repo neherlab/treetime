@@ -2,7 +2,6 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_regression::{
     ClockFit, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
   };
@@ -15,8 +14,9 @@ mod tests {
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
@@ -242,7 +242,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-      let partition = PartitionTimetree::Dense(DenseReconstruction {
+      let (partition, _) = MarginalReconstruction::Dense(DenseReconstruction {
         partition: PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),

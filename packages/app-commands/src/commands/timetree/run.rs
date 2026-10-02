@@ -21,7 +21,7 @@ use treetime::cancel::Cancel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
-use treetime::partition::timetree::partition::PartitionTimetree;
+use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
@@ -444,7 +444,10 @@ fn gather_timetree_outputs(
   (nodes, edges)
 }
 
-fn gather_timetree_output_maps(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<TimetreeOutputMaps, Report> {
+fn gather_timetree_output_maps(
+  graph: &Graph,
+  partitions: &[MarginalReconstruction],
+) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(TimetreeOutputMaps::default());
   };

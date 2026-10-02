@@ -2,9 +2,8 @@
 mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
@@ -29,34 +28,34 @@ mod tests {
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let mut bl_dense = nwk_parsed.branch_lengths;
-    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
+    let mut dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      let total_length = total_sequence_length(&dense_partitions, &[]);
-      let contributions = gather_edge_contributions(&graph_dense, &dense_partitions, &[])?;
-      let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_partitions, &[]);
+      let total_length = dense_reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_reconstruction);
       run_optimize_mixed(&graph_dense, total_length, &contributions, &indel_counts, method, &mut bl_dense)?;
-      (dense_partitions, _) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
+      (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
 
-    let (dense_partitions, log_lh_dense) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
+    let (dense_reconstruction, log_lh_dense) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let mut bl_sparse = nwk_parsed.branch_lengths;
-    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
+    let mut sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      let total_length = total_sequence_length(&[], &sparse_partitions);
-      let contributions = gather_edge_contributions(&graph_sparse, &[], &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph_sparse, &[], &sparse_partitions);
+      let total_length = sparse_reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph_sparse, &sparse_reconstruction);
       run_optimize_mixed(&graph_sparse, total_length, &contributions, &indel_counts, method, &mut bl_sparse)?;
-      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
+      (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }
 
-    let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
+    let (sparse_reconstruction, log_lh_sparse) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     let log_lh_sparse = log_lh_sparse.value();
 
     assert!(
@@ -93,14 +92,14 @@ mod tests {
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let mut bl_dense = nwk_parsed.branch_lengths;
-    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
+    let mut dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      let total_length = total_sequence_length(&dense_partitions, &[]);
-      let contributions = gather_edge_contributions(&graph_dense, &dense_partitions, &[])?;
-      let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_partitions, &[]);
+      let total_length = dense_reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_reconstruction);
       run_optimize_mixed(&graph_dense, total_length, &contributions, &indel_counts, method, &mut bl_dense)?;
-      (dense_partitions, _) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
+      (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
@@ -109,14 +108,14 @@ mod tests {
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let mut bl_sparse = nwk_parsed.branch_lengths;
-    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
+    let mut sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      let total_length = total_sequence_length(&[], &sparse_partitions);
-      let contributions = gather_edge_contributions(&graph_sparse, &[], &sparse_partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph_sparse, &[], &sparse_partitions);
+      let total_length = sparse_reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph_sparse, &sparse_reconstruction);
       run_optimize_mixed(&graph_sparse, total_length, &contributions, &indel_counts, method, &mut bl_sparse)?;
-      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
+      (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse, &bl_sparse);

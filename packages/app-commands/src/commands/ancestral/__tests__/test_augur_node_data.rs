@@ -178,7 +178,7 @@ mod tests {
     use tempfile::tempdir;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
-    use treetime::ancestral::pipeline::AncestralPartition;
+    use treetime::ancestral::partition::AncestralPartition;
     use treetime::cancel::NoopCancel;
     use treetime::partition::fitch::partition::PartitionFitch;
     use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};

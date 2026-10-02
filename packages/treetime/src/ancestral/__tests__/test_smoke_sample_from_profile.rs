@@ -3,8 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::attach::complete_alignment_for_leaves;
   use crate::ancestral::mask::create_mask;
+  use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
-  use crate::ancestral::pipeline::AncestralParams;
   use crate::ancestral::sample::SampleMode;
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;

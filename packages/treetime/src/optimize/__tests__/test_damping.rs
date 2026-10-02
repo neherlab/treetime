@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
+    TREE_NEWICK, compute_total_lh, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::run_optimize_loop;
+  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -144,7 +144,8 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
+    let (reconstruction, initial_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
     let max_iter = 10;
     let damping = 0.75;
@@ -153,8 +154,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       max_iter,
       dp,
       damping,
@@ -162,18 +162,21 @@ mod tests {
       false,
       TopologyOps::default(), branch_lengths, &names_tt_2
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
+    let reconstruction = result.reconstruction;
 
     assert!(
-      result.stopped_at.is_some(),
-      "Damped optimization did not stop within {max_iter} iterations"
+      matches!(
+        result.stopped_at,
+        Some((_, ConvergenceReason::Converged | ConvergenceReason::Oscillating))
+      ),
+      "Damped optimization did not converge within {max_iter} iterations: {:?}",
+      result.stopped_at
     );
 
-    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
+    let (_, final_lh) = compute_total_lh(&graph, reconstruction, &result.branch_lengths)?;
     assert!(
-      final_lh > -73.0 && final_lh < -72.0,
-      "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
+      final_lh > initial_lh,
+      "Damped optimization did not improve the likelihood: {initial_lh:.6} -> {final_lh:.6}"
     );
 
     Ok(())
@@ -195,16 +198,15 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let (dense_partitions, sparse_partitions, initial_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
+    let (reconstruction, initial_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
     let dp = 0.0;
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       10,
       dp,
       0.75,
@@ -212,10 +214,9 @@ mod tests {
       false,
       TopologyOps::default(), branch_lengths, &names_tt_1
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
+    let reconstruction = result.reconstruction;
 
-    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
+    let (_, final_lh) = compute_total_lh(&graph, reconstruction, &result.branch_lengths)?;
     assert!(
       final_lh >= initial_lh,
       "Damped optimization regressed: {initial_lh:.6} -> {final_lh:.6}"

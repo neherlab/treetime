@@ -56,7 +56,7 @@ pub(crate) fn optimize_to_auspice(
     None,
     BTreeMap::new(),
     Some(root_sequences),
-    maps.root_sequence.is_some(),
+    true,
   )?;
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
@@ -90,11 +90,7 @@ pub(crate) fn optimize_to_mat(
 }
 
 fn optimize_root_sequences(maps: &OptimizeOutputMaps) -> BTreeMap<String, String> {
-  maps
-    .root_sequence
-    .as_ref()
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
+  btreemap! { NUC_TRACK.to_owned() => maps.root_sequence.to_string() }
 }
 
 fn optimize_mutations(maps: &OptimizeOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {

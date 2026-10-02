@@ -10,18 +10,18 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::reconstruction::ReconstructedSequences;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
+  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name};
+  use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction};
   use eyre::Report;
   use indoc::indoc;
   use rstest::rstest;
@@ -167,7 +167,11 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+      node_states,
+    ));
 
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -188,6 +192,7 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
+    let recon = sparse_reconstruction(&recon);
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let sequence = &recon.node_states[&node_key].sequence;
@@ -451,7 +456,11 @@ mod tests {
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
+    let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      partition,
+      make_nonuniform_gtr()?,
+      node_states,
+    ));
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let actual_by_edge = {
@@ -459,7 +468,7 @@ mod tests {
         .get_edges()
         .map(|edge| {
           let edge_key = edge.key();
-          let actual = recon.edge_subs(edge_key)?;
+          let actual = recon.edge_subs(&graph, edge_key)?;
           Ok((edge_key, actual))
         })
         .collect::<Result<BTreeMap<_, _>, Report>>()?
@@ -474,7 +483,8 @@ mod tests {
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
-    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
+    let expected_by_edge =
+      helpers::expected_edge_subs_by_edge(&graph, &names, &sparse_reconstruction(&recon).partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
     Ok(())
@@ -517,7 +527,7 @@ mod tests {
     use rayon::ThreadPoolBuilder;
 
     pub(super) fn small_sparse_reconstruction()
-    -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, SparseReconstruction), Report> {
+    -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, MarginalReconstruction), Report> {
       let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
         >A
@@ -539,7 +549,11 @@ mod tests {
       let graph = nwk_parsed.graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-      let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
+      let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+        partition,
+        make_nonuniform_gtr()?,
+        node_states,
+      ));
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&nwk_parsed.branch_lengths))?;
       Ok((graph, names, recon))
     }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::{c, edge_mutation_map, make_test_partition};
+  use crate::__tests__::test_support::tests::{c, edge_mutation_map};
   use app_output::DateCommentProvider;
   use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
@@ -22,18 +22,14 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let partition = make_test_partition(
-      &graph,
-      100,
-      &[(
-        0,
-        vec![
-          Sub::new(c(b'A'), 54_usize, c(b'G'))?,
-          Sub::new(c(b'T'), 92_usize, c(b'C'))?,
-        ],
-      )],
-    )?;
-    let edge_mutations = edge_mutation_map(&graph, &partition)?;
+    let edge_subs = &[(
+      0,
+      vec![
+        Sub::new(c(b'A'), 54_usize, c(b'G'))?,
+        Sub::new(c(b'T'), 92_usize, c(b'C'))?,
+      ],
+    )];
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let leaf_key = graph.get_leaves().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(leaf_key)?;
@@ -47,21 +43,17 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let partition = make_test_partition(
-      &graph,
-      100,
-      &[(
-        0,
-        vec![
-          Sub::new(c(b'A'), 54_usize, c(b'G'))?,
-          Sub::new(c(b'T'), 92_usize, c(b'C'))?,
-        ],
-      )],
-    )?;
+    let edge_subs = &[(
+      0,
+      vec![
+        Sub::new(c(b'A'), 54_usize, c(b'G'))?,
+        Sub::new(c(b'T'), 92_usize, c(b'C'))?,
+      ],
+    )];
 
     let date_times: BTreeMap<GraphNodeKey, f64> = graph.get_leaves().map(|leaf| (leaf.key(), 2003.84)).collect();
 
-    let edge_mutations = edge_mutation_map(&graph, &partition)?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let date_provider = DateCommentProvider::new(&date_times);
     let providers = CommentProviders::new().with(&provider).with(&date_provider);

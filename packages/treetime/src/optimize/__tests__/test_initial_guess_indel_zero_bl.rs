@@ -2,21 +2,19 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{
-    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
-  };
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
 
+  use crate::test_utils::dense_reconstruction_mut;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
@@ -28,12 +26,12 @@ mod tests {
 
   #[test]
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
-    let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
+    let (graph, reconstruction, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -54,11 +52,11 @@ mod tests {
 
   #[test]
   fn test_initial_guess_auto_overrides_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, mut partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
+    let (graph, mut reconstruction, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     {
-      let partition = &mut partitions[0];
+      let partition = dense_reconstruction_mut(&mut reconstruction);
       partition
         .edges
         .estimates
@@ -72,10 +70,10 @@ mod tests {
         });
     }
 
-    let total_length = total_sequence_length(&partitions, &[]);
-    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
@@ -105,7 +103,7 @@ mod tests {
 
     pub(super) fn setup_dense(
       newick: &str,
-    ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    ) -> Result<(Graph, MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = read_many_fasta_str(
         indoc! {r#"
@@ -128,11 +126,12 @@ mod tests {
       let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
-      let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
+      let reconstruction =
+        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
 
-      let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+      let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      Ok((graph, partitions, branch_lengths))
+      Ok((graph, reconstruction, branch_lengths))
     }
   }
   use helpers::*;

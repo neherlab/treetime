@@ -6,6 +6,7 @@ pub(crate) mod gtr_inference;
 pub mod marginal;
 pub mod mask;
 pub mod params;
+pub mod partition;
 pub mod pipeline;
 pub(crate) mod plan;
 pub(crate) mod reconstruction;

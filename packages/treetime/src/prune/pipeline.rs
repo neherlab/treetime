@@ -5,7 +5,8 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-use crate::partition::create::build_sparse_partition;
+use crate::partition::create::build_sparse_reconstruction;
+use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
@@ -40,7 +41,7 @@ pub fn run(
       ))
     })?;
     let node_inputs = node_seq_inputs(&input.graph, &names, sequences);
-    let (partition, _, gtr) = build_sparse_partition(
+    let SparseReconstruction { partition, gtr, .. } = build_sparse_reconstruction(
       GtrModelName::JC69,
       &input.graph,
       0,

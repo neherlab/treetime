@@ -132,7 +132,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::aa::CdsInput;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::pipeline::AncestralPartition;
+    use crate::ancestral::partition::AncestralPartition;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::seq::alignment::node_seq_inputs;
     use std::collections::BTreeMap;

@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
@@ -21,24 +20,18 @@ mod tests {
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
-    let (dense_partitions, log_lh_dense) = marginal_update_dense(
-      &graph_dense,
-      &branch_lengths_or_zero(&branch_lengths_dense),
-      dense_partitions,
-    )?;
+    let dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let (dense_reconstruction, log_lh_dense) =
+      dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&branch_lengths_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
-    let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
-      &graph_sparse,
-      &branch_lengths_or_zero(&branch_lengths_sparse),
-      sparse_partitions,
-    )?;
+    let sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
+    let (sparse_reconstruction, log_lh_sparse) =
+      sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&branch_lengths_sparse))?;
     let log_lh_sparse = log_lh_sparse.value();
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
@@ -69,24 +62,18 @@ mod tests {
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
-    let (dense_partitions, log_lh_dense) = marginal_update_dense(
-      &graph_dense,
-      &branch_lengths_or_zero(&branch_lengths_dense),
-      dense_partitions,
-    )?;
+    let dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let (dense_reconstruction, log_lh_dense) =
+      dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&branch_lengths_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
-    let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
-      &graph_sparse,
-      &branch_lengths_or_zero(&branch_lengths_sparse),
-      sparse_partitions,
-    )?;
+    let sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
+    let (sparse_reconstruction, log_lh_sparse) =
+      sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&branch_lengths_sparse))?;
     let log_lh_sparse = log_lh_sparse.value();
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);

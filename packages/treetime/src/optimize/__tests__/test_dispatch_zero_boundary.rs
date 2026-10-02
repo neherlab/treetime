@@ -3,21 +3,18 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
-    total_sequence_length,
   };
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
 
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -48,47 +45,35 @@ mod tests {
     ACGTACGTACGTACGT
   "#};
 
-  fn setup_identical_partitions(
+  fn setup_identical_reconstruction(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     model: GtrModelName,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
+  ) -> Result<MarginalReconstruction, Report> {
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
 
-    let dense_partition = PartitionMarginalDense::new(
-      0,
-      Alphabet::new(AlphabetName::Nuc)?,
-      graph,
-      &node_seq_inputs(graph, names, aln.clone()),
-    )?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, get_gtr_by_name(model)?)];
-
     let fitch = create_fitch_partition(
       graph,
-      1,
+      0,
       Alphabet::new(AlphabetName::Nuc)?,
       &node_seq_inputs(graph, names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(
+    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       sparse_partition,
       get_gtr_by_name(model)?,
       sparse_node_states,
-    )];
+    ));
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
-    let (dense_partitions, _) =
-      marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), dense_partitions)?;
-    let (sparse_partitions, _) =
-      marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), sparse_partitions)?;
-
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
-    let sub_counts = gather_edge_sub_counts(graph, &dense_partitions, &sparse_partitions)?;
-    let effective_lengths = gather_edge_effective_lengths(graph, &dense_partitions, &sparse_partitions)?;
+    let total_length = reconstruction.sequence_length();
+    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
+    let sub_counts = gather_edge_sub_counts(graph, &reconstruction)?;
+    let effective_lengths = gather_edge_effective_lengths(graph, &reconstruction)?;
     initial_guess_mixed(
       graph,
       total_length,
@@ -100,7 +85,7 @@ mod tests {
       branch_lengths,
     )?;
 
-    Ok((dense_partitions, sparse_partitions))
+    Ok(reconstruction)
   }
 
   #[rustfmt::skip]
@@ -119,10 +104,10 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
@@ -159,13 +144,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, model, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     assert!(
-      !dense_partitions[0].gtr.unimodal_branch_likelihood,
+      !reconstruction.gtr().unimodal_branch_likelihood,
       "precondition: {model:?} must be classified as non-unimodal"
     );
 
@@ -196,14 +181,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) =
-      setup_identical_partitions(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     assert!(
-      dense_partitions[0].gtr.unimodal_branch_likelihood,
+      reconstruction.gtr().unimodal_branch_likelihood,
       "precondition: JC69 must be classified as unimodal"
     );
 
@@ -377,20 +361,20 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     assert_eq!(
       0,
-      find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths).len(),
+      find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths).len(),
       "precondition: no zero-length internal edges before optimization"
     );
 
     run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
-    let zero_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+    let zero_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(
       2,
       zero_edges.len(),

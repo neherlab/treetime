@@ -8,12 +8,12 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::emitted_sequences_by_name;
@@ -144,6 +144,7 @@ mod tests {
     })?;
 
     let (_, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let recon = MarginalReconstruction::Dense(recon);
 
     let actual = emitted_sequences_by_name(
       &names,

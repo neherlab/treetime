@@ -7,10 +7,10 @@
 mod tests {
 
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    TREE_NEWICK, setup_partitions, simple_alignment,
+    TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
 
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
   use crate::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
@@ -36,16 +36,14 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = simple_alignment()?;
-    let (dense_mixed_partitions, sparse_mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-    let mut contributions_by_edge =
-      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let mut contributions_by_edge = gather_edge_contributions(&graph, &reconstruction)?;
     let contributions = contributions_by_edge
       .remove(&edge_key)
       .expect("first edge present in gathered contributions");
 
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let total_length = reconstruction.sequence_length();
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
@@ -90,16 +88,14 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let aln = simple_alignment()?;
-    let (dense_mixed_partitions, sparse_mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-    let mut contributions_by_edge =
-      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let mut contributions_by_edge = gather_edge_contributions(&graph, &reconstruction)?;
     let contributions = contributions_by_edge
       .remove(&edge_key)
       .expect("first edge present in gathered contributions");
 
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let total_length = reconstruction.sequence_length();
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
@@ -143,10 +139,10 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
+    let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
+    let total_length = reconstruction.sequence_length();
+    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length as f64;
@@ -156,10 +152,10 @@ mod tests {
     run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
-    let lh_opt = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl)?;
+    let lh_opt = eval_combined_first_edge(&graph, &reconstruction, indel_rate, bl)?;
 
-    let lh_lower = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, lower)?;
-    let lh_upper = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, upper)?;
+    let lh_lower = eval_combined_first_edge(&graph, &reconstruction, indel_rate, lower)?;
+    let lh_upper = eval_combined_first_edge(&graph, &reconstruction, indel_rate, upper)?;
 
     assert!(
       lh_opt >= lh_lower - 1e-10,

@@ -7,17 +7,17 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
@@ -102,7 +102,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
+    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);
@@ -449,7 +449,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
+    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);
@@ -457,9 +457,11 @@ mod tests {
     let initial_leaf_count = graph.get_leaves().count();
 
     let branch_model = match branch_model {
-      BranchModel::Marginal(partition) => {
-        BranchModel::Marginal(partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?)
-      },
+      BranchModel::Marginal(partition) => BranchModel::Marginal(
+        partition
+          .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
+          .0,
+      ),
       BranchModel::Input => BranchModel::Input,
     };
 

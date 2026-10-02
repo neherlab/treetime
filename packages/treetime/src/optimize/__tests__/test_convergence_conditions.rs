@@ -2,13 +2,11 @@
 mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    TREE_NEWICK, setup_partitions, simple_alignment,
+    TREE_NEWICK, setup_dense_reconstruction, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{
-    ConvergenceReason, marginal_update_dense, marginal_update_sparse, run_optimize_loop,
-  };
+  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use num_traits::pow::pow;
@@ -78,13 +76,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       20,
       0.1,
       0.75,
@@ -94,8 +91,6 @@ mod tests {
       branch_lengths,
       &names_tt_6,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
     assert!(
@@ -113,13 +108,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       50,
       0.0,
       0.0,
@@ -129,8 +123,6 @@ mod tests {
       branch_lengths,
       &names_tt_5,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     match result.stopped_at {
       Some((iter, ConvergenceReason::Worsened)) => {
@@ -159,13 +151,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       50,
       0.0,
       0.0,
@@ -175,8 +166,6 @@ mod tests {
       branch_lengths,
       &names_tt_4,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     let (_iter, reason) = result.stopped_at.expect("loop should stop");
     assert_eq!(ConvergenceReason::Worsened, reason);
@@ -188,11 +177,8 @@ mod tests {
       .fold(f64::NEG_INFINITY, f64::max);
 
     let marginal_bl = branch_lengths_or_zero(&result.branch_lengths);
-    let (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &marginal_bl, sparse_partitions)?;
-    let sparse_lh = sparse_lh.value();
-    let (dense_partitions, dense_lh) = marginal_update_dense(&graph, &marginal_bl, dense_partitions)?;
-    let dense_lh = dense_lh.value();
-    assert_abs_diff_eq!(sparse_lh + dense_lh, best_lh, epsilon = 1e-9);
+    let (_, log_lh) = result.reconstruction.marginal_update(&graph, &marginal_bl)?;
+    assert_abs_diff_eq!(log_lh.value(), best_lh, epsilon = 1e-9);
     Ok(())
   }
 
@@ -204,13 +190,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       50,
       1.0,
       0.75,
@@ -220,8 +205,6 @@ mod tests {
       branch_lengths,
       &names_tt_3,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
     assert!(
@@ -240,13 +223,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      sparse_partitions,
-      dense_partitions,
+      reconstruction,
       2,
       0.0,
       0.75,
@@ -256,8 +238,6 @@ mod tests {
       branch_lengths,
       &names_tt_2,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     assert_eq!(2, result.lh_history.len());
     assert!(
@@ -276,15 +256,12 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
-    let (dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-
-    let empty_sparse = vec![];
+    let reconstruction = setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      empty_sparse,
-      dense_partitions,
+      reconstruction,
       10,
       0.1,
       0.75,
@@ -294,8 +271,6 @@ mod tests {
       branch_lengths,
       &names_tt_1,
     )?;
-    let sparse_partitions = result.sparse_partitions;
-    let dense_partitions = result.dense_partitions;
 
     assert!(
       result.stopped_at.is_some(),

@@ -2,15 +2,12 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{
-    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
-  };
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -48,12 +45,13 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<DenseReconstruction>, Report> {
+  ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
-    let (partitions, _) = marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
-    Ok(partitions)
+    let reconstruction =
+      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    Ok(reconstruction)
   }
 
   fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
@@ -75,18 +73,15 @@ mod tests {
     let graph_stale_names = nwk_parsed.names();
     let graph_stale = nwk_parsed.graph;
     let mut branch_lengths_stale = nwk_parsed.branch_lengths;
-    let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
-    let (mut partitions_stale, _) = marginal_update_dense(
-      &graph_stale,
-      &branch_lengths_or_zero(&branch_lengths_stale),
-      partitions_stale,
-    )?;
-    partitions_stale[0].gtr = f81_gtr.clone();
+    let reconstruction_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
+    let (mut reconstruction_stale, _) =
+      reconstruction_stale.marginal_update(&graph_stale, &branch_lengths_or_zero(&branch_lengths_stale))?;
+    *reconstruction_stale.gtr_mut() = f81_gtr.clone();
     {
-      let total_length = total_sequence_length(&partitions_stale, &[]);
-      let indel_counts = gather_edge_indel_counts(&graph_stale, &partitions_stale, &[]);
-      let sub_counts = gather_edge_sub_counts(&graph_stale, &partitions_stale, &[])?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_stale, &partitions_stale, &[])?;
+      let total_length = reconstruction_stale.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph_stale, &reconstruction_stale);
+      let sub_counts = gather_edge_sub_counts(&graph_stale, &reconstruction_stale)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_stale, &reconstruction_stale)?;
       initial_guess_mixed(
         &graph_stale,
         total_length,
@@ -104,23 +99,17 @@ mod tests {
     let graph_fresh_names = nwk_parsed.names();
     let graph_fresh = nwk_parsed.graph;
     let mut branch_lengths_fresh = nwk_parsed.branch_lengths;
-    let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
-    let (mut partitions_fresh, _) = marginal_update_dense(
-      &graph_fresh,
-      &branch_lengths_or_zero(&branch_lengths_fresh),
-      partitions_fresh,
-    )?;
-    partitions_fresh[0].gtr = f81_gtr;
-    let (partitions_fresh, _) = marginal_update_dense(
-      &graph_fresh,
-      &branch_lengths_or_zero(&branch_lengths_fresh),
-      partitions_fresh,
-    )?;
+    let reconstruction_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
+    let (mut reconstruction_fresh, _) =
+      reconstruction_fresh.marginal_update(&graph_fresh, &branch_lengths_or_zero(&branch_lengths_fresh))?;
+    *reconstruction_fresh.gtr_mut() = f81_gtr;
+    let (reconstruction_fresh, _) =
+      reconstruction_fresh.marginal_update(&graph_fresh, &branch_lengths_or_zero(&branch_lengths_fresh))?;
     {
-      let total_length = total_sequence_length(&partitions_fresh, &[]);
-      let indel_counts = gather_edge_indel_counts(&graph_fresh, &partitions_fresh, &[]);
-      let sub_counts = gather_edge_sub_counts(&graph_fresh, &partitions_fresh, &[])?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_fresh, &partitions_fresh, &[])?;
+      let total_length = reconstruction_fresh.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph_fresh, &reconstruction_fresh);
+      let sub_counts = gather_edge_sub_counts(&graph_fresh, &reconstruction_fresh)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_fresh, &reconstruction_fresh)?;
       initial_guess_mixed(
         &graph_fresh,
         total_length,
@@ -155,15 +144,15 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
-    let (mut partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
-    partitions[0].gtr = f81_gtr.clone();
-    let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+    let reconstruction = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
+    let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    *reconstruction.gtr_mut() = f81_gtr.clone();
+    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     {
-      let total_length = total_sequence_length(&partitions, &[]);
-      let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
-      let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
-      let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+      let total_length = reconstruction.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
       initial_guess_mixed(
         &graph,
         total_length,
@@ -181,15 +170,16 @@ mod tests {
     let graph2_names = nwk_parsed.names();
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;
-    let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
-    let (mut partitions2, _) = marginal_update_dense(&graph2, &branch_lengths_or_zero(&branch_lengths2), partitions2)?;
-    partitions2[0].gtr = f81_gtr;
-    let (partitions2, _) = marginal_update_dense(&graph2, &branch_lengths_or_zero(&branch_lengths2), partitions2)?;
+    let reconstruction2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
+    let (mut reconstruction2, _) =
+      reconstruction2.marginal_update(&graph2, &branch_lengths_or_zero(&branch_lengths2))?;
+    *reconstruction2.gtr_mut() = f81_gtr;
+    let (reconstruction2, _) = reconstruction2.marginal_update(&graph2, &branch_lengths_or_zero(&branch_lengths2))?;
     {
-      let total_length = total_sequence_length(&partitions2, &[]);
-      let indel_counts = gather_edge_indel_counts(&graph2, &partitions2, &[]);
-      let sub_counts = gather_edge_sub_counts(&graph2, &partitions2, &[])?;
-      let effective_lengths = gather_edge_effective_lengths(&graph2, &partitions2, &[])?;
+      let total_length = reconstruction2.sequence_length();
+      let indel_counts = gather_edge_indel_counts(&graph2, &reconstruction2);
+      let sub_counts = gather_edge_sub_counts(&graph2, &reconstruction2)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph2, &reconstruction2)?;
       initial_guess_mixed(
         &graph2,
         total_length,

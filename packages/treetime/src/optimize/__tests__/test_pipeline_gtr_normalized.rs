@@ -60,7 +60,7 @@ mod tests {
 
     assert_ulps_eq!(output.gtr.mu, 1.0, max_ulps = 4);
 
-    let partition_mu = output.sparse_partitions[0].gtr.mu;
+    let partition_mu = output.reconstruction.gtr().mu;
     assert_ulps_eq!(output.gtr.mu, partition_mu, max_ulps = 4);
 
     Ok(())

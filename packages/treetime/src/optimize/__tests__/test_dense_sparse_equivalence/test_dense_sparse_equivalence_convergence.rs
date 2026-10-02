@@ -7,9 +7,8 @@
 mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -35,19 +34,19 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let (mut partitions, initial_lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+    let (mut reconstruction, initial_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let initial_lh = initial_lh.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      let total_length = total_sequence_length(&partitions, &[]);
-      let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
-      let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
-      (partitions, lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+      (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();
       lh_history.push(lh);
     }
@@ -94,19 +93,19 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
+    let reconstruction = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let (mut partitions, initial_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+    let (mut reconstruction, initial_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let initial_lh = initial_lh.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      let total_length = total_sequence_length(&[], &partitions);
-      let contributions = gather_edge_contributions(&graph, &[], &partitions)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &[], &partitions);
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
-      (partitions, lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+      (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();
       lh_history.push(lh);
     }

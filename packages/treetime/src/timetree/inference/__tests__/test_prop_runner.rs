@@ -2,13 +2,13 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
@@ -124,14 +124,17 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let partition = PartitionTimetree::Dense(DenseReconstruction {
+      let partition = MarginalReconstruction::Dense(DenseReconstruction {
         partition: PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
       });
-      let branch_model =
-        BranchModel::Marginal(partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?);
+      let branch_model = BranchModel::Marginal(
+        partition
+          .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
+          .0,
+      );
 
       let dates: DatesMap = case
         .dates

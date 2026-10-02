@@ -17,7 +17,8 @@ use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use treetime::ancestral::mask::create_mask;
-use treetime::ancestral::pipeline::{self, AncestralPartition};
+use treetime::ancestral::partition::AncestralPartition;
+use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
@@ -306,9 +307,7 @@ fn write_tree_for_partition(
 ) -> Result<(), Report> {
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
   let providers = match partition {
-    Some(AncestralPartition::Sparse { .. } | AncestralPartition::Dense { .. }) => {
-      CommentProviders::new().with(&provider)
-    },
+    Some(AncestralPartition::Marginal { .. }) => CommentProviders::new().with(&provider),
     Some(AncestralPartition::Fitch(_)) | None => CommentProviders::new(),
   };
   write_ancestral_tree_outputs(

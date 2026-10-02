@@ -1,9 +1,9 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::optimize::gather::{gather_timetree_edge_contributions, gather_timetree_edge_indel_counts};
+use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
 use crate::optimize::indel::estimate_indel_rate;
-use crate::partition::timetree::partition::PartitionTimetree;
+use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -146,7 +146,7 @@ pub(crate) fn blended_clock_branch_lengths(
 
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
-  partition: &PartitionTimetree,
+  partition: &MarginalReconstruction,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
@@ -160,13 +160,13 @@ fn compute_branch_distributions_marginal_mode(
   )]
   let one_mutation = 1.0 / total_sites as f64;
 
-  let indel_counts = gather_timetree_edge_indel_counts(graph, partition);
+  let indel_counts = gather_edge_indel_counts(graph, partition);
   let indel_rate = if no_indels {
     0.0
   } else {
     estimate_indel_rate(graph, &indel_counts, branch_lengths)
   };
-  let contributions = gather_timetree_edge_contributions(graph, partition)?;
+  let contributions = gather_edge_contributions(graph, partition)?;
 
   progress_info!(
     log,

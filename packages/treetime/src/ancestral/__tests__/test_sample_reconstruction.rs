@@ -54,10 +54,10 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::marginal::branch_lengths_or_zero;
-    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
     use crate::ancestral::tip_states::TipStates;
     use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
     use crate::seq::alignment::node_seq_inputs;
     use crate::test_utils::emitted_sequences_by_name;
     use eyre::Report;
@@ -100,7 +100,11 @@ mod tests {
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-      let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+      let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+        node_states,
+      ));
 
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
