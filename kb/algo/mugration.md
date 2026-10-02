@@ -22,9 +22,9 @@ Initialization (`PartitionMarginalDiscrete::new()` in [`packages/treetime/src/pa
 For each leaf node:
 
 - Known trait: Create delta profile (one-hot encoding). `profile[i] = 1.0` where `i` is the observed state index, `0.0` elsewhere.
-- Missing trait ("?"): Create uniform prior. `profile[i] = 1/n_states` for all states.
+- Missing trait ("?"): `profile[i] = 1.0` for all states, as v0 (`mugration_GTR.profile_map[missing_char] = np.ones(n_states)`, [`packages/legacy/treetime/treetime/wrappers.py#L767`](../../packages/legacy/treetime/treetime/wrappers.py#L767)).
 
-This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
+This follows Felsenstein's treatment of ambiguous data: the likelihood of an unknown state is 1 for every possible state, so the leaf contributes a factor of 1 and the tree likelihood marginalizes over it. A profile of `1/n_states` gives the same posteriors but lowers the log-likelihood by `ln(n_states)` per missing leaf.
 
 Backward pass (postorder, leaves to root) (`marginal_process_node_backward()` in [`packages/treetime/src/partition/marginal_core.rs#L45`](../../packages/treetime/src/partition/marginal_core.rs#L45)):
 

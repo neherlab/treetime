@@ -1,6 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
+use crate::partition::marginal::discrete::input::{missing_trait_profile, one_hot_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
@@ -43,7 +43,10 @@ impl PartitionMarginalDiscrete {
         let profile = traits
           .get(&leaf_name)
           .and_then(|trait_value| states.get_index(trait_value))
-          .map_or_else(|| uniform_profile(n_states), |index| one_hot_profile(index, n_states));
+          .map_or_else(
+            || missing_trait_profile(n_states),
+            |index| one_hot_profile(index, n_states),
+          );
         (leaf_key, profile)
       })
       .collect();

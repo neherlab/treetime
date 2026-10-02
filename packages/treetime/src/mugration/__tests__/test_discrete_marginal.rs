@@ -34,8 +34,8 @@ mod tests {
     assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
 
     let node_b_profile = helpers::get_leaf_observation(&graph, &names, &partition, "B");
-    assert_abs_diff_eq!(node_b_profile[0], 0.5, epsilon = 1e-10);
-    assert_abs_diff_eq!(node_b_profile[1], 0.5, epsilon = 1e-10);
+    assert_abs_diff_eq!(node_b_profile[0], 1.0, epsilon = 1e-10);
+    assert_abs_diff_eq!(node_b_profile[1], 1.0, epsilon = 1e-10);
 
     Ok(())
   }
