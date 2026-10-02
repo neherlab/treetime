@@ -7,13 +7,13 @@ use crate::ancestral::plan::{
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::make_error;
 use crate::partition::create::Representation;
 use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::node_seq_inputs;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use crate::{make_error, make_report};
 use eyre::Report;
 use itertools::Itertools;
 use serde::Serialize;
@@ -183,8 +183,7 @@ pub(crate) fn collect_aa_cds_node_data(
 
   let mut node_mutations = BTreeMap::new();
   for node in graph.get_nodes() {
-    let node_guard = node;
-    let node_key = node_guard.key();
+    let node_key = node.key();
     let node_name = names[&node_key]
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
@@ -197,7 +196,7 @@ pub(crate) fn collect_aa_cds_node_data(
     } else {
       let (_parent_key, edge_key) = graph
         .node_parent(node_key)?
-        .ok_or_else(|| eyre::eyre!("Non-root node '{node_name}' has no parent while collecting AA node data"))?;
+        .ok_or_else(|| make_report!("Non-root node '{node_name}' has no parent while collecting AA node data"))?;
       let substitutions = partition
         .edge_subs(graph, edge_key)?
         .into_iter()
