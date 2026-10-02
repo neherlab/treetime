@@ -25,7 +25,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::AlignmentRecord;
+  use treetime_primitives::{AlignmentRecord, Seq};
 
   #[test]
   fn test_marginal_map_deviation_does_not_leak_into_subtree() -> Result<(), Report> {
@@ -138,10 +138,11 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-    Ok(named_strings(
+    named_strings(
       names,
       &recon.reconstruct_sequences(graph, TIPS, SampleMode::Argmax, &mut rand::thread_rng())?,
-    ))
+      |key| recon.node_sequence(graph, TIPS.impute, key),
+    )
   }
 
   fn reconstruct_dense(
@@ -158,10 +159,11 @@ mod tests {
     )?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-    Ok(named_strings(
+    named_strings(
       names,
       &recon.reconstruct_sequences(graph, TIPS, SampleMode::Argmax, &mut rand::thread_rng())?,
-    ))
+      |key| recon.node_sequence(graph, TIPS.impute, key),
+    )
   }
 
   const TIPS: TipStates = TipStates {
@@ -172,10 +174,13 @@ mod tests {
   fn named_strings(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     reconstruction: &ReconstructedSequences,
-  ) -> BTreeMap<String, String> {
-    emitted_sequences_by_name(names, reconstruction)
-      .into_iter()
-      .map(|(name, seq)| (name, seq.as_str().to_owned()))
-      .collect()
+    node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
+  ) -> Result<BTreeMap<String, String>, Report> {
+    Ok(
+      emitted_sequences_by_name(names, reconstruction, node_sequence)?
+        .into_iter()
+        .map(|(name, seq)| (name, seq.as_str().to_owned()))
+        .collect(),
+    )
   }
 }

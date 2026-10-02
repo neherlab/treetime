@@ -148,15 +148,15 @@ mod tests {
         &NoopProgress,
       )?;
       let partition = result.partition.expect("marginal reconstruction produces a partition");
-      let captured: BTreeMap<String, String> = result
+      let captured = result
         .output
         .emitted_nodes
         .iter()
         .map(|&key| {
           let name = input.nodes[&key].name.clone().unwrap_or_default();
-          (name, partition.augur_node_sequence(key).to_string())
+          Ok((name, partition.augur_node_sequence(&input.graph, key)?.to_string()))
         })
-        .collect();
+        .collect::<Result<BTreeMap<String, String>, Report>>()?;
 
       Ok(captured)
     }

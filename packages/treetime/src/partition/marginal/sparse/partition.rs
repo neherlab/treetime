@@ -1,10 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::{ReconstructedSequences, reconstruct_preorder};
+use crate::ancestral::reconstruction::sample_internal_sequences;
 use crate::ancestral::sample::{Resolve, SampleMode};
-use crate::ancestral::tip_states::TipStates;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use crate::make_error;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
@@ -14,6 +12,7 @@ use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
+use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,7 +20,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
-use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize)]
@@ -118,42 +116,51 @@ impl PartitionMarginalSparse {
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  pub(crate) fn reconstruct_sequences(
+  pub(crate) fn node_sequence(
     &self,
     graph: &Graph,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-    tips: TipStates,
+    impute: bool,
+    node_key: GraphNodeKey,
+  ) -> Result<Seq, Report> {
+    let node_data = &node_states[&node_key];
+    let is_leaf = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found while reconstructing its sequence"))?
+      .is_leaf();
+    if !is_leaf {
+      return Ok(map_seq(node_data, &self.alphabet));
+    }
+    let parent = graph
+      .node_parent(node_key)
+      .wrap_err_with(|| format!("When reconstructing the sequence of node {node_key}"))?;
+    let (parent_state, msg_from_parent) = match parent {
+      None => (None, None),
+      Some((parent_key, edge_key)) => (
+        Some(&node_states[&parent_key]),
+        Some(&forward[&edge_key].msg_from_parent),
+      ),
+    };
+    Ok(reconstruct_leaf_sequence(
+      node_data,
+      &self.obs_nodes[&node_key],
+      msg_from_parent,
+      parent_state,
+      impute,
+      &self.alphabet,
+    ))
+  }
+
+  pub(crate) fn sample_sequences(
+    &self,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Result<ReconstructedSequences, Report> {
-    reconstruct_preorder(graph, tips.include_leaves, |node| {
-      let node_data = &node_states[&node.key];
-      if node.is_leaf {
-        let (parent_state, msg_from_parent) = if node.is_root {
-          (None, None)
-        } else {
-          let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)
-            .wrap_err_with(|| format!("When reconstructing the sequence of node {}", node.key))?;
-          (Some(&node_states[parent_key]), Some(&forward[edge_key].msg_from_parent))
-        };
-        Ok(reconstruct_leaf_sequence(
-          node_data,
-          &self.obs_nodes[&node.key],
-          msg_from_parent,
-          parent_state,
-          tips.impute,
-          &self.alphabet,
-        ))
-      } else if sample_mode.samples_node(node.is_root) {
-        Ok(map_seq_sampled(
-          node_data,
-          &self.alphabet,
-          &mut Resolve::Sample(&mut *rng),
-        ))
-      } else {
-        Ok(map_seq(node_data, &self.alphabet))
-      }
+  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    sample_internal_sequences(graph, sample_mode, |key| {
+      map_seq_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
   }
 }

@@ -2,9 +2,7 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::ancestral::plan::Representation;
-use crate::ancestral::reconstruction::ReconstructedSequences;
-use crate::ancestral::sample::SampleMode;
-use crate::ancestral::tip_states::TipStates;
+use crate::ancestral::reconstruction::emitted_nodes;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFit, ClockTree, ClockVarianceParams};
@@ -54,7 +52,6 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::AlignmentRecord;
 use treetime_primitives::date::DatesMap;
 use treetime_utils::make_report;
-use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run(
   params: &TimetreeParams,
@@ -551,25 +548,13 @@ fn emit_sequences(
     graph,
     &timetree_branch_lengths(graph, &state.branch_lengths, &state.clock_branch_lengths),
   )?;
-  let mut rng = get_random_number_generator(params.seed);
-  let ReconstructedSequences {
-    sequences,
-    emitted_nodes,
-  } = partition.reconstruct_sequences(
-    graph,
-    TipStates {
-      include_leaves: params.include_leaves,
-      impute: params.impute_missing_data,
-    },
-    SampleMode::Argmax,
-    &mut rng,
-  )?;
   if let Some(sink) = seq_sink.as_mut() {
-    for key in emitted_nodes {
+    for key in emitted_nodes(graph, params.include_leaves)? {
+      let seq = partition.node_sequence(graph, params.impute_missing_data, key)?;
       sink.emit(SeqItem {
         key,
         track: SeqTrack::Nuc,
-        seq: &sequences[&key],
+        seq: &seq,
       })?;
     }
   }

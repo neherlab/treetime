@@ -1,11 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::{ReconstructedSequences, reconstruct_preorder};
+use crate::ancestral::reconstruction::sample_internal_sequences;
 use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
-use crate::ancestral::tip_states::TipStates;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use crate::make_report;
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
@@ -16,6 +14,7 @@ use crate::partition::storage::dense::{
 use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use crate::{make_internal_report, make_report};
 use eyre::Report;
 use itertools::izip;
 use serde::Serialize;
@@ -171,25 +170,34 @@ impl PartitionMarginalDense {
     }
   }
 
-  pub(crate) fn reconstruct_sequences(
+  pub(crate) fn node_sequence(
     &self,
     graph: &Graph,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    tips: TipStates,
+    impute: bool,
+    node_key: GraphNodeKey,
+  ) -> Result<Seq, Report> {
+    let seq_info = &node_states[&node_key];
+    let is_leaf = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found while reconstructing its sequence"))?
+      .is_leaf();
+    Ok(if is_leaf {
+      self.reconstruct_leaf_sequence(seq_info, impute)
+    } else {
+      assign_sequence(seq_info, &self.alphabet)
+    })
+  }
+
+  pub(crate) fn sample_sequences(
+    &self,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Result<ReconstructedSequences, Report> {
-    reconstruct_preorder(graph, tips.include_leaves, |node| {
-      let seq_info = &node_states[&node.key];
-      if node.is_leaf {
-        return Ok(self.reconstruct_leaf_sequence(seq_info, tips.impute));
-      }
-      let mut resolve = if sample_mode.samples_node(node.is_root) {
-        Resolve::Sample(&mut *rng)
-      } else {
-        Resolve::Argmax
-      };
-      Ok(assign_sequence_sampled(seq_info, &self.alphabet, &mut resolve))
+  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    sample_internal_sequences(graph, sample_mode, |key| {
+      assign_sequence_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
   }
 

@@ -1,12 +1,8 @@
-use crate::ancestral::reconstruction::ReconstructedSequences;
-use crate::ancestral::sample::SampleMode;
-use crate::ancestral::tip_states::TipStates;
 use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
-use rand::RngCore;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -44,16 +40,10 @@ impl PartitionTimetree {
     }
   }
 
-  pub(crate) fn reconstruct_sequences(
-    &self,
-    graph: &Graph,
-    tips: TipStates,
-    sample_mode: SampleMode,
-    rng: &mut dyn RngCore,
-  ) -> Result<ReconstructedSequences, Report> {
+  pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
     match self {
-      Self::Dense(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),
-      Self::Sparse(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),
+      Self::Dense(family) => family.node_sequence(graph, impute, node_key),
+      Self::Sparse(family) => family.node_sequence(graph, impute, node_key),
     }
   }
 

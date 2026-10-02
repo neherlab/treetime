@@ -57,15 +57,17 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
 pub(crate) fn emitted_sequences_by_name(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   reconstruction: &ReconstructedSequences,
-) -> BTreeMap<String, Seq> {
+  node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
+) -> Result<BTreeMap<String, Seq>, Report> {
   reconstruction
     .emitted_nodes
     .iter()
     .map(|key| {
-      (
-        names[key].clone().expect("all test nodes are named"),
-        reconstruction.sequences[key].clone(),
-      )
+      let seq = match reconstruction.sampled.get(key) {
+        Some(seq) => seq.clone(),
+        None => node_sequence(*key)?,
+      };
+      Ok((names[key].clone().expect("all test nodes are named"), seq))
     })
     .collect()
 }

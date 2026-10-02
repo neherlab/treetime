@@ -322,26 +322,16 @@ mod tests {
     let (_, sparse) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
 
     let expected = "ACNNGT";
-    let dense_x = dense.reconstruct_sequences(
-      &graph,
-      TipStates::default(),
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-    )?;
-    let sparse_x = sparse.reconstruct_sequences(
-      &graph,
-      TipStates::default(),
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-    )?;
+    let dense_x = dense.node_sequence(&graph, false, x_key)?;
+    let sparse_x = sparse.node_sequence(&graph, false, x_key)?;
     assert_eq!(
       expected,
-      dense_x.sequences[&x_key].to_string(),
+      dense_x.to_string(),
       "X has only unknown children at columns 2-3, so a pass that reads observed leaf gaps keeps them unknown"
     );
     assert_eq!(
       expected,
-      sparse_x.sequences[&x_key].to_string(),
+      sparse_x.to_string(),
       "sparse reads observed leaf gaps from its single Fitch pass"
     );
     Ok(())
@@ -354,7 +344,7 @@ mod tests {
   ) -> Result<BTreeMap<String, Seq>, Report> {
     let reconstruction =
       recon.reconstruct_sequences(graph, TipStates::default(), SampleMode::Argmax, &mut rand::thread_rng())?;
-    Ok(emitted_sequences_by_name(names, &reconstruction))
+    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, false, key))
   }
 
   fn reconstruct_named_sequences_sparse(
@@ -364,7 +354,7 @@ mod tests {
   ) -> Result<BTreeMap<String, Seq>, Report> {
     let reconstruction =
       recon.reconstruct_sequences(graph, TipStates::default(), SampleMode::Argmax, &mut rand::thread_rng())?;
-    Ok(emitted_sequences_by_name(names, &reconstruction))
+    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, false, key))
   }
 
   fn edge_subs_by_edge_name(

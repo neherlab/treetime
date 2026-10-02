@@ -217,12 +217,14 @@ fn reconstruct_marginal(
         edges,
       };
       checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
-      let ReconstructedSequences {
-        sequences,
-        emitted_nodes,
-      } = family.reconstruct_sequences(graph, options.tips, options.sample_mode, rng)?;
+      let ReconstructedSequences { sampled, emitted_nodes } =
+        family.reconstruct_sequences(graph, options.tips, options.sample_mode, rng)?;
       Ok(ReconstructedPartition {
-        partition: AncestralPartition::Sparse { family, sequences },
+        partition: AncestralPartition::Sparse {
+          family,
+          sampled,
+          impute: options.tips.impute,
+        },
         emitted_nodes,
       })
     },
@@ -236,12 +238,14 @@ fn reconstruct_marginal(
         edges,
       };
       checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
-      let ReconstructedSequences {
-        sequences,
-        emitted_nodes,
-      } = family.reconstruct_sequences(graph, options.tips, options.sample_mode, rng)?;
+      let ReconstructedSequences { sampled, emitted_nodes } =
+        family.reconstruct_sequences(graph, options.tips, options.sample_mode, rng)?;
       Ok(ReconstructedPartition {
-        partition: AncestralPartition::Dense { family, sequences },
+        partition: AncestralPartition::Dense {
+          family,
+          sampled,
+          impute: options.tips.impute,
+        },
         emitted_nodes,
       })
     },

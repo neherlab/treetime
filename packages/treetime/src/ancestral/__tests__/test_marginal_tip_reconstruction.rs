@@ -169,7 +169,7 @@ mod tests {
       impute,
     };
     let reconstruction = recon.reconstruct_sequences(graph, tips, SampleMode::Argmax, &mut rand::thread_rng())?;
-    Ok(emitted_sequences_by_name(names, &reconstruction))
+    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, impute, key))
   }
 
   fn reconstruct_named_dense(
@@ -183,7 +183,7 @@ mod tests {
       impute,
     };
     let reconstruction = recon.reconstruct_sequences(graph, tips, SampleMode::Argmax, &mut rand::thread_rng())?;
-    Ok(emitted_sequences_by_name(names, &reconstruction))
+    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, impute, key))
   }
 
   fn reconstruct_sparse(

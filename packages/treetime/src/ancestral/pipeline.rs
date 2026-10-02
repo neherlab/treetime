@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::plan::{ReconOptions, ReconstructedPartition, reconstruct_partition, resolve_plan};
-use crate::ancestral::reconstruction::ReconstructedSequences;
+use crate::ancestral::reconstruction::{ReconstructedSequences, emitted_nodes};
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
@@ -99,11 +99,13 @@ pub enum AncestralPartition {
   Fitch(PartitionFitch),
   Sparse {
     family: SparseReconstruction,
-    sequences: BTreeMap<GraphNodeKey, Seq>,
+    sampled: BTreeMap<GraphNodeKey, Seq>,
+    impute: bool,
   },
   Dense {
     family: DenseReconstruction,
-    sequences: BTreeMap<GraphNodeKey, Seq>,
+    sampled: BTreeMap<GraphNodeKey, Seq>,
+    impute: bool,
   },
 }
 
@@ -132,10 +134,25 @@ impl AncestralPartition {
     }
   }
 
-  pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub fn augur_node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report> {
     match self {
-      Self::Fitch(partition) => partition.node_sequence(node_key),
-      Self::Sparse { sequences, .. } | Self::Dense { sequences, .. } => sequences[&node_key].clone(),
+      Self::Fitch(partition) => Ok(partition.node_sequence(node_key)),
+      Self::Sparse {
+        family,
+        sampled,
+        impute,
+      } => sampled
+        .get(&node_key)
+        .cloned()
+        .map_or_else(|| family.node_sequence(graph, *impute, node_key), Ok),
+      Self::Dense {
+        family,
+        sampled,
+        impute,
+      } => sampled
+        .get(&node_key)
+        .cloned()
+        .map_or_else(|| family.node_sequence(graph, *impute, node_key), Ok),
     }
   }
 
@@ -148,7 +165,7 @@ impl AncestralPartition {
   }
 
   pub fn augur_root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    Ok(self.augur_node_sequence(graph.root_key()?))
+    self.augur_node_sequence(graph, graph.root_key()?)
   }
 
   pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
@@ -240,9 +257,18 @@ impl SparseReconstruction {
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
   ) -> Result<ReconstructedSequences, Report> {
+    Ok(ReconstructedSequences {
+      sampled: self
+        .partition
+        .sample_sequences(graph, &self.node_states, sample_mode, rng)?,
+      emitted_nodes: emitted_nodes(graph, tips.include_leaves)?,
+    })
+  }
+
+  pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
     self
       .partition
-      .reconstruct_sequences(graph, &self.node_states, &self.edges.forward, tips, sample_mode, rng)
+      .node_sequence(graph, &self.node_states, &self.edges.forward, impute, node_key)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {
@@ -341,9 +367,16 @@ impl DenseReconstruction {
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
   ) -> Result<ReconstructedSequences, Report> {
-    self
-      .partition
-      .reconstruct_sequences(graph, &self.node_states, tips, sample_mode, rng)
+    Ok(ReconstructedSequences {
+      sampled: self
+        .partition
+        .sample_sequences(graph, &self.node_states, sample_mode, rng)?,
+      emitted_nodes: emitted_nodes(graph, tips.include_leaves)?,
+    })
+  }
+
+  pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
+    self.partition.node_sequence(graph, &self.node_states, impute, node_key)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {

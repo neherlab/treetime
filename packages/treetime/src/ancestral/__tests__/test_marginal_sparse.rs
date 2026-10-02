@@ -180,7 +180,8 @@ mod tests {
         SampleMode::Argmax,
         &mut rand::thread_rng(),
       )?,
-    );
+      |key| recon.node_sequence(&graph, false, key),
+    )?;
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -464,19 +465,14 @@ mod tests {
         .collect::<Result<BTreeMap<_, _>, Report>>()?
     };
 
-    let ReconstructedSequences { sequences, .. } = recon.reconstruct_sequences(
-      &graph,
-      TipStates {
-        include_leaves: true,
-        impute: false,
-      },
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-    )?;
-    let seqs_by_name = sequences
-      .into_iter()
-      .map(|(key, seq)| (names[&key].clone().expect("all test nodes should have names"), seq))
-      .collect::<BTreeMap<_, _>>();
+    let seqs_by_name = graph
+      .get_nodes()
+      .map(|node| {
+        let key = node.key();
+        let name = names[&key].clone().expect("all test nodes should have names");
+        Ok((name, recon.node_sequence(&graph, false, key)?))
+      })
+      .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
 

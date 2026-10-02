@@ -124,7 +124,7 @@ pub fn run_ancestral_reconstruction(
         writer.write(
           node.name.as_deref().unwrap_or(""),
           &desc,
-          &partition.augur_node_sequence(key),
+          &partition.augur_node_sequence(&input.graph, key)?,
         )?;
       }
     }
@@ -381,9 +381,9 @@ pub fn gather_augur_output_maps(graph: &Graph, partition: &AncestralPartition) -
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      (key, partition.augur_node_sequence(key))
+      Ok((key, partition.augur_node_sequence(graph, key)?))
     })
-    .collect();
+    .collect::<Result<_, Report>>()?;
   let edge_subs = graph
     .get_edges()
     .map(|edge| {

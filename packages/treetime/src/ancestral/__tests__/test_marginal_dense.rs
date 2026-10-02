@@ -153,7 +153,8 @@ mod tests {
         SampleMode::Argmax,
         &mut rand::thread_rng(),
       )?,
-    );
+      |key| recon.node_sequence(&graph, false, key),
+    )?;
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,

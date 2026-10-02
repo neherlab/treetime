@@ -128,7 +128,7 @@ fn emit_cds_sequences(
 ) -> Result<(), Report> {
   for node in graph.get_nodes() {
     let node_key = node.key();
-    let seq = partition.augur_node_sequence(node_key);
+    let seq = partition.augur_node_sequence(graph, node_key)?;
     sink.emit(SeqItem {
       key: node_key,
       track: SeqTrack::Aa(name),
