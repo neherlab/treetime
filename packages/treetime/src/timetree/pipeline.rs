@@ -12,7 +12,6 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::SkylineParams;
 use crate::error::OperationError;
@@ -27,9 +26,7 @@ use crate::seq::gap_fill::GapFill;
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
-use crate::timetree::coalescent_timescale::{
-  CoalescentMode, CoalescentTimescale, build_coalescent_output, coalescent_mode, coalescent_timescale,
-};
+use crate::timetree::coalescent_timescale::{CoalescentMode, CoalescentTimescale, build_coalescent_output};
 use crate::timetree::confidence::{
   NodeConfidenceInterval, RateSusceptibility, compute_rate_susceptibility, determine_rate_std,
   extract_confidence_intervals,
@@ -37,22 +34,19 @@ use crate::timetree::confidence::{
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::divergence::final_divergences;
 use crate::timetree::inference::bad_branches::undated_leaves;
-use crate::timetree::inference::runner::{
-  CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths, run_timetree,
-  timetree_branch_lengths,
-};
-use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
+use crate::timetree::inference::runner::timetree_branch_lengths;
+use crate::timetree::inference::time_inference::TimeInference;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
 use crate::timetree::optimization_loop::run_optimization_loop;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
-use crate::timetree::round::{RoundInputs, RoundState};
+use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, run_initial_round};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use log::debug;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::assign_node_names::{assign_node_names, restrict_node_names};
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -382,121 +376,6 @@ fn initialize_branch_model(
   }
 }
 
-struct InitialRound {
-  state: RoundState,
-  leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
-  outliers: BTreeSet<GraphNodeKey>,
-  filter_divergences: Option<BTreeMap<GraphNodeKey, f64>>,
-  coalescent: CoalescentSetup,
-  timescale: CoalescentTimescale,
-}
-
-fn run_initial_round(
-  params: &TimetreeParams,
-  context: &TimetreeContext,
-  input_names: &BTreeMap<GraphNodeKey, Option<String>>,
-  pre_loop: PreLoopState,
-  progress: &dyn ProgressSink,
-) -> Result<InitialRound, OperationError> {
-  let PreLoopState {
-    graph,
-    branch_lengths,
-    branch_model,
-    clock_fit: ClockFit {
-      model: clock_model,
-      points: clock_points,
-    },
-    leaf_bad_branches,
-    outliers,
-    filter_divergences,
-  } = pre_loop;
-
-  let names = restrict_node_names(input_names, &graph);
-  let gammas = unit_gammas(&graph);
-
-  let time_inputs = TimeInferenceInputs {
-    graph: &graph,
-    date_constraints: &context.date_constraints,
-    leaf_bad_branches: &leaf_bad_branches,
-    gammas: &gammas,
-    branch_model: &branch_model,
-    branch_lengths: &branch_lengths,
-    names: &names,
-    clock_model: &clock_model,
-    no_indels: params.no_indels,
-  };
-  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, progress);
-  let time_inference = run(None)?;
-
-  if params.n_branches_posterior.is_some() {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--n-branches-posterior is not yet implemented"
-    )));
-  }
-
-  let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, progress)?;
-  let time_inference = if coalescent.prior_wanted() {
-    let prior = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
-    run(Some(&prior))?
-  } else {
-    time_inference
-  };
-  let clock_branch_lengths = blended_clock_branch_lengths(
-    &graph,
-    clock_model.clock_rate(),
-    CLOCK_BRANCH_LENGTH_UNDAMPED,
-    &BTreeMap::new(),
-    &time_inference.node_times(),
-    &gammas,
-    progress,
-  );
-
-  Ok(InitialRound {
-    state: RoundState {
-      graph,
-      names,
-      branch_model,
-      branch_lengths,
-      clock_model,
-      clock_points,
-      clock_branch_lengths,
-      gammas,
-      time_inference,
-    },
-    leaf_bad_branches,
-    outliers,
-    filter_divergences,
-    coalescent,
-    timescale,
-  })
-}
-
-fn setup_coalescent(
-  params: &TimetreeParams,
-  graph: &Graph,
-  time_inference: &TimeInference,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
-) -> Result<(CoalescentSetup, CoalescentTimescale), Report> {
-  let skyline_params = SkylineParams {
-    n_points: params.skyline_n_points,
-    stiffness: params.skyline_stiffness,
-    n_std: params.coalescent_confidence,
-    ..SkylineParams::default()
-  };
-  let mode = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
-  let coalescent_node_times = time_inference.coalescent_node_times()?;
-  let lineage_counts =
-    compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, progress)?;
-  let setup = CoalescentSetup {
-    mode,
-    skyline_params,
-    lineage_counts,
-  };
-  Ok((setup, timescale))
-}
-
 fn report_coalescent_size(
   params: &TimetreeParams,
   mode: CoalescentMode,
@@ -573,36 +452,6 @@ fn refine_final_times(
     state,
     rate_std,
     rate_susceptibility_dates,
-  })
-}
-
-fn final_marginal_round(
-  inputs: &RoundInputs<'_>,
-  prior: Option<&CoalescentModel>,
-  state: RoundState,
-  progress: &dyn ProgressSink,
-) -> Result<RoundState, Report> {
-  let time_inference =
-    run_timetree(&state.time_inference_inputs(inputs), prior, progress).wrap_err("Final timetree inference failed")?;
-
-  let clock_branch_lengths = blended_clock_branch_lengths(
-    &state.graph,
-    state.clock_model.clock_rate(),
-    CLOCK_BRANCH_LENGTH_UNDAMPED,
-    &state.clock_branch_lengths,
-    &time_inference.node_times(),
-    &state.gammas,
-    progress,
-  );
-
-  let timetree_lengths = timetree_branch_lengths(&state.graph, &state.branch_lengths, &clock_branch_lengths);
-  let branch_model = state.branch_model.marginal_update(&state.graph, &timetree_lengths)?;
-
-  Ok(RoundState {
-    branch_model,
-    clock_branch_lengths,
-    time_inference,
-    ..state
   })
 }
 
