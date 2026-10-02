@@ -240,6 +240,16 @@ standalone = true
 args = "--tree={data}/zika/86/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --ignore-missing-alns"
 outputs = ["ancestral.nwk"]
 
+# Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. The CDSes are listed
+# because the GFF reader rejects the unstranded (`.`) CDS rows of this annotation.
+# The template is a literal path because smoke checks every `{data}` path as one input file; the dataset directory
+# is hashed as a whole, so the translations still key the case. `%GENE` keeps it clear of the smoke placeholders.
+[[ancestral]]
+variant = "translations"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+selection = "nwk,augur-node-data,reconstructed-nuc-fasta,reconstructed-aa-fasta"
+
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
 variant = "input-nexus-tree"

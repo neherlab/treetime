@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""
+Translate a reference-coordinate nucleotide alignment into per-CDS amino-acid alignments.
+
+Reads `aln.fasta.xz` and the CDS features of `annotation.gff3` in a dataset directory and writes
+`translations/<cds>.fasta.xz`, one file per CDS named by its `Name` attribute, in the layout that
+`treetime ancestral --translations=<dir>/translations/{cds}.fasta.xz` reads.
+
+Codon rules: a codon of unambiguous nucleotides translates with the standard genetic code (stop as `*`),
+a codon of three gaps becomes `-`, every other codon (ambiguous or partially gapped) becomes `X`.
+
+Usage:
+    ./dev/docker/python python data/translate rsv/a/20
+"""
+
+from __future__ import annotations
+
+import argparse
+import lzma
+from dataclasses import dataclass
+from pathlib import Path
+
+from Bio.Data.CodonTable import standard_dna_table
+from Bio.Seq import reverse_complement
+
+DATA_DIR = Path(__file__).resolve().parent
+LINE_WIDTH = 60
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("dataset", help="dataset path relative to data/, for example rsv/a/20")
+    args = parser.parse_args()
+
+    dataset = DATA_DIR / args.dataset
+    sequences = _read_fasta_xz(dataset / "aln.fasta.xz")
+    out_dir = dataset / "translations"
+    out_dir.mkdir(exist_ok=True)
+    for cds in _read_cdses(dataset / "annotation.gff3"):
+        _write_fasta_xz(out_dir / f"{cds.name}.fasta.xz", [(name, _translate(seq, cds)) for name, seq in sequences])
+
+
+@dataclass(frozen=True)
+class Cds:
+    name: str
+    start: int
+    end: int
+    reverse: bool
+
+
+def _read_fasta_xz(path: Path) -> list[tuple[str, str]]:
+    with lzma.open(path, "rt") as f:
+        blocks = f.read().split(">")[1:]
+    return [(block.split("\n", 1)[0].split()[0], "".join(block.split("\n")[1:]).upper()) for block in blocks]
+
+
+def _read_cdses(gff: Path) -> list[Cds]:
+    rows = [line.split("\t") for line in gff.read_text().splitlines() if line and not line.startswith("#")]
+    return [_cds_from_row(row) for row in rows if len(row) >= 9 and row[2] == "CDS"]
+
+
+def _cds_from_row(row: list[str]) -> Cds:
+    attributes = dict(item.split("=", 1) for item in row[8].split(";") if "=" in item)
+    return Cds(attributes["Name"], int(row[3]), int(row[4]), row[6] == "-")
+
+
+def _translate(seq: str, cds: Cds) -> str:
+    forward = seq[cds.start - 1 : cds.end]
+    nuc = reverse_complement(forward) if cds.reverse else forward
+    return "".join(_translate_codon(nuc[i : i + 3]) for i in range(0, len(nuc) - len(nuc) % 3, 3))
+
+
+def _translate_codon(codon: str) -> str:
+    if codon == "---":
+        return "-"
+    if codon in standard_dna_table.stop_codons:
+        return "*"
+    return standard_dna_table.forward_table.get(codon, "X")
+
+
+def _write_fasta_xz(path: Path, records: list[tuple[str, str]]) -> None:
+    with lzma.open(path, "wt") as f:
+        for name, seq in records:
+            lines = [seq[i : i + LINE_WIDTH] for i in range(0, len(seq), LINE_WIDTH)]
+            f.write("\n".join([f">{name}", *lines]) + "\n")
+
+
+if __name__ == "__main__":
+    main()
