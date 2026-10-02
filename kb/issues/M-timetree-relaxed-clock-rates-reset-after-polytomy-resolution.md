@@ -4,7 +4,7 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 
 ## v1 behavior
 
-- `Refinement::run` calls `apply_relaxed_clock` before `refine_topology` ([packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs))
+- `refinement_round` calls `relax_clock` (which calls `apply_relaxed_clock`) before `refine_topology` ([packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs))
 - `refine_topology` replaces the gamma map with `unit_gammas()` for the resolved tree, which sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/inference/time_inference.rs](../../packages/treetime/src/timetree/inference/time_inference.rs))
 - The next round recomputes the multipliers at its start, so the reset lasts for the rest of the round that resolved polytomies, and for the final outputs when that round is the last one
 

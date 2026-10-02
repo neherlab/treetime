@@ -1,6 +1,6 @@
 # Clock filter residual computation differs from v0
 
-v1's `clock_filter_inplace()` and v0's `residual_filter()` produce different outlier sets on the same data due to implementation differences in the IQD computation and outlier exclusion rules.
+v1's `clock_filter()` and v0's `residual_filter()` produce different outlier sets on the same data due to implementation differences in the IQD computation and outlier exclusion rules.
 
 ## Differences
 
@@ -20,7 +20,7 @@ Different outlier sets lead to different final clock models. On dengue/100: v0 f
 
 ## v1 Location
 
-`packages/treetime/src/clock/clock_filter.rs:21-105` (`clock_filter_inplace`)
+`packages/treetime/src/clock/clock_filter.rs` (`fn clock_filter`)
 
 ## Related tickets
 

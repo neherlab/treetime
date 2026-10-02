@@ -13,7 +13,7 @@ rate `1 - f` rather than reaching the fixed point directly. The fixed point is t
 
 ## Why it is flat today
 
-`commit_clock_branch_lengths` is called from four sites, only one of which is inside the loop. The
+`blended_clock_branch_lengths` is called from four sites, only one of which is inside the loop. The
 round index is not in scope at the commit and would have to be threaded through `Refinement` to
 build a schedule. That plumbing was not worth adding before knowing whether the flat factor costs
 measurable rounds.

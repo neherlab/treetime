@@ -7,4 +7,4 @@
 - [x] InDel (insertion/deletion: range + seq + direction, invertible)
 - [x] Composition (character frequency tracking with mutation updates)
 - [x] find_char_ranges (contiguous range detection for gaps, unknowns)
-- [x] compute_divs (root-to-tip divergence calculation)
+- [x] root_to_node_divergences (root-to-node divergence calculation, `clock/divergence.rs`)

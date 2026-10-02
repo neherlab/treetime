@@ -1,6 +1,6 @@
 # Relaxed clock is skipped with input branch lengths
 
-`Refinement::apply_relaxed_clock` returns early when the total sequence length is zero ([packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs)). With `--branch-length-mode=input` there are no sequence partitions, so `--relax` has no effect, with only an info-level log message. v0 runs the relaxed clock whenever it is requested ([packages/legacy/treetime/treetime/treetime.py#L311-L343](../../packages/legacy/treetime/treetime/treetime.py#L311-L343)).
+`fn relax_clock` in the refinement round returns early when the total sequence length is zero ([packages/treetime/src/timetree/round.rs#L154](../../packages/treetime/src/timetree/round.rs#L154)). With `--branch-length-mode=input` the branch model has no sequence partition, so `--relax` has no effect, with only an info-level log message. v0 runs the relaxed clock whenever it is requested ([packages/legacy/treetime/treetime/treetime.py#L311-L343](../../packages/legacy/treetime/treetime/treetime.py#L311-L343)).
 
 ## Impact
 

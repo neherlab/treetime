@@ -15,7 +15,7 @@ After filtering, the final clock model estimation warns on a non-positive rate b
 ## Impact
 
 - Pre-filter may select a different root position than v0 for the initial outlier detection pass
-- Outlier sets may differ between v0 and v1 (additional differences from `clock_filter_inplace` vs v0's `residual_filter` are tracked separately in known issues)
+- Outlier sets may differ between v0 and v1 (additional differences from `clock_filter` vs v0's `residual_filter` are tracked separately in known issues)
 - Final clock model quality depends on the effectiveness of the pre-filter, but the alternative (crashing) is strictly worse
 
 ## v0 Reference

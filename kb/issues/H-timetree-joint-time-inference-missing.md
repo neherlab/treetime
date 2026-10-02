@@ -12,7 +12,7 @@ TreeTime v0 infers node times jointly by default. v1 runs only marginal time inf
 
 - `run_timetree` always runs sum-product message passing with cavity division ([packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs)), and the node time is the marginal peak clamped to the parent time
 - `TimeMarginalMode` only controls an extra pass and whether confidence intervals are extracted ([packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs), the `TimeMarginalMode::OnlyFinal` block and `extract_confidence_intervals`). `never` and `always` therefore give identical dates
-- `only-final` runs an extra `run_timetree`, commits clock branch lengths undamped, and runs `marginal_update_timetree`; v0's final round has no ancestral update
+- `only-final` runs an extra `run_timetree`, commits clock branch lengths undamped, and runs a marginal update of the partition (`PartitionTimetree::marginal_update`); v0's final round has no ancestral update
 
 ## Impact
 

@@ -32,7 +32,7 @@ The same rule governs the projection onto the parent time (see
 [M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md)):
 an inferred node time is clamped to be no earlier than its parent's, an exact date is not. Clamping
 an observed date would hide the conflict between that date and the fitted clock that
-`commit_clock_branch_lengths` reports as an inverted branch.
+`blended_clock_branch_lengths` reports as an inverted branch.
 
 ## The input date has to be stored separately
 

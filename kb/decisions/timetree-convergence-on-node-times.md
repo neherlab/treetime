@@ -9,7 +9,7 @@ sequences, which is not what the loop moves.
 
 **v1 location**:
 [`ConvergenceMetrics::has_converged`](../../packages/treetime/src/timetree/convergence/metrics.rs),
-measured in [`Refinement::run`](../../packages/treetime/src/timetree/refinement.rs) via
+measured in [`refinement_round`](../../packages/treetime/src/timetree/round.rs) via
 [`convergence/node_times.rs`](../../packages/treetime/src/timetree/convergence/node_times.rs).
 
 ## Why `n_diff` cannot see the loop
@@ -26,7 +26,7 @@ tree where no node is dated on both sides of the round and no movement is measur
 
 ## What is measured
 
-Times are snapshotted at the top of `Refinement::run` and compared after `rebuild_inference`, so
+Times are snapshotted at the top of `refinement_round` and compared after `refresh_times`, so
 the quantity is the movement *within* a round rather than a difference between rounds. This is
 well-defined from round 1 and needs no seeding. Nodes present in only one snapshot are skipped;
 polytomy resolution introduces nodes with no earlier position, and such a round is excluded by

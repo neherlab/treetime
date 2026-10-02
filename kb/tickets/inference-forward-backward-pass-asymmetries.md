@@ -26,9 +26,9 @@ Mutates node `div` (divergence) through a read-path graph traversal. The functio
 
 Applies the marginal-pass branch-length floor during mutation counting for GTR inference. This means GTR parameter estimation sees clamped branch lengths rather than raw values, biasing the rate matrix toward shorter-branch statistics.
 
-### Refinement::run always rebuilds clock model
+### refinement_round always rebuilds clock model
 
-`packages/treetime/src/timetree/refinement.rs:`
+`packages/treetime/src/timetree/round.rs` (`fn update_clock_model`)
 
 Rebuilds the clock model even when nothing moved (`n_diff==0 && n_resolved==0`). The clock model estimation involves regression over all dated tips, which is wasted computation when no dates changed. More importantly, floating-point non-determinism in the regression can introduce small perturbations that prevent clean convergence.
 

@@ -20,7 +20,7 @@ After `run_optimize_loop` completes and before the final `update_marginal` pass:
 1. Compute the one-mutation resolution from the sequence length.
 2. For each eligible internal edge, evaluate both v0 pruning conditions.
 3. Collapse marked edges (merge child into parent, creating polytomies)
-4. Reconcile partition topology (`reconcile_topology`, same pattern as `timetree/refinement.rs`)
+4. Reconcile partition topology (`reconcile_topology`, same pattern as `timetree/round.rs`)
 5. Run final `update_marginal` on the pruned tree
 
 v0 marginal mode prunes after the loop. v0 joint mode (removed in v1) pruned inside the loop.

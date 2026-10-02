@@ -113,7 +113,7 @@ v1 code: [`packages/treetime/src/commands/optimize/run.rs#L275-L378`](../../../p
 ```
 Before the loop:
   compute_lineage_counts()                    <-- k0(t), frozen for the run
-  commit_clock_branch_lengths(damping=1.0)    <-- seed the constrained lengths
+  blended_clock_branch_lengths(damping=1.0)    <-- seed the constrained lengths
 
 Loop (convergence-controlled):
   1. estimate Tc from the live tree           <-- statistic role, if the mode optimizes it
@@ -122,15 +122,15 @@ Loop (convergence-controlled):
   4. capture_node_times() + capture_ancestral_states()
   5. resolve_polytomies(mutation_rate, kappa) <-- stochastic coalescent sweep
      prepare_tree_after_topology_change()
-     commit_clock_branch_lengths(damping=1.0) <-- from the sampled subtree's times
+     blended_clock_branch_lengths(damping=1.0) <-- from the sampled subtree's times
   6. update_marginal()                        <-- E-step, along clock-constrained lengths
      run_timetree(prior)                      <-- re-infer node times
-  7. commit_clock_branch_lengths(damping=0.5) <-- constrained M-step, damped
+  7. blended_clock_branch_lengths(damping=0.5) <-- constrained M-step, damped
   8. measure_node_time_change()               <-- convergence signal
   9. re-estimate clock model
 ```
 
-v1 code: [`packages/treetime/src/timetree/refinement.rs`](../../../packages/treetime/src/timetree/refinement.rs)
+v1 code: [`packages/treetime/src/timetree/round.rs`](../../../packages/treetime/src/timetree/round.rs)
 
 The M-step is *constrained*: rather than optimizing each branch length freely, step 7 sets it to
 `mu * gamma * dt` over the inferred times, and step 6 of the next round propagates profiles along

@@ -260,7 +260,7 @@ packages/treetime-graph/src/
 | ---------------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
 | `clock/pipeline.rs`          | `estimate_clock_model_with_reroot_policy`                       | unchanged (calls clock wrapper)                       |
 | `timetree/pipeline.rs`       | `estimate_clock_model_with_reroot_policy` + `reroot_tree`       | unchanged                                             |
-| `timetree/refinement.rs`     | `estimate_clock_model_with_reroot`                              | unchanged                                             |
+| `timetree/round.rs`          | `estimate_clock_model_with_reroot_policy`                       | unchanged                                             |
 | `commands/shared/reroot.rs`  | `RerootMethod`, `RerootSpec` from `clock/find_best_root/params` | from `clock/reroot` (dispatch enums stay clock-level) |
 | `optimize/pipeline.rs` (new) | --                                                              | `reroot::orchestrate::reroot_in_place::<DivStats>`    |
 

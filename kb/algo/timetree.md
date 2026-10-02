@@ -211,9 +211,9 @@ Component and total scalar boundaries use `LogLh`, while positional distribution
 
 Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence ([[3](#ref-3)], Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
 
-v1: [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs).
+v1: [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs), driven by [`packages/treetime/src/timetree/optimization_loop.rs`](../../packages/treetime/src/timetree/optimization_loop.rs).
 
-- `Refinement::run()` (`#Refinement::run`) [packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs): owns one complete refinement context and names each state transition: relaxed-clock update, topology refinement, inference rebuild, ancestral-state comparison, and clock re-estimation. `TopologyOutcome` distinguishes an unchanged tree from a changed tree with a resolved-node count, so callers handle topology status explicitly. A changed topology triggers partition reconciliation, a reset of the relaxed-clock rate multipliers to 1, marginal reconstruction, coalescent-free time inference, and then inference with the active coalescent prior. The round returns the latest `TimeInference` and rate multipliers as values.
+- `refinement_round()` (`#refinement_round`) [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs): takes one round state by value and names each state transition: relaxed-clock update (`relax_clock`), topology refinement (`refine_topology`), inference rebuild (`refresh_times`), ancestral-state comparison, and clock re-estimation (`update_clock_model`). `TopologyOutcome` distinguishes an unchanged tree from a changed tree with a resolved-node count, so callers handle topology status explicitly. A changed topology triggers partition reconciliation, a reset of the relaxed-clock rate multipliers to 1, marginal reconstruction, coalescent-free time inference, and then inference with the active coalescent prior. The round returns the latest `TimeInference` and rate multipliers as values.
 
 ---
 
@@ -341,5 +341,5 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 | [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)       | Polytomy, relaxed clock, reroot, clock filter                         |
 | [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)         | Convergence monitoring, likelihood tracking, sequence change counting |
 | [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/) | Confidence intervals, date output, plots                              |
-| [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs)       | EM-like iterative refinement                                          |
+| [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs)                 | EM-like iterative refinement                                          |
 | [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)   | End-to-end estimation pipeline                                        |

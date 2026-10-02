@@ -21,7 +21,7 @@ hands those clock-constrained lengths to the next reconstruction.
 **v1 location**:
 [`HasBranchLength::profile_branch_length`](../../packages/treetime-graph/src/edge.rs),
 [`EdgeTimetree::clock_branch_length`](../../packages/treetime/src/payload/timetree.rs), and
-[`commit_clock_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs).
+[`blended_clock_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs).
 
 ## Background
 
@@ -66,14 +66,14 @@ behavior change.
 
 ## Commit points
 
-`commit_clock_branch_lengths` is called explicitly rather than from inside `run_timetree`, so each
+`blended_clock_branch_lengths` is called explicitly rather than from inside `run_timetree`, so each
 caller chooses its damping and the rate-susceptibility passes can decline to commit at all.
 
 | site | damping | why |
 | --- | --- | --- |
 | pipeline, before the optimization loop | 1.0 | first commit; nothing to blend with |
-| `Refinement::refine_topology`, after polytomy resolution | 1.0 | re-parented edges describe a new pair; the sampled subtree dates every node it creates, so the preliminary times are used directly rather than falling back to ML lengths |
-| `Refinement::run`, after `rebuild_inference` | `CLOCK_BRANCH_LENGTH_DAMPING` | the loop step |
+| `refine_topology` in `timetree/round.rs`, after polytomy resolution | 1.0 | re-parented edges describe a new pair; the sampled subtree dates every node it creates, so the preliminary times are used directly rather than falling back to ML lengths |
+| `refresh_times` in `timetree/round.rs`, after the time inference | `CLOCK_BRANCH_LENGTH_DAMPING` | the loop step |
 | pipeline, after the final `TimeMarginalMode::OnlyFinal` pass | 1.0 | reports the final tree |
 | `compute_rate_susceptibility` | — | does not commit; the three perturbed-rate passes would otherwise leave a blend of the lower-rate and central-rate trees behind |
 

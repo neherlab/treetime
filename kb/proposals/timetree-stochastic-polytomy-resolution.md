@@ -95,7 +95,7 @@ about where either comes from: $\mu$ as a scalar, $\kappa$ as a function of cale
 
 $\mu$ is already computed in the caller: `clock_model.clock_rate() * total_length` is passed
 as `zero_branch_slope` at
-[packages/treetime/src/timetree/refinement.rs#L96](../../packages/treetime/src/timetree/refinement.rs#L96).
+[packages/treetime/src/timetree/round.rs#L194](../../packages/treetime/src/timetree/round.rs#L194).
 Rename the parameter `mutation_rate`; no new plumbing.
 
 $\kappa(t)$ is `CoalescentModel::branch_merger_rate` on the same model the round's node times are
@@ -143,7 +143,7 @@ further back would require relocating the parent node itself and re-checking aga
 grandparent branch, i.e. mutating a second node's time inside a routine scoped to one node.
 
 Deliberately out of scope: `run_timetree` re-infers every node time immediately afterwards
-([packages/treetime/src/timetree/refinement.rs#L110](../../packages/treetime/src/timetree/refinement.rs#L110)),
+([packages/treetime/src/timetree/round.rs#L287](../../packages/treetime/src/timetree/round.rs#L287)),
 so the parent's time is not final at this point. A partially resolved polytomy gets another
 attempt on the next refinement iteration with a relocated parent, which reaches the same
 outcome without coupling two nodes' times inside the sweep.

@@ -37,6 +37,6 @@ The `clock` command reports the root-to-tip regression without performing time i
 
 ## v1 Implementation
 
-- `ClockModel::from_regression` (`packages/treetime/src/clock/clock_model.rs`) errors on a non-positive rate. All timetree boundaries route through it (`packages/treetime/src/timetree/pipeline.rs`, `packages/treetime/src/timetree/optimization/reroot.rs`, `packages/treetime/src/timetree/refinement.rs`).
+- `ClockModel::from_regression` (`packages/treetime/src/clock/clock_model.rs`) errors on a non-positive rate. All timetree boundaries route through it (`packages/treetime/src/timetree/pipeline.rs`, `packages/treetime/src/timetree/optimization/reroot.rs`, `packages/treetime/src/timetree/round.rs`).
 - `ClockModel::from_regression_allow_negative` warns and builds the model; only the clock command uses it, via `ClockRerootResult::into_clock_model_allow_negative` (`packages/treetime/src/clock/pipeline.rs`).
 </content>
