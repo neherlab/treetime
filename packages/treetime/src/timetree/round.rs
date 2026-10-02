@@ -292,6 +292,7 @@ fn refine_topology(
     graph,
     branch_lengths,
     merger_times,
+    removed_nodes,
   } = resolve_polytomies(
     state.graph,
     state.branch_lengths,
@@ -303,8 +304,7 @@ fn refine_topology(
     &node_times,
   )
   .wrap_err("Polytomy resolution failed")?;
-  let resolved_nodes = merger_times.len();
-  if resolved_nodes == 0 {
+  if merger_times.is_empty() && removed_nodes == 0 {
     let state = RoundState {
       graph,
       branch_lengths,
@@ -313,10 +313,14 @@ fn refine_topology(
     return Ok((state, TopologyOutcome::Unchanged));
   }
 
-  progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
+  let resolved_nodes = merger_times.len();
+  if resolved_nodes > 0 {
+    progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
+  }
   let names = assign_node_names(state.names, &graph)?;
   node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
-  require_internal_node_times(&graph, &node_times).wrap_err("Failed to prepare tree after topology change")?;
+  require_internal_node_times(&graph, &node_times)
+    .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
   let gammas = unit_gammas(&graph);
   let branch_model = state.branch_model.reconcile_topology(&graph);
   let clock_branch_lengths = blended_clock_branch_lengths(

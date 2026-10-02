@@ -29,6 +29,7 @@ pub(crate) fn resolve_polytomies(
       graph,
       branch_lengths,
       merger_times: BTreeMap::new(),
+      removed_nodes: 0,
     });
   }
 
@@ -51,9 +52,9 @@ pub(crate) fn resolve_polytomies(
     merger_times.extend(created);
   }
 
-  let obsolete_count = remove_single_child_nodes(&mut graph, &mut branch_lengths)?;
-  if obsolete_count > 0 {
-    debug!("Removed {obsolete_count} obsolete single-child nodes");
+  let removed_nodes = remove_single_child_nodes(&mut graph, &mut branch_lengths)?;
+  if removed_nodes > 0 {
+    debug!("Removed {removed_nodes} obsolete single-child nodes");
   }
 
   graph.build()?;
@@ -68,6 +69,7 @@ pub(crate) fn resolve_polytomies(
     graph,
     branch_lengths,
     merger_times,
+    removed_nodes,
   })
 }
 
@@ -75,9 +77,10 @@ pub(crate) struct PolytomyResolution {
   pub graph: Graph,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub merger_times: BTreeMap<GraphNodeKey, f64>,
+  pub removed_nodes: usize,
 }
 
-#[allow(
+#[expect(
   clippy::too_many_arguments,
   reason = "one call site; splitting would only shuffle the arguments"
 )]
@@ -142,9 +145,9 @@ fn resolve_single_polytomy(
   Ok(created)
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
+  reason = "the node is a polytomy found on this graph and its outbound edges exist on it"
 )]
 fn collect_children(
   graph: &Graph,
@@ -183,9 +186,9 @@ struct ChildInfo {
   mutations: u32,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
+  reason = "a sequence length is far below 2^53, and the rounded mutation estimate is finite and positive before the cast"
 )]
 fn edge_mutation_count(
   graph: &Graph,
@@ -259,13 +262,13 @@ pub(crate) fn require_internal_node_times(
     }
     let Some(time) = node_times[&node.key()] else {
       return make_error!(
-        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+        "Polytomy resolution requires an inferred time for every internal node, but node {:?} has none",
         node.key()
       );
     };
     if !time.is_finite() {
       return make_error!(
-        "Topology rebuild requires a finite inferred time for every internal node, but node {:?} has {time}",
+        "Polytomy resolution requires a finite inferred time for every internal node, but node {:?} has {time}",
         node.key()
       );
     }

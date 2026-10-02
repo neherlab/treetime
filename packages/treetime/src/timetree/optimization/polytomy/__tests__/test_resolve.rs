@@ -376,7 +376,7 @@ mod tests {
 
     assert_error!(
       require_internal_node_times(&graph, &state),
-      format!("Topology rebuild requires an inferred time for every internal node, but node {abc_key:?} has none")
+      format!("Polytomy resolution requires an inferred time for every internal node, but node {abc_key:?} has none")
     );
     Ok(())
   }
