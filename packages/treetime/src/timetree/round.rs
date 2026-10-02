@@ -94,28 +94,20 @@ pub(crate) fn run_initial_round(
   } else {
     time_inference
   };
-  let clock_branch_lengths = blended_clock_branch_lengths(
-    &graph,
-    clock_model.clock_rate(),
-    CLOCK_BRANCH_LENGTH_UNDAMPED,
-    &BTreeMap::new(),
-    &time_inference.node_times(),
-    &gammas,
-    progress,
-  );
+  let state = RoundState {
+    graph,
+    names,
+    branch_model,
+    branch_lengths,
+    clock_model,
+    clock_points,
+    clock_branch_lengths: BTreeMap::new(),
+    gammas,
+    time_inference,
+  };
 
   Ok(InitialRound {
-    state: RoundState {
-      graph,
-      names,
-      branch_model,
-      branch_lengths,
-      clock_model,
-      clock_points,
-      clock_branch_lengths,
-      gammas,
-      time_inference,
-    },
+    state: state.blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, progress),
     leaf_bad_branches,
     outliers,
     filter_divergences,
@@ -159,26 +151,12 @@ pub(crate) fn final_marginal_round(
 ) -> Result<RoundState, Report> {
   let time_inference =
     run_timetree(&state.time_inference_inputs(inputs), prior, progress).wrap_err("Final timetree inference failed")?;
-
-  let clock_branch_lengths = blended_clock_branch_lengths(
-    &state.graph,
-    state.clock_model.clock_rate(),
-    CLOCK_BRANCH_LENGTH_UNDAMPED,
-    &state.clock_branch_lengths,
-    &time_inference.node_times(),
-    &state.gammas,
-    progress,
-  );
-
-  let timetree_lengths = timetree_branch_lengths(&state.graph, &state.branch_lengths, &clock_branch_lengths);
-  let branch_model = state.branch_model.marginal_update(&state.graph, &timetree_lengths)?;
-
-  Ok(RoundState {
-    branch_model,
-    clock_branch_lengths,
+  RoundState {
     time_inference,
     ..state
-  })
+  }
+  .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, progress)
+  .marginal_update()
 }
 
 pub(crate) struct RoundState {
@@ -206,6 +184,28 @@ impl RoundState {
       clock_model: &self.clock_model,
       no_indels: inputs.params.no_indels,
     }
+  }
+
+  fn blend_clock_branch_lengths(self, damping: f64, progress: &dyn ProgressSink) -> Self {
+    let clock_branch_lengths = blended_clock_branch_lengths(
+      &self.graph,
+      self.clock_model.clock_rate(),
+      damping,
+      &self.clock_branch_lengths,
+      &self.time_inference.node_times(),
+      &self.gammas,
+      progress,
+    );
+    Self {
+      clock_branch_lengths,
+      ..self
+    }
+  }
+
+  fn marginal_update(self) -> Result<Self, Report> {
+    let timetree_lengths = timetree_branch_lengths(&self.graph, &self.branch_lengths, &self.clock_branch_lengths);
+    let branch_model = self.branch_model.marginal_update(&self.graph, &timetree_lengths)?;
+    Ok(Self { branch_model, ..self })
   }
 }
 
@@ -360,25 +360,15 @@ fn refresh_times(
   if state.branch_model.is_marginal() {
     progress_info!(progress, "Updating ancestral sequences via marginal reconstruction");
   }
-  let timetree_lengths = timetree_branch_lengths(&state.graph, &state.branch_lengths, &state.clock_branch_lengths);
-  let branch_model = state.branch_model.marginal_update(&state.graph, &timetree_lengths)?;
-  let state = RoundState { branch_model, ..state };
+  let state = state.marginal_update()?;
   let time_inference = infer_times(inputs, prior, topology_changed, &state, progress)?;
-
-  let clock_branch_lengths = blended_clock_branch_lengths(
-    &state.graph,
-    state.clock_model.clock_rate(),
-    CLOCK_BRANCH_LENGTH_DAMPING,
-    &state.clock_branch_lengths,
-    &time_inference.node_times(),
-    &state.gammas,
-    progress,
-  );
-  Ok(RoundState {
-    clock_branch_lengths,
-    time_inference,
-    ..state
-  })
+  Ok(
+    RoundState {
+      time_inference,
+      ..state
+    }
+    .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_DAMPING, progress),
+  )
 }
 
 fn infer_times(
