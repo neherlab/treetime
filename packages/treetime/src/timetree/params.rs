@@ -47,6 +47,12 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
+impl TimeMarginalMode {
+  pub(crate) fn runs_final_round(self) -> bool {
+    self == Self::OnlyFinal
+  }
+}
+
 #[allow(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"

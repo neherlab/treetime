@@ -136,14 +136,20 @@ pub(crate) fn refinement_round(
   Ok((state, outcome))
 }
 
-pub(crate) fn final_marginal_round(
+pub(crate) fn infer_final_times(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentModel>,
+  state: &RoundState,
+  log: &dyn LogSink,
+) -> Result<TimeInference, Report> {
+  run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Final timetree inference failed")
+}
+
+pub(crate) fn final_marginal_round(
+  time_inference: TimeInference,
   state: RoundState,
   log: &dyn LogSink,
 ) -> Result<RoundState, Report> {
-  let time_inference =
-    run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Final timetree inference failed")?;
   RoundState {
     time_inference,
     ..state
@@ -363,23 +369,15 @@ fn infer_times(
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  let time_inputs = state.time_inference_inputs(inputs);
-  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
-
   if topology_changed {
     progress_info!(
       log,
       "Tree structure changed - rebuilding node-time state before coalescent inference"
     );
-    let time_inference = run(None).wrap_err("Coalescent-free timetree rebuild failed")?;
-    if prior.is_none() {
-      return Ok(time_inference);
-    }
   } else {
     progress_info!(log, "Updating node times via timetree inference");
   }
-
-  run(prior).wrap_err("Timetree inference failed")
+  run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Timetree inference failed")
 }
 
 fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn LogSink) -> Result<RoundState, Report> {

@@ -38,7 +38,7 @@ use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
-use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, run_initial_round};
+use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times, run_initial_round};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use log::debug;
@@ -115,7 +115,7 @@ pub fn run(
     filter_divergences,
     final_times,
   )?;
-  let state = emit_sequences(params, seq_sink, results.state, log)?;
+  let state = emit_sequences(params, context.time_marginal, seq_sink, results.state, log)?;
 
   Ok(TimetreeOutput {
     graph: state.graph,
@@ -429,24 +429,30 @@ fn refine_final_times(
   let final_model = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
   let final_prior = coalescent.prior_wanted().then_some(&final_model);
 
-  let (state, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
+  let (central, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
     progress_info!(log, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
     let RateSusceptibility { dates, central } = compute_rate_susceptibility(inputs, &state, final_prior, rate_std, log)
       .wrap_err("Rate susceptibility analysis failed")?;
-    let state = RoundState {
-      time_inference: central,
-      ..state
-    };
-    (state, dates)
+    (Some(central), dates)
   } else {
-    (state, BTreeMap::new())
+    (None, BTreeMap::new())
   };
 
-  let state = if inputs.context.time_marginal == TimeMarginalMode::OnlyFinal {
+  let state = if inputs.context.time_marginal.runs_final_round() {
     progress_info!(log, "### Final round: marginal reconstruction for confidence intervals");
-    final_marginal_round(inputs, final_prior, state, log)?
+    let time_inference = match central {
+      Some(central) => central,
+      None => infer_final_times(inputs, final_prior, &state, log)?,
+    };
+    final_marginal_round(time_inference, state, log)?
   } else {
-    state
+    match central {
+      Some(time_inference) => RoundState {
+        time_inference,
+        ..state
+      },
+      None => state,
+    }
   };
 
   Ok(FinalTimes {
@@ -522,51 +528,45 @@ fn gather_results(
 
 fn emit_sequences(
   params: &TimetreeParams,
-  mut seq_sink: Option<Box<dyn SeqSink>>,
+  time_marginal: TimeMarginalMode,
+  seq_sink: Option<Box<dyn SeqSink>>,
   state: RoundState,
   log: &dyn LogSink,
 ) -> Result<RoundState, OperationError> {
-  if seq_sink.is_none() && !params.include_leaves && !params.impute_missing_data {
-    return Ok(state);
-  }
-  let partition = match state.branch_model {
-    BranchModel::Marginal(partition) => partition,
-    BranchModel::Input => {
-      if seq_sink.is_some() {
-        return Err(OperationError::InvalidParams(make_report!(
-          "Reconstructed sequence output requires ancestral reconstruction; \
-           incompatible with --branch-length-mode=input"
-        )));
-      }
+  let Some(mut sink) = seq_sink else {
+    if matches!(state.branch_model, BranchModel::Input) && (params.include_leaves || params.impute_missing_data) {
       progress_warn!(
         log,
         "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
-      return Ok(RoundState {
-        branch_model: BranchModel::Input,
-        ..state
-      });
-    },
+    }
+    return Ok(state);
+  };
+  let BranchModel::Marginal(partition) = state.branch_model else {
+    return Err(OperationError::InvalidParams(make_report!(
+      "Reconstructed sequence output requires ancestral reconstruction; \
+       incompatible with --branch-length-mode=input"
+    )));
   };
   let graph = &state.graph;
 
-  if let Some(sink) = seq_sink.as_mut() {
-    sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
-  }
-  let partition = partition.marginal_update(
-    graph,
-    &timetree_branch_lengths(graph, &state.branch_lengths, &state.clock_branch_lengths),
-  )?;
-  if let Some(sink) = seq_sink.as_mut() {
-    for key in emitted_nodes(graph, params.include_leaves)? {
-      let seq = partition.node_sequence(graph, params.impute_missing_data, key)?;
-      sink.emit(SeqItem {
-        key,
-        track: SeqTrack::Nuc,
-        seq: &seq,
-      })?;
-    }
+  sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
+  let partition = if time_marginal.runs_final_round() {
+    partition
+  } else {
+    partition.marginal_update(
+      graph,
+      &timetree_branch_lengths(graph, &state.branch_lengths, &state.clock_branch_lengths),
+    )?
+  };
+  for key in emitted_nodes(graph, params.include_leaves)? {
+    let seq = partition.node_sequence(graph, params.impute_missing_data, key)?;
+    sink.emit(SeqItem {
+      key,
+      track: SeqTrack::Nuc,
+      seq: &seq,
+    })?;
   }
   Ok(RoundState {
     branch_model: BranchModel::Marginal(partition),
