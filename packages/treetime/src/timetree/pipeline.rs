@@ -16,11 +16,10 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::create::{Representation, build_marginal_partition};
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
-use crate::partition::marginal::sequences::emitted_nodes;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
-use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use crate::seq::mutation::{Mutation, MutationTrack, SequenceMutations, stream_sequence_mutations};
+use crate::seq::sink::SeqSink;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
 use crate::timetree::coalescent_timescale::{
@@ -31,7 +30,6 @@ use crate::timetree::confidence::{
   extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::TraceSink;
-use crate::timetree::inference::result::TimeInference;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
 use crate::timetree::params::{
@@ -43,20 +41,18 @@ use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infe
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use log::debug;
-use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::AlignmentRecord;
 use treetime_primitives::date::DatesMap;
+use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::make_report;
 
 pub fn run(
   params: &TimetreeParams,
   input: TimetreeInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   trace_sink: Option<Box<dyn TraceSink + '_>>,
   seq_sink: Option<Box<dyn SeqSink>>,
   cancel: &dyn Cancel,
@@ -65,24 +61,40 @@ pub fn run(
 ) -> Result<TimetreeOutput, OperationError> {
   progress_info!(log, "# TreeTime Timetree Estimation");
   validate_params(params)?;
-  let context = prepare_inputs(params, &input, names, log)?;
+  let TimetreeInput {
+    graph,
+    alphabet,
+    sequences,
+    dates,
+    branch_lengths,
+    names,
+  } = input;
+  let context = prepare_inputs(params, &graph, sequences.as_deref(), dates.as_ref(), &names, log)?;
 
-  cancel.check()?;
+  cancel.check().map_err(OperationError::from_inference)?;
   stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) =
-    estimate_initial_clock(params, &context, input.graph, input.branch_lengths, names, log)?;
-  let aln = input.sequences.as_deref();
-  let init = initialize_branch_model(params, &graph, &branch_lengths, input.alphabet, aln, names, log)?;
+    estimate_initial_clock(params, &context, graph, branch_lengths, &names, log)?;
+  let init = initialize_branch_model(
+    params,
+    &graph,
+    &branch_lengths,
+    alphabet,
+    sequences.as_deref(),
+    &names,
+    log,
+  )?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
-    names,
-    has_alignment: aln.is_some(),
+    names: &names,
+    has_alignment: sequences.is_some(),
   };
   let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit);
-  let pre_loop = run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log)?;
+  let pre_loop =
+    run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::from_inference)?;
 
-  let initial = run_initial_round(params, &context, names, pre_loop, log)?;
+  let initial = run_initial_round(params, &context, &names, pre_loop, log).map_err(OperationError::from_inference)?;
   let round_inputs = RoundInputs {
     params,
     context: &context,
@@ -99,84 +111,94 @@ pub fn run(
     cancel,
     stages,
     log,
-  )?;
+  )
+  .map_err(OperationError::from_inference)?;
   report_coalescent_size(params, coalescent.mode, &timescale, log);
 
-  cancel.check()?;
+  cancel.check().map_err(OperationError::from_inference)?;
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
-  let final_times = refine_final_times(&round_inputs, coalescent, &timescale, state, log)?;
-  let results = gather_results(params, &context, coalescent, &timescale, final_times)?;
-  let state = emit_sequences(params, context.time_marginal, seq_sink, results.state, log)?;
+  let final_times =
+    refine_final_times(&round_inputs, coalescent, &timescale, state, log).map_err(OperationError::from_inference)?;
+  let results =
+    gather_results(params, &context, coalescent, &timescale, final_times).map_err(OperationError::from_inference)?;
+  let RoundState {
+    graph,
+    names,
+    branch_model,
+    branch_lengths,
+    clock_model,
+    clock_branch_lengths,
+    time_inference,
+    ..
+  } = results.state;
+  let sequences = reconstruct_final_sequences(
+    params,
+    &context,
+    seq_sink,
+    &graph,
+    branch_model,
+    &timetree_branch_lengths(&graph, &branch_lengths, &clock_branch_lengths),
+    log,
+  )?;
+  let (root_sequence, edge_mutations) = match sequences {
+    Some(SequenceMutations {
+      root_sequence,
+      edge_mutations,
+    }) => (Some(root_sequence), edge_mutations),
+    None => (None, BTreeMap::new()),
+  };
+  let node_dates = time_inference.node_times();
+  let date_branch_lengths = date_branch_lengths(&graph, &node_dates);
 
   Ok(TimetreeOutput {
-    graph: state.graph,
-    clock_model: state.clock_model,
+    clock_model,
     clock_regression: results.clock_regression,
     confidence_intervals: results.confidence_intervals,
-    partitions: match state.branch_model {
-      BranchModel::Input => vec![],
-      BranchModel::Marginal(partition) => vec![partition],
-    },
-    dates: input.dates,
+    dates,
     gtr: init.gtr,
     model_name: init.model_name,
     coalescent: results.coalescent_output,
-    rate_susceptibility_dates: results.rate_susceptibility_dates,
-    clock_branch_lengths: state.clock_branch_lengths,
-    branch_lengths: state.branch_lengths,
+    branch_lengths,
+    date_branch_lengths,
+    node_dates,
+    bad_branches: time_inference.bad_branches,
     divergences: results.divergences,
     outliers: initial.outliers,
-    time_inference: state.time_inference,
-    gammas: state.gammas,
-    names: state.names,
+    root_sequence,
+    edge_mutations,
+    names,
+    graph,
   })
 }
 
 pub struct TimetreeInput {
   pub graph: Graph,
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<AlignmentRecord>>,
   pub dates: Option<DatesMap>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Serialize)]
 pub struct TimetreeOutput {
-  #[serde(skip)]
   pub graph: Graph,
-  #[serde(skip)]
-  pub clock_model: ClockModel,
-  #[serde(skip)]
-  pub clock_regression: Vec<ClockRegressionResult>,
-  #[serde(skip)]
-  pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  #[serde(skip)]
-  pub partitions: Vec<MarginalReconstruction>,
-  #[serde(skip)]
-  pub dates: Option<DatesMap>,
-  #[serde(skip)]
-  pub gtr: Option<GTR>,
-  #[serde(skip)]
-  pub model_name: Option<GtrModelName>,
-  #[serde(skip)]
-  pub coalescent: Option<CoalescentOutput>,
-  #[serde(skip)]
-  pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
-  #[serde(skip)]
-  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-  #[serde(skip)]
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  #[serde(skip)]
-  pub divergences: BTreeMap<GraphNodeKey, f64>,
-  #[serde(skip)]
-  pub outliers: BTreeSet<GraphNodeKey>,
-  #[serde(skip)]
-  pub time_inference: TimeInference,
-  #[serde(skip)]
-  pub gammas: BTreeMap<GraphEdgeKey, f64>,
-  #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub node_dates: BTreeMap<GraphNodeKey, Option<f64>>,
+  pub divergences: BTreeMap<GraphNodeKey, f64>,
+  pub outliers: BTreeSet<GraphNodeKey>,
+  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub date_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub clock_model: ClockModel,
+  pub clock_regression: Vec<ClockRegressionResult>,
+  pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
+  pub gtr: Option<GTR>,
+  pub model_name: Option<GtrModelName>,
+  pub coalescent: Option<CoalescentOutput>,
+  pub dates: Option<DatesMap>,
+  pub root_sequence: Option<Seq>,
+  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 fn validate_params(params: &TimetreeParams) -> Result<(), OperationError> {
@@ -190,7 +212,9 @@ fn validate_params(params: &TimetreeParams) -> Result<(), OperationError> {
 
 fn prepare_inputs(
   params: &TimetreeParams,
-  input: &TimetreeInput,
+  graph: &Graph,
+  sequences: Option<&[AlignmentRecord]>,
+  dates: Option<&DatesMap>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<TimetreeContext, OperationError> {
@@ -211,20 +235,23 @@ fn prepare_inputs(
     params.covariation,
     params.sequence_length,
     params.tip_slack,
-    input.sequences.as_deref(),
+    sequences,
     log,
   )
   .map_err(OperationError::InvalidParams)?;
 
-  let date_constraints = if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph, names, log)
+  let date_constraints = if let Some(dates) = dates {
+    load_date_constraints(dates, graph, names, log)
       .wrap_err("Failed to load date constraints")
       .map_err(OperationError::InvalidInput)?
   } else {
     DateConstraints::default()
   };
 
+  let final_sequences = params.reconstructed_sequences && params.branch_length_mode == BranchLengthMode::Marginal;
   Ok(TimetreeContext {
+    final_sequences,
+    final_marginal_update: final_sequences && !time_marginal.runs_final_round(),
     time_marginal,
     date_constraints,
     covariation_clock_params: covariation_clock_params.unwrap_or_default(),
@@ -393,7 +420,6 @@ fn refine_final_times(
 
 struct FinalResults {
   state: RoundState,
-  rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
   confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
   coalescent_output: Option<CoalescentOutput>,
   divergences: BTreeMap<GraphNodeKey, f64>,
@@ -448,7 +474,6 @@ fn gather_results(
 
   Ok(FinalResults {
     state: RoundState { names, ..state },
-    rate_susceptibility_dates,
     confidence_intervals,
     coalescent_output,
     divergences,
@@ -456,52 +481,63 @@ fn gather_results(
   })
 }
 
-fn emit_sequences(
+fn reconstruct_final_sequences(
   params: &TimetreeParams,
-  time_marginal: TimeMarginalMode,
+  context: &TimetreeContext,
   seq_sink: Option<Box<dyn SeqSink>>,
-  state: RoundState,
+  graph: &Graph,
+  branch_model: BranchModel,
+  final_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
-) -> Result<RoundState, OperationError> {
-  let Some(mut sink) = seq_sink else {
-    if matches!(state.branch_model, BranchModel::Input) && (params.include_leaves || params.impute_missing_data) {
+) -> Result<Option<SequenceMutations>, OperationError> {
+  let BranchModel::Marginal(reconstruction) = branch_model else {
+    if params.include_leaves || params.impute_missing_data {
       progress_warn!(
         log,
         "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
     }
-    return Ok(state);
+    return Ok(None);
   };
-  let BranchModel::Marginal(partition) = state.branch_model else {
-    return Err(OperationError::InvalidParams(make_report!(
-      "Reconstructed sequence output requires ancestral reconstruction; \
-       incompatible with --branch-length-mode=input"
-    )));
-  };
-  let graph = &state.graph;
-
-  sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
-  let partition = if time_marginal.runs_final_round() {
-    partition
-  } else {
-    partition
-      .marginal_update(
-        graph,
-        &timetree_branch_lengths(graph, &state.branch_lengths, &state.clock_branch_lengths),
-      )?
-      .0
-  };
-  for key in emitted_nodes(graph, params.include_leaves)? {
-    let seq = partition.node_sequence(graph, params.impute_missing_data, key)?;
-    sink.emit(SeqItem {
-      key,
-      track: SeqTrack::Nuc,
-      seq: &seq,
-    })?;
+  if !context.final_sequences {
+    return Ok(None);
   }
-  Ok(RoundState {
-    branch_model: BranchModel::Marginal(partition),
-    ..state
-  })
+  let reconstruction = if context.final_marginal_update {
+    reconstruction
+      .marginal_update(graph, final_branch_lengths)
+      .map_err(OperationError::from_inference)?
+      .0
+  } else {
+    reconstruction
+  };
+  let mut seq_sink = seq_sink;
+  if let Some(sink) = seq_sink.as_mut() {
+    sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
+  }
+  let sequences = stream_sequence_mutations(
+    graph,
+    reconstruction.alphabet(),
+    &MutationTrack::Nucleotide,
+    params.include_leaves,
+    |node_key| reconstruction.node_sequence(graph, params.impute_missing_data, node_key),
+    |edge_key| reconstruction.edge_indels(edge_key),
+    seq_sink.as_deref_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+  )?;
+  Ok(Some(sequences))
+}
+
+pub(crate) fn date_branch_lengths(
+  graph: &Graph,
+  node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+  graph
+    .get_edges()
+    .map(|edge| {
+      let length = node_dates[&edge.source()]
+        .zip(node_dates[&edge.target()])
+        .map(|(parent, child)| child - parent);
+      (edge.key(), length)
+    })
+    .collect()
 }

@@ -12,7 +12,6 @@ use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
-use crate::partition::marginal::sequences::ReconstructedSequences;
 use crate::partition::marginal::sequences::TipStates;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::progress::{LogSink, StageSink};
@@ -49,11 +48,6 @@ impl ReconstructionOptions {
       sample_mode,
     }
   }
-}
-
-pub(crate) struct ReconstructedPartition {
-  pub(crate) partition: AncestralPartition,
-  pub(crate) emitted_nodes: Vec<GraphNodeKey>,
 }
 
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPlan, OperationError> {
@@ -106,7 +100,7 @@ pub(crate) fn reconstruct_partition(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<ReconstructedPartition, Report> {
+) -> Result<AncestralPartition, Report> {
   match *plan {
     ReconstructionPlan::Fitch => {
       reconstruct_fitch(graph, index, alphabet, node_inputs, options.tips, cancel, stages, log)
@@ -152,7 +146,7 @@ fn reconstruct_fitch(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<ReconstructedPartition, Report> {
+) -> Result<AncestralPartition, Report> {
   checkpoint(cancel, stages, "Fitch parsimony", 0.3)?;
   let mut partitions = vec![create_fitch_partition(graph, index, alphabet, node_inputs)?];
 
@@ -164,14 +158,11 @@ fn reconstruct_fitch(
     );
   }
 
-  let emitted_nodes = ancestral_reconstruction_fitch(graph, tips.include_leaves, &mut partitions)?;
+  ancestral_reconstruction_fitch(graph, tips.include_leaves, &mut partitions)?;
   let partition = partitions
     .pop()
     .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition"))?;
-  Ok(ReconstructedPartition {
-    partition: AncestralPartition::Fitch(partition),
-    emitted_nodes,
-  })
+  Ok(AncestralPartition::Fitch(partition))
 }
 
 fn reconstruct_marginal(
@@ -184,21 +175,17 @@ fn reconstruct_marginal(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<ReconstructedPartition, Report> {
+) -> Result<AncestralPartition, Report> {
   let reconstruction = match gtr_refinement {
     None => reconstruction.marginal_update(graph, branch_lengths)?.0,
     Some(iterations) => refine_gtr(reconstruction, iterations, graph, branch_lengths, log)?,
   };
   checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
-  let ReconstructedSequences { sampled, emitted_nodes } =
-    reconstruction.reconstruct_sequences(graph, options.tips, options.sample_mode, rng)?;
-  Ok(ReconstructedPartition {
-    partition: AncestralPartition::Marginal {
-      reconstruction,
-      sampled,
-      impute: options.tips.impute,
-    },
-    emitted_nodes,
+  let sampled = reconstruction.sample_sequences(graph, options.sample_mode, rng)?;
+  Ok(AncestralPartition::Marginal {
+    reconstruction,
+    sampled,
+    impute: options.tips.impute,
   })
 }
 

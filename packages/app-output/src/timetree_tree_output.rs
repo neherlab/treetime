@@ -32,8 +32,10 @@ pub fn write_timetree_tree_outputs(
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
     nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  let nwk_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.time_length)).collect();
+  let nwk_weights: BTreeMap<GraphEdgeKey, Option<f64>> = edges
+    .iter()
+    .map(|(key, edge)| (*key, edge.date_branch_length))
+    .collect();
   let graphviz_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
     edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
   write_tree_outputs(

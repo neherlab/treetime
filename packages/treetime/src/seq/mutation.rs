@@ -1,16 +1,108 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::error::OperationError;
 use crate::seq::indel::{InDel, InDelKind};
-use crate::{make_error, make_internal_error};
+use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use crate::{make_error, make_internal_error, make_internal_report};
 use derive_more::Display;
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
 use regex::regex;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::str::FromStr;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::to_eyre_error;
+
+#[derive(Clone, Debug)]
+pub(crate) struct SequenceMutations {
+  pub(crate) root_sequence: Seq,
+  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+}
+
+pub(crate) fn stream_sequence_mutations(
+  graph: &Graph,
+  alphabet: &Alphabet,
+  track: &MutationTrack,
+  include_leaves: bool,
+  mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
+  edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
+  mut sink: Option<&mut dyn SeqSink>,
+) -> Result<SequenceMutations, OperationError> {
+  let seq_track = track.seq_track();
+  let mut pending_parents: BTreeMap<GraphNodeKey, (Seq, usize)> = BTreeMap::new();
+  let mut root_sequence = None;
+  let mut edge_mutations = BTreeMap::new();
+  let mut sink_error = None;
+  graph
+    .iter_depth_first_preorder_forward(|node| {
+      let seq = node_sequence(node.key)?;
+      if let Some(sink) = sink.as_deref_mut() {
+        let item = SeqItem {
+          key: node.key,
+          track: seq_track,
+          seq: &seq,
+          emitted: include_leaves || !node.is_leaf,
+        };
+        if let Err(error) = sink.emit(item) {
+          let report = make_internal_report!("Sequence sink failed at node {}", node.key);
+          sink_error = Some(error);
+          return Err(report);
+        }
+      }
+      match node.parent_keys.as_slice() {
+        [] => root_sequence = Some(seq.clone()),
+        [(parent_key, edge_key)] => {
+          let (parent_seq, pending_children) = pending_parents
+            .get_mut(parent_key)
+            .ok_or_else(|| make_internal_report!("Parent {parent_key} of node {} was not visited first", node.key))?;
+          let subs = sequence_subs(parent_seq, &seq, alphabet)?;
+          *pending_children -= 1;
+          if *pending_children == 0 {
+            pending_parents.remove(parent_key);
+          }
+          edge_mutations.insert(*edge_key, combine_edge_mutations(subs, &edge_indels(*edge_key), track)?);
+        },
+        _ => return make_internal_error!("Node {} has more than one parent", node.key),
+      }
+      if !node.child_edge_keys.is_empty() {
+        pending_parents.insert(node.key, (seq, node.child_edge_keys.len()));
+      }
+      Ok(())
+    })
+    .map_err(|report| {
+      sink_error
+        .take()
+        .map_or_else(|| OperationError::InferenceFailed(report), OperationError::SinkFailed)
+    })?;
+  let root_sequence = root_sequence
+    .ok_or_else(|| OperationError::InferenceFailed(make_internal_report!("Graph traversal visited no root")))?;
+  Ok(SequenceMutations {
+    root_sequence,
+    edge_mutations,
+  })
+}
+
+pub(crate) fn sequence_subs(parent: &Seq, child: &Seq, alphabet: &Alphabet) -> Result<Vec<Sub>, Report> {
+  if parent.len() != child.len() {
+    return make_internal_error!(
+      "Parent sequence has length {}, but child sequence has length {}",
+      parent.len(),
+      child.len()
+    );
+  }
+  parent
+    .iter()
+    .zip(child.iter())
+    .enumerate()
+    .filter(|(_, (reff, qry))| reff != qry && alphabet.is_canonical(**reff) && alphabet.is_canonical(**qry))
+    .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
+    .collect()
+}
 
 pub(crate) fn combine_edge_mutations(
   subs: Vec<Sub>,
@@ -53,6 +145,15 @@ impl Mutation {
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
+}
+
+impl MutationTrack {
+  fn seq_track(&self) -> SeqTrack<'_> {
+    match self {
+      Self::Nucleotide => SeqTrack::Nuc,
+      Self::AminoAcid(cds) => SeqTrack::Aa(cds),
+    }
+  }
 }
 
 pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Report> {

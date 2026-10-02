@@ -24,28 +24,16 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )
-    .expect_err("MAT must reject indels");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
+      .expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
-    let (graph, names, branch_lengths, partition, aa_node_data, _aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )
-    .expect_err("MAT must reject amino-acid mutations");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
+      .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
 
     Ok(())
@@ -122,20 +110,6 @@ mod tests {
     );
     let error = mat_mutation(&mutation, Some(reference), "A").expect_err("MAT must accept only A, C, G, or T");
     assert!(error.to_string().contains(expected));
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_output_mutation_free_mat_needs_no_reference() -> Result<(), Report> {
-    let (graph, names, branch_lengths) = helpers::ancestral_graph_without_partition()?;
-    let mat = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, None),
-      None,
-    )?;
-    assert!(mat.node_mutations.iter().all(|mutations| mutations.mutation.is_empty()));
     Ok(())
   }
 

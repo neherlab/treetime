@@ -12,10 +12,9 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::ReconstructedSequences;
   use crate::partition::marginal::sequences::TipStates;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::emitted_sequences_by_name;
+  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -144,7 +143,8 @@ mod tests {
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
-      &recon.reconstruct_sequences(graph, TIPS, SampleMode::Argmax, &mut rand::thread_rng())?,
+      &emitted_nodes(graph, TIPS.include_leaves)?,
+      &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(graph, TIPS.impute, key),
     )
   }
@@ -165,7 +165,8 @@ mod tests {
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
-      &recon.reconstruct_sequences(graph, TIPS, SampleMode::Argmax, &mut rand::thread_rng())?,
+      &emitted_nodes(graph, TIPS.include_leaves)?,
+      &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(graph, TIPS.impute, key),
     )
   }
@@ -177,11 +178,12 @@ mod tests {
 
   fn named_strings(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    reconstruction: &ReconstructedSequences,
+    emitted_nodes: &[GraphNodeKey],
+    sampled: &BTreeMap<GraphNodeKey, Seq>,
     node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
   ) -> Result<BTreeMap<String, String>, Report> {
     Ok(
-      emitted_sequences_by_name(names, reconstruction, node_sequence)?
+      emitted_sequences_by_name(names, emitted_nodes, sampled, node_sequence)?
         .into_iter()
         .map(|(name, seq)| (name, seq.as_str().to_owned()))
         .collect(),

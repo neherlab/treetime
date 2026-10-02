@@ -34,9 +34,32 @@ impl OperationError {
       | Self::SinkFailed(report) => report,
     }
   }
+
+  pub fn from_inference(report: Report) -> Self {
+    if report.downcast_ref::<CancelledError>().is_some() {
+      Self::Cancelled
+    } else {
+      Self::InferenceFailed(report)
+    }
+  }
+
+  fn report(&self) -> Option<&Report> {
+    match self {
+      Self::InvalidParams(report)
+      | Self::InvalidInput(report)
+      | Self::InferenceFailed(report)
+      | Self::SinkFailed(report) => Some(report),
+      Self::Cancelled | Self::NotImplemented(_) => None,
+    }
+  }
 }
 
-impl std::error::Error for OperationError {}
+impl std::error::Error for OperationError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    let error: &(dyn std::error::Error + 'static) = self.report()?.as_ref();
+    error.source()
+  }
+}
 
 impl From<Report> for OperationError {
   fn from(report: Report) -> Self {

@@ -1,4 +1,4 @@
-use crate::ancestral_result::AugurOutputMaps;
+use crate::ancestral_result::{AncestralOutputMaps, AugurOutputMaps};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
@@ -17,6 +17,7 @@ use util_augur_node_data_json::{
 
 pub fn write_augur_node_data_json_with_aa(
   graph: &Graph,
+  output: &AncestralOutputMaps,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -24,13 +25,14 @@ pub fn write_augur_node_data_json_with_aa(
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data, aa_annotations)?;
+  let data = build_augur_node_data_json(graph, output, maps, mask, names, aa_node_data, aa_annotations)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
 
 pub fn build_augur_node_data_json(
   graph: &Graph,
+  output: &AncestralOutputMaps,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -38,7 +40,7 @@ pub fn build_augur_node_data_json(
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
   let alignment_length = maps.sequence_length;
-  let reference_seq = &maps.root_sequence;
+  let reference_seq = &output.root_sequence;
   let ambiguous = maps.ambiguous_char;
 
   let mut annotations = AugurNodeDataJsonAnnotations {
@@ -64,8 +66,12 @@ pub fn build_augur_node_data_json(
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     let muts = match graph.node_parent(node_key)? {
-      Some((_parent_key, edge_key)) => maps.edge_subs[&edge_key]
+      Some((_parent_key, edge_key)) => output.edge_mutations[&edge_key]
         .iter()
+        .filter_map(|mutation| match &mutation.event {
+          MutationEvent::Substitution(sub) => Some(sub),
+          MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => None,
+        })
         .filter(|sub| !mask[sub.pos()])
         .sorted_by_key(|sub| sub.pos())
         .map(|sub| sub.to_string())

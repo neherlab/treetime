@@ -11,6 +11,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
+  use crate::test_utils::RecordingSeqSink;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -71,13 +72,14 @@ mod tests {
         .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
         .collect(),
       graph: parse.graph,
+      alphabet,
+      mask,
     };
 
     let result = crate::ancestral::pipeline::run(
       &params,
       &input,
-      alphabet,
-      mask,
+      &mut RecordingSeqSink::default(),
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -136,27 +138,18 @@ mod tests {
           .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
           .collect(),
         graph: parse.graph,
-      };
-
-      let result = crate::ancestral::pipeline::run(
-        &params,
-        &input,
         alphabet,
         mask,
-        &NoopCancel,
-        &NoopProgress,
-        &NoopProgress,
-      )?;
-      let partition = result.partition.expect("marginal reconstruction produces a partition");
-      let captured = result
-        .output
-        .emitted_nodes
-        .iter()
-        .map(|&key| {
-          let name = input.nodes[&key].name.clone().unwrap_or_default();
-          Ok((name, partition.augur_node_sequence(&input.graph, key)?.to_string()))
-        })
-        .collect::<Result<BTreeMap<String, String>, Report>>()?;
+      };
+
+      let mut sink = RecordingSeqSink::default();
+      crate::ancestral::pipeline::run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let captured = sink
+        .items
+        .into_iter()
+        .filter(|(_, emitted, _)| *emitted)
+        .map(|(key, _, seq)| (input.nodes[&key].name.clone().unwrap_or_default(), seq.to_string()))
+        .collect::<BTreeMap<String, String>>();
 
       Ok(captured)
     }

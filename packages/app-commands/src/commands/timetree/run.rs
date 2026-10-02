@@ -12,7 +12,7 @@ use app_output::confidence::write_confidence_intervals_file;
 use app_output::output_plan::OutputSelection;
 use app_output::rtt::write_clock_regression_result_csv;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
-use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
+use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::{Report, WrapErr};
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,13 +21,11 @@ use treetime::cancel::Cancel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
-use treetime::partition::marginal::reconstruction::MarginalReconstruction;
+use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
-use treetime::seq::div::compute_edge_mutation_counts;
-use treetime::seq::mutation::MutationTrack;
+use treetime::seq::mutation::{Mutation, MutationEvent};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
-use treetime::timetree::inference::result::TimeInference;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput};
 use treetime::{progress_info, progress_warn};
@@ -36,6 +34,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
+use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -45,7 +44,7 @@ pub fn run_timetree_estimation(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<TimetreeResult, Report> {
+) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Loading input", 0.0, "");
 
@@ -55,6 +54,23 @@ pub fn run_timetree_estimation(
   let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
+  let reconstructed_nuc_fasta = resolved
+    .non_tree_outputs
+    .get(&OutputSelection::ReconstructedNucFasta)
+    .cloned();
+  if reconstructed_nuc_fasta.is_some() && args.branch_length_mode == BranchLengthMode::Input {
+    return make_error!(
+      "Reconstructed sequence output requires ancestral reconstruction; \
+       incompatible with --branch-length-mode=input"
+    );
+  }
+  let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
+  let reconstructed_sequences = reconstructed_nuc_fasta.is_some()
+    || mutation_units
+    || resolved
+      .tree_outputs
+      .keys()
+      .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot));
   let trace_sink = timetree_trace_sink(
     resolved
       .non_tree_outputs
@@ -95,6 +111,7 @@ pub fn run_timetree_estimation(
     confidence: args.confidence,
     include_leaves: args.include_leaves,
     impute_missing_data: args.impute_missing_data,
+    reconstructed_sequences,
     report_ambiguous: args.report_ambiguous,
     zero_based: args.zero_based,
     seed: args.seed,
@@ -104,6 +121,7 @@ pub fn run_timetree_estimation(
 
   let input = TimetreeInput {
     graph: input_data.graph,
+    names: parse_names.clone(),
     alphabet: input_data.alphabet,
     sequences: input_data
       .aln
@@ -112,30 +130,17 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  let reconstructed_nuc_fasta = resolved
-    .non_tree_outputs
-    .get(&OutputSelection::ReconstructedNucFasta)
-    .cloned();
   let recon_sink: Option<Box<dyn SeqSink>> = match &reconstructed_nuc_fasta {
     Some(path) => Some(Box::new(ReconstructedNucSink::new(
       FastaWriter::new(create_file_or_stdout(path)?),
-      parse_names.clone(),
-      aln_descs.clone(),
+      parse_names,
+      aln_descs,
     ))),
     None => None,
   };
 
-  let mut output = pipeline::run(
-    &params,
-    input,
-    &parse_names,
-    Some(trace_sink),
-    recon_sink,
-    cancel,
-    stages,
-    log,
-  )
-  .map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, Some(trace_sink), recon_sink, cancel, stages, log)
+    .map_err(|err| err.into_report())?;
   if let Some(path) = &reconstructed_nuc_fasta {
     progress_info!(
       log,
@@ -144,58 +149,41 @@ pub fn run_timetree_estimation(
     );
   }
 
-  let names = std::mem::take(&mut output.names);
-  let branch_lengths_opt = std::mem::take(&mut output.branch_lengths);
-
-  let descs: BTreeMap<GraphNodeKey, Option<String>> = names
-    .iter()
-    .map(|(&key, name)| {
-      let desc = name.as_deref().and_then(|name| aln_descs.get(name).cloned()).flatten();
-      (key, desc)
-    })
-    .collect();
-
-  let mutation_counts = match args.divergence_units {
-    DivergenceUnits::Mutations => {
-      if output.partitions.is_empty() {
-        return make_error!(
-          "--divergence-units=mutations requires ancestral reconstruction; \
-           incompatible with --branch-length-mode=input"
-        );
-      }
-      let partition = &output.partitions[0];
-      let edge_subs = output
-        .graph
-        .get_edges()
-        .map(|edge| {
-          let edge_key = edge.key();
-          Ok((edge_key, partition.edge_subs(&output.graph, edge_key)?))
-        })
-        .collect::<Result<BTreeMap<_, _>, Report>>()?;
-      Some(compute_edge_mutation_counts(&output.graph, &edge_subs))
-    },
-    DivergenceUnits::MutationsPerSite => None,
-  };
-
   let pipeline::TimetreeOutput {
     mut graph,
+    names,
+    node_dates,
+    divergences,
+    outliers,
+    bad_branches,
+    branch_lengths,
+    date_branch_lengths,
     clock_model,
     clock_regression,
     confidence_intervals,
-    partitions,
-    dates,
     gtr,
     model_name,
     coalescent,
-    rate_susceptibility_dates,
-    clock_branch_lengths,
-    divergences,
-    outliers,
-    time_inference,
-    gammas,
-    ..
+    dates,
+    root_sequence,
+    edge_mutations,
   } = output;
-  let maps = gather_timetree_output_maps(&graph, &partitions)?;
+
+  let mutation_counts = if mutation_units {
+    if root_sequence.is_none() {
+      return make_error!(
+        "--divergence-units=mutations requires ancestral reconstruction; \
+         incompatible with --branch-length-mode=input"
+      );
+    }
+    Some(substitution_counts(&edge_mutations))
+  } else {
+    None
+  };
+  let maps = TimetreeOutputMaps {
+    root_sequence,
+    edge_mutations,
+  };
 
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
@@ -203,21 +191,18 @@ pub fn run_timetree_estimation(
   let topology_order = args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_leaf_order))?;
-  topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
 
-  let (nodes, edges) = gather_timetree_outputs(
+  let nodes = timetree_node_outputs(
     &graph,
+    &names,
+    &confidences,
+    &node_dates,
     &divergences,
     &outliers,
-    &time_inference,
-    &gammas,
-    &rate_susceptibility_dates,
-    &clock_branch_lengths,
-    &names,
-    &descs,
-    &branch_lengths_opt,
-    &confidences,
+    &bad_branches,
   );
+  let edges = timetree_edge_outputs(&branch_lengths, &date_branch_lengths);
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match confidence_intervals.as_ref() {
@@ -336,7 +321,7 @@ pub fn run_timetree_estimation(
   }
 
   stages.report("Done", 1.0, "");
-  Ok(TimetreeResult { graph, nodes, edges })
+  Ok(())
 }
 
 struct ReconstructedNucSink {
@@ -382,6 +367,7 @@ impl SeqSink for ReconstructedNucSink {
 
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
+      SeqTrack::Nuc if !item.emitted => Ok(()),
       SeqTrack::Nuc => {
         let name = self.names[&item.key].clone().unwrap_or_default();
         let desc = self.descs[&item.key].clone();
@@ -394,76 +380,59 @@ impl SeqSink for ReconstructedNucSink {
   }
 }
 
-fn gather_timetree_outputs(
+fn timetree_node_outputs(
   graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+  node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
   divergences: &BTreeMap<GraphNodeKey, f64>,
   outliers: &BTreeSet<GraphNodeKey>,
-  time_inference: &TimeInference,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
-  rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
-  clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  descs: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-) -> (
-  BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
-) {
-  let nodes = graph
+  bad_branches: &BTreeMap<GraphNodeKey, bool>,
+) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
+  graph
     .get_nodes()
     .map(|node| {
       let key = node.key();
       let out = TimetreeNodeOut {
         name: names[&key].clone(),
-        desc: descs[&key].clone(),
         confidence: confidences.get(&key).copied().flatten(),
-        time: time_inference.posterior[&key].time,
+        time: node_dates[&key],
         div: divergences[&key],
         is_outlier: outliers.contains(&key),
-        bad_branch: time_inference.bad_branches[&key],
-        rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
+        bad_branch: bad_branches[&key],
       };
       (key, out)
     })
-    .collect();
-
-  let edges = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      let out = TimetreeEdgeOut {
-        branch_length: branch_lengths[&key],
-        time_length: time_inference.branches[&key].time_length,
-        clock_branch_length: clock_branch_lengths.get(&key).copied(),
-        gamma: gammas[&key],
-      };
-      (key, out)
-    })
-    .collect();
-
-  (nodes, edges)
+    .collect()
 }
 
-fn gather_timetree_output_maps(
-  graph: &Graph,
-  partitions: &[MarginalReconstruction],
-) -> Result<TimetreeOutputMaps, Report> {
-  let Some(partition) = partitions.first() else {
-    return Ok(TimetreeOutputMaps::default());
-  };
-  let root_sequence = Some(partition.root_sequence(graph)?);
-  let edge_mutations = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      Ok((key, partition.edge_mutations(graph, key, &MutationTrack::Nucleotide)?))
+fn timetree_edge_outputs(
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  date_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
+  date_branch_lengths
+    .iter()
+    .map(|(&key, &date_branch_length)| {
+      let out = TimetreeEdgeOut {
+        branch_length: branch_lengths[&key],
+        date_branch_length,
+      };
+      (key, out)
     })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  Ok(TimetreeOutputMaps {
-    root_sequence,
-    edge_mutations,
-  })
+    .collect()
+}
+
+fn substitution_counts(edge_mutations: &BTreeMap<GraphEdgeKey, Vec<Mutation>>) -> BTreeMap<GraphEdgeKey, usize> {
+  edge_mutations
+    .iter()
+    .map(|(&key, mutations)| {
+      let count = mutations
+        .iter()
+        .filter(|mutation| matches!(mutation.event, MutationEvent::Substitution(_)))
+        .count();
+      (key, count)
+    })
+    .collect()
 }
 
 fn write_coalescent_output(

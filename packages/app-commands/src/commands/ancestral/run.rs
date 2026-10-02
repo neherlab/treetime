@@ -6,18 +6,17 @@ use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::sequence_descriptions;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
-use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut};
+use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AugurOutputMaps};
 use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use treetime::ancestral::mask::create_mask;
-use treetime::ancestral::partition::AncestralPartition;
+use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
@@ -25,17 +24,15 @@ use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fasta_path};
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_primitives::AlignmentRecord;
+use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -44,7 +41,7 @@ pub fn run_ancestral_reconstruction(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<AncestralResult, Report> {
+) -> Result<(), Report> {
   validate_aa_args(
     args.translations.as_deref(),
     &args.cdses,
@@ -54,8 +51,6 @@ pub fn run_ancestral_reconstruction(
 
   let AncestralReadInputs {
     mut input,
-    mask,
-    alphabet,
     descs,
     confidences,
   } = read_nwk_fasta(args, cancel, stages, log)?;
@@ -65,19 +60,24 @@ pub fn run_ancestral_reconstruction(
   let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
 
   let resolved = args.resolve_outputs()?;
-  let output_fasta = if resolved
+  let fasta = resolved
     .non_tree_outputs
-    .contains_key(&OutputSelection::ReconstructedNucFasta)
-  {
-    let path = &resolved.non_tree_outputs[&OutputSelection::ReconstructedNucFasta];
-    Some(FastaWriter::new(create_file_or_stdout(path)?))
-  } else {
-    None
+    .get(&OutputSelection::ReconstructedNucFasta)
+    .map(|path| Ok::<_, Report>(FastaWriter::new(create_file_or_stdout(path)?)))
+    .transpose()?;
+  let mut seq_sink = AncestralSeqSink {
+    fasta,
+    names: names.clone(),
+    descs,
+    node_sequences: resolved
+      .non_tree_outputs
+      .contains_key(&OutputSelection::AugurNodeData)
+      .then(BTreeMap::new),
   };
 
   let params = ancestral_params(args);
 
-  let result = pipeline::run(&params, &input, alphabet, mask, cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, &input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs
@@ -109,36 +109,25 @@ pub fn run_ancestral_reconstruction(
     None
   };
 
-  let pipeline::AncestralOutputFull { output, partition } = result;
   let pipeline::AncestralOutput {
     gtr,
     model_name,
+    method,
     mask,
-    emitted_nodes,
+    sequence_length,
+    ambiguous_char,
+    root_sequence,
+    edge_mutations,
   } = output;
-
-  if let Some(mut writer) = output_fasta {
-    if let Some(partition) = partition.as_ref() {
-      for &key in &emitted_nodes {
-        let node = &input.nodes[&key];
-        let desc = node.name.as_deref().and_then(|name| descs.get(name)).cloned().flatten();
-        writer.write(
-          node.name.as_deref().unwrap_or(""),
-          &desc,
-          &partition.augur_node_sequence(&input.graph, key)?,
-        )?;
-      }
-    }
-  }
-
-  let tree_maps = collect_ancestral_tree_maps(&resolved.tree_outputs, || {
-    gather_ancestral_output_maps(&input.graph, partition.as_ref())
-  })?;
-  let augur_maps = if resolved.non_tree_outputs.contains_key(&OutputSelection::AugurNodeData) {
-    gather_augur_output_maps_opt(&input.graph, partition.as_ref())?
-  } else {
-    None
+  let maps = AncestralOutputMaps {
+    root_sequence,
+    edge_mutations,
   };
+  let augur_maps = seq_sink.node_sequences.map(|node_sequences| AugurOutputMaps {
+    node_sequences,
+    sequence_length,
+    ambiguous_char,
+  });
 
   topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
@@ -156,18 +145,6 @@ pub fn run_ancestral_reconstruction(
       )
     })
     .collect();
-  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = input
-    .edges
-    .iter()
-    .map(|(key, edge)| {
-      (
-        *key,
-        EdgeOut {
-          branch_length: edge.branch_length,
-        },
-      )
-    })
-    .collect();
 
   let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
   let empty_aa_annotations = BTreeMap::new();
@@ -175,24 +152,21 @@ pub fn run_ancestral_reconstruction(
     .as_ref()
     .map_or(&empty_aa_annotations, |(_, annotations)| annotations);
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(
-        &input.graph,
-        augur_maps,
-        &mask,
-        &names,
-        aa_node_data,
-        aa_annotations,
-        path,
-      )?;
-      progress_info!(log, "Wrote augur node data JSON to {}", path.display());
-    } else {
-      progress_warn!(
-        log,
-        "Skipping augur node data: the run reconstructed no sequences to annotate"
-      );
-    }
+  if let (Some(path), Some(augur_maps)) = (
+    resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData),
+    &augur_maps,
+  ) {
+    write_augur_node_data_json_with_aa(
+      &input.graph,
+      &maps,
+      augur_maps,
+      &mask,
+      &names,
+      aa_node_data,
+      aa_annotations,
+      path,
+    )?;
+    progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
@@ -212,24 +186,45 @@ pub fn run_ancestral_reconstruction(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_for_partition(
+    write_ancestral_trees(
       &input.graph,
       &nodes,
       &branch_lengths,
-      &tree_maps,
+      &maps,
       aa_node_data,
       aa_annotations,
       &resolved,
-      partition.as_ref(),
+      method,
     )?;
   }
 
   stages.report("Done", 1.0, "");
-  Ok(AncestralResult {
-    graph: input.graph,
-    nodes,
-    edges,
-  })
+  Ok(())
+}
+
+struct AncestralSeqSink {
+  fasta: Option<FastaWriter>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  descs: BTreeMap<String, Option<String>>,
+  node_sequences: Option<BTreeMap<GraphNodeKey, Seq>>,
+}
+
+impl SeqSink for AncestralSeqSink {
+  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+    Ok(())
+  }
+
+  fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+    if let (Some(writer), true) = (self.fasta.as_mut(), item.emitted) {
+      let name = self.names[&item.key].as_deref();
+      let desc = name.and_then(|name| self.descs.get(name)).cloned().flatten();
+      writer.write(name.unwrap_or(""), &desc, item.seq)?;
+    }
+    if let Some(node_sequences) = self.node_sequences.as_mut() {
+      node_sequences.insert(item.key, item.seq.clone());
+    }
+    Ok(())
+  }
 }
 
 fn read_nwk_fasta(
@@ -277,11 +272,15 @@ fn read_nwk_fasta(
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
-  let input = AncestralInput { graph, nodes, edges };
+  let input = AncestralInput {
+    graph,
+    nodes,
+    edges,
+    alphabet,
+    mask,
+  };
   Ok(AncestralReadInputs {
     input,
-    mask,
-    alphabet,
     descs,
     confidences,
   })
@@ -289,13 +288,11 @@ fn read_nwk_fasta(
 
 struct AncestralReadInputs {
   input: AncestralInput,
-  mask: Vec<bool>,
-  alphabet: Alphabet,
   descs: BTreeMap<String, Option<String>>,
   confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
-fn write_tree_for_partition(
+fn write_ancestral_trees(
   graph: &Graph,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -303,12 +300,12 @@ fn write_tree_for_partition(
   aa_node_data: Option<&AaNodeData>,
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   resolved: &app_output::output_plan::ResolvedOutputs,
-  partition: Option<&AncestralPartition>,
+  method: MethodAncestral,
 ) -> Result<(), Report> {
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
-  let providers = match partition {
-    Some(AncestralPartition::Marginal { .. }) => CommentProviders::new().with(&provider),
-    Some(AncestralPartition::Fitch(_)) | None => CommentProviders::new(),
+  let providers = match method {
+    MethodAncestral::Marginal => CommentProviders::new().with(&provider),
+    MethodAncestral::Parsimony | MethodAncestral::Joint => CommentProviders::new(),
   };
   write_ancestral_tree_outputs(
     graph,
@@ -320,83 +317,6 @@ fn write_tree_for_partition(
     &resolved.tree_outputs,
     &providers,
   )
-}
-
-pub fn collect_ancestral_tree_maps<F>(
-  tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  gather: F,
-) -> Result<AncestralOutputMaps, Report>
-where
-  F: FnOnce() -> Result<AncestralOutputMaps, Report>,
-{
-  if tree_outputs_need_sequences(tree_outputs) {
-    gather()
-  } else {
-    Ok(AncestralOutputMaps::default())
-  }
-}
-
-pub fn tree_outputs_need_sequences(tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>) -> bool {
-  tree_outputs
-    .keys()
-    .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
-}
-
-fn gather_ancestral_output_maps(
-  graph: &Graph,
-  partition: Option<&AncestralPartition>,
-) -> Result<AncestralOutputMaps, Report> {
-  let Some(partition) = partition else {
-    return Ok(AncestralOutputMaps::default());
-  };
-  let root_sequence = Some(partition.root_sequence(graph)?);
-  let edge_mutations = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      Ok((key, partition.edge_mutations(graph, key, &MutationTrack::Nucleotide)?))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  Ok(AncestralOutputMaps {
-    root_sequence,
-    edge_mutations,
-  })
-}
-
-fn gather_augur_output_maps_opt(
-  graph: &Graph,
-  partition: Option<&AncestralPartition>,
-) -> Result<Option<AugurOutputMaps>, Report> {
-  partition
-    .map(|partition| gather_augur_output_maps(graph, partition))
-    .transpose()
-}
-
-pub fn gather_augur_output_maps(graph: &Graph, partition: &AncestralPartition) -> Result<AugurOutputMaps, Report> {
-  let sequence_length = partition.sequence_length();
-  let ambiguous_char = partition.ambiguous_char();
-  let root_sequence = partition.augur_root_sequence(graph)?;
-  let node_sequences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      Ok((key, partition.augur_node_sequence(graph, key)?))
-    })
-    .collect::<Result<_, Report>>()?;
-  let edge_subs = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      Ok((key, partition.edge_subs(graph, key)?))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  Ok(AugurOutputMaps {
-    root_sequence,
-    node_sequences,
-    edge_subs,
-    sequence_length,
-    ambiguous_char,
-  })
 }
 
 fn run_aa_reconstructions(
@@ -476,22 +396,33 @@ fn run_aa_reconstructions(
     });
   }
 
-  let seq_sink: Option<Box<dyn SeqSink>> = aa_fasta_template
-    .map(|template| -> Box<dyn SeqSink> { Box::new(AaFastaSink::new(template.to_owned(), names.clone())) });
+  let mut seq_sink = aa_fasta_template.map(|template| AaFastaSink::new(template.to_owned(), names.clone()));
 
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
     .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
     .collect();
 
-  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, cds_inputs, seq_sink, cancel, log)?;
+  let node_data = reconstruct_aa(
+    graph,
+    names,
+    branch_lengths,
+    &params,
+    cds_inputs,
+    seq_sink.as_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+    cancel,
+    log,
+  )?;
+  if let Some(sink) = seq_sink {
+    sink.finish()?;
+  }
   Ok((node_data, cds_annotations))
 }
 
 struct AaFastaSink {
   template: String,
   names: BTreeMap<GraphNodeKey, Option<String>>,
-  open: Option<(String, FastaWriter)>,
+  pending: Option<(String, BTreeMap<GraphNodeKey, Seq>)>,
 }
 
 impl AaFastaSink {
@@ -499,8 +430,26 @@ impl AaFastaSink {
     Self {
       template,
       names,
-      open: None,
+      pending: None,
     }
+  }
+
+  fn finish(mut self) -> Result<(), Report> {
+    self.write_pending()
+  }
+
+  fn write_pending(&mut self) -> Result<(), Report> {
+    let Some((cds, sequences)) = self.pending.take() else {
+      return Ok(());
+    };
+    let mut writer = FastaWriter::new(create_file_or_stdout(translation_path(&self.template, &cds))?);
+    for (key, seq) in &sequences {
+      let name = self.names[key]
+        .as_deref()
+        .map_or_else(|| format!("node_{}", key.0), str::to_owned);
+      writer.write(&name, &None, seq)?;
+    }
+    Ok(())
   }
 }
 
@@ -509,26 +458,18 @@ impl SeqSink for AaFastaSink {
     Ok(())
   }
 
-  #[allow(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     let SeqTrack::Aa(cds) = item.track else {
       return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");
     };
-    let name = self.names[&item.key]
-      .as_deref()
-      .map_or_else(|| format!("node_{}", item.key.0), str::to_owned);
-    let writer = match &mut self.open {
-      Some((open_cds, writer)) if open_cds == cds => writer,
-      slot => {
-        let path = translation_path(&self.template, cds);
-        &mut slot
-          .insert((cds.to_owned(), FastaWriter::new(create_file_or_stdout(path)?)))
-          .1
-      },
-    };
-    writer.write(&name, &None, item.seq)
+    if self.pending.as_ref().is_some_and(|(pending, _)| pending != cds) {
+      self.write_pending()?;
+    }
+    self
+      .pending
+      .get_or_insert_with(|| (cds.to_owned(), BTreeMap::new()))
+      .1
+      .insert(item.key, item.seq.clone());
+    Ok(())
   }
 }

@@ -2,22 +2,14 @@ use crate::partition::fitch::partition::PartitionFitch;
 use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
 pub(crate) fn ancestral_reconstruction_fitch(
   graph: &Graph,
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
-) -> Result<Vec<GraphNodeKey>, Report> {
-  let mut emitted_nodes = Vec::new();
-  graph.iter_depth_first_preorder_forward(|node| {
-    if run_fitch_reconstruction(include_leaves, partitions, &node)? {
-      emitted_nodes.push(node.key);
-    }
-    Ok(())
-  })?;
-  Ok(emitted_nodes)
+) -> Result<(), Report> {
+  graph.iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(include_leaves, partitions, &node))
 }
 
 #[allow(
@@ -28,9 +20,9 @@ fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
   node: &GraphNodeForward,
-) -> Result<bool, Report> {
+) -> Result<(), Report> {
   if !include_leaves && node.is_leaf {
-    return Ok(false);
+    return Ok(());
   }
 
   for partition in partitions.iter_mut() {
@@ -70,5 +62,5 @@ fn run_fitch_reconstruction(
 
     seq.sequence = sequence;
   }
-  Ok(true)
+  Ok(())
 }

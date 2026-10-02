@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_gm_runner_support::support::{
-    ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
+    ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
@@ -11,6 +11,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
@@ -29,6 +30,7 @@ mod tests {
       .collect();
     let input = TimetreeInput {
       graph: nwk_parsed.graph,
+      names,
       alphabet: ALPHABET.clone(),
       sequences: Some(aln),
       dates: Some(load_dates_for_dataset(dataset)?),
@@ -39,7 +41,7 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let output = pipeline::run(&params, input, &names, None, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
+    let output = pipeline::run(&params, input, None, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let n_changed = input_branch_lengths
       .iter()
@@ -50,9 +52,13 @@ mod tests {
       "Expected at least one branch length to change after ML optimization, but none did"
     );
 
-    let times = extract_node_times(&output.graph, &output.names, &output.time_inference.posterior);
+    let times: BTreeMap<GraphNodeKey, f64> = output
+      .node_dates
+      .iter()
+      .filter_map(|(&key, &time)| time.map(|time| (key, time)))
+      .collect();
     assert_eq!(output.graph.num_nodes(), times.len(), "every node must be dated");
-    let non_finite: BTreeMap<&String, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
+    let non_finite: BTreeMap<&GraphNodeKey, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
     assert_eq!(BTreeMap::new(), non_finite, "every node time must be finite");
     Ok(())
   }

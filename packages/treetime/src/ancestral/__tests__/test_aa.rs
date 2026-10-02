@@ -6,7 +6,7 @@ mod tests {
   };
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
-  use crate::seq::mutation::{MutationEvent, Sub};
+  use crate::seq::mutation::{MutationEvent, MutationTrack, Sub};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -73,7 +73,12 @@ mod tests {
     let partition = helpers::fitch_partition(&graph, &names, &["AC", "AC"]);
     let reference = Seq::try_from_str("AA").unwrap();
 
-    let actual = collect_aa_cds_node_data(&graph, &partition, "S", &names, Some(&reference)).unwrap();
+    let mutations = partition
+      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), false, None)
+      .unwrap();
+    let unknown = partition.alphabet().unknown();
+
+    let actual = collect_aa_cds_node_data(&graph, mutations, unknown, "S", Some(&reference)).unwrap();
 
     let expected = AaCdsNodeData {
       reference: o!("AA"),
@@ -219,7 +224,7 @@ mod tests {
       (FlagCancel(flag), Box::new(sink), emitted)
     }
 
-    pub(super) fn reconstruct_two_cdses(cancel: &FlagCancel, sink: Box<dyn SeqSink>) -> Result<AaNodeData, Report> {
+    pub(super) fn reconstruct_two_cdses(cancel: &FlagCancel, mut sink: Box<dyn SeqSink>) -> Result<AaNodeData, Report> {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
       let names = nwk_parsed.names();
       let aa = Alphabet::new(AlphabetName::Aa)?;
@@ -233,7 +238,7 @@ mod tests {
         &nwk_parsed.branch_lengths,
         &sparse_params(),
         cdses,
-        Some(sink),
+        Some(sink.as_mut()),
         cancel,
         &NoopProgress,
       )

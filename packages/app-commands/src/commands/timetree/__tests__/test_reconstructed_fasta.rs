@@ -4,7 +4,20 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeSet;
   use treetime::alphabet::alphabet::Alphabet;
+  use treetime::optimize::params::BranchLengthMode;
   use treetime_primitives::AsciiChar;
+  use treetime_utils::assert_error;
+
+  #[test]
+  fn test_timetree_reconstructed_fasta_requires_ancestral_reconstruction() {
+    let result = helpers::run_reconstructed_fasta("test-tt-recon-input-mode", |args| {
+      args.branch_length_mode = BranchLengthMode::Input;
+    });
+    assert_error!(
+      result,
+      "Reconstructed sequence output requires ancestral reconstruction; incompatible with --branch-length-mode=input"
+    );
+  }
 
   #[test]
   fn test_timetree_reconstructed_fasta_internal_only_and_named() -> Result<(), Report> {

@@ -211,10 +211,10 @@ impl CommandArgs {
 
   pub fn execute(&self, cancel: &dyn Cancel, stages: &dyn StageSink, log: &dyn LogSink) -> Result<(), Report> {
     match self {
-      Self::Timetree(args) => run_timetree_estimation(args, cancel, stages, log).map(|_| ()),
+      Self::Timetree(args) => run_timetree_estimation(args, cancel, stages, log),
       Self::Optimize(args) => run_optimize(args, cancel, stages, log).map(|_| ()),
       Self::Prune(args) => run_prune(args, cancel, stages, log).map(|_| ()),
-      Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, stages, log).map(|_| ()),
+      Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, stages, log),
       Self::Clock(args) => run_clock(args, cancel, stages, log).map(|_| ()),
       Self::Mugration(args) => run_mugration(args, cancel, stages, log).map(|_| ()),
     }

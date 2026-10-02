@@ -86,9 +86,8 @@ mod tests {
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
     use crate::partition::marginal::sample::SampleMode;
-    use crate::partition::marginal::sequences::TipStates;
     use crate::seq::alignment::node_seq_inputs;
-    use crate::test_utils::emitted_sequences_by_name;
+    use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
     use eyre::{OptionExt, Report};
     use indoc::indoc;
     use rand::SeedableRng;
@@ -160,13 +159,14 @@ mod tests {
 
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      let reconstruction =
-        recon.reconstruct_sequences(&graph, TipStates::default(), mode, &mut StdRng::seed_from_u64(seed))?;
+      let sampled = recon.sample_sequences(&graph, mode, &mut StdRng::seed_from_u64(seed))?;
       Ok(
-        emitted_sequences_by_name(&names, &reconstruction, |key| recon.node_sequence(&graph, false, key))?
-          .into_iter()
-          .map(|(name, seq)| (name, seq.to_string()))
-          .collect(),
+        emitted_sequences_by_name(&names, &emitted_nodes(&graph, false)?, &sampled, |key| {
+          recon.node_sequence(&graph, false, key)
+        })?
+        .into_iter()
+        .map(|(name, seq)| (name, seq.to_string()))
+        .collect(),
       )
     }
   }

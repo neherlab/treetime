@@ -159,7 +159,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph, &self.names, &self.times),
-          &timetree_edges(&self.graph, &self.branch_lengths),
+          &timetree_edges(&self.graph, &self.branch_lengths, &self.times),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -184,7 +184,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph, &self.names, &self.times),
-          &timetree_edges(&self.graph, &self.branch_lengths),
+          &timetree_edges(&self.graph, &self.branch_lengths, &self.times),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -283,13 +283,11 @@ mod tests {
             key,
             TimetreeNodeOut {
               name: names.get(&key).cloned().flatten(),
-              desc: None,
               confidence: None,
               time: times.get(&key).copied().flatten(),
               div: 0.0,
               is_outlier: false,
               bad_branch: false,
-              rate_susceptibility_dates: None,
             },
           )
         })
@@ -299,18 +297,19 @@ mod tests {
     fn timetree_edges(
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      times: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph
         .get_edges()
         .map(|edge| {
           let key = edge.key();
+          let parent = times.get(&edge.source()).copied().flatten();
+          let child = times.get(&edge.target()).copied().flatten();
           (
             key,
             TimetreeEdgeOut {
               branch_length: branch_lengths[&key],
-              time_length: None,
-              clock_branch_length: None,
-              gamma: 1.0,
+              date_branch_length: parent.zip(child).map(|(parent, child)| child - parent),
             },
           )
         })

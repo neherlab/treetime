@@ -4,9 +4,9 @@ use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
-use crate::partition::marginal::sequences::ReconstructedSequences;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::seq::alignment::{NodeSeqInput, node_seq_inputs};
+use crate::seq::sink::{SeqItem, SeqSink};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -53,16 +53,43 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
   Ok(log_lh.value())
 }
 
+#[derive(Default)]
+pub(crate) struct RecordingSeqSink {
+  pub(crate) items: Vec<(GraphNodeKey, bool, Seq)>,
+}
+
+impl SeqSink for RecordingSeqSink {
+  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+    Ok(())
+  }
+
+  fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+    self.items.push((item.key, item.emitted, item.seq.clone()));
+    Ok(())
+  }
+}
+
+pub(crate) fn emitted_nodes(graph: &Graph, include_leaves: bool) -> Result<Vec<GraphNodeKey>, Report> {
+  let mut emitted = Vec::new();
+  graph.iter_depth_first_preorder_forward(|node| {
+    if include_leaves || !node.is_leaf {
+      emitted.push(node.key);
+    }
+    Ok(())
+  })?;
+  Ok(emitted)
+}
+
 pub(crate) fn emitted_sequences_by_name(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  reconstruction: &ReconstructedSequences,
+  emitted_nodes: &[GraphNodeKey],
+  sampled: &BTreeMap<GraphNodeKey, Seq>,
   node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
 ) -> Result<BTreeMap<String, Seq>, Report> {
-  reconstruction
-    .emitted_nodes
+  emitted_nodes
     .iter()
     .map(|key| {
-      let seq = match reconstruction.sampled.get(key) {
+      let seq = match sampled.get(key) {
         Some(seq) => seq.clone(),
         None => node_sequence(*key)?,
       };

@@ -1,8 +1,7 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::sample::SampleMode;
-use crate::partition::marginal::sequences::TipStates;
-use crate::partition::marginal::sequences::{ReconstructedSequences, emitted_nodes};
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
@@ -20,7 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootResult;
-use treetime_primitives::{AsciiChar, LogLh, Seq};
+use treetime_primitives::{LogLh, Seq};
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -51,10 +50,10 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn ambiguous_char(&self) -> AsciiChar {
+  pub(crate) fn alphabet(&self) -> &Alphabet {
     match self {
-      Self::Dense(reconstruction) => reconstruction.partition.alphabet.unknown(),
-      Self::Sparse(reconstruction) => reconstruction.partition.alphabet.unknown(),
+      Self::Dense(reconstruction) => &reconstruction.partition.alphabet,
+      Self::Sparse(reconstruction) => &reconstruction.partition.alphabet,
     }
   }
 
@@ -87,29 +86,24 @@ impl MarginalReconstruction {
     })
   }
 
-  pub(crate) fn reconstruct_sequences(
+  pub(crate) fn sample_sequences(
     &self,
     graph: &Graph,
-    tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
-  ) -> Result<ReconstructedSequences, Report> {
-    let sampled = match self {
+  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    match self {
       Self::Dense(reconstruction) => {
         reconstruction
           .partition
-          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)?
+          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)
       },
       Self::Sparse(reconstruction) => {
         reconstruction
           .partition
-          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)?
+          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)
       },
-    };
-    Ok(ReconstructedSequences {
-      sampled,
-      emitted_nodes: emitted_nodes(graph, tips.include_leaves)?,
-    })
+    }
   }
 
   pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {

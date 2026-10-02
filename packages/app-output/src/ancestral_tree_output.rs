@@ -105,9 +105,7 @@ pub(crate) fn ancestral_to_mat(
 
 fn ancestral_root_sequences(maps: &AncestralOutputMaps, aa_node_data: Option<&AaNodeData>) -> BTreeMap<String, String> {
   let mut sequences = BTreeMap::new();
-  if let Some(sequence) = maps.root_sequence.as_ref() {
-    sequences.insert(NUC_TRACK.to_owned(), sequence.to_string());
-  }
+  sequences.insert(NUC_TRACK.to_owned(), maps.root_sequence.to_string());
   if let Some(aa) = aa_node_data {
     sequences.extend(aa.root_aa_sequences.clone());
   }

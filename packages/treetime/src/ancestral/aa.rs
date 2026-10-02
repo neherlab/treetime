@@ -1,21 +1,18 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::partition::AncestralPartition;
-use crate::ancestral::plan::{
-  ReconstructedPartition, ReconstructionOptions, ReconstructionPlan, reconstruct_partition,
-};
+use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
+use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::Representation;
 use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
-use crate::seq::alignment::node_seq_inputs;
-use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
-use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use crate::seq::alignment::{get_common_length, node_seq_inputs};
+use crate::seq::mutation::{MutationEvent, MutationTrack, SequenceMutations, Sub};
+use crate::seq::sink::SeqSink;
 use crate::{make_error, make_report};
 use eyre::Report;
-use itertools::Itertools;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -31,7 +28,7 @@ pub fn reconstruct_aa(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &AaParams,
   cdses: Vec<CdsInput>,
-  mut seq_sink: Option<Box<dyn SeqSink>>,
+  mut seq_sink: Option<&mut dyn SeqSink>,
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<AaNodeData, Report> {
@@ -44,7 +41,7 @@ pub fn reconstruct_aa(
   let representation = Representation::resolve(params.dense);
   let branch_lengths = branch_lengths_or_zero(branch_lengths);
   let mut aa_node_data = AaNodeData::default();
-  if let Some(sink) = seq_sink.as_mut() {
+  if let Some(sink) = seq_sink.as_deref_mut() {
     sink.on_topology(graph)?;
   }
   for (index, cds) in cdses.into_iter().enumerate() {
@@ -57,13 +54,15 @@ pub fn reconstruct_aa(
       reference_override,
     } = cds;
     let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, log)?;
+    validate_cds_length(&name, annotation.as_ref(), get_common_length(&sequences)?)?;
+    let unknown = alphabet.unknown();
     let node_inputs = node_seq_inputs(graph, names, sequences);
     let plan = ReconstructionPlan::Marginal {
       representation,
       model: gtr_model,
       gtr_refinement: None,
     };
-    let ReconstructedPartition { partition, .. } = reconstruct_partition(
+    let partition = reconstruct_partition(
       graph,
       &plan,
       index,
@@ -76,12 +75,16 @@ pub fn reconstruct_aa(
       &NoopProgress,
       log,
     )?;
-    validate_cds_length(&name, annotation.as_ref(), &partition)?;
-    let cds_data = collect_aa_cds_node_data(graph, &partition, &name, names, reference_override.as_ref())?;
+    let mutations = partition
+      .stream_sequences(
+        graph,
+        &MutationTrack::AminoAcid(name.clone()),
+        params.include_leaves,
+        seq_sink.as_deref_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+      )
+      .map_err(OperationError::into_report)?;
+    let cds_data = collect_aa_cds_node_data(graph, mutations, unknown, &name, reference_override.as_ref())?;
     aa_node_data.add_cds(&name, cds_data);
-    if let Some(sink) = seq_sink.as_mut() {
-      emit_cds_sequences(sink.as_mut(), graph, &name, &partition)?;
-    }
   }
 
   Ok(aa_node_data)
@@ -108,10 +111,10 @@ pub struct AaParams {
 fn validate_cds_length(
   name: &str,
   annotation: Option<&AugurNodeDataJsonAnnotationEntry>,
-  partition: &AncestralPartition,
+  alignment_length: usize,
 ) -> Result<(), Report> {
   if let Some(cds_len) = annotation.and_then(annotation_cds_nuc_length) {
-    let aa_len = i64::try_from(partition.sequence_length())?;
+    let aa_len = i64::try_from(alignment_length)?;
     if 3 * aa_len != cds_len {
       return make_error!(
         "Translated alignment for CDS '{name}' has {aa_len} amino acids ({} nucleotides), which does not match \
@@ -119,24 +122,6 @@ fn validate_cds_length(
         3 * aa_len
       );
     }
-  }
-  Ok(())
-}
-
-fn emit_cds_sequences(
-  sink: &mut dyn SeqSink,
-  graph: &Graph,
-  name: &str,
-  partition: &AncestralPartition,
-) -> Result<(), Report> {
-  for node in graph.get_nodes() {
-    let node_key = node.key();
-    let seq = partition.augur_node_sequence(graph, node_key)?;
-    sink.emit(SeqItem {
-      key: node_key,
-      track: SeqTrack::Aa(name),
-      seq: &seq,
-    })?;
   }
   Ok(())
 }
@@ -164,13 +149,15 @@ impl AaNodeData {
 
 pub(crate) fn collect_aa_cds_node_data(
   graph: &Graph,
-  partition: &AncestralPartition,
+  mutations: SequenceMutations,
+  unknown: AsciiChar,
   cds: &str,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   reference_override: Option<&Seq>,
 ) -> Result<AaCdsNodeData, Report> {
-  let root_key = graph.root_key()?;
-  let inferred_root = partition.augur_root_sequence(graph)?;
+  let SequenceMutations {
+    root_sequence: inferred_root,
+    mut edge_mutations,
+  } = mutations;
   let reference = reference_override.cloned().unwrap_or_else(|| inferred_root.clone());
 
   if reference.len() != inferred_root.len() {
@@ -184,32 +171,18 @@ pub(crate) fn collect_aa_cds_node_data(
   let mut node_mutations = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_key = node.key();
-    let node_name = names[&node_key]
-      .as_deref()
-      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
-
-    let mutations = if node_key == root_key {
-      diff_sequences(&reference, &inferred_root, partition.ambiguous_char())?
+    let mutations = match graph.node_parent(node_key)? {
+      None => diff_sequences(&reference, &inferred_root, unknown)?
         .into_iter()
         .map(MutationEvent::Substitution)
-        .collect()
-    } else {
-      let (_parent_key, edge_key) = graph
-        .node_parent(node_key)?
-        .ok_or_else(|| make_report!("Non-root node '{node_name}' has no parent while collecting AA node data"))?;
-      let substitutions = partition
-        .edge_subs(graph, edge_key)?
+        .collect(),
+      Some((_parent_key, edge_key)) => edge_mutations
+        .remove(&edge_key)
+        .ok_or_else(|| make_report!("No mutations were derived for the edge above node {node_key} in CDS '{cds}'"))?
         .into_iter()
-        .sorted_by_key(Sub::pos)
-        .map(MutationEvent::Substitution)
-        .map(Ok);
-      let indels = partition
-        .edge_indels(edge_key)
-        .into_iter()
-        .map(|indel| Mutation::indel(MutationTrack::AminoAcid(cds.to_owned()), &indel).map(|mutation| mutation.event));
-      substitutions.chain(indels).collect::<Result<Vec<_>, Report>>()?
+        .map(|mutation| mutation.event)
+        .collect(),
     };
-
     node_mutations.insert(node_key, mutations);
   }
 

@@ -5,7 +5,7 @@ mod tests {
   use crate::error::OperationError;
   use crate::optimize::params::BranchLengthMode;
   use crate::progress::NoopProgress;
-  use crate::seq::sink::{SeqItem, SeqSink};
+  use crate::seq::sink::SeqSink;
   use crate::test_utils::{find_node_key_by_name, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
@@ -44,7 +44,7 @@ mod tests {
     let (input, names) = helpers::star_input(None)?;
 
     assert_error!(
-      helpers::run(&params, input, &names, None),
+      helpers::run(&params, input, None),
       "--n-branches-posterior is not yet implemented"
     );
     Ok(())
@@ -59,24 +59,8 @@ mod tests {
     let (input, names) = helpers::star_input(Some(helpers::star_dates()))?;
 
     assert_error!(
-      helpers::run(&params, input, &names, None),
+      helpers::run(&params, input, None),
       "Alignment required for marginal reconstruction"
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_pipeline_sequence_output_requires_ancestral_reconstruction() -> Result<(), Report> {
-    let params = TimetreeParams {
-      clock_rate: Some(STAR_CLOCK_RATE),
-      branch_length_mode: BranchLengthMode::Input,
-      ..marginal_timetree_params()
-    };
-    let (input, names) = helpers::star_input(Some(helpers::star_dates()))?;
-
-    assert_error!(
-      helpers::run(&params, input, &names, Some(Box::new(helpers::DiscardingSink))),
-      "Reconstructed sequence output requires ancestral reconstruction; incompatible with --branch-length-mode=input"
     );
     Ok(())
   }
@@ -93,7 +77,7 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let output = helpers::run(&params, input, &names, None)?;
+    let output = helpers::run(&params, input, None)?;
 
     let outlier = find_node_key_by_name(&output.graph, &output.names, &outlier_name).expect("outlier leaf must exist");
     assert!(
@@ -101,13 +85,13 @@ mod tests {
       "the leaf dated {FORCED_OUTLIER_DATE} must be a clock outlier"
     );
     assert!(
-      output.time_inference.bad_branches[&outlier],
+      output.bad_branches[&outlier],
       "a clock outlier must be a bad branch of the time inference"
     );
     let flagged_good: BTreeSet<GraphNodeKey> = output
       .outliers
       .iter()
-      .filter(|key| !output.time_inference.bad_branches[*key])
+      .filter(|key| !output.bad_branches[*key])
       .copied()
       .collect();
     assert_eq!(BTreeSet::new(), flagged_good);
@@ -125,7 +109,7 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let Err(report) = helpers::run(&params, input, &names, None) else {
+    let Err(report) = helpers::run(&params, input, None) else {
       panic!("input mode must fail on this tree until the point division is defined");
     };
 
@@ -148,7 +132,7 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let output = helpers::run(&params, input, &names, None)?;
+    let output = helpers::run(&params, input, None)?;
 
     let output_leaves = helpers::leaf_names(&output.graph, &output.names);
     assert!(!output_leaves.contains(STEM_NAME));
@@ -159,35 +143,13 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) struct DiscardingSink;
-
-    impl SeqSink for DiscardingSink {
-      fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-        Ok(())
-      }
-
-      fn emit(&mut self, _item: SeqItem<'_>) -> Result<(), Report> {
-        Ok(())
-      }
-    }
-
     pub(super) fn run(
       params: &TimetreeParams,
       input: TimetreeInput,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
       seq_sink: Option<Box<dyn SeqSink>>,
     ) -> Result<TimetreeOutput, Report> {
-      pipeline::run(
-        params,
-        input,
-        names,
-        None,
-        seq_sink,
-        &NoopCancel,
-        &NoopProgress,
-        &NoopProgress,
-      )
-      .map_err(OperationError::into_report)
+      pipeline::run(params, input, None, seq_sink, &NoopCancel, &NoopProgress, &NoopProgress)
+        .map_err(OperationError::into_report)
     }
 
     pub(super) fn star_dates() -> DatesMap {
@@ -206,6 +168,7 @@ mod tests {
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
+        names: names.clone(),
         alphabet: Alphabet::default(),
         sequences: None,
         dates,
@@ -250,6 +213,7 @@ mod tests {
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
+        names: names.clone(),
         alphabet,
         sequences,
         dates: Some(dates),

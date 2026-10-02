@@ -13,10 +13,9 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::emitted_sequences_by_name;
+  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
@@ -148,12 +147,8 @@ mod tests {
 
     let actual = emitted_sequences_by_name(
       &names,
-      &recon.reconstruct_sequences(
-        &graph,
-        TipStates::default(),
-        SampleMode::Argmax,
-        &mut rand::thread_rng(),
-      )?,
+      &emitted_nodes(&graph, false)?,
+      &recon.sample_sequences(&graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(&graph, false, key),
     )?;
 

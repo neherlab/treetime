@@ -12,8 +12,10 @@ pub struct SeqItem<'a> {
   pub key: GraphNodeKey,
   pub track: SeqTrack<'a>,
   pub seq: &'a Seq,
+  pub emitted: bool,
 }
 
+#[derive(Clone, Copy)]
 pub enum SeqTrack<'a> {
   Nuc,
   Aa(&'a str),

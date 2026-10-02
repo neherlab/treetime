@@ -1,7 +1,5 @@
-use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::params::AncestralParams;
-use crate::ancestral::partition::AncestralPartition;
-use crate::ancestral::plan::{ReconstructedPartition, ReconstructionOptions, reconstruct_partition, resolve_plan};
+use crate::ancestral::params::{AncestralParams, MethodAncestral};
+use crate::ancestral::plan::{ReconstructionOptions, reconstruct_partition, resolve_plan};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
@@ -9,19 +7,21 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::AncestralInput;
-use serde::Serialize;
-use treetime_graph::node::GraphNodeKey;
+use crate::seq::mutation::{Mutation, MutationTrack, SequenceMutations};
+use crate::seq::sink::SeqSink;
+use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run(
   params: &AncestralParams,
   input: &AncestralInput,
-  alphabet: Alphabet,
-  mask: Vec<bool>,
+  seq_sink: &mut dyn SeqSink,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<AncestralOutputFull, OperationError> {
+) -> Result<AncestralOutput, OperationError> {
   let plan = resolve_plan(params)?;
   let options = ReconstructionOptions::new(
     params.include_leaves,
@@ -30,14 +30,11 @@ pub fn run(
   );
   let mut rng = get_random_number_generator(params.seed);
   let branch_lengths = branch_lengths_or_zero(&input.branch_lengths());
-  let ReconstructedPartition {
-    partition,
-    emitted_nodes,
-  } = reconstruct_partition(
+  let partition = reconstruct_partition(
     &input.graph,
     &plan,
     0,
-    alphabet,
+    input.alphabet.clone(),
     &input.nodes,
     &branch_lengths,
     &options,
@@ -45,30 +42,38 @@ pub fn run(
     cancel,
     stages,
     log,
+  )
+  .map_err(OperationError::from_inference)?;
+  seq_sink.on_topology(&input.graph).map_err(OperationError::SinkFailed)?;
+  let SequenceMutations {
+    root_sequence,
+    edge_mutations,
+  } = partition.stream_sequences(
+    &input.graph,
+    &MutationTrack::Nucleotide,
+    params.include_leaves,
+    Some(seq_sink),
   )?;
-  Ok(AncestralOutputFull {
-    output: AncestralOutput {
-      gtr: partition.gtr().cloned(),
-      model_name: params.model,
-      mask,
-      emitted_nodes,
-    },
-    partition: Some(partition),
+  Ok(AncestralOutput {
+    gtr: partition.gtr().cloned(),
+    model_name: params.model,
+    method: params.method,
+    mask: input.mask.clone(),
+    sequence_length: root_sequence.len(),
+    ambiguous_char: input.alphabet.unknown(),
+    root_sequence,
+    edge_mutations,
   })
 }
 
-pub struct AncestralOutputFull {
-  pub output: AncestralOutput,
-  pub partition: Option<AncestralPartition>,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct AncestralOutput {
-  #[serde(skip)]
   pub gtr: Option<GTR>,
   pub model_name: GtrModelName,
-  #[serde(skip)]
+  pub method: MethodAncestral,
   pub mask: Vec<bool>,
-  #[serde(skip)]
-  pub emitted_nodes: Vec<GraphNodeKey>,
+  pub sequence_length: usize,
+  pub ambiguous_char: AsciiChar,
+  pub root_sequence: Seq,
+  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }

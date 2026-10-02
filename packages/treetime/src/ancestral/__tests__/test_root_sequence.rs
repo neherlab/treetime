@@ -2,13 +2,14 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::params::{AncestralParams, MethodAncestral};
-  use crate::ancestral::partition::AncestralPartition;
-  use crate::ancestral::pipeline::run;
+  use crate::ancestral::pipeline::{AncestralOutput, run};
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
+  use crate::seq::mutation::MutationEvent;
+  use crate::test_utils::RecordingSeqSink;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -38,13 +39,13 @@ mod tests {
   #[case::sparse(Some(false))]
   #[case::dense(Some(true))]
   fn test_root_sequence_marginal_root_follows_the_short_branch(#[case] dense: Option<bool>) -> Result<(), Report> {
-    let (graph, partition) = helpers::reconstruct(
+    let (_, output, _) = helpers::reconstruct(
       LONG_BRANCH_TREE,
       LONG_BRANCH_ALIGNMENT,
       MethodAncestral::Marginal,
       dense,
     )?;
-    assert_eq!("CAAAGGGGAT", partition.root_sequence(&graph)?.to_string());
+    assert_eq!("CAAAGGGGAT", output.root_sequence.to_string());
     Ok(())
   }
 
@@ -56,8 +57,8 @@ mod tests {
     #[case] method: MethodAncestral,
     #[case] dense: Option<bool>,
   ) -> Result<(), Report> {
-    let (graph, partition) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
-    assert_eq!(partition.augur_root_sequence(&graph)?, partition.root_sequence(&graph)?);
+    let (graph, output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
+    assert_eq!(emitted[&graph.root_key()?], output.root_sequence);
     Ok(())
   }
 
@@ -69,13 +70,9 @@ mod tests {
     #[case] method: MethodAncestral,
     #[case] dense: Option<bool>,
   ) -> Result<(), Report> {
-    let (graph, partition) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
-    let rebuilt = helpers::rebuild_from_root(&graph, &partition)?;
-    let expected: BTreeMap<GraphNodeKey, Seq> = graph
-      .get_nodes()
-      .map(|node| Ok((node.key(), partition.augur_node_sequence(&graph, node.key())?)))
-      .collect::<Result<_, Report>>()?;
-    assert_eq!(expected, rebuilt);
+    let (graph, output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
+    let rebuilt = helpers::rebuild_from_root(&graph, &output)?;
+    assert_eq!(emitted, rebuilt);
     Ok(())
   }
 
@@ -87,7 +84,7 @@ mod tests {
       fasta: &str,
       method: MethodAncestral,
       dense: Option<bool>,
-    ) -> Result<(Graph, AncestralPartition), Report> {
+    ) -> Result<(Graph, AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read_str(nwk)?;
       let names = parse.names();
@@ -104,6 +101,8 @@ mod tests {
           .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
           .collect(),
         graph: parse.graph,
+        alphabet,
+        mask,
       };
       let params = AncestralParams {
         method,
@@ -116,32 +115,27 @@ mod tests {
         seed: Some(0),
         sample_from_profile: SampleMode::Argmax,
       };
-      let result = run(
-        &params,
-        &input,
-        alphabet,
-        mask,
-        &NoopCancel,
-        &NoopProgress,
-        &NoopProgress,
-      )?;
-      let partition = result.partition.expect("ancestral reconstruction returns a partition");
-      Ok((input.graph, partition))
+      let mut sink = RecordingSeqSink::default();
+      let output = run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let emitted = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
+      Ok((input.graph, output, emitted))
     }
 
     pub(super) fn rebuild_from_root(
       graph: &Graph,
-      partition: &AncestralPartition,
+      output: &AncestralOutput,
     ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
       let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
       graph.iter_depth_first_preorder_forward(|node| {
         let seq = if node.is_root {
-          partition.root_sequence(graph)?
+          output.root_sequence.clone()
         } else {
           let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)?;
           let mut seq: Seq = rebuilt[parent_key].clone();
-          for sub in partition.edge_subs(graph, *edge_key)? {
-            seq[sub.pos()] = sub.qry();
+          for mutation in &output.edge_mutations[edge_key] {
+            if let MutationEvent::Substitution(sub) = &mutation.event {
+              seq[sub.pos()] = sub.qry();
+            }
           }
           seq
         };

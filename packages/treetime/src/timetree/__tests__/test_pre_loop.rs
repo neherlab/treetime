@@ -64,6 +64,8 @@ mod tests {
     )?;
     let date_constraints = point_date_constraints(&graph, &names, &[("A", 2010.0), ("B", 2011.0), ("C", 2012.0)]);
     let context = TimetreeContext {
+      final_sequences: false,
+      final_marginal_update: false,
       time_marginal: TimeMarginalMode::Never,
       date_constraints,
       covariation_clock_params: ClockVarianceParams::default(),

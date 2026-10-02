@@ -127,12 +127,15 @@ pub struct TimetreeParams {
   pub confidence: bool,
   pub include_leaves: bool,
   pub impute_missing_data: bool,
+  pub reconstructed_sequences: bool,
   pub report_ambiguous: bool,
   pub zero_based: bool,
   pub seed: Option<u64>,
 }
 
 pub(crate) struct TimetreeContext {
+  pub final_sequences: bool,
+  pub final_marginal_update: bool,
   pub time_marginal: TimeMarginalMode,
   pub date_constraints: DateConstraints,
   pub covariation_clock_params: ClockVarianceParams,

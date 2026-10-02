@@ -52,6 +52,7 @@ mod tests {
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
     use crate::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+    use crate::test_utils::RecordingSeqSink;
     use eyre::{OptionExt, Report};
     use std::path::PathBuf;
     use std::sync::LazyLock;
@@ -99,18 +100,19 @@ mod tests {
           .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
           .collect(),
         graph: parse.graph,
+        alphabet,
+        mask,
       };
 
       let result = crate::ancestral::pipeline::run(
         &params,
         &input,
-        alphabet,
-        mask,
+        &mut RecordingSeqSink::default(),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,
       )?;
-      result.output.gtr.ok_or_eyre("GTR should be fitted with --model=infer")
+      result.gtr.ok_or_eyre("GTR should be fitted with --model=infer")
     }
   }
 }

@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::make_error;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -12,6 +13,8 @@ pub struct AncestralInput {
   pub graph: Graph,
   pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeSeqInput>,
+  pub alphabet: Alphabet,
+  pub mask: Vec<bool>,
 }
 
 impl AncestralInput {

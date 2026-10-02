@@ -72,16 +72,13 @@ pub fn build_augur_node_data_json(
     let numdate = out.time;
 
     let (branch_length, clock_length, mutation_length) = match graph.node_parent(node_key)? {
-      Some((parent_key, edge_key)) => {
+      Some((_parent_key, edge_key)) => {
         let mutation_length = if let Some(counts) = mutation_counts {
           Some(counts.get(&edge_key).copied().unwrap_or_default() as f64)
         } else {
           edges[&edge_key].branch_length
         };
-        let clock_length = outputs[&parent_key]
-          .time
-          .zip(numdate)
-          .map(|(parent, child)| child - parent);
+        let clock_length = edges[&edge_key].date_branch_length;
         (clock_length.unwrap_or(0.0), clock_length, mutation_length)
       },
       None => (0.0, Some(0.0), Some(0.0)),

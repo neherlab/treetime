@@ -9,8 +9,9 @@ mod tests {
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
+  use crate::test_utils::RecordingSeqSink;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -49,21 +50,13 @@ mod tests {
   #[case::dense(Representation::Dense)]
   #[case::sparse(Representation::Sparse)]
   #[trace]
-  fn test_reconstruct_sequences_argmax_emits_internal_nodes_in_preorder(
-    #[case] representation: Representation,
-  ) -> Result<(), Report> {
+  fn test_sample_sequences_argmax_samples_no_node(#[case] representation: Representation) -> Result<(), Report> {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
     let keys = helpers::keys(&graph, &names, &["root", "X", "Y"]);
 
-    let actual = reconstruction.reconstruct_sequences(
-      &graph,
-      TipStates::default(),
-      SampleMode::Argmax,
-      &mut StdRng::seed_from_u64(0),
-    )?;
+    let actual = reconstruction.sample_sequences(&graph, SampleMode::Argmax, &mut StdRng::seed_from_u64(0))?;
 
-    assert_eq!(keys, actual.emitted_nodes);
-    assert_eq!(BTreeMap::new(), actual.sampled);
+    assert_eq!(BTreeMap::new(), actual);
     for key in keys {
       assert_eq!("ACGT", reconstruction.node_sequence(&graph, false, key)?.to_string());
     }
@@ -74,22 +67,38 @@ mod tests {
   #[case::dense(Representation::Dense)]
   #[case::sparse(Representation::Sparse)]
   #[trace]
-  fn test_reconstruct_sequences_include_leaves_emits_all_nodes_in_preorder(
+  fn test_stream_sequences_visits_all_nodes_in_preorder_and_flags_emitted_ones(
     #[case] representation: Representation,
+    #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
-    let tips = TipStates {
-      include_leaves: true,
-      impute: false,
-    };
+    let mut sink = RecordingSeqSink::default();
 
-    let actual =
-      reconstruction.reconstruct_sequences(&graph, tips, SampleMode::Argmax, &mut StdRng::seed_from_u64(0))?;
+    stream_sequence_mutations(
+      &graph,
+      reconstruction.alphabet(),
+      &MutationTrack::Nucleotide,
+      include_leaves,
+      |key| reconstruction.node_sequence(&graph, false, key),
+      |edge_key| reconstruction.edge_indels(edge_key),
+      Some(&mut sink),
+    )?;
 
-    assert_eq!(
-      helpers::keys(&graph, &names, &["root", "X", "A", "B", "Y", "C", "D"]),
-      actual.emitted_nodes
-    );
+    let expected = ["root", "X", "A", "B", "Y", "C", "D"]
+      .into_iter()
+      .map(|name| {
+        (
+          name.to_owned(),
+          include_leaves || !matches!(name, "A" | "B" | "C" | "D"),
+        )
+      })
+      .collect::<Vec<_>>();
+    let actual = sink
+      .items
+      .into_iter()
+      .map(|(key, emitted, _)| (names[&key].clone().unwrap(), emitted))
+      .collect::<Vec<_>>();
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -107,12 +116,12 @@ mod tests {
   ) -> Result<(), Report> {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
 
-    let actual = reconstruction.reconstruct_sequences(&graph, TipStates::default(), mode, &mut StdRng::seed_from_u64(0))?;
+    let actual = reconstruction.sample_sequences(&graph, mode, &mut StdRng::seed_from_u64(0))?;
 
     let mut expected_keys = helpers::keys(&graph, &names, expected_sampled);
     expected_keys.sort_unstable();
-    assert_eq!(expected_keys, actual.sampled.keys().copied().collect::<Vec<_>>());
-    for seq in actual.sampled.values() {
+    assert_eq!(expected_keys, actual.keys().copied().collect::<Vec<_>>());
+    for seq in actual.values() {
       assert_eq!(4, seq.len());
     }
     Ok(())

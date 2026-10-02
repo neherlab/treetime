@@ -3,6 +3,7 @@ mod prop_marginal_support;
 mod test_aa;
 mod test_attach;
 mod test_dense_completeness;
+mod test_derived_mutations;
 mod test_fitch;
 mod test_fitch_gap_sub_conflict;
 mod test_fitch_indel;

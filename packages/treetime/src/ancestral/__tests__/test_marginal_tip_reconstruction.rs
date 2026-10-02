@@ -14,7 +14,7 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::partition::marginal::sequences::TipStates;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::emitted_sequences_by_name;
+  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -172,8 +172,10 @@ mod tests {
       include_leaves: true,
       impute,
     };
-    let reconstruction = recon.reconstruct_sequences(graph, tips, SampleMode::Argmax, &mut rand::thread_rng())?;
-    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, impute, key))
+    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
+    emitted_sequences_by_name(names, &emitted_nodes(graph, tips.include_leaves)?, &sampled, |key| {
+      recon.node_sequence(graph, impute, key)
+    })
   }
 
   fn reconstruct_sparse(

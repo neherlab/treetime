@@ -5,14 +5,13 @@ use crate::partition::storage::sparse::{
   FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
 use crate::seq::alignment::NodeSeqInput;
-use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AsciiChar, Seq, seq};
+use treetime_primitives::{Seq, seq};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionFitch {
@@ -74,27 +73,11 @@ impl PartitionFitch {
     PartitionMarginalDense::new(self.index, self.alphabet, graph, node_inputs)
   }
 
-  pub(crate) fn sequence_length(&self) -> usize {
-    self.length
-  }
-
-  pub(crate) fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    Ok(self.edges[&edge_key].fitch_subs().to_vec())
-  }
-
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
     self.edges[&edge_key].indels.clone()
   }
 
-  pub(crate) fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    Ok(self.nodes[&graph.root_key()?].seq.sequence.clone())
-  }
-
   pub(crate) fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.nodes[&node_key].seq.sequence.clone()
-  }
-
-  pub(crate) fn ambiguous_char(&self) -> AsciiChar {
-    self.alphabet.unknown()
   }
 }

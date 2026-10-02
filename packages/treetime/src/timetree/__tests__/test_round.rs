@@ -511,6 +511,8 @@ mod tests {
 
     fn context(date_constraints: DateConstraints) -> TimetreeContext {
       TimetreeContext {
+        final_sequences: false,
+        final_marginal_update: false,
         time_marginal: TimeMarginalMode::Never,
         date_constraints,
         covariation_clock_params: ClockVarianceParams::default(),

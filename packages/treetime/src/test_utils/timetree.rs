@@ -83,6 +83,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     confidence: false,
     include_leaves: false,
     impute_missing_data: false,
+    reconstructed_sequences: false,
     report_ambiguous: false,
     zero_based: false,
     seed: None,

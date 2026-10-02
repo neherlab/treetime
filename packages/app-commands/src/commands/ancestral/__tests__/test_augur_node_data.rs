@@ -8,8 +8,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_full_output() {
-    let (graph, names, partition) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+    let (graph, names, maps) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
 
     let expected = format!(
       r#"{{
@@ -54,8 +54,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_roundtrip() {
-    let (graph, names, partition) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+    let (graph, names, maps) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
 
     let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
@@ -66,8 +66,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_mask_filters_mutations() {
-    let (graph, names, partition) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, true]);
+    let (graph, names, maps) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &maps, &[false, false, false, true]);
 
     let expected = format!(
       r#"{{
@@ -110,8 +110,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_root_has_empty_muts() {
-    let (graph, names, partition) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
+    let (graph, names, maps) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
     let data: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
 
     assert_eq!(Vec::<String>::new(), data.nodes["root"].muts);
@@ -166,24 +166,22 @@ mod tests {
 
   mod helpers {
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
-    use crate::commands::ancestral::run::{gather_augur_output_maps, run_ancestral_reconstruction};
+    use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output_args::OutputCoreArgs;
+    use app_output::ancestral_result::{AncestralOutputMaps, AugurOutputMaps};
     use app_output::augur_node_data_ancestral::build_augur_node_data_json;
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
-    use treetime::ancestral::partition::AncestralPartition;
     use treetime::cancel::NoopCancel;
-    use treetime::partition::fitch::partition::PartitionFitch;
-    use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
     use treetime::progress::NoopProgress;
-    use treetime::seq::mutation::{MutationEvent, Sub};
+    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
@@ -204,15 +202,15 @@ mod tests {
       .unwrap()
     }
 
-    pub(super) fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
+    pub(super) fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, OutputMaps) {
       let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
-      let partition = build_fitch_partition(&graph, &names, &seqs, &edge_subs, 4);
-      (graph, names, partition)
+      let maps = build_output_maps(&graph, &names, &seqs, &edge_subs, 4);
+      (graph, names, maps)
     }
 
     fn node_name_to_key(
@@ -229,52 +227,55 @@ mod tests {
         .collect()
     }
 
-    fn build_fitch_partition(
+    pub(super) type OutputMaps = (AncestralOutputMaps, AugurOutputMaps);
+
+    fn build_output_maps(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       seqs: &BTreeMap<String, String>,
       edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
       length: usize,
-    ) -> PartitionFitch {
-      let alphabet = Alphabet::default();
-
-      let mut key_to_name = BTreeMap::new();
-      let mut nodes = BTreeMap::new();
-      for node in graph.get_nodes() {
-        let node_guard = node;
-        let key = node_guard.key();
-        let name = names[&key].clone().unwrap();
-        let seq = Seq::try_from_str(&seqs[&name]).unwrap();
-        nodes.insert(key, FitchNodeData::new(&seq, &alphabet).unwrap());
-        key_to_name.insert(key, name);
-      }
-
-      let mut edges = BTreeMap::new();
-      for edge in graph.get_edges() {
-        let edge_guard = edge;
-        let edge_key = edge_guard.key();
-        let child_name = &key_to_name[&edge_guard.target()];
-        let subs = edge_subs_by_child.get(child_name).cloned().unwrap_or_default();
-        edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs));
-      }
-
-      PartitionFitch {
-        index: 0,
-        alphabet,
-        length,
-        nodes,
-        edges,
-      }
+    ) -> OutputMaps {
+      let name_of = |key: GraphNodeKey| names[&key].clone().unwrap();
+      let node_sequences = graph
+        .get_nodes()
+        .map(|node| (node.key(), Seq::try_from_str(&seqs[&name_of(node.key())]).unwrap()))
+        .collect();
+      let edge_mutations = graph
+        .get_edges()
+        .map(|edge| {
+          let subs = edge_subs_by_child
+            .get(&name_of(edge.target()))
+            .cloned()
+            .unwrap_or_default();
+          let mutations = subs
+            .into_iter()
+            .map(|sub| Mutation::substitution(MutationTrack::Nucleotide, sub))
+            .collect();
+          (edge.key(), mutations)
+        })
+        .collect();
+      (
+        AncestralOutputMaps {
+          root_sequence: Seq::try_from_str(&seqs["root"]).unwrap(),
+          edge_mutations,
+        },
+        AugurOutputMaps {
+          node_sequences,
+          sequence_length: length,
+          ambiguous_char: Alphabet::default().unknown(),
+        },
+      )
     }
 
     pub(super) fn write_json(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      partition: &PartitionFitch,
+      maps: &OutputMaps,
       mask: &[bool],
     ) -> String {
-      let maps = gather_augur_output_maps(graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
-      let data = build_augur_node_data_json(graph, &maps, mask, names, None, &BTreeMap::new()).unwrap();
+      let (output, augur) = maps;
+      let data = build_augur_node_data_json(graph, output, augur, mask, names, None, &BTreeMap::new()).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -351,7 +352,7 @@ mod tests {
     }
 
     pub(super) fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
-      let (graph, names, partition) = mutation_case();
+      let (graph, names, (output, augur)) = mutation_case();
       let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
 
@@ -379,10 +380,10 @@ mod tests {
         },
       };
 
-      let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition)).unwrap();
       build_augur_node_data_json(
         &graph,
-        &maps,
+        &output,
+        &augur,
         &[false, false, false, false],
         &names,
         Some(&aa_node_data),

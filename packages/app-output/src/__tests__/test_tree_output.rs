@@ -23,11 +23,7 @@ pub(super) mod tests {
 
   use serde_json::Value;
   use tempfile::TempDir;
-  use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::ancestral::aa::AaNodeData;
-  use treetime::ancestral::partition::AncestralPartition;
-  use treetime::partition::fitch::partition::PartitionFitch;
-  use treetime::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use treetime::seq::indel::InDel;
   use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 
@@ -40,7 +36,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
     let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
@@ -48,7 +44,7 @@ pub(super) mod tests {
       &graph,
       &nodes,
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       "2026-07-19",
@@ -69,13 +65,7 @@ pub(super) mod tests {
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let mat = ancestral_to_mat(
-      &graph,
-      &names,
-      &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
-      aa_node_data.as_ref(),
-    )?;
+    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())?;
     let mutation = mat
       .node_mutations
       .iter()
@@ -92,13 +82,13 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       "2026-07-19",
@@ -106,13 +96,13 @@ pub(super) mod tests {
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let auspice = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       "2026-07-19",
@@ -133,7 +123,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let nwk_path = dir.path().join("tree.nwk");
@@ -147,7 +137,7 @@ pub(super) mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       &outputs,
@@ -163,7 +153,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_graph_json_dumps_topology() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::None)?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let path = dir.path().join("graph.json");
@@ -173,7 +163,7 @@ pub(super) mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       &outputs,
@@ -290,13 +280,13 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition, aa_node_data, aa_annotations) =
+    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
       helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
     let error = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
-      &helpers::ancestral_maps(&graph, partition.as_ref()),
+      &maps,
       aa_node_data.as_ref(),
       &aa_annotations,
       "2026-07-19",
@@ -384,29 +374,6 @@ pub(super) mod tests {
       IndelAndAminoAcid,
     }
 
-    pub(crate) fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
-      let Some(partition) = partition else {
-        return AncestralOutputMaps::default();
-      };
-      let root_sequence = Some(partition.root_sequence(graph).unwrap());
-      let edge_mutations = graph
-        .get_edges()
-        .map(|edge| {
-          let key = edge.key();
-          (
-            key,
-            partition
-              .edge_mutations(graph, key, &MutationTrack::Nucleotide)
-              .unwrap(),
-          )
-        })
-        .collect();
-      AncestralOutputMaps {
-        root_sequence,
-        edge_mutations,
-      }
-    }
-
     fn optimize_maps(_graph: &Graph) -> Result<OptimizeOutputMaps, Report> {
       Ok(OptimizeOutputMaps {
         root_sequence: Seq::try_from_str("ACGT")?,
@@ -427,7 +394,7 @@ pub(super) mod tests {
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
-      Option<AncestralPartition>,
+      AncestralOutputMaps,
       Option<AaNodeData>,
       BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
     );
@@ -438,39 +405,33 @@ pub(super) mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let root_key = node_key(&graph, &names, "root");
       let a_key = node_key(&graph, &names, "A");
       let b_key = node_key(&graph, &names, "B");
       let a_edge = graph.node_parent(a_key)?.unwrap().1;
       let b_edge = graph.node_parent(b_key)?.unwrap().1;
-      let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let root_sequence = Seq::try_from_str("ACG")?;
-      let a_sequence = Seq::try_from_str("TCG")?;
-      let b_sequence = root_sequence.clone();
 
       let include_substitution = matches!(mutations, Mutations::NucleotideSubstitution);
       let include_indel = matches!(mutations, Mutations::Indel | Mutations::IndelAndAminoAcid);
       let include_aa = matches!(mutations, Mutations::AminoAcid | Mutations::IndelAndAminoAcid);
-      let mut a_edge_data = if include_substitution {
-        SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])
-      } else {
-        SparseEdgeObs::default()
-      };
-      if include_indel {
-        a_edge_data.indels = vec![InDel::del((1, 3), Seq::try_from_str("CG")?)?];
+      let mut a_mutations = Vec::new();
+      if include_substitution {
+        a_mutations.push(Mutation::substitution(
+          MutationTrack::Nucleotide,
+          Sub::new(c(b'A'), 0_usize, c(b'T'))?,
+        ));
       }
-      let partition = PartitionFitch {
-        index: 0,
-        alphabet: alphabet.clone(),
-        length: 3,
-        nodes: btreemap! {
-          root_key => FitchNodeData::new(&root_sequence, &alphabet)?,
-          a_key => FitchNodeData::new(&a_sequence, &alphabet)?,
-          b_key => FitchNodeData::new(&b_sequence, &alphabet)?,
-        },
-        edges: btreemap! {
-          a_edge => a_edge_data,
-          b_edge => SparseEdgeObs::default(),
+      if include_indel {
+        a_mutations.push(Mutation::indel(
+          MutationTrack::Nucleotide,
+          &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
+        )?);
+      }
+      let maps = AncestralOutputMaps {
+        root_sequence,
+        edge_mutations: btreemap! {
+          a_edge => a_mutations,
+          b_edge => vec![],
         },
       };
 
@@ -505,15 +466,7 @@ pub(super) mod tests {
       } else {
         btreemap! {}
       };
-      let ancestral_partition = AncestralPartition::Fitch(partition);
-      Ok((
-        graph,
-        names,
-        branch_lengths,
-        Some(ancestral_partition),
-        aa_node_data,
-        aa_annotations,
-      ))
+      Ok((graph, names, branch_lengths, maps, aa_node_data, aa_annotations))
     }
 
     pub(crate) fn ancestral_nodes(
@@ -547,7 +500,7 @@ pub(super) mod tests {
         .collect()
     }
 
-    pub(crate) fn ancestral_graph_without_partition() -> Result<
+    pub(crate) fn ancestral_topology() -> Result<
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
@@ -563,13 +516,13 @@ pub(super) mod tests {
     }
 
     pub(crate) fn all_auspice_documents() -> Result<Vec<Value>, Report> {
-      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition, ancestral_aa, ancestral_aa_annotations) =
+      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_maps, ancestral_aa, ancestral_aa_annotations) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
         &ancestral_graph,
         &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
         &ancestral_bl,
-        &ancestral_maps(&ancestral_graph, ancestral_partition.as_ref()),
+        &ancestral_maps,
         ancestral_aa.as_ref(),
         &ancestral_aa_annotations,
         "2026-07-19",
@@ -618,7 +571,7 @@ pub(super) mod tests {
     }
 
     pub(crate) fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
-      let (ancestral, ancestral_names, mut ancestral_bl) = ancestral_graph_without_partition()?;
+      let (ancestral, ancestral_names, mut ancestral_bl) = ancestral_topology()?;
       set_mat_branch_lengths(&ancestral, &ancestral_names, &mut ancestral_bl)?;
       let (optimize, optimize_names, mut optimize_bl) = optimize_graph()?;
       set_mat_branch_lengths(&optimize, &optimize_names, &mut optimize_bl)?;
@@ -637,7 +590,10 @@ pub(super) mod tests {
           &ancestral,
           &ancestral_names,
           &ancestral_bl,
-          &ancestral_maps(&ancestral, None),
+          &AncestralOutputMaps {
+            root_sequence: Seq::try_from_str("ACG")?,
+            edge_mutations: BTreeMap::new(),
+          },
           None,
         )?,
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?,
@@ -899,13 +855,11 @@ pub(super) mod tests {
             key,
             TimetreeNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              desc: None,
               confidence: confidences.get(&key).copied().flatten(),
               time: Some(2020.0 + index as f64),
               div: index as f64 / 2.0,
               is_outlier: false,
               bad_branch: false,
-              rate_susceptibility_dates: None,
             },
           )
         })

@@ -1,23 +1,23 @@
+use crate::alphabet::alphabet::Alphabet;
+use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
+use crate::seq::mutation::{MutationTrack, SequenceMutations, stream_sequence_mutations};
+use crate::seq::sink::SeqSink;
 use eyre::Report;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::Seq;
 
 #[expect(
   clippy::large_enum_variant,
   reason = "one value per run moves between steps by value; it is never stored in a collection"
 )]
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AncestralPartition {
+pub(crate) enum AncestralPartition {
   Fitch(PartitionFitch),
   Marginal {
     reconstruction: MarginalReconstruction,
@@ -34,21 +34,32 @@ impl AncestralPartition {
     }
   }
 
-  pub fn sequence_length(&self) -> usize {
+  pub(crate) fn alphabet(&self) -> &Alphabet {
     match self {
-      Self::Fitch(partition) => partition.sequence_length(),
-      Self::Marginal { reconstruction, .. } => reconstruction.sequence_length(),
+      Self::Fitch(partition) => &partition.alphabet,
+      Self::Marginal { reconstruction, .. } => reconstruction.alphabet(),
     }
   }
 
-  pub fn ambiguous_char(&self) -> AsciiChar {
-    match self {
-      Self::Fitch(partition) => partition.ambiguous_char(),
-      Self::Marginal { reconstruction, .. } => reconstruction.ambiguous_char(),
-    }
+  pub(crate) fn stream_sequences(
+    &self,
+    graph: &Graph,
+    track: &MutationTrack,
+    include_leaves: bool,
+    sink: Option<&mut dyn SeqSink>,
+  ) -> Result<SequenceMutations, OperationError> {
+    stream_sequence_mutations(
+      graph,
+      self.alphabet(),
+      track,
+      include_leaves,
+      |node_key| self.node_sequence(graph, node_key),
+      |edge_key| self.edge_indels(edge_key),
+      sink,
+    )
   }
 
-  pub fn augur_node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report> {
+  fn node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report> {
     match self {
       Self::Fitch(partition) => Ok(partition.node_sequence(node_key)),
       Self::Marginal {
@@ -62,37 +73,10 @@ impl AncestralPartition {
     }
   }
 
-  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    match self {
-      Self::Fitch(partition) => partition.root_sequence(graph),
-      Self::Marginal { reconstruction, .. } => reconstruction.root_sequence(graph),
-    }
-  }
-
-  pub fn augur_root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    self.augur_node_sequence(graph, graph.root_key()?)
-  }
-
-  pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    match self {
-      Self::Fitch(partition) => partition.edge_subs(edge_key),
-      Self::Marginal { reconstruction, .. } => reconstruction.edge_subs(graph, edge_key),
-    }
-  }
-
-  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Fitch(partition) => partition.edge_indels(edge_key),
       Self::Marginal { reconstruction, .. } => reconstruction.edge_indels(edge_key),
     }
-  }
-
-  pub fn edge_mutations(
-    &self,
-    graph: &Graph,
-    edge_key: GraphEdgeKey,
-    track: &MutationTrack,
-  ) -> Result<Vec<Mutation>, Report> {
-    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 }

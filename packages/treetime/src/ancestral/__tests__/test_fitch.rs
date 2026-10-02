@@ -3,6 +3,7 @@ pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::ancestral_reconstruction_fitch;
   use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
+  use crate::test_utils::emitted_nodes;
 
   use crate::o;
   use crate::partition::fitch::partition::PartitionFitch;
@@ -80,8 +81,8 @@ pub(super) mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    let emitted = ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony)?;
-    for key in emitted {
+    ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony)?;
+    for key in emitted_nodes(&graph, false)? {
       actual.insert(
         names[&key].clone(),
         partitions_parsimony[0].node_sequence(key).to_string(),
@@ -157,8 +158,8 @@ pub(super) mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    let emitted = ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony)?;
-    for key in emitted {
+    ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony)?;
+    for key in emitted_nodes(&graph, true)? {
       actual.insert(
         names[&key].clone(),
         partitions_parsimony[0].node_sequence(key).to_string(),

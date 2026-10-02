@@ -14,17 +14,14 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::ReconstructedSequences;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction};
+  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction};
   use eyre::Report;
   use indoc::indoc;
-  use rstest::rstest;
   use treetime_graph::graph::Graph;
 
   use ndarray::prelude::*;
@@ -178,12 +175,8 @@ mod tests {
 
     let actual = emitted_sequences_by_name(
       &names,
-      &recon.reconstruct_sequences(
-        &graph,
-        TipStates::default(),
-        SampleMode::Argmax,
-        &mut rand::thread_rng(),
-      )?,
+      &emitted_nodes(&graph, false)?,
+      &recon.sample_sequences(&graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(&graph, false, key),
     )?;
 
@@ -491,28 +484,6 @@ mod tests {
   }
 
   #[rustfmt::skip]
-  #[rstest]
-  #[case::excluded_leaf("A",  false, false)]
-  #[case::included_leaf("A",  true,  true)]
-  #[case::internal_node("AB", false, true)]
-  #[trace]
-  fn test_marginal_sparse_reconstruct_node_sequence_honours_leaf_inclusion(
-    #[case] name: &str,
-    #[case] include_leaves: bool,
-    #[case] expected_returned: bool,
-  ) -> Result<(), Report> {
-    let (graph, names, recon) = helpers::small_sparse_reconstruction()?;
-    let key = find_node_key_by_name(&graph, &names, name).expect("node not found");
-    let ReconstructedSequences { emitted_nodes, .. } = recon.reconstruct_sequences(
-      &graph,
-      TipStates { include_leaves, impute: false },
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-    )?;
-    assert_eq!(expected_returned, emitted_nodes.contains(&key));
-    Ok(())
-  }
-
   #[test]
   fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic() -> Result<(), Report> {
     let expected = helpers::run_thread_determinism_case(1)?;
@@ -525,38 +496,6 @@ mod tests {
   mod helpers {
     use super::*;
     use rayon::ThreadPoolBuilder;
-
-    pub(super) fn small_sparse_reconstruction()
-    -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, MarginalReconstruction), Report> {
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-        indoc! {r#"
-        >A
-        ACATCGCCNNA--GAC
-        >B
-        GCATCCCTGTA-NG--
-        >C
-        CCGGCGATGTRTTG--
-        >D
-        TCGGCCGTGTRTTG--
-      "#},
-        &*NUC_ALPHABET,
-      )?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
-      let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-      let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
-        partition,
-        make_nonuniform_gtr()?,
-        node_states,
-      ));
-      let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&nwk_parsed.branch_lengths))?;
-      Ok((graph, names, recon))
-    }
 
     pub(super) fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
       let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";

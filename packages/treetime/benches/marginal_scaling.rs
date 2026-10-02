@@ -6,6 +6,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
+use eyre::Report;
 use rayon::ThreadPoolBuilder;
 use std::hint::black_box;
 use std::path::Path;
@@ -18,6 +19,8 @@ use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+use treetime::seq::sink::{SeqItem, SeqSink};
+use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
@@ -35,8 +38,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.sample_size(10);
   group.throughput(Throughput::Elements(DATASET_SEQUENCES));
 
-  let (input, mask) = setup();
-  let alphabet = Alphabet::default();
+  let input = setup();
   let params = AncestralParams {
     method: MethodAncestral::Marginal,
     model: GtrModelName::JC69,
@@ -58,8 +60,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
             run(
               &params,
               black_box(&input),
-              alphabet.clone(),
-              mask.clone(),
+              &mut DiscardSequences,
               &NoopCancel,
               &NoopProgress,
               &NoopProgress,
@@ -73,7 +74,20 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.finish();
 }
 
-fn setup() -> (AncestralInput, Vec<bool>) {
+struct DiscardSequences;
+
+impl SeqSink for DiscardSequences {
+  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+    Ok(())
+  }
+
+  fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+    black_box(item.seq);
+    Ok(())
+  }
+}
+
+fn setup() -> AncestralInput {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
   let nwk_parsed = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
@@ -85,7 +99,7 @@ fn setup() -> (AncestralInput, Vec<bool>) {
       .map(AlignmentRecord::from)
       .collect();
   let mask = create_mask(&alignment, get_common_length(&alignment).unwrap(), &alphabet);
-  let input = AncestralInput {
+  AncestralInput {
     nodes: node_seq_inputs(&nwk_parsed.graph, &names, alignment),
     edges: nwk_parsed
       .branch_lengths
@@ -93,8 +107,9 @@ fn setup() -> (AncestralInput, Vec<bool>) {
       .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
       .collect(),
     graph: nwk_parsed.graph,
-  };
-  (input, mask)
+    alphabet,
+    mask,
+  }
 }
 
 criterion_group!(benches, benchmark_marginal_scaling);

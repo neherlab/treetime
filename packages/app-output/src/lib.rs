@@ -29,7 +29,7 @@ pub(crate) mod tree_output;
 
 pub use date_comment::DateCommentProvider;
 pub use mutation_comment::EdgeMutationCommentProvider;
-pub use timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
+pub use timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 
 #[cfg(test)]
 mod tests {

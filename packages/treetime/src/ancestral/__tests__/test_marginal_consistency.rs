@@ -13,13 +13,12 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{
-    dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction,
+    dense_reconstruction, emitted_nodes, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction,
   };
   use eyre::Report;
   use indoc::indoc;
@@ -357,9 +356,10 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     recon: &MarginalReconstruction,
   ) -> Result<BTreeMap<String, Seq>, Report> {
-    let reconstruction =
-      recon.reconstruct_sequences(graph, TipStates::default(), SampleMode::Argmax, &mut rand::thread_rng())?;
-    emitted_sequences_by_name(names, &reconstruction, |key| recon.node_sequence(graph, false, key))
+    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
+    emitted_sequences_by_name(names, &emitted_nodes(graph, false)?, &sampled, |key| {
+      recon.node_sequence(graph, false, key)
+    })
   }
 
   fn edge_subs_by_edge_name(
