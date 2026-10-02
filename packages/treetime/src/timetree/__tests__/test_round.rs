@@ -22,7 +22,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::marginal_timetree_params;
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::inference::bad_branches::undated_leaves;
+  use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::params::TimeMarginalMode;
@@ -290,7 +290,7 @@ mod tests {
         &TimeInferenceInputs {
           graph: &graph,
           date_constraints: &constraints,
-          leaf_bad_branches: &undated_leaves(&graph, &constraints),
+          leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
           gammas: &gammas,
           branch_model: &branch_model,
           branch_lengths: &branch_lengths,
@@ -328,7 +328,7 @@ mod tests {
       )?;
       let merger_rate =
         coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![ROUND_TEST_TC]))?;
-      let leaf_bad_branches = undated_leaves(&state.graph, &context.date_constraints);
+      let leaf_bad_branches = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());
       let outliers = BTreeSet::new();
       let params = TimetreeParams {
         clock_rate: Some(CLOCK_RATE),

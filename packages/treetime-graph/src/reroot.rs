@@ -4,20 +4,48 @@ use crate::node::GraphNodeKey;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_utils::make_internal_report;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RerootResult {
   pub new_root_key: GraphNodeKey,
+  pub stem_removal: Option<StemRemovalInfo>,
   pub edge_split: Option<EdgeSplitInfo>,
   pub edge_merge: Option<EdgeMergeInfo>,
   pub inverted_edge_keys: Vec<GraphEdgeKey>,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct RerootChanges {
-  pub edge_split: Option<EdgeSplitInfo>,
-  pub edge_merge: Option<EdgeMergeInfo>,
-  pub inverted_edge_keys: Vec<GraphEdgeKey>,
+impl RerootResult {
+  #[must_use]
+  pub fn unchanged(root_key: GraphNodeKey) -> Self {
+    Self {
+      new_root_key: root_key,
+      stem_removal: None,
+      edge_split: None,
+      edge_merge: None,
+      inverted_edge_keys: vec![],
+    }
+  }
+}
+
+pub fn remove_stem_root(graph: &mut Graph, root_key: GraphNodeKey) -> Result<Option<StemRemovalInfo>, Report> {
+  let root = graph
+    .get_node(root_key)
+    .ok_or_else(|| make_internal_report!("Root node {root_key} not found"))?;
+  let [edge_key] = root.outbound() else {
+    return Ok(None);
+  };
+  let edge_key = *edge_key;
+  let (_, child_key) = graph.edge_endpoints(edge_key)?;
+
+  graph.remove_node(root_key)?;
+  graph.build()?;
+
+  Ok(Some(StemRemovalInfo {
+    removed_node_key: root_key,
+    removed_edge_key: edge_key,
+    new_root_key: child_key,
+  }))
 }
 
 #[allow(
@@ -156,6 +184,13 @@ pub fn record_merge(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, in
   branch_lengths.remove(&info.parent_edge_key);
   branch_lengths.remove(&info.child_edge_key);
   branch_lengths.insert(info.merged_edge_key, info.merged_branch_length);
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StemRemovalInfo {
+  pub removed_node_key: GraphNodeKey,
+  pub removed_edge_key: GraphEdgeKey,
+  pub new_root_key: GraphNodeKey,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

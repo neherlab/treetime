@@ -34,7 +34,6 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::divergence::final_divergences;
-use crate::timetree::inference::bad_branches::undated_leaves;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::inference::time_inference::TimeInference;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
@@ -68,7 +67,7 @@ pub fn run(
   log: &dyn LogSink,
 ) -> Result<TimetreeOutput, OperationError> {
   progress_info!(log, "# TreeTime Timetree Estimation");
-  let (context, leaf_bad_branches) = prepare_inputs(params, &input, names, log)?;
+  let context = prepare_inputs(params, &input, names, log)?;
 
   cancel.check()?;
   stages.report("Clock regression", 0.1, "");
@@ -82,7 +81,7 @@ pub fn run(
     names,
     has_alignment: aln.is_some(),
   };
-  let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit, leaf_bad_branches);
+  let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit);
   let pre_loop = run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log)?;
 
   let initial = run_initial_round(params, &context, names, pre_loop, log)?;
@@ -251,7 +250,7 @@ fn prepare_inputs(
   input: &TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
-) -> Result<(TimetreeContext, BTreeMap<GraphNodeKey, bool>), OperationError> {
+) -> Result<TimetreeContext, OperationError> {
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
     params.branch_length_mode, params.keep_root
@@ -282,15 +281,12 @@ fn prepare_inputs(
     DateConstraints::default()
   };
 
-  let leaf_bad_branches = undated_leaves(&input.graph, &date_constraints);
-
-  let context = TimetreeContext {
+  Ok(TimetreeContext {
     time_marginal,
     date_constraints,
     covariation_clock_params: covariation_clock_params.unwrap_or_default(),
     branch_params: BranchPointOptimizationParams::default(),
-  };
-  Ok((context, leaf_bad_branches))
+  })
 }
 
 fn estimate_initial_clock(

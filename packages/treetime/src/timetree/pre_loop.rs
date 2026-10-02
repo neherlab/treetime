@@ -13,7 +13,7 @@ use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
-use crate::timetree::optimization::outliers::{mark_outlier_leaves, report_outliers};
+use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
 use crate::timetree::pipeline::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
@@ -67,7 +67,6 @@ pub(crate) struct PreLoopState {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub branch_model: BranchModel,
   pub clock_fit: ClockFit,
-  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub outliers: BTreeSet<GraphNodeKey>,
   pub filter_divergences: Option<BTreeMap<GraphNodeKey, f64>>,
 }
@@ -78,14 +77,12 @@ impl PreLoopState {
     branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     branch_model: BranchModel,
     clock_fit: ClockFit,
-    leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
   ) -> Self {
     Self {
       graph,
       branch_lengths,
       branch_model,
       clock_fit,
-      leaf_bad_branches,
       outliers: BTreeSet::new(),
       filter_divergences: None,
     }
@@ -256,9 +253,7 @@ fn filter_clock_outliers(
     inputs.names,
     log,
   );
-  let leaf_bad_branches = mark_outlier_leaves(graph, &outliers, &state.leaf_bad_branches);
   Ok(PreLoopState {
-    leaf_bad_branches,
     outliers,
     filter_divergences: Some(divergences),
     ..state

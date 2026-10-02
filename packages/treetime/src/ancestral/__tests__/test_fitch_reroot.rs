@@ -19,7 +19,7 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use treetime_graph::reroot::{
-    RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
+    RerootResult, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -115,7 +115,9 @@ mod tests {
 
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
+      new_root_key: split_info.new_node_key,
+      stem_removal: None,
       edge_split: Some(split_info),
       edge_merge: None,
       inverted_edge_keys,
@@ -308,7 +310,9 @@ mod tests {
     let edge_merge = remove_node_if_trivial(&mut graph, old_root_key, old_root_parent, old_root_child)?;
     assert!(edge_merge.is_some(), "old root should be trivial after reroot");
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
+      new_root_key: split_info.new_node_key,
+      stem_removal: None,
       edge_split: Some(split_info),
       edge_merge,
       inverted_edge_keys,
@@ -405,7 +409,9 @@ mod tests {
     let new_root_key = split_info.new_node_key;
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
+      new_root_key: split_info.new_node_key,
+      stem_removal: None,
       edge_split: Some(split_info),
       edge_merge: None,
       inverted_edge_keys,

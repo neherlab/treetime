@@ -84,17 +84,3 @@ struct OutlierRecord {
   apparent_date: f64,
   residual: f64,
 }
-
-pub(crate) fn mark_outlier_leaves(
-  graph: &Graph,
-  outliers: &BTreeSet<GraphNodeKey>,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
-) -> BTreeMap<GraphNodeKey, bool> {
-  graph
-    .get_leaves()
-    .map(|leaf| {
-      let key = leaf.key();
-      (key, leaf_bad_branches[&key] || outliers.contains(&key))
-    })
-    .collect()
-}

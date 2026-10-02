@@ -4,7 +4,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
+  use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
   use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward};
@@ -12,6 +12,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::{
     Distribution, NegLog, convolve_across_edge, distribution_division, distribution_multiplication,
@@ -135,7 +136,11 @@ mod tests {
         ),
         Report,
       > {
-        let bad_branches = derive_bad_branches(&self.graph, constraints, &undated_leaves(&self.graph, constraints))?;
+        let bad_branches = derive_bad_branches(
+          &self.graph,
+          constraints,
+          &bad_leaves(&self.graph, constraints, &BTreeSet::new()),
+        )?;
         let backward = propagate_distributions_backward(&self.graph, constraints, None, &bad_branches, &self.branches)?;
         let posterior = propagate_distributions_forward(
           &self.graph,

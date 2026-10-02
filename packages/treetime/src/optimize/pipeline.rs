@@ -36,7 +36,6 @@ use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::RerootChanges;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::{make_error, make_report};
 
@@ -301,7 +300,7 @@ fn reroot_optimize(
   let reroot_result = match spec {
     RerootSpec::Method(RerootMethod::MinDev) => {
       let field = compute_div_stats(graph, branch_lengths, &variance)?;
-      reroot_in_place::<DivStats, _>(
+      reroot_in_place::<DivStats>(
         graph,
         &field.edge_stats,
         &field.root_stats,
@@ -309,28 +308,22 @@ fn reroot_optimize(
         &opt_params,
         topo,
         branch_lengths,
-        |_graph, _inverted| Ok(()),
+        names,
       )?
     },
     RerootSpec::Tips(tips) => {
       let tip_keys = resolve_tip_keys(graph, tips, names)?;
       let mrca = common_ancestor(graph, &tip_keys)?;
-      reroot_at_node(graph, mrca, topo, branch_lengths, |_graph, _inverted| Ok(()))?
+      reroot_at_node(graph, mrca, topo, branch_lengths, names)?
     },
     RerootSpec::Method(method) => {
       return make_error!("optimize cannot reroot with a date-dependent method: {method:?}");
     },
   };
 
-  let changes = RerootChanges {
-    edge_split: reroot_result.edge_split,
-    edge_merge: reroot_result.edge_merge,
-    inverted_edge_keys: reroot_result.inverted_edge_keys,
-  };
-
   let sparse_partitions: Vec<_> = sparse_partitions
     .into_iter()
-    .map(|family| reroot_sparse(family.partition, family.gtr, family.node_states, &changes))
+    .map(|family| reroot_sparse(family.partition, family.gtr, family.node_states, &reroot_result))
     .try_collect()?;
   let dense_partitions: Vec<_> = dense_partitions
     .into_iter()

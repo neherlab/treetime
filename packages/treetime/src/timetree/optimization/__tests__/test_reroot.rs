@@ -32,7 +32,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::reroot::RerootChanges;
+  use treetime_graph::reroot::RerootResult;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq, seq};
@@ -205,9 +205,9 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
     };
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
       inverted_edge_keys: vec![edge_to_a_key],
-      ..RerootChanges::default()
+      ..RerootResult::unchanged(a_key)
     };
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
@@ -273,9 +273,9 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 8]),
     };
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
       inverted_edge_keys: vec![edge_to_a_key],
-      ..RerootChanges::default()
+      ..RerootResult::unchanged(a_key)
     };
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
@@ -346,9 +346,9 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
       inverted_edge_keys: vec![edge_to_a_key],
-      ..RerootChanges::default()
+      ..RerootResult::unchanged(a_key)
     };
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
@@ -414,9 +414,9 @@ mod tests {
       a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
 
-    let changes = RerootChanges {
+    let changes = RerootResult {
       inverted_edge_keys: vec![edge_root_ab, edge_ab_a],
-      ..RerootChanges::default()
+      ..RerootResult::unchanged(a_key)
     };
 
     let recon = reroot_sparse(partition, gtr, node_states, &changes)?;

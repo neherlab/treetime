@@ -50,7 +50,7 @@ mod tests {
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<DivStats, _>(
+    reroot_in_place::<DivStats>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,
@@ -58,7 +58,7 @@ mod tests {
       &BrentParams::default(),
       RerootTopologyParams::default(),
       &mut branch_lengths,
-      |_graph, _inverted| Ok(()),
+      &names,
     )?;
 
     let dists = root_to_tip_distances(&graph, &branch_lengths);
@@ -77,7 +77,7 @@ mod tests {
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<DivStats, _>(
+    reroot_in_place::<DivStats>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,
@@ -85,7 +85,7 @@ mod tests {
       &BrentParams::default(),
       RerootTopologyParams::default(),
       &mut branch_lengths,
-      |_graph, _inverted| Ok(()),
+      &names,
     )?;
 
     let dists = root_to_tip_distances(&graph, &branch_lengths);
@@ -132,7 +132,7 @@ mod tests {
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().key();
 
-    reroot_in_place::<DivStats, _>(
+    reroot_in_place::<DivStats>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,
@@ -143,7 +143,7 @@ mod tests {
         remove_trivial_root: true,
       },
       &mut branch_lengths,
-      |_graph, _inverted| Ok(()),
+      &names,
     )?;
 
     let root_after = graph.get_exactly_one_root().unwrap().key();

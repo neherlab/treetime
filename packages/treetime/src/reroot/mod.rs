@@ -4,6 +4,7 @@ pub(crate) mod div_stats_traversal;
 pub(crate) mod method_brent;
 pub mod orchestrate;
 pub mod params;
+pub(crate) mod placement;
 pub(crate) mod search;
 pub mod split;
 pub mod traits;

@@ -3,13 +3,14 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
   use crate::progress::NoopProgress;
-  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
+  use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
+  use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
@@ -34,7 +35,8 @@ mod tests {
     graph: &TestGraph,
     constraints: &DateConstraints,
   ) -> Vec<TestNode> {
-    let bad_branches = derive_bad_branches(graph, constraints, &undated_leaves(graph, constraints)).unwrap();
+    let bad_branches =
+      derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new())).unwrap();
     graph
       .get_nodes()
       .map(|node| {

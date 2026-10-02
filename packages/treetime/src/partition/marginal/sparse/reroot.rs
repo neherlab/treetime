@@ -7,18 +7,21 @@ use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNode
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
+use treetime_graph::reroot::{EdgeMergeInfo, RerootResult, StemRemovalInfo};
 use treetime_primitives::Seq;
 
 pub(crate) fn reroot_sparse(
   partition: PartitionMarginalSparse,
   gtr: GTR,
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-  changes: &RerootChanges,
+  changes: &RerootResult,
 ) -> Result<SparseReconstruction, Report> {
   let mut partition = partition;
   let mut node_states = node_states;
 
+  if let Some(info) = &changes.stem_removal {
+    remove_stem_root(&mut partition, &mut node_states, info)?;
+  }
   apply_reroot_changes(&mut partition, &mut node_states, changes)?;
 
   if let Some(info) = &changes.edge_merge {
@@ -32,7 +35,7 @@ pub(crate) fn reroot_sparse(
 fn apply_reroot_changes(
   partition: &mut PartitionMarginalSparse,
   node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
-  changes: &RerootChanges,
+  changes: &RerootResult,
 ) -> Result<(), Report> {
   if let Some(info) = &changes.edge_split {
     let old_edge_data = partition
@@ -69,6 +72,25 @@ fn apply_reroot_changes(
   Ok(())
 }
 
+fn remove_stem_root(
+  partition: &mut PartitionMarginalSparse,
+  node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+  info: &StemRemovalInfo,
+) -> Result<(), Report> {
+  let mut stem_edge = partition
+    .obs_edges
+    .remove(&info.removed_edge_key)
+    .ok_or_else(|| make_internal_report!("Stem edge {:?} must exist for removal", info.removed_edge_key))?;
+  stem_edge.invert_fitch_subs();
+  for indel in &mut stem_edge.indels {
+    indel.invert();
+  }
+  apply_edge_to_sequence(&mut partition.root_sequence, &stem_edge, &partition.alphabet);
+  partition.obs_nodes.remove(&info.removed_node_key);
+  node_states.remove(&info.removed_node_key);
+  Ok(())
+}
+
 fn remove_trivial_root(
   partition: &mut PartitionMarginalSparse,
   node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -97,7 +119,7 @@ fn remove_trivial_root(
   Ok(())
 }
 
-fn derive_root_sequence(partition: &mut PartitionMarginalSparse, changes: &RerootChanges) {
+fn derive_root_sequence(partition: &mut PartitionMarginalSparse, changes: &RerootResult) {
   if !changes.inverted_edge_keys.is_empty() {
     let mut new_root_seq = partition.root_sequence.clone();
     for edge_key in &changes.inverted_edge_keys {

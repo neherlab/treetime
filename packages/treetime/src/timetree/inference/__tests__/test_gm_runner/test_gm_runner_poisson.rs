@@ -5,13 +5,14 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::progress::NoopProgress;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
+  use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::GRID_POINTS;
   use crate::timetree::inference::time_inference::BranchLikelihood;
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
@@ -53,7 +54,7 @@ mod tests {
         (edge.key(), branch)
       })
       .collect();
-    let bad_branches = derive_bad_branches(&graph, &constraints, &undated_leaves(&graph, &constraints))?;
+    let bad_branches = derive_bad_branches(&graph, &constraints, &bad_leaves(&graph, &constraints, &BTreeSet::new()))?;
     let backward = propagate_distributions_backward(&graph, &constraints, None, &bad_branches, &branches)?;
     let posterior = propagate_distributions_forward(&graph, &constraints, &names, &branches, &backward, &NoopProgress)?;
 

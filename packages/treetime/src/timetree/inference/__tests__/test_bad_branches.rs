@@ -2,11 +2,11 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::test_utils::find_node_key_by_name;
-  use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
+  use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use eyre::Report;
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
@@ -16,11 +16,28 @@ mod tests {
   const TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,C:0.1)root;";
 
   #[test]
+  fn test_bad_leaves_flags_clock_outliers_among_dated_leaves() -> Result<(), Report> {
+    let (graph, names) = helpers::tree()?;
+    let constraints = helpers::dated(&graph, &names, &["B", "C"]);
+    let outlier = find_node_key_by_name(&graph, &names, "B").expect("fixture node must exist");
+
+    let actual = helpers::by_name(&names, &bad_leaves(&graph, &constraints, &btreeset! { outlier }));
+
+    let expected = btreemap! {
+      "A".to_owned() => true,
+      "B".to_owned() => true,
+      "C".to_owned() => false,
+    };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
   fn test_bad_branches_undated_leaves_marks_leaves_without_a_date() -> Result<(), Report> {
     let (graph, names) = helpers::tree()?;
     let constraints = helpers::dated(&graph, &names, &["C", "AB"]);
 
-    let actual = helpers::by_name(&names, &undated_leaves(&graph, &constraints));
+    let actual = helpers::by_name(&names, &bad_leaves(&graph, &constraints, &BTreeSet::new()));
 
     let expected = btreemap! {
       "A".to_owned() => true,
@@ -36,7 +53,11 @@ mod tests {
     let (graph, names) = helpers::tree()?;
     let constraints = helpers::dated(&graph, &names, &["C"]);
 
-    let bad_branches = derive_bad_branches(&graph, &constraints, &undated_leaves(&graph, &constraints))?;
+    let bad_branches = derive_bad_branches(
+      &graph,
+      &constraints,
+      &bad_leaves(&graph, &constraints, &BTreeSet::new()),
+    )?;
 
     let expected = btreemap! {
       "A".to_owned() => true,
@@ -54,7 +75,11 @@ mod tests {
     let (graph, names) = helpers::tree()?;
     let constraints = helpers::dated(&graph, &names, &["C", "AB"]);
 
-    let bad_branches = derive_bad_branches(&graph, &constraints, &undated_leaves(&graph, &constraints))?;
+    let bad_branches = derive_bad_branches(
+      &graph,
+      &constraints,
+      &bad_leaves(&graph, &constraints, &BTreeSet::new()),
+    )?;
 
     let expected = btreemap! {
       "A".to_owned() => true,

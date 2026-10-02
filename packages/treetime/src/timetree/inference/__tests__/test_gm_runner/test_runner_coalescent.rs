@@ -21,7 +21,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::constraint_coalescent_node_times;
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::inference::bad_branches::undated_leaves;
+  use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use eyre::Report;
@@ -56,7 +56,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
       &TimeInferenceInputs {
         graph: &graph,
         date_constraints: &constraints,
-        leaf_bad_branches: &undated_leaves(&graph, &constraints),
+        leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
         gammas: &unit_gammas(&graph),
         branch_model: &BranchModel::Marginal(partition),
         branch_lengths: &run_branch_lengths,

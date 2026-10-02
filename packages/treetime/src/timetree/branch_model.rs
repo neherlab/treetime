@@ -6,7 +6,7 @@ use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::reroot::{RerootChanges, RerootResult};
+use treetime_graph::reroot::RerootResult;
 
 #[expect(
   clippy::large_enum_variant,
@@ -58,14 +58,9 @@ impl BranchModel {
     let Self::Marginal(partition) = self else {
       return Ok(self);
     };
-    let changes = RerootChanges {
-      edge_split: reroot.edge_split.clone(),
-      edge_merge: reroot.edge_merge.clone(),
-      inverted_edge_keys: reroot.inverted_edge_keys.clone(),
-    };
     progress_info!(log, "Applying reroot changes to 1 partitions");
     let partition = partition
-      .apply_reroot(&changes)
+      .apply_reroot(reroot)
       .wrap_err("Failed to apply reroot changes to partition")?
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))
       .wrap_err("Failed to update marginal after reroot")?;

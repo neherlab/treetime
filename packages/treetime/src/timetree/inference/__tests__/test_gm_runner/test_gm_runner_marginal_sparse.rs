@@ -15,7 +15,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::timetree::inference::bad_branches::undated_leaves;
+  use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
 
@@ -89,7 +89,7 @@ mod tests {
       &TimeInferenceInputs {
         graph: &graph,
         date_constraints: &constraints,
-        leaf_bad_branches: &undated_leaves(&graph, &constraints),
+        leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
         gammas: &unit_gammas(&graph),
         branch_model: &BranchModel::Marginal(partition),
         branch_lengths: &run_branch_lengths,

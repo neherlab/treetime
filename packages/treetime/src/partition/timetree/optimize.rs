@@ -7,7 +7,7 @@ use crate::partition::timetree::partition::PartitionTimetree;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::reroot::RerootChanges;
+use treetime_graph::reroot::RerootResult;
 
 #[allow(
   clippy::multiple_inherent_impl,
@@ -35,7 +35,7 @@ impl PartitionTimetree {
     }
   }
 
-  pub(crate) fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
+  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(family.partition, family.gtr)),
       Self::Sparse(family) => Self::Sparse(reroot_sparse(

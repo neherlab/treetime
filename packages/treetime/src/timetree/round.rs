@@ -14,6 +14,7 @@ use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent_timescale::{CoalescentTimescale, coalescent_mode, coalescent_timescale};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
+use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
@@ -59,11 +60,11 @@ pub(crate) fn run_initial_round(
       model: clock_model,
       points: clock_points,
     },
-    leaf_bad_branches,
     outliers,
     filter_divergences,
   } = pre_loop;
 
+  let leaf_bad_branches = bad_leaves(&graph, &context.date_constraints, &outliers);
   let names = restrict_node_names(input_names, &graph);
   let gammas = unit_gammas(&graph);
 

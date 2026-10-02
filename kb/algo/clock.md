@@ -92,7 +92,7 @@ v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../p
 
 ## Tree Rerooting
 
-Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root that has one child in the input tree becomes a leaf after the inversion, not a trivial node, and stays in the tree: [kb/issues/M-reroot-single-child-root-becomes-extra-leaf.md](../issues/M-reroot-single-child-root-becomes-extra-leaf.md).
+Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root with one child would become a leaf after the inversion. When it has no date, the reroot removes it first and its child becomes the root, which is exact because a branch to a node without data contributes a factor of 1 to the likelihood and root-to-tip distances add along a path. A dated one becomes a dated leaf. `--keep-root` leaves the tree unchanged. A reroot that turns an internal node without a date into a leaf fails with an error ([packages/treetime/src/reroot/placement.rs](../../packages/treetime/src/reroot/placement.rs)).
 
 v1: [`packages/treetime/src/clock/reroot.rs#L27-L383`](../../packages/treetime/src/clock/reroot.rs#L27-L383).
 

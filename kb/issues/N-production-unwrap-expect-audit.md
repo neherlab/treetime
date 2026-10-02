@@ -10,7 +10,7 @@ Production `unwrap()`/`expect()`/`assert!()` calls remain that can panic instead
 | :--------------------------------------------------- | :-------- | :------------------------------------------------------------ |
 | `partition/marginal_passes.rs`                       | 10        | `.unwrap()` / `.expect()` on node/edge lookup                 |
 | `partition/marginal_dense.rs`                        | 8         | `.unwrap()` / `.expect()` on node/edge lookup                 |
-| `clock/reroot.rs`                                    | 6         | `.expect("Edge not found")`                                   |
+| `clock/reroot.rs`                                    | 2         | `.unwrap()` on an inverted branch length, `panic!` on a missing edge state |
 | `timetree/optimization/polytomy.rs`                  | 5         | `.expect("Node must exist")`                                  |
 | `partition/traits.rs`                                | 4         | `.expect()` on `node()`, `edge()`, `node_mut()`, `edge_mut()` |
 | `packages/treetime-grid/src/grid.rs`                 | 5         | `T::from(...).unwrap()` numeric conversions                   |

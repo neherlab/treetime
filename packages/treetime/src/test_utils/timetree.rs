@@ -5,20 +5,21 @@ use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use crate::seq::gap_fill::GapFill;
-use crate::timetree::inference::bad_branches::{derive_bad_branches, undated_leaves};
+use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
 use crate::timetree::inference::time_inference::{
   BranchLikelihood, NodePosterior, TimeBackward, TimeInference, likely_times,
 };
 use crate::timetree::params::TimeMarginalMode;
 use crate::timetree::pipeline::TimetreeParams;
 use eyre::Report;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
 
 pub(crate) fn constraint_coalescent_node_times(
   graph: &Graph,
   constraints: &DateConstraints,
 ) -> Result<CoalescentNodeTimes, Report> {
-  let bad_branches = derive_bad_branches(graph, constraints, &undated_leaves(graph, constraints))?;
+  let bad_branches = derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new()))?;
   let times = likely_times(graph, constraints, None)?
     .into_iter()
     .map(|(key, time_dist_likely)| {

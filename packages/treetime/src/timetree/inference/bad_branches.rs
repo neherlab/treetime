@@ -1,15 +1,22 @@
 use crate::clock::date_constraints::DateConstraints;
 use eyre::Report;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) fn undated_leaves(graph: &Graph, constraints: &DateConstraints) -> BTreeMap<GraphNodeKey, bool> {
+pub(crate) fn bad_leaves(
+  graph: &Graph,
+  constraints: &DateConstraints,
+  outliers: &BTreeSet<GraphNodeKey>,
+) -> BTreeMap<GraphNodeKey, bool> {
   graph
     .get_leaves()
     .map(|leaf| {
       let key = leaf.key();
-      (key, constraints.date_constraint(key).is_none())
+      (
+        key,
+        constraints.date_constraint(key).is_none() || outliers.contains(&key),
+      )
     })
     .collect()
 }

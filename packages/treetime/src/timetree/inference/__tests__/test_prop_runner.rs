@@ -12,7 +12,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::inference::bad_branches::undated_leaves;
+  use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
   use eyre::Report;
@@ -21,6 +21,7 @@ mod tests {
   use itertools::Itertools;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
+  use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
@@ -138,7 +139,7 @@ mod tests {
         .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
         .collect();
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
-      let leaf_bad_branches = undated_leaves(&graph, &constraints);
+      let leaf_bad_branches = bad_leaves(&graph, &constraints, &BTreeSet::new());
       let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
 
       let unit = unit_gammas(&graph);

@@ -24,7 +24,7 @@ A bad node sends no message to its parent. It still receives a posterior: when i
 
 A bad branch means that the subtree carries no information about time. A node with a date carries information whatever its children do. v0 states this intent in `_assign_dates()`, and rule B silently discards a date the user supplied.
 
-Deriving the flags per inference, instead of carrying them from round to round, also keeps them correct for the current topology after reroot and polytomy resolution. Leaves do not change under either operation, so the leaf flags are the only flags that need to persist.
+Deriving the flags per inference, instead of carrying them from round to round, also keeps them correct for the current topology after reroot and polytomy resolution. The leaf flags are derived once from the tree after the last reroot, because polytomy resolution adds only internal nodes and the refinement rounds do not reroot.
 
 ## Impact
 
