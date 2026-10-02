@@ -2,10 +2,10 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
+use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::create::build_sparse_partition;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
@@ -40,27 +40,15 @@ pub fn run(
       ))
     })?;
     let node_inputs = node_seq_inputs(&input.graph, &names, sequences);
-    let created = create_marginal_partition(
+    let (partition, _, gtr) = build_sparse_partition(
+      GtrModelName::JC69,
       &input.graph,
       0,
-      input.alphabet.clone(),
+      input.alphabet,
       &node_inputs,
-      GtrModelName::JC69,
-      None,
       &branch_lengths_or_zero(&branch_lengths),
       log,
     )?;
-    let (partition, gtr) = match created.partition {
-      MarginalPartition::Sparse(partition, _) => (partition, created.gtr),
-      MarginalPartition::Dense(_) => {
-        let gtr = get_gtr_by_name(GtrModelName::JC69)?;
-        log_gtr(&gtr, GtrModelName::JC69, log);
-        let fitch =
-          crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), &node_inputs)?;
-        let (partition, _) = fitch.into_marginal_sparse(&input.graph)?;
-        (partition, gtr)
-      },
-    };
     (vec![partition], Some(gtr))
   } else {
     (vec![], None)

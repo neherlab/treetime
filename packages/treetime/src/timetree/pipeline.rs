@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::ancestral::plan::Representation;
 use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
@@ -18,7 +19,7 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::params::BranchLengthMode;
-use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::create::{MarginalPartition, build_marginal_partition};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
@@ -350,29 +351,28 @@ fn initialize_branch_model(
       );
       let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
       let node_inputs = node_seq_inputs(graph, names, aln_data.to_vec());
-      let created = create_marginal_partition(
+      let (partition, gtr) = build_marginal_partition(
+        Representation::resolve(params.dense),
+        params.model,
         graph,
         0,
         alphabet,
         &node_inputs,
-        params.model,
-        params.dense,
         &branch_lengths_or_zero(branch_lengths),
         log,
       )?;
-      let gtr = created.gtr.clone();
-      let partition = match created.partition {
+      let partition = match partition {
         MarginalPartition::Sparse(partition, node_states) => {
-          PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, created.gtr, node_states))
+          PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr.clone(), node_states))
         },
         MarginalPartition::Dense(partition) => {
-          PartitionTimetree::Dense(DenseReconstruction::seeded(partition, created.gtr))
+          PartitionTimetree::Dense(DenseReconstruction::seeded(partition, gtr.clone()))
         },
       };
       Ok(BranchModelInit {
         branch_model: BranchModel::Marginal(partition),
         gtr: Some(gtr),
-        model_name: Some(created.model_name),
+        model_name: Some(params.model),
       })
     },
   }

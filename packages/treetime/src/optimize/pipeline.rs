@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::ancestral::plan::Representation;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::error::OperationError;
@@ -16,7 +17,7 @@ use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   apply_initial_guess_mode, marginal_update_dense, marginal_update_sparse, normalize_partition_rates, run_optimize_loop,
 };
-use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::create::{MarginalPartition, build_marginal_partition};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::div_stats::DivStats;
@@ -60,23 +61,21 @@ pub fn run(
   let sequences = std::mem::take(&mut input.sequences);
   let node_inputs = node_seq_inputs(&input.graph, names, sequences);
 
-  let created = create_marginal_partition(
+  let (partition, gtr) = build_marginal_partition(
+    Representation::resolve(params.dense),
+    params.model,
     &input.graph,
     0,
     input.alphabet,
     &node_inputs,
-    params.model,
-    params.dense,
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )?;
-  let model_name = created.model_name;
-  let gtr = created.gtr;
 
   let mut sparse_partitions: Vec<SparseReconstruction>;
   let mut dense_partitions: Vec<DenseReconstruction>;
 
-  match created.partition {
+  match partition {
     MarginalPartition::Sparse(partition, node_states) => {
       sparse_partitions = vec![SparseReconstruction::seeded(partition, gtr, node_states)];
       dense_partitions = vec![];
@@ -106,7 +105,7 @@ pub fn run(
   (sparse_partitions, _) = marginal_update_sparse(&input.graph, &profile_lengths, sparse_partitions)?;
   (dense_partitions, _) = marginal_update_dense(&input.graph, &profile_lengths, dense_partitions)?;
 
-  if model_name == GtrModelName::Infer {
+  if params.model == GtrModelName::Infer {
     let mut sparse_models: Vec<(usize, &mut GTR)> = sparse_partitions
       .iter_mut()
       .map(|family| (family.partition.length, &mut family.gtr))
@@ -198,7 +197,7 @@ pub fn run(
   Ok(OptimizeOutput {
     graph: input.graph,
     gtr,
-    model_name,
+    model_name: params.model,
     sparse_partitions,
     dense_partitions,
     branch_lengths,

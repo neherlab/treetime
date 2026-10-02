@@ -2,11 +2,12 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
+use crate::ancestral::plan::Representation;
 use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::create::{MarginalPartition, build_marginal_partition};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::progress::LogSink;
 use crate::seq::alignment::node_seq_inputs;
@@ -40,24 +41,23 @@ pub(crate) fn reconstruct_marginal_partition(
   let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, log)?;
   let node_inputs = node_seq_inputs(graph, names, sequences);
   let profile_lengths = branch_lengths_or_zero(branch_lengths);
-  let created = create_marginal_partition(
+  let (partition, gtr) = build_marginal_partition(
+    Representation::resolve(params.dense),
+    gtr_model,
     graph,
     index,
     alphabet,
     &node_inputs,
-    gtr_model,
-    params.dense,
     &profile_lengths,
     log,
   )?;
-  let gtr = created.gtr;
 
   let tips = TipStates {
     include_leaves: params.include_leaves,
     impute: params.impute_missing_data,
   };
 
-  let partition: AncestralPartition = match created.partition {
+  let partition: AncestralPartition = match partition {
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate { node_states, edges, .. } =
         partition.marginal_update(&gtr, graph, &profile_lengths, &node_states)?;

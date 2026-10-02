@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::MethodAncestral;
+use crate::ancestral::plan::Representation;
 use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
@@ -10,7 +11,7 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_model;
-use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::create::{MarginalPartition, build_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -106,18 +107,17 @@ pub fn run(
       cancel.check()?;
       stages.report("Inferring GTR model", 0.2, "");
 
-      let created = create_marginal_partition(
+      let (partition, gtr) = build_marginal_partition(
+        Representation::resolve(params.dense),
+        params.model,
         graph,
         0,
         alphabet,
         node_inputs,
-        params.model,
-        params.dense,
         &profile_lengths,
         log,
       )?;
-      let model_name = created.model_name;
-      let gtr = created.gtr;
+      let model_name = params.model;
       let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
 
       let tips = TipStates {
@@ -125,7 +125,7 @@ pub fn run(
         impute: params.impute_missing_data,
       };
 
-      match created.partition {
+      match partition {
         MarginalPartition::Sparse(partition, node_states) => {
           cancel.check()?;
           stages.report("Marginal reconstruction", 0.4, "");
