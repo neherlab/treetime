@@ -241,10 +241,6 @@ impl TopologyOutcome {
   }
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn relax_clock(
   relax: &[f64],
   state: RoundState,
@@ -267,21 +263,22 @@ fn relax_clock(
     progress,
     "Applying relaxed clock with slack={slack}, coupling={coupling}"
   );
+  #[expect(
+    clippy::as_conversions,
+    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
+  )]
+  let one_mutation = 1.0 / total_length as f64;
   let gammas = apply_relaxed_clock(
     &state.graph,
     &state.branch_lengths,
     relax,
-    1.0 / total_length as f64,
+    one_mutation,
     state.clock_model.clock_rate(),
     &state.time_inference.branches,
   )?;
   Ok(RoundState { gammas, ..state })
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn refine_topology(
   inputs: &RoundInputs<'_>,
   state: RoundState,
@@ -294,6 +291,10 @@ fn refine_topology(
     return Ok((state, TopologyOutcome::Unchanged));
   }
 
+  #[expect(
+    clippy::as_conversions,
+    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
+  )]
   let total_mutation_rate = state.clock_model.clock_rate() * total_length as f64;
   let mut node_times = state.time_inference.node_times();
   let PolytomyResolution {

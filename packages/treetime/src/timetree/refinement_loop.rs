@@ -10,10 +10,6 @@ use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
 use treetime_utils::sync::random::get_random_number_generator;
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
@@ -46,6 +42,10 @@ pub(crate) fn run_refinement_loop(
   let mut timescale = timescale;
   while let Some(IterationContext { i }) = optimizer.next_iter(progress) {
     cancel.check()?;
+    #[expect(
+      clippy::as_conversions,
+      reason = "iteration counts are far below 2^53, so the conversion to f64 is exact"
+    )]
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
     progress.report(
       "Optimization",

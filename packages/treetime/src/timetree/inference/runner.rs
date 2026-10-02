@@ -152,10 +152,6 @@ pub(crate) fn blended_clock_branch_lengths(
   clock_branch_lengths
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
   partition: &PartitionTimetree,
@@ -166,6 +162,10 @@ fn compute_branch_distributions_marginal_mode(
   progress: &dyn ProgressSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
   let total_sites = partition.sequence_length();
+  #[expect(
+    clippy::as_conversions,
+    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
+  )]
   let one_mutation = 1.0 / total_sites as f64;
 
   let indel_counts = gather_timetree_edge_indel_counts(graph, partition);
