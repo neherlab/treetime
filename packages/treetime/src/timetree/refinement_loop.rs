@@ -14,7 +14,7 @@ use treetime_utils::sync::random::get_random_number_generator;
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
-pub(crate) fn run_optimization_loop(
+pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
   timescale: CoalescentTimescale,

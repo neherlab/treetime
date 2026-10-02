@@ -37,9 +37,9 @@ use crate::timetree::inference::bad_branches::undated_leaves;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::inference::time_inference::TimeInference;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
-use crate::timetree::optimization_loop::run_optimization_loop;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
+use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, run_initial_round};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
@@ -91,7 +91,7 @@ pub fn run(
     outliers: &initial.outliers,
   };
   let coalescent = &initial.coalescent;
-  let (state, timescale) = run_optimization_loop(
+  let (state, timescale) = run_refinement_loop(
     &round_inputs,
     coalescent,
     initial.timescale,

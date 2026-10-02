@@ -6,10 +6,10 @@ pub mod convergence;
 pub(crate) mod divergence;
 pub mod inference;
 pub mod optimization;
-pub(crate) mod optimization_loop;
 pub mod params;
 pub mod pipeline;
 pub(crate) mod pre_loop;
+pub(crate) mod refinement_loop;
 pub(crate) mod round;
 
 #[cfg(test)]
