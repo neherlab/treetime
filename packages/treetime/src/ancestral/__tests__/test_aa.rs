@@ -2,10 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::aa::{
-    AaCdsNodeData, AaParams, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences, reconstruct_aa,
+    AaCdsNodeData, AaNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences, reconstruct_aa,
   };
   use crate::cancel::NoopCancel;
-  use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
   use crate::seq::mutation::{MutationEvent, Sub};
   use maplit::btreemap;
@@ -13,7 +12,7 @@ mod tests {
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq};
-  use treetime_utils::o;
+  use treetime_utils::{assert_error, o};
   use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
   #[rustfmt::skip]
@@ -92,27 +91,20 @@ mod tests {
 
   #[test]
   fn test_reconstruct_aa_reconstructs_each_cds_independently_with_stop_codon() {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
     let names = nwk_parsed.names();
+    let name_to_key = helpers::node_name_to_key(&names, &nwk_parsed.graph);
     let aa = Alphabet::new(AlphabetName::Aa).unwrap();
     let cdses = vec![
-      helpers::cds_input("S", &aa, &[("A", "MC*"), ("B", "MA*")]),
-      helpers::cds_input("N", &aa, &[("A", "KL"), ("B", "KM")]),
+      helpers::cds_input("S", &aa, &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")]),
+      helpers::cds_input("N", &aa, &[("A", "KL"), ("B", "KL"), ("C", "KM")]),
     ];
-    let params = AaParams {
-      dense: Some(false),
-      include_leaves: false,
-      impute_missing_data: false,
-      sample_from_profile: SampleMode::default(),
-      seed: None,
-      ignore_missing_alns: false,
-    };
 
     let actual = reconstruct_aa(
       &nwk_parsed.graph,
       &names,
       &nwk_parsed.branch_lengths,
-      &params,
+      &helpers::sparse_params(),
       cdses,
       None,
       &NoopCancel,
@@ -120,28 +112,154 @@ mod tests {
     )
     .unwrap();
 
-    let s_root = &actual.root_aa_sequences["S"];
-    assert_eq!(3, s_root.len());
-    assert_eq!(Some('*'), s_root.chars().last());
-    let n_root = &actual.root_aa_sequences["N"];
-    assert_eq!(2, n_root.len());
-    assert_eq!(Some('K'), n_root.chars().next());
+    let expected = AaNodeData {
+      reference: btreemap! {
+        o!("N") => o!("KL"),
+        o!("S") => o!("MC*"),
+      },
+      root_aa_sequences: btreemap! {
+        o!("N") => o!("KL"),
+        o!("S") => o!("MC*"),
+      },
+      node_aa_mutations: btreemap! {
+        name_to_key["root"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },
+        name_to_key["A"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },
+        name_to_key["B"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },
+        name_to_key["C"] => btreemap! {
+          o!("N") => vec![helpers::substitution(b'L', 1, b'M')],
+          o!("S") => vec![helpers::substitution(b'C', 1, b'A')],
+        },
+      },
+    };
+    assert_eq!(expected, actual);
+    assert_eq!(vec!["N", "S"], actual.root_aa_sequences.keys().collect::<Vec<_>>());
+  }
+
+  #[test]
+  fn test_reconstruct_aa_cancelled_before_first_cds_emits_nothing() {
+    let (cancel, sink, emitted) = helpers::cancel_and_recording_sink(true);
+
+    let result = helpers::reconstruct_two_cdses(&cancel, sink);
+
+    assert_error!(result, "Operation cancelled");
+    assert_eq!(Vec::<String>::new(), *emitted.lock());
+  }
+
+  #[test]
+  fn test_reconstruct_aa_cancelled_after_first_cds_stops_before_second_cds() {
+    let (cancel, sink, emitted) = helpers::cancel_and_recording_sink(false);
+
+    let result = helpers::reconstruct_two_cdses(&cancel, sink);
+
+    assert_error!(result, "Operation cancelled");
+    assert_eq!(vec![o!("S"); 4], *emitted.lock());
   }
 
   mod helpers {
-    use crate::alphabet::alphabet::Alphabet;
-    use crate::ancestral::aa::CdsInput;
+    use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
     use crate::ancestral::partition::AncestralPartition;
+    use crate::cancel::Cancel;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::passes::create_fitch_partition;
+    use crate::partition::marginal::sample::SampleMode;
+    use crate::progress::NoopProgress;
     use crate::seq::alignment::node_seq_inputs;
+    use crate::seq::mutation::{MutationEvent, Sub};
+    use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+    use eyre::Report;
+    use parking_lot::Mutex;
     use std::collections::BTreeMap;
     use std::fmt::Write;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::nwk_read_str;
-    use treetime_primitives::{AlignmentRecord, Seq};
+    use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
+
+    pub(super) struct FlagCancel(Arc<AtomicBool>);
+
+    impl Cancel for FlagCancel {
+      fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+      }
+    }
+
+    struct CancellingRecordingSink {
+      cancel: Arc<AtomicBool>,
+      emitted: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl SeqSink for CancellingRecordingSink {
+      fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+        Ok(())
+      }
+
+      fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+        let SeqTrack::Aa(name) = item.track else {
+          panic!("reconstruct_aa must emit only amino acid tracks");
+        };
+        self.emitted.lock().push(name.to_owned());
+        self.cancel.store(true, Ordering::SeqCst);
+        Ok(())
+      }
+    }
+
+    pub(super) fn cancel_and_recording_sink(
+      initially_cancelled: bool,
+    ) -> (FlagCancel, Box<dyn SeqSink>, Arc<Mutex<Vec<String>>>) {
+      let flag = Arc::new(AtomicBool::new(initially_cancelled));
+      let emitted = Arc::new(Mutex::new(Vec::new()));
+      let sink = CancellingRecordingSink {
+        cancel: Arc::clone(&flag),
+        emitted: Arc::clone(&emitted),
+      };
+      (FlagCancel(flag), Box::new(sink), emitted)
+    }
+
+    pub(super) fn reconstruct_two_cdses(cancel: &FlagCancel, sink: Box<dyn SeqSink>) -> Result<AaNodeData, Report> {
+      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+      let names = nwk_parsed.names();
+      let aa = Alphabet::new(AlphabetName::Aa)?;
+      let cdses = vec![
+        cds_input("S", &aa, &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")]),
+        cds_input("N", &aa, &[("A", "KL"), ("B", "KL"), ("C", "KM")]),
+      ];
+      reconstruct_aa(
+        &nwk_parsed.graph,
+        &names,
+        &nwk_parsed.branch_lengths,
+        &sparse_params(),
+        cdses,
+        Some(sink),
+        cancel,
+        &NoopProgress,
+      )
+    }
+
+    pub(super) fn sparse_params() -> AaParams {
+      AaParams {
+        dense: Some(false),
+        include_leaves: false,
+        impute_missing_data: false,
+        sample_from_profile: SampleMode::default(),
+        seed: None,
+        ignore_missing_alns: false,
+      }
+    }
+
+    pub(super) fn substitution(reff: u8, pos: usize, qry: u8) -> MutationEvent {
+      MutationEvent::Substitution(
+        Sub::new(
+          AsciiChar::from_byte_unchecked(reff),
+          pos,
+          AsciiChar::from_byte_unchecked(qry),
+        )
+        .unwrap(),
+      )
+    }
 
     pub(super) fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,

@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::partition::marginal::sample::SampleMode;
-  use eyre::Report;
+  use eyre::{OptionExt, Report};
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeSet;
 
   #[test]
   fn test_sample_reconstruction_argmax_ignores_seed() -> Result<(), Report> {
@@ -50,6 +51,34 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_sample_reconstruction_sparse_constant_sites_always_sample_observed_state() -> Result<(), Report> {
+    for seed in 0..64 {
+      let root = helpers::reconstruct_two_leaves(SampleMode::Root, seed)?;
+      assert_eq!(
+        "ACGT",
+        root.chars().take(4).collect::<String>(),
+        "constant columns are certain at seed {seed}"
+      );
+    }
+    Ok(())
+  }
+
+  #[test]
+  fn test_sample_reconstruction_two_state_site_samples_both_states() -> Result<(), Report> {
+    let sampled: BTreeSet<char> = (0..64)
+      .map(|seed| {
+        let root = helpers::reconstruct_two_leaves(SampleMode::Root, seed)?;
+        root.chars().nth(4).ok_or_eyre("root sequence must have five sites")
+      })
+      .collect::<Result<_, Report>>()?;
+    assert!(
+      sampled.contains(&'A') && sampled.contains(&'C'),
+      "the variable column has equal posterior on A and C, sampled states: {sampled:?}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
@@ -60,7 +89,7 @@ mod tests {
     use crate::partition::marginal::sequences::TipStates;
     use crate::seq::alignment::node_seq_inputs;
     use crate::test_utils::emitted_sequences_by_name;
-    use eyre::Report;
+    use eyre::{OptionExt, Report};
     use indoc::indoc;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
@@ -72,10 +101,9 @@ mod tests {
 
     pub(super) const ROOT_NAME: &str = "root";
 
-    const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
-
     pub(super) fn reconstruct(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+      reconstruct_named(
+        "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
         indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -86,18 +114,42 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-        &Alphabet::default(),
-      )?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
+        mode,
+        seed,
+      )
+    }
 
-      let nwk_parsed = nwk_read_str(TREE)?;
+    pub(super) fn reconstruct_two_leaves(mode: SampleMode, seed: u64) -> Result<String, Report> {
+      let mut sequences = reconstruct_named(
+        "(A:0.1,B:0.1)root;",
+        indoc! {r#"
+        >A
+        ACGTA
+        >B
+        ACGTC
+      "#},
+        mode,
+        seed,
+      )?;
+      sequences.remove(ROOT_NAME).ok_or_eyre("root must be emitted")
+    }
+
+    fn reconstruct_named(
+      tree: &str,
+      fasta: &str,
+      mode: SampleMode,
+      seed: u64,
+    ) -> Result<BTreeMap<String, String>, Report> {
+      let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &Alphabet::default())?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+
+      let nwk_parsed = nwk_read_str(tree)?;
       let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
+      let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

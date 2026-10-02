@@ -336,6 +336,19 @@ mod tests {
       sparse_x.to_string(),
       "sparse reads observed leaf gaps from its single Fitch pass"
     );
+    for (leaf, expected_leaf) in [("L1", "ACNNGT"), ("L2", "ACNNGT"), ("L3", "AC--GT")] {
+      let leaf_key = find_node_key_by_name(&graph, &names, leaf).expect("leaf must exist");
+      assert_eq!(
+        expected_leaf,
+        dense.node_sequence(&graph, false, leaf_key)?.to_string(),
+        "dense leaf {leaf} keeps its observed unknown and gap states"
+      );
+      assert_eq!(
+        expected_leaf,
+        sparse.node_sequence(&graph, false, leaf_key)?.to_string(),
+        "sparse leaf {leaf} keeps its observed unknown and gap states"
+      );
+    }
     Ok(())
   }
 

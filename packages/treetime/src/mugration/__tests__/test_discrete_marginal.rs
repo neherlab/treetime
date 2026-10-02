@@ -12,7 +12,6 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;

@@ -1,12 +1,10 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::__tests__::prop_generators::alignment::{
-  arb_alignment, arb_alignment_no_gaps, arb_alignment_with_runs,
-};
+use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
 use crate::gtr::gtr::GTR;
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
 use treetime_io::nwk::nwk_read_str;
 use treetime_primitives::AlignmentRecord;
@@ -107,40 +105,6 @@ pub(crate) fn arb_marginal_input() -> impl Strategy<Value = MarginalTestInput> {
 
 pub(crate) fn arb_marginal_input_small() -> impl Strategy<Value = MarginalTestInput> {
   (3_usize..=4, 3_usize..=10).prop_flat_map(|(n_taxa, seq_len)| arb_marginal_input_with_params(n_taxa, seq_len))
-}
-
-pub(crate) fn arb_marginal_input_gap_runs() -> impl Strategy<Value = MarginalTestInput> {
-  (3_usize..=5, 4_usize..=8).prop_flat_map(|(n_taxa, seq_len)| {
-    let taxa = taxa_names(n_taxa);
-    let taxa_for_aln = taxa.clone();
-    (
-      arb_tree_topology(taxa),
-      arb_alignment_with_runs(taxa_for_aln, seq_len),
-      arb_gtr_nuc(),
-    )
-      .prop_map(move |(tree, alignment, gtr)| MarginalTestInput {
-        newick: format!("({tree})root:0.001;"),
-        alignment,
-        gtr,
-        n_taxa,
-        seq_len,
-      })
-  })
-}
-
-pub(crate) fn arb_discrete_input() -> impl Strategy<Value = (String, BTreeMap<String, String>)> {
-  (3_usize..=6).prop_flat_map(|n_taxa| {
-    let taxa = taxa_names(n_taxa);
-    let values = prop::collection::vec(prop::sample::select(vec!["a", "b", "c", "?", "x"]), n_taxa);
-    (arb_tree_topology(taxa.clone()), values).prop_map(move |(tree, values)| {
-      let traits = taxa
-        .iter()
-        .zip(values)
-        .map(|(name, value)| (name.clone(), value.to_owned()))
-        .collect();
-      (format!("({tree})root:0.001;"), traits)
-    })
-  })
 }
 
 #[cfg(test)]

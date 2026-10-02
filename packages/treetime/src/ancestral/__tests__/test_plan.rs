@@ -18,9 +18,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::default_is_sparse(None,        false)]
-  #[case::dense(            Some(true),  true)]
-  #[case::sparse(           Some(false), false)]
+  #[case::unset_is_sparse_known_issue_n_representation_infer_dense_stub(None, false)]
+  #[case::dense(Some(true), true)]
+  #[case::sparse(Some(false), false)]
   #[trace]
   fn test_plan_marginal_representation(#[case] dense: Option<bool>, #[case] expected_dense: bool) {
     let params = AncestralParams {
