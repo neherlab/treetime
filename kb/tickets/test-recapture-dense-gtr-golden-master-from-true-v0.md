@@ -4,7 +4,7 @@ The dense GTR golden master capture script applies v1's uninformative-root filte
 
 ## Task
 
-- Rewrite [packages/treetime/src/gtr/infer_gtr/**tests**/**fixtures**/gm_infer_gtr_dense_capture](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture) to capture v0's `root_state` unfiltered (via `tt.infer_gtr()` or the exact `treeanc.py:1608-1613` accumulation), with no v1-specific filtering baked in.
+- Rewrite [`packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture`](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture) to capture v0's `root_state` unfiltered (via `tt.infer_gtr()` or the exact `treeanc.py:1608-1613` accumulation), with no v1-specific filtering baked in.
 - Re-capture `gm_infer_gtr_dense_outputs` and run v1 with `filter_uninformative_root = false` (v0 parity) against it.
 - Validate the filtered path (`filter_uninformative_root = true`) separately, with expectations derived from its own specification, not from the v0 oracle.
 - Reconcile with the team decision on the nucleotide filtering policy (mugration already defaults to v0 and gates filtering behind `--filter-uninformative-root`).

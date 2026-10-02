@@ -32,7 +32,7 @@ For finite nonzero $n$, let $d = \lfloor \log_{10}(\lfloor |n| \rfloor) \rfloor 
 ## Locations
 
 - `pub(crate) fn format_number()` [packages/treetime/src/commands/shared/tree_output.rs#L1726](../../packages/treetime/src/commands/shared/tree_output.rs#L1726)
-- Unit tests [packages/treetime/src/commands/shared/**tests**/test_tree_output.rs](../../packages/treetime/src/commands/shared/__tests__/test_tree_output.rs)
+- Unit tests [`packages/app-output/src/__tests__/test_tree_output.rs`](../../packages/app-output/src/__tests__/test_tree_output.rs)
 
 ## Related KB items
 

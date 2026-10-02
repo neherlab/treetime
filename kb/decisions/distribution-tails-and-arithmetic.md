@@ -206,10 +206,10 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Tests
 
-- [packages/treetime-distribution/src/distribution_ops/**tests**/test_multiply.rs](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs): tail combinations (overlapping, disjoint, mixed `Constant`/`Hard`/`Error`, commutativity)
-- [packages/treetime-distribution/src/distribution_ops/**tests**/test_divide.rs](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs): exact intersection under default boundaries, extension under explicit divisor tails
-- [packages/treetime-distribution/src/distribution_core/**tests**/test_boundary_behavior.rs](../../packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs): boundary-variant evaluation and composition
-- [packages/treetime/src/timetree/inference/**tests**/test_tail_fit.rs](../../packages/treetime/src/timetree/inference/__tests__/test_tail_fit.rs): `fn fit_message_soft_tail()` -- slope recovery, finite tail mass, inert on non-Function, error on degenerate grid
+- [`packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs): tail combinations (overlapping, disjoint, mixed `Constant`/`Hard`/`Error`, commutativity)
+- [`packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs): exact intersection under default boundaries, extension under explicit divisor tails
+- [`packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs): boundary-variant evaluation and composition
+- [`packages/treetime/src/timetree/inference/__tests__/test_tail_fit.rs`](../../packages/treetime/src/timetree/inference/__tests__/test_tail_fit.rs): `fn fit_message_soft_tail()` -- slope recovery, finite tail mass, inert on non-Function, error on degenerate grid
 
 ## Related knowledge base items
 
