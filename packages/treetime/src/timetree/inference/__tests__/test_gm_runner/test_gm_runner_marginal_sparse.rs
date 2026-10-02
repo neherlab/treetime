@@ -16,7 +16,7 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::timetree::inference::bad_branches::undated_leaves;
-  use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
 
   use crate::partition::timetree::partition::PartitionTimetree;
@@ -86,16 +86,18 @@ mod tests {
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     let inference = run_timetree(
-      &graph,
-      &constraints,
-      &undated_leaves(&graph, &constraints),
-      &unit_gammas(&graph),
-      &BranchModel::Marginal(partition),
-      &run_branch_lengths,
-      &run_names,
-      &clock_model,
+      &TimeInferenceInputs {
+        graph: &graph,
+        date_constraints: &constraints,
+        leaf_bad_branches: &undated_leaves(&graph, &constraints),
+        gammas: &unit_gammas(&graph),
+        branch_model: &BranchModel::Marginal(partition),
+        branch_lengths: &run_branch_lengths,
+        names: &run_names,
+        clock_model: &clock_model,
+        no_indels: false,
+      },
       None,
-      false,
       &NoopProgress,
     )?;
 

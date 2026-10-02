@@ -38,7 +38,8 @@ use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::divergence::final_divergences;
 use crate::timetree::inference::bad_branches::undated_leaves;
 use crate::timetree::inference::runner::{
-  CLOCK_BRANCH_LENGTH_UNDAMPED, blended_clock_branch_lengths, run_timetree, timetree_branch_lengths,
+  CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths, run_timetree,
+  timetree_branch_lengths,
 };
 use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
@@ -413,21 +414,18 @@ fn run_initial_round(
   let names = restrict_node_names(input_names, &graph);
   let gammas = unit_gammas(&graph);
 
-  let run = |prior: Option<&CoalescentModel>| {
-    run_timetree(
-      &graph,
-      &context.date_constraints,
-      &leaf_bad_branches,
-      &gammas,
-      &branch_model,
-      &branch_lengths,
-      &names,
-      &clock_model,
-      prior,
-      params.no_indels,
-      progress,
-    )
+  let time_inputs = TimeInferenceInputs {
+    graph: &graph,
+    date_constraints: &context.date_constraints,
+    leaf_bad_branches: &leaf_bad_branches,
+    gammas: &gammas,
+    branch_model: &branch_model,
+    branch_lengths: &branch_lengths,
+    names: &names,
+    clock_model: &clock_model,
+    no_indels: params.no_indels,
   };
+  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, progress);
   let time_inference = run(None)?;
 
   if params.n_branches_posterior.is_some() {
@@ -538,8 +536,6 @@ fn refine_final_times(
   progress: &dyn ProgressSink,
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
-  let constraints = &inputs.context.date_constraints;
-  let leaf_bad_branches = inputs.leaf_bad_branches;
   let rate_std = if params.confidence {
     determine_rate_std(params.clock_std_dev, params.covariation, &state.clock_model, progress)?
   } else {
@@ -551,21 +547,9 @@ fn refine_final_times(
 
   let (state, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
     progress_info!(progress, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-    let RateSusceptibility { dates, central } = compute_rate_susceptibility(
-      &state.graph,
-      constraints,
-      leaf_bad_branches,
-      &state.gammas,
-      &state.branch_model,
-      &state.clock_model,
-      final_prior,
-      rate_std,
-      params.no_indels,
-      &state.branch_lengths,
-      &state.names,
-      progress,
-    )
-    .wrap_err("Rate susceptibility analysis failed")?;
+    let RateSusceptibility { dates, central } =
+      compute_rate_susceptibility(inputs, &state, final_prior, rate_std, progress)
+        .wrap_err("Rate susceptibility analysis failed")?;
     let state = RoundState {
       time_inference: central,
       ..state
@@ -580,7 +564,7 @@ fn refine_final_times(
       progress,
       "### Final round: marginal reconstruction for confidence intervals"
     );
-    final_marginal_round(params, constraints, leaf_bad_branches, final_prior, state, progress)?
+    final_marginal_round(inputs, final_prior, state, progress)?
   } else {
     state
   };
@@ -593,27 +577,13 @@ fn refine_final_times(
 }
 
 fn final_marginal_round(
-  params: &TimetreeParams,
-  constraints: &DateConstraints,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
+  inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentModel>,
   state: RoundState,
   progress: &dyn ProgressSink,
 ) -> Result<RoundState, Report> {
-  let time_inference = run_timetree(
-    &state.graph,
-    constraints,
-    leaf_bad_branches,
-    &state.gammas,
-    &state.branch_model,
-    &state.branch_lengths,
-    &state.names,
-    &state.clock_model,
-    prior,
-    params.no_indels,
-    progress,
-  )
-  .wrap_err("Final timetree inference failed")?;
+  let time_inference =
+    run_timetree(&state.time_inference_inputs(inputs), prior, progress).wrap_err("Final timetree inference failed")?;
 
   let clock_branch_lengths = blended_clock_branch_lengths(
     &state.graph,

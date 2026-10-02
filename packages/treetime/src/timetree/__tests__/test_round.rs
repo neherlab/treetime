@@ -23,7 +23,7 @@ mod tests {
   use crate::test_utils::marginal_timetree_params;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::undated_leaves;
-  use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::params::TimeMarginalMode;
   use crate::timetree::pipeline::{TimetreeContext, TimetreeParams};
@@ -287,16 +287,18 @@ mod tests {
       } = clock_reroot.into_clock_fit()?;
       let gammas = unit_gammas(&graph);
       let time_inference = run_timetree(
-        &graph,
-        &constraints,
-        &undated_leaves(&graph, &constraints),
-        &gammas,
-        &branch_model,
-        &branch_lengths,
-        &names,
-        &clock_model,
+        &TimeInferenceInputs {
+          graph: &graph,
+          date_constraints: &constraints,
+          leaf_bad_branches: &undated_leaves(&graph, &constraints),
+          gammas: &gammas,
+          branch_model: &branch_model,
+          branch_lengths: &branch_lengths,
+          names: &names,
+          clock_model: &clock_model,
+          no_indels: false,
+        },
         None,
-        false,
         &NoopProgress,
       )?;
 

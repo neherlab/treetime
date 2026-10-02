@@ -26,23 +26,22 @@ pub(crate) const GRID_POINTS: usize = 300;
 
 pub(crate) const EPS: f64 = 5e-4;
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-)]
 pub(crate) fn run_timetree(
-  graph: &Graph,
-  constraints: &DateConstraints,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
-  branch_model: &BranchModel,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  clock_model: &ClockModel,
+  inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentModel>,
-  no_indels: bool,
   progress: &dyn ProgressSink,
 ) -> Result<TimeInference, Report> {
+  let TimeInferenceInputs {
+    graph,
+    date_constraints,
+    leaf_bad_branches,
+    gammas,
+    branch_model,
+    branch_lengths,
+    names,
+    clock_model,
+    no_indels,
+  } = *inputs;
   progress_info!(progress, "# Running timetree inference");
 
   progress_info!(progress, "## Calculating divergence distances");
@@ -51,7 +50,7 @@ pub(crate) fn run_timetree(
   let clock_rate = clock_model.clock_rate();
   progress_info!(progress, "**Clock rate:** {clock_rate:.6e}");
 
-  let bad_branches = derive_bad_branches(graph, constraints, leaf_bad_branches)?;
+  let bad_branches = derive_bad_branches(graph, date_constraints, leaf_bad_branches)?;
 
   let branches = match branch_model {
     BranchModel::Input => {
@@ -73,10 +72,10 @@ pub(crate) fn run_timetree(
   };
 
   progress_info!(progress, "## Propagating distributions backward");
-  let backward = propagate_distributions_backward(graph, constraints, coalescent, &bad_branches, &branches)?;
+  let backward = propagate_distributions_backward(graph, date_constraints, coalescent, &bad_branches, &branches)?;
 
   progress_info!(progress, "## Propagating distributions forward");
-  let posterior = propagate_distributions_forward(graph, constraints, names, &branches, &backward, progress)?;
+  let posterior = propagate_distributions_forward(graph, date_constraints, names, &branches, &backward, progress)?;
 
   progress_info!(progress, "# Timetree inference completed");
   Ok(TimeInference {
@@ -85,6 +84,18 @@ pub(crate) fn run_timetree(
     backward,
     posterior,
   })
+}
+
+pub(crate) struct TimeInferenceInputs<'a> {
+  pub graph: &'a Graph,
+  pub date_constraints: &'a DateConstraints,
+  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  pub gammas: &'a BTreeMap<GraphEdgeKey, f64>,
+  pub branch_model: &'a BranchModel,
+  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub clock_model: &'a ClockModel,
+  pub no_indels: bool,
 }
 
 pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;

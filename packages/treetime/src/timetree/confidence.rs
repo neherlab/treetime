@@ -1,11 +1,10 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
-use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
 use crate::progress::ProgressSink;
-use crate::timetree::branch_model::BranchModel;
-use crate::timetree::inference::runner::run_timetree;
+use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
 use crate::timetree::inference::time_inference::{NodePosterior, TimeInference};
+use crate::timetree::round::{RoundInputs, RoundState};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -14,7 +13,6 @@ use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
@@ -23,47 +21,30 @@ pub const CI_FRACTION: f64 = 0.9;
 const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5;
 const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-)]
 pub(crate) fn compute_rate_susceptibility(
-  graph: &Graph,
-  constraints: &DateConstraints,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
-  branch_model: &BranchModel,
-  clock_model: &ClockModel,
+  inputs: &RoundInputs<'_>,
+  state: &RoundState,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
-  no_indels: bool,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
 ) -> Result<RateSusceptibility, Report> {
-  let current_rate = clock_model.clock_rate();
+  let graph = &state.graph;
+  let current_rate = state.clock_model.clock_rate();
 
   let upper_rate = current_rate + rate_std;
   let lower_rate = (0.1 * current_rate).max(current_rate - rate_std);
 
   let run_scaled = |scale: f64| {
-    let scaled_gammas = gammas
+    let scaled_gammas = state
+      .gammas
       .iter()
       .map(|(key, gamma)| (*key, gamma * scale))
       .collect::<BTreeMap<_, _>>();
-    run_timetree(
-      graph,
-      constraints,
-      leaf_bad_branches,
-      &scaled_gammas,
-      branch_model,
-      branch_lengths,
-      names,
-      clock_model,
-      coalescent,
-      no_indels,
-      progress,
-    )
+    let time_inputs = TimeInferenceInputs {
+      gammas: &scaled_gammas,
+      ..state.time_inference_inputs(inputs)
+    };
+    run_timetree(&time_inputs, coalescent, progress)
   };
 
   progress_info!(

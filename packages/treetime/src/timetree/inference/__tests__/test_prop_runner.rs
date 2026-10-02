@@ -13,7 +13,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::undated_leaves;
-  use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
   use eyre::Report;
   use generators::{TimetreeCase, gen_timetree_case};
@@ -145,16 +145,18 @@ mod tests {
       let other: BTreeMap<GraphEdgeKey, f64> = unit.keys().map(|key| (*key, case.other_gamma)).collect();
       let run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
         run_timetree(
-          &graph,
-          &constraints,
-          &leaf_bad_branches,
-          gammas,
-          &branch_model,
-          &branch_lengths,
-          &names,
-          &clock_model,
+          &TimeInferenceInputs {
+            graph: &graph,
+            date_constraints: &constraints,
+            leaf_bad_branches: &leaf_bad_branches,
+            gammas,
+            branch_model: &branch_model,
+            branch_lengths: &branch_lengths,
+            names: &names,
+            clock_model: &clock_model,
+            no_indels: false,
+          },
           None,
-          false,
           &NoopProgress,
         )
         .map_err(|report| format!("{report:?}"))

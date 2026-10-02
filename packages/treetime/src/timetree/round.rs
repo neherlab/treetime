@@ -11,8 +11,8 @@ use crate::timetree::branch_model::BranchModel;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::{
-  CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, blended_clock_branch_lengths, run_timetree,
-  timetree_branch_lengths,
+  CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
+  run_timetree, timetree_branch_lengths,
 };
 use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
 use crate::timetree::optimization::polytomy::resolve::{
@@ -66,6 +66,22 @@ pub(crate) struct RoundState {
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   pub gammas: BTreeMap<GraphEdgeKey, f64>,
   pub time_inference: TimeInference,
+}
+
+impl RoundState {
+  pub(crate) fn time_inference_inputs<'a>(&'a self, inputs: &'a RoundInputs<'_>) -> TimeInferenceInputs<'a> {
+    TimeInferenceInputs {
+      graph: &self.graph,
+      date_constraints: &inputs.context.date_constraints,
+      leaf_bad_branches: inputs.leaf_bad_branches,
+      gammas: &self.gammas,
+      branch_model: &self.branch_model,
+      branch_lengths: &self.branch_lengths,
+      names: &self.names,
+      clock_model: &self.clock_model,
+      no_indels: inputs.params.no_indels,
+    }
+  }
 }
 
 pub(crate) struct RoundInputs<'a> {
@@ -246,21 +262,8 @@ fn infer_times(
   state: &RoundState,
   progress: &dyn ProgressSink,
 ) -> Result<TimeInference, Report> {
-  let run = |prior: Option<&CoalescentModel>| {
-    run_timetree(
-      &state.graph,
-      &inputs.context.date_constraints,
-      inputs.leaf_bad_branches,
-      &state.gammas,
-      &state.branch_model,
-      &state.branch_lengths,
-      &state.names,
-      &state.clock_model,
-      prior,
-      inputs.params.no_indels,
-      progress,
-    )
-  };
+  let time_inputs = state.time_inference_inputs(inputs);
+  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, progress);
 
   if topology_changed {
     progress_info!(
