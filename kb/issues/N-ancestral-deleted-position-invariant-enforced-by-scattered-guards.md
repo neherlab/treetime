@@ -8,12 +8,12 @@ The fix restores the invariant, but enforces it by re-asserting it at each downs
 
 Root-cause fix (correct, single chokepoint):
 
-- Backward pass unions resolved gaps into `non_char` where the node's masking ranges are computed [`packages/treetime/src/ancestral/fitch.rs#L188`](../../packages/treetime/src/ancestral/fitch.rs#L188), after reordering `resolve_indels_backward` ahead of sequence construction [`packages/treetime/src/ancestral/fitch.rs#L178`](../../packages/treetime/src/ancestral/fitch.rs#L178).
+- Backward pass unions resolved gaps into `non_char` where the node's masking ranges are computed [`packages/treetime/src/ancestral/fitch.rs#L188`](../../packages/treetime/src/partition/fitch/passes.rs#L186), after reordering `resolve_indels_backward` ahead of sequence construction [`packages/treetime/src/ancestral/fitch.rs#L178`](../../packages/treetime/src/partition/fitch/passes.rs#L176).
 
 Invariant re-asserted at downstream readers (the scatter):
 
-- Forward pass re-unions `non_char` with `gaps` after gap-widening; correctness depends on running after `resolve_indels_forward`, whose insertion detection reads `non_char` as it stood during the backward pass [`packages/treetime/src/ancestral/fitch.rs#L288`](../../packages/treetime/src/ancestral/fitch.rs#L288). This is call-order coupling justified by comment.
-- Fitch substitution resolver skips positions in `non_char` (backward) and in the edge's `gaps` (forward) at three points [`packages/treetime/src/ancestral/fitch_sub.rs#L33`](../../packages/treetime/src/ancestral/fitch_sub.rs#L33), [`packages/treetime/src/ancestral/fitch_sub.rs#L150`](../../packages/treetime/src/ancestral/fitch_sub.rs#L150), [`packages/treetime/src/ancestral/fitch_sub.rs#L173`](../../packages/treetime/src/ancestral/fitch_sub.rs#L173). The backward guard is needed because `variable` is derived from child positions independently of this node's `non_char`.
+- Forward pass re-unions `non_char` with `gaps` after gap-widening; correctness depends on running after `resolve_indels_forward`, whose insertion detection reads `non_char` as it stood during the backward pass [`packages/treetime/src/ancestral/fitch.rs#L288`](../../packages/treetime/src/partition/fitch/sub.rs#L33). This is call-order coupling justified by comment.
+- Fitch substitution resolver skips positions in `non_char` (backward) and in the edge's `gaps` (forward) at three points [`packages/treetime/src/ancestral/fitch_sub.rs#L33`](../../packages/treetime/src/partition/fitch/sub.rs#L33), [`packages/treetime/src/ancestral/fitch_sub.rs#L150`](../../packages/treetime/src/partition/fitch/sub.rs#L150), [`packages/treetime/src/ancestral/fitch_sub.rs#L173`](../../packages/treetime/src/partition/fitch/sub.rs#L173). The backward guard is needed because `variable` is derived from child positions independently of this node's `non_char`.
 - Sparse marginal substitution emission filters positions that are `non_char` at either endpoint, for parity with the dense `edge_subs()` [`packages/treetime/src/partition/marginal_passes.rs#L246`](../../packages/treetime/src/partition/marginal_passes.rs#L246). The stored `profile.variable` still holds a residue whose argmax is an ordinary state at a deleted site; the filter suppresses it only at emit time.
 - Sparse marginal reconstruction writes residues from the profile and then re-fills deletion ranges with gaps to overwrite them [`packages/treetime/src/partition/marginal_sparse.rs#L116`](../../packages/treetime/src/partition/marginal_sparse.rs#L116). This repairs the output after producing the inconsistent state rather than not producing it.
 
@@ -26,7 +26,7 @@ Invariant re-asserted at downstream readers (the scatter):
 
 ## Mitigating context
 
-The dense path already filters deleted positions at `edge_subs()` read time, so the sparse marginal filter [`packages/treetime/src/partition/marginal_passes.rs#L246`](../../packages/treetime/src/partition/marginal_passes.rs#L246) matches an established convention rather than adding a new pattern. The forward `fitch_sub` guard on the edge's `gaps` addresses edge-local deletions (parent-inherited gaps that widen on the edge), a genuinely distinct condition from node `non_char`, so it is not pure redundancy with the backward union.
+The dense path already filters deleted positions at `edge_subs()` read time, so the sparse marginal filter [`packages/treetime/src/partition/marginal_passes.rs#L246`](../../packages/treetime/src/partition/marginal_passes.rs#L246) matches an established convention rather than adding a new pattern. The forward `fitch_sub` guard on the edge's `gaps` addresses edge-local deletions (parent-inherited gaps that widen on the edge), a distinct condition from node `non_char`, so it is not pure redundancy with the backward union.
 
 ## Options
 

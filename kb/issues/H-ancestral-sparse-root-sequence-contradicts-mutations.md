@@ -28,7 +28,7 @@ With `--dense true`, both outputs write `CAAAGGGGAT`.
 ## Mechanism
 
 - `PartitionFitch::into_marginal_sparse()` copies the Fitch root into `PartitionMarginalSparse.root_sequence` ([packages/treetime/src/partition/fitch/partition.rs#L31](../../packages/treetime/src/partition/fitch/partition.rs#L31)). The marginal passes do not update this field
-- `SparseReconstruction::root_sequence()` returns that field ([packages/treetime/src/ancestral/pipeline.rs#L386-L388](../../packages/treetime/src/ancestral/pipeline.rs#L386-L388), [packages/treetime/src/partition/marginal/sparse/partition.rs#L53-L55](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L53-L55)). The tree writers (Auspice, MAT reference) use `root_sequence()`
+- `MarginalReconstruction::root_sequence()` returns that field for a sparse reconstruction ([packages/treetime/src/partition/marginal/reconstruction.rs#L148](../../packages/treetime/src/partition/marginal/reconstruction.rs#L148), [packages/treetime/src/partition/marginal/sparse/partition.rs#L53-L55](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L53-L55)). The tree writers (Auspice, MAT reference) use `root_sequence()`
 - `augur_root_sequence()` and `edge_subs()` read the marginal node states, which is why augur node data is consistent
 
 ## Impact

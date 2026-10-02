@@ -6,7 +6,7 @@
 > the piecewise-constant skyline (no quadrature error, and the analytic optimum
 > matches the model-evaluated likelihood). See
 > [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
-> The contract below still applies to genuinely continuous $T_c(t)$ (e.g. a
+> The contract below still applies to continuous $T_c(t)$ (e.g. a
 > `Formula` distribution), which the ignored smooth-$T_c$ test exercises.
 
 `fn compute_integral_merger_rate()` evaluates $T_c(t)$ once at each lineage-count interval midpoint [packages/treetime/src/coalescent/integration.rs#L44-L71](../../packages/treetime/src/coalescent/integration.rs#L44-L71). The approximation has no stated convergence order, refinement rule, or error bound for a varying skyline.

@@ -1,6 +1,6 @@
 # Site-specific GTR is not implemented
 
-v1 has no site-specific substitution model. The hidden `ancestral --site-specific-gtr` flag is accepted and then rejected with the error `--site-specific-gtr is not implemented` [`packages/treetime/src/ancestral/pipeline.rs#L51-L55`](../../packages/treetime/src/ancestral/pipeline.rs#L51-L55). v0 supports the model in production, so this is a parity gap.
+v1 has no site-specific substitution model. The hidden `ancestral --site-specific-gtr` flag is accepted and then rejected with the error `--site-specific-gtr is not implemented` [`packages/treetime/src/ancestral/plan.rs#L59-L63`](../../packages/treetime/src/ancestral/plan.rs#L59-L63). v0 supports the model in production, so this is a parity gap.
 
 ## v0 behavior
 

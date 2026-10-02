@@ -8,7 +8,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 
 - Marginal dense golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40): `#[ignore = "golden master datasets not yet passing"]`
 - Coalescent runner golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37): `#[ignore = "golden master datasets not yet passing"]`
-- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L75](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L75): `#[ignore]` with `max_relative=1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
+- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L12](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L12): `#[ignore]` with `max_relative=1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
 - Optimize golden master [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70): `#[ignore]`. Related: [M-optimize-gm-per-branch-divergence.md](M-optimize-gm-per-branch-divergence.md)
 
 ## Zero-test production functions
@@ -29,7 +29,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 ### Timetree optimization and output
 
 - `fn report_outliers()` and `fn collect_outlier_records()`: zero tests
-- `fn compute_rate_susceptibility()`: no integration coverage for upper/lower/restored rate passes
+- `fn compute_rate_susceptibility()`: no integration coverage for the inferences at the upper, lower and central rates
 - `fn write_confidence_intervals()`: untested for TSV serialization
 
 ### Coalescent
@@ -106,7 +106,7 @@ Production defects remain in their domain issues; this issue owns the cross-cutt
 
 ### No property tests for ClockSet algebraic identities
 
-`struct ClockSet` algebra and propagation [packages/treetime/src/payload/clock_set.rs#L53-L172](../../packages/treetime/src/payload/clock_set.rs#L53-L172)
+`struct ClockSet` algebra and propagation [packages/treetime/src/clock/clock_set.rs#L55-L182](../../packages/treetime/src/clock/clock_set.rs#L55-L182)
 
 Addition and `+=` lack coverage for associativity, commutativity, and the zero identity. Subtraction and `-=` require inverse-law properties such as `(a - b) + b = a`; subtraction is neither associative nor commutative. `fn propagate_averages` needs separately derived invariants for its valid input domain.
 

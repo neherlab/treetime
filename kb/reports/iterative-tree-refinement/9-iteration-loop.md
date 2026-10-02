@@ -1,6 +1,6 @@
 # Chapter 9: The iteration loop -- putting it all together
 
-[Back to index](README.md) | Previous: [Chapter 8: Initial estimation](8-initial-estimation.md) | Next: [Chapter 10: Implementation status](10-status-and-recommendations.md)
+[Back to index](../../README.md) | Previous: [Chapter 8: Initial estimation](8-initial-estimation.md) | Next: [Chapter 10: Implementation status](10-status-and-recommendations.md)
 
 ## The alternating optimization framework
 
@@ -93,20 +93,19 @@ v0 code: [`packages/legacy/treetime/treetime/treetime.py#L307-L376`](../../../pa
 
 ```
 Initial: initial_guess_mixed()
-Loop (max_iter=20):
-  1. update_marginal()                            <-- E-step (sparse + dense)
-  2. compute total_lh
-  3. if delta_lh < dp: break
-  4. save_branch_lengths()
-  5. run_optimize_mixed()                          <-- M-step (Newton/grid per edge)
-  6. find_zero_optimal_internal_edges()            <-- record zero-optimal edges
-  7. apply_damping(0.75)                           <-- post-pass damping
-  8. prune_and_merge_in_loop(zero_optimal_edges)   <-- topology cleanup
+Loop (max_iter):
+  1. compute_iteration()                           <-- E-step: marginal_update() (sparse or dense) + total_lh
+  2. if delta_lh < dp: break                       <-- also stops on oscillation, worsening, numerical failure
+  3. old_branch_lengths = branch_lengths.clone()
+  4. run_optimize_mixed_inner()                    <-- M-step (Newton/Brent per edge)
+  5. find_zero_optimal_internal_edges()            <-- record zero-optimal edges
+  6. apply_damping(damping)                        <-- post-pass damping
+  7. prune_and_merge_in_loop(zero_optimal_edges)   <-- topology cleanup
 ```
 
-Zero-optimal edges are identified after the M-step but before damping (step 6), because damping blends the zero values with old branch lengths and obscures the optimizer's decision. Damping applies normally to all edges (step 7). Then `prune_and_merge_in_loop` overrides the damped values for zero-optimal edges back to zero, collapses them, and merges shared mutations in resulting polytomies (sparse partitions only).
+Zero-optimal edges are identified after the M-step but before damping (step 5), because damping blends the zero values with old branch lengths and obscures the optimizer's decision. Damping applies normally to all edges (step 6). Then `prune_and_merge_in_loop` overrides the damped values for zero-optimal edges back to zero, collapses them, and merges shared mutations in resulting polytomies (sparse partitions only).
 
-v1 code: [`packages/treetime/src/commands/optimize/run.rs#L275-L378`](../../../packages/treetime/src/commands/optimize/run.rs#L275-L378)
+v1 code: `fn run_optimize_loop` [packages/treetime/src/optimize/run_loop.rs#L32-L166](../../../packages/treetime/src/optimize/run_loop.rs#L32-L166)
 
 ### Loop 5: v1 timetree refinement
 
@@ -121,20 +120,20 @@ Loop (convergence-controlled):
   3. apply_relaxed_clock()
   4. capture_node_times() + capture_ancestral_states()
   5. resolve_polytomies(mutation_rate, kappa) <-- stochastic coalescent sweep
-     prepare_tree_after_topology_change()
+     reconcile_topology() + unit_gammas()
      blended_clock_branch_lengths(damping=1.0) <-- from the sampled subtree's times
-  6. update_marginal()                        <-- E-step, along clock-constrained lengths
+  6. marginal_update()                        <-- E-step, along clock-constrained lengths
      run_timetree(prior)                      <-- re-infer node times
   7. blended_clock_branch_lengths(damping=0.5) <-- constrained M-step, damped
   8. measure_node_time_change()               <-- convergence signal
   9. re-estimate clock model
 ```
 
-v1 code: [`packages/treetime/src/timetree/round.rs`](../../../packages/treetime/src/timetree/round.rs)
+v1 code: `fn refinement_round` [packages/treetime/src/timetree/round.rs#L115-L140](../../../packages/treetime/src/timetree/round.rs#L115-L140), driven by `fn run_refinement_loop` [packages/treetime/src/timetree/refinement_loop.rs#L12-L97](../../../packages/treetime/src/timetree/refinement_loop.rs#L12-L97)
 
 The M-step is *constrained*: rather than optimizing each branch length freely, step 7 sets it to
 `mu * gamma * dt` over the inferred times, and step 6 of the next round propagates profiles along
-that. Without it nothing in the loop writes substitution-space lengths, `update_marginal` is
+that. Without it nothing in the loop writes substitution-space lengths, `marginal_update` is
 idempotent across rounds, and the loop runs exactly once. See
 [timetree-clock-constrained-profile-propagation.md](../../decisions/timetree-clock-constrained-profile-propagation.md).
 

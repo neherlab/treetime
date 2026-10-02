@@ -12,7 +12,7 @@ The chains also make lock scope difficult to review. A caller controls when each
 
 ## Design question
 
-Determine which graph-owned query and command operations can hide intermediate guards while preserving concurrency and performance requirements. Raw wrapper traversal should remain available only where the caller genuinely owns a multi-object lock protocol.
+Determine which graph-owned query and command operations can hide intermediate guards while preserving concurrency and performance requirements. Raw wrapper traversal should remain available only where the caller owns a multi-object lock protocol.
 
 ## Design axes
 

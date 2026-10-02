@@ -10,7 +10,7 @@ Six call sites perform name reconciliation. Three have known defects:
 
 | Call site                                                                                                    | Lookup                      | Batch errors           | Duplicate detection   |
 | ------------------------------------------------------------------------------------------------------------ | --------------------------- | ---------------------- | --------------------- |
-| `fitch.rs:54-101` [[src](../../packages/treetime/src/ancestral/fitch.rs#L54-L101)]                           | linear scan O(n\*m)         | no (first miss aborts) | no                    |
+| `fitch.rs:54-101` [[src](../../packages/treetime/src/partition/fitch/passes.rs#L52-L99)]                           | linear scan O(n\*m)         | no (first miss aborts) | no                    |
 | `marginal_dense.rs:319-351` [[src](../../packages/treetime/src/partition/marginal_dense.rs#L319-L351)]       | linear scan O(n\*m)         | no (first miss aborts) | no                    |
 | `attach.rs:28-89` [[src](../../packages/treetime/src/ancestral/attach.rs#L28-L89)]                           | `BTreeSet` O(n log n)       | warnings + count       | no                    |
 | `date_constraints.rs:21-90` [[src](../../packages/treetime/src/clock/date_constraints.rs#L21-L90)]           | `BTreeMap::get` O(log n)    | warnings               | n/a (map keys unique) |
@@ -111,7 +111,7 @@ Four independent decision axes. Each can be adopted, deferred, or rejected indep
 
 Replace linear-scan `.find()` with indexed lookup. Pure performance fix, no behavior change.
 
-The two affected sites are `fitch.rs:72-76` [[src](../../packages/treetime/src/ancestral/fitch.rs#L72-L76)] and `marginal_dense.rs:331-335` [[src](../../packages/treetime/src/partition/marginal_dense.rs#L331-L335)], both using `aln.iter().find(|fasta| fasta.seq_name == leaf_name)`.
+The two affected sites are `fitch.rs:72-76` [[src](../../packages/treetime/src/partition/fitch/passes.rs#L70-L74)] and `marginal_dense.rs:331-335` [[src](../../packages/treetime/src/partition/marginal_dense.rs#L331-L335)], both using `aln.iter().find(|fasta| fasta.seq_name == leaf_name)`.
 
 | Sequences | Current (linear scan)         | HashMap           |
 | --------- | ----------------------------- | ----------------- |

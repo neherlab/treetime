@@ -11,7 +11,7 @@ Algorithms present in v0 Python that remain unported or were intentionally remov
 Joint maximum likelihood reconstruction finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently (Pupko, Pe'er, Shamir & Graur 2000). Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
 
 v0: `_ml_anc_joint()` (`#_ml_anc_joint`) in [`packages/legacy/treetime/treetime/treeanc.py#L934-L1084`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1084).
-v1: retained as `MethodAncestral::Joint` only so the CLI can return an explicit removal error at [`packages/treetime/src/ancestral/pipeline.rs#L225-L232`](../../packages/treetime/src/ancestral/pipeline.rs#L225-L232). See the [intentional change](../decisions/ancestral-joint-reconstruction-removed.md).
+v1: retained as `MethodAncestral::Joint` only so the CLI can return an explicit removal error at [`packages/treetime/src/ancestral/plan.rs#L83-L93`](../../packages/treetime/src/ancestral/plan.rs#L83-L93). See the [intentional change](../decisions/ancestral-joint-reconstruction-removed.md).
 
 ### Algorithm
 

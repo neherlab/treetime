@@ -2,7 +2,7 @@
 
 The clock filter marks leaves whose root-to-tip residual exceeds the IQD threshold as outliers. The regression is meant to leave these leaves out, as v0 does: v0 gives bad-branch tips no value in the tree regression (`tip_value` returns `None` for them, [packages/legacy/treetime/treetime/clock_tree.py#L275](../../packages/legacy/treetime/treetime/clock_tree.py#L275)).
 
-In v1 the outlier set only changes the message a leaf stores for its parent edge (`clock_to_parent`). The message the parent sums (`clock_from_child`) is built from the leaf date regardless of the outlier set ([packages/treetime/src/clock/clock_regression.rs#L281](../../packages/treetime/src/clock/clock_regression.rs#L281), [packages/treetime/src/clock/clock_regression.rs#L305-L307](../../packages/treetime/src/clock/clock_regression.rs#L305-L307)). The root statistics therefore include every outlier date, and the outlier flag only affects root candidates on the outlier's own branch during reroot.
+In v1 the outlier set only changes the message a leaf stores for its parent edge (`clock_to_parent`). The message the parent sums (`clock_from_child`) is built from the leaf date regardless of the outlier set ([packages/treetime/src/clock/clock_regression.rs#L277-L281](../../packages/treetime/src/clock/clock_regression.rs#L277-L281), [packages/treetime/src/clock/clock_regression.rs#L301-L303](../../packages/treetime/src/clock/clock_regression.rs#L301-L303)). The root statistics therefore include every outlier date, and the outlier flag only affects root candidates on the outlier's own branch during reroot.
 
 ## Evidence
 

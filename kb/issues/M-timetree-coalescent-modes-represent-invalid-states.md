@@ -1,8 +1,8 @@
 # Timetree parameters can represent conflicting coalescent modes
 
-CLI parsing rejects skyline together with constant or optimized coalescent modes [`packages/treetime/src/commands/timetree/args.rs#L121-L140`](../../packages/treetime/src/commands/timetree/args.rs#L121-L140). The transport-neutral `TimetreeParams` represents those modes as `Option<f64>` plus independent booleans, so server or direct callers can construct `coalescent_skyline` together with `coalescent` or `coalescent_opt` [`packages/treetime/src/timetree/pipeline.rs#L65-L67`](../../packages/treetime/src/timetree/pipeline.rs#L65-L67).
+CLI parsing rejects skyline together with constant or optimized coalescent modes [`packages/app-commands/src/commands/timetree/args.rs#L332-L352`](../../packages/app-commands/src/commands/timetree/args.rs#L332-L352). The transport-neutral `TimetreeParams` represents those modes as `Option<f64>` plus independent booleans, so server or direct callers can construct `coalescent_skyline` together with `coalescent` or `coalescent_opt` [`packages/treetime/src/timetree/params.rs#L118-L120`](../../packages/treetime/src/timetree/params.rs#L118-L120).
 
-`fn coalescent_initialization()` resolves the booleans by precedence instead of receiving a parsed mode [`packages/treetime/src/timetree/pipeline.rs#L444-L454`](../../packages/treetime/src/timetree/pipeline.rs#L444-L454).
+`fn coalescent_mode()` resolves the booleans by precedence instead of receiving a parsed mode [`packages/treetime/src/timetree/coalescent_timescale.rs#L18-L32`](../../packages/treetime/src/timetree/coalescent_timescale.rs#L18-L32).
 
 ## Invalid combinations
 

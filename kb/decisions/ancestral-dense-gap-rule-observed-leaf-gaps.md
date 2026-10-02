@@ -4,9 +4,9 @@ Every dense marginal pass classifies the gaps and unknown characters of internal
 
 **Type**: Behavior change in v1 (no v0 counterpart).
 
-**Approval**: approved by the user (2026-10-02). The rejected alternative kept the gaps that repeated passes accumulate, which depends on the number of passes.
+**Status**: Approved by the maintainer team. The rejected alternative kept the gaps that repeated passes accumulate, which depends on the number of passes.
 
-**v1 location**: `PartitionMarginalDense` holds the leaf observations in `obs_leaves` ([packages/treetime/src/partition/marginal/dense/partition.rs](../../packages/treetime/src/partition/marginal/dense/partition.rs)). The backward pass builds every leaf from its observation in `fn leaf_backward()` ([packages/treetime/src/partition/marginal/shared/pass.rs](../../packages/treetime/src/partition/marginal/shared/pass.rs)).
+**v1 location**: `PartitionMarginalDense` holds the leaf observations in `obs_leaves` ([packages/treetime/src/partition/marginal/dense/partition.rs](../../packages/treetime/src/partition/marginal/dense/partition.rs)). The backward pass builds every leaf from its observation in `fn dense_leaf_backward()` ([packages/treetime/src/partition/marginal/shared/pass.rs#L145](../../packages/treetime/src/partition/marginal/shared/pass.rs#L145)).
 
 ## Rule
 

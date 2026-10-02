@@ -4,9 +4,9 @@
 
 ## v1 behavior
 
-- `fn refine_gtr_model` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) destructures the backward and forward messages once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
+- `fn refine_gtr_model` [packages/treetime/src/gtr/refinement.rs#L18-L47](../../packages/treetime/src/gtr/refinement.rs#L18-L47) destructures the backward and forward messages once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
 - Each fit changes the GTR through the edge transition matrices, so the iterations are not trivial, but the fixed point depends on the starting messages and is not a stationary point of the tree likelihood. There is no convergence or likelihood check
-- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/pipeline.rs](../../packages/treetime/src/ancestral/pipeline.rs)
+- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/plan.rs#L80-L81](../../packages/treetime/src/ancestral/plan.rs#L80-L81)
 
 ## v0 behavior
 
@@ -16,7 +16,7 @@
 ## Stale documentation
 
 - [kb/decisions/ancestral-iterative-gtr-refinement.md](../decisions/ancestral-iterative-gtr-refinement.md) describes functions that no longer exist and an algorithm (full reconstruction each iteration) that the code does not implement; no human approval is recorded for it
-- The `--gtr-iterations` and `--dense` help texts in [packages/app-cli/src/commands/ancestral/args.rs](../../packages/app-cli/src/commands/ancestral/args.rs) describe reconstruction passes that do not happen
+- The `--gtr-iterations` and `--dense` help texts in [packages/app-commands/src/commands/ancestral/args.rs](../../packages/app-commands/src/commands/ancestral/args.rs) describe reconstruction passes that do not happen
 
 ## Open question
 

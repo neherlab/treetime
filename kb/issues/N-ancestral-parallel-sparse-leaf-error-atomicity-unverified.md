@@ -30,8 +30,8 @@ The function borrows the graph and partitions rather than consuming a disposable
 
 ## Locations
 
-- `pub(crate) fn attach_seqs_to_graph()` mutates descriptions during collection [packages/treetime/src/ancestral/fitch.rs#L55-L91](../../packages/treetime/src/ancestral/fitch.rs#L55-L91)
-- Partition node and edge commits [packages/treetime/src/ancestral/fitch.rs#L93-L109](../../packages/treetime/src/ancestral/fitch.rs#L93-L109)
+- `pub(crate) fn attach_seqs_to_graph()` mutates descriptions during collection [packages/treetime/src/ancestral/fitch.rs#L55-L91](../../packages/treetime/src/partition/fitch/passes.rs#L91-L107)
+- Partition node and edge commits [packages/treetime/src/ancestral/fitch.rs#L93-L109](../../packages/treetime/src/partition/fitch/passes.rs#L91-L107)
 - Sparse marginal tests [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs)
 
 ## Validation

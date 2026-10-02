@@ -1,15 +1,15 @@
 # Unified logging and progress reporting across packages and clients
 
-The workspace has two independent reporting paths. Diagnostics go through the `log` crate macros, rendered by `env_logger` with the formatter in `packages/treetime-utils/src/init/global.rs`. User-facing progress goes through the `ProgressSink` trait in `packages/treetime/src/progress.rs`, with one implementation per client surface. An author writing a message has to decide which of the two to call, and a computation that reports progress has to accept a sink parameter. This proposal replaces both with one emit path built on `tracing`, where each client installs its own renderer.
+The workspace has two independent reporting paths. Diagnostics go through the `log` crate macros, rendered by `env_logger` with the formatter in `packages/treetime-utils/src/init/global.rs`. User-facing progress goes through two sink traits in `packages/treetime/src/progress.rs`, `StageSink` for stage reports and `LogSink` for log lines, passed as separate parameters and implemented by one adapter per client surface. An author writing a message has to decide which of the two to call, and a computation that reports progress has to accept a sink parameter. This proposal replaces both with one emit path built on `tracing`, where each client installs its own renderer.
 
 ## Current state
 
 | Path                 | Emit                                   | Call sites            | Renderers                                                                                                                                                                                    |
 | -------------------- | -------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Diagnostics          | `log::info!` and siblings              | 220 calls in 63 files | `env_logger`, configured from the verbosity flags in `packages/app-cli/src/cli/verbosity.rs`                                                                                                 |
-| User-facing progress | `report` and `log` on a `ProgressSink` | 30 files              | `BarProgress` and `TextProgress` in `packages/app-cli/src/cli/progress.rs`, `ChannelProgress` in `packages/app-server/src/sse.rs`, `NapiProgressSink` in `packages/app-napi/src/progress.rs` |
+| User-facing progress | `report` on a `StageSink`, `log` on a `LogSink` | 30 files | `BarProgress` and `TextProgress` in `packages/app-cli/src/cli/progress.rs`, `JobProgress` in `packages/app-commands/src/job.rs` for the server stream and the native module |
 
-`ProgressSink` declares `report(stage, fraction, message)`, `log(level, message)`, and `log_enabled(level)`. `NoopProgress` serves callers that report nothing.
+`StageSink` declares `report(stage, fraction, message)` and `iteration(record)`; `LogSink` declares `log(level, message)` and `log_enabled(level)`. `NoopProgress` implements both for callers that report nothing.
 
 ## Motivation
 
@@ -60,8 +60,8 @@ The same stage report as today, shown as a bar in the terminal.
 Code now:
 
 ```rust
-pub fn reconstruct(graph: &Graph, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<(), Report> {
-  progress.report("ancestral", 0.42, "Reconstructing internal nodes");
+pub fn reconstruct(graph: &Graph, cancel: &dyn Cancel, stages: &dyn StageSink) -> Result<(), Report> {
+  stages.report("ancestral", 0.42, "Reconstructing internal nodes");
 ```
 
 Output now:
@@ -94,11 +94,11 @@ The same stage report, delivered to a browser or desktop client over the existin
 Code now:
 
 ```rust
-impl ProgressSink for ChannelProgress {
+impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
   fn report(&self, stage: &str, fraction: f64, message: &str) {
-    drop(self.tx.send(SinkEvent::Progress(ProgressEvent {
+    (self.emit)(JobEvent::Progress(ProgressEvent {
       stage: stage.to_owned(), fraction, message: message.to_owned(),
-    })));
+    }));
   }
 }
 ```
@@ -129,7 +129,7 @@ event: progress
 data: {"stage":"ancestral","fraction":0.42,"message":"Reconstructing internal nodes"}
 ```
 
-Packages: the transport is unchanged in both versions, namely `tokio` channels, `async-stream`, and the server-sent event support of `axum`. What changes is the producer. Today `ChannelProgress` implements `ProgressSink`; in the proposed version an implementation of the `Layer` trait from `tracing-subscriber` builds the same `ProgressEvent`. The payload and the event name stay the same, so clients need no change. The routing changes: the current sink belongs to one response and needs no identifier, while the layer reads the run identifier from the span and selects the matching response channel.
+Packages: the transport is unchanged in both versions, namely `tokio` channels, `async-stream`, and the server-sent event support of `axum`. What changes is the producer. Today `JobProgress` implements `StageSink` and emits a `JobEvent` that the server forwards to the stream; in the proposed version an implementation of the `Layer` trait from `tracing-subscriber` builds the same `ProgressEvent`. The payload and the event name stay the same, so clients need no change. The routing changes: the current sink belongs to one response and needs no identifier, while the layer reads the run identifier from the span and selects the matching response channel.
 
 ### Progress on the native bridge
 
@@ -138,9 +138,9 @@ The same stage report, delivered to the desktop application through the native m
 Code now:
 
 ```rust
-impl ProgressSink for NapiProgressSink {
+impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
   fn report(&self, stage: &str, fraction: f64, message: &str) {
-    self.send_event(&NapiEvent::Progress(ProgressEvent {
+    (self.emit)(JobEvent::Progress(ProgressEvent {
       stage: stage.to_owned(), fraction, message: message.to_owned(),
     }));
   }
@@ -170,7 +170,7 @@ Output proposed, the string passed to the JavaScript callback:
 { "type": "progress", "data": { "stage": "ancestral", "fraction": 0.42, "message": "Reconstructing internal nodes" } }
 ```
 
-Packages: the `ThreadsafeFunction` of `napi` carries the message to JavaScript and `serde_json` serializes it, in both versions. Today `NapiProgressSink` implements `ProgressSink`; in the proposed version a `Layer` from `tracing-subscriber` feeds the same call. The desktop and web code receives the same strings as before.
+Packages: the `ThreadsafeFunction` of `napi` carries the message to JavaScript and `serde_json` serializes it, in both versions. Today the native module receives the `JobEvent` values of `JobProgress`, the same adapter the server uses; in the proposed version a `Layer` from `tracing-subscriber` feeds the same call. The desktop and web code receives the same strings as before.
 
 ### Attribution under concurrency
 
@@ -179,7 +179,7 @@ Two analyses running at once, and the question of which one wrote a given line.
 Code now, in the server:
 
 ```rust
-pub fn find_best_root(graph: &Graph, params: &FindRootParams, sink: &dyn ProgressSink) -> Result<FindRootResult, Report> {
+pub fn find_best_root(graph: &Graph, params: &FindRootParams, log: &dyn LogSink) -> Result<FindRootResult, Report> {
   debug!("Found better node {improvements}: chi-squared improved from {best_chisq:.6e} to {tmp_chisq:.6e}");
 ```
 
@@ -351,7 +351,7 @@ Code now:
 
 ```rust
 struct RecordingSink(Mutex<Vec<String>>);
-impl ProgressSink for RecordingSink { /* report, log, log_enabled */ }
+impl LogSink for RecordingSink { /* log, log_enabled */ }
 
 let sink = RecordingSink::default();
 reconstruct(&graph, &NoCancel, &sink)?;
@@ -394,7 +394,7 @@ Each item states what goes wrong, shows it, and names the way to prevent it.
 
 ### One filter governs two audiences
 
-Verbosity today controls `env_logger` only. `ProgressSink::report` is not filtered, so the bar appears whatever the verbosity. After unification a filter sits in front of every layer.
+Verbosity today controls `env_logger` only. `StageSink::report` is not filtered, so the bar appears whatever the verbosity. After unification a filter sits in front of every layer.
 
 ```
 treetime ancestral --quiet --tree=... --aln=...
@@ -503,8 +503,8 @@ A span per tree node or per alignment site costs measurable time. Instrumentatio
 
 ## Alternatives
 
-- **Convert diagnostics only**: replace `log` with `tracing` and keep `ProgressSink` for user-facing progress. Smaller change, and routing stays with the response object, but the two paths and the sink parameter remain
-- **Extend `ProgressSink` with structured fields and a run identifier**: keeps the current transport and adds attribution to it. This reimplements span propagation, field recording, and filtering inside the project
+- **Convert diagnostics only**: replace `log` with `tracing` and keep `StageSink` and `LogSink` for user-facing progress. Smaller change, and routing stays with the response object, but the two paths and the sink parameter remain
+- **Extend `StageSink` and `LogSink` with structured fields and a run identifier**: keeps the current transport and adds attribution to it. This reimplements span propagation, field recording, and filtering inside the project
 - **Keep both paths unchanged**: no work, and the attribution problem stays. Acceptable only if the server never runs analyses concurrently
 
 ## Migration path
@@ -513,7 +513,7 @@ A span per tree node or per alignment site costs measurable time. Instrumentatio
 2. **Convert the diagnostic call sites**: all 220 of them, turning values formatted into the message into fields
 3. **Add the spans**: at command entry points and pass boundaries, carrying the run identifier, the dataset, and the stage
 4. **Cover the parallel boundaries**: enter the captured span inside every `rayon` worker closure
-5. **Convert the progress call sites**: `ProgressSink::report` and `ProgressSink::log` become events on the `progress` target
+5. **Convert the progress call sites**: `StageSink::report` and `LogSink::log` become events on the `progress` target
 6. **Replace the sinks with layers**: one layer per client, then remove the trait, the macros, and the sink parameters
 7. **Remove the old dependencies**: `log` and `env_logger` leave the workspace
 

@@ -70,7 +70,7 @@ Two enums hand-write `Display`, duplicating their kebab-case CLI names:
 #### Axis A1: server conversion structure
 
 - O1. Move the shared argument-type imports to module scope and retain the six explicit conversions. This exposes dependencies while preserving the current direct field mapping.
-- O2. Extract focused conversion helpers for repeated shared argument groups, with their dependencies imported at module scope. This can also enforce identical defaults, but only where the conversion contracts are genuinely identical.
+- O2. Extract focused conversion helpers for repeated shared argument groups, with their dependencies imported at module scope. This can also enforce identical defaults, but only where the conversion contracts are identical.
 
 **Recommendation:** O1 for imports, then use O2 only for field groups proven identical by whole-structure tests. Avoid coupling command-specific defaults through a broad helper.
 

@@ -6,53 +6,51 @@ Multiple locations suppress errors by substituting default values for semantical
 
 ## Instances
 
-### unwrap_or_default() on semantically important data (8 instances)
+### unwrap_or_default() on semantically important data
 
-- `clock/clock_filter.rs:124:` branch length defaults to 0.0
-- `clock/reroot.rs:178:` branch length defaults to 0.0
-- `clock/rtt.rs:30:` branch length defaults to 0.0. The clock regression panics on the same input instead: [M-clock-regression-panics-on-missing-branch-length.md](M-clock-regression-panics-on-missing-branch-length.md)
-- `seq/div.rs:26:` parent divergence defaults to 0.0
-- `seq/div.rs:28:` branch length defaults to 0.0
-- `partition/marginal_discrete.rs:60:` node name defaults to empty string
-- `optimize/topology/merge_shared_mutations.rs:211-212:` indels default to empty
-- `timetree/optimization/relaxed_clock.rs:87:` coefficients default to zero
+- `branch_lengths.rs:4-16:` `branch_lengths_or_zero()` and `branch_length_or_zero()` map a missing branch length to 0.0. Every pipeline calls them before the marginal passes and before the divergence sums
+- `clock/clock_filter.rs:37:` branch length defaults to 0.0 through `branch_length_or_zero()`
+- `clock/pipeline.rs:74:` branch length defaults to 0.0 through `branch_length_or_zero()` in the divergences that the RTT output reads. The clock regression panics on the same input instead: [M-clock-regression-panics-on-missing-branch-length.md](M-clock-regression-panics-on-missing-branch-length.md)
+- `partition/marginal/discrete/partition.rs:42:` and `partition/marginal/discrete/input.rs:30:` node name defaults to empty string
+- `optimize/topology/merge_shared_mutations.rs:100:` and `:213:` indels default to empty when the edge has no observation
+- `timetree/optimization/relaxed_clock.rs:30:` branch length defaults to 0.0
+- `timetree/optimization/relaxed_clock.rs:63:` coefficients default to zero
 
 A default of 0.0 for branch length can produce division-by-zero downstream or silently exclude the branch from optimization. An empty node name makes the node invisible to output serialization.
 
 ### debug_assert_eq! stripped in release (compose_substitutions)
 
-`packages/treetime/src/seq/mutation.rs:100:`
+`packages/treetime/src/seq/mutation.rs:150:`
 
 `debug_assert_eq!(ps.qry(), cs.reff(), ...)` is stripped in release builds. A broken substitution chain (where the query state of the parent substitution does not match the reference state of the child substitution) silently produces incorrect mutation annotations.
 
 ### branch_length().unwrap_or(one_mutation) silent fallback
 
-`packages/treetime/src/timetree/inference/runner.rs:106:`
+`packages/treetime/src/timetree/inference/runner.rs:186:`
 
 Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallback when building Poisson branch-length distributions. A missing branch length could indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
 
 ### infer_gtr_impl silently proceeds after non-convergence
 
-`packages/treetime/src/gtr/infer_gtr/common.rs:157-158:`
+`packages/treetime/src/gtr/infer_gtr/common.rs:70-74:`
 
 Returns `Ok(...)` with a `warn!` log when GTR inference does not converge. No convergence flag in the result struct. Callers cannot distinguish a converged model from a non-converged one without parsing log output.
 
 ### Composition::adjust_count saturating_add_signed silently clamps
 
-`packages/treetime/src/seq/composition.rs:76-79:`
+`packages/treetime/src/seq/composition.rs:70:`
 
 Uses `saturating_add_signed` which silently clamps to 0 on underflow. A negative composition count indicates a data integrity problem that should be reported, not masked.
 
 ### Empty sequence for a missing node
 
-- `partition/marginal/dense/partition.rs:161:` `extract_ancestral_sequence()` returns an empty sequence when the node has no marginal state
-- `partition/marginal/sparse/partition.rs:57:` `node_sequence()` returns an empty sequence when the node has no marginal state
+- `partition/marginal/dense/partition.rs:169:` `extract_ancestral_sequence()` returns an empty sequence when the node has no marginal state
 
 A missing node state is a broken invariant. An empty sequence is written to the output as if the node had no sites.
 
 ### Mass-sizing errors read as "not sizable"
 
-`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:40:`
+`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:49:`
 
 `peak_normalized_if_mass_sizable()` discards a `total_mass()` error through `is_ok_and`, so a distribution with an undeclared tail or fewer than two grid points is treated the same as one without finite total mass. Callers then take the fallback window intended for the second case.
 

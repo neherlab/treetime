@@ -16,8 +16,7 @@ implementation is removed rather than kept behind a flag.
 ## Current state
 
 `fn resolve_polytomies()` scans for nodes with more than two children and merges pairs
-greedily by likelihood gain
-([packages/treetime/src/timetree/optimization/polytomy/mod.rs#L166-L318](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L166-L318)).
+greedily by likelihood gain.
 Children are first partitioned into "stretched" (`mutation_length < clock_length`) and
 "compressed"; only stretched children are merged by default. Each candidate pair is scored by
 Brent-optimizing the merge time, and the highest-gain pair is merged until the gain falls
@@ -183,14 +182,15 @@ tree at all.
 
 ### Mutation counts
 
-Use `PartitionTimetreeOps::edge_subs(graph, edge_key)?.len()` summed over partitions. This is
-exact, and better than v0's `round(mutation_length * L)`
+Use the substitution count of the edge from the marginal reconstruction,
+`fn MarginalReconstruction::edge_sub_count`
+([packages/treetime/src/partition/marginal/reconstruction.rs#L163-L168](../../packages/treetime/src/partition/marginal/reconstruction.rs#L163-L168)).
+This is exact, and better than v0's `round(mutation_length * L)`
 ([packages/legacy/treetime/treetime/treetime.py#L885](../../packages/legacy/treetime/treetime/treetime.py#L885)).
-`subs_ml` is repopulated by the marginal forward pass
-([packages/treetime/src/partition/marginal_passes.rs#L150](../../packages/treetime/src/partition/marginal_passes.rs#L150))
-and `edge_subs()` errors when it is absent
-([packages/treetime/src/partition/marginal_sparse.rs#L432](../../packages/treetime/src/partition/marginal_sparse.rs#L432)),
-so fall back to the rounded product on error. Substitutions only, matching v0's
+The sparse reconstruction has no count for an edge without substitution estimates, so
+`fn edge_mutation_count`
+([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L194-L218](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L194-L218))
+falls back to the rounded product. Substitutions only, matching v0's
 `mutation_length`; indels do not participate.
 
 ### Cost
@@ -204,12 +204,10 @@ stated motivation for the change.
 ### Supporting changes
 
 **`Graph::reparent_edge(edge_key, new_source)`** in `treetime-graph` (~25 lines: pull the key
-from the old source's `outbound_mut()`, push to the new, `set_source`). The existing
-`fn merge_children()` reparents via `remove_edge` + `add_edge` with a fresh
-`EdgeTimetree { time_length, ..default }`
-([packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555)),
-which discards the edge payload and changes the edge key. The graph operation must preserve the
-edge key and payload because the sweep can reparent most children of a polytomy.
+from the old source's `outbound_mut()`, push to the new, `set_source`;
+[packages/treetime-graph/src/graph_ops.rs#L93](../../packages/treetime-graph/src/graph_ops.rs#L93)).
+The graph operation must preserve the edge key because the sweep can reparent most children of a
+polytomy.
 
 New edges get `time_length = child_time - parent_time`, `branch_length = Some(0.0)`,
 `gamma = 1.0`.
@@ -218,18 +216,19 @@ New edges get `time_length = child_time - parent_time`, `branch_length = Some(0.
 ([packages/treetime/src/coalescent/integration.rs#L12](../../packages/treetime/src/coalescent/integration.rs#L12))
 is `pub(super)`. Expose it as a method mirroring the existing private `total_merger_rate`,
 with the same finiteness and positivity guards
-([packages/treetime/src/coalescent/coalescent.rs#L83-L100](../../packages/treetime/src/coalescent/coalescent.rs#L83-L100)).
+([packages/treetime/src/coalescent/coalescent.rs#L82-L95](../../packages/treetime/src/coalescent/coalescent.rs#L82-L95)).
 Build the model once per refinement pass from `coalescent_tc` via `compute_coalescent_model`.
 
-**RNG threading.** `Refinement` is constructed fresh inside the iteration loop
-([packages/treetime/src/timetree/pipeline.rs#L309](../../packages/treetime/src/timetree/pipeline.rs#L309)),
-so the generator must be created before the loop from `params.seed` via
-`treetime_utils::sync::random::get_random_number_generator` and passed as
-`&'a mut dyn RngCore` on the struct. That matches v0's single `self.rng` and keeps one
+**RNG threading.** `fn refinement_round` runs once per iteration
+([packages/treetime/src/timetree/refinement_loop.rs#L68-L76](../../packages/treetime/src/timetree/refinement_loop.rs#L68-L76)),
+so the generator is created before the loop from `params.seed` via
+`treetime_utils::sync::random::get_random_number_generator`
+([packages/treetime/src/timetree/refinement_loop.rs#L32-L39](../../packages/treetime/src/timetree/refinement_loop.rs#L32-L39))
+and passed to each round as `&mut dyn RngCore`. That matches v0's single `self.rng` and keeps one
 continuous stream across iterations.
 
 `--seed` reaches `TimetreeParams` from
-[packages/treetime/src/commands/timetree/args.rs](../../packages/treetime/src/commands/timetree/args.rs).
+[packages/app-commands/src/commands/timetree/args.rs](../../packages/app-commands/src/commands/timetree/args.rs).
 When it is `None`, the pipeline generates a seed, uses it, and logs it at `info` so the run can
 be reproduced.
 

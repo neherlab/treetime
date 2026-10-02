@@ -52,7 +52,7 @@ Collect all ML subs across partitions for each edge and write them as comma-sepa
 
 During the forward (tip-to-root) Fitch parsimony pass, substitutions are resolved by comparing child and parent Fitch sets at each variable position. Resolved subs are appended to the edge.
 
-- `run_fitch_forward()` [ancestral/fitch.rs#L292](../../packages/treetime/src/ancestral/fitch.rs#L292)
+- `run_fitch_forward()` [ancestral/fitch.rs#L292](../../packages/treetime/src/ancestral/fitch.rs#L20)
 - `edge.extend_fitch_subs(subs)` [ancestral/fitch.rs#L453](../../packages/treetime/src/ancestral/fitch.rs#L453)
 
 ### Apply fitch subs to reconstruct child sequence for output

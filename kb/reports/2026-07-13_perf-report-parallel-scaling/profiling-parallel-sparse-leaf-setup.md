@@ -21,7 +21,7 @@ At `-j 8`, `SparseNodePartition::new` accounts for 16.97% of aggregate self samp
 |     129260 |      2.17% |
 |     129261 |      2.11% |
 
-The implementation first resolves leaf records in parallel, then constructs a partition-local map with `par_iter`, and finally acquires the partition write lock once to extend the node map. See [`packages/treetime/src/ancestral/fitch.rs`](../../../packages/treetime/src/ancestral/fitch.rs#L55).
+The implementation first resolves leaf records in parallel, then constructs a partition-local map with `par_iter`, and finally acquires the partition write lock once to extend the node map. See [`packages/treetime/src/ancestral/fitch.rs`](../../../packages/treetime/src/partition/fitch/passes.rs#L53).
 
 The one-thread profile still attributes 18.04% to `SparseNodePartition::new`, close to the 17.2% reported before the change in [profiling-findings.md](profiling-findings.md). This is expected: parallelization changes when the work completes, not the CPU instructions required to build each sparse node. At eight threads, the aggregate 16.97% is concurrent worker time and must not be interpreted as a 16.97% serial fraction.
 
@@ -45,7 +45,7 @@ The captures contain 7,058 samples at `-j 1` and 7,969 samples at `-j 8`, with z
 
 ### Ancestral: reduce the fixed-position work domain
 
-`resolve_fixed_positions_backward` is now the largest named compute symbol at 18.45%. It scans every child sequence position for every internal node even though variable Fitch states are sparse. See [`packages/treetime/src/ancestral/fitch_sub.rs`](../../../packages/treetime/src/ancestral/fitch_sub.rs#L83).
+`resolve_fixed_positions_backward` is now the largest named compute symbol at 18.45%. It scans every child sequence position for every internal node even though variable Fitch states are sparse. See [`packages/treetime/src/ancestral/fitch_sub.rs`](../../../packages/treetime/src/partition/fitch/sub.rs#L83).
 
 The next ancestral experiment should compress repeated invariant alignment patterns while retaining one entry per genuinely variable position, then run substitution Fitch on that compressed domain. A lower-risk kernel comparison can first seed a parent sequence from one child and scan only the remaining children. Both target useful work rather than adding scheduling around an already parallel kernel.
 

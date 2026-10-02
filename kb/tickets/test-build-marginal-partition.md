@@ -1,4 +1,4 @@
-# Test build_marginal_partition 3-way branching
+# Test build_marginal_partition for each representation and GTR model
 
 Add unit tests for `partition::create::build_marginal_partition()` which consolidates sparse, dense+infer GTR, and dense+named GTR partition creation for the ancestral, optimize and timetree commands (prune calls `build_sparse_partition()` directly).
 

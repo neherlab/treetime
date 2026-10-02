@@ -2,23 +2,24 @@
 
 ## Summary
 
-`treetime ancestral` reconstructs each per-CDS amino-acid translation as an independent marginal partition on the shared tree. These partitions are now processed one at a time (a landed memory fix). Each partition is independent, so the outer loop over partitions is a candidate for parallel execution. This proposal decomposes the parallelization decision into orthogonal axes, records the trade-offs per axis, and recommends a combination to implement. It also generalizes the design so future multi-partition work for nucleotide sequences and scalar traits reuses the same driver.
+`treetime ancestral` reconstructs each per-CDS amino-acid translation as an independent marginal partition on the shared tree. These partitions are processed one at a time to bound peak memory. Each partition is independent, so the outer loop over partitions is a candidate for parallel execution. This proposal decomposes the parallelization decision into orthogonal axes, records the trade-offs per axis, and recommends a combination to implement. It also generalizes the design so future multi-partition work for nucleotide sequences and scalar traits reuses the same driver.
 
 ## Context and background
 
-- The multi-partition machinery lives in `packages/treetime/src/ancestral/multi.rs`. `fn reconstruct_marginal_partition()` [packages/treetime/src/ancestral/multi.rs#L56](packages/treetime/src/ancestral/multi.rs#L56) builds one partition, runs the marginal passes, reconstructs node states, and returns the result. `struct PartitionPlan` carries an `alphabet` field, so the function is alphabet-agnostic, not amino-acid specific.
-- The only caller today is the amino-acid path: the per-CDS loop `for (index, cds) in cdses.iter().enumerate()` [packages/treetime/src/commands/ancestral/run.rs#L311](packages/treetime/src/commands/ancestral/run.rs#L311). Per CDS it:
-  - reads one translation FASTA,
-  - builds a `PartitionPlan` and reconstructs,
-  - extracts `AaCdsNodeData` and writes the per-CDS FASTA,
+- One partition is built and reconstructed by `fn reconstruct_partition` [packages/treetime/src/ancestral/plan.rs#L97-L144](../../packages/treetime/src/ancestral/plan.rs#L97-L144). It takes a `ReconstructionPlan`, an alphabet and the per-node sequence inputs, builds the partition, runs the marginal passes, reconstructs node states, and returns the result. The alphabet is an argument, so the function is alphabet-agnostic, not amino-acid specific.
+- The only multi-partition caller is the amino-acid path: the per-CDS loop `for (index, cds) in cdses.into_iter().enumerate()` in `fn reconstruct_aa` [packages/treetime/src/ancestral/aa.rs#L50](../../packages/treetime/src/ancestral/aa.rs#L50). Per CDS it:
+  - completes the alignment for the tree leaves,
+  - builds a marginal `ReconstructionPlan` and calls `fn reconstruct_partition`,
+  - extracts `AaCdsNodeData` and passes the per-CDS sequences to the sequence sink,
   - drops the partition before the next CDS.
+- The command reads every translation FASTA into a `CdsInput` before the loop starts, in `fn run_aa_reconstructions` [packages/app-commands/src/commands/ancestral/run.rs#L445-L477](../../packages/app-commands/src/commands/ancestral/run.rs#L445-L477). The input alignments of all CDSes therefore stay resident during the loop; only the partitions are dropped one at a time.
 - Measured on the `nextstrain/mpox` `hmpxv1` bundle (179 CDSes): holding every partition resident used about 8.7 GB peak RSS; processing one at a time uses about 0.74 GB, byte-identical output. Each resident partition costs about 45 MB (per-edge probability vectors over the roughly 20-symbol amino-acid alphabet).
 
 ### Verified findings that shape the design
 
-- F1 (inner parallelism already exists). The sparse marginal backward and forward passes run through an indexed pass whose workers process nodes as their child-to-parent dependencies clear, inside a `rayon::scope` worker pool [packages/treetime/src/partition/indexed_pass.rs#L437](packages/treetime/src/partition/indexed_pass.rs#L437). Worker count is `rayon::current_num_threads()` [packages/treetime/src/partition/indexed_pass.rs#L391](packages/treetime/src/partition/indexed_pass.rs#L391), so inner parallelism sizes to the current rayon pool. Each node's math is local and the traversal is dependency-ordered, so results are numerically deterministic regardless of worker count.
-- F2 (RNG is confined to the sampler). Only `fn ancestral_reconstruction_marginal()` [packages/treetime/src/ancestral/marginal.rs#L43](packages/treetime/src/ancestral/marginal.rs#L43) consumes the random number generator, and only under `--sample-from-profile=root|all`. The expensive phase, `fn update_marginal()` [packages/treetime/src/ancestral/marginal.rs#L30](packages/treetime/src/ancestral/marginal.rs#L30) (backward and forward passes) and per-partition GTR inference, uses no RNG. The default `argmax` mode draws nothing and is fully deterministic.
-- F3 (discrete-trait partitions do not fit the current driver bound). The driver is bound on `trait MarginalAugurPartition` [packages/treetime/src/ancestral/multi.rs#L117](packages/treetime/src/ancestral/multi.rs#L117), which requires `PartitionMarginalOps` and `AugurNodeDataJsonAncestralPartition`. The scalar-trait partition `struct PartitionMarginalDiscrete` implements `PartitionMarginalPasses` [packages/treetime/src/partition/marginal_discrete.rs#L204](packages/treetime/src/partition/marginal_discrete.rs#L204) but not the ancestral-sequence traits; mugration extracts state-confidence maps, not sampled sequences. `trait PartitionMarginalOps` extends `trait PartitionMarginalPasses` [packages/treetime/src/partition/traits.rs#L209](packages/treetime/src/partition/traits.rs#L209), so `PartitionMarginalPasses` [packages/treetime/src/partition/traits.rs#L197](packages/treetime/src/partition/traits.rs#L197) is the common denominator for the parallel phase.
+- F1 (inner parallelism already exists). The marginal backward and forward passes run through `struct GraphPass` [packages/treetime-graph/src/pass.rs#L10](../../packages/treetime-graph/src/pass.rs#L10), whose workers process nodes as their child-to-parent dependencies clear, inside a `rayon::scope` worker pool [packages/treetime-graph/src/dependency_queue.rs#L115-L117](../../packages/treetime-graph/src/dependency_queue.rs#L115-L117). Worker count is `rayon::current_num_threads()` [packages/treetime-graph/src/dependency_queue.rs#L26](../../packages/treetime-graph/src/dependency_queue.rs#L26), so inner parallelism sizes to the current rayon pool. Each node's math is local and the traversal is dependency-ordered, so results are numerically deterministic regardless of worker count.
+- F2 (RNG is confined to the sampler). Only `fn MarginalReconstruction::reconstruct_sequences` [packages/treetime/src/partition/marginal/reconstruction.rs#L90](../../packages/treetime/src/partition/marginal/reconstruction.rs#L90) consumes the random number generator, through `fn sample_from_profile` [packages/treetime/src/partition/marginal/sample.rs#L34](../../packages/treetime/src/partition/marginal/sample.rs#L34), and only under `--sample-from-profile=root|all`. The expensive phase, `fn MarginalReconstruction::marginal_update` (backward and forward passes) and per-partition GTR inference, uses no RNG. The default `argmax` mode draws nothing and is fully deterministic.
+- F3 (discrete-trait partitions do not fit the current driver). `fn reconstruct_partition` returns an `AncestralPartition`, whose marginal variant holds a `MarginalReconstruction` with a dense or a sparse sequence partition [packages/treetime/src/partition/marginal/reconstruction.rs](../../packages/treetime/src/partition/marginal/reconstruction.rs). The scalar-trait partition `struct PartitionMarginalDiscrete` implements `trait MarginalPasses` [packages/treetime/src/partition/marginal/discrete/partition.rs#L94](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L94) but is built from trait values, not sequences; mugration extracts state-confidence maps, not sampled sequences. The dense and sparse partitions implement the same trait ([packages/treetime/src/partition/marginal/dense/partition.rs#L228](../../packages/treetime/src/partition/marginal/dense/partition.rs#L228), [packages/treetime/src/partition/marginal/sparse/partition.rs#L168](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L168)), so `trait MarginalPasses` [packages/treetime/src/partition/marginal/shared/update.rs#L11](../../packages/treetime/src/partition/marginal/shared/update.rs#L11) is the common denominator for the parallel phase.
 
 ## Goals
 
@@ -76,7 +77,7 @@ Applies only to `--sample-from-profile=root|all`; argmax draws nothing and is al
 - D1. Parallelize inside the amino-acid loop in `run.rs`.
   - Pros: smallest diff.
   - Cons: amino-acid only; future nucleotide-multi and scalar-trait partitions each re-implement parallelism and the thread and memory knobs.
-- D2. **(Recommended)** Generic partition-parallel driver in `multi.rs` over a `Vec<PartitionPlan>` plus a pluggable per-partition consumer closure. Bind on `PartitionMarginalPasses` (the common denominator, F3) for the parallel phase; move output assembly (amino-acid node data, trait confidence maps, nucleotide mutations) into the consumer; keep the RNG-driven sequence sampling inside the consumer so trait partitions that never sample are unaffected.
+- D2. **(Recommended)** Generic partition-parallel driver beside `fn reconstruct_partition` in `ancestral/plan.rs`, over a list of per-partition inputs (plan, alphabet, node inputs) plus a pluggable per-partition consumer closure. Bind on `MarginalPasses` (the common denominator, F3) for the parallel phase; move output assembly (amino-acid node data, trait confidence maps, nucleotide mutations) into the consumer; keep the RNG-driven sequence sampling inside the consumer so trait partitions that never sample are unaffected.
   - Pros: one implementation serves amino-acid, future nucleotide-multi, and scalar-trait partitions; knobs and determinism contract defined once.
   - Cons: requires widening the trait bound and routing a consumer type through the driver.
 
@@ -92,7 +93,7 @@ The recommended combination across axes:
 - A2 bounded outer concurrency.
 - B2 two knobs: `-j` (total budget) and `--jobs-for-partitions` (`OUTER`).
 - C1 per-partition non-deterministic RNG with a deterministic `OUTER=1` mode.
-- D2 generic driver in `multi.rs`.
+- D2 generic driver beside `fn reconstruct_partition`.
 - E1 reuse existing inner parallelism with the `inner_pool.install` wiring rule.
 
 What this achieves:
@@ -123,8 +124,8 @@ Defer C3 (exact-parallel sampling) and treat C2 as the fallback only if a decisi
 
 ## Generalization to other partition types
 
-- Nucleotide multi-partitioning (future): route through the same driver by supplying nucleotide `PartitionPlan`s and a nucleotide consumer. The current single nucleotide reconstruction through `pipeline::run` is separate and out of scope here.
-- Scalar traits (future multi-trait mugration): `PartitionMarginalDiscrete` already satisfies `PartitionMarginalPasses` (F3); it fits the driver once the bound is lowered and output assembly moves to the consumer. Trait partitions never sample sequences, so the RNG contract does not apply to them.
+- Nucleotide multi-partitioning (future): route through the same driver by supplying nucleotide partition inputs and a nucleotide consumer. The current single nucleotide reconstruction through `pipeline::run` is separate and out of scope here.
+- Scalar traits (future multi-trait mugration): `PartitionMarginalDiscrete` already satisfies `MarginalPasses` (F3); it fits the driver once the bound is lowered and output assembly moves to the consumer. Trait partitions never sample sequences, so the RNG contract does not apply to them.
 
 ## Open questions to resolve before or during implementation
 

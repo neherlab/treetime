@@ -5,11 +5,11 @@
 
 ## Problem
 
-`pub(crate) fn format_number()` [packages/treetime/src/commands/shared/tree_output.rs#L1726](../../packages/treetime/src/commands/shared/tree_output.rs#L1726) reimplements Augur's significant-digit behavior for divergence and numeric dates. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
+`pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L524](../../packages/app-output/src/tree_output.rs#L524) reimplements Augur's significant-digit behavior for divergence and numeric dates. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
 
 This leaves boundary behavior unverified for negative values, powers of ten, values crossing an integer-digit boundary after rounding, very small magnitudes, and ties affected by Python and Rust formatting differences. Output-generating tests cannot serve as an independent oracle because they read output produced by the same code.
 
-The `i32` precision API also performs unchecked `significand + precision` [packages/treetime/src/commands/shared/tree_output.rs#L1736](../../packages/treetime/src/commands/shared/tree_output.rs#L1736). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
+The `i32` precision API also performs unchecked `significand + precision` [packages/app-output/src/tree_output.rs#L534](../../packages/app-output/src/tree_output.rs#L534). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
 
 ## Potential solutions
 
@@ -31,7 +31,7 @@ For finite nonzero $n$, let $d = \lfloor \log_{10}(\lfloor |n| \rfloor) \rfloor 
 
 ## Locations
 
-- `pub(crate) fn format_number()` [packages/treetime/src/commands/shared/tree_output.rs#L1726](../../packages/treetime/src/commands/shared/tree_output.rs#L1726)
+- `pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L524](../../packages/app-output/src/tree_output.rs#L524)
 - Unit tests [`packages/app-output/src/__tests__/test_tree_output.rs`](../../packages/app-output/src/__tests__/test_tree_output.rs)
 
 ## Related KB items

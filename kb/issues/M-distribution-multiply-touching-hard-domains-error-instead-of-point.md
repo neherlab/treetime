@@ -14,8 +14,8 @@ Multiply two ranges (or a formula with a range or another formula) whose support
 
 ## Root cause
 
-The touching case is a degenerate overlap, not a genuinely disjoint pair. The sibling arms `multiply_range_function` and `multiply_function_function` already handle it correctly: `distribution_support_intersection` returns `SupportIntersection::Point(t)` at endpoint contact, which produces a point mass (see `test_multiply_range_function_endpoint_contact_returns_point` and `test_multiply_function_function_endpoint_contact_returns_point`). The range/range and formula arms do not use `SupportIntersection`, so they never take the point-mass path.
+The touching case is a degenerate overlap, not a disjoint pair. The sibling arms `multiply_range_function` and `multiply_function_function` already handle it correctly: `distribution_support_intersection` returns `SupportIntersection::Point(t)` at endpoint contact, which produces a point mass (see `test_multiply_range_function_endpoint_contact_returns_point` and `test_multiply_function_function_endpoint_contact_returns_point`). The range/range and formula arms do not use `SupportIntersection`, so they never take the point-mass path.
 
 ## Fix approach
 
-Give the range/range and formula arms the same endpoint-contact handling as the function arms: at `overlap_start == overlap_end`, return a point mass at that coordinate (amplitude from the pointwise product) instead of routing to the empty guard. Reserve the empty guard for `overlap_start > overlap_end` (genuinely disjoint). This keeps the empty invariant intact and matches the point-mass behavior of the sibling arms.
+Give the range/range and formula arms the same endpoint-contact handling as the function arms: at `overlap_start == overlap_end`, return a point mass at that coordinate (amplitude from the pointwise product) instead of routing to the empty guard. Reserve the empty guard for `overlap_start > overlap_end` (disjoint). This keeps the empty invariant intact and matches the point-mass behavior of the sibling arms.

@@ -1,12 +1,12 @@
 # Command orchestration mixes application policy, domain workflow, and I/O
 
-The command boundary is not a thin adapter. Command runners combine argument translation, input loading, pipeline invocation, output policy, serialization, and filesystem writes, while the timetree pipeline concentrates most of the scientific workflow in one function.
+The command boundary is not a thin adapter. Command runners combine argument translation, input loading, pipeline invocation, output policy, serialization, and filesystem writes, while one timetree pipeline function sequences the complete scientific workflow.
 
 ## Evidence
 
-- `fn run_ancestral_reconstruction()` reads FASTA, maps CLI arguments, runs inference, builds output projections, and writes several formats [`packages/treetime/src/commands/ancestral/run.rs#L31`](../../packages/treetime/src/commands/ancestral/run.rs#L31).
-- The same application-level shape appears in clock, mugration, optimize, prune, and timetree runners under [`packages/treetime/src/commands`](../../packages/treetime/src/commands).
-- `fn timetree::pipeline::run()` spans the complete scientific sequence from date loading and clock estimation through coalescent initialization, refinement, rerooting, confidence intervals, and result assembly [`packages/treetime/src/timetree/pipeline.rs#L102`](../../packages/treetime/src/timetree/pipeline.rs#L102).
+- `fn run_ancestral_reconstruction()` reads FASTA, maps CLI arguments, runs inference, builds output projections, and writes several formats [packages/app-commands/src/commands/ancestral/run.rs#L42](../../packages/app-commands/src/commands/ancestral/run.rs#L42).
+- The same application-level shape appears in clock, mugration, optimize, prune, and timetree runners under [`packages/app-commands/src/commands`](../../packages/app-commands/src/commands).
+- `fn timetree::pipeline::run()` [packages/treetime/src/timetree/pipeline.rs#L55-L141](../../packages/treetime/src/timetree/pipeline.rs#L55-L141) sequences the complete scientific workflow through step functions: date loading, clock estimation, the pre-loop steps (ML branch-length optimization, rerooting, clock filter), coalescent initialization, refinement, confidence intervals, and result assembly.
 Domain modules do not import `commands/`, but the remaining application orchestration has no explicit owner.
 
 ## Open design question

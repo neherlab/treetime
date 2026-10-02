@@ -17,7 +17,7 @@ These no-op overrides hide unsupported state transitions instead of expressing t
 - Required storage must accept `T` and cannot advertise removal.
 - Types without a value must not implement the corresponding storage capability.
 
-Callers that genuinely support several storage contracts must match those contracts explicitly rather than relying on a common no-op setter.
+Callers that support several storage contracts must match those contracts explicitly rather than relying on a common no-op setter.
 
 ## Validation
 

@@ -128,7 +128,7 @@ The proposal is still scientifically plausible, but the expected payoff is conce
 
 ### v1 marginal passes
 
-- [`packages/treetime/src/ancestral/marginal.rs#L17-L49`](../../packages/treetime/src/ancestral/marginal.rs#L17-L49): `initialize_marginal()` and `update_marginal()`
+- [`packages/treetime/src/partition/marginal/reconstruction.rs`](../../packages/treetime/src/partition/marginal/reconstruction.rs): `SparseReconstruction::marginal_update()` and `DenseReconstruction::marginal_update()`
 - [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 - [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)
 

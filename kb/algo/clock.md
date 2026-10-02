@@ -1,6 +1,6 @@
 # Clock Inference Algorithms
 
-[Back to index](README.md)
+[Back to index](../README.md)
 
 ## WLS Sufficient Statistics
 
@@ -15,7 +15,7 @@ TreeTime estimates the molecular clock rate via weighted least squares (WLS) reg
 
 From these six values at any node, the clock rate and intercept follow directly: `rate = (norm * dt_sum - t_sum * d_sum) / (norm * tsq_sum - t_sum^2)`. The chi-squared statistic, R-value, and parameter covariance matrix (2x2 Hessian inverse) are also derivable from the sufficient statistics without additional tree traversal.
 
-v1: [`packages/treetime/src/payload/clock_set.rs#L1-L172`](../../packages/treetime/src/payload/clock_set.rs#L1-L172).
+v1: `struct ClockSet` [packages/treetime/src/clock/clock_set.rs#L9-L142](../../packages/treetime/src/clock/clock_set.rs#L9-L142).
 v0: [`packages/legacy/treetime/treetime/treeregression.py#L7-L300`](../../packages/legacy/treetime/treetime/treeregression.py#L7-L300).
 
 Key functions: `ClockSet::clock_rate()` (`#ClockSet`, `#clock_rate`), `ClockSet::chisq()` (`#chisq`), `ClockSet::propagate_averages()` (`#propagate_averages`).
@@ -54,7 +54,7 @@ Key functions: `clock_regression_backward()` (`#clock_regression_backward`), `cl
 
 Hybrid 1D optimization (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) combining parabolic interpolation (fast convergence near minimum) with golden section search (guaranteed convergence). Used for optimizing the root position along a branch: given a branch with endpoints, Brent's method finds the split point that minimizes the clock regression chi-squared.
 
-v1: [`packages/treetime/src/clock/find_best_root/method_brent.rs#L36-L78`](../../packages/treetime/src/clock/find_best_root/method_brent.rs#L36-L78).
+v1: [`packages/treetime/src/clock/find_best_root/method_brent.rs#L19-L70`](../../packages/treetime/src/clock/find_best_root/method_brent.rs#L19-L70).
 v0: `scipy.optimize.minimize_scalar` with `method='bounded'`.
 
 ### References
@@ -67,7 +67,7 @@ v0: `scipy.optimize.minimize_scalar` with `method='bounded'`.
 
 Bracket-based 1D optimization (<a id="cite-4"></a>[Kiefer 1953](https://doi.org/10.2307/2032012) [[4](#ref-4)]) with O(log(1/epsilon)) convergence. At each step, the bracket is narrowed by the golden ratio phi = (1+sqrt(5))/2, maintaining the ratio between the two sub-intervals. Slower than Brent's method (which uses parabolic acceleration) but simpler and guaranteed to converge without requiring derivative information.
 
-v1: [`packages/treetime/src/clock/find_best_root/method_golden_section.rs#L36-L81`](../../packages/treetime/src/clock/find_best_root/method_golden_section.rs#L36-L81).
+v1: [`packages/treetime/src/clock/find_best_root/method_golden_section.rs#L19-L73`](../../packages/treetime/src/clock/find_best_root/method_golden_section.rs#L19-L73).
 
 ### References
 
@@ -81,7 +81,7 @@ Identifies clock outliers using Tukey's fences (<a id="cite-5"></a>[Tukey 1977](
 
 IQD-based detection is nonparametric and does not assume normally distributed residuals, making it appropriate for phylogenetic data where residual distributions can be skewed. For comparison, under a normal distribution IQD = 1.35 _ sigma, so `threshold _ IQD = 3 _ 1.35 _ sigma = 4.05 \* sigma` - roughly the 99.995% interval.
 
-v1: [`packages/treetime/src/clock/clock_filter.rs#L21-L105`](../../packages/treetime/src/clock/clock_filter.rs#L21-L105).
+v1: [`packages/treetime/src/clock/clock_filter.rs#L22-L89`](../../packages/treetime/src/clock/clock_filter.rs#L22-L89).
 v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40).
 
 ### References
@@ -139,7 +139,7 @@ See [unimplemented](unimplemented.md) for full details:
 
 | File                                                                                                                                 | Algorithms                                               |
 | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [`packages/treetime/src/payload/clock_set.rs`](../../packages/treetime/src/payload/clock_set.rs)                                     | Sufficient statistics WLS                                |
+| [`packages/treetime/src/clock/clock_set.rs`](../../packages/treetime/src/clock/clock_set.rs)                                         | Sufficient statistics WLS                                |
 | [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)                           | Tree message passing, edge divergence, reroot estimation |
 | [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | Clock model estimation                                   |
 | [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | ClockNode, ClockEdge traits                              |
@@ -149,4 +149,5 @@ See [unimplemented](unimplemented.md) for full details:
 | [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)                                               | Tree rerooting                                           |
 | [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs)                           | Date constraint loading and validation                   |
 | [`packages/treetime/src/clock/rtt.rs`](../../packages/treetime/src/clock/rtt.rs)                                                     | Root-to-tip distance computation                         |
-| [`packages/treetime/src/commands/clock/run.rs`](../../packages/treetime/src/commands/clock/run.rs)                                   | Clock command orchestration                              |
+| [`packages/treetime/src/clock/pipeline.rs`](../../packages/treetime/src/clock/pipeline.rs)                                           | Clock pipeline                                           |
+| [`packages/app-commands/src/commands/clock/run.rs`](../../packages/app-commands/src/commands/clock/run.rs)                           | Clock command orchestration                              |

@@ -34,7 +34,7 @@ desktop-app   web-app
 
 Rust crates:
 
-- `app-api`: ProgressSink trait, command wrappers accepting args + progress, re-exported arg types
+- `app-api`: progress sink traits, command wrappers accepting args + progress, re-exported arg types
 - `app-napi`: napi addon (cdylib), AsyncTask wrappers calling app-api, `define_task!` macro
 - `app-server`: axum HTTP API, `define_handler!` macro, spawn_blocking for CPU-bound work, JSON error responses, CORS
 
@@ -64,7 +64,7 @@ The desktop dev script (`scripts/dev.mjs`) starts a Vite dev server for the rend
 
 ## Progress streaming (prepared, not yet wired)
 
-`treetime` defines `ProgressSink` trait with `NoopProgress`. `app-api` has `StderrProgress`. Planned:
+`treetime` defines the `StageSink` and `LogSink` traits with `NoopProgress`. `app-api` has `StderrProgress`. Planned:
 
 - Desktop: napi ThreadsafeFunction callback -> IPC -> renderer
 - Server: SSE -> browser
@@ -72,7 +72,7 @@ The desktop dev script (`scripts/dev.mjs`) starts a Vite dev server for the rend
 
 ## Completed work
 
-- `ProgressSink` trait moved from app-api to treetime core
+- Progress sink traits moved from app-api to treetime core
 - clap feature-gated in treetime (optional dependency behind `clap` feature flag)
 - schemars dependency added, JSON Schema generation via `treetime schema write` CLI subcommand
 - build.rs auto-generates JSON Schema into app-contracts on treetime source changes

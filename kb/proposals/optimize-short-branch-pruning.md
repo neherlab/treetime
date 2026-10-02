@@ -15,13 +15,13 @@ The first condition identifies branches shorter than 10% of a single substitutio
 
 ## Pipeline insertion
 
-After `run_optimize_loop` completes and before the final `update_marginal` pass:
+After `run_optimize_loop` completes and before the final `marginal_update` pass [packages/treetime/src/optimize/pipeline.rs#L141-L144](../../packages/treetime/src/optimize/pipeline.rs#L141-L144):
 
 1. Compute the one-mutation resolution from the sequence length.
 2. For each eligible internal edge, evaluate both v0 pruning conditions.
 3. Collapse marked edges (merge child into parent, creating polytomies)
 4. Reconcile partition topology (`reconcile_topology`, same pattern as `timetree/round.rs`)
-5. Run final `update_marginal` on the pruned tree
+5. Run final `marginal_update` on the pruned tree
 
 v0 marginal mode prunes after the loop. v0 joint mode (removed in v1) pruned inside the loop.
 
@@ -33,8 +33,8 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 
 - Pipeline insertion: `packages/treetime/src/optimize/pipeline.rs`
 - Probability calculation: use the same reconstructed states and pattern multiplicities as v0.
-- Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs#L34-L82`](../../packages/treetime/src/optimize/topology/collapse.rs#L34-L82)
-- Partition reconciliation: `PartitionRerootOps::reconcile_topology` in `partition/traits.rs`
+- Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs#L7-L43`](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
+- Partition reconciliation: `fn MarginalReconstruction::reconcile_topology` [packages/treetime/src/partition/marginal/reconstruction.rs#L241](../../packages/treetime/src/partition/marginal/reconstruction.rs#L241)
 
 ## Validation
 

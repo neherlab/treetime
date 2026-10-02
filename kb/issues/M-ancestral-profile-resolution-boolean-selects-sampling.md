@@ -1,6 +1,6 @@
 # Profile resolution boolean combines deterministic and stochastic operations
 
-`fn resolve_profile()` accepts `sample: bool` and an RNG for both deterministic argmax resolution and posterior sampling [`packages/treetime/src/ancestral/sample.rs#L49`](../../packages/treetime/src/ancestral/sample.rs#L49). The deterministic path does not use the RNG, while the stochastic path consumes mutable RNG state.
+`fn resolve_profile()` accepts `sample: bool` and an RNG for both deterministic argmax resolution and posterior sampling [`packages/treetime/src/ancestral/sample.rs#L49`](../../packages/treetime/src/partition/marginal/sample.rs#L49). The deterministic path does not use the RNG, while the stochastic path consumes mutable RNG state.
 
 ## Current contract
 

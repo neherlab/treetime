@@ -42,7 +42,7 @@ An internal node that the user dated, but whose leaves are all undated or all cl
 
 ## v0 impact
 
-- Only internal nodes with a date constraint whose subtree has no usable leaf date are affected. Such nodes are rare in practice: internal dates are an explicit user input
+- Only internal nodes with a date constraint whose subtree has no usable leaf date are affected. Such nodes exist only when the user supplies a date for an internal node
 - The affected node is dated from its parent alone, and its date does not contribute to the times of its ancestors
 
 ## v1 status

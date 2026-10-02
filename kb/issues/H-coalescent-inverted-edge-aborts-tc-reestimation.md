@@ -26,8 +26,8 @@ never executed. The same inversion previously surfaced as a silent `NaN` in `log
 The inversion is produced upstream of the coalescent, in the forward pass: it clamps internal
 children to their parent's time but leaves observed leaf dates as given, so a leaf whose date
 conflicts with the fitted clock stays where the data put it. The refinement loop's own
-`blended_clock_branch_lengths` reports the same condition on this dataset — 4 branches without a
-coalescent, 5 with — and commits those lengths as zero.
+`blended_clock_branch_lengths` reports the same condition on this dataset (4 branches without a
+coalescent, 5 with) and commits those lengths as zero.
 
 ## Impact
 
