@@ -26,7 +26,7 @@ mod tests {
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
   use crate::timetree::params::TimeMarginalMode;
-  use crate::timetree::pipeline::{TimetreeContext, TimetreeParams};
+  use crate::timetree::params::{TimetreeContext, TimetreeParams};
   use crate::timetree::round::{RoundInputs, RoundOutcome, RoundState, refinement_round};
   use eyre::Report;
   use indoc::indoc;

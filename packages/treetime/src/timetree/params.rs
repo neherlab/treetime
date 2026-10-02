@@ -1,7 +1,13 @@
+use crate::alphabet::alphabet::AlphabetName;
 use crate::clock::clock_regression::ClockVarianceParams;
+use crate::clock::date_constraints::DateConstraints;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::gtr::get_gtr::GtrModelName;
 use crate::make_report;
+use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
 use crate::seq::alignment::get_common_length;
+use crate::seq::gap_fill::GapFill;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -87,4 +93,48 @@ pub(crate) fn build_covariation_clock_params(
     variance_offset: 0.0,
     variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),
   }))
+}
+
+pub struct TimetreeParams {
+  pub model: GtrModelName,
+  pub alphabet_name: AlphabetName,
+  pub dense: Option<bool>,
+  pub gap_fill: GapFill,
+  pub branch_length_mode: BranchLengthMode,
+  pub no_indels: bool,
+  pub sequence_length: Option<usize>,
+  pub clock_rate: Option<f64>,
+  pub clock_std_dev: Option<f64>,
+  pub keep_root: bool,
+  pub reroot_spec: RerootSpec,
+  pub allow_negative_rate: bool,
+  pub clock_filter: f64,
+  pub covariation: bool,
+  pub tip_slack: Option<f64>,
+  pub max_iter: usize,
+  pub resolve_polytomies: bool,
+  pub keep_polytomies: bool,
+  pub relax: Vec<f64>,
+  pub coalescent: Option<f64>,
+  pub coalescent_opt: bool,
+  pub coalescent_skyline: bool,
+  pub skyline_n_points: usize,
+  pub skyline_stiffness: f64,
+  pub coalescent_confidence: f64,
+  pub gen_per_year: f64,
+  pub n_branches_posterior: Option<usize>,
+  pub time_marginal: TimeMarginalMode,
+  pub confidence: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub report_ambiguous: bool,
+  pub zero_based: bool,
+  pub seed: Option<u64>,
+}
+
+pub(crate) struct TimetreeContext {
+  pub time_marginal: TimeMarginalMode,
+  pub date_constraints: DateConstraints,
+  pub covariation_clock_params: ClockVarianceParams,
+  pub branch_params: BranchPointOptimizationParams,
 }

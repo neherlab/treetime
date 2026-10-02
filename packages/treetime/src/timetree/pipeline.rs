@@ -1,15 +1,14 @@
-use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::alphabet::alphabet::Alphabet;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFit, ClockTree, ClockVarianceParams};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::population_size::effective_population_size;
-use crate::coalescent::skyline::SkylineParams;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -19,11 +18,12 @@ use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::partition::marginal::sequences::emitted_nodes;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
-use crate::seq::gap_fill::GapFill;
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
-use crate::timetree::coalescent_timescale::{CoalescentMode, CoalescentTimescale, build_coalescent_output};
+use crate::timetree::coalescent_timescale::{
+  CoalescentMode, CoalescentSetup, CoalescentTimescale, build_coalescent_output,
+};
 use crate::timetree::confidence::{
   NodeConfidenceInterval, RateSusceptibility, compute_rate_susceptibility, determine_rate_std,
   extract_confidence_intervals,
@@ -33,7 +33,9 @@ use crate::timetree::divergence::final_divergences;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::inference::time_inference::TimeInference;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
-use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
+use crate::timetree::params::{
+  TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params, compute_effective_time_marginal,
+};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times, run_initial_round};
@@ -46,7 +48,6 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::AlignmentRecord;
 use treetime_primitives::date::DatesMap;
 use treetime_utils::make_report;
@@ -183,62 +184,6 @@ pub struct TimetreeOutput {
   pub gammas: BTreeMap<GraphEdgeKey, f64>,
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
-}
-
-pub struct TimetreeParams {
-  pub model: GtrModelName,
-  pub alphabet_name: AlphabetName,
-  pub dense: Option<bool>,
-  pub gap_fill: GapFill,
-  pub branch_length_mode: BranchLengthMode,
-  pub no_indels: bool,
-  pub sequence_length: Option<usize>,
-  pub clock_rate: Option<f64>,
-  pub clock_std_dev: Option<f64>,
-  pub keep_root: bool,
-  pub reroot_spec: RerootSpec,
-  pub allow_negative_rate: bool,
-  pub clock_filter: f64,
-  pub covariation: bool,
-  pub tip_slack: Option<f64>,
-  pub max_iter: usize,
-  pub resolve_polytomies: bool,
-  pub keep_polytomies: bool,
-  pub relax: Vec<f64>,
-  pub coalescent: Option<f64>,
-  pub coalescent_opt: bool,
-  pub coalescent_skyline: bool,
-  pub skyline_n_points: usize,
-  pub skyline_stiffness: f64,
-  pub coalescent_confidence: f64,
-  pub gen_per_year: f64,
-  pub n_branches_posterior: Option<usize>,
-  pub time_marginal: TimeMarginalMode,
-  pub confidence: bool,
-  pub include_leaves: bool,
-  pub impute_missing_data: bool,
-  pub report_ambiguous: bool,
-  pub zero_based: bool,
-  pub seed: Option<u64>,
-}
-
-pub(crate) struct TimetreeContext {
-  pub time_marginal: TimeMarginalMode,
-  pub date_constraints: DateConstraints,
-  pub covariation_clock_params: ClockVarianceParams,
-  pub branch_params: BranchPointOptimizationParams,
-}
-
-pub(crate) struct CoalescentSetup {
-  pub mode: CoalescentMode,
-  pub skyline_params: SkylineParams,
-  pub lineage_counts: PiecewiseConstantFn,
-}
-
-impl CoalescentSetup {
-  pub(crate) fn prior_wanted(&self) -> bool {
-    self.mode != CoalescentMode::Disabled
-  }
 }
 
 fn validate_params(params: &TimetreeParams) -> Result<(), OperationError> {
@@ -421,8 +366,9 @@ fn refine_final_times(
 
   let (central, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
     progress_info!(log, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-    let RateSusceptibility { dates, central } = compute_rate_susceptibility(inputs, &state, final_prior, rate_std, log)
-      .wrap_err("Rate susceptibility analysis failed")?;
+    let RateSusceptibility { dates, central } =
+      compute_rate_susceptibility(&state.time_inference_inputs(inputs), final_prior, rate_std, log)
+        .wrap_err("Rate susceptibility analysis failed")?;
     (Some(central), dates)
   } else {
     (None, BTreeMap::new())

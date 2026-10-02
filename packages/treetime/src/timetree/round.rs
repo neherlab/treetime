@@ -10,7 +10,9 @@ use crate::coalescent::skyline::SkylineParams;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::coalescent_timescale::{CoalescentTimescale, coalescent_mode, coalescent_timescale};
+use crate::timetree::coalescent_timescale::{
+  CoalescentSetup, CoalescentTimescale, coalescent_mode, coalescent_timescale,
+};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::bad_branches::bad_leaves;
@@ -23,7 +25,7 @@ use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
 };
 use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock};
-use crate::timetree::pipeline::{CoalescentSetup, TimetreeContext, TimetreeParams};
+use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::PreLoopState;
 use eyre::{Report, WrapErr};
 use rand::RngCore;

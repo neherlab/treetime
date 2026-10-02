@@ -15,7 +15,7 @@ use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
 use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
-use crate::timetree::pipeline::{TimetreeContext, TimetreeParams};
+use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;

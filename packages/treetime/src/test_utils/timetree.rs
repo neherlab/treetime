@@ -10,7 +10,7 @@ use crate::timetree::inference::time_inference::{
   BranchLikelihood, NodePosterior, TimeBackward, TimeInference, likely_times,
 };
 use crate::timetree::params::TimeMarginalMode;
-use crate::timetree::pipeline::TimetreeParams;
+use crate::timetree::params::TimetreeParams;
 use eyre::Report;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;

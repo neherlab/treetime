@@ -203,3 +203,15 @@ pub(crate) struct CoalescentReportBand {
   pub lower: Array1<f64>,
   pub upper: Array1<f64>,
 }
+
+pub(crate) struct CoalescentSetup {
+  pub mode: CoalescentMode,
+  pub skyline_params: SkylineParams,
+  pub lineage_counts: PiecewiseConstantFn,
+}
+
+impl CoalescentSetup {
+  pub(crate) fn prior_wanted(&self) -> bool {
+    self.mode != CoalescentMode::Disabled
+  }
+}

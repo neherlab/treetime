@@ -4,7 +4,6 @@ use crate::make_error;
 use crate::progress::LogSink;
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
 use crate::timetree::inference::time_inference::{NodePosterior, TimeInference};
-use crate::timetree::round::{RoundInputs, RoundState};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -22,29 +21,28 @@ const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5;
 const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 
 pub(crate) fn compute_rate_susceptibility(
-  inputs: &RoundInputs<'_>,
-  state: &RoundState,
+  time_inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   log: &dyn LogSink,
 ) -> Result<RateSusceptibility, Report> {
-  let graph = &state.graph;
-  let current_rate = state.clock_model.clock_rate();
+  let graph = time_inputs.graph;
+  let current_rate = time_inputs.clock_model.clock_rate();
 
   let upper_rate = current_rate + rate_std;
   let lower_rate = (0.1 * current_rate).max(current_rate - rate_std);
 
   let run_scaled = |scale: f64| {
-    let scaled_gammas = state
+    let scaled_gammas = time_inputs
       .gammas
       .iter()
       .map(|(key, gamma)| (*key, gamma * scale))
       .collect::<BTreeMap<_, _>>();
-    let time_inputs = TimeInferenceInputs {
+    let scaled_inputs = TimeInferenceInputs {
       gammas: &scaled_gammas,
-      ..state.time_inference_inputs(inputs)
+      ..*time_inputs
     };
-    run_timetree(&time_inputs, coalescent, log)
+    run_timetree(&scaled_inputs, coalescent, log)
   };
 
   progress_info!(log, "Rate susceptibility: running with upper rate {upper_rate:.6e}");

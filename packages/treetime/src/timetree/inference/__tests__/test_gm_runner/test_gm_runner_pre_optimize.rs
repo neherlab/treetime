@@ -6,7 +6,8 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
   use crate::test_utils::marginal_timetree_params;
-  use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
+  use crate::timetree::params::TimetreeParams;
+  use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
