@@ -25,12 +25,12 @@ use treetime_graph::node::GraphNodeKey;
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
 const PRE_LOOP_SCHEDULE: [PreLoopStep; 6] = [
-  PreLoopStep::MlPreStep,
-  PreLoopStep::FirstReroot,
+  PreLoopStep::MlOptimizePreReroot,
+  PreLoopStep::RerootPreAncestral,
   PreLoopStep::ClockFilter,
-  PreLoopStep::PostStep,
+  PreLoopStep::MlOptimizePostReroot,
   PreLoopStep::InitialRoundCheckpoint,
-  PreLoopStep::PostReroot,
+  PreLoopStep::RerootPostAncestral,
 ];
 
 pub(crate) fn run_pre_loop(
@@ -46,12 +46,12 @@ pub(crate) fn run_pre_loop(
 
 #[derive(Clone, Copy)]
 enum PreLoopStep {
-  MlPreStep,
-  FirstReroot,
+  MlOptimizePreReroot,
+  RerootPreAncestral,
   ClockFilter,
-  PostStep,
+  MlOptimizePostReroot,
   InitialRoundCheckpoint,
-  PostReroot,
+  RerootPostAncestral,
 }
 
 pub(crate) struct PreLoopInputs<'a> {
@@ -100,14 +100,14 @@ fn run_pre_loop_step(
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   match step {
-    PreLoopStep::MlPreStep if inputs.has_alignment => ml_optimize(
+    PreLoopStep::MlOptimizePreReroot if inputs.has_alignment => ml_optimize(
       state,
       params.no_indels,
       "### ML branch-length optimization (pre-reroot)",
       "ML branch-length optimization (pre-reroot) failed",
       progress,
     ),
-    PreLoopStep::FirstReroot if !params.keep_root => {
+    PreLoopStep::RerootPreAncestral if !params.keep_root => {
       progress_info!(progress, "First reroot (pre-ancestral)");
       reroot(
         inputs,
@@ -119,7 +119,7 @@ fn run_pre_loop_step(
       .wrap_err("Failed to reroot tree (pre-ancestral)")
     },
     PreLoopStep::ClockFilter if params.clock_filter > 0.0 => filter_clock_outliers(inputs, state, progress),
-    PreLoopStep::PostStep if inputs.has_alignment => {
+    PreLoopStep::MlOptimizePostReroot if inputs.has_alignment => {
       if matches!(state.branch_model, BranchModel::Input) {
         progress_info!(progress, "Using input branch lengths for timetree inference");
         return Ok(state);
@@ -138,7 +138,7 @@ fn run_pre_loop_step(
       progress_info!(progress, "### TreeTime: initial round");
       Ok(state)
     },
-    PreLoopStep::PostReroot if !params.keep_root => {
+    PreLoopStep::RerootPostAncestral if !params.keep_root => {
       progress_info!(progress, "Reroot (post-ancestral)");
       reroot(
         inputs,
@@ -149,11 +149,11 @@ fn run_pre_loop_step(
       )
       .wrap_err("Failed to reroot tree (post-ancestral)")
     },
-    PreLoopStep::MlPreStep
-    | PreLoopStep::FirstReroot
+    PreLoopStep::MlOptimizePreReroot
+    | PreLoopStep::RerootPreAncestral
     | PreLoopStep::ClockFilter
-    | PreLoopStep::PostStep
-    | PreLoopStep::PostReroot => Ok(state),
+    | PreLoopStep::MlOptimizePostReroot
+    | PreLoopStep::RerootPostAncestral => Ok(state),
   }
 }
 
