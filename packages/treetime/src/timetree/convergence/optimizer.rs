@@ -6,7 +6,7 @@ use crate::timetree::convergence::likelihood::{
 };
 use crate::timetree::convergence::metrics::{ConvergenceMetrics, IterationClock, IterationRecord};
 use crate::timetree::convergence::node_times::NodeTimeChange;
-use crate::timetree::inference::time_inference::TimeInference;
+use crate::timetree::inference::result::TimeInference;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_distribution::Distribution;

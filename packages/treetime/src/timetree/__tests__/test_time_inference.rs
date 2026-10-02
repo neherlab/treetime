@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::test_utils::{empty_time_inference, find_node_key_by_name};
-  use crate::timetree::inference::time_inference::{NodePosterior, TimeInference, likely_times};
+  use crate::timetree::inference::result::{NodePosterior, TimeInference, given_times, likely_times};
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -25,10 +25,7 @@ mod tests {
       "When finding the most likely time of node {key}: \
        Cannot find the most likely time of a distribution function: its values contain NaN"
     );
-    assert_error!(
-      likely_times(&graph, &DateConstraints::default(), Some(&inference)),
-      expected
-    );
+    assert_error!(likely_times(&graph, &DateConstraints::default(), &inference), expected);
     assert_error!(inference.coalescent_node_times(), expected);
     Ok(())
   }
@@ -42,12 +39,12 @@ mod tests {
     let inference = helpers::inference_with_posterior(&graph, key, Distribution::point(2010.0, 0.0));
     let mut constraints = DateConstraints::default();
     constraints
-      .date_constraints
+      .by_node
       .insert(key, Some(Arc::new(Distribution::point(2005.0, 0.0))));
 
-    let with_constraint = likely_times(&graph, &constraints, Some(&inference))?;
-    let without_constraint = likely_times(&graph, &DateConstraints::default(), Some(&inference))?;
-    let before_inference = likely_times(&graph, &DateConstraints::default(), None)?;
+    let with_constraint = likely_times(&graph, &constraints, &inference)?;
+    let without_constraint = likely_times(&graph, &DateConstraints::default(), &inference)?;
+    let before_inference = given_times(&graph, &DateConstraints::default())?;
 
     assert_eq!(Some(2005.0), with_constraint[&key]);
     assert_eq!(Some(2010.0), without_constraint[&key]);

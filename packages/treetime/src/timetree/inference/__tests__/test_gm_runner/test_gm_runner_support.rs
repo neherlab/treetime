@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(super) mod support {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::timetree::inference::time_inference::NodePosterior;
+  use crate::timetree::inference::result::NodePosterior;
   use eyre::Report;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;

@@ -16,8 +16,9 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
 
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::timetree::branch_model::BranchModel;
@@ -60,7 +61,7 @@ mod tests {
 
     let (partition, _) = sparse_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let times = likely_times(&graph, &constraints, None)?;
+    let times = given_times(&graph, &constraints)?;
     let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
     let (
       ClockTree {

@@ -8,7 +8,7 @@ use crate::clock::reroot::RerootParams;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::inference::time_inference::likely_times;
+use crate::timetree::inference::result::given_times;
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
@@ -77,7 +77,7 @@ pub(crate) fn fit_clock_to_dates(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
-  let times = likely_times(&graph, constraints, None)?;
+  let times = given_times(&graph, constraints)?;
   let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
   estimate_clock_model_with_reroot_policy(
     ClockTree {

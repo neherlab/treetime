@@ -22,8 +22,9 @@ mod tests {
   use crate::test_utils::constraint_coalescent_node_times;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
   use helpers::build_timetree_setup;
   use treetime_graph::graph::Graph;
@@ -122,7 +123,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
 
       let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      let times = likely_times(&graph, &constraints, None)?;
+      let times = given_times(&graph, &constraints)?;
       let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
       let (
         ClockTree {

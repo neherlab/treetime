@@ -20,7 +20,7 @@ mod tests {
   };
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
-  use crate::timetree::inference::time_inference::{BranchLikelihood, TimeInference};
+  use crate::timetree::inference::result::{BranchLikelihood, TimeInference};
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;

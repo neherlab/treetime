@@ -75,18 +75,20 @@ pub fn load_date_constraints(
     log,
   );
 
-  Ok(DateConstraints { date_constraints })
+  Ok(DateConstraints {
+    by_node: date_constraints,
+  })
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
-  pub(crate) date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub(crate) by_node: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
 }
 
 impl DateConstraints {
   #[must_use]
   pub(crate) fn date_constraint(&self, key: GraphNodeKey) -> Option<Arc<Distribution<NegLog>>> {
-    self.date_constraints.get(&key).cloned().flatten()
+    self.by_node.get(&key).cloned().flatten()
   }
 }
 

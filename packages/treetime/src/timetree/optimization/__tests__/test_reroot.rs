@@ -60,7 +60,9 @@ mod tests {
         date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
       }
     }
-    DateConstraints { date_constraints }
+    DateConstraints {
+      by_node: date_constraints,
+    }
   }
 
   fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {

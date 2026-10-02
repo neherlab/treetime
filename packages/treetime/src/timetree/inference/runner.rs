@@ -10,7 +10,7 @@ use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
-use crate::timetree::inference::time_inference::{BranchLikelihood, TimeInference};
+use crate::timetree::inference::result::{BranchLikelihood, NodeTimes, TimeInference};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use log::debug;
@@ -73,7 +73,6 @@ pub(crate) fn run_timetree(
   Ok(TimeInference {
     bad_branches,
     branches,
-    backward,
     posterior,
   })
 }
@@ -99,7 +98,7 @@ pub(crate) fn blended_clock_branch_lengths(
   clock_rate: f64,
   damping: f64,
   previous_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+  node_times: &NodeTimes,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> BTreeMap<GraphEdgeKey, f64> {

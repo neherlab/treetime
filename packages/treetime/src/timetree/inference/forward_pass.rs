@@ -2,8 +2,8 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward, TimeMessage};
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
@@ -54,8 +54,8 @@ pub(crate) fn propagate_distributions_forward(
 fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  messages: &BTreeMap<GraphEdgeKey, TimeMessage>,
-  context: &GraphPassForwardContext<'_, TimeMessage, BranchLikelihood, NodePosterior>,
+  messages: &BTreeMap<GraphEdgeKey, TimeDistribution>,
+  context: &GraphPassForwardContext<'_, TimeDistribution, BranchLikelihood, NodePosterior>,
   log: &dyn LogSink,
 ) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
@@ -105,9 +105,9 @@ struct ParentEdge<'a> {
   msg_to_parent: Option<&'a Distribution<NegLog>>,
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
+  reason = "the graph pass gives every non-root node its parent edge"
 )]
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,

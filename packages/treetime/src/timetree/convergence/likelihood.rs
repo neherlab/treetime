@@ -3,7 +3,7 @@ use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::inference::time_inference::TimeInference;
+use crate::timetree::inference::result::TimeInference;
 use log::debug;
 use std::collections::BTreeMap;
 use treetime_distribution::Distribution;

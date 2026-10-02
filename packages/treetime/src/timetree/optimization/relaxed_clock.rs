@@ -1,4 +1,4 @@
-use crate::timetree::inference::time_inference::BranchLikelihood;
+use crate::timetree::inference::result::BranchLikelihood;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -113,4 +113,9 @@ impl RelaxedClockPrior {
 struct RelaxedClockCoeffs {
   k1: f64,
   k2: f64,
+}
+
+#[must_use]
+pub(crate) fn unit_gammas(graph: &Graph) -> BTreeMap<GraphEdgeKey, f64> {
+  graph.get_edges().map(|edge| (edge.key(), 1.0)).collect()
 }

@@ -6,8 +6,9 @@
 #[cfg(test)]
 mod tests {
   use crate::pretty_assert_ulps_eq;
+  use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
-  use crate::timetree::inference::time_inference::{BranchLikelihood, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;

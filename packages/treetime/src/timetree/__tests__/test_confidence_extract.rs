@@ -204,7 +204,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::timetree::inference::time_inference::NodePosterior;
+    use crate::timetree::inference::result::NodePosterior;
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};

@@ -30,8 +30,8 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::divergence::final_divergences;
+use crate::timetree::inference::result::TimeInference;
 use crate::timetree::inference::runner::timetree_branch_lengths;
-use crate::timetree::inference::time_inference::TimeInference;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
 use crate::timetree::params::{
   TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params, compute_effective_time_marginal,

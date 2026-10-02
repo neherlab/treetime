@@ -17,8 +17,9 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
@@ -57,7 +58,7 @@ mod tests {
 
     let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let times = likely_times(&graph, &constraints, None)?;
+    let times = given_times(&graph, &constraints)?;
     let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
     let (
       ClockTree {

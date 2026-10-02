@@ -1,4 +1,4 @@
-use crate::timetree::inference::time_inference::TimeInference;
+use crate::timetree::inference::result::TimeInference;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;

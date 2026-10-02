@@ -13,8 +13,9 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::TimeInference;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
   use generators::{TimetreeCase, gen_timetree_case};
   use helpers::run_twice_around_other_gammas;

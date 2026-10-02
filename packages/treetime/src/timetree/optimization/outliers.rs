@@ -1,6 +1,7 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::timetree::inference::result::NodeTimes;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, BTreeSet};
@@ -14,7 +15,7 @@ pub(crate) fn report_outliers(
   divergences: &BTreeMap<GraphNodeKey, f64>,
   clock_model: &ClockModel,
   iqd: f64,
-  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  given_dates: &NodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) {
@@ -50,7 +51,7 @@ fn collect_outlier_records(
   divergences: &BTreeMap<GraphNodeKey, f64>,
   clock_model: &ClockModel,
   iqd: f64,
-  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  given_dates: &NodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Vec<OutlierRecord> {
   graph

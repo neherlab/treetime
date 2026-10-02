@@ -10,7 +10,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::forward_pass::{committed_time, propagate_distributions_forward};
-  use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward};
+  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -279,7 +279,7 @@ mod tests {
 
     pub(super) fn set_date(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution<NegLog>) {
       let dist = Arc::new(dist);
-      inputs.constraints.date_constraints.insert(key, Some(Arc::clone(&dist)));
+      inputs.constraints.by_node.insert(key, Some(Arc::clone(&dist)));
       inputs.backward.subtree.insert(key, Some(dist));
     }
 

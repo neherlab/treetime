@@ -1,7 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::timetree::inference::result::{BranchLikelihood, TimeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::time_inference::{BranchLikelihood, TimeBackward, TimeMessage};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -43,8 +43,8 @@ pub(crate) fn propagate_distributions_backward(
 fn propagate_distributions_backward_node(
   constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,
-  context: &GraphPassBackwardContext<'_, bool, BranchLikelihood, TimeMessage, TimeMessage>,
-) -> Result<GraphPassNodeOutput<TimeMessage, TimeMessage>, Report> {
+  context: &GraphPassBackwardContext<'_, bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
+) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
   let messages = gather_child_messages(context.children);
   let distribution = combine_child_messages(&messages)?;
@@ -61,25 +61,31 @@ fn propagate_distributions_backward_node(
   };
 
   let bad_branch = *context.input;
-  let parent_message = send_backward_message(
-    coalescent_model,
-    context.is_leaf,
-    bad_branch,
-    subtree.as_deref(),
-    context.parent_edge,
-  )?;
+  let parent_message = context
+    .parent_edge
+    .map(|(edge_key, branch)| {
+      send_backward_message(
+        coalescent_model,
+        context.is_leaf,
+        bad_branch,
+        subtree.as_deref(),
+        edge_key,
+        branch,
+      )
+    })
+    .transpose()?;
   Ok(GraphPassNodeOutput {
     node: subtree,
     parent_message,
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
+  reason = "the graph pass gives every non-root node its parent edge and publishes the child output before the parent"
 )]
 fn gather_child_messages(
-  children: &[GraphPassChildBackward<'_, TimeMessage, TimeMessage>],
+  children: &[GraphPassChildBackward<'_, TimeDistribution, TimeDistribution>],
 ) -> Vec<Arc<Distribution<NegLog>>> {
   children
     .iter()
@@ -143,16 +149,14 @@ fn send_backward_message(
   is_leaf: bool,
   bad_branch: bool,
   subtree: Option<&Distribution<NegLog>>,
-  parent_edge: Option<(GraphEdgeKey, &BranchLikelihood)>,
-) -> Result<Option<TimeMessage>, Report> {
-  let Some((edge_key, branch)) = parent_edge else {
-    return Ok(None);
-  };
+  edge_key: GraphEdgeKey,
+  branch: &BranchLikelihood,
+) -> Result<TimeDistribution, Report> {
   if bad_branch {
-    return Ok(Some(None));
+    return Ok(None);
   }
   let (Some(distribution), Some(branch_length_distribution)) = (subtree, &branch.distribution) else {
-    return Ok(Some(None));
+    return Ok(None);
   };
 
   let leaf_weighted = if is_leaf && let Some(model) = coalescent_model {
@@ -168,5 +172,5 @@ fn send_backward_message(
   let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)
     .wrap_err_with(|| format!("When sending the time message backward along edge {edge_key}"))?;
 
-  Ok(Some(Some(Arc::new(message))))
+  Ok(Some(Arc::new(message)))
 }

@@ -6,8 +6,8 @@ mod tests {
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
+  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-  use crate::timetree::inference::time_inference::{BranchLikelihood, NodePosterior, TimeBackward};
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -122,7 +122,9 @@ mod tests {
           .iter()
           .map(|(name, date)| (self.key(name), Some(Arc::new(Distribution::point(*date, 0.0)))))
           .collect();
-        DateConstraints { date_constraints }
+        DateConstraints {
+          by_node: date_constraints,
+        }
       }
 
       pub(super) fn run(

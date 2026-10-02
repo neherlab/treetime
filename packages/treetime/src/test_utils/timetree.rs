@@ -6,9 +6,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use crate::seq::gap_fill::GapFill;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
-use crate::timetree::inference::time_inference::{
-  BranchLikelihood, NodePosterior, TimeBackward, TimeInference, likely_times,
-};
+use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeInference, given_times};
 use crate::timetree::params::TimeMarginalMode;
 use crate::timetree::params::TimetreeParams;
 use eyre::Report;
@@ -20,7 +18,7 @@ pub(crate) fn constraint_coalescent_node_times(
   constraints: &DateConstraints,
 ) -> Result<CoalescentNodeTimes, Report> {
   let bad_branches = derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new()))?;
-  let times = likely_times(graph, constraints, None)?
+  let times = given_times(graph, constraints)?
     .into_iter()
     .map(|(key, time_dist_likely)| {
       let entry = CoalescentNodeTime {
@@ -47,10 +45,6 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
         (edge.key(), branch)
       })
       .collect(),
-    backward: TimeBackward {
-      subtree: graph.get_nodes().map(|node| (node.key(), None)).collect(),
-      messages: graph.get_edges().map(|edge| (edge.key(), None)).collect(),
-    },
     posterior: graph
       .get_nodes()
       .map(|node| (node.key(), NodePosterior::default()))

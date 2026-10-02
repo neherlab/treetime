@@ -23,8 +23,9 @@ mod tests {
   use crate::test_utils::marginal_timetree_params;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use crate::timetree::params::TimeMarginalMode;
   use crate::timetree::params::{TimetreeContext, TimetreeParams};
   use crate::timetree::round::{RoundInputs, RoundOutcome, RoundState, refinement_round};
@@ -258,7 +259,7 @@ mod tests {
       };
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
-      let times = likely_times(&graph, &constraints, None)?;
+      let times = given_times(&graph, &constraints)?;
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
       let (
         ClockTree {

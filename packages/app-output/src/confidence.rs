@@ -25,7 +25,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime::timetree::confidence::extract_confidence_intervals;
-  use treetime::timetree::inference::time_inference::NodePosterior;
+  use treetime::timetree::inference::result::NodePosterior;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 

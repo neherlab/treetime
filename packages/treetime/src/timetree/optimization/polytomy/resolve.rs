@@ -1,5 +1,6 @@
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::timetree::branch_model::BranchModel;
+use crate::timetree::inference::result::NodeTimes;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use eyre::{Report, WrapErr};
@@ -20,7 +21,7 @@ pub(crate) fn resolve_polytomies(
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
-  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+  node_times: &NodeTimes,
 ) -> Result<PolytomyResolution, Report> {
   let polytomy_keys = find_polytomy_nodes(&graph);
   if polytomy_keys.is_empty() {
@@ -94,7 +95,7 @@ fn resolve_single_polytomy(
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+  node_times: &NodeTimes,
 ) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
   let parent_time = inferred_time(node_times, node_key)?;
 
@@ -155,7 +156,7 @@ fn collect_children(
   node_key: GraphNodeKey,
   total_length: usize,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
+  node_times: &NodeTimes,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
     let node = graph.get_node(node_key).expect("Node must exist");
@@ -216,7 +217,7 @@ fn edge_mutation_count(
   Ok(u32::try_from(count).unwrap_or(u32::MAX))
 }
 
-fn inferred_time(node_times: &BTreeMap<GraphNodeKey, Option<f64>>, node_key: GraphNodeKey) -> Result<f64, Report> {
+fn inferred_time(node_times: &NodeTimes, node_key: GraphNodeKey) -> Result<f64, Report> {
   let Some(time) = node_times[&node_key] else {
     return make_error!("Polytomy resolution requires an inferred time for node {node_key}, but it has none");
   };
@@ -252,10 +253,7 @@ fn remove_single_child_nodes(
   Ok(removed_count)
 }
 
-pub(crate) fn require_internal_node_times(
-  graph: &Graph,
-  node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
-) -> Result<(), Report> {
+pub(crate) fn require_internal_node_times(graph: &Graph, node_times: &NodeTimes) -> Result<(), Report> {
   for node in graph.get_nodes() {
     if node.is_leaf() {
       continue;

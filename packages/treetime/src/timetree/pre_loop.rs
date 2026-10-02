@@ -12,7 +12,7 @@ use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::inference::time_inference::likely_times;
+use crate::timetree::inference::result::given_times;
 use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
@@ -229,7 +229,7 @@ fn filter_clock_outliers(
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let graph = &state.graph;
-  let given_dates = likely_times(graph, &inputs.context.date_constraints, None)?;
+  let given_dates = given_times(graph, &inputs.context.date_constraints)?;
   let clock_inputs = ClockInputs::from_times(graph, &given_dates, &BTreeMap::new());
   let ClockFilterResult {
     outliers,

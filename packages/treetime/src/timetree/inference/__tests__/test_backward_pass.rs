@@ -5,7 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::timetree::inference::time_inference::{BranchLikelihood, TimeBackward};
+  use crate::timetree::inference::result::{BranchLikelihood, TimeBackward};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
@@ -541,7 +541,7 @@ mod tests {
       key: GraphNodeKey,
       dist: Distribution<NegLog>,
     ) {
-      constraints.date_constraints.insert(key, Some(Arc::new(dist)));
+      constraints.by_node.insert(key, Some(Arc::new(dist)));
     }
 
     pub(super) fn set_leaf_time(inputs: &mut BackwardInputs, key: GraphNodeKey, time: f64) {

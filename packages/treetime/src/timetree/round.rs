@@ -16,15 +16,15 @@ use crate::timetree::coalescent_timescale::{
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::bad_branches::bad_leaves;
+use crate::timetree::inference::result::{TimeInference, likely_times};
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
 };
-use crate::timetree::inference::time_inference::{TimeInference, likely_times, unit_gammas};
 use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
 };
-use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock};
+use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock, unit_gammas};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::PreLoopState;
 use eyre::{Report, WrapErr};
@@ -393,11 +393,7 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
     .iter()
     .map(|(key, branch)| (*key, (branch.time_length, state.gammas[key])))
     .collect();
-  let times = likely_times(
-    &state.graph,
-    &inputs.context.date_constraints,
-    Some(&state.time_inference),
-  )?;
+  let times = likely_times(&state.graph, &inputs.context.date_constraints, &state.time_inference)?;
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
   let previous_clock_rate = state.clock_model.clock_rate();
   let keep_root = true;

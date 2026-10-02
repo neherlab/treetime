@@ -27,7 +27,7 @@ use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
-use treetime::timetree::inference::time_inference::TimeInference;
+use treetime::timetree::inference::result::TimeInference;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput};
 use treetime::{progress_info, progress_warn};

@@ -45,7 +45,7 @@ mod tests {
         TestNode {
           name,
           date_constraint: None,
-          time_distribution: constraints.date_constraints[&key].clone(),
+          time_distribution: constraints.by_node[&key].clone(),
           bad_branch: bad_branches[&key],
         }
       })

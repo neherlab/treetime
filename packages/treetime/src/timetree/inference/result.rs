@@ -12,13 +12,14 @@ use treetime_graph::node::GraphNodeKey;
 pub struct TimeInference {
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
-  pub backward: TimeBackward,
   pub posterior: BTreeMap<GraphNodeKey, NodePosterior>,
 }
 
+pub(crate) type NodeTimes = BTreeMap<GraphNodeKey, Option<f64>>;
+
 impl TimeInference {
   #[must_use]
-  pub(crate) fn node_times(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  pub(crate) fn node_times(&self) -> NodeTimes {
     self
       .posterior
       .iter()
@@ -42,48 +43,54 @@ impl TimeInference {
   }
 }
 
-pub type TimeMessage = Option<Arc<Distribution<NegLog>>>;
+pub type TimeDistribution = Option<Arc<Distribution<NegLog>>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchLikelihood {
-  pub distribution: Option<Arc<Distribution<NegLog>>>,
+  pub distribution: TimeDistribution,
   pub time_length: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeBackward {
-  pub subtree: BTreeMap<GraphNodeKey, TimeMessage>,
-  pub messages: BTreeMap<GraphEdgeKey, TimeMessage>,
+  pub subtree: BTreeMap<GraphNodeKey, TimeDistribution>,
+  pub messages: BTreeMap<GraphEdgeKey, TimeDistribution>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodePosterior {
-  pub distribution: Option<Arc<Distribution<NegLog>>>,
+  pub distribution: TimeDistribution,
   pub time: Option<f64>,
   pub contradicted: bool,
+}
+
+pub(crate) fn given_times(graph: &Graph, constraints: &DateConstraints) -> Result<NodeTimes, Report> {
+  graph
+    .get_nodes()
+    .map(|node| {
+      let key = node.key();
+      let time = likely_time_of_node(key, constraints.date_constraint(key).as_deref())?;
+      Ok((key, time))
+    })
+    .collect()
 }
 
 pub(crate) fn likely_times(
   graph: &Graph,
   constraints: &DateConstraints,
-  inference: Option<&TimeInference>,
-) -> Result<BTreeMap<GraphNodeKey, Option<f64>>, Report> {
+  inference: &TimeInference,
+) -> Result<NodeTimes, Report> {
   graph
     .get_nodes()
     .map(|node| {
       let key = node.key();
       let distribution = constraints
         .date_constraint(key)
-        .or_else(|| inference.and_then(|inference| inference.posterior[&key].distribution.clone()));
+        .or_else(|| inference.posterior[&key].distribution.clone());
       let time = likely_time_of_node(key, distribution.as_deref())?;
       Ok((key, time))
     })
     .collect()
-}
-
-#[must_use]
-pub(crate) fn unit_gammas(graph: &Graph) -> BTreeMap<GraphEdgeKey, f64> {
-  graph.get_edges().map(|edge| (edge.key(), 1.0)).collect()
 }
 
 fn likely_time_of_node(key: GraphNodeKey, distribution: Option<&Distribution<NegLog>>) -> Result<Option<f64>, Report> {

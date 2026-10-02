@@ -137,7 +137,9 @@ mod tests {
           (key, Some(Arc::new(Distribution::point(2020.0, 0.0))))
         })
         .collect();
-      DateConstraints { date_constraints }
+      DateConstraints {
+        by_node: date_constraints,
+      }
     }
 
     pub(super) fn by_name(

@@ -7,7 +7,7 @@
 mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
-  use crate::timetree::inference::time_inference::BranchLikelihood;
+  use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use eyre::Report;
   use rstest::rstest;

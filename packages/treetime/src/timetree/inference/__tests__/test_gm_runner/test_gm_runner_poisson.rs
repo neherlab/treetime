@@ -7,8 +7,8 @@ mod tests {
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
+  use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::inference::runner::GRID_POINTS;
-  use crate::timetree::inference::time_inference::BranchLikelihood;
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
