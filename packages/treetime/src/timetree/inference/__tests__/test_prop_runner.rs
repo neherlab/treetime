@@ -11,19 +11,17 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::find_node_key_by_name;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
-  use crate::timetree::inference::result::TimeInference;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
   use generators::{TimetreeCase, gen_timetree_case};
-  use helpers::run_twice_around_other_gammas;
+  use helpers::run_once;
   use itertools::Itertools;
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
-  use std::collections::BTreeSet;
-  use treetime_graph::edge::GraphEdgeKey;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -31,13 +29,21 @@ mod tests {
 
   const CLOCK_RATE: f64 = 0.001;
 
+  const MIN_DATED_LEAVES: usize = 3;
+
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]
 
     #[test]
-    fn test_prop_runner_run_timetree_idempotent(case in gen_timetree_case()) {
-      let runs = run_twice_around_other_gammas(&case).unwrap();
-      prop_assert_eq!(runs.first, runs.after_other_gammas);
+    fn test_prop_runner_leaf_bad_branch_flags_and_exact_dates_pass_through(case in gen_timetree_case()) {
+      let leaves = run_once(&case).unwrap();
+
+      for (name, leaf) in &leaves {
+        prop_assert_eq!(leaf.expected_bad, leaf.bad, "bad-branch flag of leaf {}", name);
+        if let Some(date) = leaf.date {
+          prop_assert_eq!(Some(date), leaf.time, "posterior time of exactly dated leaf {}", name);
+        }
+      }
     }
   }
 
@@ -49,7 +55,7 @@ mod tests {
       pub newick: String,
       pub fasta: String,
       pub dates: Vec<(String, Option<f64>)>,
-      pub other_gamma: f64,
+      pub outliers: Vec<String>,
     }
 
     pub(super) fn gen_timetree_case() -> impl Strategy<Value = TimetreeCase> {
@@ -62,11 +68,12 @@ mod tests {
           prop::collection::vec(0.001_f64..0.02, 2 * (n_leaves - 1)),
           prop::collection::vec(2000.0_f64..2020.0, n_leaves),
           prop::collection::vec(any::<bool>(), n_leaves),
+          prop::collection::vec(any::<bool>(), n_leaves),
           prop::collection::vec("[ACGT]{24}", n_leaves),
-          0.5_f64..2.0,
         )
-          .prop_map(move |(picks, lengths, dates, undated, sequences, other_gamma)| {
+          .prop_map(move |(picks, lengths, dates, undated, outlier, sequences)| {
             let names = (0..n_leaves).map(|index| format!("L{index}")).collect::<Vec<_>>();
+            let always_good = |index: usize| index < MIN_DATED_LEAVES;
             TimetreeCase {
               newick: random_newick(&names, &picks, &lengths),
               fasta: names
@@ -78,11 +85,16 @@ mod tests {
                 .iter()
                 .enumerate()
                 .map(|(index, name)| {
-                  let date = (index < 3 || !undated[index]).then_some(dates[index]);
+                  let date = (always_good(index) || !undated[index]).then_some(dates[index]);
                   (name.clone(), date)
                 })
                 .collect(),
-              other_gamma,
+              outliers: names
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| !always_good(*index) && outlier[*index])
+                .map(|(_, name)| name.clone())
+                .collect(),
             }
           })
       })
@@ -107,14 +119,14 @@ mod tests {
   mod helpers {
     use super::*;
 
-    type RunResult = Result<TimeInference, String>;
-
-    pub(super) struct TwoRuns {
-      pub first: RunResult,
-      pub after_other_gammas: RunResult,
+    pub(super) struct LeafOutcome {
+      pub expected_bad: bool,
+      pub bad: bool,
+      pub date: Option<f64>,
+      pub time: Option<f64>,
     }
 
-    pub(super) fn run_twice_around_other_gammas(case: &TimetreeCase) -> Result<TwoRuns, Report> {
+    pub(super) fn run_once(case: &TimetreeCase) -> Result<BTreeMap<String, LeafOutcome>, Report> {
       let nwk_parsed = nwk_read_str(&case.newick)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -143,37 +155,48 @@ mod tests {
         .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
         .collect();
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
-      let leaf_bad_branches = bad_leaves(&graph, &constraints, &BTreeSet::new());
+      let outliers: BTreeSet<_> = case
+        .outliers
+        .iter()
+        .map(|name| find_node_key_by_name(&graph, &names, name).expect("generated leaf must exist"))
+        .collect();
+      let leaf_bad_branches = bad_leaves(&graph, &constraints, &outliers);
       let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
+      let gammas = unit_gammas(&graph);
 
-      let unit = unit_gammas(&graph);
-      let other: BTreeMap<GraphEdgeKey, f64> = unit.keys().map(|key| (*key, case.other_gamma)).collect();
-      let run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
-        run_timetree(
-          &TimeInferenceInputs {
-            graph: &graph,
-            date_constraints: &constraints,
-            leaf_bad_branches: &leaf_bad_branches,
-            gammas,
-            branch_model: &branch_model,
-            branch_lengths: &branch_lengths,
-            names: &names,
-            clock_model: &clock_model,
-            no_indels: false,
-          },
-          None,
-          &NoopProgress,
-        )
-        .map_err(|report| format!("{report:?}"))
-      };
+      let inference = run_timetree(
+        &TimeInferenceInputs {
+          graph: &graph,
+          date_constraints: &constraints,
+          leaf_bad_branches: &leaf_bad_branches,
+          gammas: &gammas,
+          branch_model: &branch_model,
+          branch_lengths: &branch_lengths,
+          names: &names,
+          clock_model: &clock_model,
+          no_indels: false,
+        },
+        None,
+        &NoopProgress,
+      )?;
 
-      let first = run(&unit);
-      let _other_gammas_result = run(&other);
-      let after_other_gammas = run(&unit);
-      Ok(TwoRuns {
-        first,
-        after_other_gammas,
-      })
+      let given_dates: BTreeMap<&String, Option<f64>> = case.dates.iter().map(|(name, date)| (name, *date)).collect();
+      Ok(
+        graph
+          .get_leaves()
+          .map(|leaf| {
+            let key = leaf.key();
+            let name = names[&key].clone().expect("generated leaves are named");
+            let outcome = LeafOutcome {
+              expected_bad: given_dates[&name].is_none() || case.outliers.contains(&name),
+              bad: inference.bad_branches[&key],
+              date: given_dates[&name],
+              time: inference.posterior[&key].time,
+            };
+            (name, outcome)
+          })
+          .collect(),
+      )
     }
   }
 }

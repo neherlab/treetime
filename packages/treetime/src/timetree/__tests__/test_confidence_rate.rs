@@ -1,12 +1,42 @@
 #[cfg(test)]
 mod tests {
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
+  use crate::clock::date_constraints::DateConstraints;
+  use crate::gtr::get_gtr::GtrModelName;
+  use crate::partition::create::{Representation, build_marginal_partition};
   use crate::progress::NoopProgress;
-  use crate::timetree::confidence::{date_uncertainty_due_to_rate, determine_rate_std, quantile_to_zscore};
+  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::{find_node_key_by_name, point_date_constraints};
+  use crate::timetree::branch_model::BranchModel;
+  use crate::timetree::confidence::{
+    RateSusceptibility, compute_rate_susceptibility, date_uncertainty_due_to_rate, determine_rate_std,
+    quantile_to_zscore,
+  };
+  use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
+  use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use approx::assert_relative_eq;
+  use eyre::Report;
+  use indoc::indoc;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::{BTreeMap, BTreeSet};
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
+  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
+
+  const FIXTURE_CLOCK_RATE: f64 = 0.002;
+
+  const RATE_STD_FRACTION: f64 = 0.5;
+
+  const FIXTURE_DATES: [(&str, f64); 4] = [("A", 2010.0), ("B", 2012.0), ("C", 2011.0), ("D", 2013.0)];
 
   #[rustfmt::skip]
   #[rstest]
@@ -90,5 +120,132 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.003, 0.0);
     let result = determine_rate_std(None, true, &clock_model, &NoopProgress).unwrap();
     assert!(result.is_none());
+  }
+
+  #[test]
+  fn test_compute_rate_susceptibility_brackets_each_date_and_keeps_the_central_inference() -> Result<(), Report> {
+    let fixture = helpers::SusceptibilityFixture::new()?;
+    let inputs = fixture.inputs();
+    let rate_std = RATE_STD_FRACTION * FIXTURE_CLOCK_RATE;
+
+    let RateSusceptibility { dates, central } = compute_rate_susceptibility(&inputs, None, rate_std, &NoopProgress)?;
+
+    let direct = run_timetree(&inputs, None, &NoopProgress)?;
+    assert_eq!(direct, central);
+
+    let dated_nodes: BTreeSet<GraphNodeKey> = central
+      .posterior
+      .iter()
+      .filter_map(|(key, posterior)| posterior.time.map(|_| *key))
+      .collect();
+    assert_eq!(dated_nodes, dates.keys().copied().collect::<BTreeSet<_>>());
+    for (key, triple) in &dates {
+      assert!(
+        triple[0] <= triple[1] && triple[1] <= triple[2],
+        "dates of node {key} must be sorted: {triple:?}"
+      );
+      let central_time = central.posterior[key].time.expect("dated node");
+      assert!(
+        triple.contains(&central_time),
+        "dates of node {key} must contain the central time {central_time}: {triple:?}"
+      );
+    }
+    for (name, date) in FIXTURE_DATES {
+      assert_eq!(
+        [date, date, date].map(f64::to_bits),
+        dates[&fixture.key(name)].map(f64::to_bits),
+        "exact date of leaf {name}"
+      );
+    }
+    let root = dates[&fixture.key("root")];
+    assert!(
+      root[0] < root[2],
+      "a slower and a faster clock must move the root apart: {root:?}"
+    );
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) struct SusceptibilityFixture {
+      graph: Graph,
+      names: BTreeMap<GraphNodeKey, Option<String>>,
+      constraints: DateConstraints,
+      leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
+      gammas: BTreeMap<GraphEdgeKey, f64>,
+      branch_model: BranchModel,
+      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      clock_model: ClockModel,
+    }
+
+    impl SusceptibilityFixture {
+      pub(super) fn new() -> Result<Self, Report> {
+        let nwk_parsed = nwk_read_str("((A:0.01,B:0.02)AB:0.01,(C:0.015,D:0.01)CD:0.02)root;")?;
+        let names = nwk_parsed.names();
+        let graph = nwk_parsed.graph;
+        let branch_lengths = nwk_parsed.branch_lengths;
+        let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+        let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+          indoc! {"
+            >A
+            ACGTACGTACGTACGTACGTACGT
+            >B
+            ACGTACGTACGAACGTACGTACCT
+            >C
+            ACGTTCGTACGTACGTACGTACGT
+            >D
+            ACGTTCGTACGTACGTAGGTACGT
+          "},
+          &alphabet,
+        )?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+        let reconstruction = build_marginal_partition(
+          Representation::Dense,
+          GtrModelName::JC69,
+          &graph,
+          0,
+          alphabet,
+          &node_seq_inputs(&graph, &names, aln),
+          &branch_lengths_or_zero(&branch_lengths),
+          &NoopProgress,
+        )?
+        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
+        .0;
+        let constraints = point_date_constraints(&graph, &names, &FIXTURE_DATES);
+        let leaf_bad_branches = bad_leaves(&graph, &constraints, &BTreeSet::new());
+        let gammas = unit_gammas(&graph);
+        Ok(Self {
+          graph,
+          names,
+          constraints,
+          leaf_bad_branches,
+          gammas,
+          branch_model: BranchModel::Marginal(reconstruction),
+          branch_lengths,
+          clock_model: ClockModel::for_testing(FIXTURE_CLOCK_RATE, 0.0),
+        })
+      }
+
+      pub(super) fn key(&self, name: &str) -> GraphNodeKey {
+        find_node_key_by_name(&self.graph, &self.names, name).expect("fixture node must exist")
+      }
+
+      pub(super) fn inputs(&self) -> TimeInferenceInputs<'_> {
+        TimeInferenceInputs {
+          graph: &self.graph,
+          date_constraints: &self.constraints,
+          leaf_bad_branches: &self.leaf_bad_branches,
+          gammas: &self.gammas,
+          branch_model: &self.branch_model,
+          branch_lengths: &self.branch_lengths,
+          names: &self.names,
+          clock_model: &self.clock_model,
+          no_indels: false,
+        }
+      }
+    }
   }
 }

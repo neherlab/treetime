@@ -77,7 +77,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(child:0.1)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
 
     let state = empty_time_inference(&graph);
     let actual = compute_positional_log_lh(&graph, &state);
@@ -202,7 +201,6 @@ mod tests {
       let nwk_parsed = nwk_read_str("(child:0.1)root;")?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
-      let graph: Graph = graph;
       Ok((graph, names))
     }
 
@@ -240,7 +238,6 @@ mod tests {
       let nwk_parsed = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
-      let graph: Graph = graph;
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
       Ok((graph, constraints))
     }

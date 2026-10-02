@@ -10,6 +10,7 @@ mod tests {
   use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
 
@@ -51,9 +52,8 @@ mod tests {
 
     let times = extract_node_times(&output.graph, &output.names, &output.time_inference.posterior);
     assert_eq!(output.graph.num_nodes(), times.len(), "every node must be dated");
-    for (name, time) in &times {
-      assert!(time.is_finite(), "Node {name} has non-finite time {time}");
-    }
+    let non_finite: BTreeMap<&String, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
+    assert_eq!(BTreeMap::new(), non_finite, "every node time must be finite");
     Ok(())
   }
 }

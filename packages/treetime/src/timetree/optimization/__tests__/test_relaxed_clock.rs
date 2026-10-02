@@ -1,12 +1,7 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{find_node_key_by_name, unknown_branches};
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use eyre::Report;
@@ -20,8 +15,7 @@ mod tests {
   use treetime_utils::pretty_assert_map_ulps_eq;
 
   use helpers::{
-    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, empty_branches, seed_state_scaled,
-    time_branch,
+    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_time_branches, time_branch,
   };
 
   #[rustfmt::skip]
@@ -44,9 +38,8 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
-    let mut branches = empty_branches(&graph);
+    let mut branches = unknown_branches(&graph);
     for (name, branch) in &input.branches {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
@@ -63,7 +56,8 @@ mod tests {
       &[input.slack, input.coupling],
       input.one_mutation,
       input.clock_rate,
-      &branches)?;
+      &branches,
+    )?;
 
     let actual = input
       .branches
@@ -90,7 +84,7 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
@@ -109,7 +103,7 @@ mod tests {
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
@@ -121,16 +115,19 @@ mod tests {
   }
 
   #[test]
+  #[expect(
+    clippy::as_conversions,
+    reason = "an edge count is far below 2^53, so the conversion to f64 is exact"
+  )]
   fn test_relaxed_clock_uniform_branches_produce_similar_gamma() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut branches = empty_branches(&graph);
+    let mut branches = unknown_branches(&graph);
     for edge in graph.get_edges() {
       branches.insert(edge.key(), time_branch(Some(10.0)));
     }
@@ -151,7 +148,7 @@ mod tests {
     let (graph, branch_lengths) = build_simple_tree()?;
     let one_mutation = 0.01;
 
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
@@ -168,7 +165,7 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
 
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
@@ -191,7 +188,7 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 1.0];
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
 
     let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
@@ -217,7 +214,7 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 0.1];
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
 
     let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
@@ -243,12 +240,11 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let params = [1.0, 1.0];
 
     let one_mutation_single = 0.001;
-    let branches = seed_state_scaled(&graph, &branch_lengths, 0.8);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 0.8);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &branches)?;
 
     let gammas_single: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
@@ -277,7 +273,7 @@ mod tests {
     let params = [1.0, 1.0];
 
     let tiny_one_mutation = 1e-15;
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
@@ -295,11 +291,10 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let branches = seed_state_scaled(&graph, &branch_lengths, 100.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     let root_edge_gamma = graph.get_edges().collect::<Vec<_>>().first().map(|e| gammas[&e.key()]);
@@ -322,9 +317,8 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let params = [slack, 1.0];
-    let branches = empty_branches(&graph);
+    let branches = unknown_branches(&graph);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     for edge in graph.get_edges() {
@@ -341,11 +335,10 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let branches = seed_state_scaled(&graph, &branch_lengths, 1.0);
+    let branches = scaled_time_branches(&graph, &branch_lengths, 1.0);
     let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
 
     let gamma = graph
@@ -398,7 +391,7 @@ mod tests {
       Ok((graph, branch_lengths))
     }
 
-    pub(super) fn seed_state_scaled(
+    pub(super) fn scaled_time_branches(
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       factor: f64,
@@ -409,10 +402,6 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn empty_branches(graph: &Graph) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
-      graph.get_edges().map(|edge| (edge.key(), time_branch(None))).collect()
-    }
-
     pub(super) fn time_branch(time_length: Option<f64>) -> BranchLikelihood {
       BranchLikelihood {
         distribution: None,
@@ -420,6 +409,10 @@ mod tests {
       }
     }
 
+    #[expect(
+      clippy::as_conversions,
+      reason = "a value count is far below 2^53, so the conversion to f64 is exact"
+    )]
     pub(super) fn compute_variance(values: &[f64]) -> f64 {
       let n = values.len() as f64;
       let mean = values.iter().sum::<f64>() / n;

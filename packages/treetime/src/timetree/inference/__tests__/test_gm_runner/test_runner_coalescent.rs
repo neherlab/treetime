@@ -51,7 +51,6 @@ mod tests {
 let (graph, names, partition, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
     let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
-    let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     let inference = run_timetree(
       &TimeInferenceInputs {
@@ -60,7 +59,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
         gammas: &unit_gammas(&graph),
         branch_model: &BranchModel::Marginal(partition),
-        branch_lengths: &run_branch_lengths,
+        branch_lengths: &branch_lengths,
         names: &run_names,
         clock_model: &clock_model,
         no_indels: false,
@@ -106,7 +105,6 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
       let dates = load_dates_for_dataset(dataset)?;
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 

@@ -19,57 +19,11 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::json_read_str;
 
-  #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
-  struct TestNode {
-    name: Option<String>,
-    #[serde(default)]
-    date_constraint: Option<Arc<Distribution<NegLog>>>,
-    time_distribution: Option<Arc<Distribution<NegLog>>>,
-    bad_branch: bool,
-  }
-
-  type TestGraph = Graph;
-
-  fn node_constraints(
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &TestGraph,
-    constraints: &DateConstraints,
-  ) -> Vec<TestNode> {
-    let bad_branches =
-      derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new())).unwrap();
-    graph
-      .get_nodes()
-      .map(|node| {
-        let key = node.key();
-        let name = names.get(&node.key()).cloned().flatten();
-        TestNode {
-          name,
-          date_constraint: None,
-          time_distribution: constraints.by_node[&key].clone(),
-          bad_branch: bad_branches[&key],
-        }
-      })
-      .sorted_by_key(|n| n.name.clone().unwrap_or_default())
-      .collect_vec()
-  }
-
-  fn exact(value: f64) -> Option<DateConstraint> {
-    Some(DateConstraint::exact(value))
-  }
-
-  fn range(start: f64, end: f64) -> Option<DateConstraint> {
-    Some(DateConstraint {
-      raw: format!("{start}/{end}"),
-      value: DateValue::Range(DateRange { start, end }),
-    })
-  }
-
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -79,12 +33,12 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -96,7 +50,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -106,13 +59,13 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": null, "bad_branch": true},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "D", "date_constraint": null},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -124,7 +77,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => range(2020.0, 2020.25),
       o!("B") => exact(2020.5),
@@ -134,12 +86,12 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -151,7 +103,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -162,13 +113,13 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "AB", "time_distribution": {"point": {"t": 2019.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "AB", "date_constraint": {"point": {"t": 2019.5, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -176,11 +127,10 @@ mod tests {
   }
 
   #[test]
-  fn test_load_date_constraints_bad_branch_propagation() -> Result<(), Report> {
+  fn test_derive_bad_branches_over_loaded_dates_marks_only_the_undated_leaf() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -190,27 +140,39 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "AB", "time_distribution": null, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "CD", "time_distribution": null, "bad_branch": false},
-        {"name": "D", "time_distribution": null, "bad_branch": true},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "AB", "date_constraint": null},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "CD", "date_constraint": null},
+        {"name": "D", "date_constraint": null},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
+    let expected_bad_branches = btreemap! {
+      o!("A") => false,
+      o!("AB") => false,
+      o!("B") => false,
+      o!("C") => false,
+      o!("CD") => false,
+      o!("D") => true,
+      o!("root") => false,
+    };
+    assert_eq!(
+      expected_bad_branches,
+      derived_bad_branches(&names, &graph, &constraints)?
+    );
     Ok(())
   }
 
   #[test]
-  fn test_load_date_constraints_all_children_bad() -> Result<(), Report> {
+  fn test_derive_bad_branches_over_loaded_dates_marks_a_subtree_whose_children_are_all_bad() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("C") => exact(2020.0),
       o!("D") => exact(2020.5),
@@ -220,20 +182,35 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": null, "bad_branch": true},
-        {"name": "AB", "time_distribution": null, "bad_branch": true},
-        {"name": "ABCD", "time_distribution": null, "bad_branch": false},
-        {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "CD", "time_distribution": null, "bad_branch": false},
-        {"name": "D", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "E", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": null},
+        {"name": "AB", "date_constraint": null},
+        {"name": "ABCD", "date_constraint": null},
+        {"name": "B", "date_constraint": null},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "CD", "date_constraint": null},
+        {"name": "D", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "E", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
+    let expected_bad_branches = btreemap! {
+      o!("A") => true,
+      o!("AB") => true,
+      o!("ABCD") => false,
+      o!("B") => true,
+      o!("C") => false,
+      o!("CD") => false,
+      o!("D") => false,
+      o!("E") => false,
+      o!("root") => false,
+    };
+    assert_eq!(
+      expected_bad_branches,
+      derived_bad_branches(&names, &graph, &constraints)?
+    );
     Ok(())
   }
 
@@ -242,7 +219,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -252,7 +228,7 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    assert_eq!(actual.iter().filter(|n| n.time_distribution.is_some()).count(), 3);
+    assert_eq!(actual.iter().filter(|n| n.date_constraint.is_some()).count(), 3);
     Ok(())
   }
 
@@ -261,7 +237,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => None,
@@ -272,13 +247,13 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": null},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "D", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -286,12 +261,11 @@ mod tests {
   }
 
   #[test]
-  fn test_load_date_constraints_deep_tree_propagation() -> Result<(), Report> {
+  fn test_derive_bad_branches_over_loaded_dates_stops_at_the_first_dated_descendant() -> Result<(), Report> {
     let nwk_parsed =
       nwk_read_str("((((((A:0.1,B:0.1)L1:0.1,C:0.1)L2:0.1,D:0.1)L3:0.1,E:0.1)L4:0.1,F:0.1)L5:0.1,G:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("C") => exact(2020.0),
       o!("D") => exact(2020.25),
@@ -303,24 +277,43 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": null, "bad_branch": true},
-        {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"point": {"t": 2020.25, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "E", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "F", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "G", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "L1", "time_distribution": null, "bad_branch": true},
-        {"name": "L2", "time_distribution": null, "bad_branch": false},
-        {"name": "L3", "time_distribution": null, "bad_branch": false},
-        {"name": "L4", "time_distribution": null, "bad_branch": false},
-        {"name": "L5", "time_distribution": null, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": null},
+        {"name": "B", "date_constraint": null},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "D", "date_constraint": {"point": {"t": 2020.25, "ampl": 0.0}}},
+        {"name": "E", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "F", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "G", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
+        {"name": "L1", "date_constraint": null},
+        {"name": "L2", "date_constraint": null},
+        {"name": "L3", "date_constraint": null},
+        {"name": "L4", "date_constraint": null},
+        {"name": "L5", "date_constraint": null},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
+    let expected_bad_branches = btreemap! {
+      o!("A") => true,
+      o!("B") => true,
+      o!("C") => false,
+      o!("D") => false,
+      o!("E") => false,
+      o!("F") => false,
+      o!("G") => false,
+      o!("L1") => true,
+      o!("L2") => false,
+      o!("L3") => false,
+      o!("L4") => false,
+      o!("L5") => false,
+      o!("root") => false,
+    };
+    assert_eq!(
+      expected_bad_branches,
+      derived_bad_branches(&names, &graph, &constraints)?
+    );
     Ok(())
   }
 
@@ -330,7 +323,6 @@ mod tests {
       nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("C") => exact(2020.2),
@@ -343,21 +335,21 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.2, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": null, "bad_branch": true},
-        {"name": "E", "time_distribution": {"point": {"t": 2020.4, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "F", "time_distribution": null, "bad_branch": true},
-        {"name": "G", "time_distribution": {"point": {"t": 2020.6, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "H", "time_distribution": null, "bad_branch": true},
-        {"name": "I", "time_distribution": {"point": {"t": 2020.8, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "J", "time_distribution": null, "bad_branch": true},
-        {"name": "K", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "L", "time_distribution": null, "bad_branch": true},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": null},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.2, "ampl": 0.0}}},
+        {"name": "D", "date_constraint": null},
+        {"name": "E", "date_constraint": {"point": {"t": 2020.4, "ampl": 0.0}}},
+        {"name": "F", "date_constraint": null},
+        {"name": "G", "date_constraint": {"point": {"t": 2020.6, "ampl": 0.0}}},
+        {"name": "H", "date_constraint": null},
+        {"name": "I", "date_constraint": {"point": {"t": 2020.8, "ampl": 0.0}}},
+        {"name": "J", "date_constraint": null},
+        {"name": "K", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
+        {"name": "L", "date_constraint": null},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -369,7 +361,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => range(2020.0, 2020.25),
       o!("B") => exact(2020.5),
@@ -380,43 +371,16 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"range": {"range": [2020.6, 2020.8], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"range": {"range": [2020.6, 2020.8], "ampl": 0.0}}},
+        {"name": "D", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
-    Ok(())
-  }
-
-  #[test]
-  fn test_load_date_constraints_idempotency() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
-    let dates: DatesMap = btreemap! {
-      o!("A") => exact(2020.0),
-      o!("B") => exact(2020.5),
-      o!("C") => exact(2020.75),
-    };
-
-    let first_run = node_constraints(
-      &names,
-      &graph,
-      &load_date_constraints(&dates, &graph, &names, &NoopProgress)?,
-    );
-    let second_run = node_constraints(
-      &names,
-      &graph,
-      &load_date_constraints(&dates, &graph, &names, &NoopProgress)?,
-    );
-
-    assert_eq!(first_run, second_run);
     Ok(())
   }
 
@@ -425,7 +389,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
@@ -436,13 +399,13 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "AB", "time_distribution": {"range": {"range": [2019.0, 2019.75], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
+        {"name": "AB", "date_constraint": {"range": {"range": [2019.0, 2019.75], "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
@@ -454,7 +417,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: TestGraph = graph;
     let dates: DatesMap = btreemap! {
       o!("A") => exact(-500.0),
       o!("B") => exact(-250.0),
@@ -464,15 +426,67 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<TestNode> = json_read_str(
+    let expected: Vec<LoadedNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"point": {"t": -500.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"point": {"t": -250.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"point": {"t": 0.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "root", "time_distribution": null, "bad_branch": false}
+        {"name": "A", "date_constraint": {"point": {"t": -500.0, "ampl": 0.0}}},
+        {"name": "B", "date_constraint": {"point": {"t": -250.0, "ampl": 0.0}}},
+        {"name": "C", "date_constraint": {"point": {"t": 0.0, "ampl": 0.0}}},
+        {"name": "root", "date_constraint": null}
       ]"#,
     )?;
     assert_eq!(actual, expected);
     Ok(())
   }
+
+  mod helpers {
+    use super::*;
+
+    #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+    pub(super) struct LoadedNode {
+      pub(super) name: Option<String>,
+      pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,
+    }
+
+    pub(super) fn node_constraints(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &Graph,
+      constraints: &DateConstraints,
+    ) -> Vec<LoadedNode> {
+      graph
+        .get_nodes()
+        .map(|node| LoadedNode {
+          name: names.get(&node.key()).cloned().flatten(),
+          date_constraint: constraints.by_node[&node.key()].clone(),
+        })
+        .sorted_by_key(|n| n.name.clone().unwrap_or_default())
+        .collect_vec()
+    }
+
+    pub(super) fn derived_bad_branches(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &Graph,
+      constraints: &DateConstraints,
+    ) -> Result<BTreeMap<String, bool>, Report> {
+      let leaf_bad_branches = bad_leaves(graph, constraints, &BTreeSet::new());
+      Ok(
+        derive_bad_branches(graph, constraints, &leaf_bad_branches)?
+          .into_iter()
+          .map(|(key, bad)| (names[&key].clone().expect("every fixture node is named"), bad))
+          .collect(),
+      )
+    }
+
+    pub(super) fn exact(value: f64) -> Option<DateConstraint> {
+      Some(DateConstraint::exact(value))
+    }
+
+    pub(super) fn range(start: f64, end: f64) -> Option<DateConstraint> {
+      Some(DateConstraint {
+        raw: format!("{start}/{end}"),
+        value: DateValue::Range(DateRange { start, end }),
+      })
+    }
+  }
+
+  use helpers::*;
 }

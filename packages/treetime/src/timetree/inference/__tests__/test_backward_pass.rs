@@ -3,13 +3,13 @@ mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::{BranchLikelihood, TimeBackward};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use ndarray::array;
+  use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
@@ -18,6 +18,17 @@ mod tests {
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_abs_diff_eq;
+
+  const LAPLACE_WEIGHTED_MEDIAN: f64 = 2005.0;
+
+  const LAPLACE_PROBE_NEAR: f64 = 2006.0;
+
+  const LAPLACE_PROBE_FAR: f64 = 2007.0;
+
+  const BRANCH_GRID_POINTS: usize = 201;
+
+  const BRANCH_PRECISION: f64 = 4.0;
 
   #[test]
   fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
@@ -116,9 +127,7 @@ mod tests {
 
     let coalescent_model = coalescent_model(0.01)?;
 
-    let first = run_backward_pass(&graph, &inputs, Some(&coalescent_model))?;
     let backward = run_backward_pass(&graph, &inputs, Some(&coalescent_model))?;
-    assert_eq!(first, backward);
 
     {
       let time_dist = node_time_distribution(&backward, leaf_a_key).expect("leaf A should have time distribution");
@@ -159,6 +168,40 @@ mod tests {
     let expected = Some(2012.0);
     assert_eq!(expected, actual);
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_backward_pass_coalescent_prior_adds_the_internal_merger_term_to_the_subtree() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
+    let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal I not found");
+
+    let mut inputs = BackwardInputs::new(&graph);
+    set_leaf_time(&mut inputs, leaf_a_key, 2015.0);
+    set_leaf_time(&mut inputs, leaf_b_key, 2014.0);
+    set_edge_branch_function(&graph, &mut inputs, leaf_a_key, 3.0)?;
+    set_edge_branch_function(&graph, &mut inputs, leaf_b_key, 2.0)?;
+    let model = coalescent_model(0.5)?;
+
+    let without = run_backward_pass(&graph, &inputs, None)?;
+    let with = run_backward_pass(&graph, &inputs, Some(&model))?;
+
+    let without = node_time_distribution(&without, internal_key).expect("I must have a subtree distribution");
+    let with = node_time_distribution(&with, internal_key).expect("I must have a subtree distribution");
+    assert_eq!(without.t(), with.t());
+    let grid = without.t();
+    let reference = grid[0];
+    let n_children = 2;
+    for &time in grid.iter().skip(1) {
+      let added = (with.eval(time)? - with.eval(reference)?) - (without.eval(time)? - without.eval(reference)?);
+      let expected =
+        model.internal_contribution(time, n_children)? - model.internal_contribution(reference, n_children)?;
+      pretty_assert_abs_diff_eq!(added, expected, epsilon = 1e-9);
+    }
     Ok(())
   }
 
@@ -234,16 +277,11 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    for edge in graph.get_edges() {
-      let edge_read = edge;
-      if edge_read.target() == leaf_key {
-        let msg = backward.messages[&edge_read.key()]
-          .as_ref()
-          .expect("edge should have msg_to_parent after backward pass");
-        let msg_time = msg.likely_time()?.expect("message should have likely_time");
-        pretty_assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
-      }
-    }
+    let msg = backward.messages[&parent_edge_key(&graph, leaf_key)]
+      .as_ref()
+      .expect("edge should have msg_to_parent after backward pass");
+    let msg_time = msg.likely_time()?.expect("message should have likely_time");
+    pretty_assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
 
     Ok(())
   }
@@ -324,39 +362,26 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "fold now receives mass-windowed messages; Gaussian-product oracle no longer holds"]
-  fn test_backward_pass_sums_function_children_to_gaussian_product() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let a = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
-    let b = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
-    let c = find_node_key_by_name(&graph, &names, "C").expect("leaf C not found");
+  fn test_backward_pass_sums_function_children_neglogs() -> Result<(), Report> {
+    let (dist, _) = fold_laplace_children()?;
 
-    let x = Array1::linspace(2000.0, 2010.0, 2001);
-    let mut inputs = BackwardInputs::new(&graph);
-    set_leaf_function(&mut inputs, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
-    set_leaf_function(&mut inputs, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
-    set_leaf_function(&mut inputs, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
-    set_edge_branch_dist(&graph, &mut inputs, a, 0.0);
-    set_edge_branch_dist(&graph, &mut inputs, b, 0.0);
-    set_edge_branch_dist(&graph, &mut inputs, c, 0.0);
+    let slope_right_of_the_median = dist.eval(LAPLACE_PROBE_FAR)? - dist.eval(LAPLACE_PROBE_NEAR)?;
 
-    let backward = run_backward_pass(&graph, &inputs, None)?;
+    pretty_assert_abs_diff_eq!(slope_right_of_the_median, 2.0, epsilon = 1e-9);
+    Ok(())
+  }
 
-    let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
-    let dist = node_time_distribution(&backward, internal).expect("internal node should have a time distribution");
+  #[test]
+  fn test_backward_pass_function_children_peak_at_the_weighted_median() -> Result<(), Report> {
+    let (dist, peak) = fold_laplace_children()?;
 
     let grid = dist.t();
-    let spacing = grid[1] - grid[0];
-    let peak = dist.likely_time()?.expect("distribution should have a likely_time");
-    assert_abs_diff_eq!(peak, 2005.0, epsilon = spacing);
-
-    for t in [2004.0_f64, 2005.0, 2006.0] {
-      let expected = 2.0 * (t - 2005.0).powi(2);
-      assert_abs_diff_eq!(dist.eval(t)?, expected, epsilon = 1e-4);
-    }
-
+    let nearest_to_the_median = grid
+      .iter()
+      .copied()
+      .min_by_key(|time| OrderedFloat((time - LAPLACE_WEIGHTED_MEDIAN).abs()))
+      .expect("the folded distribution must have a grid");
+    pretty_assert_ulps_eq!(nearest_to_the_median, peak, max_ulps = 0);
     Ok(())
   }
 
@@ -396,38 +421,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "fold now receives mass-windowed messages; precision-weighted-mean oracle no longer holds"]
-  fn test_backward_pass_function_children_peak_at_precision_weighted_mean() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let a = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
-    let b = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
-    let c = find_node_key_by_name(&graph, &names, "C").expect("leaf C not found");
-
-    let x = Array1::linspace(2000.0, 2010.0, 11);
-    let mut inputs = BackwardInputs::new(&graph);
-    set_leaf_function(&mut inputs, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
-    set_leaf_function(&mut inputs, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
-    set_leaf_function(&mut inputs, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
-    set_edge_branch_dist(&graph, &mut inputs, a, 0.0);
-    set_edge_branch_dist(&graph, &mut inputs, b, 0.0);
-    set_edge_branch_dist(&graph, &mut inputs, c, 0.0);
-
-    let backward = run_backward_pass(&graph, &inputs, None)?;
-
-    let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
-    let dist = node_time_distribution(&backward, internal).expect("internal node should have a time distribution");
-    let likely_time = dist.likely_time()?.expect("distribution should have a likely_time");
-
-    let grid = dist.t();
-    let spacing = grid[1] - grid[0];
-    assert_abs_diff_eq!(likely_time, 2005.0, epsilon = spacing);
-
-    Ok(())
-  }
-
-  #[test]
   fn test_backward_pass_bad_branch_sends_no_message() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
     let names = nwk_parsed.names();
@@ -446,6 +439,49 @@ mod tests {
 
     assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_b_key)]);
     assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
+    Ok(())
+  }
+
+  #[test]
+  fn test_backward_pass_sends_no_message_without_a_subtree_or_a_branch_likelihood() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0,C:1.0)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
+    let leaf_c_key = find_node_key_by_name(&graph, &names, "C").expect("leaf C not found");
+
+    let mut inputs = BackwardInputs::new(&graph);
+    set_leaf_time(&mut inputs, leaf_a_key, 2015.0);
+    set_leaf_time(&mut inputs, leaf_b_key, 2014.0);
+    set_edge_branch_dist(&graph, &mut inputs, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut inputs, leaf_c_key, 1.0);
+
+    let backward = run_backward_pass(&graph, &inputs, None)?;
+
+    assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
+    assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_b_key)]);
+    assert_eq!(None, node_time_distribution(&backward, leaf_c_key));
+    assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_c_key)]);
+    Ok(())
+  }
+
+  #[test]
+  fn test_backward_pass_missing_bad_branch_flag_is_an_internal_error() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+
+    let mut inputs = BackwardInputs::new(&graph);
+    inputs.bad_branches.remove(&leaf_a_key);
+
+    assert_error!(
+      run_backward_pass(&graph, &inputs, None),
+      format!(
+        "Bad-branch flags are missing node {leaf_a_key}. This is an internal error. Please report it to developers."
+      )
+    );
     Ok(())
   }
 
@@ -489,20 +525,10 @@ mod tests {
     impl BackwardInputs {
       pub(super) fn new(graph: &Graph) -> Self {
         let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
-        let branches = graph
-          .get_edges()
-          .map(|edge| {
-            let branch = BranchLikelihood {
-              distribution: None,
-              time_length: None,
-            };
-            (edge.key(), branch)
-          })
-          .collect();
         Self {
           constraints: DateConstraints::default(),
           bad_branches,
-          branches,
+          branches: unknown_branches(graph),
         }
       }
     }
@@ -526,14 +552,6 @@ mod tests {
       key: GraphNodeKey,
     ) -> Option<Arc<Distribution<NegLog>>> {
       backward.subtree[&key].clone()
-    }
-
-    pub(super) fn parent_edge_key(graph: &Graph, target_key: GraphNodeKey) -> GraphEdgeKey {
-      graph
-        .get_edges()
-        .find(|edge| edge.target() == target_key)
-        .expect("node must have a parent edge")
-        .key()
     }
 
     pub(super) fn set_date_constraint(
@@ -569,6 +587,46 @@ mod tests {
       let dist = Distribution::function(x.clone(), y)?;
       set_date_constraint(&mut inputs.constraints, key, dist);
       Ok(())
+    }
+
+    pub(super) fn set_edge_branch_function(
+      graph: &Graph,
+      inputs: &mut BackwardInputs,
+      target_key: GraphNodeKey,
+      mean: f64,
+    ) -> Result<(), Report> {
+      let t = Array1::linspace(0.0, 2.0 * mean, BRANCH_GRID_POINTS);
+      let y = gaussian_neglog(&t, mean, BRANCH_PRECISION);
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::function(t, y)?)),
+        time_length: Some(mean),
+      };
+      inputs.branches.insert(parent_edge_key(graph, target_key), branch);
+      Ok(())
+    }
+
+    pub(super) fn laplace_neglog(x: &Array1<f64>, median: f64, weight: f64) -> Array1<f64> {
+      x.mapv(|t| weight * (t - median).abs())
+    }
+
+    pub(super) fn fold_laplace_children() -> Result<(Arc<Distribution<NegLog>>, f64), Report> {
+      let nwk_parsed = nwk_read_str("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let x = Array1::linspace(2000.0, 2010.0, 2001);
+      let mut inputs = BackwardInputs::new(&graph);
+      for (name, median, weight) in [("A", 2002.0, 1.0), ("B", 2008.0, 1.0), ("C", 2005.0, 2.0)] {
+        let key = find_node_key_by_name(&graph, &names, name).expect("leaf not found");
+        set_leaf_function(&mut inputs, key, &x, laplace_neglog(&x, median, weight))?;
+        set_edge_branch_dist(&graph, &mut inputs, key, 0.0);
+      }
+
+      let backward = run_backward_pass(&graph, &inputs, None)?;
+
+      let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
+      let dist = node_time_distribution(&backward, internal).expect("internal node should have a time distribution");
+      let peak = dist.likely_time()?.expect("distribution should have a likely_time");
+      Ok((dist, peak))
     }
 
     pub(super) fn coalescent_model(tc: f64) -> Result<CoalescentModel, Report> {

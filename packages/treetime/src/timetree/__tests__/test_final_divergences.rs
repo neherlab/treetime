@@ -14,7 +14,7 @@ mod tests {
   const TREE_WITH_UNNAMED_INTERNAL: &str = "((A:0.1,B:0.2)AB:0.3,C:0.4)root;";
 
   #[test]
-  fn test_final_divergences_without_filter_gives_named_nodes_the_final_value_and_unnamed_nodes_zero()
+  fn test_final_divergences_without_filter_unnamed_node_gets_zero_known_issue_m_timetree_unnamed_internal_node_divergence_stale()
   -> Result<(), Report> {
     let parsed = nwk_read_str(TREE_WITH_UNNAMED_INTERNAL)?;
     let names = parsed.names();
@@ -36,7 +36,8 @@ mod tests {
   }
 
   #[test]
-  fn test_final_divergences_with_filter_keeps_the_filter_value_of_unnamed_nodes_only() -> Result<(), Report> {
+  fn test_final_divergences_unnamed_node_keeps_stale_filter_value_known_issue_m_timetree_unnamed_internal_node_divergence_stale()
+  -> Result<(), Report> {
     let parsed = nwk_read_str(TREE_WITH_UNNAMED_INTERNAL)?;
     let names = parsed.names();
     let graph = parsed.graph;

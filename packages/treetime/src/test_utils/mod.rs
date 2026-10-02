@@ -11,4 +11,7 @@ pub(crate) use marginal::{
   run_dense_marginal_with_newick, run_sparse_marginal_with_newick, sparse_reconstruction, sparse_reconstruction_mut,
 };
 pub(crate) use sparse::sparse_edge_obs;
-pub(crate) use timetree::{constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params};
+pub(crate) use timetree::{
+  RecordingLog, constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params, parent_edge_key,
+  point_date_constraints, unknown_branches,
+};

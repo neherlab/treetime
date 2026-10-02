@@ -1,44 +1,48 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
-  use crate::pretty_assert_ulps_eq;
-  use crate::timetree::inference::result::BranchLikelihood;
-  use crate::timetree::inference::runner::create_branch_distributions_input_mode;
+  use crate::o;
+  use crate::progress::NoopProgress;
+  use crate::test_utils::{RecordingLog, find_node_key_by_name, parent_edge_key};
+  use crate::timetree::inference::result::{BranchLikelihood, NodeTimes};
+  use crate::timetree::inference::runner::{
+    CLOCK_BRANCH_LENGTH_DAMPING, blended_clock_branch_lengths, create_branch_distributions_input_mode,
+  };
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use std::sync::Arc;
+  use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
+  const DYADIC_CLOCK_RATE: f64 = 0.5;
+
+  const BLEND_TREE: &str = "((A:1,B:1)AB:1,C:1,D:1)root;";
+
   #[test]
-  fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+  fn test_create_branch_distributions_input_mode_gives_each_edge_a_point_at_its_time_length() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("((A:1.5,B:3.0)AB:4.5,C:6.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let clock_rate = 0.001;
 
-    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), clock_rate);
+    let branches = create_branch_distributions_input_mode(
+      &graph,
+      &nwk_parsed.branch_lengths,
+      &unit_gammas(&graph),
+      DYADIC_CLOCK_RATE,
+    );
 
-    for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref;
-      let key = edge_read.key();
-      let branch_length = branch_lengths.get(&key).copied().flatten();
-      let time_length = branches[&key].time_length;
-
-      if let Some(bl) = branch_length {
-        let expected_time = bl / clock_rate;
-        let actual_time = time_length.expect("time_length should be set when branch_length exists");
-        pretty_assert_ulps_eq!(actual_time, expected_time, max_ulps = 4);
-      }
-    }
-
+    let expected = btreemap! {
+      o!("A") => helpers::point_branch(3.0),
+      o!("AB") => helpers::point_branch(9.0),
+      o!("B") => helpers::point_branch(6.0),
+      o!("C") => helpers::point_branch(12.0),
+    };
+    assert_eq!(expected, helpers::by_target_name(&graph, &names, &branches));
     Ok(())
   }
 
@@ -69,70 +73,23 @@ mod tests {
 
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.006)I:0.003)root;")?;
+    let nwk_parsed = nwk_read_str("((A:3.0)I:1.5)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let clock_rate = 0.001;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+    let gammas = btreemap! {
+      parent_edge_key(&graph, key("A")) => 2.0,
+      parent_edge_key(&graph, key("I")) => 1.0,
+    };
 
-    let gammas = graph
-      .get_edges()
-      .map(|edge| {
-        let target_name = names[&edge.target()].as_deref();
-        let gamma = if target_name == Some("A") { 2.0 } else { 1.0 };
-        (edge.key(), gamma)
-      })
-      .collect();
+    let branches =
+      create_branch_distributions_input_mode(&graph, &nwk_parsed.branch_lengths, &gammas, DYADIC_CLOCK_RATE);
 
-    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &gammas, clock_rate);
-
-    for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref;
-      let key = edge_read.key();
-      let target = edge_read.target();
-      let target_name = graph
-        .get_node(target)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
-      let time_length = branches[&key].time_length;
-
-      match target_name.as_deref() {
-        Some("A") => {
-          let expected = 3.0;
-          let actual = time_length.expect("time_length should be set");
-          assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
-        },
-        Some("I") => {
-          let expected = 3.0;
-          let actual = time_length.expect("time_length should be set");
-          assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
-        },
-        _ => {},
-      }
-    }
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_input_mode_gamma_default_matches_no_gamma() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let clock_rate = 0.001;
-
-    let branches = create_branch_distributions_input_mode(&graph, &branch_lengths, &unit_gammas(&graph), clock_rate);
-
-    for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref;
-      let key = edge_read.key();
-      if let Some(bl) = branch_lengths.get(&key).copied().flatten() {
-        let expected = bl / clock_rate;
-        let actual = branches[&key].time_length.expect("time_length should be set");
-        pretty_assert_ulps_eq!(actual, expected, max_ulps = 4);
-      }
-    }
-
+    let expected = btreemap! {
+      o!("A") => helpers::point_branch(3.0),
+      o!("I") => helpers::point_branch(3.0),
+    };
+    assert_eq!(expected, helpers::by_target_name(&graph, &names, &branches));
     Ok(())
   }
 
@@ -157,5 +114,127 @@ mod tests {
     };
     assert_eq!(expected, branches[&edge_key]);
     Ok(())
+  }
+
+  #[test]
+  fn test_blended_clock_branch_lengths_blends_scales_clamps_and_drops_edges() -> Result<(), Report> {
+    let fixture = helpers::BlendFixture::new()?;
+
+    let actual = fixture.blend(&NoopProgress);
+
+    let expected = btreemap! {
+      o!("A") => 6.0,
+      o!("AB") => 1.5,
+      o!("B") => 0.0,
+      o!("D") => 7.0,
+    };
+    assert_eq!(expected, fixture.by_target_name(&actual));
+    Ok(())
+  }
+
+  #[test]
+  fn test_blended_clock_branch_lengths_warns_about_inverted_branches() -> Result<(), Report> {
+    let fixture = helpers::BlendFixture::new()?;
+    let log = RecordingLog::default();
+
+    fixture.blend(&log);
+
+    let expected = vec![
+      "Timetree: 1 branch(es) run backwards in time, i.e. the child is dated before its parent. Their clock \
+       branch lengths were committed as zero. This is expected only where an observed leaf date conflicts with \
+       the fitted clock, since the forward pass clamps internal nodes to their parent but leaves leaf dates as \
+       given."
+        .to_owned(),
+    ];
+    assert_eq!(expected, log.warnings());
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+    use crate::progress::LogSink;
+
+    pub(super) fn point_branch(time_length: f64) -> BranchLikelihood {
+      BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::point(time_length, 0.0))),
+        time_length: Some(time_length),
+      }
+    }
+
+    pub(super) fn by_target_name<V: Clone>(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      values: &BTreeMap<GraphEdgeKey, V>,
+    ) -> BTreeMap<String, V> {
+      graph
+        .get_edges()
+        .filter_map(|edge| {
+          let name = names[&edge.target()].clone().expect("every fixture node is named");
+          let value = values.get(&edge.key())?.clone();
+          Some((name, value))
+        })
+        .collect()
+    }
+
+    pub(super) struct BlendFixture {
+      graph: Graph,
+      names: BTreeMap<GraphNodeKey, Option<String>>,
+      previous: BTreeMap<GraphEdgeKey, f64>,
+      node_times: NodeTimes,
+      gammas: BTreeMap<GraphEdgeKey, f64>,
+    }
+
+    impl BlendFixture {
+      pub(super) fn new() -> Result<Self, Report> {
+        let nwk_parsed = nwk_read_str(BLEND_TREE)?;
+        let names = nwk_parsed.names();
+        let graph = nwk_parsed.graph;
+        let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+        let edge = |name: &str| parent_edge_key(&graph, key(name));
+        let removed_edge = GraphEdgeKey(graph.get_edges().count() + 10);
+        let previous = btreemap! {
+          edge("AB") => 1.0,
+          edge("D") => 7.0,
+          removed_edge => 3.0,
+        };
+        let node_times = btreemap! {
+          key("root") => Some(2000.0),
+          key("AB") => Some(2004.0),
+          key("A") => Some(2010.0),
+          key("B") => Some(2002.0),
+          key("C") => None,
+          key("D") => None,
+        };
+        let mut gammas = unit_gammas(&graph);
+        gammas.insert(edge("A"), 2.0);
+        Ok(Self {
+          graph,
+          names,
+          previous,
+          node_times,
+          gammas,
+        })
+      }
+
+      pub(super) fn blend(&self, log: &dyn LogSink) -> BTreeMap<GraphEdgeKey, f64> {
+        blended_clock_branch_lengths(
+          &self.graph,
+          DYADIC_CLOCK_RATE,
+          CLOCK_BRANCH_LENGTH_DAMPING,
+          &self.previous,
+          &self.node_times,
+          &self.gammas,
+          log,
+        )
+      }
+
+      pub(super) fn by_target_name(&self, values: &BTreeMap<GraphEdgeKey, f64>) -> BTreeMap<String, f64> {
+        assert!(
+          values.keys().all(|key| self.graph.get_edge(*key).is_some()),
+          "every committed length must belong to a current graph edge"
+        );
+        by_target_name(&self.graph, &self.names, values)
+      }
+    }
   }
 }

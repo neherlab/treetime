@@ -15,7 +15,7 @@ mod tests {
   #[test]
   fn test_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -25,7 +25,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -42,7 +42,7 @@ mod tests {
   #[test]
   fn test_optimizer_continues_while_node_times_move() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -52,7 +52,7 @@ mod tests {
       helpers::moved_by(10.0 * NODE_TIME_TOLERANCE_YEARS),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -66,7 +66,7 @@ mod tests {
       helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -82,7 +82,7 @@ mod tests {
   #[test]
   fn test_optimizer_settled_times_do_not_converge_while_polytomies_resolve() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
     let settled = helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS);
 
@@ -93,7 +93,7 @@ mod tests {
       settled,
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -107,7 +107,7 @@ mod tests {
       settled,
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -123,7 +123,7 @@ mod tests {
   #[test]
   fn test_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -133,7 +133,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -147,7 +147,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -161,7 +161,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -183,7 +183,7 @@ mod tests {
   #[test]
   fn test_optimizer_stops_at_max_iterations() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(3, false);
 
     for _ in 0..3 {
@@ -194,7 +194,7 @@ mod tests {
         NodeTimeChange::default(),
         &graph,
         &BranchModel::Input,
-        &state,
+        &inference,
         None,
         helpers::fixed_clock(),
         &BTreeMap::new(),
@@ -212,7 +212,7 @@ mod tests {
   #[test]
   fn test_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -222,7 +222,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -236,7 +236,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),
@@ -252,7 +252,7 @@ mod tests {
   #[test]
   fn test_optimizer_trace_sink_receives_each_iteration_with_its_clock() -> Result<(), Report> {
     let graph = helpers::empty_graph();
-    let state = empty_time_inference(&graph);
+    let inference = empty_time_inference(&graph);
     let records = Arc::new(Mutex::new(vec![]));
     let mut optimizer =
       TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::RecordingSink(Arc::clone(&records))));
@@ -264,7 +264,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       IterationClock {
         clock_rate: 2e-3,
@@ -281,7 +281,7 @@ mod tests {
       NodeTimeChange::default(),
       &graph,
       &BranchModel::Input,
-      &state,
+      &inference,
       None,
       helpers::fixed_clock(),
       &BTreeMap::new(),

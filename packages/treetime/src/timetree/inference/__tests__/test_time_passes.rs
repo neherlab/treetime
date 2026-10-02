@@ -2,53 +2,47 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::progress::NoopProgress;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_date_constraints};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
-  use crate::timetree::inference::runner::{EPS, GRID_POINTS};
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use std::sync::Arc;
-  use treetime_distribution::{
-    Distribution, NegLog, convolve_across_edge, distribution_division, distribution_multiplication,
-    distribution_product,
-  };
+  use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_grid::Side;
   use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((B:1,C:1,(U1:1,U2:1)N:1)P:1,A:1)root;";
 
+  const BRANCH_MEAN: f64 = 2.0;
+
+  const BRANCH_SD: f64 = 0.5;
+
+  const BRANCH_GRID_POINTS: usize = 201;
+
   #[test]
   fn test_time_passes_node_with_only_undated_leaves_takes_the_parent_message() -> Result<(), Report> {
-    let fixture = helpers::Fixture::new()?;
-    let constraints = fixture.dated(&[("A", 2011.0), ("B", 2010.0), ("C", 2010.5)]);
+    let mut fixture = helpers::Fixture::new()?;
+    fixture.set_point_branch("N", BRANCH_MEAN);
+    let constraints = fixture.dated(&[("A", 2011.0), ("B", 2010.0), ("C", 2010.5), ("P", 2008.0)]);
 
     let (bad_branches, backward, posterior) = fixture.run(&constraints)?;
 
     assert!(bad_branches[&fixture.key("N")], "N has only undated leaves below it");
     assert_eq!(None, backward.subtree[&fixture.key("N")]);
-
-    let expected = fixture.expected_posterior_of_n_from_its_parent()?;
-    let actual = posterior[&fixture.key("N")]
-      .distribution
-      .as_deref()
-      .expect("N must get a posterior from its parent");
-    assert_eq!(&expected, actual);
-
-    let parent_time = posterior[&fixture.key("P")].time.expect("P must be dated");
-    let expected_time = expected
-      .likely_time()?
-      .map(|time| time.max(parent_time))
-      .expect("the parent message must have a likely time");
-    assert_eq!(Some(expected_time), posterior[&fixture.key("N")].time);
+    let expected = NodePosterior {
+      distribution: Some(Arc::new(Distribution::point(2008.0 + BRANCH_MEAN, 0.0))),
+      time: Some(2008.0 + BRANCH_MEAN),
+      contradicted: false,
+    };
+    assert_eq!(expected, posterior[&fixture.key("N")]);
     Ok(())
   }
 
@@ -76,6 +70,41 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_time_passes_date_of_an_internal_node_pulls_its_parent_toward_it() -> Result<(), Report> {
+    let fixture = helpers::Fixture::new()?;
+    let leaf_dates = [("A", 2011.0), ("B", 2010.0), ("C", 2010.5)];
+    let with_date_of_n = fixture.dated(&[leaf_dates.as_slice(), &[("N", 2008.0)]].concat());
+    let without_date_of_n = fixture.dated(&leaf_dates);
+    let mean_of_b_and_c_messages = f64::midpoint(2010.0, 2010.5) - BRANCH_MEAN;
+    let mean_of_b_c_and_n_messages = (2010.0 + 2010.5 + 2008.0) / 3.0 - BRANCH_MEAN;
+
+    let (_, with_backward, _) = fixture.run(&with_date_of_n)?;
+    let (_, without_backward, _) = fixture.run(&without_date_of_n)?;
+
+    let peak_of = |backward: &TimeBackward| -> Result<f64, Report> {
+      let subtree = backward.subtree[&fixture.key("P")]
+        .as_deref()
+        .expect("P must have a subtree distribution");
+      Ok(subtree.likely_time()?.expect("P must have a likely time"))
+    };
+    let with = peak_of(&with_backward)?;
+    let without = peak_of(&without_backward)?;
+    assert!(
+      with < without,
+      "the earlier date of N must pull P earlier: {with} vs {without}"
+    );
+    assert!(
+      (with - mean_of_b_c_and_n_messages).abs() < (with - mean_of_b_and_c_messages).abs(),
+      "with the date of N, P must peak near {mean_of_b_c_and_n_messages}, got {with}"
+    );
+    assert!(
+      (without - mean_of_b_and_c_messages).abs() < (without - mean_of_b_c_and_n_messages).abs(),
+      "without the date of N, P must peak near {mean_of_b_and_c_messages}, got {without}"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -94,8 +123,8 @@ mod tests {
           .get_edges()
           .map(|edge| {
             let branch = BranchLikelihood {
-              distribution: Some(Arc::new(branch_distribution(2.0)?)),
-              time_length: Some(2.0),
+              distribution: Some(Arc::new(branch_distribution(BRANCH_MEAN)?)),
+              time_length: Some(BRANCH_MEAN),
             };
             Ok((edge.key(), branch))
           })
@@ -108,23 +137,19 @@ mod tests {
       }
 
       pub(super) fn edge(&self, name: &str) -> GraphEdgeKey {
-        let key = self.key(name);
-        self
-          .graph
-          .get_edges()
-          .find(|edge| edge.target() == key)
-          .expect("fixture node must have a parent edge")
-          .key()
+        parent_edge_key(&self.graph, self.key(name))
+      }
+
+      pub(super) fn set_point_branch(&mut self, name: &str, length: f64) {
+        let branch = BranchLikelihood {
+          distribution: Some(Arc::new(Distribution::point(length, 0.0))),
+          time_length: Some(length),
+        };
+        self.branches.insert(self.edge(name), branch);
       }
 
       pub(super) fn dated(&self, dates: &[(&str, f64)]) -> DateConstraints {
-        let date_constraints = dates
-          .iter()
-          .map(|(name, date)| (self.key(name), Some(Arc::new(Distribution::point(*date, 0.0)))))
-          .collect();
-        DateConstraints {
-          by_node: date_constraints,
-        }
+        point_date_constraints(&self.graph, &self.names, dates)
       }
 
       pub(super) fn run(
@@ -154,37 +179,11 @@ mod tests {
         )?;
         Ok((bad_branches, backward, posterior))
       }
-
-      pub(super) fn expected_posterior_of_n_from_its_parent(&self) -> Result<Distribution<NegLog>, Report> {
-        let branch = |name: &str| -> &Distribution<NegLog> {
-          self.branches[&self.edge(name)]
-            .distribution
-            .as_deref()
-            .expect("every fixture edge has a branch likelihood")
-        };
-        let message_up = |subtree: &Distribution<NegLog>, name: &str| -> Result<Distribution<NegLog>, Report> {
-          convolve_across_edge(subtree, &branch(name).negate()?, Side::Left, EPS, GRID_POINTS)
-        };
-        let leaf = |date: f64| Distribution::point(date, 0.0).normalize();
-
-        let msg_a = message_up(&leaf(2011.0)?, "A")?;
-        let msg_b = message_up(&leaf(2010.0)?, "B")?;
-        let msg_c = message_up(&leaf(2010.5)?, "C")?;
-        let subtree_p = distribution_product(&[&msg_b, &msg_c])?.normalize()?;
-        let msg_p = message_up(&subtree_p, "P")?;
-        let posterior_root = distribution_product(&[&msg_p, &msg_a])?.normalize()?;
-
-        let cavity_p = distribution_division(&posterior_root, &msg_p)?;
-        let from_root = convolve_across_edge(&cavity_p, branch("P"), Side::Right, EPS, GRID_POINTS)?;
-        let posterior_p = distribution_multiplication(&from_root, &subtree_p)?.normalize()?;
-
-        convolve_across_edge(&posterior_p, branch("N"), Side::Right, EPS, GRID_POINTS)
-      }
     }
 
     fn branch_distribution(mean: f64) -> Result<Distribution<NegLog>, Report> {
-      let t = Array1::linspace(0.0, 2.0 * mean, 201);
-      let y = t.mapv(|t: f64| 0.5 * ((t - mean) / 0.5).powi(2));
+      let t = Array1::linspace(0.0, 2.0 * mean, BRANCH_GRID_POINTS);
+      let y = t.mapv(|t: f64| 0.5 * ((t - mean) / BRANCH_SD).powi(2));
       Distribution::function(t, y)
     }
   }

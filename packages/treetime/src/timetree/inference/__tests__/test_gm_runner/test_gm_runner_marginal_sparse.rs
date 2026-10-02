@@ -24,7 +24,6 @@ mod tests {
   use crate::timetree::branch_model::BranchModel;
   use eyre::Report;
   use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::graph::Graph;
 
   use rstest::rstest;
 
@@ -47,7 +46,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 
@@ -84,7 +82,6 @@ mod tests {
     )?;
     let clock_model = clock_reroot.into_clock_fit()?.model;
 
-    let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     let inference = run_timetree(
       &TimeInferenceInputs {
@@ -93,7 +90,7 @@ mod tests {
         leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
         gammas: &unit_gammas(&graph),
         branch_model: &BranchModel::Marginal(partition),
-        branch_lengths: &run_branch_lengths,
+        branch_lengths: &branch_lengths,
         names: &run_names,
         clock_model: &clock_model,
         no_indels: false,

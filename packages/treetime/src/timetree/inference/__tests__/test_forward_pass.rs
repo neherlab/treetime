@@ -1,14 +1,9 @@
-#![allow(
-  clippy::wildcard_enum_match_arm,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::pretty_assert_ulps_eq;
-  use crate::progress::NoopProgress;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::progress::{LogSink, NoopProgress};
+  use crate::test_utils::{RecordingLog, find_node_key_by_name, parent_edge_key, unknown_branches};
   use crate::timetree::inference::forward_pass::{committed_time, propagate_distributions_forward};
   use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
   use eyre::Report;
@@ -22,8 +17,9 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
-  type TestGraph = Graph;
+  const CAVITY_GRID_POINTS: usize = 1001;
 
   #[test]
   fn test_forward_pass_committed_time_empty_distribution_returns_none() {
@@ -64,13 +60,21 @@ mod tests {
     set_time_distribution(&mut inputs, root_key, Distribution::empty());
     set_date(&mut inputs, leaf_key, Distribution::point(2013.0, 0.0));
 
-    let posterior = run_forward_pass(&graph, &inputs, &names)?;
+    let log = RecordingLog::default();
+    let posterior = run_forward_pass_with_log(&graph, &inputs, &names, &log)?;
 
     let root_time = node_time(&posterior, root_key);
 
     assert_eq!(None, root_time);
     let leaf_time = node_time(&posterior, leaf_key).expect("leaf A should keep its observed date");
     pretty_assert_ulps_eq!(leaf_time, 2013.0, max_ulps = 4);
+    let expected_warnings = vec![
+      "Timetree forward pass: node 'root' has an empty time distribution; no date was assigned. The messages \
+       meeting at this node leave no time with any probability: the dates below it and the times the rest of the \
+       tree implies have disjoint support."
+        .to_owned(),
+    ];
+    assert_eq!(expected_warnings, log.warnings());
 
     Ok(())
   }
@@ -157,13 +161,23 @@ mod tests {
     set_date(&mut inputs, leaf_key, given.clone());
     set_branch_length_distribution(&graph, &mut inputs, leaf_key, 1.0);
 
-    let posterior = run_forward_pass(&graph, &inputs, &names)?;
+    let log = RecordingLog::default();
+    let posterior = run_forward_pass_with_log(&graph, &inputs, &names, &log)?;
 
-    let leaf_dist = leaf_time_distribution(&posterior, leaf_key).expect("leaf A should keep its given date");
-    assert_eq!(given, leaf_dist);
-
-    let leaf_time = node_time(&posterior, leaf_key).expect("leaf A should be dated");
-    pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
+    let expected = NodePosterior {
+      distribution: Some(Arc::new(given)),
+      time: Some(2009.0),
+      contradicted: true,
+    };
+    assert_eq!(expected, posterior[&leaf_key]);
+    let expected_warnings = vec![
+      "Timetree forward pass: 1 node(s) carry a date that the rest of the tree gives no probability at all, so \
+       their posterior came out empty and each kept the date it was given, unrefined. The usual cause is a \
+       sequence whose divergence implies a date far from the one it is stamped with, which the clock filter \
+       reports separately. Run with `--verbosity=debug` to see which nodes and where the tree puts each of them."
+        .to_owned(),
+    ];
+    assert_eq!(expected_warnings, log.warnings());
 
     Ok(())
   }
@@ -190,10 +204,10 @@ mod tests {
       node_time(&posterior, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
     };
 
-    let windowed = match &wide_parent {
-      Distribution::Function(f) => Distribution::Function(f.resample_range_dx((2009.4, 2009.7), f.dx())?),
-      other => other.clone(),
+    let Distribution::Function(wide_function) = &wide_parent else {
+      return Err(eyre::eyre!("the wide parent must be a distribution function"));
     };
+    let windowed = Distribution::Function(wide_function.resample_range_dx((2009.4, 2009.7), wide_function.dx())?);
 
     pretty_assert_ulps_eq!(refine(wide_parent)?, refine(windowed)?, max_ulps = 4);
 
@@ -229,6 +243,46 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_forward_pass_divides_the_childs_own_message_out_of_the_parent_posterior() -> Result<(), Report> {
+    let grid = Array1::linspace(2000.0, 2010.0, CAVITY_GRID_POINTS);
+    let parent_posterior = Distribution::function(grid.clone(), quadratic_neglog(&grid, 2005.0, 4.0))?;
+    let message_from_child = Distribution::function(grid.clone(), quadratic_neglog(&grid, 2004.0, 2.0))?;
+    let analytic_cavity = Distribution::function(grid.clone(), quadratic_neglog(&grid, 2006.0, 2.0))?;
+
+    let with_message = refine_child_of(parent_posterior.clone(), Some(message_from_child))?;
+    let from_analytic_cavity = refine_child_of(analytic_cavity, None)?;
+    let without_division = refine_child_of(parent_posterior, None)?;
+
+    assert_eq!(from_analytic_cavity, with_message);
+    let time = with_message.expect("the child must be dated");
+    assert!(
+      (time - 2007.0).abs() < (time - 2006.0).abs(),
+      "the cavity peaks at 2006 and the branch adds 1, so the child must sit near 2007, got {time}"
+    );
+    assert_ne!(without_division, with_message);
+    Ok(())
+  }
+
+  #[test]
+  fn test_forward_pass_missing_backward_output_is_an_internal_error() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    inputs.backward.subtree.remove(&leaf_key);
+
+    assert_error!(
+      run_forward_pass(&graph, &inputs, &names),
+      format!(
+        "Backward pass output is missing node {leaf_key}. This is an internal error. Please report it to developers."
+      )
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -239,33 +293,32 @@ mod tests {
     }
 
     impl ForwardInputs {
-      pub(super) fn new(graph: &TestGraph) -> Self {
-        let branches = graph
-          .get_edges()
-          .map(|edge| {
-            let branch = BranchLikelihood {
-              distribution: None,
-              time_length: None,
-            };
-            (edge.key(), branch)
-          })
-          .collect();
+      pub(super) fn new(graph: &Graph) -> Self {
         let backward = TimeBackward {
           subtree: graph.get_nodes().map(|node| (node.key(), None)).collect(),
           messages: graph.get_edges().map(|edge| (edge.key(), None)).collect(),
         };
         Self {
           constraints: DateConstraints::default(),
-          branches,
+          branches: unknown_branches(graph),
           backward,
         }
       }
     }
 
     pub(super) fn run_forward_pass(
-      graph: &TestGraph,
+      graph: &Graph,
       inputs: &ForwardInputs,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
+      run_forward_pass_with_log(graph, inputs, names, &NoopProgress)
+    }
+
+    pub(super) fn run_forward_pass_with_log(
+      graph: &Graph,
+      inputs: &ForwardInputs,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      log: &dyn LogSink,
     ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
       propagate_distributions_forward(
         graph,
@@ -273,7 +326,7 @@ mod tests {
         names,
         &inputs.branches,
         &inputs.backward,
-        &NoopProgress,
+        log,
       )
     }
 
@@ -288,24 +341,45 @@ mod tests {
     }
 
     pub(super) fn set_branch_length_distribution(
-      graph: &TestGraph,
+      graph: &Graph,
       inputs: &mut ForwardInputs,
       target_key: GraphNodeKey,
       branch_length: f64,
     ) {
-      for edge in graph.get_edges() {
-        if edge.target() == target_key {
-          let branch = BranchLikelihood {
-            distribution: Some(Arc::new(Distribution::point(branch_length, 0.0))),
-            time_length: Some(branch_length),
-          };
-          inputs.branches.insert(edge.key(), branch);
-        }
-      }
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::point(branch_length, 0.0))),
+        time_length: Some(branch_length),
+      };
+      inputs.branches.insert(parent_edge_key(graph, target_key), branch);
     }
 
     pub(super) fn node_time(posterior: &BTreeMap<GraphNodeKey, NodePosterior>, key: GraphNodeKey) -> Option<f64> {
       posterior[&key].time
+    }
+
+    pub(super) fn quadratic_neglog(grid: &Array1<f64>, mean: f64, precision: f64) -> Array1<f64> {
+      grid.mapv(|t| 0.5 * precision * (t - mean).powi(2))
+    }
+
+    pub(super) fn refine_child_of(
+      parent_posterior: Distribution<NegLog>,
+      message_from_child: Option<Distribution<NegLog>>,
+    ) -> Result<Option<f64>, Report> {
+      let nwk_parsed = nwk_read_str("(N:1.0)root;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+      let child_key = find_node_key_by_name(&graph, &names, "N").expect("node N not found");
+      let mut inputs = ForwardInputs::new(&graph);
+      set_time_distribution(&mut inputs, root_key, parent_posterior);
+      set_date(&mut inputs, child_key, Distribution::range((2003.0, 2010.0), 0.0));
+      set_branch_length_distribution(&graph, &mut inputs, child_key, 1.0);
+      inputs
+        .backward
+        .messages
+        .insert(parent_edge_key(&graph, child_key), message_from_child.map(Arc::new));
+      let posterior = run_forward_pass(&graph, &inputs, &names)?;
+      Ok(node_time(&posterior, child_key))
     }
 
     pub(super) fn leaf_time_distribution(

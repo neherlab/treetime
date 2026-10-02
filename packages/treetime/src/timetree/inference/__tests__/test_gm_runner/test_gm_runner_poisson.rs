@@ -14,7 +14,6 @@ mod tests {
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -33,7 +32,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
 

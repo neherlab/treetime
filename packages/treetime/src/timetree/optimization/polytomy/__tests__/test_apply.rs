@@ -28,7 +28,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
 
@@ -222,7 +221,7 @@ mod tests {
     let before = json_write_str(&graph, JsonPretty(false))?;
 
     assert_error!(
-      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut branch_lengths,),
+      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut branch_lengths),
       "Polytomy plan merger 0 referenced lineage 4 before it was created. This is an internal error. Please report it to developers."
     );
     let after = json_write_str(&graph, JsonPretty(false))?;

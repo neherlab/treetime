@@ -162,7 +162,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -235,7 +234,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -315,7 +313,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
@@ -371,7 +368,6 @@ mod tests {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
