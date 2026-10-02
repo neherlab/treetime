@@ -124,7 +124,13 @@ pub(crate) fn blended_clock_branch_lengths(
     })
     .collect();
 
-  let mut clock_branch_lengths = previous_lengths.clone();
+  let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = graph
+    .get_edges()
+    .filter_map(|edge| {
+      let key = edge.key();
+      previous_lengths.get(&key).map(|length| (key, *length))
+    })
+    .collect();
   let mut inverted = 0_usize;
   for (key, value, is_inverted) in committed {
     clock_branch_lengths.insert(key, value);

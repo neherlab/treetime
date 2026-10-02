@@ -8,6 +8,7 @@ use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::clock::divergence::root_to_node_divergences;
 use treetime::seq::mutation::Mutation;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_graph::edge::GraphEdgeKey;
@@ -70,10 +71,15 @@ pub(crate) fn timetree_to_auspice(
     Some(root_sequences),
     maps.root_sequence.is_some(),
   )?;
+  let mutation_divergences = mutation_counts
+    .map(|counts| mutation_divergences(graph, counts))
+    .transpose()?;
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = timetree_divergence(graph, context.node_key, out.div, mutation_counts)?;
+    let div = mutation_divergences
+      .as_ref()
+      .map_or(out.div, |divergences| divergences[&context.node_key]);
     let confidence = timetree_date_confidence(graph, context.node_key, &name, confidence_intervals)?;
     Ok(auspice_node(
       name.clone(),
@@ -118,24 +124,16 @@ fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>)
     .unwrap_or_default()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
+  reason = "a mutation count is far below 2^53, so the conversion to f64 is exact"
 )]
-fn timetree_divergence(
+fn mutation_divergences(
   graph: &Graph,
-  node_key: GraphNodeKey,
-  div: f64,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-) -> Result<f64, Report> {
-  mutation_counts.map_or(Ok(div), |counts| {
-    let mut key = node_key;
-    let mut count = 0;
-    while let Some((parent, edge)) = graph.node_parent(key)? {
-      count += counts.get(&edge).copied().unwrap_or_default();
-      key = parent;
-    }
-    Ok(count as f64)
+  mutation_counts: &BTreeMap<GraphEdgeKey, usize>,
+) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+  root_to_node_divergences(graph, |edge_key| {
+    mutation_counts.get(&edge_key).copied().unwrap_or_default() as f64
   })
 }
 

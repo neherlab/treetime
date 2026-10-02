@@ -4,7 +4,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) fn root_to_node_divergences(
+pub fn root_to_node_divergences(
   graph: &Graph,
   edge_length: impl Fn(GraphEdgeKey) -> f64,
 ) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
