@@ -1,5 +1,6 @@
 from __future__ import print_function
 from io import StringIO
+import pytest
 
 
 # Tests
@@ -361,3 +362,203 @@ def test_marginal_mode_used_in_all_iterations(root_dir=None):
             f"Call #{i} to infer_ancestral_sequences used marginal=False (joint) "
             f"when marginal reconstruction was requested"
         )
+
+
+# The root ROOT has one child, MRCA, the common ancestor of all samples.
+# Regression data for https://github.com/neherlab/treetime/issues/959
+SINGLE_CHILD_ROOT_TREE = (
+    '((((A:0.010,B:0.012)AB:0.004,(C:0.015,D:0.013)CD:0.003)ABCD:0.002,'
+    '((E:0.011,F:0.016)EF:0.002,(G:0.014,H:0.009)GH:0.005)EFGH:0.003)MRCA:0.001)ROOT:0;'
+)
+SINGLE_CHILD_ROOT_DATES = {
+    'A': 2014.0,
+    'B': 2016.0,
+    'C': 2019.0,
+    'D': 2017.0,
+    'E': 2013.0,
+    'F': 2018.0,
+    'G': 2019.0,
+    'H': 2014.0,
+}
+
+
+def _single_child_root_tree_time(dates):
+    from Bio import Phylo
+    from treetime import TreeTime
+
+    return TreeTime(
+        tree=Phylo.read(StringIO(SINGLE_CHILD_ROOT_TREE), 'newick'),
+        dates=dates,
+        seq_len=1000,
+        gtr='Jukes-Cantor',
+        verbose=0,
+        rng_seed=1234,
+    )
+
+
+def _write_tree_and_dates(tmp_path, newick, dates):
+    tree_file = tmp_path / 'tree.nwk'
+    tree_file.write_text(newick + '\n')
+    dates_file = tmp_path / 'dates.tsv'
+    dates_file.write_text('name\tdate\n' + ''.join(f'{name}\t{date}\n' for name, date in dates.items()))
+    return tree_file, dates_file
+
+
+def _run_cli(args):
+    import matplotlib
+
+    matplotlib.use('Agg')
+    from treetime import make_parser
+
+    params = make_parser().parse_args([str(arg) for arg in args])
+    return params.func(params)
+
+
+@pytest.mark.parametrize('root', ['least-squares', 'min_dev', 'oldest', 'A'])
+def test_reroot_removes_undated_single_child_root(root):
+    """Rerooting must not turn an undated single-child root into an extra leaf."""
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+
+    tt.reroot(root)
+
+    assert sorted(n.name for n in tt.tree.get_terminals()) == sorted(SINGLE_CHILD_ROOT_DATES)
+    assert 'ROOT' not in {n.name for n in tt.tree.find_clades()}
+
+
+def test_reroot_keeps_dated_single_child_root():
+    """A dated single-child root carries data: after rerooting it is a dated leaf."""
+    tt = _single_child_root_tree_time({**SINGLE_CHILD_ROOT_DATES, 'ROOT': 2008.0})
+
+    tt.reroot('least-squares')
+
+    leaves = {n.name: n for n in tt.tree.get_terminals()}
+    assert sorted(leaves) == sorted([*SINGLE_CHILD_ROOT_DATES, 'ROOT'])
+    assert leaves['ROOT'].raw_date_constraint == 2008.0
+
+
+def test_reroot_to_current_single_child_root_keeps_tree():
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+
+    tt.reroot(tt.tree.root)
+
+    assert tt.tree.root.name == 'ROOT'
+    assert [c.name for c in tt.tree.root] == ['MRCA']
+    assert sorted(n.name for n in tt.tree.get_terminals()) == sorted(SINGLE_CHILD_ROOT_DATES)
+
+
+def test_plot_root_to_tip_after_reroot_of_single_child_root():
+    import matplotlib
+
+    matplotlib.use('Agg')
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+    tt.reroot('least-squares')
+
+    tt.plot_root_to_tip()
+
+
+@pytest.mark.parametrize(
+    ('command', 'output_tree', 'output_format'),
+    [([], 'timetree.nexus', 'nexus'), (['clock'], 'rerooted.newick', 'newick')],
+)
+def test_cli_reroot_of_single_child_root_writes_samples_only(tmp_path, command, output_tree, output_format):
+    """`treetime` and `treetime clock` crashed in the root-to-tip plot and wrote an extra leaf (issue #959)."""
+    from Bio import Phylo
+
+    tree_file, dates_file = _write_tree_and_dates(tmp_path, SINGLE_CHILD_ROOT_TREE, SINGLE_CHILD_ROOT_DATES)
+    outdir = tmp_path / 'out'
+
+    _run_cli([*command, '--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--outdir', outdir])
+
+    tree = Phylo.read(outdir / output_tree, output_format)
+    assert sorted(n.name for n in tree.get_terminals()) == sorted(SINGLE_CHILD_ROOT_DATES)
+    assert (outdir / 'root_to_tip_regression.pdf').is_file()
+
+
+def test_cli_keep_root_keeps_single_child_root(tmp_path):
+    from Bio import Phylo
+
+    tree_file, dates_file = _write_tree_and_dates(tmp_path, SINGLE_CHILD_ROOT_TREE, SINGLE_CHILD_ROOT_DATES)
+    outdir = tmp_path / 'out'
+
+    _run_cli(['--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--keep-root', '--outdir', outdir])
+
+    tree = Phylo.read(outdir / 'timetree.nexus', 'nexus')
+    assert len(tree.root.clades) == 1
+    assert sorted(n.name for n in tree.get_terminals()) == sorted(SINGLE_CHILD_ROOT_DATES)
+    rows = [line.split('\t') for line in (outdir / 'dates.tsv').read_text().splitlines()[1:]]
+    numeric_dates = {row[0]: float(row[2]) for row in rows}
+    assert numeric_dates['ROOT'] < numeric_dates['MRCA']
+
+
+def test_bad_branch_flags_are_python_bools():
+    """Undated leaves G and H make their parent GH a bad branch."""
+    dates = {name: date for name, date in SINGLE_CHILD_ROOT_DATES.items() if name not in ('G', 'H')}
+    tt = _single_child_root_tree_time(dates)
+
+    flags = {n.name: n.bad_branch for n in tt.tree.find_clades()}
+
+    assert all(type(flag) is bool for flag in flags.values())
+    assert {name for name, flag in flags.items() if flag} == {'G', 'H', 'GH'}
+
+
+def test_tip_value_treats_falsy_bad_branch_as_good():
+    import numpy as np
+
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+    leaf = next(n for n in tt.tree.get_terminals() if n.name == 'A')
+    leaf.bad_branch = np.False_
+
+    assert tt.setup_TreeRegression().tip_value(leaf) == SINGLE_CHILD_ROOT_DATES['A']
+
+
+def test_reroot_rejects_new_undated_leaf():
+    """Without the single-child root removal, rerooting leaves ROOT as an undated leaf."""
+    from unittest.mock import patch
+    from treetime import TreeTime, TreeTimeError
+
+    tt = _single_child_root_tree_time(SINGLE_CHILD_ROOT_DATES)
+
+    with patch.object(TreeTime, '_remove_undated_single_child_root'):
+        with pytest.raises(TreeTimeError, match='into leaves: ROOT$'):
+            tt.reroot('least-squares')
+
+
+# U and V are single-child nodes inside the tree
+INNER_SINGLE_CHILD_TREE = (
+    '(((A:0.010,B:0.012)AB:0.004,((C:0.015,D:0.013)CD:0.002)U:0.001)ABCD:0.002,'
+    '(((E:0.011,F:0.016)EF:0.001)V:0.001,(G:0.014,H:0.009)GH:0.005)EFGH:0.003)MRCA:0;'
+)
+
+
+def test_resolve_polytomies_keeps_dated_single_child_node():
+    from Bio import Phylo
+    from treetime import TreeTime
+
+    tt = TreeTime(
+        tree=Phylo.read(StringIO(INNER_SINGLE_CHILD_TREE), 'newick'),
+        dates={**SINGLE_CHILD_ROOT_DATES, 'U': 2000.0},
+        seq_len=1000,
+        gtr='Jukes-Cantor',
+        verbose=0,
+        rng_seed=1234,
+    )
+
+    tt.resolve_polytomies()
+
+    names = {n.name for n in tt.tree.find_clades()}
+    assert 'U' in names
+    assert 'V' not in names
+
+
+def test_cli_timetree_uses_date_of_single_child_node(tmp_path):
+    tree_file, dates_file = _write_tree_and_dates(
+        tmp_path, INNER_SINGLE_CHILD_TREE, {**SINGLE_CHILD_ROOT_DATES, 'U': 2000.0}
+    )
+    outdir = tmp_path / 'out'
+
+    _run_cli(['--tree', tree_file, '--dates', dates_file, '--sequence-length', 1000, '--outdir', outdir])
+
+    rows = [line.split('\t') for line in (outdir / 'dates.tsv').read_text().splitlines()[1:]]
+    numeric_dates = {row[0]: float(row[2]) for row in rows}
+    assert abs(numeric_dates['U'] - 2000.0) < 1e-6
+    assert 'V' not in numeric_dates
